@@ -1,0 +1,18 @@
+<resources>
+    <string name="app_name" translatable="false">MGSR Team</string>
+
+    <string name="nav_item_players">Players</string>
+    <string name="nav_item_releases">Releases</string>
+
+
+    <string name="login_button_title">Login</string>
+    <string name="login_button_email_hint">Your email address</string>
+    <string name="login_button_password_hint">Your password</string>
+
+
+    <string name="players_screen_hint">Search player by name</string>
+    <string name="add_player_screen_hint">Search</string>
+
+
+    <string name="account_not_allowed">Account not allowed</string>
+</resources>

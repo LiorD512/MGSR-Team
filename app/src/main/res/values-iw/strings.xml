@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="nav_item_players">שחקנים</string>
+    <string name="nav_item_releases">שחרורים</string>
+
+    <string name="login_button_title">התחברות</string>
+    <string name="login_button_email_hint">הקלד כתובת מייל</string>
+    <string name="login_button_password_hint">הקלד סיסמא</string>
+
+    <string name="players_screen_hint">חפש שחקן לפי שם</string>
+    <string name="add_player_screen_hint">חיפוש</string>
+
+    <string name="account_not_allowed">חשבון לא מורשה</string>
+</resources>

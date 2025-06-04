@@ -1,0 +1,32 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="150dp"
+    android:height="150dp"
+    android:viewportWidth="150"
+    android:viewportHeight="150">
+
+    <!-- Soccer ball -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:strokeColor="#1E3A8A"
+        android:strokeWidth="2"
+        android:pathData="M75,40a35,35 0 1,0 0.01,0z" />
+
+    <!-- Soccer patches -->
+    <path android:fillColor="#1E3A8A"
+        android:pathData="M75,50l6,10h-12z" />
+    <path android:fillColor="#1E3A8A"
+        android:pathData="M75,100l6,-10h-12z" />
+    <path android:fillColor="#1E3A8A"
+        android:pathData="M55,75l10,-3v6z" />
+    <path android:fillColor="#1E3A8A"
+        android:pathData="M95,75l-10,-3v6z" />
+    <path android:fillColor="#1E40AF"
+        android:pathData="M70,70h10v10h-10z" />
+
+    <!-- Red slash to indicate 'not found' -->
+    <path
+        android:strokeColor="#EF4444"
+        android:strokeWidth="4"
+        android:strokeLineCap="round"
+        android:pathData="M40,40L110,110" />
+</vector>
