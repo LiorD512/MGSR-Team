@@ -17,8 +17,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.liordahan.mgsrteam.features.login.models.Account
 import com.liordahan.mgsrteam.features.players.models.Position
 import com.liordahan.mgsrteam.ui.theme.contentDefault
 import com.liordahan.mgsrteam.ui.utils.boldTextStyle
@@ -34,13 +36,13 @@ fun FilterStripUi(
 ) {
 
     LazyRow(
-        contentPadding = PaddingValues(top = 24.dp, bottom = 24.dp, start = 16.dp, end = 12.dp),
+        contentPadding = PaddingValues(top = 24.dp, bottom = 24.dp, start = 4.dp, end = 4.dp),
         horizontalArrangement = Arrangement.spacedBy(24.dp)
     ) {
 
         itemsIndexed(positions) { _, position ->
             val positionPlayersCount = getCountForPosition(position)
-            CuisineTypeItemUi(
+            FilterTypeItemUi(
                 position = position,
                 positionPlayersCount = positionPlayersCount.toString(),
                 isSelected = selectedPosition == position,
@@ -48,10 +50,11 @@ fun FilterStripUi(
             )
         }
     }
+
 }
 
 @Composable
-fun CuisineTypeItemUi(
+fun FilterTypeItemUi(
     position: Position,
     positionPlayersCount: String,
     isSelected: Boolean,
@@ -88,3 +91,67 @@ fun CuisineTypeItemUi(
     }
 }
 
+@Composable
+fun FilterByAgentStripUi(
+    accounts: List<Account>,
+    selectedAccount: Account? = null,
+    onAccountClicked: (Account) -> Unit,
+    getCountForAccount: (Account) -> Int
+) {
+
+    LazyRow(
+        contentPadding = PaddingValues(bottom = 24.dp, start = 4.dp, end = 4.dp),
+        horizontalArrangement = Arrangement.SpaceEvenly
+    ) {
+
+        itemsIndexed(accounts) { _, account ->
+            val accountPlayersCount = getCountForAccount(account)
+            AccountFilterTypeItemUi(
+                account = account,
+                accountPlayersCount = accountPlayersCount.toString(),
+                isSelected = selectedAccount == account,
+                onAccountClicked = { onAccountClicked(it) }
+            )
+        }
+    }
+
+}
+
+@Composable
+fun AccountFilterTypeItemUi(
+    account: Account,
+    accountPlayersCount: String,
+    isSelected: Boolean,
+    onAccountClicked: (Account) -> Unit
+) {
+    Surface(
+        modifier = Modifier
+            .size(75.dp)
+            .clickWithNoRipple { onAccountClicked(account) },
+        shape = CircleShape,
+        color = if (isSelected) contentDefault else Color.White,
+        shadowElevation = 4.dp,
+    ) {
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Text(
+                text = account.name?.take(10) ?: "",
+                style = if (isSelected) boldTextStyle(Color.White, 14.sp)
+                else regularTextStyle(contentDefault, 14.sp),
+                modifier = Modifier.padding(top = 2.dp),
+                textAlign = TextAlign.Center
+            )
+
+            Spacer(Modifier.height(4.dp))
+
+            Text(
+                text = accountPlayersCount,
+                style = if (isSelected) regularTextStyle(Color.White, 12.sp)
+                else regularTextStyle(contentDefault, 12.sp)
+            )
+        }
+    }
+}

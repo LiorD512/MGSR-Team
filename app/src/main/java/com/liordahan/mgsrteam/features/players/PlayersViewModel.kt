@@ -20,16 +20,20 @@ data class PlayersUiState(
     val playersList: List<Player> = emptyList(),
     val visibleList: List<Player> = emptyList(),
     val positionList: List<Position> = emptyList(),
+    val accountList: List<Account> = emptyList(),
     val showPageLoader: Boolean = false,
     val showRefreshButton: Boolean = false,
-    val showEmptyState: Boolean = false
+    val showEmptyState: Boolean = false,
+    val selectedPosition: Position? = null,
+    val selectedAccount: Account? = null
 )
 
 abstract class IPlayersViewModel : ViewModel() {
     abstract val playersFlow: StateFlow<PlayersUiState>
     abstract suspend fun getCurrentUserName(): String?
     abstract fun filterPlayersByName(name: String)
-    abstract fun filterPlayersByPosition(position: Position?)
+    abstract fun updateSelectedPosition(position: Position?)
+    abstract fun updateSelectedAccount(account: Account?)
     abstract fun updateAllPlayers()
 }
 
@@ -44,6 +48,20 @@ class PlayersViewModel(
     init {
         getAllPlayers()
         getAllPositions()
+        getAllAccounts()
+
+        viewModelScope.launch {
+            _playersFlow.collect {
+                _playersFlow.update {
+                    it.copy(
+                        visibleList = it.playersList
+                            .filterPlayersByPosition(it.selectedPosition)
+                            ?.filterPlayersByAgent(it.selectedAccount)
+                            ?.sortedByDescending { it.createdAt } ?: emptyList(),
+                    )
+                }
+            }
+        }
     }
 
 
@@ -86,19 +104,31 @@ class PlayersViewModel(
         }
     }
 
-    override fun filterPlayersByPosition(position: Position?) {
-        val filteredList = if (position == null) {
-            _playersFlow.value.playersList
+    override fun updateSelectedPosition(position: Position?) {
+        _playersFlow.update { it.copy(selectedPosition = position) }
+    }
+
+    override fun updateSelectedAccount(account: Account?) {
+        _playersFlow.update { it.copy(selectedAccount = account) }
+    }
+
+    private fun List<Player>?.filterPlayersByPosition(position: Position?): List<Player>? {
+        return if (position == null) {
+            this
         } else {
-            _playersFlow.value.playersList.filter {
+            this?.filter {
                 it.positions?.contains(position.name) == true
             }
         }
+    }
 
-        _playersFlow.update {
-            it.copy(
-                visibleList = filteredList,
-            )
+    private fun List<Player>?.filterPlayersByAgent(account: Account?): List<Player>? {
+        return if (account == null) {
+            this
+        } else {
+            this?.filter {
+                it.agentInChargeName?.equals(account.name) == true
+            }
         }
     }
 
@@ -180,6 +210,16 @@ class PlayersViewModel(
                 val positions = it.toObjects(Position::class.java)
                 _playersFlow.update {
                     it.copy(positionList = positions.sortedByDescending { it.sort })
+                }
+            }
+    }
+
+    private fun getAllAccounts() {
+        firebaseHandler.firebaseStore.collection(firebaseHandler.accountsTable).get()
+            .addOnSuccessListener {
+                val accounts = it.toObjects(Account::class.java)
+                _playersFlow.update {
+                    it.copy(accountList = accounts.sortedBy { it.name })
                 }
             }
     }

@@ -49,6 +49,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -170,7 +171,22 @@ fun PlayerInfoScreen(
         topBar = {
             PlayerInfoTopBar(
                 onShareClicked = {
-                    sharePlayerOnWhatsapp(context, playerToPresent?.description)
+                    val textToSend = buildAnnotatedString {
+                        playerToPresent?.let { player ->
+                            appendLine(player.tmProfile ?: "")
+                            appendLine(
+                                listOfNotNull(
+                                    player.fullName,
+                                    player.positions?.getOrNull(0),
+                                    player.age,
+                                    player.height,
+                                    player.nationality
+                                ).joinToString(", ")
+                            )
+                            append("Current Club: ${player.currentClub?.clubName ?: "Unknown"}")
+                        } ?: append("Player data not available.")
+                    }
+                    sharePlayerOnWhatsapp(context, textToSend.toString())
                 },
                 onBackClicked = {
                     navController.popBackStack()

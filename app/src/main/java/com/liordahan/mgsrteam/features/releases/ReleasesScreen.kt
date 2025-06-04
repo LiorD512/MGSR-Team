@@ -91,19 +91,11 @@ fun ReleasesScreen(viewModel: IReleasesViewModel = koinViewModel(), navControlle
         mutableStateOf<Position?>(null)
     }
 
-    var showStrip by remember {
-        mutableStateOf(true)
-    }
-
     var showError by remember {
         mutableStateOf(false)
     }
 
     val state = rememberLazyListState()
-
-    LaunchedEffect(state.isScrollInProgress) {
-        showStrip = !state.isScrollInProgress
-    }
 
     LaunchedEffect(Unit) {
         lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -152,10 +144,15 @@ fun ReleasesScreen(viewModel: IReleasesViewModel = koinViewModel(), navControlle
                 return@Column
             }
 
-            AnimatedVisibility(showStrip) {
 
-                Column {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                state = state,
+                contentPadding = PaddingValues(top = 24.dp, bottom = 100.dp, start = 12.dp, end = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
 
+                item {
                     FilterStripUi(
                         positions = positionList,
                         selectedPosition = selectedPosition,
@@ -172,20 +169,16 @@ fun ReleasesScreen(viewModel: IReleasesViewModel = koinViewModel(), navControlle
                             viewModel.selectPosition(selectedPosition)
                         }
                     )
+                }
 
+                item{
                     HorizontalDivider(
                         thickness = 1.dp,
-                        color = dividerColor
+                        color = dividerColor,
+                        modifier = Modifier.padding(bottom = 16.dp)
                     )
                 }
-            }
 
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                state = state,
-                contentPadding = PaddingValues(vertical = 24.dp, horizontal = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
                 items(releaseList) {
                     ReleaseListItem(context, it)
                 }

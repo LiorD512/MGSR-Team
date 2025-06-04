@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
@@ -64,9 +65,11 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.liordahan.mgsrteam.R
+import com.liordahan.mgsrteam.features.login.models.Account
 import com.liordahan.mgsrteam.features.players.models.Player
 import com.liordahan.mgsrteam.features.players.models.Position
 import com.liordahan.mgsrteam.features.players.ui.EmptyState
+import com.liordahan.mgsrteam.features.players.ui.FilterByAgentStripUi
 import com.liordahan.mgsrteam.features.players.ui.FilterStripUi
 import com.liordahan.mgsrteam.navigation.Screens
 import com.liordahan.mgsrteam.ui.components.AppTextField
@@ -79,7 +82,6 @@ import com.liordahan.mgsrteam.ui.utils.regularTextStyle
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PlayersScreen(viewModel: IPlayersViewModel = koinViewModel(), navController: NavController) {
 
@@ -105,8 +107,16 @@ fun PlayersScreen(viewModel: IPlayersViewModel = koinViewModel(), navController:
         mutableStateOf(listOf<Position>())
     }
 
+    var accountList by remember {
+        mutableStateOf(listOf<Account>())
+    }
+
     var selectedPosition by rememberSaveable {
         mutableStateOf<Position?>(null)
+    }
+
+    var selectedAccount by rememberSaveable {
+        mutableStateOf<Account?>(null)
     }
 
     var searchPlayerInput by remember {
@@ -115,9 +125,6 @@ fun PlayersScreen(viewModel: IPlayersViewModel = koinViewModel(), navController:
 
     val state = rememberLazyGridState()
 
-    var showStrip by remember {
-        mutableStateOf(true)
-    }
 
     var showRefreshPlayersButton by remember {
         mutableStateOf(false)
@@ -125,10 +132,6 @@ fun PlayersScreen(viewModel: IPlayersViewModel = koinViewModel(), navController:
 
     var showEmptyState by remember {
         mutableStateOf(false)
-    }
-
-    LaunchedEffect(state.isScrollInProgress) {
-        showStrip = !state.isScrollInProgress
     }
 
     LaunchedEffect(Unit) {
@@ -142,6 +145,7 @@ fun PlayersScreen(viewModel: IPlayersViewModel = koinViewModel(), navController:
                     showPageProgress = it.showPageLoader
                     playersList = it.visibleList
                     positionList = it.positionList
+                    accountList = it.accountList
                     originalPlayersList = it.playersList
                     showRefreshPlayersButton = it.showRefreshButton
                     showEmptyState = it.showEmptyState
@@ -157,7 +161,7 @@ fun PlayersScreen(viewModel: IPlayersViewModel = koinViewModel(), navController:
             PlayersScreenAppBar(
                 title = "Welcome\n$userName",
                 searchPlayerInput = searchPlayerInput,
-                selectedPosition = selectedPosition,
+                showSearchBar = selectedPosition == null && selectedAccount == null,
                 showRefreshButton = showRefreshPlayersButton,
                 onValueChange = {
                     searchPlayerInput = it
@@ -186,15 +190,26 @@ fun PlayersScreen(viewModel: IPlayersViewModel = koinViewModel(), navController:
                 }
             }
 
-            if (showEmptyState){
+            if (showEmptyState) {
                 EmptyState("No players found\nTry to change your search")
                 return@Column
             }
 
-            AnimatedVisibility(showStrip) {
+            LazyVerticalGrid(
+                state = state,
+                columns = GridCells.Fixed(3),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                contentPadding = PaddingValues(
+                    top = 24.dp,
+                    bottom = 100.dp,
+                    start = 12.dp,
+                    end = 12.dp
+                )
 
-                Column {
+            ) {
 
+                item(span = { GridItemSpan(maxLineSpan) }) {
                     FilterStripUi(
                         positions = positionList,
                         selectedPosition = selectedPosition,
@@ -202,30 +217,32 @@ fun PlayersScreen(viewModel: IPlayersViewModel = koinViewModel(), navController:
                             originalPlayersList.count { player -> player.positions?.contains(it.name) == true }
                         },
                         onPositionClicked = {
-                            selectedPosition = if (selectedPosition == it) {
-                                null
-                            } else {
-                                it
-                            }
-                            viewModel.filterPlayersByPosition(selectedPosition)
-                        })
+                            selectedPosition = if (selectedPosition == it) null else it
+                            viewModel.updateSelectedPosition(selectedPosition)
+                        }
+                    )
+                }
 
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    FilterByAgentStripUi(
+                        accounts = accountList,
+                        selectedAccount = selectedAccount,
+                        getCountForAccount = {
+                            originalPlayersList.count { player -> player.agentInChargeName?.equals(it.name, ignoreCase = true) == true }
+                        },
+                        onAccountClicked = {
+                            selectedAccount = if (selectedAccount == it) null else it
+                            viewModel.updateSelectedAccount(selectedAccount)
+                        }
+                    )
+                }
+
+                item(span = { GridItemSpan(maxLineSpan) }) {
                     HorizontalDivider(
                         thickness = 1.dp,
                         color = dividerColor
                     )
                 }
-            }
-
-
-            LazyVerticalGrid(
-                state = state,
-                columns = GridCells.Fixed(3),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-                contentPadding = PaddingValues(vertical = 24.dp, horizontal = 12.dp)
-
-            ) {
 
                 items(playersList) { player ->
                     PlayerCard(
@@ -363,7 +380,7 @@ fun PlayerCard(player: Player, modifier: Modifier = Modifier, onPlayerClicked: (
 fun PlayersScreenAppBar(
     title: String,
     searchPlayerInput: TextFieldValue,
-    selectedPosition: Position? = null,
+    showSearchBar:Boolean,
     showRefreshButton: Boolean = false,
     onValueChange: (TextFieldValue) -> Unit,
     onAddClicked: () -> Unit,
@@ -422,7 +439,7 @@ fun PlayersScreenAppBar(
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White),
             )
 
-            AnimatedVisibility(visible = selectedPosition == null) {
+            AnimatedVisibility(visible = showSearchBar) {
 
                 Column {
 
