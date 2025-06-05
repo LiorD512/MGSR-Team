@@ -8,6 +8,7 @@ import android.provider.ContactsContract
 import androidx.activity.compose.ManagedActivityResultLauncher
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.DrawableRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -38,6 +39,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Snackbar
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -55,6 +60,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -62,6 +69,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -81,6 +89,7 @@ import com.liordahan.mgsrteam.ui.utils.ProgressIndicator
 import com.liordahan.mgsrteam.ui.utils.boldTextStyle
 import com.liordahan.mgsrteam.ui.utils.clickWithNoRipple
 import com.liordahan.mgsrteam.ui.utils.regularTextStyle
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
 
@@ -93,6 +102,9 @@ fun AddPlayerScreen(
 
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val context = LocalContext.current
+    val keyboardController = LocalSoftwareKeyboardController.current
+
+    val snackBarHostState = remember { SnackbarHostState() }
 
     var showAddContactBottomSheet by remember {
         mutableStateOf(false)
@@ -108,12 +120,21 @@ fun AddPlayerScreen(
         mutableStateOf(false)
     }
 
+    var showSelectedPlayerProgress by remember {
+        mutableStateOf(false)
+    }
+
+    var errorMessage by remember {
+        mutableStateOf<String?>("")
+    }
+
     LaunchedEffect(Unit) {
         lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
             launch {
                 viewModel.playerSearchStateFlow.collect {
                     playerOptionsList = it.playerSearchResults
                     showSearchProgress = it.showSearchProgress
+                    showSelectedPlayerProgress = it.showPlayerSelectedSearchProgress
                 }
             }
 
@@ -133,6 +154,19 @@ fun AddPlayerScreen(
                     }
                 }
             }
+
+            launch {
+                viewModel.errorMessageFlow.collect { message ->
+                    if (!message.isNullOrEmpty()) {
+                        errorMessage = message
+                        showSnakeBarMessage(
+                            scope = this,
+                            snackBarHostState = snackBarHostState,
+                            message = message
+                        )
+                    }
+                }
+            }
         }
     }
 
@@ -145,12 +179,21 @@ fun AddPlayerScreen(
                 searchPlayerInput = searchText,
                 onValueChange = {
                     searchText = it
-                    if (searchText.text.length >= 2) {
-                        viewModel.getSearchResults(searchText.text)
-                    }
+                    viewModel.updateSearchQuery(searchText.text)
+
                 },
                 onBackClicked = {
                     navController.popBackStack()
+                }
+            )
+        },
+        snackbarHost = {
+            SnackbarHost(
+                hostState = snackBarHostState,
+                snackbar = {
+                    SnakeBarMessage(
+                        message = it.visuals.message
+                    )
                 }
             )
         }
@@ -181,11 +224,20 @@ fun AddPlayerScreen(
                     items(playerOptionsList) { playerSearchModel ->
                         SearchListItem(
                             playerSearchModel = playerSearchModel,
-                            onCardClicked = { viewModel.onPlayerSelected(it) }
+                            onCardClicked = {
+                                keyboardController?.hide()
+                                viewModel.onPlayerSelected(it)
+                            }
                         )
                     }
 
                 }
+            }
+
+            if (showSelectedPlayerProgress) {
+                ProgressIndicator(
+                    modifier = Modifier.align(Alignment.Center)
+                )
             }
 
             if (showAddContactBottomSheet) {
@@ -508,9 +560,11 @@ fun AddPlayerTopBar(
 
     Surface(shadowElevation = 12.dp, color = Color.White) {
 
-        Column(modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 24.dp)) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 24.dp)
+        ) {
 
             TopAppBar(
                 title = {
@@ -563,5 +617,35 @@ fun AddPlayerTopBar(
                 onValueChange = { onValueChange(it) }
             )
         }
+    }
+}
+
+@Composable
+fun SnakeBarMessage(
+    message: String
+) {
+    Snackbar(
+        modifier = Modifier.padding(16.dp),
+        containerColor = contentDefault
+    ) {
+
+        Text(
+            text = message,
+            style = regularTextStyle(Color.White, 14.sp),
+            textAlign = TextAlign.Start,
+        )
+    }
+}
+
+fun showSnakeBarMessage(
+    scope: CoroutineScope,
+    snackBarHostState: SnackbarHostState,
+    message: String
+) {
+    scope.launch {
+        snackBarHostState.showSnackbar(
+            message = message,
+            duration = SnackbarDuration.Short,
+        )
     }
 }

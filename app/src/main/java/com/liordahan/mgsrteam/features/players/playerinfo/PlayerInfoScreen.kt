@@ -25,6 +25,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.Share
@@ -174,12 +175,13 @@ fun PlayerInfoScreen(
                     val textToSend = buildAnnotatedString {
                         playerToPresent?.let { player ->
                             appendLine(player.tmProfile ?: "")
+                            append("\n\n")
                             appendLine(
                                 listOfNotNull(
                                     player.fullName,
                                     player.positions?.getOrNull(0),
                                     player.age,
-                                    player.height,
+                                    player.height?.replace("m", ""),
                                     player.nationality
                                 ).joinToString(", ")
                             )
@@ -293,6 +295,9 @@ fun PlayerInfoScreen(
                             playerNumberLauncher,
                             playerNumberPermissionLauncher
                         )
+                    },
+                    onClearClicked = {
+                        viewModel.updatePlayerNumber("")
                     })
                 HorizontalDivider(
                     color = dividerColor,
@@ -305,9 +310,12 @@ fun PlayerInfoScreen(
                     onEditPhoneClicked = {
                         launchPlayerContactPicker(
                             context,
-                            playerNumberLauncher,
-                            playerNumberPermissionLauncher
+                            agentNumberLauncher,
+                            agentNumberPermissionLauncher
                         )
+                    },
+                    onClearClicked = {
+                        viewModel.updateAgentNumber("")
                     })
                 HorizontalDivider(
                     color = dividerColor,
@@ -454,7 +462,12 @@ fun NationalityInfoRow(title: String, value: String?, nationalityFlag: String?) 
 }
 
 @Composable
-fun PhoneInfoRow(title: String, phoneNumber: String?, onEditPhoneClicked: () -> Unit) {
+fun PhoneInfoRow(
+    title: String,
+    phoneNumber: String?,
+    onEditPhoneClicked: () -> Unit,
+    onClearClicked: () -> Unit
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -483,8 +496,17 @@ fun PhoneInfoRow(title: String, phoneNumber: String?, onEditPhoneClicked: () -> 
         Icon(
             imageVector = Icons.Default.Edit,
             contentDescription = null,
-            modifier = Modifier.clickWithNoRipple { onEditPhoneClicked()}
+            modifier = Modifier.clickWithNoRipple { onEditPhoneClicked() }
         )
+
+        if (phoneNumber?.isNotEmpty() == true) {
+            Spacer(Modifier.width(24.dp))
+            Icon(
+                imageVector = Icons.Default.Clear,
+                contentDescription = null,
+                modifier = Modifier.clickWithNoRipple { onClearClicked() }
+            )
+        }
 
     }
 }
