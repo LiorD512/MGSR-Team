@@ -298,6 +298,7 @@ fun PlayerCard(player: Player, modifier: Modifier = Modifier, onPlayerClicked: (
                 text = player.fullName ?: "",
                 style = boldTextStyle(contentDefault, 14.sp).copy(textAlign = TextAlign.Center),
                 maxLines = 2,
+                minLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
 
