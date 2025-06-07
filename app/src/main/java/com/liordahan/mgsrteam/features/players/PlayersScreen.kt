@@ -91,11 +91,11 @@ fun PlayersScreen(viewModel: IPlayersViewModel = koinViewModel(), navController:
         mutableStateOf(false)
     }
 
-    var originalPlayersList by remember {
+    var originalPlayersList by rememberSaveable {
         mutableStateOf(listOf<Player>())
     }
 
-    var playersList by remember {
+    var playersList by rememberSaveable {
         mutableStateOf(listOf<Player>())
     }
 
@@ -120,7 +120,7 @@ fun PlayersScreen(viewModel: IPlayersViewModel = koinViewModel(), navController:
     }
 
     var searchPlayerInput by remember {
-        mutableStateOf(TextFieldValue())
+        mutableStateOf(TextFieldValue(text = viewModel.playersFlow.value.searchQuery))
     }
 
     val state = rememberLazyGridState()
@@ -143,7 +143,9 @@ fun PlayersScreen(viewModel: IPlayersViewModel = koinViewModel(), navController:
             launch {
                 viewModel.playersFlow.collect {
                     showPageProgress = it.showPageLoader
-                    playersList = it.visibleList
+                    if (playersList != it.visibleList) {
+                        playersList = it.visibleList
+                    }
                     positionList = it.positionList
                     accountList = it.accountList
                     originalPlayersList = it.playersList
@@ -165,7 +167,7 @@ fun PlayersScreen(viewModel: IPlayersViewModel = koinViewModel(), navController:
                 showRefreshButton = showRefreshPlayersButton,
                 onValueChange = {
                     searchPlayerInput = it
-                    viewModel.filterPlayersByName(searchPlayerInput.text)
+                    viewModel.updateSearchQuery(searchPlayerInput.text)
                 },
                 onAddClicked = { navController.navigate(Screens.AddPlayerScreen.route) },
                 onRefreshClicked = {

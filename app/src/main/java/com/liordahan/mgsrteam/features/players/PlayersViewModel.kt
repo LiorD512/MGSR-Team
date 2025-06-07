@@ -1,5 +1,6 @@
 package com.liordahan.mgsrteam.features.players
 
+import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.liordahan.mgsrteam.features.login.models.Account
@@ -25,15 +26,16 @@ data class PlayersUiState(
     val showRefreshButton: Boolean = false,
     val showEmptyState: Boolean = false,
     val selectedPosition: Position? = null,
-    val selectedAccount: Account? = null
+    val selectedAccount: Account? = null,
+    val searchQuery: String = ""
 )
 
 abstract class IPlayersViewModel : ViewModel() {
     abstract val playersFlow: StateFlow<PlayersUiState>
     abstract suspend fun getCurrentUserName(): String?
-    abstract fun filterPlayersByName(name: String)
     abstract fun updateSelectedPosition(position: Position?)
     abstract fun updateSelectedAccount(account: Account?)
+    abstract fun updateSearchQuery(query: String)
     abstract fun updateAllPlayers()
 }
 
@@ -57,6 +59,7 @@ class PlayersViewModel(
                         visibleList = it.playersList
                             .filterPlayersByPosition(it.selectedPosition)
                             ?.filterPlayersByAgent(it.selectedAccount)
+                            ?.filterPlayersByName(it.searchQuery)
                             ?.sortedByDescending { it.createdAt } ?: emptyList(),
                     )
                 }
@@ -87,20 +90,13 @@ class PlayersViewModel(
         }
     }
 
-    override fun filterPlayersByName(name: String) {
-        val filteredList = if (name.isBlank()) {
-            _playersFlow.value.playersList
+    private fun List<Player>?.filterPlayersByName(name: String): List<Player>? {
+        return if (name.isBlank()) {
+            this
         } else {
-            _playersFlow.value.playersList.filter {
+           this?.filter {
                 it.fullName?.contains(name, ignoreCase = true) == true
             }
-        }
-
-        _playersFlow.update {
-            it.copy(
-                visibleList = filteredList.sortedByDescending { player -> player.createdAt },
-                showEmptyState = filteredList.isEmpty()
-            )
         }
     }
 
@@ -111,6 +107,11 @@ class PlayersViewModel(
     override fun updateSelectedAccount(account: Account?) {
         _playersFlow.update { it.copy(selectedAccount = account) }
     }
+
+    override fun updateSearchQuery(query: String) {
+        _playersFlow.update { it.copy(searchQuery = query) }
+    }
+
 
     private fun List<Player>?.filterPlayersByPosition(position: Position?): List<Player>? {
         return if (position == null) {

@@ -63,8 +63,9 @@ class PlayerInfoViewModel(
 
     override fun updatePlayerNumber(number: String) {
         _playerInfoFlow.update {
-            it?.copy(playerPhoneNumber = number)
+            it?.copy(playerPhoneNumber = number, playerAdditionalInfoModel = null)
         }
+
 
         _playerInfoFlow.value?.let { player ->
             viewModelScope.launch {
@@ -80,7 +81,7 @@ class PlayerInfoViewModel(
 
     override fun updateAgentNumber(number: String) {
         _playerInfoFlow.update {
-            it?.copy(agentPhoneNumber = number)
+            it?.copy(agentPhoneNumber = number, playerAdditionalInfoModel = null)
         }
 
         _playerInfoFlow.value?.let { player ->
