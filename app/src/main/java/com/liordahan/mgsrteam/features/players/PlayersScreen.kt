@@ -91,11 +91,11 @@ fun PlayersScreen(viewModel: IPlayersViewModel = koinViewModel(), navController:
         mutableStateOf(false)
     }
 
-    var originalPlayersList by rememberSaveable {
+    var originalPlayersList by remember {
         mutableStateOf(listOf<Player>())
     }
 
-    var playersList by rememberSaveable {
+    var playersList by remember {
         mutableStateOf(listOf<Player>())
     }
 
