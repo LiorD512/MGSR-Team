@@ -8,6 +8,8 @@ import android.net.Uri
 import androidx.activity.compose.ManagedActivityResultLauncher
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -30,6 +32,8 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Whatsapp
+import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -50,6 +54,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -61,6 +66,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
+import com.liordahan.mgsrteam.R
 import com.liordahan.mgsrteam.features.add.getPhoneNumberFromContactUri
 import com.liordahan.mgsrteam.features.players.models.Player
 import com.liordahan.mgsrteam.features.players.models.getAgentPhoneNumber
@@ -73,6 +79,8 @@ import com.liordahan.mgsrteam.ui.utils.ProgressIndicator
 import com.liordahan.mgsrteam.ui.utils.boldTextStyle
 import com.liordahan.mgsrteam.ui.utils.clickWithNoRipple
 import com.liordahan.mgsrteam.ui.utils.regularTextStyle
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
 
@@ -100,6 +108,7 @@ fun PlayerInfoScreen(
     var showButtonProgress by remember {
         mutableStateOf(false)
     }
+
 
     var playerNumber by remember { mutableStateOf("") }
     var agentNumber by remember { mutableStateOf("") }
@@ -146,6 +155,14 @@ fun PlayerInfoScreen(
         }
     )
 
+    var showPlayerUpdateUi by remember {
+        mutableStateOf(false)
+    }
+
+    var playerUpdateUiMessage by remember {
+        mutableStateOf("")
+    }
+
     LaunchedEffect(Unit) {
         launch {
             viewModel.getPlayerInfo(playerId)
@@ -161,6 +178,33 @@ fun PlayerInfoScreen(
             launch {
                 viewModel.showButtonProgress.collect {
                     showButtonProgress = it
+                }
+            }
+
+            launch {
+                viewModel.updatePlayerFlow.collect {
+                    when (it) {
+                        is UiResult.Failed -> {
+                            showPlayerUpdateUi = true
+                            playerUpdateUiMessage = it.cause
+                            delay(1000)
+                            showPlayerUpdateUi = false
+                        }
+
+                        UiResult.Loading -> {
+                            showPlayerUpdateUi = true
+                            playerUpdateUiMessage = "Updating..."
+                        }
+
+                        is UiResult.Success<String> -> {
+                            showPlayerUpdateUi = true
+                            playerUpdateUiMessage = it.data
+                            delay(1000)
+                            showPlayerUpdateUi = false
+                        }
+
+                        UiResult.UnInitialized -> {}
+                    }
                 }
             }
         }
@@ -192,6 +236,9 @@ fun PlayerInfoScreen(
                 },
                 onBackClicked = {
                     navController.popBackStack()
+                },
+                onRefreshClicked = {
+                    viewModel.refreshPlayerInfo()
                 }
             )
         }
@@ -205,6 +252,13 @@ fun PlayerInfoScreen(
             }
 
             return@Scaffold
+        }
+
+        if (showPlayerUpdateUi) {
+            UpdatePlayerUi(
+                modifier = Modifier.padding(paddingValues),
+                message = playerUpdateUiMessage
+            )
         }
 
         Column(
@@ -541,9 +595,47 @@ fun TransfermarketRow(context: Context, title: String, tmLink: String?) {
     }
 }
 
+@Composable
+fun UpdatePlayerUi(modifier: Modifier, message: String) {
+
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.5f))
+    ) {
+
+
+        Column(
+            modifier = Modifier.align(Alignment.Center)
+        ) {
+
+            CircularProgressIndicator(
+                modifier = Modifier
+                    .size(48.dp)
+                    .align(Alignment.CenterHorizontally),
+                color = Color.White,
+                strokeWidth = 4.dp
+            )
+
+            Spacer(Modifier.height(24.dp))
+
+            Text(
+                text = message,
+                style = regularTextStyle(Color.White, 18.sp),
+                textAlign = TextAlign.Center
+            )
+
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PlayerInfoTopBar(onShareClicked: () -> Unit, onBackClicked: () -> Unit = {}) {
+fun PlayerInfoTopBar(
+    onShareClicked: () -> Unit,
+    onBackClicked: () -> Unit = {},
+    onRefreshClicked: () -> Unit
+) {
     Surface(shadowElevation = 12.dp, color = Color.White) {
         TopAppBar(
             title = {
@@ -565,6 +657,20 @@ fun PlayerInfoTopBar(onShareClicked: () -> Unit, onBackClicked: () -> Unit = {})
                         contentDescription = null,
                         modifier = Modifier.clickWithNoRipple { onShareClicked() }
                     )
+
+
+                    Spacer(Modifier.width(16.dp))
+
+                    Icon(
+                        modifier = Modifier
+                            .size(28.dp)
+                            .clickWithNoRipple {
+                                onRefreshClicked()
+                            },
+                        imageVector = Icons.Rounded.Refresh,
+                        contentDescription = null
+                    )
+
                 }
             },
             colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White),

@@ -1,6 +1,8 @@
 package com.liordahan.mgsrteam.features.players
 
+import android.app.Activity
 import android.net.Uri
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -47,6 +49,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -59,6 +62,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.app.ActivityCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
@@ -86,6 +90,7 @@ import org.koin.androidx.compose.koinViewModel
 fun PlayersScreen(viewModel: IPlayersViewModel = koinViewModel(), navController: NavController) {
 
     val lifecycle = LocalLifecycleOwner.current.lifecycle
+    val context = LocalContext.current
 
     var showPageProgress by remember {
         mutableStateOf(false)
@@ -134,6 +139,10 @@ fun PlayersScreen(viewModel: IPlayersViewModel = koinViewModel(), navController:
         mutableStateOf(false)
     }
 
+    BackHandler {
+        ActivityCompat.finishAffinity(context as Activity)
+    }
+
     LaunchedEffect(Unit) {
         lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
 
@@ -149,7 +158,6 @@ fun PlayersScreen(viewModel: IPlayersViewModel = koinViewModel(), navController:
                     positionList = it.positionList
                     accountList = it.accountList
                     originalPlayersList = it.playersList
-                    showRefreshPlayersButton = it.showRefreshButton
                     showEmptyState = it.showEmptyState
                 }
             }

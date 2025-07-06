@@ -12,5 +12,5 @@ val playersModule = module {
 
     single { PlayersUpdate() }
     viewModel<IPlayersViewModel> { PlayersViewModel(get(), get()) }
-    viewModel<IPlayerInfoViewModel> { PlayerInfoViewModel(get()) }
+    viewModel<IPlayerInfoViewModel> { PlayerInfoViewModel(get(), get()) }
 }

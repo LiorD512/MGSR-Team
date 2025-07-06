@@ -9,6 +9,7 @@ import com.liordahan.mgsrteam.features.players.models.Position
 import com.liordahan.mgsrteam.firebase.FirebaseHandler
 import com.liordahan.mgsrteam.helpers.Result
 import com.liordahan.mgsrteam.transfermarket.PlayersUpdate
+import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -134,46 +135,63 @@ class PlayersViewModel(
     }
 
     override fun updateAllPlayers() {
-
         viewModelScope.launch {
-            for (player in _playersFlow.value.playersList) {
-                _playersFlow.update { it.copy(showPageLoader = true) }
-                delay(500)
-                when (val response = playersUpdate.updatePlayerByTmProfile(player.tmProfile)) {
-                    is Result.Failed -> {
-                        println("PlayerViewModel - ${player.fullName} failed - ${response.cause}")
-                        _playersFlow.update { it.copy(showPageLoader = false) }
-                    }
+            _playersFlow.update { it.copy(showPageLoader = true) }
 
-                    is Result.Success -> {
-                        val playerToUpdate = player.copy(
-                            marketValue = response.data?.marketValue,
-                            profileImage = response.data?.profileImage,
-                            nationalityFlag = response.data?.nationalityFlag,
-                            nationality = response.data?.citizenship,
-                            age = response.data?.age,
-                            contractExpired = response.data?.contract,
-                            positions = response.data?.positions,
-                            currentClub = response.data?.currentClub
-                        )
+            try {
+                val players = _playersFlow.value.playersList
+                for (player in players) {
+                    var retryCount = 0
+                    val maxRetries = 3
+                    val retryDelay = 1000L // 1 second
+                    val delayBetweenPlayers = 500L // 500ms delay between players
 
+                    while (retryCount < maxRetries) {
                         try {
-                            val doc = firebaseHandler.firebaseStore
-                                .collection(firebaseHandler.playersTable)
-                                .whereEqualTo("tmProfile", player.tmProfile)
-                                .get().await().documents.firstOrNull()
+                            val response = playersUpdate.updatePlayerByTmProfile(player.tmProfile)
+                            if (response is Result.Success) {
+                                val playerToUpdate = player.copy(
+                                    marketValue = response.data?.marketValue,
+                                    profileImage = response.data?.profileImage,
+                                    nationalityFlag = response.data?.nationalityFlag,
+                                    nationality = response.data?.citizenship,
+                                    age = response.data?.age,
+                                    contractExpired = response.data?.contract,
+                                    positions = response.data?.positions,
+                                    currentClub = response.data?.currentClub
+                                )
 
-                            doc?.reference?.set(playerToUpdate)?.await()
-                            _playersFlow.update { it.copy(showPageLoader = false) }
-                            println("PlayerViewModel - ${player.fullName} updated")
+                                val doc = firebaseHandler.firebaseStore
+                                    .collection(firebaseHandler.playersTable)
+                                    .whereEqualTo("tmProfile", player.tmProfile)
+                                    .get().await().documents.firstOrNull()
+
+                                doc?.reference?.set(playerToUpdate)?.await()
+                                println("PlayerViewModel - ${player.fullName} updated")
+                                break // Exit retry loop on success
+                            } else if (response is Result.Failed) {
+                                println("PlayerViewModel - ${player.fullName} failed - ${response.cause}")
+                                if (response.cause?.contains("HTTP error", ignoreCase = true) == true) {
+                                    throw Exception("HTTP error occurred")
+                                }
+                            }
                         } catch (e: Exception) {
-                            _playersFlow.update { it.copy(showPageLoader = false) }
-                            println("PlayerViewModel - ${player.fullName} failed - ${e.localizedMessage}")
+                            retryCount++
+                            println("PlayerViewModel - ${player.fullName} failed - ${e.localizedMessage}. Retry $retryCount/$maxRetries")
+                            if (retryCount >= maxRetries) {
+                                println("PlayerViewModel - ${player.fullName} failed after $maxRetries retries")
+                            } else {
+                                delay(retryDelay)
+                            }
                         }
                     }
-                }
-            }
 
+                    // Delay between players
+                    delay(delayBetweenPlayers)
+                }
+            } finally {
+                _playersFlow.update { it.copy(showPageLoader = false) }
+            }
         }
     }
 

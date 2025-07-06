@@ -1,7 +1,9 @@
 package com.liordahan.mgsrteam.features.releases
 
+import android.app.Activity
 import android.content.Context
 import android.content.Intent
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -46,6 +48,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.app.ActivityCompat
 import androidx.core.net.toUri
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -96,6 +99,10 @@ fun ReleasesScreen(viewModel: IReleasesViewModel = koinViewModel(), navControlle
     }
 
     val state = rememberLazyListState()
+
+    BackHandler {
+        ActivityCompat.finishAffinity(context as Activity)
+    }
 
     LaunchedEffect(Unit) {
         lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
