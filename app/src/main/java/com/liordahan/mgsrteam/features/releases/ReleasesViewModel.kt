@@ -44,7 +44,9 @@ class ReleasesViewModel(
         1000001..1200000,
         1200001..1400000,
         1400001..1600000,
-        1600001..1800000
+        1600001..1800000,
+        1800000..2000000,
+        2000000..2200000,
     )
 
     private val totalRangeCount = releaseRanges.size

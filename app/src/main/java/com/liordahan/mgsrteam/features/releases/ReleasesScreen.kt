@@ -102,9 +102,6 @@ fun ReleasesScreen(viewModel: IReleasesViewModel = koinViewModel()) {
         mutableStateOf(false)
     }
 
-    var fetchFailedError by remember {
-        mutableStateOf<String?>(null)
-    }
 
     val state = rememberLazyListState()
     val snackBarHostState = remember { SnackbarHostState() }
