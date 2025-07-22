@@ -47,7 +47,7 @@ fun HomeScreen() {
             }
 
             composable(route = Screens.ReleasesScreen.route) {
-                ReleasesScreen(navController = navController)
+                ReleasesScreen()
             }
 
             composable(route = Screens.AddPlayerScreen.route) {

@@ -25,6 +25,10 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Snackbar
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -69,7 +73,7 @@ import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
 
 @Composable
-fun ReleasesScreen(viewModel: IReleasesViewModel = koinViewModel(), navController: NavController) {
+fun ReleasesScreen(viewModel: IReleasesViewModel = koinViewModel()) {
 
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val context = LocalContext.current
@@ -98,7 +102,13 @@ fun ReleasesScreen(viewModel: IReleasesViewModel = koinViewModel(), navControlle
         mutableStateOf(false)
     }
 
+    var fetchFailedError by remember {
+        mutableStateOf<String?>(null)
+    }
+
     val state = rememberLazyListState()
+    val snackBarHostState = remember { SnackbarHostState() }
+
 
     BackHandler {
         ActivityCompat.finishAffinity(context as Activity)
@@ -112,6 +122,13 @@ fun ReleasesScreen(viewModel: IReleasesViewModel = koinViewModel(), navControlle
                     originalReleaseList = it.releasesList
                     showLoader = it.isLoading
                     showError = it.showError
+                    if (!it.failedFetchError.isNullOrBlank()) {
+                        snackBarHostState.showSnackbar(
+                            message = it.failedFetchError,
+                            duration = SnackbarDuration.Short
+                        )
+
+                    }
                 }
             }
 
@@ -128,6 +145,12 @@ fun ReleasesScreen(viewModel: IReleasesViewModel = koinViewModel(), navControlle
         containerColor = Color.White,
         topBar = {
             ReleasesTopBar()
+        },
+        snackbarHost = {
+            SnackbarHost(
+                hostState = snackBarHostState,
+                snackbar = { Snackbar(it) }
+            )
         }
     ) { paddingValues ->
 
@@ -155,7 +178,12 @@ fun ReleasesScreen(viewModel: IReleasesViewModel = koinViewModel(), navControlle
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 state = state,
-                contentPadding = PaddingValues(top = 24.dp, bottom = 100.dp, start = 12.dp, end = 12.dp),
+                contentPadding = PaddingValues(
+                    top = 24.dp,
+                    bottom = 100.dp,
+                    start = 12.dp,
+                    end = 12.dp
+                ),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
 
@@ -178,7 +206,7 @@ fun ReleasesScreen(viewModel: IReleasesViewModel = koinViewModel(), navControlle
                     )
                 }
 
-                item{
+                item {
                     HorizontalDivider(
                         thickness = 1.dp,
                         color = dividerColor,

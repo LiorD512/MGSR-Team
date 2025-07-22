@@ -19,7 +19,8 @@ data class ReleasesUiState(
     val releasesList: List<LatestTransferModel> = emptyList(),
     val visibleList: List<LatestTransferModel> = emptyList(),
     val isLoading: Boolean = true,
-    val showError: Boolean = false
+    val showError: Boolean = false,
+    val failedFetchError: String? = null
 )
 
 abstract class IReleasesViewModel : ViewModel() {
@@ -35,17 +36,15 @@ class ReleasesViewModel(
 ) : IReleasesViewModel() {
 
     private val releaseRanges = listOf(
-        100000..250000,
-        251000..400000,
-        401000..600000,
-        601000..800000,
-        801000..1000000,
+        125000..250000,
+        250001..400000,
+        400001..600000,
+        600001..800000,
+        800001..1000000,
         1000001..1200000,
         1200001..1400000,
         1400001..1600000,
-        1600001..1800000,
-        1800001..2000000,
-        2000001..2500000
+        1600001..1800000
     )
 
     private val totalRangeCount = releaseRanges.size
@@ -57,23 +56,29 @@ class ReleasesViewModel(
     private val _positionsFlow = MutableStateFlow<List<Position>>(emptyList())
     override val positionsFlow: StateFlow<List<Position>> = _positionsFlow
 
+    private val fetchFailedErrorFlow = MutableStateFlow<String?>(null)
+
     private val releaseFlowsMap: Map<IntRange, MutableStateFlow<List<LatestTransferModel>>> =
         releaseRanges.associateWith { MutableStateFlow(emptyList()) }
 
     override val releasesFlow: StateFlow<ReleasesUiState> = combine(
-        releaseFlowsMap.values.toList() + fetchedCount + _selectedPositionFlow
+        releaseFlowsMap.values.toList() + fetchedCount + _selectedPositionFlow + fetchFailedErrorFlow
     ) { combined ->
-        val fetched = combined[releaseFlowsMap.size] as Int
-        val selectedPosition = combined.last() as Position?
+        val releasesCount = releaseFlowsMap.size
+        val fetched = combined[releasesCount] as Int
+        val selectedPosition = combined[releasesCount + 1] as Position?
+        val failedFetchError = combined[releasesCount + 2] as String?
+
         val releasesLists =
-            combined.take(releaseFlowsMap.size).filterIsInstance<List<LatestTransferModel>>()
+            combined.take(releasesCount).filterIsInstance<List<LatestTransferModel>>()
 
         ReleasesUiState(
             releasesList = releasesLists.flatten().sortedByDescending { it.getRealMarketValue() },
             visibleList = releasesLists.flatten().filterPlayersByPosition(selectedPosition)
                 ?.sortedByDescending { it.getRealMarketValue() } ?: emptyList(),
             isLoading = fetched < totalRangeCount,
-            showError = releasesLists.isEmpty()
+            showError = releasesLists.isEmpty(),
+            failedFetchError = failedFetchError
         )
     }.stateIn(
         viewModelScope,
@@ -91,7 +96,7 @@ class ReleasesViewModel(
             viewModelScope.launch {
                 when (val result = latestReleases.getLatestReleases(range.first, range.last)) {
                     is Result.Success -> releaseFlowsMap[range]?.value = result.data.filterNotNull()
-                    is Result.Failed -> releaseFlowsMap[range]?.value = emptyList()
+                    is Result.Failed -> fetchFailedErrorFlow.update { it }
                 }
                 fetchedCount.value += 1
             }

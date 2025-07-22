@@ -8,6 +8,7 @@ sealed class Screens(val route: String) {
     data object ReleasesScreen : Screens(ScreenName.RELEASES)
     data object AddPlayerScreen : Screens(ScreenName.ADD_PLAYER)
     data object PlayerInfoScreen : Screens(ScreenName.PLAYER_INFO)
+    data object ReturneeScreen : Screens(ScreenName.RETURNEE)
 }
 
 object ScreenName {
@@ -17,4 +18,5 @@ object ScreenName {
     const val RELEASES = "releases"
     const val ADD_PLAYER = "add_player"
     const val PLAYER_INFO = "player_info"
+    const val RETURNEE = "returnee"
 }

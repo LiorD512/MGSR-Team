@@ -43,25 +43,41 @@ data class LatestTransferModel(
 
 class LatestReleases {
 
-    suspend fun getLatestReleases(minValue: Int, maxValue: Int): Result<List<LatestTransferModel?>> =
+    suspend fun getLatestReleases(
+        minValue: Int,
+        maxValue: Int,
+        maxRetries: Int = 3
+    ): Result<List<LatestTransferModel?>> =
         withContext(Dispatchers.IO) {
-            try {
-                val allTransfers = mutableListOf<LatestTransferModel>()
-                val firstPageUrl = buildUrl(minValue, maxValue, 1)
-                val firstDoc = fetchDocument(firstPageUrl)
-                val pageCount = getTotalPages(firstDoc)
+            var attempt = 0
+            var lastError: String? = null
 
-                for (page in 1..pageCount) {
-                    val pageUrl = buildUrl(minValue, maxValue, page)
-                    val doc = fetchDocument(pageUrl)
-                    val transfers = parseTransferList(doc)
-                    allTransfers.addAll(transfers)
+            while (attempt < maxRetries) {
+                try {
+                    val allTransfers = mutableListOf<LatestTransferModel>()
+                    val firstPageUrl = buildUrl(minValue, maxValue, 1)
+                    val firstDoc = fetchDocument(firstPageUrl)
+                    val pageCount = getTotalPages(firstDoc)
+
+                    for (page in 1..pageCount) {
+                        val pageUrl = buildUrl(minValue, maxValue, page)
+                        val doc = fetchDocument(pageUrl)
+                        val transfers = parseTransferList(doc)
+                        allTransfers.addAll(transfers)
+                    }
+
+                    return@withContext Result.Success(allTransfers)
+                } catch (ex: Exception) {
+                    lastError = ex.localizedMessage
+                    attempt++
+                    if (attempt < maxRetries) {
+                        // Delay before retrying (optional)
+                        kotlinx.coroutines.delay(1000L * attempt)
+                    }
                 }
-
-                Result.Success(allTransfers)
-            } catch (ex: Exception) {
-                Result.Failed(ex.localizedMessage)
             }
+
+            Result.Failed("Failed after $maxRetries attempts. Last error: $lastError")
         }
 
     private fun buildUrl(min: Int, max: Int, page: Int): String {
@@ -127,32 +143,6 @@ class LatestReleases {
     }
 }
 
-fun List<String?>?.convertLongPositionNameToShort(): List<String> {
-    return this?.map {
-        when (it) {
-            "Goalkeeper" -> "GK"
-            "Left Back" -> "LB"
-            "Centre Back" -> "CB"
-            "Right Back" -> "RB"
-            "Defensive Midfield" -> "DM"
-            "Central Midfield" -> "CM"
-            "Attacking Midfield" -> "AM"
-            "Right Winger" -> "RW"
-            "Left Winger" -> "LW"
-            "Centre Forward" -> "CF"
-            "Second Striker" -> "SS"
-            "midfield" -> "CM"
-            "Defender" -> "CB"
-            "Attack" -> "CF"
-            "Left Midfield" -> "LM"
-            "Right Midfield" -> "RM"
-
-            else -> {
-                ""
-            }
-        }
-    } ?: emptyList()
-}
 
 fun String?.convertLongPositionNameToShort(): String {
     return when (this) {
