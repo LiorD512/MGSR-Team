@@ -222,7 +222,7 @@ fun ReleasesScreen(viewModel: IReleasesViewModel = koinViewModel()) {
 
 
 @Composable
-fun ReleaseListItem(context: Context, release: LatestTransferModel) {
+fun ReleaseListItem(context: Context, release: LatestTransferModel, isFromReturnee: Boolean = false) {
 
     Card(
         modifier = Modifier
@@ -276,32 +276,36 @@ fun ReleaseListItem(context: Context, release: LatestTransferModel) {
                         contentDefault, 12.sp
                     )
                 )
+                if (!isFromReturnee) {
+                    Text(
+                        text = buildAnnotatedString {
+                            append("Market value: ")
+                            withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
+                                append(release.marketValue ?: "--")
+                            }
+                        },
+                        style = regularTextStyle(
+                            contentDefault, 12.sp
+                        )
+                    )
+                }
+            }
+
+            if (!isFromReturnee) {
                 Text(
                     text = buildAnnotatedString {
-                        append("Market value: ")
+                        append("Release date:")
+                        append("\n")
                         withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
-                            append(release.marketValue ?: "--")
+                            append(release.transferDate ?: "-")
                         }
                     },
                     style = regularTextStyle(
                         contentDefault, 12.sp
-                    )
+                    ),
+                    textAlign = TextAlign.Center
                 )
             }
-
-            Text(
-                text = buildAnnotatedString {
-                    append("Release date:")
-                    append("\n")
-                    withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
-                        append(release.transferDate ?: "-")
-                    }
-                },
-                style = regularTextStyle(
-                    contentDefault, 12.sp
-                ),
-                textAlign = TextAlign.Center
-            )
         }
     }
 }

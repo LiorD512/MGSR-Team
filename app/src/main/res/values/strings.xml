@@ -3,6 +3,7 @@
 
     <string name="nav_item_players">Players</string>
     <string name="nav_item_releases">Releases</string>
+    <string name="nav_item_returnee">Returnee</string>
 
 
     <string name="login_button_title">Login</string>

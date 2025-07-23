@@ -3,6 +3,7 @@ package com.liordahan.mgsrteam.navigation
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Autorenew
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
@@ -48,6 +49,11 @@ fun BottomNavigationUi(
             title = stringResource(R.string.nav_item_releases),
             icon = Icons.Default.Search,
             route = Screens.ReleasesScreen.route
+        ),
+        NavigationItem(
+            title = stringResource(R.string.nav_item_returnee),
+            icon = Icons.Default.Autorenew,
+            route = Screens.ReturneeScreen.route
         )
     )
     val selectedNavigationIndex = rememberSaveable {

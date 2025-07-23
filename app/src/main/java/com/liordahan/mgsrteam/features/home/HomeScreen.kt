@@ -17,6 +17,7 @@ import com.liordahan.mgsrteam.features.add.AddPlayerScreen
 import com.liordahan.mgsrteam.features.players.PlayersScreen
 import com.liordahan.mgsrteam.features.players.playerinfo.PlayerInfoScreen
 import com.liordahan.mgsrteam.features.releases.ReleasesScreen
+import com.liordahan.mgsrteam.features.returnee.ReturneeScreen
 import com.liordahan.mgsrteam.navigation.BottomNavigationUi
 import com.liordahan.mgsrteam.navigation.Screens
 
@@ -35,7 +36,7 @@ fun HomeScreen() {
 
         },
         bottomBar = {
-            if (currentRoute == Screens.PlayersScreen.route || currentRoute == Screens.ReleasesScreen.route) {
+            if (currentRoute == Screens.PlayersScreen.route || currentRoute == Screens.ReleasesScreen.route || currentRoute == Screens.ReturneeScreen.route) {
                 BottomNavigationUi(navController)
             }
         }
@@ -60,6 +61,10 @@ fun HomeScreen() {
             ) { backStackEntry ->
                 val playerId = backStackEntry.arguments?.getString("playerId") ?: return@composable
                 PlayerInfoScreen(playerId = playerId, navController = navController)
+            }
+
+            composable(route = Screens.ReturneeScreen.route) {
+                ReturneeScreen()
             }
         }
     }

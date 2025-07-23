@@ -3,6 +3,7 @@
 
     <string name="nav_item_players">שחקנים</string>
     <string name="nav_item_releases">שחרורים</string>
+    <string name="nav_item_returnee">חזרו מהשאלה</string>
 
     <string name="login_button_title">התחברות</string>
     <string name="login_button_email_hint">הקלד כתובת מייל</string>
