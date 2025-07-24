@@ -48,7 +48,7 @@ class ReturneeViewModel(
             _returneeFlow.collect {
                 _returneeFlow.update {
                     it.copy(
-                        visibleList = it.returneeList
+                        visibleList = it.returneeList.distinctBy { it.playerUrl }
                             .filterPlayersByPosition(it.selectedPosition) ?: emptyList(),
                     )
                 }

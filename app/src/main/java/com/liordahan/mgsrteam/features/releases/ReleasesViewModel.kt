@@ -75,8 +75,8 @@ class ReleasesViewModel(
             combined.take(releasesCount).filterIsInstance<List<LatestTransferModel>>()
 
         ReleasesUiState(
-            releasesList = releasesLists.flatten().sortedByDescending { it.getRealMarketValue() },
-            visibleList = releasesLists.flatten().filterPlayersByPosition(selectedPosition)
+            releasesList = releasesLists.flatten().distinctBy { it.playerUrl }.sortedByDescending { it.getRealMarketValue() },
+            visibleList = releasesLists.flatten().distinctBy { it.playerUrl }.filterPlayersByPosition(selectedPosition)
                 ?.sortedByDescending { it.getRealMarketValue() } ?: emptyList(),
             isLoading = fetched < totalRangeCount,
             showError = releasesLists.isEmpty(),
