@@ -4,6 +4,8 @@ import android.app.Activity
 import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -40,10 +42,12 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -63,9 +67,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.app.ActivityCompat
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.compose.LocalLifecycleOwner
-import androidx.lifecycle.repeatOnLifecycle
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.liordahan.mgsrteam.R
@@ -79,41 +81,23 @@ import com.liordahan.mgsrteam.navigation.Screens
 import com.liordahan.mgsrteam.ui.components.AppTextField
 import com.liordahan.mgsrteam.ui.theme.contentDefault
 import com.liordahan.mgsrteam.ui.theme.dividerColor
+import com.liordahan.mgsrteam.ui.theme.redErrorColor
 import com.liordahan.mgsrteam.ui.utils.ProgressIndicator
 import com.liordahan.mgsrteam.ui.utils.boldTextStyle
 import com.liordahan.mgsrteam.ui.utils.clickWithNoRipple
 import com.liordahan.mgsrteam.ui.utils.regularTextStyle
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
 
 @Composable
 fun PlayersScreen(viewModel: IPlayersViewModel = koinViewModel(), navController: NavController) {
 
-    val lifecycle = LocalLifecycleOwner.current.lifecycle
     val context = LocalContext.current
-
-    var showPageProgress by remember {
-        mutableStateOf(false)
-    }
-
-    var originalPlayersList by remember {
-        mutableStateOf(listOf<Player>())
-    }
-
-    var playersList by remember {
-        mutableStateOf(listOf<Player>())
-    }
+    val playersState by viewModel.playersFlow.collectAsStateWithLifecycle()
 
     var userName by remember {
         mutableStateOf("")
-    }
-
-    var positionList by remember {
-        mutableStateOf(listOf<Position>())
-    }
-
-    var accountList by remember {
-        mutableStateOf(listOf<Account>())
     }
 
     var selectedPosition by rememberSaveable {
@@ -130,38 +114,12 @@ fun PlayersScreen(viewModel: IPlayersViewModel = koinViewModel(), navController:
 
     val state = rememberLazyGridState()
 
-
-    var showRefreshPlayersButton by remember {
-        mutableStateOf(false)
-    }
-
-    var showEmptyState by remember {
-        mutableStateOf(false)
-    }
-
     BackHandler {
         ActivityCompat.finishAffinity(context as Activity)
     }
 
     LaunchedEffect(Unit) {
-        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
-
-            launch {
-                userName = viewModel.getCurrentUserName() ?: ""
-            }
-            launch {
-                viewModel.playersFlow.collect {
-                    showPageProgress = it.showPageLoader
-                    if (playersList != it.visibleList) {
-                        playersList = it.visibleList
-                    }
-                    positionList = it.positionList
-                    accountList = it.accountList
-                    originalPlayersList = it.playersList
-                    showEmptyState = it.showEmptyState
-                }
-            }
-        }
+        userName = viewModel.getCurrentUserName() ?: ""
     }
 
     Scaffold(
@@ -172,7 +130,6 @@ fun PlayersScreen(viewModel: IPlayersViewModel = koinViewModel(), navController:
                 title = "Welcome\n$userName",
                 searchPlayerInput = searchPlayerInput,
                 showSearchBar = selectedPosition == null && selectedAccount == null,
-                showRefreshButton = showRefreshPlayersButton,
                 onValueChange = {
                     searchPlayerInput = it
                     viewModel.updateSearchQuery(searchPlayerInput.text)
@@ -191,7 +148,7 @@ fun PlayersScreen(viewModel: IPlayersViewModel = koinViewModel(), navController:
                 .padding(paddingValues)
         ) {
 
-            if (showPageProgress) {
+            if (playersState.showPageLoader) {
                 Box(modifier = Modifier.fillMaxSize()) {
                     ProgressIndicator(
                         modifier = Modifier.align(Alignment.Center)
@@ -200,7 +157,7 @@ fun PlayersScreen(viewModel: IPlayersViewModel = koinViewModel(), navController:
                 }
             }
 
-            if (showEmptyState) {
+            if (playersState.showEmptyState) {
                 EmptyState("No players found\nTry to change your search")
                 return@Column
             }
@@ -221,10 +178,10 @@ fun PlayersScreen(viewModel: IPlayersViewModel = koinViewModel(), navController:
 
                 item(span = { GridItemSpan(maxLineSpan) }) {
                     FilterStripUi(
-                        positions = positionList,
+                        positions = playersState.positionList,
                         selectedPosition = selectedPosition,
                         getCountForPosition = {
-                            originalPlayersList.count { player -> player.positions?.contains(it.name) == true }
+                            playersState.playersList.count { player -> player.positions?.contains(it.name) == true }
                         },
                         onPositionClicked = {
                             selectedPosition = if (selectedPosition == it) null else it
@@ -235,10 +192,10 @@ fun PlayersScreen(viewModel: IPlayersViewModel = koinViewModel(), navController:
 
                 item(span = { GridItemSpan(maxLineSpan) }) {
                     FilterByAgentStripUi(
-                        accounts = accountList,
+                        accounts = playersState.accountList,
                         selectedAccount = selectedAccount,
                         getCountForAccount = {
-                            originalPlayersList.count { player -> player.agentInChargeName?.equals(it.name, ignoreCase = true) == true }
+                            playersState.playersList.count { player -> player.agentInChargeName?.equals(it.name, ignoreCase = true) == true }
                         },
                         onAccountClicked = {
                             selectedAccount = if (selectedAccount == it) null else it
@@ -254,7 +211,7 @@ fun PlayersScreen(viewModel: IPlayersViewModel = koinViewModel(), navController:
                     )
                 }
 
-                items(playersList) { player ->
+                items(playersState.visibleList) { player ->
                     PlayerCard(
                         player,
                         onPlayerClicked = {
@@ -274,11 +231,18 @@ fun PlayersScreen(viewModel: IPlayersViewModel = koinViewModel(), navController:
 @Composable
 fun PlayerCard(player: Player, modifier: Modifier = Modifier, onPlayerClicked: (Player) -> Unit) {
 
+    val borderModifier = if (player.currentClub?.clubName.equals("Without Club", true)) {
+        Modifier.border(1.dp, redErrorColor, RoundedCornerShape(16.dp))
+    } else {
+        Modifier
+    }
+
     Card(
         modifier = modifier
             .fillMaxWidth()
             .height(360.dp)
             .padding(4.dp)
+            .then(borderModifier)
             .clickWithNoRipple { onPlayerClicked(player) },
         shape = RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),

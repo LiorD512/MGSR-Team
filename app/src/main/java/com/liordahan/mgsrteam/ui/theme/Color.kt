@@ -20,3 +20,4 @@ val contentDefault = Color(0XFF242E30)
 
 val searchHeaderButtonBackground = Color(0xFFF5F3F1)
 val dividerColor = Color(0x14000000)
+val redErrorColor = Color(0XFFD50525)

@@ -53,6 +53,7 @@ class PlayerInfoViewModel(
                     val player = value?.documents?.firstOrNull()?.toObject(Player::class.java)
                         ?: return@addSnapshotListener
                     _playerInfoFlow.update { player }
+                    refreshPlayerInfo()
                 }
             }
     }

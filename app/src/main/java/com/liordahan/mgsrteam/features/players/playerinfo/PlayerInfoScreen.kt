@@ -164,6 +164,7 @@ fun PlayerInfoScreen(
     }
 
     LaunchedEffect(Unit) {
+
         launch {
             viewModel.getPlayerInfo(playerId)
         }
@@ -236,9 +237,6 @@ fun PlayerInfoScreen(
                 },
                 onBackClicked = {
                     navController.popBackStack()
-                },
-                onRefreshClicked = {
-                    viewModel.refreshPlayerInfo()
                 }
             )
         }
@@ -633,8 +631,7 @@ fun UpdatePlayerUi(modifier: Modifier, message: String) {
 @Composable
 fun PlayerInfoTopBar(
     onShareClicked: () -> Unit,
-    onBackClicked: () -> Unit = {},
-    onRefreshClicked: () -> Unit
+    onBackClicked: () -> Unit = {}
 ) {
     Surface(shadowElevation = 12.dp, color = Color.White) {
         TopAppBar(
@@ -657,20 +654,6 @@ fun PlayerInfoTopBar(
                         contentDescription = null,
                         modifier = Modifier.clickWithNoRipple { onShareClicked() }
                     )
-
-
-                    Spacer(Modifier.width(16.dp))
-
-                    Icon(
-                        modifier = Modifier
-                            .size(28.dp)
-                            .clickWithNoRipple {
-                                onRefreshClicked()
-                            },
-                        imageVector = Icons.Rounded.Refresh,
-                        contentDescription = null
-                    )
-
                 }
             },
             colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White),
