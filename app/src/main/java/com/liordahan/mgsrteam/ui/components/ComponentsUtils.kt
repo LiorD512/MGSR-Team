@@ -37,6 +37,7 @@ import com.liordahan.mgsrteam.ui.theme.contentDefault
 import com.liordahan.mgsrteam.ui.theme.contentDisabled
 import com.liordahan.mgsrteam.ui.theme.searchHeaderButtonBackground
 import com.liordahan.mgsrteam.ui.utils.boldTextStyle
+import com.liordahan.mgsrteam.ui.utils.clickWithNoRipple
 import com.liordahan.mgsrteam.ui.utils.regularTextStyle
 
 @Composable
@@ -110,7 +111,9 @@ fun AppTextField(
     textInput: TextFieldValue,
     hint: String?,
     leadingIcon: ImageVector? = null,
+    trailingIcon: ImageVector? = null,
     keyboardOptions: KeyboardOptions,
+    onTrailingIconClicked: (() -> Unit)? = null,
     onValueChange: (TextFieldValue) -> Unit
 ) {
     BasicTextField(
@@ -153,7 +156,21 @@ fun AppTextField(
                             tint = contentDefault
                         )
                     }
+                },
+
+                trailingIcon = {
+                    trailingIcon?.let {
+                        if (textInput.text.isNotEmpty()) {
+                            Icon(
+                                imageVector = trailingIcon,
+                                contentDescription = null,
+                                tint = contentDefault,
+                                modifier = Modifier.clickWithNoRipple { onTrailingIconClicked?.invoke() }
+                            )
+                        }
+                    }
                 }
+
             )
         }
     )

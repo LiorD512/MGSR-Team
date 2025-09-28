@@ -112,13 +112,6 @@ class LatestReleases {
                 val playerUrl = "https://www.transfermarkt.com${tables[0].select("a").attr("href")}"
                 val playerPosition = tables[0].select("tr")[1].text().replace("-", " ")
                 val playerAge = element.select(queryParamTdZentriert)[0].text()
-                val playerNationality = element.select(queryParamTdZentriert)[1].select("img").attr("title")
-                val playerNationalityFlag = element.select(queryParamTdZentriert)[1].select("img").attr("src")
-                    .replace("verysmall", "head")
-
-                val clubJoinedTable = tables[2]
-                val clubJoinedLogo = clubJoinedTable.select("img").attr("src").replace("tiny", "head")
-                val clubJoinedName = clubJoinedTable.select("img").attr("alt")
 
                 val transferDate = element.select(queryParamTdZentriert)[2].text()
                 val marketValue = element.select("td.rechts")[0].text()
@@ -129,10 +122,10 @@ class LatestReleases {
                     playerUrl,
                     playerPosition.convertLongPositionNameToShort(),
                     playerAge,
-                    playerNationality,
-                    playerNationalityFlag,
-                    clubJoinedLogo,
-                    clubJoinedName,
+                    null,
+                    null,
+                    null,
+                    null,
                     transferDate,
                     marketValue
                 )

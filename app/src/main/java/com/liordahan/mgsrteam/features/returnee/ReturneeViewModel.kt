@@ -162,10 +162,6 @@ class ReturneeViewModel(
                 leagueUrl = "https://www.transfermarkt.com/premyer-liqa/startseite/wettbewerb/AZ1"
             ),
             Leagues(
-                leagueName = "Azerbaijan - Premyer Liqa",
-                leagueUrl = "https://www.transfermarkt.com/premyer-liqa/startseite/wettbewerb/AZ1"
-            ),
-            Leagues(
                 leagueName = "England - Championship",
                 leagueUrl = "https://www.transfermarkt.com/championship/startseite/wettbewerb/GB2"
             ),

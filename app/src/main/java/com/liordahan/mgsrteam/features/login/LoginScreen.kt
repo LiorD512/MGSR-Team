@@ -94,7 +94,7 @@ fun LoginScreen(
         ) {
 
             Image(
-                painter = painterResource(R.drawable.mgsr_black_circle),
+                painter = painterResource(R.drawable.mgsr_circle_black),
                 contentDescription = null,
                 modifier = Modifier.size(95.dp)
             )

@@ -20,10 +20,12 @@ abstract class IPlayerInfoViewModel : ViewModel() {
     abstract val playerInfoFlow: StateFlow<Player?>
     abstract val showButtonProgress: StateFlow<Boolean>
     abstract val updatePlayerFlow: StateFlow<UiResult<String>>
+    abstract val showDeletePlayerIconFlow: StateFlow<Boolean>
     abstract fun getPlayerInfo(playerId: String)
     abstract fun deletePlayer(playerTmProfile: String, onDeleteSuccessfully: () -> Unit)
     abstract fun updatePlayerNumber(number: String)
     abstract fun updateAgentNumber(number: String)
+    abstract fun updateNotes(notes: String)
     abstract fun refreshPlayerInfo()
 }
 
@@ -43,6 +45,28 @@ class PlayerInfoViewModel(
     override val updatePlayerFlow: StateFlow<UiResult<String>>
         get() = _updatePlayerFlow
 
+    private val _showDeletePlayerIconFlow = MutableStateFlow(false)
+    override val showDeletePlayerIconFlow: StateFlow<Boolean>
+        get() = _showDeletePlayerIconFlow
+
+
+    init {
+        viewModelScope.launch  {
+            val snapshot =
+                firebaseHandler.firebaseStore.collection(firebaseHandler.accountsTable).get()
+                    .await()
+            val accounts = snapshot.toObjects(Account::class.java)
+            val account = accounts.firstOrNull {
+                it.email?.equals(
+                    firebaseHandler.firebaseAuth.currentUser?.email,
+                    ignoreCase = true
+                ) == true
+            }
+            if (account?.email.equals("dahanliordahan@gmail.com", ignoreCase = true)) {
+                _showDeletePlayerIconFlow.update { true }
+            }
+        }
+    }
 
     override fun getPlayerInfo(playerId: String) {
         firebaseHandler.firebaseStore.collection(firebaseHandler.playersTable)
@@ -94,6 +118,23 @@ class PlayerInfoViewModel(
     override fun updateAgentNumber(number: String) {
         _playerInfoFlow.update {
             it?.copy(agentPhoneNumber = number, playerAdditionalInfoModel = null)
+        }
+
+        _playerInfoFlow.value?.let { player ->
+            viewModelScope.launch {
+                val doc = firebaseHandler.firebaseStore
+                    .collection(firebaseHandler.playersTable)
+                    .whereEqualTo("tmProfile", player.tmProfile)
+                    .get().await().documents.firstOrNull()
+
+                doc?.reference?.set(player)?.await()
+            }
+        }
+    }
+
+    override fun updateNotes(notes: String) {
+        _playerInfoFlow.update {
+            it?.copy(notes = notes)
         }
 
         _playerInfoFlow.value?.let { player ->

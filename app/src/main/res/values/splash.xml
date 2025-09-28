@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <style name="Theme.App.Starting" parent="Theme.SplashScreen">
-        <item name="windowSplashScreenAnimatedIcon">@drawable/mgsr_black_circle</item>
-        <item name="windowSplashScreenBackground">#ffffff</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/mgsr_vector</item>
+        <item name="windowSplashScreenBackground">#000000</item>
         <item name="postSplashScreenTheme">@style/Theme.MGSRTeam</item>
-        <item name="windowSplashScreenIconBackgroundColor">#ffffff</item>
+        <item name="windowSplashScreenIconBackgroundColor">#000000</item>
     </style>
 </resources>

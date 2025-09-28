@@ -5,6 +5,7 @@ import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -18,43 +19,60 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SheetState
+import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberBottomSheetScaffoldState
+import androidx.compose.material3.rememberStandardBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -66,12 +84,15 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.core.app.ActivityCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.liordahan.mgsrteam.R
 import com.liordahan.mgsrteam.features.login.models.Account
+import com.liordahan.mgsrteam.features.players.filters.ContractFilterOption
+import com.liordahan.mgsrteam.features.players.filters.PlayerListFilterBottomSheet
 import com.liordahan.mgsrteam.features.players.models.Player
 import com.liordahan.mgsrteam.features.players.models.Position
 import com.liordahan.mgsrteam.features.players.ui.EmptyState
@@ -79,9 +100,12 @@ import com.liordahan.mgsrteam.features.players.ui.FilterByAgentStripUi
 import com.liordahan.mgsrteam.features.players.ui.FilterStripUi
 import com.liordahan.mgsrteam.navigation.Screens
 import com.liordahan.mgsrteam.ui.components.AppTextField
+import com.liordahan.mgsrteam.ui.theme.buttonLoadingBg
 import com.liordahan.mgsrteam.ui.theme.contentDefault
+import com.liordahan.mgsrteam.ui.theme.contentDisabled
 import com.liordahan.mgsrteam.ui.theme.dividerColor
 import com.liordahan.mgsrteam.ui.theme.redErrorColor
+import com.liordahan.mgsrteam.ui.theme.searchHeaderButtonBackground
 import com.liordahan.mgsrteam.ui.utils.ProgressIndicator
 import com.liordahan.mgsrteam.ui.utils.boldTextStyle
 import com.liordahan.mgsrteam.ui.utils.clickWithNoRipple
@@ -90,29 +114,27 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PlayersScreen(viewModel: IPlayersViewModel = koinViewModel(), navController: NavController) {
 
     val context = LocalContext.current
     val playersState by viewModel.playersFlow.collectAsStateWithLifecycle()
+    val coroutineScope = rememberCoroutineScope()
 
     var userName by remember {
         mutableStateOf("")
-    }
-
-    var selectedPosition by rememberSaveable {
-        mutableStateOf<Position?>(null)
-    }
-
-    var selectedAccount by rememberSaveable {
-        mutableStateOf<Account?>(null)
     }
 
     var searchPlayerInput by remember {
         mutableStateOf(TextFieldValue(text = viewModel.playersFlow.value.searchQuery))
     }
 
-    val state = rememberLazyGridState()
+    var showFilterBottomSheet by remember { mutableStateOf(false) }
+
+    var showEmptyState by remember(playersState) { mutableStateOf(playersState.visibleList.isEmpty()) }
+
+    val state = rememberLazyListState()
 
     BackHandler {
         ActivityCompat.finishAffinity(context as Activity)
@@ -129,101 +151,80 @@ fun PlayersScreen(viewModel: IPlayersViewModel = koinViewModel(), navController:
             PlayersScreenAppBar(
                 title = "Welcome\n$userName",
                 searchPlayerInput = searchPlayerInput,
-                showSearchBar = selectedPosition == null && selectedAccount == null,
+                showSearchBar = true,
+                numberOfFilters = playersState.selectedPositions.size + playersState.selectedAccounts.size + if (playersState.contractFilterOption != ContractFilterOption.NONE) 1 else 0,
                 onValueChange = {
                     searchPlayerInput = it
                     viewModel.updateSearchQuery(searchPlayerInput.text)
                 },
                 onAddClicked = { navController.navigate(Screens.AddPlayerScreen.route) },
-                onRefreshClicked = {
-                    viewModel.updateAllPlayers()
+                onFiltersButtonClicked = {
+                    showFilterBottomSheet = true
+                },
+                onTrailingIconClicked = {
+                    searchPlayerInput = TextFieldValue("")
+                    viewModel.updateSearchQuery("")
                 }
             )
         }
     ) { paddingValues ->
 
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
+            Column {
 
-            if (playersState.showPageLoader) {
-                Box(modifier = Modifier.fillMaxSize()) {
-                    ProgressIndicator(
-                        modifier = Modifier.align(Alignment.Center)
+                if (playersState.showPageLoader) {
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        ProgressIndicator(
+                            modifier = Modifier.align(Alignment.Center)
+                        )
+                        return@Box
+                    }
+                }
+
+                if (showEmptyState) {
+                    EmptyState(text = "No players found", onResetFiltersClicked = {
+                        viewModel.removeAllFilters()
+                    })
+                    return@Column
+                }
+
+                LazyColumn(
+                    state = state,
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    contentPadding = PaddingValues(
+                        top = 24.dp,
+                        bottom = 100.dp,
+                        start = 12.dp,
+                        end = 12.dp
                     )
-                    return@Box
+
+                ) {
+
+                    items(playersState.visibleList) { player ->
+                        PlayerCard(
+                            player,
+                            onPlayerClicked = {
+                                val encodedId = Uri.encode(player.tmProfile)
+                                navController.navigate("${Screens.PlayerInfoScreen.route}/$encodedId")
+                            }
+                        )
+                    }
                 }
             }
 
-            if (playersState.showEmptyState) {
-                EmptyState("No players found\nTry to change your search")
-                return@Column
-            }
-
-            LazyVerticalGrid(
-                state = state,
-                columns = GridCells.Fixed(3),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-                contentPadding = PaddingValues(
-                    top = 24.dp,
-                    bottom = 100.dp,
-                    start = 12.dp,
-                    end = 12.dp
-                )
-
-            ) {
-
-                item(span = { GridItemSpan(maxLineSpan) }) {
-                    FilterStripUi(
-                        positions = playersState.positionList,
-                        selectedPosition = selectedPosition,
-                        getCountForPosition = {
-                            playersState.playersList.count { player -> player.positions?.contains(it.name) == true }
-                        },
-                        onPositionClicked = {
-                            selectedPosition = if (selectedPosition == it) null else it
-                            viewModel.updateSelectedPosition(selectedPosition)
-                        }
-                    )
-                }
-
-                item(span = { GridItemSpan(maxLineSpan) }) {
-                    FilterByAgentStripUi(
-                        accounts = playersState.accountList,
-                        selectedAccount = selectedAccount,
-                        getCountForAccount = {
-                            playersState.playersList.count { player -> player.agentInChargeName?.equals(it.name, ignoreCase = true) == true }
-                        },
-                        onAccountClicked = {
-                            selectedAccount = if (selectedAccount == it) null else it
-                            viewModel.updateSelectedAccount(selectedAccount)
-                        }
-                    )
-                }
-
-                item(span = { GridItemSpan(maxLineSpan) }) {
-                    HorizontalDivider(
-                        thickness = 1.dp,
-                        color = dividerColor
-                    )
-                }
-
-                items(playersState.visibleList) { player ->
-                    PlayerCard(
-                        player,
-                        onPlayerClicked = {
-                            val encodedId = Uri.encode(player.tmProfile)
-                            navController.navigate("${Screens.PlayerInfoScreen.route}/$encodedId")
-                        }
-                    )
-                }
-
+            if (showFilterBottomSheet) {
+                PlayerListFilterBottomSheet(
+                    modifier = Modifier.align(Alignment.BottomCenter),
+                    selectedPositionList = playersState.selectedPositions,
+                    selectedAgentList = playersState.selectedAccounts,
+                    selectedContractFilterOption = playersState.contractFilterOption,
+                    onDismiss = { showFilterBottomSheet = false })
             }
         }
-
     }
 }
 
@@ -231,122 +232,103 @@ fun PlayersScreen(viewModel: IPlayersViewModel = koinViewModel(), navController:
 @Composable
 fun PlayerCard(player: Player, modifier: Modifier = Modifier, onPlayerClicked: (Player) -> Unit) {
 
-    val borderModifier = if (player.currentClub?.clubName.equals("Without Club", true)) {
-        Modifier.border(1.dp, redErrorColor, RoundedCornerShape(16.dp))
+    val clubTextColor = if (player.currentClub?.clubName.equals("Without Club", true)) {
+        redErrorColor
     } else {
-        Modifier
+        contentDefault
     }
 
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .height(360.dp)
-            .padding(4.dp)
-            .then(borderModifier)
             .clickWithNoRipple { onPlayerClicked(player) },
         shape = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White)
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally
+
+
+        ConstraintLayout(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp)
         ) {
+
+            val (image, name, currentClub, playerInfo, marketValue) = createRefs()
 
             AsyncImage(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(120.dp)
-                    .padding(8.dp)
-                    .clip(RoundedCornerShape(8.dp)),
+                    .size(65.dp)
+                    .clip(CircleShape)
+                    .border(width = 1.dp, color = buttonLoadingBg, shape = CircleShape)
+                    .constrainAs(image) {
+                        start.linkTo(parent.start, margin = 8.dp)
+                        top.linkTo(parent.top)
+                        bottom.linkTo(parent.bottom)
+                    },
                 model = player.profileImage,
                 contentDescription = null,
-                contentScale = ContentScale.FillBounds,
+                contentScale = ContentScale.Crop
             )
 
-
-            Spacer(modifier = Modifier.height(8.dp))
-
             Text(
-                modifier = Modifier
-                    .padding(horizontal = 4.dp),
+                modifier = Modifier.constrainAs(name) {
+                    start.linkTo(image.end, 8.dp)
+                    top.linkTo(parent.top)
+                },
                 text = player.fullName ?: "",
-                style = boldTextStyle(contentDefault, 14.sp).copy(textAlign = TextAlign.Center),
-                maxLines = 2,
-                minLines = 2,
+                style = boldTextStyle(contentDefault, 14.sp),
+                maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
 
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 12.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-
-                Text(
-                    modifier = Modifier
-                        .padding(horizontal = 4.dp),
-                    text = buildAnnotatedString {
-                        append("Positions:")
-                        append("\n")
-                        withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
-                            append(player.positions?.joinToString(separator = ", ") ?: "")
-                        }
-                    },
-                    style = regularTextStyle(contentDefault, 12.sp),
-                    textAlign = TextAlign.Center
-                )
-
-                Text(
-                    modifier = Modifier
-                        .padding(horizontal = 4.dp),
-                    text = buildAnnotatedString {
-                        append("Age:")
-                        append("\n")
-                        withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
-                            append(
-                                player.age ?: ""
-                            )
-                        }
-                    },
-                    style = regularTextStyle(contentDefault, 12.sp),
-                    textAlign = TextAlign.Center
-                )
-
-                Text(
-                    modifier = Modifier
-                        .padding(horizontal = 4.dp),
-                    text = buildAnnotatedString {
-                        append("Market value:")
-                        append("\n")
-                        withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
-                            append(player.marketValue.takeIf { !it.isNullOrEmpty() } ?: "--")
-                        }
-                    },
-                    style = regularTextStyle(contentDefault, 12.sp),
-                    textAlign = TextAlign.Center
-                )
-
-            }
-
-
             Text(
-                modifier = Modifier
-                    .padding(horizontal = 4.dp)
-                    .padding(top = 8.dp, bottom = 12.dp),
+                modifier = Modifier.constrainAs(currentClub) {
+                    start.linkTo(name.start)
+                    top.linkTo(name.bottom, 4.dp)
+                },
                 text = buildAnnotatedString {
-                    append("Current club:")
-                    append("\n")
-                    withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
+                    withStyle(SpanStyle(fontWeight = FontWeight.Bold, color = clubTextColor)) {
                         append(player.currentClub?.clubName ?: "")
                     }
                 },
                 style = regularTextStyle(contentDefault, 12.sp),
-                textAlign = TextAlign.Center,
+                maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
+
+            Text(
+                modifier = Modifier
+                    .constrainAs(playerInfo) {
+                        start.linkTo(name.start)
+                        top.linkTo(currentClub.bottom, 4.dp)
+                    },
+                text = buildAnnotatedString {
+                    append("Age: ")
+                    withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
+                        append(player.age ?: "")
+                    }
+                    append(" | ")
+                    withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
+                        append(player.positions?.joinToString(separator = ", ") ?: "")
+                    }
+                },
+                style = regularTextStyle(contentDefault, 12.sp),
+                textAlign = TextAlign.Center
+            )
+
+            Text(
+                modifier = Modifier.constrainAs(marketValue) {
+                    end.linkTo(parent.end, 8.dp)
+                    top.linkTo(image.top)
+                    bottom.linkTo(image.bottom)
+                },
+                text = player.marketValue.takeIf { !it.isNullOrEmpty() } ?: "--",
+                style = boldTextStyle(contentDefault, 12.sp),
+                textAlign = TextAlign.Center
+            )
         }
+
     }
 }
 
@@ -355,12 +337,17 @@ fun PlayerCard(player: Player, modifier: Modifier = Modifier, onPlayerClicked: (
 fun PlayersScreenAppBar(
     title: String,
     searchPlayerInput: TextFieldValue,
-    showSearchBar:Boolean,
-    showRefreshButton: Boolean = false,
+    showSearchBar: Boolean,
+    numberOfFilters: Int = 0,
     onValueChange: (TextFieldValue) -> Unit,
     onAddClicked: () -> Unit,
-    onRefreshClicked: () -> Unit
+    onTrailingIconClicked: () -> Unit,
+    onFiltersButtonClicked: () -> Unit
 ) {
+
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val focusManager = LocalFocusManager.current
+
     Surface(shadowElevation = 12.dp, color = Color.White) {
 
         Column(
@@ -379,11 +366,38 @@ fun PlayersScreenAppBar(
                     ) {
 
                         Row(verticalAlignment = Alignment.CenterVertically) {
+
                             Text(
                                 text = title,
                                 style = boldTextStyle(contentDefault, 21.sp),
                                 modifier = Modifier.weight(1f)
                             )
+
+                            Box(
+                                modifier = Modifier
+                                    .background(
+                                        if (numberOfFilters > 0) contentDefault else searchHeaderButtonBackground,
+                                        RoundedCornerShape(800.dp)
+                                    )
+                                    .padding(horizontal = 16.dp, vertical = 6.dp)
+                            ) {
+
+                                Text(
+                                    text = buildAnnotatedString {
+                                        append("Filters ")
+                                        if (numberOfFilters > 0) {
+                                            append(numberOfFilters.toString())
+                                        }
+                                    },
+                                    style = boldTextStyle(
+                                        if (numberOfFilters > 0) Color.White else contentDefault,
+                                        12.sp
+                                    ),
+                                    modifier = Modifier.clickWithNoRipple { onFiltersButtonClicked() }
+                                )
+                            }
+
+                            Spacer(Modifier.width(16.dp))
 
                             Icon(
                                 modifier = Modifier
@@ -393,20 +407,6 @@ fun PlayersScreenAppBar(
                                 contentDescription = null
                             )
 
-                            if (showRefreshButton) {
-
-                                Spacer(Modifier.width(16.dp))
-
-                                Icon(
-                                    modifier = Modifier
-                                        .size(30.dp)
-                                        .clickWithNoRipple {
-                                            onRefreshClicked()
-                                        },
-                                    imageVector = Icons.Rounded.Refresh,
-                                    contentDescription = null
-                                )
-                            }
                         }
 
                     }
@@ -429,10 +429,16 @@ fun PlayersScreenAppBar(
                         textInput = searchPlayerInput,
                         hint = stringResource(R.string.players_screen_hint),
                         leadingIcon = Icons.Default.Search,
+                        trailingIcon = ImageVector.vectorResource(R.drawable.ic_clear_search_button),
                         keyboardOptions = KeyboardOptions(
                             imeAction = ImeAction.Done,
                             keyboardType = KeyboardType.Text
                         ),
+                        onTrailingIconClicked = {
+                            onTrailingIconClicked()
+                            keyboardController?.hide()
+                            focusManager.clearFocus()
+                        },
                         onValueChange = { onValueChange(it) }
                     )
                 }

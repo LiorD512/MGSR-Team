@@ -24,7 +24,8 @@ data class Player(
     val agentInChargeName: String? = null,
     val playerPhoneNumber: String? = null,
     val agentPhoneNumber: String? = null,
-    val playerAdditionalInfoModel: PlayerAdditionalInfoModel? = null
+    val playerAdditionalInfoModel: PlayerAdditionalInfoModel? = null,
+    val notes: String? = null
 ) : Parcelable
 
 fun Player.getPlayerPhoneNumber(): String? {

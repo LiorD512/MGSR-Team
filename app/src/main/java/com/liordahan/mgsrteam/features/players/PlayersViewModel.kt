@@ -4,6 +4,12 @@ import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.liordahan.mgsrteam.features.login.models.Account
+import com.liordahan.mgsrteam.features.players.filters.ContractFilterOption
+import com.liordahan.mgsrteam.features.players.filters.usecases.GetPositionFilterFlowUseCase
+import com.liordahan.mgsrteam.features.players.filters.usecases.IGetAgentFilterFlowUseCase
+import com.liordahan.mgsrteam.features.players.filters.usecases.IGetContractFilterOptionUseCase
+import com.liordahan.mgsrteam.features.players.filters.usecases.IGetPositionFilterFlowUseCase
+import com.liordahan.mgsrteam.features.players.filters.usecases.IRemoveAllFiltersUseCase
 import com.liordahan.mgsrteam.features.players.models.Player
 import com.liordahan.mgsrteam.features.players.models.Position
 import com.liordahan.mgsrteam.firebase.FirebaseHandler
@@ -16,33 +22,37 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.time.format.DateTimeParseException
+import java.util.Locale
 
 
 data class PlayersUiState(
     val playersList: List<Player> = emptyList(),
     val visibleList: List<Player> = emptyList(),
-    val positionList: List<Position> = emptyList(),
-    val accountList: List<Account> = emptyList(),
     val showPageLoader: Boolean = false,
     val showRefreshButton: Boolean = false,
-    val showEmptyState: Boolean = false,
-    val selectedPosition: Position? = null,
-    val selectedAccount: Account? = null,
+    val selectedPositions: List<Position> = emptyList(),
+    val selectedAccounts: List<Account> = emptyList(),
+    val contractFilterOption: ContractFilterOption = ContractFilterOption.NONE,
     val searchQuery: String = ""
 )
 
 abstract class IPlayersViewModel : ViewModel() {
     abstract val playersFlow: StateFlow<PlayersUiState>
     abstract suspend fun getCurrentUserName(): String?
-    abstract fun updateSelectedPosition(position: Position?)
-    abstract fun updateSelectedAccount(account: Account?)
     abstract fun updateSearchQuery(query: String)
-    abstract fun updateAllPlayers()
+    abstract fun removeAllFilters()
 }
 
 class PlayersViewModel(
     private val firebaseHandler: FirebaseHandler,
-    private val playersUpdate: PlayersUpdate
+    private val playersUpdate: PlayersUpdate,
+    private val getPositionFilterFlowUseCase: IGetPositionFilterFlowUseCase,
+    private val getAgentFilterFlowUseCase: IGetAgentFilterFlowUseCase,
+    private val getContractFilterOptionUseCase: IGetContractFilterOptionUseCase,
+    private val removeAllFiltersUseCase: IRemoveAllFiltersUseCase
 ) : IPlayersViewModel() {
 
     private val _playersFlow = MutableStateFlow(PlayersUiState())
@@ -50,19 +60,38 @@ class PlayersViewModel(
 
     init {
         getAllPlayers()
-        getAllPositions()
-        getAllAccounts()
 
         viewModelScope.launch {
             _playersFlow.collect {
                 _playersFlow.update {
                     it.copy(
                         visibleList = it.playersList
-                            .filterPlayersByPosition(it.selectedPosition)
-                            ?.filterPlayersByAgent(it.selectedAccount)
+                            .filterPlayersByPosition(it.selectedPositions)
+                            ?.filterPlayersByAgent(it.selectedAccounts)
+                            ?.filterPlayersByContractOption(it.contractFilterOption)
                             ?.filterPlayersByName(it.searchQuery)
                             ?.sortedByDescending { it.createdAt } ?: emptyList(),
                     )
+                }
+            }
+        }
+
+        viewModelScope.launch {
+            launch {
+                getAgentFilterFlowUseCase().collect { accountFilter ->
+                    _playersFlow.update { it.copy(selectedAccounts = accountFilter) }
+                }
+            }
+
+            launch {
+                getPositionFilterFlowUseCase().collect { positionFilter ->
+                    _playersFlow.update { it.copy(selectedPositions = positionFilter) }
+                }
+            }
+
+            launch {
+                getContractFilterOptionUseCase().collect { contractFilterOption ->
+                    _playersFlow.update { it.copy(contractFilterOption = contractFilterOption) }
                 }
             }
         }
@@ -95,106 +124,87 @@ class PlayersViewModel(
         return if (name.isBlank()) {
             this
         } else {
-           this?.filter {
+            this?.filter {
                 it.fullName?.contains(name, ignoreCase = true) == true
             }
         }
     }
 
-    override fun updateSelectedPosition(position: Position?) {
-        _playersFlow.update { it.copy(selectedPosition = position) }
-    }
-
-    override fun updateSelectedAccount(account: Account?) {
-        _playersFlow.update { it.copy(selectedAccount = account) }
-    }
 
     override fun updateSearchQuery(query: String) {
         _playersFlow.update { it.copy(searchQuery = query) }
     }
 
+    override fun removeAllFilters() {
+        updateSearchQuery("")
+        removeAllFiltersUseCase()
+    }
 
-    private fun List<Player>?.filterPlayersByPosition(position: Position?): List<Player>? {
-        return if (position == null) {
+
+    private fun List<Player>?.filterPlayersByPosition(positions: List<Position>): List<Player>? {
+        return if (positions.isEmpty()) {
             this
         } else {
-            this?.filter {
-                it.positions?.contains(position.name) == true
+            val positionNames = positions.map { it.name }.toSet()
+            this?.filter { player ->
+                player.positions?.any { pos -> pos in positionNames } == true
             }
         }
     }
 
-    private fun List<Player>?.filterPlayersByAgent(account: Account?): List<Player>? {
-        return if (account == null) {
+    private fun List<Player>?.filterPlayersByAgent(accounts: List<Account>): List<Player>? {
+        return if (accounts.isEmpty()) {
             this
         } else {
-            this?.filter {
-                it.agentInChargeName?.equals(account.name) == true
+            val accountNames = accounts.map { it.name }.toSet()
+            this?.filter { player ->
+                player.agentInChargeName in accountNames
             }
         }
     }
 
-    override fun updateAllPlayers() {
-        viewModelScope.launch {
-            _playersFlow.update { it.copy(showPageLoader = true) }
+    private fun List<Player>?.filterPlayersByContractOption(contractFilterOption: ContractFilterOption): List<Player>? {
+        return when (contractFilterOption) {
+            ContractFilterOption.NONE -> this
+            ContractFilterOption.WITHOUT_CLUB -> this?.filter {
+                it.currentClub?.clubName.equals(
+                    "Without club",
+                    true
+                )
+            }
 
+            ContractFilterOption.CONTRACT_FINISHING -> this?.filter {
+                !it.currentClub?.clubName.equals(
+                    "Without club",
+                    true
+                ) && isContractExpiringWithin6Months(it.contractExpired)
+            }
+        }
+    }
+
+
+    fun parseDateFlexible(dateStr: String): LocalDate? {
+        val formatters = listOf(
+            DateTimeFormatter.ofPattern("dd.MM.yyyy", Locale.ENGLISH),
+            DateTimeFormatter.ofPattern("MMM d, yyyy", Locale.ENGLISH)
+        )
+
+        for (formatter in formatters) {
             try {
-                val players = _playersFlow.value.playersList
-                for (player in players) {
-                    var retryCount = 0
-                    val maxRetries = 3
-                    val retryDelay = 1000L // 1 second
-                    val delayBetweenPlayers = 500L // 500ms delay between players
-
-                    while (retryCount < maxRetries) {
-                        try {
-                            val response = playersUpdate.updatePlayerByTmProfile(player.tmProfile)
-                            if (response is Result.Success) {
-                                val playerToUpdate = player.copy(
-                                    marketValue = response.data?.marketValue,
-                                    profileImage = response.data?.profileImage,
-                                    nationalityFlag = response.data?.nationalityFlag,
-                                    nationality = response.data?.citizenship,
-                                    age = response.data?.age,
-                                    contractExpired = response.data?.contract,
-                                    positions = response.data?.positions,
-                                    currentClub = response.data?.currentClub
-                                )
-
-                                val doc = firebaseHandler.firebaseStore
-                                    .collection(firebaseHandler.playersTable)
-                                    .whereEqualTo("tmProfile", player.tmProfile)
-                                    .get().await().documents.firstOrNull()
-
-                                doc?.reference?.set(playerToUpdate)?.await()
-                                println("PlayerViewModel - ${player.fullName} updated")
-                                break // Exit retry loop on success
-                            } else if (response is Result.Failed) {
-                                println("PlayerViewModel - ${player.fullName} failed - ${response.cause}")
-                                if (response.cause?.contains("HTTP error", ignoreCase = true) == true) {
-                                    throw Exception("HTTP error occurred")
-                                }
-                            }
-                        } catch (e: Exception) {
-                            retryCount++
-                            println("PlayerViewModel - ${player.fullName} failed - ${e.localizedMessage}. Retry $retryCount/$maxRetries")
-                            if (retryCount >= maxRetries) {
-                                println("PlayerViewModel - ${player.fullName} failed after $maxRetries retries")
-                            } else {
-                                delay(retryDelay)
-                            }
-                        }
-                    }
-
-                    // Delay between players
-                    delay(delayBetweenPlayers)
-                }
-            } finally {
-                _playersFlow.update { it.copy(showPageLoader = false) }
-            }
+                return LocalDate.parse(dateStr, formatter)
+            } catch (_: DateTimeParseException) { }
         }
+        return null // if nothing matched
     }
 
+    fun isContractExpiringWithin6Months(
+        contractExpired: String?
+    ): Boolean {
+        if (contractExpired.isNullOrEmpty() || contractExpired == "-") return false
+        val expiredDate = parseDateFlexible(contractExpired) ?: return false
+        val sixMonthsFromNow = LocalDate.now().plusMonths(6)
+        return !expiredDate.isAfter(sixMonthsFromNow)
+    }
 
     private fun getAllPlayers() {
 
@@ -223,23 +233,4 @@ class PlayersViewModel(
             }
     }
 
-    private fun getAllPositions() {
-        firebaseHandler.firebaseStore.collection(firebaseHandler.positionTable).get()
-            .addOnSuccessListener {
-                val positions = it.toObjects(Position::class.java)
-                _playersFlow.update {
-                    it.copy(positionList = positions.sortedByDescending { it.sort })
-                }
-            }
-    }
-
-    private fun getAllAccounts() {
-        firebaseHandler.firebaseStore.collection(firebaseHandler.accountsTable).get()
-            .addOnSuccessListener {
-                val accounts = it.toObjects(Account::class.java)
-                _playersFlow.update {
-                    it.copy(accountList = accounts.sortedBy { it.name })
-                }
-            }
-    }
 }

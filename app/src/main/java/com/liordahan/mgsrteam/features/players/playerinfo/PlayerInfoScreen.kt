@@ -11,11 +11,14 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -24,15 +27,24 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Link
+import androidx.compose.material.icons.filled.PhoneIphone
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Whatsapp
 import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -40,6 +52,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -51,14 +64,30 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.vectorResource
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.zIndex
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import androidx.lifecycle.Lifecycle
@@ -72,9 +101,12 @@ import com.liordahan.mgsrteam.features.players.models.Player
 import com.liordahan.mgsrteam.features.players.models.getAgentPhoneNumber
 import com.liordahan.mgsrteam.features.players.models.getPlayerPhoneNumber
 import com.liordahan.mgsrteam.helpers.UiResult
+import com.liordahan.mgsrteam.ui.components.AppTextField
 import com.liordahan.mgsrteam.ui.components.PrimaryButtonNewDesign
+import com.liordahan.mgsrteam.ui.components.setSearchViewTextFieldColors
 import com.liordahan.mgsrteam.ui.theme.contentDefault
 import com.liordahan.mgsrteam.ui.theme.dividerColor
+import com.liordahan.mgsrteam.ui.theme.redErrorColor
 import com.liordahan.mgsrteam.ui.utils.ProgressIndicator
 import com.liordahan.mgsrteam.ui.utils.boldTextStyle
 import com.liordahan.mgsrteam.ui.utils.clickWithNoRipple
@@ -83,7 +115,12 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Date
+import java.util.Locale
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PlayerInfoScreen(
     viewModel: IPlayerInfoViewModel = koinViewModel(),
@@ -93,6 +130,9 @@ fun PlayerInfoScreen(
 
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val context = LocalContext.current
+
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val focusManager = LocalFocusManager.current
 
     var playerToPresent by remember {
         mutableStateOf<Player?>(null)
@@ -105,13 +145,6 @@ fun PlayerInfoScreen(
         mutableStateOf(false)
     }
 
-    var showButtonProgress by remember {
-        mutableStateOf(false)
-    }
-
-
-    var playerNumber by remember { mutableStateOf("") }
-    var agentNumber by remember { mutableStateOf("") }
 
     val playerNumberLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickContact()
@@ -119,7 +152,6 @@ fun PlayerInfoScreen(
         contactUri?.let {
             val phone = getPhoneNumberFromContactUri(context, it)
             if (phone != null) {
-                playerNumber = phone
                 viewModel.updatePlayerNumber(phone)
             }
         }
@@ -140,7 +172,6 @@ fun PlayerInfoScreen(
         contactUri?.let {
             val phone = getPhoneNumberFromContactUri(context, it)
             if (phone != null) {
-                agentNumber = phone
                 viewModel.updateAgentNumber(phone)
             }
         }
@@ -163,6 +194,18 @@ fun PlayerInfoScreen(
         mutableStateOf("")
     }
 
+    var showDeletePlayerIcon by remember { mutableStateOf(false) }
+
+    var notesInputText by remember(playerToPresent) {
+        mutableStateOf(
+            TextFieldValue(
+                text = playerToPresent?.notes ?: ""
+            )
+        )
+    }
+
+    var showDeleteDialog by remember { mutableStateOf(false) }
+
     LaunchedEffect(Unit) {
 
         launch {
@@ -176,11 +219,6 @@ fun PlayerInfoScreen(
                 }
             }
 
-            launch {
-                viewModel.showButtonProgress.collect {
-                    showButtonProgress = it
-                }
-            }
 
             launch {
                 viewModel.updatePlayerFlow.collect {
@@ -208,6 +246,12 @@ fun PlayerInfoScreen(
                     }
                 }
             }
+
+            launch {
+                viewModel.showDeletePlayerIconFlow.collect {
+                    showDeletePlayerIcon = it
+                }
+            }
         }
     }
 
@@ -216,6 +260,10 @@ fun PlayerInfoScreen(
         containerColor = Color.White,
         topBar = {
             PlayerInfoTopBar(
+                showDeletePlayerIcon = showDeletePlayerIcon,
+                onDeletePlayerClicked = {
+                    showDeleteDialog = true
+                },
                 onShareClicked = {
                     val textToSend = buildAnnotatedString {
                         playerToPresent?.let { player ->
@@ -259,6 +307,17 @@ fun PlayerInfoScreen(
             )
         }
 
+        if (showDeleteDialog) {
+            DeletePlayerDialog(
+                onDismissRequest = { showDeleteDialog = false },
+                onDeletePlayerClicked = {
+                    viewModel.deletePlayer(
+                        playerToPresent?.tmProfile ?: "",
+                        onDeleteSuccessfully = { navController.popBackStack() })
+                }
+            )
+        }
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -276,6 +335,7 @@ fun PlayerInfoScreen(
                     .size(120.dp)
                     .clip(CircleShape)
                     .border(width = 0.5.dp, color = contentDefault, shape = CircleShape)
+                    .shadow(elevation = 8.dp, shape = CircleShape)
             )
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -286,118 +346,279 @@ fun PlayerInfoScreen(
                 style = boldTextStyle(contentDefault, 20.sp)
             )
 
+            Spacer(Modifier.height(8.dp))
+
+            Text(
+                text = buildAnnotatedString {
+                    append("Added by - ")
+                    withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
+                        append(playerToPresent?.agentInChargeName)
+                    }
+                }
+            )
+
             Spacer(modifier = Modifier.height(16.dp))
 
-            Column(modifier = Modifier.padding(16.dp)) {
-                InfoRow("Height", playerToPresent?.height)
-                HorizontalDivider(
-                    color = dividerColor,
-                    thickness = 0.5.dp,
-                    modifier = Modifier.padding(vertical = 8.dp)
-                )
-                InfoRow("Age", playerToPresent?.age)
-                HorizontalDivider(
-                    color = dividerColor,
-                    thickness = 0.5.dp,
-                    modifier = Modifier.padding(vertical = 8.dp)
-                )
-                InfoRow(
-                    "Positions",
-                    playerToPresent?.positions?.filterNotNull()?.joinToString(", ")
-                )
-                HorizontalDivider(
-                    color = dividerColor,
-                    thickness = 0.5.dp,
-                    modifier = Modifier.padding(vertical = 8.dp)
-                )
-                NationalityInfoRow(
-                    "Nationality",
-                    playerToPresent?.nationality,
-                    playerToPresent?.nationalityFlag
-                )
-                HorizontalDivider(
-                    color = dividerColor,
-                    thickness = 0.5.dp,
-                    modifier = Modifier.padding(vertical = 8.dp)
-                )
-                InfoRow("Contract Expired", playerToPresent?.contractExpired)
-                HorizontalDivider(
-                    color = dividerColor,
-                    thickness = 0.5.dp,
-                    modifier = Modifier.padding(vertical = 8.dp)
-                )
-                TransfermarketRow(context, "TM Profile", playerToPresent?.tmProfile)
-                HorizontalDivider(
-                    color = dividerColor,
-                    thickness = 0.5.dp,
-                    modifier = Modifier.padding(vertical = 8.dp)
-                )
-                InfoRow("Market Value", playerToPresent?.marketValue)
-                HorizontalDivider(
-                    color = dividerColor,
-                    thickness = 0.5.dp,
-                    modifier = Modifier.padding(vertical = 8.dp)
-                )
-                PhoneInfoRow(
-                    "Player Phone",
-                    playerToPresent?.getPlayerPhoneNumber(),
-                    onEditPhoneClicked = {
-                        launchPlayerContactPicker(
-                            context,
-                            playerNumberLauncher,
-                            playerNumberPermissionLauncher
-                        )
-                    },
-                    onClearClicked = {
-                        viewModel.updatePlayerNumber("")
-                    })
-                HorizontalDivider(
-                    color = dividerColor,
-                    thickness = 0.5.dp,
-                    modifier = Modifier.padding(vertical = 8.dp)
-                )
-                PhoneInfoRow(
-                    "Agent Phone",
-                    playerToPresent?.getAgentPhoneNumber(),
-                    onEditPhoneClicked = {
-                        launchPlayerContactPicker(
-                            context,
-                            agentNumberLauncher,
-                            agentNumberPermissionLauncher
-                        )
-                    },
-                    onClearClicked = {
-                        viewModel.updateAgentNumber("")
-                    })
-                HorizontalDivider(
-                    color = dividerColor,
-                    thickness = 0.5.dp,
-                    modifier = Modifier.padding(vertical = 8.dp)
-                )
-                ClubInfoRow(
-                    "Current Club",
-                    playerToPresent?.currentClub?.clubName,
-                    playerToPresent?.currentClub?.clubLogo
-                )
-                HorizontalDivider(
-                    color = dividerColor,
-                    thickness = 0.5.dp,
-                    modifier = Modifier.padding(vertical = 8.dp)
-                )
-                InfoRow("Agent in Charge", playerToPresent?.agentInChargeName)
+            Card(
+                modifier = Modifier.padding(16.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                elevation = CardDefaults.cardElevation(8.dp)
+            ) {
 
-                Spacer(modifier = Modifier.height(36.dp))
+                Column(modifier = Modifier.padding(16.dp)) {
 
-                PrimaryButtonNewDesign(
-                    buttonText = "Delete Player",
-                    isEnabled = true,
-                    showProgress = showButtonProgress,
-                    onButtonClicked = {
-                        viewModel.deletePlayer(
-                            playerToPresent?.tmProfile ?: "",
-                            onDeleteSuccessfully = { navController.popBackStack() })
+                    Text(
+                        text = "General Info",
+                        style = boldTextStyle(contentDefault, 16.sp),
+                    )
+
+                    Spacer(Modifier.height(24.dp))
+
+                    InfoRow(
+                        "Height",
+                        playerToPresent?.height?.replace(",", "."),
+                        icon = {
+                            Icon(
+                                modifier = Modifier.size(24.dp),
+                                painter = painterResource(R.drawable.ic_height),
+                                contentDescription = null,
+                                tint = contentDefault
+                            )
+                        })
+                    HorizontalDivider(
+                        color = dividerColor,
+                        thickness = 0.5.dp,
+                        modifier = Modifier.padding(vertical = 8.dp)
+                    )
+                    InfoRow(
+                        "Age",
+                        playerToPresent?.age,
+                        icon = {
+                            Icon(
+                                modifier = Modifier.size(24.dp),
+                                imageVector = Icons.Default.CalendarMonth,
+                                contentDescription = null,
+                                tint = contentDefault
+                            )
+                        })
+                    HorizontalDivider(
+                        color = dividerColor,
+                        thickness = 0.5.dp,
+                        modifier = Modifier.padding(vertical = 8.dp)
+                    )
+
+                    InfoRow(
+                        "Positions",
+                        playerToPresent?.positions?.filterNotNull()?.joinToString(", "),
+                        icon = {
+                            Icon(
+                                modifier = Modifier.size(24.dp),
+                                painter = painterResource(R.drawable.ic_soccer),
+                                contentDescription = null,
+                                tint = contentDefault
+                            )
+                        }
+                    )
+
+                    HorizontalDivider(
+                        color = dividerColor,
+                        thickness = 0.5.dp,
+                        modifier = Modifier.padding(vertical = 8.dp)
+                    )
+
+                    NationalityInfoRow(
+                        "Nationality",
+                        playerToPresent?.nationality,
+                        playerToPresent?.nationalityFlag
+                    )
+
+                    HorizontalDivider(
+                        color = dividerColor,
+                        thickness = 0.5.dp,
+                        modifier = Modifier.padding(vertical = 8.dp)
+                    )
+
+                    InfoRow(
+                        "Contract Expiry Date",
+                        getContractStatus(playerToPresent?.contractExpired ?: ""),
+                        icon = {
+                            Icon(
+                                modifier = Modifier.size(24.dp),
+                                painter = painterResource(R.drawable.ic_contract),
+                                contentDescription = null,
+                                tint = contentDefault
+                            )
+                        })
+
+                    HorizontalDivider(
+                        color = dividerColor,
+                        thickness = 0.5.dp,
+                        modifier = Modifier.padding(vertical = 8.dp)
+                    )
+
+                    ClubInfoRow(
+                        "Current Club",
+                        playerToPresent?.currentClub?.clubName,
+                        playerToPresent?.currentClub?.clubLogo
+                    )
+
+                    HorizontalDivider(
+                        color = dividerColor,
+                        thickness = 0.5.dp,
+                        modifier = Modifier.padding(vertical = 8.dp)
+                    )
+
+                    InfoRow("Market Value", playerToPresent?.marketValue, icon = {
+                        Icon(
+                            modifier = Modifier.size(24.dp),
+                            painter = painterResource(R.drawable.ic_euro),
+                            contentDescription = null,
+                            tint = contentDefault
+                        )
+                    })
+
+                }
+            }
+
+            Card(
+                modifier = Modifier.padding(16.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                elevation = CardDefaults.cardElevation(8.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+
+                    Text(
+                        text = "Contact Info",
+                        style = boldTextStyle(contentDefault, 16.sp),
+                    )
+
+                    Spacer(Modifier.height(24.dp))
+
+                    PhoneInfoRow(
+                        "Player Phone",
+                        playerToPresent?.getPlayerPhoneNumber(),
+                        onEditPhoneClicked = {
+                            launchPlayerContactPicker(
+                                context,
+                                playerNumberLauncher,
+                                playerNumberPermissionLauncher
+                            )
+                        },
+                        onClearClicked = {
+                            viewModel.updatePlayerNumber("")
+                        })
+
+                    HorizontalDivider(
+                        color = dividerColor,
+                        thickness = 0.5.dp,
+                        modifier = Modifier.padding(vertical = 8.dp)
+                    )
+
+                    PhoneInfoRow(
+                        "Agent Phone",
+                        playerToPresent?.getAgentPhoneNumber(),
+                        onEditPhoneClicked = {
+                            launchPlayerContactPicker(
+                                context,
+                                agentNumberLauncher,
+                                agentNumberPermissionLauncher
+                            )
+                        },
+                        onClearClicked = {
+                            viewModel.updateAgentNumber("")
+                        })
+
+                    HorizontalDivider(
+                        color = dividerColor,
+                        thickness = 0.5.dp,
+                        modifier = Modifier.padding(vertical = 8.dp)
+                    )
+
+                    TransfermarketRow(context, "TM Profile", playerToPresent?.tmProfile)
+                }
+            }
+
+            Card(
+                modifier = Modifier.padding(16.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                elevation = CardDefaults.cardElevation(8.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+
+                        Text(
+                            text = "Notes",
+                            style = boldTextStyle(contentDefault, 16.sp),
+                            modifier = Modifier.weight(1f)
+                        )
+
+                        Box(
+                            modifier = Modifier
+                                .background(
+                                    contentDefault,
+                                    shape = RoundedCornerShape(32.dp)
+                                )
+                                .padding(horizontal = 14.dp, vertical = 4.dp)
+                                .clickWithNoRipple {
+                                    keyboardController?.hide()
+                                    focusManager.clearFocus()
+                                    viewModel.updateNotes(notesInputText.text)
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "Save",
+                                style = boldTextStyle(Color.White, 12.sp),
+                            )
+                        }
                     }
-                )
+
+                    Spacer(Modifier.height(24.dp))
+
+                    BasicTextField(
+                        value = notesInputText,
+                        onValueChange = {
+                            notesInputText = it
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(150.dp),
+                        textStyle = regularTextStyle(contentDefault, 14.sp),
+                        enabled = true,
+                        keyboardOptions = KeyboardOptions(
+                            imeAction = ImeAction.Done,
+                            keyboardType = KeyboardType.Text
+                        ),
+                        decorationBox = { innerTextField ->
+                            TextFieldDefaults.DecorationBox(
+                                value = notesInputText.text,
+                                innerTextField = innerTextField,
+                                visualTransformation = VisualTransformation.None,
+                                singleLine = false,
+                                enabled = false,
+                                isError = false,
+                                contentPadding = PaddingValues(16.dp),
+                                shape = RoundedCornerShape(16.dp),
+                                colors = setSearchViewTextFieldColors(),
+                                interactionSource = remember { MutableInteractionSource() },
+                                placeholder = {
+                                    Text(
+                                        "Write your notes here...",
+                                        style = regularTextStyle(contentDefault, 14.sp),
+                                        maxLines = 1
+                                    )
+                                }
+                            )
+                        }
+                    )
+                }
             }
         }
     }
@@ -421,22 +642,29 @@ fun WhatsAppIcon(phoneNumber: String) {
 
 
 @Composable
-fun InfoRow(title: String, value: String?) {
+fun InfoRow(title: String, value: String?, icon: @Composable (() -> Unit)? = null) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 6.dp),
-        horizontalArrangement = Arrangement.SpaceBetween
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
     ) {
+
+        if (icon != null) {
+            icon()
+            Spacer(Modifier.width(4.dp))
+        }
+
         Text(
             text = title,
-            style = regularTextStyle(contentDefault, 14.sp)
+            style = regularTextStyle(contentDefault, 14.sp),
+            modifier = Modifier.weight(1f)
         )
         Text(
             text = value ?: "--",
             style = boldTextStyle(contentDefault, 14.sp),
-            textAlign = TextAlign.End,
-            modifier = Modifier.fillMaxWidth(0.5f)
+            textAlign = TextAlign.End
         )
     }
 }
@@ -450,6 +678,15 @@ fun ClubInfoRow(title: String, value: String?, clubLogo: String?) {
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
+
+        Image(
+            modifier = Modifier.size(24.dp),
+            painter = painterResource(R.drawable.ic_club_badge),
+            contentDescription = null
+        )
+
+        Spacer(Modifier.width(4.dp))
+
         Text(
             text = title,
             style = regularTextStyle(contentDefault, 14.sp),
@@ -461,7 +698,10 @@ fun ClubInfoRow(title: String, value: String?, clubLogo: String?) {
         ) {
             Text(
                 text = value ?: "--",
-                style = boldTextStyle(contentDefault, 14.sp),
+                style = boldTextStyle(
+                    if (value.equals("Without club", true)) redErrorColor else contentDefault,
+                    14.sp
+                ),
                 textAlign = TextAlign.End
             )
 
@@ -485,6 +725,16 @@ fun NationalityInfoRow(title: String, value: String?, nationalityFlag: String?) 
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
+
+        Icon(
+            modifier = Modifier.size(24.dp),
+            painter = painterResource(R.drawable.ic_world),
+            contentDescription = null,
+            tint = contentDefault
+        )
+
+        Spacer(Modifier.width(4.dp))
+
         Text(
             text = title,
             style = regularTextStyle(contentDefault, 14.sp),
@@ -527,6 +777,16 @@ fun PhoneInfoRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
+
+        Icon(
+            modifier = Modifier.size(24.dp),
+            imageVector = Icons.Default.PhoneIphone,
+            contentDescription = null,
+            tint = contentDefault
+        )
+
+        Spacer(Modifier.width(4.dp))
+
         Text(
             text = title,
             style = regularTextStyle(contentDefault, 14.sp),
@@ -572,9 +832,19 @@ fun TransfermarketRow(context: Context, title: String, tmLink: String?) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
+
+        Image(
+            modifier = Modifier.size(24.dp),
+            painter = painterResource(R.drawable.transfermarkt_logo),
+            contentDescription = null
+        )
+
+        Spacer(Modifier.width(4.dp))
+
         Text(
             text = title,
-            style = regularTextStyle(contentDefault, 14.sp)
+            style = regularTextStyle(contentDefault, 14.sp),
+            modifier = Modifier.weight(1f)
         )
 
         Icon(
@@ -600,6 +870,7 @@ fun UpdatePlayerUi(modifier: Modifier, message: String) {
         modifier = modifier
             .fillMaxSize()
             .background(Color.Black.copy(alpha = 0.5f))
+            .zIndex(5f)
     ) {
 
 
@@ -630,7 +901,9 @@ fun UpdatePlayerUi(modifier: Modifier, message: String) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PlayerInfoTopBar(
+    showDeletePlayerIcon: Boolean,
     onShareClicked: () -> Unit,
+    onDeletePlayerClicked: () -> Unit,
     onBackClicked: () -> Unit = {}
 ) {
     Surface(shadowElevation = 12.dp, color = Color.White) {
@@ -648,6 +921,16 @@ fun PlayerInfoTopBar(
                         style = boldTextStyle(contentDefault, 21.sp),
                         modifier = Modifier.weight(1f)
                     )
+
+                    if (showDeletePlayerIcon) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = null,
+                            modifier = Modifier
+                                .padding(end = 16.dp)
+                                .clickWithNoRipple { onDeletePlayerClicked() }
+                        )
+                    }
 
                     Icon(
                         imageVector = Icons.Default.Share,
@@ -670,11 +953,90 @@ fun PlayerInfoTopBar(
     }
 }
 
+@Composable
+fun DeletePlayerDialog(onDismissRequest: () -> Unit, onDeletePlayerClicked: () -> Unit) {
+    Dialog(
+        onDismissRequest = { onDismissRequest() }
+    ) {
+
+        Card(
+            shape = RoundedCornerShape(16.dp),
+            elevation = CardDefaults.cardElevation(8.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+        ) {
+
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+            ) {
+
+                Text(
+                    text = "Are you sure you want to delete this player?",
+                    style = boldTextStyle(contentDefault, 16.sp),
+                    textAlign = TextAlign.Center
+                )
+
+                Spacer(Modifier.height(24.dp))
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .align(Alignment.End),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.End
+                ) {
+
+                    Box(
+                        modifier = Modifier
+                            .background(
+                                Color.White,
+                                shape = RoundedCornerShape(100.dp)
+                            )
+                            .border(1.dp, contentDefault, RoundedCornerShape(100.dp))
+                            .size(width = 80.dp, height = 30.dp)
+                            .clickWithNoRipple {},
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "Cancel",
+                            style = boldTextStyle(contentDefault, 12.sp),
+                            modifier = Modifier.clickWithNoRipple {
+                                onDismissRequest()
+                            }
+                        )
+                    }
+
+                    Spacer(Modifier.width(8.dp))
+
+                    Box(
+                        modifier = Modifier
+                            .background(
+                                contentDefault,
+                                shape = RoundedCornerShape(100.dp)
+                            )
+                            .size(width = 80.dp, height = 30.dp)
+                            .clickWithNoRipple {},
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "Delete",
+                            style = boldTextStyle(Color.White, 12.sp),
+                            modifier = Modifier.clickWithNoRipple { onDeletePlayerClicked() }
+                        )
+                    }
+
+                }
+            }
+        }
+    }
+}
+
 private fun sharePlayerOnWhatsapp(context: Context, message: String?) {
-    val i = Intent(Intent.ACTION_SEND)
-    i.type = "text/plain"
-    i.setPackage("com.whatsapp")
-    i.putExtra(Intent.EXTRA_TEXT, message)
+    val i = Intent(Intent.ACTION_SEND).apply {
+        type = "text/plain"
+        putExtra(Intent.EXTRA_TEXT, message)
+    }
     context.startActivity(Intent.createChooser(i, "Share with"))
 }
 
@@ -689,5 +1051,23 @@ fun launchPlayerContactPicker(
         playerNumberLauncher.launch(null)
     } else {
         permissionLauncher.launch(Manifest.permission.READ_CONTACTS)
+    }
+}
+
+private fun getContractStatus(expiryDate: String): String {
+    val sdf = SimpleDateFormat("dd.MM.yyyy", Locale.getDefault())
+    sdf.isLenient = false
+
+    return try {
+        val contractDate: Date = sdf.parse(expiryDate)!!
+        val today = Calendar.getInstance().time
+
+        if (contractDate.before(today)) {
+            "Contract Expired"
+        } else {
+            expiryDate
+        }
+    } catch (e: Exception) {
+        "--"
     }
 }

@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,6 +20,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -42,6 +44,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -63,6 +66,7 @@ import com.liordahan.mgsrteam.features.players.models.Position
 import com.liordahan.mgsrteam.features.players.ui.EmptyState
 import com.liordahan.mgsrteam.features.players.ui.FilterStripUi
 import com.liordahan.mgsrteam.transfermarket.LatestTransferModel
+import com.liordahan.mgsrteam.ui.theme.buttonLoadingBg
 import com.liordahan.mgsrteam.ui.theme.contentDefault
 import com.liordahan.mgsrteam.ui.theme.dividerColor
 import com.liordahan.mgsrteam.ui.utils.ProgressIndicator
@@ -167,7 +171,7 @@ fun ReleasesScreen(viewModel: IReleasesViewModel = koinViewModel()) {
             }
 
             if (showError) {
-                EmptyState("Transfermarkt is down\nTry again later")
+                EmptyState("Transfermarkt is down\nTry again later"){}
                 return@Column
             }
 
@@ -243,7 +247,10 @@ fun ReleaseListItem(context: Context, release: LatestTransferModel, isFromReturn
             AsyncImage(
                 model = release.playerImage,
                 contentDescription = null,
-                modifier = Modifier.size(60.dp),
+                modifier = Modifier
+                    .size(65.dp)
+                    .clip(CircleShape)
+                    .border(width = 1.dp, color = buttonLoadingBg, shape = CircleShape),
                 contentScale = ContentScale.Crop
             )
 
