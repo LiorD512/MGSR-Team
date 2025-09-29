@@ -9,11 +9,15 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -23,6 +27,7 @@ import androidx.compose.ui.unit.sp
 import com.liordahan.mgsrteam.features.login.models.Account
 import com.liordahan.mgsrteam.features.players.models.Position
 import com.liordahan.mgsrteam.ui.theme.contentDefault
+import com.liordahan.mgsrteam.ui.theme.contentDisabled
 import com.liordahan.mgsrteam.ui.utils.boldTextStyle
 import com.liordahan.mgsrteam.ui.utils.clickWithNoRipple
 import com.liordahan.mgsrteam.ui.utils.regularTextStyle
@@ -40,7 +45,7 @@ fun FilterStripUi(
         horizontalArrangement = Arrangement.spacedBy(24.dp)
     ) {
 
-        itemsIndexed(positions) { _, position ->
+        items(positions) { position ->
             val positionPlayersCount = getCountForPosition(position)
             FilterTypeItemUi(
                 position = position,
@@ -49,6 +54,7 @@ fun FilterStripUi(
                 onPositionClicked = { onPositionClicked(it) }
             )
         }
+
     }
 
 }
@@ -60,13 +66,30 @@ fun FilterTypeItemUi(
     isSelected: Boolean,
     onPositionClicked: (Position) -> Unit
 ) {
+
+    val isPositionZero by remember(positionPlayersCount) { mutableStateOf(positionPlayersCount == "0") }
+
+    val chipColor by remember(isSelected) {
+        mutableStateOf(
+            when {
+                isSelected -> contentDefault
+                isPositionZero -> contentDisabled
+                else -> Color.White
+            }
+        )
+    }
+
     Surface(
         modifier = Modifier
             .size(65.dp)
-            .clickWithNoRipple { onPositionClicked(position) },
+            .clickWithNoRipple {
+                if (isPositionZero) return@clickWithNoRipple
+
+                onPositionClicked(position)
+            },
         shape = CircleShape,
-        color = if (isSelected) contentDefault else Color.White,
-        shadowElevation = 4.dp,
+        color = chipColor,
+        shadowElevation = if (isPositionZero) 0.dp else 4.dp,
     ) {
         Column(
             modifier = Modifier.fillMaxSize(),

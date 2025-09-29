@@ -25,7 +25,11 @@ import com.liordahan.mgsrteam.ui.theme.contentDefault
 import com.liordahan.mgsrteam.ui.utils.boldTextStyle
 
 @Composable
-fun EmptyState(text: String, onResetFiltersClicked: () -> Unit) {
+fun EmptyState(
+    text: String,
+    showResetFiltersButton: Boolean = true,
+    onResetFiltersClicked: () -> Unit
+) {
 
     Box(
         modifier = Modifier
@@ -51,13 +55,16 @@ fun EmptyState(text: String, onResetFiltersClicked: () -> Unit) {
                 textAlign = TextAlign.Center
             )
 
-            Spacer(modifier = Modifier.height(24.dp))
+            if (showResetFiltersButton){
+                Spacer(modifier = Modifier.height(24.dp))
 
-            PrimaryButtonNewDesign(
-                buttonText = "Reset Filters",
-                isEnabled = true,
-                showProgress = false
-            ) { onResetFiltersClicked() }
+                PrimaryButtonNewDesign(
+                    buttonText = "Reset Filters",
+                    isEnabled = true,
+                    showProgress = false
+                ) { onResetFiltersClicked() }
+
+            }
         }
     }
 }

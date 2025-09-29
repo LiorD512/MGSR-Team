@@ -15,6 +15,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -82,6 +83,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -327,16 +329,23 @@ fun PlayerInfoScreen(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             // Profile Image
-            AsyncImage(
-                model = playerToPresent?.profileImage ?: "",
-                contentDescription = "Player Image",
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .size(120.dp)
-                    .clip(CircleShape)
-                    .border(width = 0.5.dp, color = contentDefault, shape = CircleShape)
-                    .shadow(elevation = 8.dp, shape = CircleShape)
-            )
+
+            Surface(
+                shadowElevation = 6.dp,
+                tonalElevation = 12.dp,
+                shape = CircleShape
+            ) {
+
+                AsyncImage(
+                    model = playerToPresent?.profileImage ?: "",
+                    contentDescription = "Player Image",
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .size(120.dp)
+                        .clip(CircleShape)
+                )
+
+            }
 
             Spacer(modifier = Modifier.height(12.dp))
 
@@ -693,26 +702,26 @@ fun ClubInfoRow(title: String, value: String?, clubLogo: String?) {
             modifier = Modifier.weight(1f)
         )
 
-        Row(
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = value ?: "--",
-                style = boldTextStyle(
-                    if (value.equals("Without club", true)) redErrorColor else contentDefault,
-                    14.sp
-                ),
-                textAlign = TextAlign.End
-            )
+        Text(
+            text = value ?: "--",
+            style = boldTextStyle(
+                if (value.equals("Without club", true)) redErrorColor else contentDefault,
+                14.sp
+            ),
+            textAlign = TextAlign.End,
+            overflow = TextOverflow.Ellipsis,
+            maxLines = 1,
+            modifier = Modifier.weight(0.5f)
+        )
 
-            Spacer(Modifier.width(8.dp))
+        Spacer(Modifier.width(8.dp))
 
-            AsyncImage(
-                model = clubLogo,
-                contentDescription = null,
-                modifier = Modifier.size(25.dp)
-            )
-        }
+        AsyncImage(
+            model = clubLogo,
+            contentDescription = null,
+            modifier = Modifier.size(24.dp)
+        )
+
     }
 }
 

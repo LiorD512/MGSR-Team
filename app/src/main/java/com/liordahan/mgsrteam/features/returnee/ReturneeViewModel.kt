@@ -87,111 +87,138 @@ class ReturneeViewModel(
         return listOf(
             Leagues(
                 leagueName = "Belgium - Jupiler Pro League",
-                leagueUrl = "https://www.transfermarkt.com/jupiler-pro-league/startseite/wettbewerb/BE1"
+                leagueUrl = "https://www.transfermarkt.com/jupiler-pro-league/startseite/wettbewerb/BE1",
+                flagUrl = "https://www.countryflags.com/wp-content/uploads/flag-jpg-xl-18-2048x1775.jpg"
             ),
             Leagues(
                 leagueName = "Netherlands - Eredivisie",
-                leagueUrl = "https://www.transfermarkt.com/eredivisie/startseite/wettbewerb/NL1"
+                leagueUrl = "https://www.transfermarkt.com/eredivisie/startseite/wettbewerb/NL1",
+                flagUrl = "https://www.countryflags.com/wp-content/uploads/netherlands-flag-png-large.png"
             ),
             Leagues(
                 leagueName = "Portugal - Liga Portugal",
-                leagueUrl = "https://www.transfermarkt.com/liga-portugal/startseite/wettbewerb/PO1"
+                leagueUrl = "https://www.transfermarkt.com/liga-portugal/startseite/wettbewerb/PO1",
+                flagUrl = "https://www.countryflags.com/wp-content/uploads/portugal-flag-400.png"
             ),
             Leagues(
                 leagueName = "Serbia - Super Liga Srbije",
-                leagueUrl = "https://www.transfermarkt.com/super-liga-srbije/startseite/wettbewerb/SER1"
+                leagueUrl = "https://www.transfermarkt.com/super-liga-srbije/startseite/wettbewerb/SER1",
+                flagUrl = "https://www.countryflags.com/wp-content/uploads/serbia-flag-png-large.png"
             ),
             Leagues(
                 leagueName = "Greece - Super League 1",
-                leagueUrl = "https://www.transfermarkt.com/super-league-1/startseite/wettbewerb/GR1"
+                leagueUrl = "https://www.transfermarkt.com/super-league-1/startseite/wettbewerb/GR1",
+                flagUrl = "https://www.countryflags.com/wp-content/uploads/greece-flag-png-large.png"
             ),
             Leagues(
                 leagueName = "Sweden - Allsvenskan",
-                leagueUrl = "https://www.transfermarkt.com/allsvenskan/startseite/wettbewerb/SE1"
+                leagueUrl = "https://www.transfermarkt.com/allsvenskan/startseite/wettbewerb/SE1",
+                flagUrl = "https://www.countryflags.com/wp-content/uploads/sweden-flag-png-large.png"
             ),
             Leagues(
                 leagueName = "Poland - Ekstraklasa",
-                leagueUrl = "https://www.transfermarkt.com/pko-bp-ekstraklasa/startseite/wettbewerb/PL1"
+                leagueUrl = "https://www.transfermarkt.com/pko-bp-ekstraklasa/startseite/wettbewerb/PL1",
+                flagUrl = "https://www.countryflags.com/wp-content/uploads/poland-flag-png-large.png"
             ),
             Leagues(
                 leagueName = "Ukraine - Ukrainian Premier League",
-                leagueUrl = "https://www.transfermarkt.com/premier-liga/startseite/wettbewerb/UKR1"
+                leagueUrl = "https://www.transfermarkt.com/premier-liga/startseite/wettbewerb/UKR1",
+                flagUrl = "https://www.countryflags.com/wp-content/uploads/ukraine-flag-png-large.png"
             ),
             Leagues(
                 leagueName = "Portugal - Liga Portugal 2",
-                leagueUrl = "https://www.transfermarkt.com/liga-portugal-2/startseite/wettbewerb/PO2"
+                leagueUrl = "https://www.transfermarkt.com/liga-portugal-2/startseite/wettbewerb/PO2",
+                flagUrl = "https://www.countryflags.com/wp-content/uploads/portugal-flag-400.png"
             ),
             Leagues(
                 leagueName = "Turkey - SuperLig",
-                leagueUrl = "https://www.transfermarkt.com/super-lig/startseite/wettbewerb/TR1"
+                leagueUrl = "https://www.transfermarkt.com/super-lig/startseite/wettbewerb/TR1",
+                flagUrl = "https://www.countryflags.com/wp-content/uploads/turkey-flag-png-large.png"
             ),
             Leagues(
                 leagueName = "Switzerland - Super League",
-                leagueUrl = "https://www.transfermarkt.com/super-league/startseite/wettbewerb/C1"
+                leagueUrl = "https://www.transfermarkt.com/super-league/startseite/wettbewerb/C1",
+                flagUrl = "https://www.countryflags.com/wp-content/uploads/switzerland-flag-png-large.png"
             ),
             Leagues(
                 leagueName = "Austria - Bundesliga",
-                leagueUrl = "https://www.transfermarkt.com/bundesliga/startseite/wettbewerb/A1"
+                leagueUrl = "https://www.transfermarkt.com/bundesliga/startseite/wettbewerb/A1",
+                flagUrl = "https://www.countryflags.com/wp-content/uploads/flag-jpg-xl-10-2048x1365.jpg"
             ),
             Leagues(
                 leagueName = "Czech Republic - Chance Liga",
-                leagueUrl = "https://www.transfermarkt.com/chance-liga/startseite/wettbewerb/TS1"
+                leagueUrl = "https://www.transfermarkt.com/chance-liga/startseite/wettbewerb/TS1",
+                flagUrl = "https://www.countryflags.com/wp-content/uploads/czech-republic-flag-png-large.png"
             ),
             Leagues(
                 leagueName = "Romania - SuperLiga",
-                leagueUrl = "https://www.transfermarkt.com/superliga/startseite/wettbewerb/RO1"
+                leagueUrl = "https://www.transfermarkt.com/superliga/startseite/wettbewerb/RO1",
+                flagUrl = "https://www.countryflags.com/wp-content/uploads/romania-flag-png-large.png"
             ),
             Leagues(
                 leagueName = "Bulgaria - Efbet Liga",
-                leagueUrl = "https://www.transfermarkt.com/efbet-liga/startseite/wettbewerb/BU1"
+                leagueUrl = "https://www.transfermarkt.com/efbet-liga/startseite/wettbewerb/BU1",
+                flagUrl = "https://www.countryflags.com/wp-content/uploads/bulgaria-flag-png-large.png"
             ),
             Leagues(
                 leagueName = "Hungary - Top Division",
-                leagueUrl = "https://www.transfermarkt.com/nemzeti-bajnoksag/startseite/wettbewerb/UNG1"
+                leagueUrl = "https://www.transfermarkt.com/nemzeti-bajnoksag/startseite/wettbewerb/UNG1",
+                flagUrl = "https://www.countryflags.com/wp-content/uploads/hungary-flag-png-large.png"
             ),
             Leagues(
                 leagueName = "Cyprus - Cyprus League",
-                leagueUrl = "https://www.transfermarkt.com/cyprus-league/startseite/wettbewerb/ZYP1"
+                leagueUrl = "https://www.transfermarkt.com/cyprus-league/startseite/wettbewerb/ZYP1",
+                flagUrl = "https://www.countryflags.com/wp-content/uploads/cyprus-flag-png-large.png"
             ),
             Leagues(
                 leagueName = "Slovakia - Nike Liga",
-                leagueUrl = "https://www.transfermarkt.com/nike-liga/startseite/wettbewerb/SLO1"
+                leagueUrl = "https://www.transfermarkt.com/nike-liga/startseite/wettbewerb/SLO1",
+                flagUrl = "https://www.countryflags.com/wp-content/uploads/slovakia-flag-png-large.png"
             ),
             Leagues(
                 leagueName = "Azerbaijan - Premyer Liqa",
-                leagueUrl = "https://www.transfermarkt.com/premyer-liqa/startseite/wettbewerb/AZ1"
+                leagueUrl = "https://www.transfermarkt.com/premyer-liqa/startseite/wettbewerb/AZ1",
+                flagUrl = "https://www.countryflags.com/wp-content/uploads/flag-jpg-xl-11-2048x1024.jpg"
             ),
             Leagues(
                 leagueName = "England - Championship",
-                leagueUrl = "https://www.transfermarkt.com/championship/startseite/wettbewerb/GB2"
+                leagueUrl = "https://www.transfermarkt.com/championship/startseite/wettbewerb/GB2",
+                flagUrl = "https://www.countryflags.com/wp-content/uploads/england-flag-jpg-xl.jpg"
             ),
             Leagues(
                 leagueName = "Italy - Serie A",
-                leagueUrl = "https://www.transfermarkt.com/serie-a/startseite/wettbewerb/IT1"
+                leagueUrl = "https://www.transfermarkt.com/serie-a/startseite/wettbewerb/IT1",
+                flagUrl = "https://www.countryflags.com/wp-content/uploads/italy-flag-png-large.png"
             ),
             Leagues(
                 leagueName = "Italy - Serie B",
-                leagueUrl = "https://www.transfermarkt.com/serie-b/startseite/wettbewerb/IT2"
+                leagueUrl = "https://www.transfermarkt.com/serie-b/startseite/wettbewerb/IT2",
+                flagUrl = "https://www.countryflags.com/wp-content/uploads/italy-flag-png-large.png"
             ),
             Leagues(
                 leagueName = "Germany - Bundesliga 2",
-                leagueUrl = "https://www.transfermarkt.com/2-bundesliga/startseite/wettbewerb/L2"
+                leagueUrl = "https://www.transfermarkt.com/2-bundesliga/startseite/wettbewerb/L2",
+                flagUrl = "https://www.countryflags.com/wp-content/uploads/germany-flag-png-large.png"
             ),
             Leagues(
                 leagueName = "Spain - LaLiga",
-                leagueUrl = "https://www.transfermarkt.com/laliga/startseite/wettbewerb/ES1"
+                leagueUrl = "https://www.transfermarkt.com/laliga/startseite/wettbewerb/ES1",
+                flagUrl = "https://www.countryflags.com/wp-content/uploads/spain-flag-png-large.png"
             ),
             Leagues(
                 leagueName = "Spain - LaLiga2",
-                leagueUrl = "https://www.transfermarkt.com/laliga2/startseite/wettbewerb/ES2"
+                leagueUrl = "https://www.transfermarkt.com/laliga2/startseite/wettbewerb/ES2",
+                flagUrl = "https://www.countryflags.com/wp-content/uploads/spain-flag-png-large.png"
             ),
             Leagues(
                 leagueName = "France - Ligue 2",
-                leagueUrl = "https://www.transfermarkt.com/ligue-2/startseite/wettbewerb/FR2"
+                leagueUrl = "https://www.transfermarkt.com/ligue-2/startseite/wettbewerb/FR2",
+                flagUrl = "https://www.countryflags.com/wp-content/uploads/france-flag-png-large.png"
             ),
             Leagues(
                 leagueName = "Turkey - 1.Lig",
-                leagueUrl = "https://www.transfermarkt.com/1-lig/startseite/wettbewerb/TR2"
+                leagueUrl = "https://www.transfermarkt.com/1-lig/startseite/wettbewerb/TR2",
+                flagUrl = "https://www.countryflags.com/wp-content/uploads/turkey-flag-png-large.png"
             )
 
         )

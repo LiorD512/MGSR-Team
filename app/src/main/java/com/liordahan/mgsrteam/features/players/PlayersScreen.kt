@@ -251,25 +251,30 @@ fun PlayerCard(player: Player, modifier: Modifier = Modifier, onPlayerClicked: (
         ConstraintLayout(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 8.dp)
+                .padding(vertical = 12.dp)
         ) {
 
             val (image, name, currentClub, playerInfo, marketValue) = createRefs()
 
-            AsyncImage(
-                modifier = Modifier
-                    .size(65.dp)
-                    .clip(CircleShape)
-                    .border(width = 1.dp, color = buttonLoadingBg, shape = CircleShape)
-                    .constrainAs(image) {
-                        start.linkTo(parent.start, margin = 8.dp)
-                        top.linkTo(parent.top)
-                        bottom.linkTo(parent.bottom)
-                    },
-                model = player.profileImage,
-                contentDescription = null,
-                contentScale = ContentScale.Crop
-            )
+            Surface(
+                shadowElevation = 6.dp,
+                tonalElevation = 12.dp,
+                shape = CircleShape,
+                modifier = Modifier.constrainAs(image) {
+                    start.linkTo(parent.start, margin = 8.dp)
+                    top.linkTo(parent.top)
+                    bottom.linkTo(parent.bottom)
+                }
+            ) {
+                AsyncImage(
+                    modifier = Modifier
+                        .size(55.dp)
+                        .clip(CircleShape),
+                    model = player.profileImage,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop
+                )
+            }
 
             Text(
                 modifier = Modifier.constrainAs(name) {

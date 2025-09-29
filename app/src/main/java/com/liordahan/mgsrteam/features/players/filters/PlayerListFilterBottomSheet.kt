@@ -21,6 +21,7 @@ import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -30,10 +31,16 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.platform.rememberNestedScrollInteropConnection
+import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -70,11 +77,10 @@ fun PlayerListFilterBottomSheet(
         skipPartiallyExpanded = true
     )
 
-    val context = LocalContext.current
+
     val containerSize = LocalWindowInfo.current.containerSize
     val density = LocalDensity.current.density
     val screenHeight = containerSize.height.dp / density
-
 
     val positions = viewModel.positionList.collectAsStateWithLifecycle()
     val accountList = viewModel.agentList.collectAsStateWithLifecycle()
@@ -129,7 +135,8 @@ fun PlayerListFilterBottomSheet(
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
+                        .padding(horizontal = 16.dp)
+                        .nestedScroll(rememberNestedScrollInteropConnection()),
                     verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
 
@@ -210,7 +217,8 @@ fun PlayerListFilterBottomSheet(
                             isChecked = selectedOption == ContractFilterOption.WITHOUT_CLUB,
                             text = "Without club only",
                             onCheckedChange = { isChecked ->
-                                selectedOption = if (isChecked) ContractFilterOption.WITHOUT_CLUB else ContractFilterOption.NONE
+                                selectedOption =
+                                    if (isChecked) ContractFilterOption.WITHOUT_CLUB else ContractFilterOption.NONE
                                 viewModel.setContractFilterOption(selectedOption)
                             }
                         )
@@ -222,7 +230,8 @@ fun PlayerListFilterBottomSheet(
                             isChecked = selectedOption == ContractFilterOption.CONTRACT_FINISHING,
                             text = "Contract finishing withing 6 months",
                             onCheckedChange = { isChecked ->
-                                selectedOption = if (isChecked) ContractFilterOption.CONTRACT_FINISHING else ContractFilterOption.NONE
+                                selectedOption =
+                                    if (isChecked) ContractFilterOption.CONTRACT_FINISHING else ContractFilterOption.NONE
                                 viewModel.setContractFilterOption(selectedOption)
                             }
                         )

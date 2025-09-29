@@ -244,15 +244,22 @@ fun ReleaseListItem(context: Context, release: LatestTransferModel, isFromReturn
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            AsyncImage(
-                model = release.playerImage,
-                contentDescription = null,
-                modifier = Modifier
-                    .size(65.dp)
-                    .clip(CircleShape)
-                    .border(width = 1.dp, color = buttonLoadingBg, shape = CircleShape),
-                contentScale = ContentScale.Crop
-            )
+
+            Surface(
+                shadowElevation = 6.dp,
+                tonalElevation = 12.dp,
+                shape = CircleShape
+            ) {
+
+                AsyncImage(
+                    model = release.playerImage,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(55.dp)
+                        .clip(CircleShape),
+                    contentScale = ContentScale.Crop
+                )
+            }
 
             Spacer(modifier = Modifier.width(12.dp))
 

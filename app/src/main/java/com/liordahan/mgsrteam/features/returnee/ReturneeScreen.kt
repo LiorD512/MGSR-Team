@@ -3,6 +3,7 @@ package com.liordahan.mgsrteam.features.returnee
 import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -10,18 +11,23 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -44,7 +50,10 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -52,6 +61,7 @@ import androidx.core.app.ActivityCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
+import coil.compose.AsyncImage
 import com.liordahan.mgsrteam.features.players.models.Position
 import com.liordahan.mgsrteam.features.players.ui.EmptyState
 import com.liordahan.mgsrteam.features.players.ui.FilterStripUi
@@ -59,6 +69,7 @@ import com.liordahan.mgsrteam.features.releases.ReleaseListItem
 import com.liordahan.mgsrteam.features.releases.ReleasesTopBar
 import com.liordahan.mgsrteam.features.returnee.model.Leagues
 import com.liordahan.mgsrteam.transfermarket.LatestTransferModel
+import com.liordahan.mgsrteam.ui.theme.buttonLoadingBg
 import com.liordahan.mgsrteam.ui.theme.contentDefault
 import com.liordahan.mgsrteam.ui.theme.dividerColor
 import com.liordahan.mgsrteam.ui.theme.searchHeaderButtonBackground
@@ -100,6 +111,10 @@ fun ReturneeScreen(
         mutableStateOf<Position?>(null)
     }
 
+    var selectedLeague by remember { mutableStateOf<Leagues?>(null) }
+
+    var showPlayersBottomSheet by remember { mutableStateOf(false) }
+
     val state = rememberLazyListState()
 
     BackHandler {
@@ -129,36 +144,11 @@ fun ReturneeScreen(
         },
     ) { paddingValues ->
 
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-
-            SimpleDropdownMenu(
-                modifier = Modifier.padding(top = 24.dp),
-                isLoading = showLoader,
-                items = leagueList,
-                onItemSelected = {
-                    viewModel.fetchAllReturnees(it)
-                }
-            )
-
-
-            if (showLoader) {
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.CenterHorizontally)
-                        .padding(top = 24.dp)
-                ) {
-                    ProgressIndicator(
-                        modifier = Modifier.align(Alignment.Center)
-                    )
-                    return@Box
-                }
-            }
-
-            if (showLoader) return@Scaffold
 
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
@@ -169,42 +159,27 @@ fun ReturneeScreen(
                     start = 12.dp,
                     end = 12.dp
                 ),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
 
-                if (visibleReturneeList.isNotEmpty()){
-
-                    item {
-                        FilterStripUi(
-                            positions = positionList,
-                            selectedPosition = selectedPosition,
-                            getCountForPosition = {
-                                originalReturneeList.count { player -> player.playerPosition?.equals(it.name) == true }
-                            },
-                            onPositionClicked = {
-                                selectedPosition = if (selectedPosition == it) {
-                                    null
-                                } else {
-                                    it
-                                }
-
-                                viewModel.updateSelectedPosition(selectedPosition)
-                            }
-                        )
-                    }
-
-                    item {
-                        HorizontalDivider(
-                            thickness = 1.dp,
-                            color = dividerColor,
-                            modifier = Modifier.padding(bottom = 16.dp)
-                        )
-                    }
-
+                items(leagueList) { league ->
+                    LeagueListItem(
+                        leagues = league,
+                        onItemClicked = {
+                        selectedLeague = it
+                        showPlayersBottomSheet = true
+                    })
                 }
 
-                items(visibleReturneeList) {
-                    ReleaseListItem(context, it, true)
+            }
+
+            if (showPlayersBottomSheet) {
+                ReturneePlayersBottomSheet(
+                    modifier = Modifier.align(Alignment.BottomCenter),
+                    viewModel = viewModel,
+                    leagues = selectedLeague ?: return@Scaffold
+                ) {
+                    showPlayersBottomSheet = false
                 }
             }
 
@@ -239,79 +214,43 @@ fun ReturneeTopBar() {
 }
 
 @Composable
-fun SimpleDropdownMenu(
-    modifier: Modifier,
-    isLoading: Boolean,
-    items: List<Leagues>,
-    onItemSelected: (String) -> Unit
-) {
-    if (items.isEmpty()) return
+fun LeagueListItem(leagues: Leagues, onItemClicked: (Leagues) -> Unit) {
 
-    var expanded by remember { mutableStateOf(false) }
-    var selectedItem by remember { mutableStateOf<Leagues?>(null) }
-
-    Box(
-        modifier = modifier
-            .padding(horizontal = 16.dp)
-            .fillMaxWidth()
-            .wrapContentSize(Alignment.TopStart)
+    Card(
+        modifier = Modifier.clickWithNoRipple { onItemClicked(leagues) },
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(6.dp)
     ) {
 
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(searchHeaderButtonBackground, RoundedCornerShape(100.dp))
-                .padding(horizontal = 12.dp)
-                .clickWithNoRipple {
-                    if (isLoading) return@clickWithNoRipple
-                    expanded = true
-                },
+                .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = selectedItem?.leagueName ?: "Select League",
-                modifier = Modifier
-                    .padding(12.dp)
-                    .weight(1f)
-            )
 
-            Icon(
-                imageVector = Icons.Default.ArrowDropDown,
-                contentDescription = null
-            )
-
-        }
-
-        DropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false },
-            modifier = Modifier.fillMaxWidth(),
-            containerColor = Color.White
-        ) {
-            items.forEachIndexed { index, league ->
-
-                DropdownMenuItem(
-                    text = {
-                        Text(
-                            text = league.leagueName,
-                            style = boldTextStyle(contentDefault, 14.sp)
-                        )
-                    },
-                    onClick = {
-                        selectedItem = league
-                        expanded = false
-                        onItemSelected(selectedItem?.leagueUrl ?: "")
-                    },
-                    modifier = Modifier.padding(vertical = 5.dp)
+            Surface(
+                shadowElevation = 6.dp,
+                tonalElevation = 12.dp,
+                shape = CircleShape,
+            ) {
+                AsyncImage(
+                    modifier = Modifier
+                        .size(35.dp)
+                        .clip(CircleShape),
+                    model = leagues.flagUrl,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop
                 )
-
-                if (index < items.size - 1) {
-                    HorizontalDivider(
-                        modifier = Modifier.padding(horizontal = 8.dp),
-                        color = dividerColor
-                    )
-                }
             }
+
+            Spacer(Modifier.width(8.dp))
+
+            Text(
+                text = leagues.leagueName,
+                style = boldTextStyle(contentDefault, 16.sp)
+            )
         }
     }
 }
