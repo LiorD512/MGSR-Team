@@ -20,13 +20,15 @@ data class ReleasesUiState(
     val visibleList: List<LatestTransferModel> = emptyList(),
     val isLoading: Boolean = true,
     val showError: Boolean = false,
-    val failedFetchError: String? = null
+    val failedFetchError: String? = null,
+    val playersCount: Map<String, Int> = emptyMap()
 )
 
 abstract class IReleasesViewModel : ViewModel() {
     abstract val releasesFlow: StateFlow<ReleasesUiState>
     abstract val selectedPositionFlow: StateFlow<Position?>
     abstract val positionsFlow: StateFlow<List<Position>>
+
     abstract fun selectPosition(position: Position?)
 }
 
@@ -80,7 +82,10 @@ class ReleasesViewModel(
                 ?.sortedByDescending { it.getRealMarketValue() } ?: emptyList(),
             isLoading = fetched < totalRangeCount,
             showError = releasesLists.isEmpty(),
-            failedFetchError = failedFetchError
+            failedFetchError = failedFetchError,
+            playersCount = releasesLists.flatten().distinctBy { it.playerUrl }
+                .groupingBy { it.playerPosition ?: ""}
+                .eachCount()
         )
     }.stateIn(
         viewModelScope,

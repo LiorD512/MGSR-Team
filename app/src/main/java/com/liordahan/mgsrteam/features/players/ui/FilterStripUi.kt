@@ -16,6 +16,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -25,7 +26,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.liordahan.mgsrteam.features.login.models.Account
+import com.liordahan.mgsrteam.features.players.models.Player
 import com.liordahan.mgsrteam.features.players.models.Position
+import com.liordahan.mgsrteam.transfermarket.LatestTransferModel
 import com.liordahan.mgsrteam.ui.theme.contentDefault
 import com.liordahan.mgsrteam.ui.theme.contentDisabled
 import com.liordahan.mgsrteam.ui.utils.boldTextStyle
@@ -36,8 +39,8 @@ import com.liordahan.mgsrteam.ui.utils.regularTextStyle
 fun FilterStripUi(
     positions: List<Position>,
     selectedPosition: Position? = null,
-    onPositionClicked: (Position) -> Unit,
-    getCountForPosition: (Position) -> Int
+    playerList: List<LatestTransferModel>,
+    onPositionClicked: (Position) -> Unit
 ) {
 
     LazyRow(
@@ -46,10 +49,12 @@ fun FilterStripUi(
     ) {
 
         items(positions) { position ->
-            val positionPlayersCount = getCountForPosition(position)
+
+            val count = playerList.count { player -> player.playerPosition?.equals(position.name) == true }
+
             FilterTypeItemUi(
                 position = position,
-                positionPlayersCount = positionPlayersCount.toString(),
+                positionPlayersCount = count.toString(),
                 isSelected = selectedPosition == position,
                 onPositionClicked = { onPositionClicked(it) }
             )
@@ -69,7 +74,7 @@ fun FilterTypeItemUi(
 
     val isPositionZero by remember(positionPlayersCount) { mutableStateOf(positionPlayersCount == "0") }
 
-    val chipColor by remember(isSelected) {
+    val chipColor by remember(isSelected, isPositionZero) {
         mutableStateOf(
             when {
                 isSelected -> contentDefault

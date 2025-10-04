@@ -106,6 +106,9 @@ fun ReleasesScreen(viewModel: IReleasesViewModel = koinViewModel()) {
         mutableStateOf(false)
     }
 
+    var countMap by remember {
+        mutableStateOf(mapOf<String, Int>())
+    }
 
     val state = rememberLazyListState()
     val snackBarHostState = remember { SnackbarHostState() }
@@ -123,6 +126,7 @@ fun ReleasesScreen(viewModel: IReleasesViewModel = koinViewModel()) {
                     originalReleaseList = it.releasesList
                     showLoader = it.isLoading
                     showError = it.showError
+                    countMap = it.playersCount
                     if (!it.failedFetchError.isNullOrBlank()) {
                         snackBarHostState.showSnackbar(
                             message = it.failedFetchError,
@@ -189,12 +193,19 @@ fun ReleasesScreen(viewModel: IReleasesViewModel = koinViewModel()) {
             ) {
 
                 item {
+
+                    val positionCounts = remember(originalReleaseList) {
+                        positionList.associateWith { position ->
+                            originalReleaseList.count { player ->
+                                player.playerPosition?.equals(position.name) == true
+                            }
+                        }
+                    }
+
                     FilterStripUi(
                         positions = positionList,
                         selectedPosition = selectedPosition,
-                        getCountForPosition = {
-                            originalReleaseList.count { player -> player.playerPosition?.equals(it.name) == true }
-                        },
+                        playerList = originalReleaseList,
                         onPositionClicked = {
                             selectedPosition = if (selectedPosition == it) {
                                 null

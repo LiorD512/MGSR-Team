@@ -213,13 +213,7 @@ fun ReturneePlayersBottomSheet(
                         FilterStripUi(
                             positions = positionList,
                             selectedPosition = selectedPosition,
-                            getCountForPosition = {
-                                originalReturneeList.count { player ->
-                                    player.playerPosition?.equals(
-                                        it.name
-                                    ) == true
-                                }
-                            },
+                            playerList = originalReturneeList,
                             onPositionClicked = {
                                 selectedPosition = if (selectedPosition == it) {
                                     null
