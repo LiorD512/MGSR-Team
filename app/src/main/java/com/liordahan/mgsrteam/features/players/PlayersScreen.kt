@@ -4,6 +4,7 @@ import android.app.Activity
 import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -23,6 +24,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.Note
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material3.Card
@@ -46,11 +48,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.SpanStyle
@@ -65,6 +69,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.constraintlayout.compose.ConstraintLayout
+import androidx.constraintlayout.compose.Dimension
 import androidx.core.app.ActivityCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
@@ -77,6 +82,7 @@ import com.liordahan.mgsrteam.features.players.ui.EmptyState
 import com.liordahan.mgsrteam.navigation.Screens
 import com.liordahan.mgsrteam.ui.components.AppTextField
 import com.liordahan.mgsrteam.ui.theme.contentDefault
+import com.liordahan.mgsrteam.ui.theme.contentDisabled
 import com.liordahan.mgsrteam.ui.theme.dividerColor
 import com.liordahan.mgsrteam.ui.theme.redErrorColor
 import com.liordahan.mgsrteam.ui.theme.searchHeaderButtonBackground
@@ -190,7 +196,7 @@ fun PlayersScreen(viewModel: IPlayersViewModel = koinViewModel(), navController:
 
             if (showFilterBottomSheet) {
                 PlayerListFilterBottomSheet(
-                    modifier = Modifier.align(Alignment.BottomCenter),
+                    modifier = Modifier.align(Alignment.BottomEnd),
                     selectedPositionList = playersState.selectedPositions,
                     selectedAgentList = playersState.selectedAccounts,
                     selectedContractFilterOption = playersState.contractFilterOption,
@@ -210,6 +216,8 @@ fun PlayerCard(player: Player, modifier: Modifier = Modifier, onPlayerClicked: (
         contentDefault
     }
 
+    val isNoteExist by remember(player) { mutableStateOf(!player.notes.isNullOrEmpty()) }
+
     Card(
         modifier = modifier
             .fillMaxWidth()
@@ -226,7 +234,7 @@ fun PlayerCard(player: Player, modifier: Modifier = Modifier, onPlayerClicked: (
                 .padding(vertical = 12.dp)
         ) {
 
-            val (image, name, currentClub, playerInfo, marketValue) = createRefs()
+            val (image, name, currentClub, playerInfo, marketValue, notesExist) = createRefs()
 
             Surface(
                 shadowElevation = 6.dp,
@@ -262,7 +270,9 @@ fun PlayerCard(player: Player, modifier: Modifier = Modifier, onPlayerClicked: (
             Text(
                 modifier = Modifier.constrainAs(currentClub) {
                     start.linkTo(name.start)
+                    end.linkTo(marketValue.start, 60.dp)
                     top.linkTo(name.bottom, 4.dp)
+                    width = Dimension.fillToConstraints
                 },
                 text = buildAnnotatedString {
                     withStyle(SpanStyle(fontWeight = FontWeight.Bold, color = clubTextColor)) {
@@ -304,6 +314,20 @@ fun PlayerCard(player: Player, modifier: Modifier = Modifier, onPlayerClicked: (
                 style = boldTextStyle(contentDefault, 12.sp),
                 textAlign = TextAlign.Center
             )
+
+            if (isNoteExist) {
+                Image(
+                    painter = painterResource(R.drawable.ic_notes),
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(22.dp)
+                        .constrainAs(notesExist) {
+                            end.linkTo(parent.end, 65.dp)
+                            top.linkTo(parent.top)
+                        },
+                    colorFilter = ColorFilter.tint(contentDisabled)
+                )
+            }
         }
 
     }

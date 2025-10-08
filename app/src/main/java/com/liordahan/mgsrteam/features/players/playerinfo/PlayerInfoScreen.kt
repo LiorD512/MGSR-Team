@@ -450,7 +450,7 @@ fun PlayerInfoScreen(
 
                     InfoRow(
                         "Contract Expiry Date",
-                        getContractStatus(playerToPresent?.contractExpired ?: ""),
+                        getContractStatus(playerToPresent?.contractExpired?.replace("/", ".") ?: ""),
                         icon = {
                             Icon(
                                 modifier = Modifier.size(24.dp),

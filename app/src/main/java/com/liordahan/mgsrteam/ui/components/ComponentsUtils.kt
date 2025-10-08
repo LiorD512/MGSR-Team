@@ -42,6 +42,7 @@ import com.liordahan.mgsrteam.ui.utils.regularTextStyle
 
 @Composable
 fun PrimaryButtonNewDesign(
+    modifier: Modifier = Modifier,
     buttonText: String,
     buttonElevation: Dp = 0.dp,
     isEnabled: Boolean,
@@ -59,7 +60,7 @@ fun PrimaryButtonNewDesign(
                 if (showProgress) return@Button
                 onButtonClicked()
             },
-            modifier = Modifier
+            modifier = modifier
                 .fillMaxWidth()
                 .height(50.dp),
             colors = ButtonDefaults.buttonColors(
