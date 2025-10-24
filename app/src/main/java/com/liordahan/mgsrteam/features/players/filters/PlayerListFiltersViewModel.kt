@@ -11,6 +11,7 @@ import com.liordahan.mgsrteam.features.players.filters.usecases.IRemoveAgentFilt
 import com.liordahan.mgsrteam.features.players.filters.usecases.IRemoveAllFiltersUseCase
 import com.liordahan.mgsrteam.features.players.filters.usecases.IRemovePositionFilterUseCase
 import com.liordahan.mgsrteam.features.players.filters.usecases.ISetContractFilterOptionUseCase
+import com.liordahan.mgsrteam.features.players.filters.usecases.ISetIsWithNotesCheckedUseCase
 import com.liordahan.mgsrteam.features.players.filters.usecases.RemoveAllFiltersUseCase
 import com.liordahan.mgsrteam.features.players.filters.usecases.SetContractFilterOptionUseCase
 import com.liordahan.mgsrteam.features.players.models.Position
@@ -27,6 +28,7 @@ abstract class IPlayerListFiltersViewModel : ViewModel() {
     abstract fun managePositionFilter(isChecked: Boolean, position: Position)
     abstract fun manageAgentFilter(isChecked: Boolean, account: Account)
     abstract fun setContractFilterOption(option: ContractFilterOption)
+    abstract fun setWithNotesChecked(isChecked: Boolean)
     abstract fun removeAllFilter()
 }
 
@@ -37,6 +39,7 @@ class PlayerListFiltersViewModel(
     private val removePositionFilterUseCase: IRemovePositionFilterUseCase,
     private val removeAgentFilterUseCase: IRemoveAgentFilterUseCase,
     private val setContractFilterOptionUseCase: ISetContractFilterOptionUseCase,
+    private val setIsWithNotesCheckedUseCase: ISetIsWithNotesCheckedUseCase,
     private val removeAllFiltersUseCase: IRemoveAllFiltersUseCase
 ) : IPlayerListFiltersViewModel() {
 
@@ -45,6 +48,7 @@ class PlayerListFiltersViewModel(
 
     private val _agentList = MutableStateFlow<List<Account>>(emptyList())
     override val agentList: StateFlow<List<Account>> = _agentList
+
     init {
         getAllPositions()
         getAllAccounts()
@@ -90,6 +94,10 @@ class PlayerListFiltersViewModel(
 
     override fun setContractFilterOption(option: ContractFilterOption) {
         setContractFilterOptionUseCase(option)
+    }
+
+    override fun setWithNotesChecked(isChecked: Boolean) {
+        setIsWithNotesCheckedUseCase(isChecked)
     }
 
     override fun removeAllFilter() {

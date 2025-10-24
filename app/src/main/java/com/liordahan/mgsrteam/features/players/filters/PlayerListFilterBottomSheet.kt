@@ -70,6 +70,7 @@ fun PlayerListFilterBottomSheet(
     selectedPositionList: List<Position>,
     selectedAgentList: List<Account>,
     selectedContractFilterOption: ContractFilterOption,
+    isWithNotesChecked: Boolean,
     onDismiss: () -> Unit
 ) {
 
@@ -87,6 +88,7 @@ fun PlayerListFilterBottomSheet(
     val accountList = viewModel.agentList.collectAsStateWithLifecycle()
 
     var selectedOption by remember { mutableStateOf(selectedContractFilterOption) }
+    var isWithNotesOnlySelected by remember { mutableStateOf(isWithNotesChecked) }
 
     ModalBottomSheet(
         modifier = modifier
@@ -258,6 +260,15 @@ fun PlayerListFilterBottomSheet(
                             selectedOption =
                                 if (isChecked) ContractFilterOption.CONTRACT_FINISHING else ContractFilterOption.NONE
                             viewModel.setContractFilterOption(selectedOption)
+                        }
+                    )
+
+                    FilterCheckBox(
+                        isChecked = isWithNotesOnlySelected,
+                        text = "With notes",
+                        onCheckedChange = { isChecked ->
+                            isWithNotesOnlySelected = isChecked
+                            viewModel.setWithNotesChecked(isWithNotesOnlySelected)
                         }
                     )
                 }

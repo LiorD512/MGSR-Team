@@ -5,9 +5,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.liordahan.mgsrteam.features.login.models.Account
 import com.liordahan.mgsrteam.features.players.filters.ContractFilterOption
+import com.liordahan.mgsrteam.features.players.filters.usecases.GetIsWithNotesCheckedUseCase
 import com.liordahan.mgsrteam.features.players.filters.usecases.GetPositionFilterFlowUseCase
 import com.liordahan.mgsrteam.features.players.filters.usecases.IGetAgentFilterFlowUseCase
 import com.liordahan.mgsrteam.features.players.filters.usecases.IGetContractFilterOptionUseCase
+import com.liordahan.mgsrteam.features.players.filters.usecases.IGetIsWithNotesCheckedUseCase
 import com.liordahan.mgsrteam.features.players.filters.usecases.IGetPositionFilterFlowUseCase
 import com.liordahan.mgsrteam.features.players.filters.usecases.IRemoveAllFiltersUseCase
 import com.liordahan.mgsrteam.features.players.models.Player
@@ -36,6 +38,7 @@ data class PlayersUiState(
     val selectedPositions: List<Position> = emptyList(),
     val selectedAccounts: List<Account> = emptyList(),
     val contractFilterOption: ContractFilterOption = ContractFilterOption.NONE,
+    val isWithNotesChecked: Boolean = false,
     val searchQuery: String = ""
 )
 
@@ -52,6 +55,7 @@ class PlayersViewModel(
     private val getPositionFilterFlowUseCase: IGetPositionFilterFlowUseCase,
     private val getAgentFilterFlowUseCase: IGetAgentFilterFlowUseCase,
     private val getContractFilterOptionUseCase: IGetContractFilterOptionUseCase,
+    private val getIsWithNotesCheckedUseCase: IGetIsWithNotesCheckedUseCase,
     private val removeAllFiltersUseCase: IRemoveAllFiltersUseCase
 ) : IPlayersViewModel() {
 
@@ -69,6 +73,7 @@ class PlayersViewModel(
                             .filterPlayersByPosition(it.selectedPositions)
                             ?.filterPlayersByAgent(it.selectedAccounts)
                             ?.filterPlayersByContractOption(it.contractFilterOption)
+                            ?.filterByNotes(it.isWithNotesChecked)
                             ?.filterPlayersByName(it.searchQuery)
                             ?.sortedByDescending { it.createdAt } ?: emptyList(),
                     )
@@ -92,6 +97,12 @@ class PlayersViewModel(
             launch {
                 getContractFilterOptionUseCase().collect { contractFilterOption ->
                     _playersFlow.update { it.copy(contractFilterOption = contractFilterOption) }
+                }
+            }
+
+            launch {
+                getIsWithNotesCheckedUseCase().collect { isChecked ->
+                    _playersFlow.update { it.copy(isWithNotesChecked = isChecked) }
                 }
             }
         }
@@ -182,6 +193,16 @@ class PlayersViewModel(
         }
     }
 
+    private fun List<Player>?.filterByNotes(isChecked: Boolean): List<Player>? {
+        return if (!isChecked) {
+            this
+        } else {
+            this?.filter { player ->
+                !player.notes.isNullOrEmpty()
+            }
+        }
+    }
+
 
     fun parseDateFlexible(dateStr: String): LocalDate? {
         val formatters = listOf(
@@ -192,7 +213,8 @@ class PlayersViewModel(
         for (formatter in formatters) {
             try {
                 return LocalDate.parse(dateStr, formatter)
-            } catch (_: DateTimeParseException) { }
+            } catch (_: DateTimeParseException) {
+            }
         }
         return null // if nothing matched
     }

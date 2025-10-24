@@ -130,7 +130,7 @@ fun PlayersScreen(viewModel: IPlayersViewModel = koinViewModel(), navController:
                 title = "Welcome\n$userName",
                 searchPlayerInput = searchPlayerInput,
                 showSearchBar = true,
-                numberOfFilters = playersState.selectedPositions.size + playersState.selectedAccounts.size + if (playersState.contractFilterOption != ContractFilterOption.NONE) 1 else 0,
+                numberOfFilters = playersState.selectedPositions.size + playersState.selectedAccounts.size + if (playersState.contractFilterOption != ContractFilterOption.NONE) 1 else 0 + if (playersState.isWithNotesChecked) 1 else 0,
                 onValueChange = {
                     searchPlayerInput = it
                     viewModel.updateSearchQuery(searchPlayerInput.text)
@@ -200,6 +200,7 @@ fun PlayersScreen(viewModel: IPlayersViewModel = koinViewModel(), navController:
                     selectedPositionList = playersState.selectedPositions,
                     selectedAgentList = playersState.selectedAccounts,
                     selectedContractFilterOption = playersState.contractFilterOption,
+                    isWithNotesChecked = playersState.isWithNotesChecked,
                     onDismiss = { showFilterBottomSheet = false })
             }
         }

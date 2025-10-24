@@ -12,6 +12,7 @@ interface IFilterRepository {
     val positionFilterList: StateFlow<List<Position>>
     val agentFilterList: StateFlow<List<Account>>
     val contractFilterOption: StateFlow<ContractFilterOption>
+    val withNotesCheckedFlow: StateFlow<Boolean>
 
     fun addPositionFilter(position: Position)
     fun removePositionFilter(position: Position)
@@ -19,6 +20,7 @@ interface IFilterRepository {
     fun removeAgentFilter(agent: Account)
     fun removeAllFilters()
     fun setContractFilterOption(option: ContractFilterOption)
+    fun setIsWithNotesChecked(isChecked: Boolean)
 }
 
 class FilterRepository : IFilterRepository {
@@ -31,6 +33,9 @@ class FilterRepository : IFilterRepository {
 
     private val _contractFilterOption = MutableStateFlow(ContractFilterOption.NONE)
     override val contractFilterOption: StateFlow<ContractFilterOption> = _contractFilterOption
+
+    private val _withNotesCheckedFlow = MutableStateFlow(false)
+    override val withNotesCheckedFlow: StateFlow<Boolean> = _withNotesCheckedFlow
 
     override fun addPositionFilter(position: Position) {
         val filters = positionFilterList.value.toMutableList()
@@ -63,10 +68,15 @@ class FilterRepository : IFilterRepository {
         _contractFilterOption.update { option }
     }
 
+    override fun setIsWithNotesChecked(isChecked: Boolean) {
+        _withNotesCheckedFlow.update { isChecked }
+    }
+
     override fun removeAllFilters() {
         _positionFilterList.update { emptyList() }
         _agentFilterList.update { emptyList() }
         _contractFilterOption.update { ContractFilterOption.NONE }
+        _withNotesCheckedFlow.update { false }
     }
 
 }
