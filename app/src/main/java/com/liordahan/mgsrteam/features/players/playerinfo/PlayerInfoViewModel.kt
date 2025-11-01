@@ -3,17 +3,19 @@ package com.liordahan.mgsrteam.features.players.playerinfo
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.liordahan.mgsrteam.features.login.models.Account
+import com.liordahan.mgsrteam.features.players.models.NotesModel
 import com.liordahan.mgsrteam.features.players.models.Player
 import com.liordahan.mgsrteam.firebase.FirebaseHandler
 import com.liordahan.mgsrteam.helpers.Result
 import com.liordahan.mgsrteam.helpers.UiResult
 import com.liordahan.mgsrteam.transfermarket.PlayersUpdate
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withContext
 
 
 abstract class IPlayerInfoViewModel : ViewModel() {
@@ -25,8 +27,9 @@ abstract class IPlayerInfoViewModel : ViewModel() {
     abstract fun deletePlayer(playerTmProfile: String, onDeleteSuccessfully: () -> Unit)
     abstract fun updatePlayerNumber(number: String)
     abstract fun updateAgentNumber(number: String)
-    abstract fun updateNotes(notes: String)
+    abstract fun updateNotes(notes: NotesModel)
     abstract fun refreshPlayerInfo()
+    abstract fun onDeleteNoteClicked(note: NotesModel)
 }
 
 
@@ -49,9 +52,8 @@ class PlayerInfoViewModel(
     override val showDeletePlayerIconFlow: StateFlow<Boolean>
         get() = _showDeletePlayerIconFlow
 
-
     init {
-        viewModelScope.launch  {
+        viewModelScope.launch {
             val snapshot =
                 firebaseHandler.firebaseStore.collection(firebaseHandler.accountsTable).get()
                     .await()
@@ -132,19 +134,25 @@ class PlayerInfoViewModel(
         }
     }
 
-    override fun updateNotes(notes: String) {
-        _playerInfoFlow.update {
-            it?.copy(notes = notes)
-        }
+    override fun updateNotes(notes: NotesModel) {
+        viewModelScope.launch {
+            _playerInfoFlow.update { player ->
+                val currentNotes = player?.noteList?.toMutableList() ?: mutableListOf()
+                val createdBy = getCurrentUserName()
+                val note = notes.copy(createBy = createdBy)
+                currentNotes.add(note)
+                player?.copy(noteList = currentNotes)
+            }
 
-        _playerInfoFlow.value?.let { player ->
-            viewModelScope.launch {
-                val doc = firebaseHandler.firebaseStore
-                    .collection(firebaseHandler.playersTable)
-                    .whereEqualTo("tmProfile", player.tmProfile)
-                    .get().await().documents.firstOrNull()
+            _playerInfoFlow.value?.let { player ->
+                viewModelScope.launch {
+                    val doc = firebaseHandler.firebaseStore
+                        .collection(firebaseHandler.playersTable)
+                        .whereEqualTo("tmProfile", player.tmProfile)
+                        .get().await().documents.firstOrNull()
 
-                doc?.reference?.set(player)?.await()
+                    doc?.reference?.set(player)?.await()
+                }
             }
         }
     }
@@ -166,7 +174,21 @@ class PlayerInfoViewModel(
                         age = response.data?.age,
                         contractExpired = response.data?.contract,
                         positions = response.data?.positions,
-                        currentClub = response.data?.currentClub
+                        currentClub = response.data?.currentClub,
+                        noteList = if (player.notes?.isNotEmpty() == true) {
+                            val currentNotes = player.noteList?.toMutableList() ?: mutableListOf()
+                            currentNotes.add(
+                                NotesModel(
+                                    notes = player.notes,
+                                    createBy = player.agentInChargeName,
+                                    createdAt = System.currentTimeMillis()
+                                )
+                            )
+                            currentNotes
+                        } else {
+                            player.noteList
+                        },
+                        notes = ""
                     )
 
                     val doc = firebaseHandler.firebaseStore
@@ -182,6 +204,45 @@ class PlayerInfoViewModel(
             } catch (e: Exception) {
                 _updatePlayerFlow.update { UiResult.Failed(cause = "Update failed\nTry again later") }
             }
+        }
+    }
+
+    override fun onDeleteNoteClicked(note: NotesModel) {
+        viewModelScope.launch {
+            _playerInfoFlow.update { player ->
+                val currentNotes = player?.noteList?.toMutableList() ?: mutableListOf()
+                currentNotes.remove(note)
+                player?.copy(noteList = currentNotes)
+            }
+
+            _playerInfoFlow.value?.let { player ->
+                viewModelScope.launch {
+                    val doc = firebaseHandler.firebaseStore
+                        .collection(firebaseHandler.playersTable)
+                        .whereEqualTo("tmProfile", player.tmProfile)
+                        .get().await().documents.firstOrNull()
+
+                    doc?.reference?.set(player)?.await()
+                }
+            }
+        }
+    }
+
+    private suspend fun getCurrentUserName(): String? = withContext(Dispatchers.IO) {
+        try {
+            val snapshot =
+                firebaseHandler.firebaseStore.collection(firebaseHandler.accountsTable).get()
+                    .await()
+            val accounts = snapshot.toObjects(Account::class.java)
+            val account = accounts.firstOrNull {
+                it.email?.equals(
+                    firebaseHandler.firebaseAuth.currentUser?.email,
+                    ignoreCase = true
+                ) == true
+            }
+            account?.name
+        } catch (e: Exception) {
+            null
         }
     }
 }

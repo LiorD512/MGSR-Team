@@ -25,7 +25,8 @@ data class Player(
     val playerPhoneNumber: String? = null,
     val agentPhoneNumber: String? = null,
     val playerAdditionalInfoModel: PlayerAdditionalInfoModel? = null,
-    val notes: String? = null
+    val notes: String? = null,
+    val noteList: List<NotesModel>? = null
 ) : Parcelable
 
 fun Player.getPlayerPhoneNumber(): String? {
@@ -53,4 +54,11 @@ data class Club(
 data class PlayerAdditionalInfoModel(
     val playerNumber: String? = null,
     val agentNumber: String? = null,
+) : Parcelable
+
+@Parcelize
+data class NotesModel(
+    val notes: String? = null,
+    val createBy: String? = null,
+    val createdAt: Long? = 0,
 ) : Parcelable

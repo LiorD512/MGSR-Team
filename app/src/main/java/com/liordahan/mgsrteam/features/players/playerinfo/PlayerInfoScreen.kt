@@ -8,18 +8,18 @@ import android.net.Uri
 import androidx.activity.compose.ManagedActivityResultLauncher
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -40,10 +40,8 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.PhoneIphone
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Whatsapp
-import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -67,14 +65,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -88,7 +84,6 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.zIndex
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
@@ -99,12 +94,11 @@ import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.liordahan.mgsrteam.R
 import com.liordahan.mgsrteam.features.add.getPhoneNumberFromContactUri
+import com.liordahan.mgsrteam.features.players.models.NotesModel
 import com.liordahan.mgsrteam.features.players.models.Player
 import com.liordahan.mgsrteam.features.players.models.getAgentPhoneNumber
 import com.liordahan.mgsrteam.features.players.models.getPlayerPhoneNumber
 import com.liordahan.mgsrteam.helpers.UiResult
-import com.liordahan.mgsrteam.ui.components.AppTextField
-import com.liordahan.mgsrteam.ui.components.PrimaryButtonNewDesign
 import com.liordahan.mgsrteam.ui.components.setSearchViewTextFieldColors
 import com.liordahan.mgsrteam.ui.theme.contentDefault
 import com.liordahan.mgsrteam.ui.theme.dividerColor
@@ -114,7 +108,6 @@ import com.liordahan.mgsrteam.ui.utils.boldTextStyle
 import com.liordahan.mgsrteam.ui.utils.clickWithNoRipple
 import com.liordahan.mgsrteam.ui.utils.regularTextStyle
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
 import java.text.SimpleDateFormat
@@ -450,7 +443,9 @@ fun PlayerInfoScreen(
 
                     InfoRow(
                         "Contract Expiry Date",
-                        getContractStatus(playerToPresent?.contractExpired?.replace("/", ".") ?: ""),
+                        getContractStatus(
+                            playerToPresent?.contractExpired?.replace("/", ".") ?: ""
+                        ),
                         icon = {
                             Icon(
                                 modifier = Modifier.size(24.dp),
@@ -578,12 +573,19 @@ fun PlayerInfoScreen(
                                 .clickWithNoRipple {
                                     keyboardController?.hide()
                                     focusManager.clearFocus()
-                                    viewModel.updateNotes(notesInputText.text)
+                                    viewModel.updateNotes(
+                                        NotesModel(
+                                            notes = notesInputText.text,
+                                            createBy = "",
+                                            createdAt = Date().time
+                                        )
+                                    )
+                                    notesInputText = TextFieldValue(text = "")
                                 },
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                text = "Save",
+                                text = "Add note",
                                 style = boldTextStyle(Color.White, 12.sp),
                             )
                         }
@@ -598,7 +600,7 @@ fun PlayerInfoScreen(
                         },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(150.dp),
+                            .height(80.dp),
                         textStyle = regularTextStyle(contentDefault, 14.sp),
                         enabled = true,
                         keyboardOptions = KeyboardOptions(
@@ -619,7 +621,7 @@ fun PlayerInfoScreen(
                                 interactionSource = remember { MutableInteractionSource() },
                                 placeholder = {
                                     Text(
-                                        "Write your notes here...",
+                                        "Add a new note...",
                                         style = regularTextStyle(contentDefault, 14.sp),
                                         maxLines = 1
                                     )
@@ -627,12 +629,82 @@ fun PlayerInfoScreen(
                             )
                         }
                     )
+
+                    Spacer(Modifier.height(16.dp))
+
+                    val notesList = playerToPresent?.noteList?.sortedByDescending { it.createdAt }
+
+                    notesList?.forEach {
+                        NoteItemUi(it, onDeleteNoteClicked = { viewModel.onDeleteNoteClicked(it) })
+                        Spacer(Modifier.height(4.dp))
+                    }
+
                 }
             }
         }
     }
 }
 
+@Composable
+fun NoteItemUi(
+    notesModel: NotesModel,
+    onDeleteNoteClicked: () -> Unit
+) {
+    var isInEditMode by remember { mutableStateOf(false) }
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp)
+            .shadow(2.dp, RoundedCornerShape(4.dp))
+            .clickWithNoRipple { isInEditMode = !isInEditMode },
+        shape = RoundedCornerShape(4.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(4.dp)
+    ) {
+        val sdf = SimpleDateFormat("dd.MM.yyyy", Locale.getDefault())
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            horizontalAlignment = Alignment.End
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+
+                AnimatedVisibility(isInEditMode, modifier = Modifier.padding(end = 8.dp)) {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = null,
+                        modifier = Modifier.clickWithNoRipple {
+                            onDeleteNoteClicked()
+                            isInEditMode = false
+                        }
+                    )
+                }
+
+
+                Text(
+                    text = sdf.format(notesModel.createdAt),
+                    style = boldTextStyle(contentDefault, 12.sp),
+                    modifier = Modifier.weight(1f)
+                )
+                Text(
+                    text = notesModel.createBy ?: "",
+                    style = boldTextStyle(contentDefault, 12.sp)
+                )
+            }
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = notesModel.notes ?: "",
+                style = regularTextStyle(contentDefault, 14.sp),
+                textAlign = TextAlign.Start
+            )
+        }
+    }
+}
 
 @Composable
 fun WhatsAppIcon(phoneNumber: String) {

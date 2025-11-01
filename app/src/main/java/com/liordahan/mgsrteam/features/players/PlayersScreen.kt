@@ -217,7 +217,7 @@ fun PlayerCard(player: Player, modifier: Modifier = Modifier, onPlayerClicked: (
         contentDefault
     }
 
-    val isNoteExist by remember(player) { mutableStateOf(!player.notes.isNullOrEmpty()) }
+    val isNoteExist by remember(player) { mutableStateOf(!player.notes.isNullOrEmpty() || !player.noteList.isNullOrEmpty()) }
 
     Card(
         modifier = modifier
