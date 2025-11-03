@@ -193,10 +193,7 @@ class PlayersViewModel(
             }
 
             ContractFilterOption.CONTRACT_FINISHING -> this?.filter {
-                !it.currentClub?.clubName.equals(
-                    "Without club",
-                    true
-                ) && isContractExpiringWithin6Months(it.contractExpired)
+                isContractExpiringWithin6Months(it.contractExpired)
             }
         }
     }
@@ -215,7 +212,8 @@ class PlayersViewModel(
     fun parseDateFlexible(dateStr: String): LocalDate? {
         val formatters = listOf(
             DateTimeFormatter.ofPattern("dd.MM.yyyy", Locale.ENGLISH),
-            DateTimeFormatter.ofPattern("MMM d, yyyy", Locale.ENGLISH)
+            DateTimeFormatter.ofPattern("MMM d, yyyy", Locale.ENGLISH),
+            DateTimeFormatter.ofPattern("dd/MM/yyyy", Locale.ENGLISH)
         )
 
         for (formatter in formatters) {
@@ -233,7 +231,7 @@ class PlayersViewModel(
         if (contractExpired.isNullOrEmpty() || contractExpired == "-") return false
         val expiredDate = parseDateFlexible(contractExpired) ?: return false
         val sixMonthsFromNow = LocalDate.now().plusMonths(6)
-        return !expiredDate.isAfter(sixMonthsFromNow)
+        return expiredDate.isBefore(sixMonthsFromNow)
     }
 
     private fun getAllPlayers() {
