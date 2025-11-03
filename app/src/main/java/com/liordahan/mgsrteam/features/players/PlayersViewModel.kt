@@ -75,7 +75,15 @@ class PlayersViewModel(
                             ?.filterPlayersByContractOption(it.contractFilterOption)
                             ?.filterByNotes(it.isWithNotesChecked)
                             ?.filterPlayersByName(it.searchQuery)
-                            ?.sortedByDescending { it.createdAt } ?: emptyList(),
+                            ?.sortedWith(compareByDescending<Player> { it.noteList?.isNotEmpty() ?: false }
+                                .thenByDescending { player ->
+                                    // Sort by date of last note (descending)
+                                    player.noteList?.maxOfOrNull { note ->
+                                        note.createdAt ?: Long.MIN_VALUE
+                                    } ?: Long.MIN_VALUE
+                                }
+                                .thenByDescending { it.notes?.isNotEmpty() ?: false }
+                                .thenByDescending { it.createdAt }) ?: emptyList(),
                     )
                 }
             }
