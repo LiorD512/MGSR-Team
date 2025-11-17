@@ -11,9 +11,11 @@ import com.liordahan.mgsrteam.features.players.filters.usecases.IGetAgentFilterF
 import com.liordahan.mgsrteam.features.players.filters.usecases.IGetContractFilterOptionUseCase
 import com.liordahan.mgsrteam.features.players.filters.usecases.IGetIsWithNotesCheckedUseCase
 import com.liordahan.mgsrteam.features.players.filters.usecases.IGetPositionFilterFlowUseCase
+import com.liordahan.mgsrteam.features.players.filters.usecases.IGetSortOptionUseCase
 import com.liordahan.mgsrteam.features.players.filters.usecases.IRemoveAllFiltersUseCase
 import com.liordahan.mgsrteam.features.players.models.Player
 import com.liordahan.mgsrteam.features.players.models.Position
+import com.liordahan.mgsrteam.features.players.sort.SortOption
 import com.liordahan.mgsrteam.firebase.FirebaseHandler
 import com.liordahan.mgsrteam.helpers.Result
 import com.liordahan.mgsrteam.transfermarket.PlayersUpdate
@@ -38,6 +40,7 @@ data class PlayersUiState(
     val selectedPositions: List<Position> = emptyList(),
     val selectedAccounts: List<Account> = emptyList(),
     val contractFilterOption: ContractFilterOption = ContractFilterOption.NONE,
+    val sortOption: SortOption = SortOption.DEFAULT,
     val isWithNotesChecked: Boolean = false,
     val searchQuery: String = ""
 )
@@ -56,7 +59,8 @@ class PlayersViewModel(
     private val getAgentFilterFlowUseCase: IGetAgentFilterFlowUseCase,
     private val getContractFilterOptionUseCase: IGetContractFilterOptionUseCase,
     private val getIsWithNotesCheckedUseCase: IGetIsWithNotesCheckedUseCase,
-    private val removeAllFiltersUseCase: IRemoveAllFiltersUseCase
+    private val removeAllFiltersUseCase: IRemoveAllFiltersUseCase,
+    private val getSortOptionUseCase: IGetSortOptionUseCase
 ) : IPlayersViewModel() {
 
     private val _playersFlow = MutableStateFlow(PlayersUiState())
@@ -74,8 +78,10 @@ class PlayersViewModel(
                             ?.filterPlayersByAgent(it.selectedAccounts)
                             ?.filterPlayersByContractOption(it.contractFilterOption)
                             ?.filterByNotes(it.isWithNotesChecked)
-                            ?.filterPlayersByName(it.searchQuery)
-                            ?.sortedWith(compareByDescending<Player> { it.noteList?.isNotEmpty() ?: false }
+                            ?.filterPlayersByNameOrByNote(it.searchQuery)
+                            ?.sortedWith(compareByDescending<Player> {
+                                it.noteList?.isNotEmpty() ?: false
+                            }
                                 .thenByDescending { player ->
                                     // Sort by date of last note (descending)
                                     player.noteList?.maxOfOrNull { note ->
@@ -83,7 +89,8 @@ class PlayersViewModel(
                                     } ?: Long.MIN_VALUE
                                 }
                                 .thenByDescending { it.notes?.isNotEmpty() ?: false }
-                                .thenByDescending { it.createdAt }) ?: emptyList(),
+                                .thenByDescending { it.createdAt })
+                            ?.sortBySortOption(it.sortOption) ?: emptyList(),
                     )
                 }
             }
@@ -113,6 +120,12 @@ class PlayersViewModel(
                     _playersFlow.update { it.copy(isWithNotesChecked = isChecked) }
                 }
             }
+
+            launch {
+                getSortOptionUseCase().collect { sortOption ->
+                    _playersFlow.update { it.copy(sortOption = sortOption) }
+                }
+            }
         }
     }
 
@@ -139,12 +152,15 @@ class PlayersViewModel(
         }
     }
 
-    private fun List<Player>?.filterPlayersByName(name: String): List<Player>? {
-        return if (name.isBlank()) {
+    private fun List<Player>?.filterPlayersByNameOrByNote(query: String): List<Player>? {
+        return if (query.isBlank()) {
             this
         } else {
             this?.filter {
-                it.fullName?.contains(name, ignoreCase = true) == true
+                it.fullName?.contains(
+                    query,
+                    ignoreCase = true
+                ) == true || it.noteList?.any { it.notes?.contains(query, true) == true } == true
             }
         }
     }
@@ -198,12 +214,32 @@ class PlayersViewModel(
         }
     }
 
+    private fun List<Player>?.sortBySortOption(sortOption: SortOption): List<Player>? {
+        return when (sortOption) {
+            SortOption.DEFAULT -> this
+            SortOption.NEWEST -> this?.sortedByDescending { it.createdAt }
+            SortOption.MARKET_VALUE -> this?.sortedByDescending { it.marketValue?.toNumericValue() }
+            SortOption.NAME -> this?.sortedBy { it.fullName }
+            SortOption.AGE -> this?.sortedBy { it.age }
+        }
+    }
+
+    private fun String.toNumericValue(): Double {
+        val lower = this.lowercase().trim().removePrefix("€").replace(",", "")
+
+        return when {
+            lower.endsWith("k") -> lower.removeSuffix("k").toDoubleOrNull()?.times(1_000) ?: 0.0
+            lower.endsWith("m") -> lower.removeSuffix("m").toDoubleOrNull()?.times(1_000_000) ?: 0.0
+            else -> lower.toDoubleOrNull() ?: 0.0
+        }
+    }
+
     private fun List<Player>?.filterByNotes(isChecked: Boolean): List<Player>? {
         return if (!isChecked) {
             this
         } else {
             this?.filter { player ->
-                !player.notes.isNullOrEmpty()
+                !player.noteList.isNullOrEmpty()
             }
         }
     }

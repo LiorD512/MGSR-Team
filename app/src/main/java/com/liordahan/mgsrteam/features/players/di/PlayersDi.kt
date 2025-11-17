@@ -6,30 +6,40 @@ import com.liordahan.mgsrteam.features.players.filters.IPlayerListFiltersViewMod
 import com.liordahan.mgsrteam.features.players.filters.PlayerListFiltersViewModel
 import com.liordahan.mgsrteam.features.players.filters.repository.FilterRepository
 import com.liordahan.mgsrteam.features.players.filters.repository.IFilterRepository
+import com.liordahan.mgsrteam.features.players.filters.repository.ISortRepository
+import com.liordahan.mgsrteam.features.players.filters.repository.SortRepository
 import com.liordahan.mgsrteam.features.players.filters.usecases.AddAgentFilterUseCase
 import com.liordahan.mgsrteam.features.players.filters.usecases.AddPositionFilterUseCase
 import com.liordahan.mgsrteam.features.players.filters.usecases.GetAgentFilterFlowUseCase
 import com.liordahan.mgsrteam.features.players.filters.usecases.GetContractFilterOptionUseCase
 import com.liordahan.mgsrteam.features.players.filters.usecases.GetIsWithNotesCheckedUseCase
 import com.liordahan.mgsrteam.features.players.filters.usecases.GetPositionFilterFlowUseCase
+import com.liordahan.mgsrteam.features.players.filters.usecases.GetSortOptionUseCase
 import com.liordahan.mgsrteam.features.players.filters.usecases.IAddAgentFilterUseCase
 import com.liordahan.mgsrteam.features.players.filters.usecases.IAddPositionFilterUseCase
 import com.liordahan.mgsrteam.features.players.filters.usecases.IGetAgentFilterFlowUseCase
 import com.liordahan.mgsrteam.features.players.filters.usecases.IGetContractFilterOptionUseCase
 import com.liordahan.mgsrteam.features.players.filters.usecases.IGetIsWithNotesCheckedUseCase
 import com.liordahan.mgsrteam.features.players.filters.usecases.IGetPositionFilterFlowUseCase
+import com.liordahan.mgsrteam.features.players.filters.usecases.IGetSortOptionUseCase
 import com.liordahan.mgsrteam.features.players.filters.usecases.IRemoveAgentFilterUseCase
 import com.liordahan.mgsrteam.features.players.filters.usecases.IRemoveAllFiltersUseCase
 import com.liordahan.mgsrteam.features.players.filters.usecases.IRemovePositionFilterUseCase
+import com.liordahan.mgsrteam.features.players.filters.usecases.IResetSortOptionUseCase
 import com.liordahan.mgsrteam.features.players.filters.usecases.ISetContractFilterOptionUseCase
 import com.liordahan.mgsrteam.features.players.filters.usecases.ISetIsWithNotesCheckedUseCase
+import com.liordahan.mgsrteam.features.players.filters.usecases.ISetSortOptionUseCase
 import com.liordahan.mgsrteam.features.players.filters.usecases.RemoveAgentFilterUseCase
 import com.liordahan.mgsrteam.features.players.filters.usecases.RemoveAllFiltersUseCase
 import com.liordahan.mgsrteam.features.players.filters.usecases.RemovePositionFilterUseCase
+import com.liordahan.mgsrteam.features.players.filters.usecases.ResetSortOptionUseCase
 import com.liordahan.mgsrteam.features.players.filters.usecases.SetContractFilterOptionUseCase
 import com.liordahan.mgsrteam.features.players.filters.usecases.SetIsWithNotesCheckedUseCase
+import com.liordahan.mgsrteam.features.players.filters.usecases.SetSortOptionUseCase
 import com.liordahan.mgsrteam.features.players.playerinfo.IPlayerInfoViewModel
 import com.liordahan.mgsrteam.features.players.playerinfo.PlayerInfoViewModel
+import com.liordahan.mgsrteam.features.players.sort.IPlayerListSortBottomSheetViewModel
+import com.liordahan.mgsrteam.features.players.sort.PlayerListSortBottomSheetViewModel
 import com.liordahan.mgsrteam.transfermarket.PlayersUpdate
 import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.bind
@@ -43,7 +53,11 @@ val playersModule = module {
         FilterRepository()
     } bind IFilterRepository::class
 
-    viewModel<IPlayersViewModel> { PlayersViewModel(get(), get(), get(), get(), get(), get(), get()) }
+    single {
+        SortRepository()
+    } bind ISortRepository::class
+
+    viewModel<IPlayersViewModel> { PlayersViewModel(get(), get(), get(), get(), get(), get(), get(), get()) }
     viewModel<IPlayerInfoViewModel> { PlayerInfoViewModel(get(), get()) }
     viewModel<IPlayerListFiltersViewModel> {
         PlayerListFiltersViewModel(
@@ -56,6 +70,10 @@ val playersModule = module {
             get(),
             get()
         )
+    }
+
+    viewModel<IPlayerListSortBottomSheetViewModel> {
+        PlayerListSortBottomSheetViewModel(get(), get())
     }
 
     factory<IAddPositionFilterUseCase> {
@@ -102,6 +120,24 @@ val playersModule = module {
 
     factory<IGetContractFilterOptionUseCase> {
         GetContractFilterOptionUseCase(
+            get()
+        )
+    }
+
+    factory<ISetSortOptionUseCase> {
+        SetSortOptionUseCase(
+            get()
+        )
+    }
+
+    factory<IGetSortOptionUseCase> {
+        GetSortOptionUseCase(
+            get()
+        )
+    }
+
+    factory<IResetSortOptionUseCase> {
+        ResetSortOptionUseCase(
             get()
         )
     }

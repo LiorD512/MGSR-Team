@@ -11,7 +11,7 @@
     <string name="login_button_password_hint">Your password</string>
 
 
-    <string name="players_screen_hint">Search player by name</string>
+    <string name="players_screen_hint">Search players or note by keyword</string>
     <string name="add_player_screen_hint">Search</string>
 
 

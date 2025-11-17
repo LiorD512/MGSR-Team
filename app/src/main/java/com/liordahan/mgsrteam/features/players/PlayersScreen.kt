@@ -78,6 +78,8 @@ import com.liordahan.mgsrteam.R
 import com.liordahan.mgsrteam.features.players.filters.ContractFilterOption
 import com.liordahan.mgsrteam.features.players.filters.PlayerListFilterBottomSheet
 import com.liordahan.mgsrteam.features.players.models.Player
+import com.liordahan.mgsrteam.features.players.sort.PlayerListSortBottomSheet
+import com.liordahan.mgsrteam.features.players.sort.SortOption
 import com.liordahan.mgsrteam.features.players.ui.EmptyState
 import com.liordahan.mgsrteam.navigation.Screens
 import com.liordahan.mgsrteam.ui.components.AppTextField
@@ -110,6 +112,8 @@ fun PlayersScreen(viewModel: IPlayersViewModel = koinViewModel(), navController:
 
     var showFilterBottomSheet by remember { mutableStateOf(false) }
 
+    var showSortBottomSheet by remember { mutableStateOf(false) }
+
     var showEmptyState by remember(playersState) { mutableStateOf(playersState.visibleList.isEmpty()) }
 
     val state = rememberLazyListState()
@@ -131,6 +135,7 @@ fun PlayersScreen(viewModel: IPlayersViewModel = koinViewModel(), navController:
                 searchPlayerInput = searchPlayerInput,
                 showSearchBar = true,
                 numberOfFilters = playersState.selectedPositions.size + playersState.selectedAccounts.size + if (playersState.contractFilterOption != ContractFilterOption.NONE) 1 else 0 + if (playersState.isWithNotesChecked) 1 else 0,
+                sortOption = playersState.sortOption,
                 onValueChange = {
                     searchPlayerInput = it
                     viewModel.updateSearchQuery(searchPlayerInput.text)
@@ -138,6 +143,9 @@ fun PlayersScreen(viewModel: IPlayersViewModel = koinViewModel(), navController:
                 onAddClicked = { navController.navigate(Screens.AddPlayerScreen.route) },
                 onFiltersButtonClicked = {
                     showFilterBottomSheet = true
+                },
+                onSortButtonClicked = {
+                    showSortBottomSheet = true
                 },
                 onTrailingIconClicked = {
                     searchPlayerInput = TextFieldValue("")
@@ -202,6 +210,13 @@ fun PlayersScreen(viewModel: IPlayersViewModel = koinViewModel(), navController:
                     selectedContractFilterOption = playersState.contractFilterOption,
                     isWithNotesChecked = playersState.isWithNotesChecked,
                     onDismiss = { showFilterBottomSheet = false })
+            }
+
+            if (showSortBottomSheet) {
+                PlayerListSortBottomSheet(
+                    modifier = Modifier.align(Alignment.BottomEnd),
+                    selectedSortOption = playersState.sortOption,
+                    onDismissRequest = { showSortBottomSheet = false })
             }
         }
     }
@@ -341,10 +356,12 @@ fun PlayersScreenAppBar(
     searchPlayerInput: TextFieldValue,
     showSearchBar: Boolean,
     numberOfFilters: Int = 0,
+    sortOption: SortOption,
     onValueChange: (TextFieldValue) -> Unit,
     onAddClicked: () -> Unit,
     onTrailingIconClicked: () -> Unit,
-    onFiltersButtonClicked: () -> Unit
+    onFiltersButtonClicked: () -> Unit,
+    onSortButtonClicked: () -> Unit
 ) {
 
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -378,6 +395,29 @@ fun PlayersScreenAppBar(
                             Box(
                                 modifier = Modifier
                                     .background(
+                                        if (sortOption != SortOption.DEFAULT) contentDefault else searchHeaderButtonBackground,
+                                        RoundedCornerShape(800.dp)
+                                    )
+                                    .padding(horizontal = 24.dp, vertical = 6.dp)
+                            ) {
+
+                                Text(
+                                    text = buildAnnotatedString {
+                                        append("Sort")
+                                    },
+                                    style = boldTextStyle(
+                                        if (sortOption != SortOption.DEFAULT) Color.White else contentDefault,
+                                        12.sp
+                                    ),
+                                    modifier = Modifier.clickWithNoRipple { onSortButtonClicked() }
+                                )
+                            }
+
+                            Spacer(Modifier.width(16.dp))
+
+                            Box(
+                                modifier = Modifier
+                                    .background(
                                         if (numberOfFilters > 0) contentDefault else searchHeaderButtonBackground,
                                         RoundedCornerShape(800.dp)
                                     )
@@ -398,6 +438,8 @@ fun PlayersScreenAppBar(
                                     modifier = Modifier.clickWithNoRipple { onFiltersButtonClicked() }
                                 )
                             }
+
+
 
                             Spacer(Modifier.width(16.dp))
 
