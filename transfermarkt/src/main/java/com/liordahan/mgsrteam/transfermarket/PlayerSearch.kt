@@ -1,16 +1,13 @@
 package com.liordahan.mgsrteam.transfermarket
 
 import android.os.Parcelable
-import com.liordahan.mgsrteam.features.players.models.Club
-import com.liordahan.mgsrteam.features.players.models.Player
-import com.liordahan.mgsrteam.helpers.Result
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.parcelize.Parcelize
 import org.jsoup.Jsoup
+import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
 import java.io.IOException
-import java.util.Date
 
 @Parcelize
 data class PlayerSearchModel(
@@ -28,41 +25,68 @@ data class PlayerSearchModel(
     val contractExpires: String? = null
 ) : Parcelable
 
+data class TransfermarktClub(
+    val clubName: String? = null,
+    val clubLogo: String? = null,
+    val clubTmProfile: String? = null,
+    val clubCountry: String? = null
+)
+
+data class TransfermarktPlayerDetails(
+    val tmProfile: String? = null,
+    val fullName: String? = null,
+    val height: String? = null,
+    val age: String? = null,
+    val positions: List<String?>? = null,
+    val profileImage: String? = null,
+    val nationality: String? = null,
+    val nationalityFlag: String? = null,
+    val contractExpires: String? = null,
+    val marketValue: String? = null,
+    val currentClub: TransfermarktClub? = null
+)
+
 class PlayerSearch {
 
-    suspend fun getSearchResults(query: String?): Result<List<PlayerSearchModel>> =
+    suspend fun getSearchResults(query: String?): TransfermarktResult<List<PlayerSearchModel>> =
         withContext(Dispatchers.IO) {
-            try {
-                val resultList = mutableListOf<PlayerSearchModel>()
+            val sanitizedQuery = query?.trim().orEmpty()
+            if (sanitizedQuery.isEmpty()) {
+                return@withContext TransfermarktResult.Success(emptyList())
+            }
 
+            try {
                 val searchUrl =
-                    "https://www.transfermarkt.com/schnellsuche/ergebnis/schnellsuche?query=$query"
-                val doc = Jsoup.connect(searchUrl).userAgent(userAgent).get()
+                    "$TRANSFERMARKT_BASE_URL/schnellsuche/ergebnis/schnellsuche?query=$sanitizedQuery"
+                val doc = fetchDocument(searchUrl)
 
                 val playerSection = doc.select("div.box").firstOrNull {
-                    it.select("h2.content-box-headline").text()
+                    it.select("h2.content-box-headline")
+                        .text()
                         .contains("players", ignoreCase = true)
-                } ?: return@withContext Result.Success(emptyList())
+                } ?: return@withContext TransfermarktResult.Success(emptyList())
 
-                val rows = playerSection.select("table.items tr.odd, tr.even")
+                val resultList = playerSection
+                    .select("table.items tr.odd, tr.even")
+                    .mapNotNull { row -> parsePlayerRow(row) }
 
-                rows.forEach { row ->
-                    parsePlayerRow(row)?.let { resultList.add(it) }
+                val filtered = resultList.filter { model ->
+                    model.tmProfile?.contains("profil", ignoreCase = true) == true
                 }
-
-                val filtered = resultList.filter {
-                    it.tmProfile?.contains(
-                        "profil",
-                        ignoreCase = true
-                    ) == true
-                }
-                Result.Success(filtered)
+                TransfermarktResult.Success(filtered)
             } catch (ex: IOException) {
-                Result.Failed(ex.localizedMessage)
+                TransfermarktResult.Failed(ex.localizedMessage)
             } catch (ex: Exception) {
-                Result.Failed(ex.localizedMessage)
+                TransfermarktResult.Failed(ex.localizedMessage)
             }
         }
+
+    private fun fetchDocument(url: String): Document {
+        return Jsoup.connect(url)
+            .userAgent(TRANSFERMARKT_USER_AGENT)
+            .timeout(TRANSFERMARKT_TIMEOUT_MS)
+            .get()
+    }
 
     private fun parsePlayerRow(element: Element): PlayerSearchModel? {
         val tdZentriert = element.select("td.zentriert")
@@ -70,7 +94,7 @@ class PlayerSearch {
         return try {
             val playerImage = element.select("img").attr("src").replace("small", "big")
             val playerName = element.select("img").attr("alt")
-            val playerTmProfile = "https://www.transfermarkt.com" +
+            val playerTmProfile = TRANSFERMARKT_BASE_URL +
                     element.select("td.hauptlink a").attr("href")
 
             val playerPosition = tdZentriert.getOrNull(0)?.text().orEmpty()
@@ -95,16 +119,15 @@ class PlayerSearch {
                 nationality = nationality
             )
         } catch (e: Exception) {
-            null // skip malformed row
+            null
         }
     }
 
-    suspend fun getPlayerBasicInfo(playerSearchModel: PlayerSearchModel): Player =
+    suspend fun getPlayerBasicInfo(playerSearchModel: PlayerSearchModel): TransfermarktPlayerDetails =
         withContext(Dispatchers.IO) {
             try {
-                val doc = Jsoup.connect(playerSearchModel.tmProfile ?: "")
-                    .userAgent(userAgent)
-                    .get()
+                val profileUrl = playerSearchModel.tmProfile.orEmpty()
+                val doc = fetchDocument(profileUrl)
 
                 val nationality =
                     doc.select("[itemprop=nationality] img").attr("title").ifEmpty { "Unknown" }
@@ -129,7 +152,7 @@ class PlayerSearch {
                 val clubName = doc.select("span.data-header__club").select("a").attr("title")
                 val clubLogo =
                     doc.select("div.data-header__box--big").select("img").attr("srcset")
-                        .substringBefore("1x").trim()//club profile photo
+                        .substringBefore("1x").trim()
                 val clubTmProfile =
                     "https://www.transfermarkt.com" + doc.select("span.data-header__club")
                         .select("a").attr("href")
@@ -138,7 +161,7 @@ class PlayerSearch {
                         .select("img").attr("title")
 
 
-                return@withContext Player(
+                return@withContext TransfermarktPlayerDetails(
                     tmProfile = playerSearchModel.tmProfile,
                     fullName = playerSearchModel.playerName,
                     marketValue = marketValue,
@@ -147,10 +170,9 @@ class PlayerSearch {
                     nationality = nationality,
                     age = playerSearchModel.playerAge,
                     height = height,
-                    contractExpired = contract,
+                    contractExpires = contract,
                     positions = positions,
-                    createdAt = Date().time,
-                    currentClub = Club(
+                    currentClub = TransfermarktClub(
                         clubName = clubName,
                         clubLogo = clubLogo,
                         clubTmProfile = clubTmProfile,
@@ -160,12 +182,12 @@ class PlayerSearch {
 
             } catch (ex: IOException) {
                 ex.printStackTrace()
-                throw ex // Let the caller handle the error
+                throw ex
             } catch (ex: Exception) {
                 ex.printStackTrace()
                 throw ex
             }
         }
 
-
 }
+

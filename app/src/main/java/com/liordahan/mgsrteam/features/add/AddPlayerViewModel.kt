@@ -5,9 +5,11 @@ import androidx.lifecycle.viewModelScope
 import com.liordahan.mgsrteam.features.login.models.Account
 import com.liordahan.mgsrteam.features.players.models.Player
 import com.liordahan.mgsrteam.firebase.FirebaseHandler
-import com.liordahan.mgsrteam.helpers.Result
+import com.liordahan.mgsrteam.features.players.models.Club
 import com.liordahan.mgsrteam.transfermarket.PlayerSearch
 import com.liordahan.mgsrteam.transfermarket.PlayerSearchModel
+import com.liordahan.mgsrteam.transfermarket.TransfermarktPlayerDetails
+import com.liordahan.mgsrteam.transfermarket.TransfermarktResult
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.delay
@@ -82,11 +84,11 @@ class AddPlayerViewModel(
             updateProgress(false)
         } else {
             when (val response = playerSearch.getSearchResults(query)) {
-                is Result.Failed -> {
+                is TransfermarktResult.Failed -> {
                     _playerSearchStateFlow.update { it.copy(playerSearchResults = emptyList()) }
                 }
 
-                is Result.Success -> {
+                is TransfermarktResult.Success -> {
                     _playerSearchStateFlow.update {
                         it.copy(playerSearchResults = response.data)
                     }
@@ -116,7 +118,28 @@ class AddPlayerViewModel(
 
     private fun getPlayerBasicInfo(playerSearchModel: PlayerSearchModel){
         viewModelScope.launch {
-            val playerToSave = playerSearch.getPlayerBasicInfo(playerSearchModel)
+            val details: TransfermarktPlayerDetails = playerSearch.getPlayerBasicInfo(playerSearchModel)
+            val playerToSave = Player(
+                tmProfile = details.tmProfile,
+                fullName = details.fullName,
+                height = details.height,
+                age = details.age,
+                positions = details.positions,
+                profileImage = details.profileImage,
+                nationality = details.nationality,
+                nationalityFlag = details.nationalityFlag,
+                contractExpired = details.contractExpires,
+                marketValue = details.marketValue,
+                currentClub = details.currentClub?.let {
+                    Club(
+                        clubName = it.clubName,
+                        clubLogo = it.clubLogo,
+                        clubTmProfile = it.clubTmProfile,
+                        clubCountry = it.clubCountry
+                    )
+                },
+                createdAt = System.currentTimeMillis()
+            )
             _selectedPlayerFlow.update { playerToSave }
             _playerSearchStateFlow.update { it.copy(showPlayerSelectedSearchProgress = false) }
         }

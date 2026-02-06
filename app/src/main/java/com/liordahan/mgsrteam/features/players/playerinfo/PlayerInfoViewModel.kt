@@ -6,9 +6,9 @@ import com.liordahan.mgsrteam.features.login.models.Account
 import com.liordahan.mgsrteam.features.players.models.NotesModel
 import com.liordahan.mgsrteam.features.players.models.Player
 import com.liordahan.mgsrteam.firebase.FirebaseHandler
-import com.liordahan.mgsrteam.helpers.Result
 import com.liordahan.mgsrteam.helpers.UiResult
 import com.liordahan.mgsrteam.transfermarket.PlayersUpdate
+import com.liordahan.mgsrteam.transfermarket.TransfermarktResult
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -165,7 +165,15 @@ class PlayerInfoViewModel(
 
             try {
                 val response = playersUpdate.updatePlayerByTmProfile(player.tmProfile)
-                if (response is Result.Success) {
+                if (response is TransfermarktResult.Success) {
+                    val club = response.data?.currentClub?.let {
+                        com.liordahan.mgsrteam.features.players.models.Club(
+                            clubName = it.clubName,
+                            clubLogo = it.clubLogo,
+                            clubTmProfile = it.clubTmProfile,
+                            clubCountry = it.clubCountry
+                        )
+                    }
                     val playerToUpdate = player.copy(
                         marketValue = response.data?.marketValue,
                         profileImage = response.data?.profileImage,
@@ -174,7 +182,7 @@ class PlayerInfoViewModel(
                         age = response.data?.age,
                         contractExpired = response.data?.contract,
                         positions = response.data?.positions,
-                        currentClub = response.data?.currentClub,
+                        currentClub = club,
                         noteList = if (player.notes?.isNotEmpty() == true) {
                             val currentNotes = player.noteList?.toMutableList() ?: mutableListOf()
                             currentNotes.add(
@@ -198,7 +206,7 @@ class PlayerInfoViewModel(
 
                     doc?.reference?.set(playerToUpdate)?.await()
                     _updatePlayerFlow.update { UiResult.Success("Update succeed") }
-                } else if (response is Result.Failed) {
+                } else if (response is TransfermarktResult.Failed) {
                     _updatePlayerFlow.update { UiResult.Failed(cause = "Update failed\nTry again later") }
                 }
             } catch (e: Exception) {

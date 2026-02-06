@@ -4,9 +4,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.liordahan.mgsrteam.features.players.models.Position
 import com.liordahan.mgsrteam.firebase.FirebaseHandler
-import com.liordahan.mgsrteam.helpers.Result
 import com.liordahan.mgsrteam.transfermarket.LatestReleases
 import com.liordahan.mgsrteam.transfermarket.LatestTransferModel
+import com.liordahan.mgsrteam.transfermarket.TransfermarktResult
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -102,8 +102,8 @@ class ReleasesViewModel(
         releaseRanges.forEach { range ->
             viewModelScope.launch {
                 when (val result = latestReleases.getLatestReleases(range.first, range.last)) {
-                    is Result.Success -> releaseFlowsMap[range]?.value = result.data.filterNotNull()
-                    is Result.Failed -> fetchFailedErrorFlow.update { it }
+                    is TransfermarktResult.Success -> releaseFlowsMap[range]?.value = result.data.filterNotNull()
+                    is TransfermarktResult.Failed -> fetchFailedErrorFlow.update { it }
                 }
                 fetchedCount.value += 1
             }

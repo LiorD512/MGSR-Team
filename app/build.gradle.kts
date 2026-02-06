@@ -84,4 +84,6 @@ dependencies {
     implementation(libs.coil.svg)
     implementation(libs.coil.gif)
     implementation(libs.coil.compose)
+
+    implementation(project(":transfermarkt"))
 }

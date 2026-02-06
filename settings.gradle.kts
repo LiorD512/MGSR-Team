@@ -21,4 +21,5 @@ dependencyResolutionManagement {
 
 rootProject.name = "MGSR Team"
 include(":app")
+include(":transfermarkt")
  

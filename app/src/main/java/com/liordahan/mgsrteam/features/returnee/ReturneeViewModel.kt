@@ -6,9 +6,9 @@ import com.liordahan.mgsrteam.features.players.models.Position
 import com.liordahan.mgsrteam.features.releases.ReleasesUiState
 import com.liordahan.mgsrteam.features.returnee.model.Leagues
 import com.liordahan.mgsrteam.firebase.FirebaseHandler
-import com.liordahan.mgsrteam.helpers.Result
 import com.liordahan.mgsrteam.transfermarket.LatestTransferModel
 import com.liordahan.mgsrteam.transfermarket.Returnees
+import com.liordahan.mgsrteam.transfermarket.TransfermarktResult
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
@@ -61,14 +61,14 @@ class ReturneeViewModel(
             _returneeFlow.update { it.copy(isLoading = true) }
 
             when (val result = returnees.fetchReturnees(leagueUrl)) {
-                is Result.Failed -> _returneeFlow.update {
+                is TransfermarktResult.Failed -> _returneeFlow.update {
                     it.copy(
                         returneeList = emptyList(),
                         isLoading = false
                     )
                 }
 
-                is Result.Success -> _returneeFlow.update {
+                is TransfermarktResult.Success -> _returneeFlow.update {
                     it.copy(
                         returneeList = result.data,
                         isLoading = false

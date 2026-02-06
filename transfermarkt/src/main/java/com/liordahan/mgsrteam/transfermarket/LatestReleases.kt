@@ -1,16 +1,20 @@
 package com.liordahan.mgsrteam.transfermarket
 
 import android.os.Parcelable
-import com.liordahan.mgsrteam.helpers.Result
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import kotlinx.parcelize.Parcelize
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 
-const val userAgent = "Mozilla/5.0 (Windows NT 6.3; Trident/7.0; rv:11.0) like Gecko"
-const val TIME_OUT = 30000
-const val queryParamTdZentriert = "td.zentriert"
+internal const val TRANSFERMARKT_BASE_URL: String = "https://www.transfermarkt.com"
+internal const val TRANSFERMARKT_USER_AGENT: String =
+    "Mozilla/5.0 (Windows NT 6.3; Trident/7.0; rv:11.0) like Gecko"
+internal const val TRANSFERMARKT_TIMEOUT_MS: Int = 30_000
+internal const val QUERY_PARAM_TD_ZENTRIERT: String = "td.zentriert"
 
 @Parcelize
 data class LatestTransferModel(
@@ -47,48 +51,58 @@ class LatestReleases {
         minValue: Int,
         maxValue: Int,
         maxRetries: Int = 3
-    ): Result<List<LatestTransferModel?>> =
-        withContext(Dispatchers.IO) {
-            var attempt = 0
-            var lastError: String? = null
+    ): TransfermarktResult<List<LatestTransferModel?>> = withContext(Dispatchers.IO) {
+        var attempt = 0
+        var lastError: String? = null
 
-            while (attempt < maxRetries) {
-                try {
-                    val allTransfers = mutableListOf<LatestTransferModel>()
-                    val firstPageUrl = buildUrl(minValue, maxValue, 1)
-                    val firstDoc = fetchDocument(firstPageUrl)
-                    val pageCount = getTotalPages(firstDoc)
+        while (attempt < maxRetries) {
+            try {
+                val firstPageUrl = buildUrl(minValue, maxValue, page = 1)
+                val firstDoc = fetchDocument(firstPageUrl)
+                val pageCount = getTotalPages(firstDoc)
 
-                    for (page in 1..pageCount) {
-                        val pageUrl = buildUrl(minValue, maxValue, page)
-                        val doc = fetchDocument(pageUrl)
-                        val transfers = parseTransferList(doc)
-                        allTransfers.addAll(transfers)
+                val allTransfers = mutableListOf<LatestTransferModel>()
+
+                // Parse first page synchronously to validate structure early
+                allTransfers += parseTransferList(firstDoc)
+
+                if (pageCount > 1) {
+                    // Fetch remaining pages in parallel for better throughput
+                    val otherTransfers = coroutineScope {
+                        (2..pageCount).map { page ->
+                            async {
+                                val pageUrl = buildUrl(minValue, maxValue, page)
+                                val doc = fetchDocument(pageUrl)
+                                parseTransferList(doc)
+                            }
+                        }.map { it.await() }.flatten()
                     }
+                    allTransfers += otherTransfers
+                }
 
-                    return@withContext Result.Success(allTransfers)
-                } catch (ex: Exception) {
-                    lastError = ex.localizedMessage
-                    attempt++
-                    if (attempt < maxRetries) {
-                        // Delay before retrying (optional)
-                        kotlinx.coroutines.delay(1000L * attempt)
-                    }
+                return@withContext TransfermarktResult.Success(allTransfers)
+            } catch (ex: Exception) {
+                lastError = ex.localizedMessage
+                attempt++
+                if (attempt < maxRetries) {
+                    // Simple linear backoff between retries
+                    delay(1_000L * attempt)
                 }
             }
-
-            Result.Failed("Failed after $maxRetries attempts. Last error: $lastError")
         }
 
+        TransfermarktResult.Failed("Failed after $maxRetries attempts. Last error: $lastError")
+    }
+
     private fun buildUrl(min: Int, max: Int, page: Int): String {
-        return "https://www.transfermarkt.com/transfers/neuestetransfers/statistik" +
+        return "$TRANSFERMARKT_BASE_URL/transfers/neuestetransfers/statistik" +
                 "?land_id=0&wettbewerb_id=alle&minMarktwert=$min&maxMarktwert=$max&plus=1&page=$page"
     }
 
     private fun fetchDocument(url: String): Document {
         return Jsoup.connect(url)
-            .userAgent(userAgent)
-            .timeout(TIME_OUT)
+            .userAgent(TRANSFERMARKT_USER_AGENT)
+            .timeout(TRANSFERMARKT_TIMEOUT_MS)
             .get()
     }
 
@@ -111,9 +125,9 @@ class LatestReleases {
                 val playerName = tables[0].select("img").attr("title")
                 val playerUrl = "https://www.transfermarkt.com${tables[0].select("a").attr("href")}"
                 val playerPosition = tables[0].select("tr")[1].text().replace("-", " ")
-                val playerAge = element.select(queryParamTdZentriert)[0].text()
+                val playerAge = element.select(QUERY_PARAM_TD_ZENTRIERT)[0].text()
 
-                val transferDate = element.select(queryParamTdZentriert)[2].text()
+                val transferDate = element.select(QUERY_PARAM_TD_ZENTRIERT)[2].text()
                 val marketValue = element.select("td.rechts")[0].text()
 
                 LatestTransferModel(
@@ -130,12 +144,11 @@ class LatestReleases {
                     marketValue
                 )
             } catch (e: Exception) {
-                null // Skip malformed rows
+                null
             }
         }
     }
 }
-
 
 fun String?.convertLongPositionNameToShort(): String {
     return when (this) {
@@ -152,9 +165,7 @@ fun String?.convertLongPositionNameToShort(): String {
         "Second Striker" -> "SS"
         "Left Midfield" -> "LM"
         "Right Midfield" -> "RM"
-
-        else -> {
-            this ?: ""
-        }
+        else -> this ?: ""
     }
 }
+
