@@ -35,38 +35,42 @@ class Returnees {
                             .timeout(15_000)
                             .get()
 
-                        val playerRows = transferDoc.select("table.items")[0].selectFirst("tbody").children()
+                        val playerRows = transferDoc.select("table.items")[0].selectFirst("tbody")?.children()
 
-                        val departureRows = transferDoc.select("table.items")[1].selectFirst("tbody").children()
-                        val departurePlayerUrls = departureRows.mapNotNull { row ->
+                        val departureRows = transferDoc.select("table.items")[1].selectFirst("tbody")?.children()
+                        val departurePlayerUrls = departureRows?.mapNotNull { row ->
                             row.selectFirst("td.hauptlink a")?.attr("href")?.let { "https://www.transfermarkt.com$it" }
-                        }.toSet()
+                        }?.toSet()
 
-                        for (playerRow in playerRows) {
-                            if (!playerRow.text().contains("End of loan", ignoreCase = true)) continue
+                        if (playerRows != null) {
+                            for (playerRow in playerRows) {
+                                if (!playerRow.text().contains("End of loan", ignoreCase = true)) continue
 
-                            val imageUrl = playerRow.selectFirst("img")?.attr("data-src")?.replace("tiny", "big")
-                            val nameElement = playerRow.selectFirst("td.hauptlink a")
-                            val playerName = nameElement?.text()
-                            val playerUrl = nameElement?.attr("href")?.let { "https://www.transfermarkt.com$it" }
+                                val imageUrl = playerRow.selectFirst("img")?.attr("data-src")?.replace("tiny", "big")
+                                val nameElement = playerRow.selectFirst("td.hauptlink a")
+                                val playerName = nameElement?.text()
+                                val playerUrl = nameElement?.attr("href")?.let { "https://www.transfermarkt.com$it" }
 
-                            val alsoInDeparture = playerUrl != null && playerUrl in departurePlayerUrls
+                                val alsoInDeparture = playerUrl != null && departurePlayerUrls?.contains(
+                                    playerUrl
+                                ) == true
 
 
-                            val tds = playerRow.select("td")
-                            val age = tds.getOrNull(5)?.text()
-                            val position = tds.getOrNull(4)?.text()?.replace("-", " ").convertLongPositionNameToShort()
+                                val tds = playerRow.select("td")
+                                val age = tds.getOrNull(5)?.text()
+                                val position = tds.getOrNull(4)?.text()?.replace("-", " ").convertLongPositionNameToShort()
 
-                            if (!alsoInDeparture){
-                                players.add(
-                                    LatestTransferModel(
-                                        playerImage = imageUrl,
-                                        playerName = playerName,
-                                        playerUrl = playerUrl,
-                                        playerAge = age,
-                                        playerPosition = position
+                                if (!alsoInDeparture){
+                                    players.add(
+                                        LatestTransferModel(
+                                            playerImage = imageUrl,
+                                            playerName = playerName,
+                                            playerUrl = playerUrl,
+                                            playerAge = age,
+                                            playerPosition = position
+                                        )
                                     )
-                                )
+                                }
                             }
                         }
 

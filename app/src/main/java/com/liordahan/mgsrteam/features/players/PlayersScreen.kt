@@ -379,7 +379,7 @@ fun PlayersScreenAppBar(
                 title = {
                     Column(
                         modifier = Modifier
-                            .fillMaxSize()
+                            .fillMaxWidth()
                             .padding(end = 12.dp),
                         verticalArrangement = Arrangement.Center
                     ) {

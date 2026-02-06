@@ -102,7 +102,7 @@ class PlayerSearch {
     suspend fun getPlayerBasicInfo(playerSearchModel: PlayerSearchModel): Player =
         withContext(Dispatchers.IO) {
             try {
-                val doc = Jsoup.connect(playerSearchModel.tmProfile)
+                val doc = Jsoup.connect(playerSearchModel.tmProfile ?: "")
                     .userAgent(userAgent)
                     .get()
 
