@@ -4,6 +4,7 @@
     <string name="nav_item_players">Players</string>
     <string name="nav_item_releases">Releases</string>
     <string name="nav_item_returnee">Returnee</string>
+    <string name="nav_item_contacts">Contacts</string>
 
 
     <string name="login_button_title">Login</string>
@@ -12,6 +13,7 @@
 
 
     <string name="players_screen_hint">Search players or note by keyword</string>
+    <string name="contacts_screen_search_hint">Search by name, club or country</string>
     <string name="add_player_screen_hint">Search</string>
 
 

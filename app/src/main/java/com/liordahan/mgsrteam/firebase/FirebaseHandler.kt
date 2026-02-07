@@ -22,6 +22,7 @@ class FirebaseHandler {
     val requestTable = "Requests"
     val youthPlayersTable = "YouthPlayers"
     val youthStatusTable = "YouthStatus"
+    val contactsTable = "Contacts"
 
     val mandateDir = "mandates"
     val passportDir = "passports"

@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Autorenew
+import androidx.compose.material.icons.filled.ContactPhone
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
@@ -37,7 +38,8 @@ data class NavigationItem(
 
 @Composable
 fun BottomNavigationUi(
-    navController: NavController
+    navController: NavController,
+    currentRoute: String? = null
 ) {
     val navigationItems = listOf(
         NavigationItem(
@@ -54,11 +56,20 @@ fun BottomNavigationUi(
             title = stringResource(R.string.nav_item_returnee),
             icon = Icons.Default.Autorenew,
             route = Screens.ReturneeScreen.route
+        ),
+        NavigationItem(
+            title = stringResource(R.string.nav_item_contacts),
+            icon = Icons.Default.ContactPhone,
+            route = Screens.ContactsScreen.route
         )
     )
-    val selectedNavigationIndex = rememberSaveable {
+    val selectedNavigationIndex = rememberSaveable(navigationItems.size) {
         mutableIntStateOf(0)
     }
+    val routeIndex = currentRoute?.let { route ->
+        navigationItems.indexOfFirst { it.route == route }.takeIf { it >= 0 }
+    }
+    val effectiveIndex = routeIndex ?: selectedNavigationIndex.intValue
 
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -71,7 +82,7 @@ fun BottomNavigationUi(
             tonalElevation = 0.dp // no extra shadow
         ) {
             navigationItems.forEachIndexed { index, navigationItem ->
-                val selected = index == selectedNavigationIndex.intValue
+                val selected = index == effectiveIndex
 
                 NavigationBarItem(
                     selected = selected,

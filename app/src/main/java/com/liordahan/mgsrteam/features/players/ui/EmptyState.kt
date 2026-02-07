@@ -28,6 +28,7 @@ import com.liordahan.mgsrteam.ui.utils.boldTextStyle
 fun EmptyState(
     text: String,
     showResetFiltersButton: Boolean = true,
+    optionalButtonText: String? = null,
     onResetFiltersClicked: () -> Unit
 ) {
 
@@ -59,7 +60,7 @@ fun EmptyState(
                 Spacer(modifier = Modifier.height(24.dp))
 
                 PrimaryButtonNewDesign(
-                    buttonText = "Reset Filters",
+                    buttonText = optionalButtonText ?: "Reset Filters",
                     isEnabled = true,
                     showProgress = false
                 ) { onResetFiltersClicked() }

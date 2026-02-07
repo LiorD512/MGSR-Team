@@ -17,6 +17,7 @@ import com.liordahan.mgsrteam.features.add.AddPlayerScreen
 import com.liordahan.mgsrteam.features.players.PlayersScreen
 import com.liordahan.mgsrteam.features.players.playerinfo.PlayerInfoScreen
 import com.liordahan.mgsrteam.features.releases.ReleasesScreen
+import com.liordahan.mgsrteam.features.contacts.ContactsScreen
 import com.liordahan.mgsrteam.features.returnee.ReturneeScreen
 import com.liordahan.mgsrteam.navigation.BottomNavigationUi
 import com.liordahan.mgsrteam.navigation.Screens
@@ -36,8 +37,8 @@ fun HomeScreen() {
 
         },
         bottomBar = {
-            if (currentRoute == Screens.PlayersScreen.route || currentRoute == Screens.ReleasesScreen.route || currentRoute == Screens.ReturneeScreen.route) {
-                BottomNavigationUi(navController)
+            if (currentRoute == Screens.PlayersScreen.route || currentRoute == Screens.ReleasesScreen.route || currentRoute == Screens.ReturneeScreen.route || currentRoute == Screens.ContactsScreen.route) {
+                BottomNavigationUi(navController = navController, currentRoute = currentRoute)
             }
         }
     ) {
@@ -65,6 +66,10 @@ fun HomeScreen() {
 
             composable(route = Screens.ReturneeScreen.route) {
                 ReturneeScreen()
+            }
+
+            composable(route = Screens.ContactsScreen.route) {
+                ContactsScreen()
             }
         }
     }
