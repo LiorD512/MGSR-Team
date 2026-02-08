@@ -3,8 +3,10 @@ package com.liordahan.mgsrteam.features.contacts.models
 enum class ContactRole(val displayName: String) {
     UNKNOWN("Unknown"),
     COACH("Coach"),
+    ASSISTANT_COACH("Assistant Coach"),
     SPORT_DIRECTOR("Sport Director"),
     CEO("CEO"),
+    BOARD_MEMBER("Board Member"),
     PRESIDENT("President"),
     SCOUT("Scout");
 

@@ -73,6 +73,8 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
@@ -85,6 +87,7 @@ import com.liordahan.mgsrteam.transfermarket.ClubSearch
 import com.liordahan.mgsrteam.transfermarket.ClubSearchModel
 import com.liordahan.mgsrteam.transfermarket.TransfermarktResult
 import com.liordahan.mgsrteam.R
+import com.liordahan.mgsrteam.features.players.playerinfo.WhatsAppIcon
 import com.liordahan.mgsrteam.ui.components.AppTextField
 import com.liordahan.mgsrteam.ui.theme.contentDefault
 import com.liordahan.mgsrteam.ui.theme.dividerColor
@@ -215,7 +218,8 @@ private fun buildContactsListGroupedByCountry(contacts: List<Contact>): List<Con
     val otherLabel = "Other"
     val grouped = contacts
         .groupBy { it.clubCountry?.takeIf { c -> c.isNotBlank() } ?: otherLabel }
-    val sortedCountries = grouped.keys.sortedBy { if (it == otherLabel) "\uFFFF" else it.lowercase() }
+    val sortedCountries =
+        grouped.keys.sortedBy { if (it == otherLabel) "\uFFFF" else it.lowercase() }
     return sortedCountries.flatMap { country ->
         val list = grouped[country]!!.sortedBy { it.clubName?.lowercase() ?: "" }
         val flagUrl = list.firstOrNull()?.clubCountryFlag
@@ -248,8 +252,8 @@ fun ContactsScreen(
         if (searchQuery.isBlank()) state.contacts
         else state.contacts.filter { contact ->
             contact.name?.contains(searchQuery, ignoreCase = true) == true ||
-                contact.clubName?.contains(searchQuery, ignoreCase = true) == true ||
-                contact.clubCountry?.contains(searchQuery, ignoreCase = true) == true
+                    contact.clubName?.contains(searchQuery, ignoreCase = true) == true ||
+                    contact.clubCountry?.contains(searchQuery, ignoreCase = true) == true
         }
     }
 
@@ -385,8 +389,7 @@ fun ContactsScreen(
                                         editingContact = item.contact
                                         showAddEditSheet = true
                                     },
-                                    onDelete = { contactToDelete = item.contact },
-                                    onWhatsApp = { openWhatsApp(context, item.contact.phoneNumber) }
+                                    onDelete = { contactToDelete = item.contact }
                                 )
                             }
                         }
@@ -495,15 +498,18 @@ private fun CountrySectionHeader(
             .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        countryFlagUrl?.let { url ->
+        if (countryFlagUrl?.isNotEmpty() == true) {
+
             AsyncImage(
-                model = url,
+                model = countryFlagUrl,
                 contentDescription = null,
                 modifier = Modifier.size(width = 40.dp, height = 20.dp),
                 contentScale = ContentScale.Fit
             )
+
             Spacer(Modifier.width(4.dp))
         }
+
         Text(
             text = country,
             style = boldTextStyle(contentDefault, 14.sp)
@@ -515,8 +521,7 @@ private fun CountrySectionHeader(
 private fun ContactCard(
     contact: Contact,
     onEdit: () -> Unit,
-    onDelete: () -> Unit,
-    onWhatsApp: () -> Unit
+    onDelete: () -> Unit
 ) {
     Card(
         modifier = Modifier
@@ -555,7 +560,13 @@ private fun ContactCard(
                             },
                             style = regularTextStyle(contentDefault, 12.sp)
                         )
+                    } else {
+                        Text(
+                            text = "Without club",
+                            style = regularTextStyle(contentDefault, 12.sp)
+                        )
                     }
+
                     contact.phoneNumber?.takeIf { it.isNotBlank() }?.let { phone ->
                         Text(
                             text = phone,
@@ -563,13 +574,11 @@ private fun ContactCard(
                         )
                     }
                 }
-                IconButton(onClick = onWhatsApp) {
-                    Icon(
-                        Icons.Default.Message,
-                        contentDescription = "WhatsApp",
-                        tint = contentDefault
-                    )
-                }
+
+                WhatsAppIcon(contact.phoneNumber ?: "")
+
+                Spacer(Modifier.width(4.dp))
+
                 IconButton(onClick = onEdit) {
                     Icon(
                         Icons.Default.Edit,
@@ -646,13 +655,18 @@ private fun AddEditContactBottomSheet(
         mutableStateOf(initialContact?.roleEnum ?: ContactRole.UNKNOWN)
     }
 
+    val containerSize = LocalWindowInfo.current.containerSize
+    val density = LocalDensity.current.density
+    val screenHeight = containerSize.height.dp / density
+
     ModalBottomSheet(
         sheetState = sheetState,
+        modifier = modifier.height(screenHeight * 0.75f),
         onDismissRequest = onDismiss,
-        modifier = modifier,
         shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
         containerColor = Color.White,
-        tonalElevation = 8.dp
+        tonalElevation = 8.dp,
+        dragHandle = null
     ) {
         Column(
             modifier = Modifier
@@ -724,6 +738,7 @@ private fun AddEditContactBottomSheet(
                 )
                 ExposedDropdownMenu(
                     expanded = expandedRole,
+                    containerColor = Color.White,
                     onDismissRequest = { expandedRole = false }
                 ) {
                     ContactRole.entries.forEach { role ->
