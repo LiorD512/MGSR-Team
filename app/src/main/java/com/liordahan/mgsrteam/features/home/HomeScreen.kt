@@ -55,7 +55,14 @@ fun HomeScreen(
 
         },
         bottomBar = {
-            if (currentRoute in listOf(Screens.PlayersScreen.route, Screens.ReleasesScreen.route, Screens.ReturneeScreen.route, Screens.ContactsScreen.route, Screens.ShortlistScreen.route)) {
+            if (currentRoute in listOf(
+                    Screens.PlayersScreen.route,
+                    Screens.ReleasesScreen.route,
+                    Screens.ReturneeScreen.route,
+                    Screens.ContactsScreen.route,
+                    Screens.ShortlistScreen.route
+                )
+            ) {
                 BottomNavigationUi(navController = navController, currentRoute = currentRoute)
             }
         }
