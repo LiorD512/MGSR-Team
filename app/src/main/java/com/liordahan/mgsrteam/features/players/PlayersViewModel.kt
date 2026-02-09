@@ -26,6 +26,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
+import java.nio.charset.StandardCharsets
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeParseException
@@ -35,6 +36,7 @@ import java.util.Locale
 data class PlayersUiState(
     val playersList: List<Player> = emptyList(),
     val visibleList: List<Player> = emptyList(),
+    val expiringSoonPlayers: List<Player> = emptyList(),
     val showPageLoader: Boolean = false,
     val showRefreshButton: Boolean = false,
     val selectedPositions: List<Position> = emptyList(),
@@ -50,6 +52,7 @@ abstract class IPlayersViewModel : ViewModel() {
     abstract suspend fun getCurrentUserName(): String?
     abstract fun updateSearchQuery(query: String)
     abstract fun removeAllFilters()
+    abstract suspend fun exportRosterCsv(): Result<ByteArray>
 }
 
 class PlayersViewModel(
@@ -72,25 +75,29 @@ class PlayersViewModel(
         viewModelScope.launch {
             _playersFlow.collect {
                 _playersFlow.update {
-                    it.copy(
-                        visibleList = it.playersList
-                            .filterPlayersByPosition(it.selectedPositions)
-                            ?.filterPlayersByAgent(it.selectedAccounts)
-                            ?.filterPlayersByContractOption(it.contractFilterOption)
-                            ?.filterByNotes(it.isWithNotesChecked)
-                            ?.filterPlayersByNameOrByNote(it.searchQuery)
-                            ?.sortedWith(compareByDescending<Player> {
-                                it.noteList?.isNotEmpty() ?: false
+                    val visible = it.playersList
+                        .filterPlayersByPosition(it.selectedPositions)
+                        ?.filterPlayersByAgent(it.selectedAccounts)
+                        ?.filterPlayersByContractOption(it.contractFilterOption)
+                        ?.filterByNotes(it.isWithNotesChecked)
+                        ?.filterPlayersByNameOrByNote(it.searchQuery)
+                        ?.sortedWith(compareByDescending<Player> {
+                            it.noteList?.isNotEmpty() ?: false
+                        }
+                            .thenByDescending { player ->
+                                player.noteList?.maxOfOrNull { note ->
+                                    note.createdAt ?: Long.MIN_VALUE
+                                } ?: Long.MIN_VALUE
                             }
-                                .thenByDescending { player ->
-                                    // Sort by date of last note (descending)
-                                    player.noteList?.maxOfOrNull { note ->
-                                        note.createdAt ?: Long.MIN_VALUE
-                                    } ?: Long.MIN_VALUE
-                                }
-                                .thenByDescending { it.notes?.isNotEmpty() ?: false }
-                                .thenByDescending { it.createdAt })
-                            ?.sortBySortOption(it.sortOption) ?: emptyList(),
+                            .thenByDescending { it.notes?.isNotEmpty() ?: false }
+                            .thenByDescending { it.createdAt })
+                        ?.sortBySortOption(it.sortOption) ?: emptyList()
+                    val expiringSoon = it.playersList.filter { player ->
+                        isContractExpiringWithinMonths(player.contractExpired, 5)
+                    }
+                    it.copy(
+                        visibleList = visible,
+                        expiringSoonPlayers = expiringSoon
                     )
                 }
             }
@@ -175,6 +182,28 @@ class PlayersViewModel(
         removeAllFiltersUseCase()
     }
 
+    override suspend fun exportRosterCsv(): Result<ByteArray> {
+        return try {
+            val list = _playersFlow.value.playersList
+            val header = "Name,Age,Position,Club,Market Value,Contract,Nationality,Agent"
+            val rows = list.map { p ->
+                listOf(
+                    p.fullName.orEmpty().replace("\"", "\"\""),
+                    p.age.orEmpty(),
+                    (p.positions?.joinToString("; ") ?: "").replace("\"", "\"\""),
+                    (p.currentClub?.clubName ?: "").replace("\"", "\"\""),
+                    p.marketValue.orEmpty(),
+                    p.contractExpired.orEmpty(),
+                    p.nationality.orEmpty().replace("\"", "\"\""),
+                    p.agentInChargeName.orEmpty().replace("\"", "\"\"")
+                ).joinToString(",") { if (it.contains(",") || it.contains("\"")) "\"$it\"" else it }
+            }
+            val csv = (listOf(header) + rows).joinToString("\n")
+            Result.Success(csv.toByteArray(StandardCharsets.UTF_8))
+        } catch (e: Exception) {
+            Result.Failed(e.message)
+        }
+    }
 
     private fun List<Player>?.filterPlayersByPosition(positions: List<Position>): List<Player>? {
         return if (positions.isEmpty()) {
@@ -264,10 +293,18 @@ class PlayersViewModel(
     fun isContractExpiringWithin6Months(
         contractExpired: String?
     ): Boolean {
+        return isContractExpiringWithinMonths(contractExpired, 6)
+    }
+
+    fun isContractExpiringWithinMonths(
+        contractExpired: String?,
+        months: Int
+    ): Boolean {
         if (contractExpired.isNullOrEmpty() || contractExpired == "-") return false
-        val expiredDate = parseDateFlexible(contractExpired) ?: return false
-        val sixMonthsFromNow = LocalDate.now().plusMonths(6)
-        return expiredDate.isBefore(sixMonthsFromNow)
+        val expiryDate = parseDateFlexible(contractExpired) ?: return false
+        val now = LocalDate.now()
+        val threshold = now.plusMonths(months.toLong())
+        return !expiryDate.isBefore(now) && !expiryDate.isAfter(threshold)
     }
 
     private fun getAllPlayers() {

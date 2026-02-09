@@ -25,6 +25,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Note
+import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material3.Card
@@ -68,6 +70,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.content.Intent
 import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.constraintlayout.compose.Dimension
 import androidx.core.app.ActivityCompat
@@ -78,6 +81,7 @@ import com.liordahan.mgsrteam.R
 import com.liordahan.mgsrteam.features.players.filters.ContractFilterOption
 import com.liordahan.mgsrteam.features.players.filters.PlayerListFilterBottomSheet
 import com.liordahan.mgsrteam.features.players.models.Player
+import com.liordahan.mgsrteam.analytics.AnalyticsHelper
 import com.liordahan.mgsrteam.features.players.sort.PlayerListSortBottomSheet
 import com.liordahan.mgsrteam.features.players.sort.SortOption
 import com.liordahan.mgsrteam.features.players.ui.EmptyState
@@ -92,6 +96,7 @@ import com.liordahan.mgsrteam.ui.utils.ProgressIndicator
 import com.liordahan.mgsrteam.ui.utils.boldTextStyle
 import com.liordahan.mgsrteam.ui.utils.clickWithNoRipple
 import com.liordahan.mgsrteam.ui.utils.regularTextStyle
+import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -99,8 +104,8 @@ import org.koin.androidx.compose.koinViewModel
 fun PlayersScreen(viewModel: IPlayersViewModel = koinViewModel(), navController: NavController) {
 
     val context = LocalContext.current
-    val playersState by viewModel.playersFlow.collectAsStateWithLifecycle()
     val coroutineScope = rememberCoroutineScope()
+    val playersState by viewModel.playersFlow.collectAsStateWithLifecycle()
 
     var userName by remember {
         mutableStateOf("")
@@ -140,7 +145,7 @@ fun PlayersScreen(viewModel: IPlayersViewModel = koinViewModel(), navController:
                     searchPlayerInput = it
                     viewModel.updateSearchQuery(searchPlayerInput.text)
                 },
-                onAddClicked = { navController.navigate(Screens.AddPlayerScreen.route) },
+                onAddClicked = { navController.navigate("${Screens.AddPlayerScreen.route}/") },
                 onFiltersButtonClicked = {
                     showFilterBottomSheet = true
                 },
@@ -187,8 +192,22 @@ fun PlayersScreen(viewModel: IPlayersViewModel = koinViewModel(), navController:
                         start = 12.dp,
                         end = 12.dp
                     )
-
                 ) {
+
+                    if (playersState.expiringSoonPlayers.isNotEmpty()) {
+                        item {
+                            ContractExpiringSoonCard(
+                                players = playersState.expiringSoonPlayers,
+                                onPlayerClick = { player ->
+                                    val encodedId = Uri.encode(player.tmProfile)
+                                    navController.navigate("${Screens.PlayerInfoScreen.route}/$encodedId")
+                                }
+                            )
+                        }
+                        item {
+                            Spacer(modifier = Modifier.padding(vertical = 8.dp))
+                        }
+                    }
 
                     items(playersState.visibleList) { player ->
                         PlayerCard(
@@ -222,6 +241,74 @@ fun PlayersScreen(viewModel: IPlayersViewModel = koinViewModel(), navController:
     }
 }
 
+@Composable
+fun ContractExpiringSoonCard(
+    players: List<Player>,
+    onPlayerClick: (Player) -> Unit
+) {
+    if (players.isEmpty()) return
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(4.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.CalendarMonth,
+                    contentDescription = null,
+                    tint = contentDefault,
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Contracts expiring in 5 months (${players.size})",
+                    style = boldTextStyle(contentDefault, 16.sp)
+                )
+            }
+            Spacer(modifier = Modifier.padding(vertical = 12.dp))
+            players.take(5).forEach { player ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickWithNoRipple { onPlayerClick(player) }
+                        .padding(vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    AsyncImage(
+                        model = player.profileImage,
+                        contentDescription = null,
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(CircleShape),
+                        contentScale = ContentScale.Crop
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = player.fullName ?: "--",
+                            style = boldTextStyle(contentDefault, 14.sp),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Text(
+                            text = "Expires: ${player.contractExpired ?: "--"}",
+                            style = regularTextStyle(contentDisabled, 12.sp)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
 
 @Composable
 fun PlayerCard(player: Player, modifier: Modifier = Modifier, onPlayerClicked: (Player) -> Unit) {

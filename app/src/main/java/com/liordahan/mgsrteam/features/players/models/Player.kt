@@ -26,7 +26,15 @@ data class Player(
     val agentPhoneNumber: String? = null,
     val playerAdditionalInfoModel: PlayerAdditionalInfoModel? = null,
     val notes: String? = null,
-    val noteList: List<NotesModel>? = null
+    val noteList: List<NotesModel>? = null,
+    val marketValueHistory: List<MarketValueEntry>? = null,
+    val linkedContactId: String? = null
+) : Parcelable
+
+@Parcelize
+data class MarketValueEntry(
+    val value: String? = null,
+    val date: Long? = null
 ) : Parcelable
 
 fun Player.getPlayerPhoneNumber(): String? {

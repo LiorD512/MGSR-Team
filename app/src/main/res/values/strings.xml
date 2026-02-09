@@ -5,6 +5,7 @@
     <string name="nav_item_releases">Releases</string>
     <string name="nav_item_returnee">Returnee</string>
     <string name="nav_item_contacts">Contacts</string>
+    <string name="nav_item_shortlist">Shortlist</string>
 
 
     <string name="login_button_title">Login</string>
@@ -18,4 +19,13 @@
 
 
     <string name="account_not_allowed">Account not allowed</string>
+
+    <string name="notification_channel_name">MGSR Team Alerts</string>
+    <string name="notification_channel_description">Contract reminders, new releases and agency updates</string>
+    <string name="notification_channel_contract_reminder">Contract reminders</string>
+    <string name="notification_contract_reminder_title">Contract expiring soon</string>
+    <string name="notification_contract_reminder_body">%d player(s) have contracts expiring in the next 5 months</string>
+    <string name="notification_channel_without_club">Without club alerts</string>
+    <string name="notification_without_club_title">Player(s) without club</string>
+    <string name="notification_without_club_body">%d player(s) became without club</string>
 </resources>

@@ -5,6 +5,7 @@
     <string name="nav_item_releases">שחרורים</string>
     <string name="nav_item_returnee">חזרו מהשאלה</string>
     <string name="nav_item_contacts">אנשי קשר</string>
+    <string name="nav_item_shortlist">רשימת מעקב</string>
 
     <string name="login_button_title">התחברות</string>
     <string name="login_button_email_hint">הקלד כתובת מייל</string>
@@ -15,4 +16,13 @@
     <string name="add_player_screen_hint">חיפוש</string>
 
     <string name="account_not_allowed">חשבון לא מורשה</string>
+
+    <string name="notification_channel_name">התראות MGSR Team</string>
+    <string name="notification_channel_description">תזכורות חוזים, שחרורים ועדכוני סוכנות</string>
+    <string name="notification_channel_contract_reminder">תזכורות חוזים</string>
+    <string name="notification_contract_reminder_title">חוזה מסתיים בקרוב</string>
+    <string name="notification_contract_reminder_body">ל-%d שחקנים חוזה שמסתיים ב-5 החודשים הקרובים</string>
+    <string name="notification_channel_without_club">התראות שחקנים ללא מועדון</string>
+    <string name="notification_without_club_title">שחקן/ים ללא מועדון</string>
+    <string name="notification_without_club_body">%d שחקנים הפכו ללא מועדון</string>
 </resources>

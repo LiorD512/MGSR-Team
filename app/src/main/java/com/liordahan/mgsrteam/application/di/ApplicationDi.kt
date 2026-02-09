@@ -7,6 +7,7 @@ import com.liordahan.mgsrteam.features.players.di.playersModule
 import com.liordahan.mgsrteam.features.releases.di.releasesModule
 import com.liordahan.mgsrteam.features.contacts.di.contactsModule
 import com.liordahan.mgsrteam.features.returnee.di.returneeModule
+import com.liordahan.mgsrteam.features.shortlist.di.shortlistModule
 
 val applicationModules = listOf(
     mainModule,
@@ -16,5 +17,6 @@ val applicationModules = listOf(
     releasesModule,
     addPlayerModule,
     returneeModule,
-    contactsModule
+    contactsModule,
+    shortlistModule
 )

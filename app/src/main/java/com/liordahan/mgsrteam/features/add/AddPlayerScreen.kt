@@ -96,8 +96,9 @@ import org.koin.androidx.compose.koinViewModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddPlayerScreen(
-    viewModel: IAddPlayerViewModel = koinViewModel(),
-    navController: NavController
+    navController: NavController,
+    initialTmProfileUrl: String = "",
+    viewModel: IAddPlayerViewModel = koinViewModel()
 ) {
 
     val lifecycle = LocalLifecycleOwner.current.lifecycle
@@ -126,6 +127,12 @@ fun AddPlayerScreen(
 
     var errorMessage by remember {
         mutableStateOf<String?>("")
+    }
+
+    LaunchedEffect(initialTmProfileUrl) {
+        if (initialTmProfileUrl.isNotBlank()) {
+            viewModel.loadPlayerByTmProfileUrl(Uri.decode(initialTmProfileUrl))
+        }
     }
 
     LaunchedEffect(Unit) {
@@ -333,18 +340,12 @@ fun SearchListItem(
 
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+/** Reusable form content for adding player contact (used in Add Player screen and in Releases "Add to agency" bottom sheet). */
 @Composable
-fun SavePlayerBottomSheetContent(
-    modifier: Modifier,
+fun AddPlayerContactFormContent(
     context: Context,
-    onDismissRequest: () -> Unit,
     viewModel: IAddPlayerViewModel
 ) {
-
-    val sheetState = rememberModalBottomSheetState(
-        skipPartiallyExpanded = true
-    )
 
     var playerNumber by remember { mutableStateOf("") }
     var agentNumber by remember { mutableStateOf("") }
@@ -391,6 +392,76 @@ fun SavePlayerBottomSheetContent(
         }
     )
 
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp, vertical = 16.dp)
+            .navigationBarsPadding(),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = "Add Player Contact",
+            style = boldTextStyle(contentDefault, 21.sp),
+        )
+
+        HorizontalDivider(
+            thickness = 1.dp,
+            color = dividerColor,
+            modifier = Modifier.padding(vertical = 16.dp)
+        )
+
+        ContactPickerRow(
+            label = "Player Number",
+            value = playerNumber,
+            onClick = {
+                launchPlayerContactPicker(
+                    context,
+                    playerNumberLauncher,
+                    playerNumberPermissionLauncher
+                )
+            }
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        ContactPickerRow(
+            label = "Agent Number",
+            value = agentNumber,
+            onClick = {
+                launchPlayerContactPicker(
+                    context,
+                    agentNumberLauncher,
+                    agentNumberPermissionLauncher
+                )
+            }
+        )
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        PrimaryButtonNewDesign(
+            buttonText = "Save Player",
+            isEnabled = true,
+            showProgress = false,
+            onButtonClicked = {
+                viewModel.onSavePlayerClicked()
+            }
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SavePlayerBottomSheetContent(
+    modifier: Modifier,
+    context: Context,
+    onDismissRequest: () -> Unit,
+    viewModel: IAddPlayerViewModel
+) {
+
+    val sheetState = rememberModalBottomSheetState(
+        skipPartiallyExpanded = true
+    )
+
     ModalBottomSheet(
         modifier = modifier,
         onDismissRequest = { onDismissRequest() },
@@ -399,64 +470,8 @@ fun SavePlayerBottomSheetContent(
         shape = RoundedCornerShape(16.dp),
         tonalElevation = 8.dp
     ) {
-
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 24.dp, vertical = 16.dp)
-                .navigationBarsPadding(),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(
-                text = "Add Player Contact",
-                style = boldTextStyle(contentDefault, 21.sp),
-            )
-
-            HorizontalDivider(
-                thickness = 1.dp,
-                color = dividerColor,
-                modifier = Modifier.padding(vertical = 16.dp)
-            )
-
-            ContactPickerRow(
-                label = "Player Number",
-                value = playerNumber,
-                onClick = {
-                    launchPlayerContactPicker(
-                        context,
-                        playerNumberLauncher,
-                        playerNumberPermissionLauncher
-                    )
-                }
-            )
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            ContactPickerRow(
-                label = "Agent Number",
-                value = agentNumber,
-                onClick = {
-                    launchPlayerContactPicker(
-                        context,
-                        agentNumberLauncher,
-                        agentNumberPermissionLauncher
-                    )
-                }
-            )
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            PrimaryButtonNewDesign(
-                buttonText = "Save Player",
-                isEnabled = true,
-                showProgress = false,
-                onButtonClicked = {
-                    viewModel.onSavePlayerClicked()
-                }
-            )
-        }
+        AddPlayerContactFormContent(context = context, viewModel = viewModel)
     }
-
 }
 
 
@@ -570,7 +585,7 @@ fun AddPlayerTopBar(
                 title = {
                     Column(
                         modifier = Modifier
-                            .fillMaxSize()
+                            .fillMaxWidth()
                             .padding(end = 12.dp),
                         verticalArrangement = Arrangement.Center
                     ) {

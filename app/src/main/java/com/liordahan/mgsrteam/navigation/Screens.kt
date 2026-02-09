@@ -10,6 +10,11 @@ sealed class Screens(val route: String) {
     data object PlayerInfoScreen : Screens(ScreenName.PLAYER_INFO)
     data object ReturneeScreen : Screens(ScreenName.RETURNEE)
     data object ContactsScreen : Screens(ScreenName.CONTACTS)
+    data object ShortlistScreen : Screens(ScreenName.SHORTLIST)
+
+    companion object {
+        fun addPlayerWithTmProfileRoute(tmProfileUrl: String) = "${ScreenName.ADD_PLAYER}/$tmProfileUrl"
+    }
 }
 
 object ScreenName {
@@ -21,4 +26,5 @@ object ScreenName {
     const val PLAYER_INFO = "player_info"
     const val RETURNEE = "returnee"
     const val CONTACTS = "contacts"
+    const val SHORTLIST = "shortlist"
 }

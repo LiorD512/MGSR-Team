@@ -6,6 +6,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Autorenew
 import androidx.compose.material.icons.filled.ContactPhone
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
@@ -61,6 +62,11 @@ fun BottomNavigationUi(
             title = stringResource(R.string.nav_item_contacts),
             icon = Icons.Default.ContactPhone,
             route = Screens.ContactsScreen.route
+        ),
+        NavigationItem(
+            title = stringResource(R.string.nav_item_shortlist),
+            icon = Icons.Default.List,
+            route = Screens.ShortlistScreen.route
         )
     )
     val selectedNavigationIndex = rememberSaveable(navigationItems.size) {

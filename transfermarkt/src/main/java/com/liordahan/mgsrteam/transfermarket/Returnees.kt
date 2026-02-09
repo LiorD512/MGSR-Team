@@ -1,5 +1,6 @@
 package com.liordahan.mgsrteam.transfermarket
 
+import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -8,6 +9,8 @@ import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
 
+private const val TAG = "Returnees"
+
 class Returnees {
 
     suspend fun fetchReturnees(leagueUrl: String): TransfermarktResult<List<LatestTransferModel>> =
@@ -15,18 +18,22 @@ class Returnees {
             try {
                 val leagueDocument = fetchDocument(leagueUrl)
                 val teamTransferUrls = extractTeamTransferUrls(leagueDocument)
+                Log.d(TAG, "League $leagueUrl -> found ${teamTransferUrls.size} team URLs")
 
                 val players = coroutineScope {
                     teamTransferUrls.map { teamUrl ->
                         async {
                             runCatching { scrapeTeamReturnees(teamUrl) }
+                                .onFailure { Log.w(TAG, "Team scrape failed for $teamUrl: ${it.message}") }
                                 .getOrElse { emptyList() }
                         }
                     }.map { it.await() }.flatten()
                 }
 
+                Log.d(TAG, "League $leagueUrl -> total ${players.size} returnee players")
                 TransfermarktResult.Success(players)
             } catch (e: Exception) {
+                Log.e(TAG, "League fetch failed: $leagueUrl -> ${e.message}")
                 TransfermarktResult.Failed(e.localizedMessage)
             }
         }
@@ -47,24 +54,36 @@ class Returnees {
 
                 if (!teamRelativeUrl.contains("/startseite/verein/")) return@mapNotNull null
 
-                TRANSFERMARKT_BASE_URL +
-                        teamRelativeUrl.replace("/startseite/", "/transfers/") +
-                        "/saison_id"
+                // Build the transfer page URL:
+                // 1. Replace /startseite/ with /transfers/
+                // 2. Strip any existing /saison_id/XXXX suffix to avoid duplication
+                val transferPath = teamRelativeUrl
+                    .replace("/startseite/", "/transfers/")
+                    .replace(Regex("/saison_id/\\d+"), "")
+
+                TRANSFERMARKT_BASE_URL + transferPath
             }
     }
 
     private fun scrapeTeamReturnees(transferUrl: String): List<LatestTransferModel> {
         val transferDoc = fetchDocument(transferUrl)
 
-        val playerRows = transferDoc
-            .select("table.items")
+        val allTables = transferDoc.select("table.items")
+        Log.d(TAG, "Team $transferUrl -> found ${allTables.size} table.items")
+
+        val playerRows = allTables
             .getOrNull(0)
             ?.selectFirst("tbody")
             ?.children()
-            ?: return emptyList()
 
-        val departureRows = transferDoc
-            .select("table.items")
+        if (playerRows == null) {
+            Log.d(TAG, "Team $transferUrl -> no arrival rows found")
+            return emptyList()
+        }
+
+        Log.d(TAG, "Team $transferUrl -> ${playerRows.size} arrival rows")
+
+        val departureRows = allTables
             .getOrNull(1)
             ?.selectFirst("tbody")
             ?.children()
@@ -78,16 +97,28 @@ class Returnees {
             ?.toSet()
             ?: emptySet()
 
-        return playerRows.mapNotNull { playerRow ->
+        val returnees = playerRows.mapNotNull { playerRow ->
             parseReturneeRow(playerRow, departurePlayerUrls)
         }
+
+        if (returnees.isNotEmpty()) {
+            Log.d(TAG, "Team $transferUrl -> ${returnees.size} returnees after filtering")
+        }
+
+        return returnees
     }
 
     private fun parseReturneeRow(
         playerRow: Element,
         departurePlayerUrls: Set<String>
     ): LatestTransferModel? {
-        if (!playerRow.text().contains("End of loan", ignoreCase = true)) return null
+        val rowText = playerRow.text()
+        // Match both "End of loan" and "end of loan" / "Loan return" variants
+        val isLoanReturn = rowText.contains("End of loan", ignoreCase = true)
+                || rowText.contains("Loan return", ignoreCase = true)
+                || rowText.contains("end of loan", ignoreCase = true)
+
+        if (!isLoanReturn) return null
 
         val imageUrl = playerRow.selectFirst("img")
             ?.attr("data-src")

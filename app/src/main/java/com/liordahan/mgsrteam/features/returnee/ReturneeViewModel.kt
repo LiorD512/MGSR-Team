@@ -1,9 +1,9 @@
 package com.liordahan.mgsrteam.features.returnee
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.liordahan.mgsrteam.features.players.models.Position
-import com.liordahan.mgsrteam.features.releases.ReleasesUiState
 import com.liordahan.mgsrteam.features.returnee.model.Leagues
 import com.liordahan.mgsrteam.firebase.FirebaseHandler
 import com.liordahan.mgsrteam.transfermarket.LatestTransferModel
@@ -14,18 +14,23 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+private const val TAG = "ReturneeVM"
+
 data class ReturneeUiState(
     val returneeList: List<LatestTransferModel> = emptyList(),
     val visibleList: List<LatestTransferModel> = emptyList(),
     val positionList: List<Position> = emptyList(),
     val selectedPosition: Position? = null,
     val leaguesList: List<Leagues> = emptyList(),
-    val isLoading: Boolean = false
+    val isLoading: Boolean = false,
+    val loadedLeaguesCount: Int = 0,
+    val totalLeaguesCount: Int = 0
 )
 
 abstract class IReturneeViewModel : ViewModel() {
     abstract val returneeFlow: StateFlow<ReturneeUiState>
     abstract fun fetchAllReturnees(leagueUrl: String)
+    abstract fun fetchAllReturneesFromAllLeagues()
     abstract fun updateSelectedPosition(position: Position?)
 }
 
@@ -39,20 +44,30 @@ class ReturneeViewModel(
 
 
     init {
-
         getAllPositions()
+        val leagues = updateLeagues().sortedBy { it.leagueName }
+        _returneeFlow.update { it.copy(leaguesList = leagues, totalLeaguesCount = leagues.size) }
+    }
 
-        _returneeFlow.update { it.copy(leaguesList = updateLeagues().sortedBy { it.leagueName }) }
-
-        viewModelScope.launch {
-            _returneeFlow.collect {
-                _returneeFlow.update {
-                    it.copy(
-                        visibleList = it.returneeList.distinctBy { it.playerUrl }
-                            .filterPlayersByPosition(it.selectedPosition) ?: emptyList(),
-                    )
-                }
-            }
+    /**
+     * Single place to update returneeList + visibleList atomically.
+     * Always reads current selectedPosition from the state to filter correctly.
+     */
+    private fun updatePlayersState(
+        allPlayers: List<LatestTransferModel>,
+        isLoading: Boolean,
+        loadedCount: Int
+    ) {
+        _returneeFlow.update { current ->
+            val distinctPlayers = allPlayers.distinctBy { it.playerUrl }.sortedByPosition()
+            val filtered = distinctPlayers.filterPlayersByPosition(current.selectedPosition)
+                ?: emptyList()
+            current.copy(
+                returneeList = distinctPlayers,
+                visibleList = filtered,
+                isLoading = isLoading,
+                loadedLeaguesCount = loadedCount
+            )
         }
     }
 
@@ -61,25 +76,75 @@ class ReturneeViewModel(
             _returneeFlow.update { it.copy(isLoading = true) }
 
             when (val result = returnees.fetchReturnees(leagueUrl)) {
-                is TransfermarktResult.Failed -> _returneeFlow.update {
-                    it.copy(
-                        returneeList = emptyList(),
-                        isLoading = false
-                    )
+                is TransfermarktResult.Failed -> {
+                    _returneeFlow.update { it.copy(isLoading = false) }
                 }
-
-                is TransfermarktResult.Success -> _returneeFlow.update {
-                    it.copy(
-                        returneeList = result.data,
-                        isLoading = false
+                is TransfermarktResult.Success -> {
+                    val current = _returneeFlow.value.returneeList
+                    updatePlayersState(
+                        allPlayers = current + result.data,
+                        isLoading = false,
+                        loadedCount = _returneeFlow.value.loadedLeaguesCount
                     )
                 }
             }
         }
     }
 
+    override fun fetchAllReturneesFromAllLeagues() {
+        viewModelScope.launch {
+            val leagues = _returneeFlow.value.leaguesList
+            Log.d(TAG, "Starting fetch for ${leagues.size} leagues")
+
+            // Reset state
+            updatePlayersState(emptyList(), isLoading = true, loadedCount = 0)
+
+            // Accumulate all players across leagues
+            val allPlayers = mutableListOf<LatestTransferModel>()
+
+            // Fetch one league at a time. Each league call already fetches
+            // all its teams in parallel internally, so this is still reasonably fast.
+            // UI updates after every league so users see results appear immediately.
+            for ((index, league) in leagues.withIndex()) {
+                Log.d(TAG, "Fetching league ${index + 1}/${leagues.size}: ${league.leagueName}")
+
+                val players = when (val result = returnees.fetchReturnees(league.leagueUrl)) {
+                    is TransfermarktResult.Success -> {
+                        Log.d(TAG, "  -> Got ${result.data.size} players from ${league.leagueName}")
+                        result.data
+                    }
+                    is TransfermarktResult.Failed -> {
+                        Log.w(TAG, "  -> Failed: ${league.leagueName}")
+                        emptyList()
+                    }
+                }
+
+                if (players.isNotEmpty()) {
+                    allPlayers.addAll(players)
+                }
+
+                // Update UI after every league
+                val stillLoading = index < leagues.size - 1
+                updatePlayersState(
+                    allPlayers = allPlayers.toList(),
+                    isLoading = stillLoading,
+                    loadedCount = index + 1
+                )
+                Log.d(TAG, "  -> Total unique players so far: ${_returneeFlow.value.returneeList.size}, visible: ${_returneeFlow.value.visibleList.size}")
+            }
+
+            Log.d(TAG, "All leagues done. Final count: ${_returneeFlow.value.returneeList.size} players")
+        }
+    }
+
     override fun updateSelectedPosition(position: Position?) {
-        _returneeFlow.update { it.copy(selectedPosition = position) }
+        _returneeFlow.update { current ->
+            val filtered = current.returneeList.filterPlayersByPosition(position) ?: emptyList()
+            current.copy(
+                selectedPosition = position,
+                visibleList = filtered
+            )
+        }
     }
 
 
@@ -233,6 +298,13 @@ class ReturneeViewModel(
                 }
             }
     }
+}
+
+private fun List<LatestTransferModel>.sortedByPosition(): List<LatestTransferModel> {
+    return this.sortedWith(compareBy { player ->
+        // Sort by position name alphabetically, null positions go to the end
+        player.playerPosition ?: "zzz"
+    })
 }
 
 private fun List<LatestTransferModel>?.filterPlayersByPosition(position: Position?): List<LatestTransferModel>? {

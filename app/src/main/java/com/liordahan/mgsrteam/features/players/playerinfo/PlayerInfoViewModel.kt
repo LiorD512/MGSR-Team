@@ -3,15 +3,22 @@ package com.liordahan.mgsrteam.features.players.playerinfo
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.liordahan.mgsrteam.features.login.models.Account
+import com.liordahan.mgsrteam.features.players.models.MarketValueEntry
 import com.liordahan.mgsrteam.features.players.models.NotesModel
 import com.liordahan.mgsrteam.features.players.models.Player
+import com.liordahan.mgsrteam.features.players.playerinfo.documents.DocumentType
+import com.liordahan.mgsrteam.features.players.playerinfo.documents.PlayerDocument
+import com.liordahan.mgsrteam.features.players.playerinfo.documents.PlayerDocumentsRepository
 import com.liordahan.mgsrteam.firebase.FirebaseHandler
 import com.liordahan.mgsrteam.helpers.UiResult
 import com.liordahan.mgsrteam.transfermarket.PlayersUpdate
 import com.liordahan.mgsrteam.transfermarket.TransfermarktResult
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
@@ -23,6 +30,7 @@ abstract class IPlayerInfoViewModel : ViewModel() {
     abstract val showButtonProgress: StateFlow<Boolean>
     abstract val updatePlayerFlow: StateFlow<UiResult<String>>
     abstract val showDeletePlayerIconFlow: StateFlow<Boolean>
+    abstract val documentsFlow: Flow<List<PlayerDocument>>
     abstract fun getPlayerInfo(playerId: String)
     abstract fun deletePlayer(playerTmProfile: String, onDeleteSuccessfully: () -> Unit)
     abstract fun updatePlayerNumber(number: String)
@@ -30,12 +38,15 @@ abstract class IPlayerInfoViewModel : ViewModel() {
     abstract fun updateNotes(notes: NotesModel)
     abstract fun refreshPlayerInfo()
     abstract fun onDeleteNoteClicked(note: NotesModel)
+    abstract fun uploadDocument(type: DocumentType, name: String, bytes: ByteArray, expiresAt: Long?)
+    abstract fun deleteDocument(documentId: String)
 }
 
 
 class PlayerInfoViewModel(
     private val firebaseHandler: FirebaseHandler,
-    private val playersUpdate: PlayersUpdate
+    private val playersUpdate: PlayersUpdate,
+    private val documentsRepository: PlayerDocumentsRepository
 ) : IPlayerInfoViewModel() {
 
     private val _playerInfoFlow = MutableStateFlow<Player?>(null)
@@ -51,6 +62,12 @@ class PlayerInfoViewModel(
     private val _showDeletePlayerIconFlow = MutableStateFlow(false)
     override val showDeletePlayerIconFlow: StateFlow<Boolean>
         get() = _showDeletePlayerIconFlow
+
+    override val documentsFlow: Flow<List<PlayerDocument>> =
+        _playerInfoFlow.flatMapLatest { player ->
+            if (player?.tmProfile != null) documentsRepository.getDocumentsFlow(player.tmProfile)
+            else flowOf(emptyList())
+        }
 
     init {
         viewModelScope.launch {
@@ -174,15 +191,23 @@ class PlayerInfoViewModel(
                             clubCountry = it.clubCountry
                         )
                     }
+                    val newValue = response.data?.marketValue
+                    val marketValueHistory = if (newValue != null && newValue != player.marketValue) {
+                        val entry = MarketValueEntry(value = newValue, date = System.currentTimeMillis())
+                        (player.marketValueHistory?.toMutableList() ?: mutableListOf()).apply { add(entry) }.takeLast(24)
+                    } else {
+                        player.marketValueHistory
+                    }
                     val playerToUpdate = player.copy(
-                        marketValue = response.data?.marketValue,
-                        profileImage = response.data?.profileImage,
-                        nationalityFlag = response.data?.nationalityFlag,
-                        nationality = response.data?.citizenship,
-                        age = response.data?.age,
-                        contractExpired = response.data?.contract,
-                        positions = response.data?.positions,
-                        currentClub = club,
+                        marketValue = response.data?.marketValue ?: player.marketValue,
+                        profileImage = response.data?.profileImage ?: player.profileImage,
+                        nationalityFlag = response.data?.nationalityFlag ?: player.nationalityFlag,
+                        nationality = response.data?.citizenship ?: player.nationality,
+                        age = response.data?.age ?: player.age,
+                        contractExpired = response.data?.contract ?: player.contractExpired,
+                        positions = response.data?.positions ?: player.positions,
+                        currentClub = club ?: player.currentClub,
+                        marketValueHistory = marketValueHistory,
                         noteList = if (player.notes?.isNotEmpty() == true) {
                             val currentNotes = player.noteList?.toMutableList() ?: mutableListOf()
                             currentNotes.add(
@@ -233,6 +258,19 @@ class PlayerInfoViewModel(
                     doc?.reference?.set(player)?.await()
                 }
             }
+        }
+    }
+
+    override fun uploadDocument(type: DocumentType, name: String, bytes: ByteArray, expiresAt: Long?) {
+        viewModelScope.launch {
+            val tmProfile = _playerInfoFlow.value?.tmProfile ?: return@launch
+            documentsRepository.uploadDocument(tmProfile, type, name, bytes, expiresAt)
+        }
+    }
+
+    override fun deleteDocument(documentId: String) {
+        viewModelScope.launch {
+            documentsRepository.deleteDocument(documentId)
         }
     }
 

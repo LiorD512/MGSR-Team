@@ -2,6 +2,7 @@ package com.liordahan.mgsrteam.features.login
 
 import androidx.lifecycle.ViewModel
 import com.liordahan.mgsrteam.features.login.models.Account
+import com.liordahan.mgsrteam.firebase.FcmTokenManager
 import com.liordahan.mgsrteam.firebase.FirebaseHandler
 import com.liordahan.mgsrteam.helpers.UiResult
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -14,7 +15,8 @@ abstract class ILoginScreenViewModel : ViewModel() {
 }
 
 class LoginScreenViewModel(
-    private val firebaseHandler: FirebaseHandler
+    private val firebaseHandler: FirebaseHandler,
+    private val fcmTokenManager: FcmTokenManager
 ) : ILoginScreenViewModel() {
 
     private val _userLoginFlow = MutableStateFlow<UiResult<Account>>(UiResult.UnInitialized)
@@ -35,7 +37,8 @@ class LoginScreenViewModel(
                             ) == true
                         }
 
-                        if (accountToLogin != null){
+                        if (accountToLogin != null) {
+                            fcmTokenManager.registerTokenIfNeeded()
                             _userLoginFlow.update { UiResult.Success(accountToLogin) }
                         } else {
                             _userLoginFlow.update { UiResult.Failed("Your account is not allowed") }

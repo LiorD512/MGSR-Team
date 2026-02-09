@@ -22,10 +22,19 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.filled.BookmarkAdd
+import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarDuration
@@ -37,6 +46,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -62,8 +72,11 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
+import com.liordahan.mgsrteam.features.add.AddPlayerContactFormContent
+import com.liordahan.mgsrteam.features.add.IAddPlayerViewModel
 import com.liordahan.mgsrteam.features.players.models.Position
 import com.liordahan.mgsrteam.features.players.ui.EmptyState
+import com.liordahan.mgsrteam.features.shortlist.ShortlistRepository
 import com.liordahan.mgsrteam.features.players.ui.FilterStripUi
 import com.liordahan.mgsrteam.transfermarket.LatestTransferModel
 import com.liordahan.mgsrteam.ui.theme.buttonLoadingBg
@@ -73,14 +86,32 @@ import com.liordahan.mgsrteam.ui.utils.ProgressIndicator
 import com.liordahan.mgsrteam.ui.utils.boldTextStyle
 import com.liordahan.mgsrteam.ui.utils.clickWithNoRipple
 import com.liordahan.mgsrteam.ui.utils.regularTextStyle
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
+import org.koin.compose.koinInject
+import androidx.compose.runtime.rememberCoroutineScope
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ReleasesScreen(viewModel: IReleasesViewModel = koinViewModel()) {
+fun ReleasesScreen(
+    navController: NavController,
+    viewModel: IReleasesViewModel = koinViewModel(),
+    addPlayerViewModel: IAddPlayerViewModel = koinViewModel(),
+    shortlistRepository: ShortlistRepository = koinInject()
+) {
+
+    val scope = rememberCoroutineScope()
 
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val context = LocalContext.current
+
+    var showAddPlayerBottomSheet by remember { mutableStateOf(false) }
+    var addPlayerTmUrl by remember { mutableStateOf<String?>(null) }
+
+    val addPlayerState = addPlayerViewModel.playerSearchStateFlow.collectAsState()
+    val selectedPlayer by addPlayerViewModel.selectedPlayerFlow.collectAsState()
+    val isPlayerAdded by addPlayerViewModel.isPlayerAddedFlow.collectAsState()
 
     var showLoader by remember {
         mutableStateOf(true)
@@ -113,9 +144,46 @@ fun ReleasesScreen(viewModel: IReleasesViewModel = koinViewModel()) {
     val state = rememberLazyListState()
     val snackBarHostState = remember { SnackbarHostState() }
 
+    // Track shortlist status
+    val shortlistEntries by shortlistRepository.getShortlistFlow().collectAsState(initial = emptyList())
+    val shortlistUrls = remember(shortlistEntries) {
+        shortlistEntries.map { it.tmProfileUrl }.toSet()
+    }
+    var justAddedUrls by remember { mutableStateOf(setOf<String>()) }
 
     BackHandler {
         ActivityCompat.finishAffinity(context as Activity)
+    }
+
+    LaunchedEffect(showAddPlayerBottomSheet, addPlayerTmUrl) {
+        if (showAddPlayerBottomSheet && !addPlayerTmUrl.isNullOrBlank()) {
+            addPlayerViewModel.loadPlayerByTmProfileUrl(addPlayerTmUrl!!)
+        }
+    }
+
+    LaunchedEffect(isPlayerAdded) {
+        if (isPlayerAdded) {
+            showAddPlayerBottomSheet = false
+            addPlayerTmUrl = null
+            addPlayerViewModel.resetAfterAdd()
+        }
+    }
+
+    LaunchedEffect(showAddPlayerBottomSheet) {
+        if (showAddPlayerBottomSheet) {
+            launch {
+                addPlayerViewModel.errorMessageFlow.collectLatest { message ->
+                    if (!message.isNullOrEmpty()) {
+                        snackBarHostState.showSnackbar(
+                            message = message,
+                            duration = SnackbarDuration.Short
+                        )
+                        showAddPlayerBottomSheet = false
+                        addPlayerTmUrl = null
+                    }
+                }
+            }
+        }
     }
 
     LaunchedEffect(Unit) {
@@ -227,17 +295,81 @@ fun ReleasesScreen(viewModel: IReleasesViewModel = koinViewModel()) {
                 }
 
                 items(releaseList) {
-                    ReleaseListItem(context, it)
+                    ReleaseListItem(
+                        context = context,
+                        release = it,
+                        isFromReturnee = false,
+                        onAddToAgencyClicked = { url ->
+                            addPlayerTmUrl = url
+                            showAddPlayerBottomSheet = true
+                        },
+                        onAddToShortlistClicked = { url ->
+                            scope.launch {
+                                shortlistRepository.addToShortlist(url)
+                                justAddedUrls = justAddedUrls + url
+                            }
+                        },
+                        isInShortlist = { url ->
+                            url in shortlistUrls || url in justAddedUrls
+                        }
+                    )
                 }
             }
 
+            if (showAddPlayerBottomSheet) {
+                val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+                ModalBottomSheet(
+                    onDismissRequest = {
+                        showAddPlayerBottomSheet = false
+                        addPlayerTmUrl = null
+                        addPlayerViewModel.resetAfterAdd()
+                    },
+                    sheetState = sheetState,
+                    containerColor = Color.White,
+                    shape = RoundedCornerShape(16.dp),
+                    tonalElevation = 8.dp
+                ) {
+                    when {
+                        addPlayerState.value.showPlayerSelectedSearchProgress && selectedPlayer == null -> {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(32.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator(color = contentDefault)
+                            }
+                        }
+                        selectedPlayer != null -> {
+                            AddPlayerContactFormContent(
+                                context = context,
+                                viewModel = addPlayerViewModel
+                            )
+                        }
+                        else -> {
+                            Text(
+                                text = "Could not load player. They may already be in your roster.",
+                                style = regularTextStyle(contentDefault, 14.sp),
+                                modifier = Modifier.padding(24.dp)
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
 }
 
 
 @Composable
-fun ReleaseListItem(context: Context, release: LatestTransferModel, isFromReturnee: Boolean = false) {
+fun ReleaseListItem(
+    context: Context,
+    release: LatestTransferModel,
+    isFromReturnee: Boolean = false,
+    onAddToAgencyClicked: ((String) -> Unit)? = null,
+    onAddToShortlistClicked: ((String) -> Unit)? = null,
+    isInShortlist: ((String) -> Boolean)? = null
+) {
 
     Card(
         modifier = Modifier
@@ -330,6 +462,35 @@ fun ReleaseListItem(context: Context, release: LatestTransferModel, isFromReturn
                     ),
                     textAlign = TextAlign.Center
                 )
+            }
+
+            onAddToAgencyClicked?.let { onAdd ->
+                IconButton(
+                    onClick = {
+                        release.playerUrl?.let { url -> onAdd(url) }
+                    }
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.PersonAdd,
+                        contentDescription = "Add to agency",
+                        tint = contentDefault
+                    )
+                }
+            }
+            onAddToShortlistClicked?.let { onAdd ->
+                val url = release.playerUrl
+                val isAdded = url != null && (isInShortlist?.invoke(url) == true)
+                IconButton(
+                    onClick = {
+                        url?.let { onAdd(it) }
+                    }
+                ) {
+                    Icon(
+                        imageVector = if (isAdded) Icons.Default.Bookmark else Icons.Default.BookmarkAdd,
+                        contentDescription = if (isAdded) "In shortlist" else "Add to shortlist",
+                        tint = if (isAdded) Color(0xFF4CAF50) else contentDefault
+                    )
+                }
             }
         }
     }

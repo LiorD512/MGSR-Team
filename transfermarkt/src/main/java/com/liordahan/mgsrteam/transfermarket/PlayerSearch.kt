@@ -129,8 +129,15 @@ class PlayerSearch {
                 val profileUrl = playerSearchModel.tmProfile.orEmpty()
                 val doc = fetchDocument(profileUrl)
 
+                val nationalityElement = doc.select("[itemprop=nationality] img").firstOrNull()
                 val nationality =
-                    doc.select("[itemprop=nationality] img").attr("title").ifEmpty { "Unknown" }
+                    nationalityElement?.attr("title")?.takeIf { it.isNotEmpty() } ?: "Unknown"
+                val nationalityFlagFromDoc = nationalityElement
+                    ?.attr("src")
+                    ?.replace("verysmall", "head")
+                    ?.replace("tiny", "head")
+                    ?.orEmpty()
+
                 val height = doc.select("[itemprop=height]").text().ifEmpty { "Unknown" }
                 val marketValue = doc.select("div[class=data-header__box--small]").text()
                     .substringBefore("Last").trim()
@@ -160,15 +167,31 @@ class PlayerSearch {
                     doc.select("div.data-header__club-info").select("span.data-header__label")
                         .select("img").attr("title")
 
+                // When loading by URL only (e.g. from Releases), search model has no name/image/age — parse from profile page
+                val fullName = playerSearchModel.playerName?.takeIf { it.isNotBlank() }
+                    ?: doc.select("h1.data-header__headline").text().trim().takeIf { it.isNotBlank() }
+                    ?: doc.select("div.data-header__headline-wrapper h1").text().trim().takeIf { it.isNotBlank() }
+                    ?: doc.select("meta[property=og:title]").attr("content").substringBefore(" - ").trim().takeIf { it.isNotBlank() }
+                val profileImage = playerSearchModel.playerImage?.takeIf { it.isNotBlank() }
+                    ?: doc.select("div.data-header__profile-container img").firstOrNull()?.attr("src").orEmpty()
+                val age = playerSearchModel.playerAge?.takeIf { it.isNotBlank() }
+                    ?: doc.select("span[itemprop=birthDate]").firstOrNull()
+                        ?.text()
+                        ?.substringAfter("(")
+                        ?.substringBefore(")")
+                        ?.trim()
+                        .orEmpty()
+                val nationalityFlag = playerSearchModel.nationalityFlag?.takeIf { it.isNotBlank() }
+                    ?: nationalityFlagFromDoc
 
                 return@withContext TransfermarktPlayerDetails(
                     tmProfile = playerSearchModel.tmProfile,
-                    fullName = playerSearchModel.playerName,
+                    fullName = fullName?.ifEmpty { null },
                     marketValue = marketValue,
-                    profileImage = playerSearchModel.playerImage,
-                    nationalityFlag = playerSearchModel.nationalityFlag,
+                    profileImage = profileImage.ifEmpty { playerSearchModel.playerImage },
+                    nationalityFlag = nationalityFlag?.ifEmpty { null },
                     nationality = nationality,
-                    age = playerSearchModel.playerAge,
+                    age = age.ifEmpty { playerSearchModel.playerAge },
                     height = height,
                     contractExpires = contract,
                     positions = positions,

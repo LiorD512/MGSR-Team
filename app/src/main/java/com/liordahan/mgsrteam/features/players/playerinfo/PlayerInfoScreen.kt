@@ -96,6 +96,8 @@ import com.liordahan.mgsrteam.R
 import com.liordahan.mgsrteam.features.add.getPhoneNumberFromContactUri
 import com.liordahan.mgsrteam.features.players.models.NotesModel
 import com.liordahan.mgsrteam.features.players.models.Player
+import com.liordahan.mgsrteam.features.players.playerinfo.documents.DocumentType
+import com.liordahan.mgsrteam.features.players.playerinfo.documents.PlayerDocument
 import com.liordahan.mgsrteam.features.players.models.getAgentPhoneNumber
 import com.liordahan.mgsrteam.features.players.models.getPlayerPhoneNumber
 import com.liordahan.mgsrteam.helpers.UiResult
@@ -181,6 +183,23 @@ fun PlayerInfoScreen(
         }
     )
 
+    val documentPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+        uri?.let {
+            try {
+                context.contentResolver.openInputStream(it)?.use { stream ->
+                    val bytes = stream.readBytes()
+                    val name = context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+                        val nameIdx = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                        if (cursor.moveToFirst() && nameIdx >= 0) cursor.getString(nameIdx) else "document"
+                    } ?: "document"
+                    viewModel.uploadDocument(DocumentType.OTHER, name, bytes, null)
+                }
+            } catch (_: Exception) { }
+        }
+    }
+
     var showPlayerUpdateUi by remember {
         mutableStateOf(false)
     }
@@ -260,6 +279,7 @@ fun PlayerInfoScreen(
                     showDeleteDialog = true
                 },
                 onShareClicked = {
+                    com.liordahan.mgsrteam.analytics.AnalyticsHelper.logSharePlayer(playerToPresent?.tmProfile)
                     val textToSend = buildAnnotatedString {
                         playerToPresent?.let { player ->
                             appendLine(player.tmProfile ?: "")
@@ -482,6 +502,18 @@ fun PlayerInfoScreen(
                         )
                     })
 
+                    playerToPresent?.marketValueHistory?.takeIf { it.size > 1 }?.let { history ->
+                        val previous = history.sortedByDescending { it.date }.getOrNull(1)
+                        previous?.let {
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                text = "Previously: ${it.value ?: ""} (${SimpleDateFormat("dd.MM.yy", Locale.getDefault()).format(Date(it.date ?: 0))})",
+                                style = regularTextStyle(contentDefault, 12.sp),
+                                modifier = Modifier.padding(start = 28.dp)
+                            )
+                        }
+                    }
+
                 }
             }
 
@@ -541,6 +573,73 @@ fun PlayerInfoScreen(
                     )
 
                     TransfermarketRow(context, "TM Profile", playerToPresent?.tmProfile)
+                }
+            }
+
+            var documentsList by remember { mutableStateOf<List<PlayerDocument>>(emptyList()) }
+            LaunchedEffect(Unit) {
+                viewModel.documentsFlow.collect { documentsList = it }
+            }
+            Card(
+                modifier = Modifier.padding(16.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                elevation = CardDefaults.cardElevation(8.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = "Documents",
+                        style = boldTextStyle(contentDefault, 16.sp),
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    if (documentsList.isEmpty()) {
+                        Text(
+                            text = "No documents yet",
+                            style = regularTextStyle(contentDefault, 14.sp),
+                        )
+                    } else {
+                        documentsList.forEach { doc ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = doc.name ?: doc.documentType.displayName,
+                                    style = regularTextStyle(contentDefault, 14.sp),
+                                    modifier = Modifier.weight(1f)
+                                )
+                                Icon(
+                                    imageVector = Icons.Default.Link,
+                                    contentDescription = null,
+                                    modifier = Modifier
+                                        .size(20.dp)
+                                        .clickWithNoRipple {
+                                            doc.storageUrl?.let { url ->
+                                                val intent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url))
+                                                context.startActivity(intent)
+                                            }
+                                        }
+                                )
+                                Icon(
+                                    imageVector = Icons.Default.Delete,
+                                    contentDescription = null,
+                                    modifier = Modifier
+                                        .size(20.dp)
+                                        .clickWithNoRipple { doc.id?.let { viewModel.deleteDocument(it) } }
+                                )
+                            }
+                        }
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        text = "Add document",
+                        style = boldTextStyle(contentDefault, 14.sp),
+                        modifier = Modifier.clickWithNoRipple {
+                            documentPickerLauncher.launch("*/*")
+                        }
+                    )
                 }
             }
 

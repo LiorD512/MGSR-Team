@@ -38,6 +38,7 @@ import com.liordahan.mgsrteam.features.players.filters.usecases.SetIsWithNotesCh
 import com.liordahan.mgsrteam.features.players.filters.usecases.SetSortOptionUseCase
 import com.liordahan.mgsrteam.features.players.playerinfo.IPlayerInfoViewModel
 import com.liordahan.mgsrteam.features.players.playerinfo.PlayerInfoViewModel
+import com.liordahan.mgsrteam.features.players.playerinfo.documents.PlayerDocumentsRepository
 import com.liordahan.mgsrteam.features.players.sort.IPlayerListSortBottomSheetViewModel
 import com.liordahan.mgsrteam.features.players.sort.PlayerListSortBottomSheetViewModel
 import com.liordahan.mgsrteam.transfermarket.PlayersUpdate
@@ -58,7 +59,8 @@ val playersModule = module {
     } bind ISortRepository::class
 
     viewModel<IPlayersViewModel> { PlayersViewModel(get(), get(), get(), get(), get(), get(), get(), get()) }
-    viewModel<IPlayerInfoViewModel> { PlayerInfoViewModel(get(), get()) }
+    single { PlayerDocumentsRepository(get()) }
+    viewModel<IPlayerInfoViewModel> { PlayerInfoViewModel(get(), get(), get()) }
     viewModel<IPlayerListFiltersViewModel> {
         PlayerListFiltersViewModel(
             get(),

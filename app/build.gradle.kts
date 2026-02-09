@@ -39,6 +39,12 @@ android {
     }
 }
 
+kotlin {
+    compilerOptions {
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_21)
+    }
+}
+
 dependencies {
 
     implementation(libs.androidx.core.ktx)
@@ -52,7 +58,6 @@ dependencies {
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
     implementation(libs.material.icons)
-    implementation(libs.splash.screen)
     implementation(libs.navigation)
     implementation(libs.jsoup)
     testImplementation(libs.junit)
@@ -74,6 +79,7 @@ dependencies {
     implementation(libs.firebase.auth)
     implementation(libs.firebase.storage)
     implementation(libs.firebase.store)
+    implementation(libs.firebase.analytics)
 
     //Coroutines
     implementation(libs.coroutines)

@@ -67,6 +67,9 @@ fun ReturneePlayersBottomSheet(
     modifier: Modifier,
     viewModel: IReturneeViewModel,
     leagues: Leagues,
+    onAddToAgencyClicked: (String) -> Unit,
+    onAddToShortlistClicked: ((String) -> Unit)? = null,
+    isInShortlist: ((String) -> Boolean)? = null,
     onDismiss: () -> Unit
 ) {
 
@@ -228,7 +231,14 @@ fun ReturneePlayersBottomSheet(
                 }
 
                 items(visibleReturneeList) {
-                    ReleaseListItem(context, it, true)
+                    ReleaseListItem(
+                        context = context,
+                        release = it,
+                        isFromReturnee = true,
+                        onAddToAgencyClicked = onAddToAgencyClicked,
+                        onAddToShortlistClicked = onAddToShortlistClicked,
+                        isInShortlist = isInShortlist
+                    )
                 }
             }
 
