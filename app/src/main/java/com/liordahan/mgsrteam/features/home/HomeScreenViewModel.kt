@@ -272,7 +272,9 @@ class HomeScreenViewModel(
             .orderBy("createdAt", com.google.firebase.firestore.Query.Direction.ASCENDING)
             .addSnapshotListener { snapshot, _ ->
                 if (snapshot == null) return@addSnapshotListener
-                val tasks = snapshot.toObjects(AgentTask::class.java)
+                val tasks = snapshot.documents.mapNotNull { doc ->
+                    doc.toObject(AgentTask::class.java)?.copy(id = doc.id)
+                }
                 val grouped = tasks.groupBy { it.agentId }
                 _state.update { it.copy(agentTasks = grouped) }
             }
@@ -285,6 +287,7 @@ class HomeScreenViewModel(
     }
 
     override fun toggleTaskCompleted(task: AgentTask) {
+        if (task.id.isBlank()) return
         viewModelScope.launch {
             try {
                 firebaseHandler.firebaseStore
@@ -292,7 +295,9 @@ class HomeScreenViewModel(
                     .document(task.id)
                     .update("isCompleted", !task.isCompleted)
                     .await()
-            } catch (_: Exception) { }
+            } catch (e: Exception) {
+                android.util.Log.e("HomeVM", "toggleTaskCompleted failed for id=${task.id}", e)
+            }
         }
     }
 

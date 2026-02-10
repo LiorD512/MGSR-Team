@@ -11,6 +11,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.LaunchedEffect
 import androidx.core.content.PermissionChecker
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.liordahan.mgsrteam.navigation.NavGraph
 import com.liordahan.mgsrteam.ui.theme.MGSRTeamTheme
 import org.koin.androidx.viewmodel.ext.android.viewModel
@@ -20,10 +21,12 @@ class MainActivity : ComponentActivity() {
     private val viewModel: IMainViewModel by viewModel()
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        val splashScreen = installSplashScreen()
         super.onCreate(savedInstanceState)
-        // Switch from the splash theme (black background) to the normal app theme.
-        // The black window background prevents the white flash before the video splash loads.
-        setTheme(R.style.Theme_MGSRTeam)
+
+        // Keep the splash screen visible until the auth state is resolved
+        splashScreen.setKeepOnScreenCondition { !viewModel.isReady.value }
+
         enableEdgeToEdge(
             navigationBarStyle = SystemBarStyle.dark(
                 android.graphics.Color.parseColor("#0F1923")

@@ -3,10 +3,9 @@
 
     <style name="Theme.MGSRTeam" parent="android:Theme.Material.Light.NoActionBar" />
 
-    <!-- Splash theme: black background so there's no white flash before the video splash loads -->
-    <style name="Theme.MGSRTeam.Splash" parent="android:Theme.Material.Light.NoActionBar">
-        <item name="android:windowBackground">@android:color/black</item>
-        <item name="android:statusBarColor">@android:color/black</item>
-        <item name="android:navigationBarColor">@android:color/black</item>
+    <!-- Splash theme: uses the AndroidX SplashScreen API to show the app logo -->
+    <style name="Theme.MGSRTeam.Splash" parent="Theme.MGSRTeam">
+        <item name="android:windowSplashScreenBackground">#0F1923</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/rounded_logo_new</item>
     </style>
 </resources>

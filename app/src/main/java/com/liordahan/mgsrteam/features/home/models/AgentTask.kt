@@ -1,6 +1,7 @@
 package com.liordahan.mgsrteam.features.home.models
 
 import com.google.firebase.firestore.DocumentId
+import com.google.firebase.firestore.PropertyName
 
 /**
  * A task assigned to (or created by) an agent.
@@ -12,7 +13,8 @@ data class AgentTask(
     val agentId: String = "",
     val agentName: String = "",
     val title: String = "",
-    val isCompleted: Boolean = false,
+    @get:PropertyName("isCompleted") @set:PropertyName("isCompleted")
+    var isCompleted: Boolean = false,
     val dueDate: Long = 0L,          // epoch millis
     val createdAt: Long = System.currentTimeMillis()
 )

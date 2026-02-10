@@ -5,15 +5,13 @@ import com.google.firebase.auth.FirebaseUser
 import com.liordahan.mgsrteam.firebase.FirebaseHandler
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.update
 
 abstract class IMainViewModel : ViewModel() {
     abstract val currentUserFlow: StateFlow<FirebaseUser?>
-    abstract val showVideoSplash: StateFlow<Boolean>
+    abstract val isReady: StateFlow<Boolean>
     abstract val pendingDeepLinkPlayerId: StateFlow<String?>
     abstract fun setPendingDeepLinkPlayerId(playerId: String?)
     abstract fun clearPendingDeepLink()
-    abstract fun dismissVideoSplash()
 }
 
 class MainViewModel(
@@ -23,8 +21,8 @@ class MainViewModel(
     private val _currentUserFlow = MutableStateFlow<FirebaseUser?>(null)
     override val currentUserFlow: StateFlow<FirebaseUser?> = _currentUserFlow
 
-    private val _showVideoSplash = MutableStateFlow(true)
-    override val showVideoSplash: StateFlow<Boolean> = _showVideoSplash
+    private val _isReady = MutableStateFlow(false)
+    override val isReady: StateFlow<Boolean> = _isReady
 
     private val _pendingDeepLinkPlayerId = MutableStateFlow<String?>(null)
     override val pendingDeepLinkPlayerId: StateFlow<String?> = _pendingDeepLinkPlayerId
@@ -37,14 +35,9 @@ class MainViewModel(
         _pendingDeepLinkPlayerId.value = null
     }
 
-    override fun dismissVideoSplash() {
-        _showVideoSplash.value = false
-    }
-
     init {
         getCurrentUser()
     }
-
 
     private fun getCurrentUser() {
         firebaseHandler.firebaseAuth.currentUser?.let { user ->
@@ -52,5 +45,6 @@ class MainViewModel(
         } ?: run {
             _currentUserFlow.value = null
         }
+        _isReady.value = true
     }
 }
