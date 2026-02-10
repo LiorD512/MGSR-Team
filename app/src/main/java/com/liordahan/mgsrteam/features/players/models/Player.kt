@@ -28,7 +28,8 @@ data class Player(
     val notes: String? = null,
     val noteList: List<NotesModel>? = null,
     val marketValueHistory: List<MarketValueEntry>? = null,
-    val linkedContactId: String? = null
+    val linkedContactId: String? = null,
+    val lastRefreshedAt: Long? = null
 ) : Parcelable
 
 @Parcelize

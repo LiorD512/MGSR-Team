@@ -21,10 +21,18 @@ class FcmTokenManager(
                 val user = FirebaseAuth.getInstance().currentUser ?: return@launch
                 val token = FirebaseMessaging.getInstance().token.await()
                 saveTokenToFirestore(token, user.email)
+                // Subscribe to the shared topic so push notifications from the
+                // Cloud Function reach this device.
+                FirebaseMessaging.getInstance().subscribeToTopic(FCM_TOPIC).await()
             } catch (_: Exception) {
                 // Token will be requested again on next app launch or login
             }
         }
+    }
+
+    companion object {
+        /** Must match the topic used by the Cloud Function (onNewFeedEvent). */
+        const val FCM_TOPIC = "mgsr_all"
     }
 
     private suspend fun saveTokenToFirestore(token: String, email: String?) {

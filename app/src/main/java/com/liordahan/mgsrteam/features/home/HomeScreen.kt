@@ -20,6 +20,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.liordahan.mgsrteam.features.add.AddPlayerScreen
+import com.liordahan.mgsrteam.features.home.dashboard.DashboardScreen
 import com.liordahan.mgsrteam.features.players.PlayersScreen
 import com.liordahan.mgsrteam.features.players.playerinfo.PlayerInfoScreen
 import com.liordahan.mgsrteam.features.releases.ReleasesScreen
@@ -28,6 +29,7 @@ import com.liordahan.mgsrteam.features.returnee.ReturneeScreen
 import com.liordahan.mgsrteam.features.shortlist.ShortlistScreen
 import com.liordahan.mgsrteam.navigation.BottomNavigationUi
 import com.liordahan.mgsrteam.navigation.Screens
+import com.liordahan.mgsrteam.ui.theme.HomeDarkBackground
 
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @Composable
@@ -38,6 +40,8 @@ fun HomeScreen(
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
+
+    val isDashboard = currentRoute == Screens.DashboardScreen.route
 
     LaunchedEffect(Unit) {
         mainViewModel.pendingDeepLinkPlayerId.collectLatest { playerId ->
@@ -50,12 +54,13 @@ fun HomeScreen(
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
-        containerColor = Color.White,
+        containerColor = if (isDashboard) HomeDarkBackground else Color.White,
         topBar = {
 
         },
         bottomBar = {
             if (currentRoute in listOf(
+                    Screens.DashboardScreen.route,
                     Screens.PlayersScreen.route,
                     Screens.ReleasesScreen.route,
                     Screens.ReturneeScreen.route,
@@ -68,7 +73,12 @@ fun HomeScreen(
         }
     ) {
 
-        NavHost(navController = navController, startDestination = Screens.PlayersScreen.route) {
+        NavHost(navController = navController, startDestination = Screens.DashboardScreen.route) {
+
+            composable(route = Screens.DashboardScreen.route) {
+                DashboardScreen(navController = navController)
+            }
+
             composable(route = Screens.PlayersScreen.route) {
                 PlayersScreen(navController = navController)
             }

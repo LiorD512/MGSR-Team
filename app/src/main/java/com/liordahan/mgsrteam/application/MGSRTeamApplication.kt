@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
+import com.google.firebase.messaging.FirebaseMessaging
 import com.liordahan.mgsrteam.application.di.applicationModules
 import com.liordahan.mgsrteam.firebase.FcmTokenManager
 import com.liordahan.mgsrteam.work.ContractExpiryWorker
@@ -30,6 +31,10 @@ class MGSRTeamApplication : Application(), KoinComponent {
         // Register FCM token when app starts (if user already logged in)
         val fcmTokenManager: FcmTokenManager by inject()
         fcmTokenManager.registerTokenIfNeeded()
+
+        // Subscribe every device to the shared FCM topic so push notifications
+        // from the Cloud Function reach all users.
+        FirebaseMessaging.getInstance().subscribeToTopic(FcmTokenManager.FCM_TOPIC)
 
         // Schedule contract expiry reminder (daily)
         scheduleContractExpiryReminder()

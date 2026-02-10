@@ -10,10 +10,13 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -56,9 +59,9 @@ fun BottomNavigationUi(
 ) {
     val navigationItems = listOf(
         NavigationItem(
-            title = stringResource(R.string.nav_item_players),
+            title = stringResource(R.string.nav_item_dashboard),
             icon = Icons.Default.Home,
-            route = Screens.PlayersScreen.route
+            route = Screens.DashboardScreen.route
         ),
         NavigationItem(
             title = stringResource(R.string.nav_item_shortlist),
@@ -93,7 +96,8 @@ fun BottomNavigationUi(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 12.dp)
+            .windowInsetsPadding(WindowInsets.navigationBars)
+            .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 16.dp)
     ) {
         Surface(
             modifier = Modifier.fillMaxWidth(),

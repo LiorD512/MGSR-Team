@@ -26,6 +26,8 @@ class FirebaseHandler {
     val shortlistsTable = "Shortlists"
     val playerDocumentsTable = "PlayerDocuments"
 
+    val feedEventsTable = "FeedEvents"
+
     val mandateDir = "mandates"
     val passportDir = "passports"
     val medicalsDir = "medicals"

@@ -1,9 +1,13 @@
 package com.liordahan.mgsrteam.transfermarket
 
+import android.net.Network
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
+import java.io.IOException
+import java.net.HttpURLConnection
+import java.net.URL
 
 data class PlayerToUpdateValues(
     val marketValue: String?,
@@ -18,13 +22,21 @@ data class PlayerToUpdateValues(
 
 class PlayersUpdate {
 
-    suspend fun updatePlayerByTmProfile(tmProfile: String?): TransfermarktResult<PlayerToUpdateValues?> =
+    /**
+     * @param network optional [Network] to route the request through (for IP rotation).
+     *                When non-null the request is opened via [Network.openConnection] so it
+     *                travels over that specific interface (WiFi / Cellular).
+     */
+    suspend fun updatePlayerByTmProfile(
+        tmProfile: String?,
+        network: Network? = null
+    ): TransfermarktResult<PlayerToUpdateValues?> =
         withContext(Dispatchers.IO) {
             val profileUrl = tmProfile?.trim()
                 ?: return@withContext TransfermarktResult.Failed("Profile URL is null or blank")
 
             return@withContext try {
-                val doc = fetchDocument(profileUrl)
+                val doc = fetchDocument(profileUrl, network)
 
                 val nationalityElement = doc.select("[itemprop=nationality] img").firstOrNull()
                 val citizenship = nationalityElement?.attr("title").orEmpty()
@@ -118,9 +130,33 @@ class PlayersUpdate {
             }
         }
 
-    private fun fetchDocument(url: String): Document {
+    /**
+     * Fetches and parses an HTML document. When [network] is provided the request is sent
+     * through that specific Android [Network] interface, effectively changing the outgoing IP.
+     * A random user-agent is picked for every call.
+     */
+    private fun fetchDocument(url: String, network: Network? = null): Document {
+        val userAgent = getRandomUserAgent()
+
+        if (network != null) {
+            val connection = network.openConnection(URL(url)) as HttpURLConnection
+            connection.setRequestProperty("User-Agent", userAgent)
+            connection.setRequestProperty("Accept-Language", "en-US,en;q=0.9")
+            connection.connectTimeout = TRANSFERMARKT_TIMEOUT_MS
+            connection.readTimeout = TRANSFERMARKT_TIMEOUT_MS
+            connection.instanceFollowRedirects = true
+            val responseCode = connection.responseCode
+            if (responseCode != HttpURLConnection.HTTP_OK) {
+                connection.disconnect()
+                throw IOException("HTTP $responseCode for $url")
+            }
+            val html = connection.inputStream.bufferedReader().use { it.readText() }
+            connection.disconnect()
+            return Jsoup.parse(html, url)
+        }
+
         return Jsoup.connect(url)
-            .userAgent(TRANSFERMARKT_USER_AGENT)
+            .userAgent(userAgent)
             .timeout(TRANSFERMARKT_TIMEOUT_MS)
             .get()
     }

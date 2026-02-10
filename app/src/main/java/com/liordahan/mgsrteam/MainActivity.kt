@@ -4,6 +4,7 @@ import android.Manifest
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -23,7 +24,11 @@ class MainActivity : ComponentActivity() {
         // Switch from the splash theme (black background) to the normal app theme.
         // The black window background prevents the white flash before the video splash loads.
         setTheme(R.style.Theme_MGSRTeam)
-        enableEdgeToEdge()
+        enableEdgeToEdge(
+            navigationBarStyle = SystemBarStyle.dark(
+                android.graphics.Color.parseColor("#0F1923")
+            )
+        )
         handleDeepLink(intent)
 
         setContent {
