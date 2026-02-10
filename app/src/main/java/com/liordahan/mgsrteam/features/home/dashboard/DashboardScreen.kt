@@ -126,71 +126,74 @@ fun DashboardScreen(
         return
     }
 
-    LazyColumn(
+    Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(HomeDarkBackground),
-        contentPadding = PaddingValues(bottom = 100.dp)
+            .background(HomeDarkBackground)
     ) {
-        // ── Greeting ─────────────────────────────────────────────────────
-        item { GreetingHeader(state) }
+        // ── Sticky top section (does NOT scroll) ─────────────────────────
+        GreetingHeader(state)
+        StatsRow(state)
+        QuickActionsRow(navController)
 
-        // ── Stats Row ────────────────────────────────────────────────────
-        item { StatsRow(state) }
-
-        // ── Quick Actions ────────────────────────────────────────────────
-        item { QuickActionsRow(navController) }
-
-        // ── Activity Feed ────────────────────────────────────────────────
-        item {
-            FeedSectionHeader(
-                selectedFilter = state.selectedFeedFilter,
-                onFilterSelected = { viewModel.selectFeedFilter(it) }
-            )
-        }
-
-        val filteredEvents = state.feedEvents.filterByType(state.selectedFeedFilter)
-        if (filteredEvents.isEmpty()) {
+        // ── Scrollable section (from Recent Updates downward) ────────────
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .weight(1f),
+            contentPadding = PaddingValues(bottom = 140.dp)
+        ) {
+            // ── Activity Feed ────────────────────────────────────────────
             item {
-                Text(
-                    text = "No recent updates yet.\nUpdates will appear here after the daily sync.",
-                    style = regularTextStyle(HomeTextSecondary, 13.sp, textAlign = TextAlign.Center),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 32.dp, horizontal = 16.dp)
+                FeedSectionHeader(
+                    selectedFilter = state.selectedFeedFilter,
+                    onFilterSelected = { viewModel.selectFeedFilter(it) }
                 )
             }
-        } else {
-            items(filteredEvents.take(15)) { event ->
-                FeedEventCard(event = event, navController = navController)
+
+            val filteredEvents = state.feedEvents.filterByType(state.selectedFeedFilter)
+            if (filteredEvents.isEmpty()) {
+                item {
+                    Text(
+                        text = "No recent updates yet.\nUpdates will appear here after the daily sync.",
+                        style = regularTextStyle(HomeTextSecondary, 13.sp, textAlign = TextAlign.Center),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 32.dp, horizontal = 16.dp)
+                    )
+                }
+            } else {
+                items(filteredEvents.take(15)) { event ->
+                    FeedEventCard(event = event, navController = navController)
+                }
             }
-        }
 
-        // ── Agent Overview ────────────────────────────────────────────────
-        if (state.agentSummaries.isNotEmpty()) {
-            item { AgentOverviewSection(state.agentSummaries) }
-        }
-
-        // ── Agent Tasks ──────────────────────────────────────────────────
-        if (state.allAccounts.isNotEmpty()) {
-            item {
-                AgentTasksSection(
-                    accounts = state.allAccounts,
-                    agentTasks = state.agentTasks,
-                    expandedAgentId = state.expandedAgentId,
-                    onToggleExpanded = { viewModel.toggleAgentExpanded(it) },
-                    onToggleTask = { viewModel.toggleTaskCompleted(it) },
-                    onAddTask = { agentId, agentName, title, dueDate ->
-                        viewModel.addTask(agentId, agentName, title, dueDate)
-                    },
-                    onDeleteTask = { viewModel.deleteTask(it) }
-                )
+            // ── Agent Overview ────────────────────────────────────────────
+            if (state.agentSummaries.isNotEmpty()) {
+                item { AgentOverviewSection(state.agentSummaries) }
             }
-        }
 
-        // ── Document Reminders ───────────────────────────────────────────
-        if (state.documentReminders.isNotEmpty()) {
-            item { DocumentRemindersSection(state.documentReminders) }
+            // ── Agent Tasks ──────────────────────────────────────────────
+            if (state.allAccounts.isNotEmpty()) {
+                item {
+                    AgentTasksSection(
+                        accounts = state.allAccounts,
+                        agentTasks = state.agentTasks,
+                        expandedAgentId = state.expandedAgentId,
+                        onToggleExpanded = { viewModel.toggleAgentExpanded(it) },
+                        onToggleTask = { viewModel.toggleTaskCompleted(it) },
+                        onAddTask = { agentId, agentName, title, dueDate ->
+                            viewModel.addTask(agentId, agentName, title, dueDate)
+                        },
+                        onDeleteTask = { viewModel.deleteTask(it) }
+                    )
+                }
+            }
+
+            // ── Document Reminders ───────────────────────────────────────
+            if (state.documentReminders.isNotEmpty()) {
+                item { DocumentRemindersSection(state.documentReminders) }
+            }
         }
     }
 }
