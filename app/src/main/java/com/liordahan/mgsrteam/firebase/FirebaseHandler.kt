@@ -27,6 +27,7 @@ class FirebaseHandler {
     val playerDocumentsTable = "PlayerDocuments"
 
     val feedEventsTable = "FeedEvents"
+    val agentTasksTable = "AgentTasks"
 
     val mandateDir = "mandates"
     val passportDir = "passports"

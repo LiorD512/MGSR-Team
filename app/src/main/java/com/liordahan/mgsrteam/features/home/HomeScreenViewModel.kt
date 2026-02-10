@@ -3,7 +3,9 @@ package com.liordahan.mgsrteam.features.home
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.liordahan.mgsrteam.features.home.models.AgentSummary
+import com.liordahan.mgsrteam.features.home.models.AgentTask
 import com.liordahan.mgsrteam.features.home.models.FeedEvent
+import com.liordahan.mgsrteam.features.login.models.Account
 import com.liordahan.mgsrteam.features.players.models.Player
 import com.liordahan.mgsrteam.features.players.playerinfo.documents.PlayerDocument
 import com.liordahan.mgsrteam.firebase.FirebaseHandler
@@ -34,8 +36,15 @@ data class HomeDashboardState(
     val feedEvents: List<FeedEvent> = emptyList(),
     val selectedFeedFilter: FeedFilter = FeedFilter.ALL,
 
-    // agent tasks
+    // agent summaries
     val agentSummaries: List<AgentSummary> = emptyList(),
+
+    // all agent accounts (from Accounts table)
+    val allAccounts: List<Account> = emptyList(),
+
+    // agent tasks
+    val agentTasks: Map<String, List<AgentTask>> = emptyMap(),   // agentId -> tasks
+    val expandedAgentId: String? = null,
 
     // document reminders
     val documentReminders: List<DocumentReminder> = emptyList(),
@@ -63,6 +72,10 @@ enum class FeedFilter(val label: String) {
 abstract class IHomeScreenViewModel : ViewModel() {
     abstract val dashboardState: StateFlow<HomeDashboardState>
     abstract fun selectFeedFilter(filter: FeedFilter)
+    abstract fun toggleAgentExpanded(agentId: String)
+    abstract fun toggleTaskCompleted(task: AgentTask)
+    abstract fun addTask(agentId: String, agentName: String, title: String, dueDate: Long)
+    abstract fun deleteTask(task: AgentTask)
 }
 
 class HomeScreenViewModel(
@@ -77,9 +90,11 @@ class HomeScreenViewModel(
 
     init {
         loadGreeting()
+        loadAllAccounts()
         listenToPlayers()
         loadFeedEvents()
         loadDocumentReminders()
+        listenToAgentTasks()
     }
 
     // ── Greeting ─────────────────────────────────────────────────────────────
@@ -102,6 +117,17 @@ class HomeScreenViewModel(
 
             _state.update { it.copy(greeting = greeting, userName = name) }
         }
+    }
+
+    // ── All Accounts ─────────────────────────────────────────────────────────
+
+    private fun loadAllAccounts() {
+        firebaseHandler.firebaseStore.collection(firebaseHandler.accountsTable)
+            .addSnapshotListener { snapshot, _ ->
+                if (snapshot == null) return@addSnapshotListener
+                val accounts = snapshot.toObjects(Account::class.java)
+                _state.update { it.copy(allAccounts = accounts) }
+            }
     }
 
     // ── Players snapshot listener ────────────────────────────────────────────
@@ -237,6 +263,68 @@ class HomeScreenViewModel(
 
     private fun findPlayerName(tmProfile: String?): String? {
         return _currentPlayers.firstOrNull { it.tmProfile == tmProfile }?.fullName
+    }
+
+    // ── Agent Tasks ──────────────────────────────────────────────────────────
+
+    private fun listenToAgentTasks() {
+        firebaseHandler.firebaseStore.collection(firebaseHandler.agentTasksTable)
+            .orderBy("createdAt", com.google.firebase.firestore.Query.Direction.ASCENDING)
+            .addSnapshotListener { snapshot, _ ->
+                if (snapshot == null) return@addSnapshotListener
+                val tasks = snapshot.toObjects(AgentTask::class.java)
+                val grouped = tasks.groupBy { it.agentId }
+                _state.update { it.copy(agentTasks = grouped) }
+            }
+    }
+
+    override fun toggleAgentExpanded(agentId: String) {
+        _state.update {
+            it.copy(expandedAgentId = if (it.expandedAgentId == agentId) null else agentId)
+        }
+    }
+
+    override fun toggleTaskCompleted(task: AgentTask) {
+        viewModelScope.launch {
+            try {
+                firebaseHandler.firebaseStore
+                    .collection(firebaseHandler.agentTasksTable)
+                    .document(task.id)
+                    .update("isCompleted", !task.isCompleted)
+                    .await()
+            } catch (_: Exception) { }
+        }
+    }
+
+    override fun addTask(agentId: String, agentName: String, title: String, dueDate: Long) {
+        viewModelScope.launch {
+            try {
+                val newTask = AgentTask(
+                    agentId = agentId,
+                    agentName = agentName,
+                    title = title,
+                    isCompleted = false,
+                    dueDate = dueDate,
+                    createdAt = System.currentTimeMillis()
+                )
+                firebaseHandler.firebaseStore
+                    .collection(firebaseHandler.agentTasksTable)
+                    .add(newTask)
+                    .await()
+            } catch (_: Exception) { }
+        }
+    }
+
+    override fun deleteTask(task: AgentTask) {
+        viewModelScope.launch {
+            try {
+                firebaseHandler.firebaseStore
+                    .collection(firebaseHandler.agentTasksTable)
+                    .document(task.id)
+                    .delete()
+                    .await()
+            } catch (_: Exception) { }
+        }
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────

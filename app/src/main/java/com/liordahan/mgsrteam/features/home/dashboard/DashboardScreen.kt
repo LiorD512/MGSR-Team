@@ -1,7 +1,13 @@
 package com.liordahan.mgsrteam.features.home.dashboard
 
 import android.net.Uri
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -23,9 +29,13 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.CalendarToday
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.Handshake
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.automirrored.filled.NoteAdd
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.Notifications
@@ -35,22 +45,42 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
@@ -59,7 +89,9 @@ import com.liordahan.mgsrteam.features.home.FeedFilter
 import com.liordahan.mgsrteam.features.home.HomeDashboardState
 import com.liordahan.mgsrteam.features.home.IHomeScreenViewModel
 import com.liordahan.mgsrteam.features.home.models.AgentSummary
+import com.liordahan.mgsrteam.features.home.models.AgentTask
 import com.liordahan.mgsrteam.features.home.models.FeedEvent
+import com.liordahan.mgsrteam.features.login.models.Account
 import com.liordahan.mgsrteam.navigation.Screens
 import com.liordahan.mgsrteam.ui.theme.*
 import com.liordahan.mgsrteam.ui.utils.boldTextStyle
@@ -134,9 +166,26 @@ fun DashboardScreen(
             }
         }
 
-        // ── Agent Tasks ──────────────────────────────────────────────────
+        // ── Agent Overview ────────────────────────────────────────────────
         if (state.agentSummaries.isNotEmpty()) {
-            item { AgentTasksSection(state.agentSummaries) }
+            item { AgentOverviewSection(state.agentSummaries) }
+        }
+
+        // ── Agent Tasks ──────────────────────────────────────────────────
+        if (state.allAccounts.isNotEmpty()) {
+            item {
+                AgentTasksSection(
+                    accounts = state.allAccounts,
+                    agentTasks = state.agentTasks,
+                    expandedAgentId = state.expandedAgentId,
+                    onToggleExpanded = { viewModel.toggleAgentExpanded(it) },
+                    onToggleTask = { viewModel.toggleTaskCompleted(it) },
+                    onAddTask = { agentId, agentName, title, dueDate ->
+                        viewModel.addTask(agentId, agentName, title, dueDate)
+                    },
+                    onDeleteTask = { viewModel.deleteTask(it) }
+                )
+            }
         }
 
         // ── Document Reminders ───────────────────────────────────────────
@@ -544,11 +593,11 @@ private fun List<FeedEvent>.filterByType(filter: FeedFilter): List<FeedEvent> {
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
-//  AGENT TASKS
+//  AGENT OVERVIEW  (original horizontal cards)
 // ═════════════════════════════════════════════════════════════════════════════
 
 @Composable
-private fun AgentTasksSection(agents: List<AgentSummary>) {
+private fun AgentOverviewSection(agents: List<AgentSummary>) {
     Column(modifier = Modifier.padding(top = 16.dp)) {
         Text(
             text = "Agent Overview",
@@ -625,6 +674,583 @@ private fun MiniStat(value: String, label: String, color: Color) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(text = value, style = boldTextStyle(color, 14.sp))
         Text(text = label, style = regularTextStyle(HomeTextSecondary, 9.sp))
+    }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+//  AGENT TASKS  (Expandable Vertical Cards)
+// ═════════════════════════════════════════════════════════════════════════════
+
+private val agentColors = listOf(
+    HomeTealAccent, HomeBlueAccent, HomeOrangeAccent,
+    HomePurpleAccent, HomeGreenAccent, HomeRedAccent
+)
+
+@Composable
+private fun AgentTasksSection(
+    accounts: List<Account>,
+    agentTasks: Map<String, List<AgentTask>>,
+    expandedAgentId: String?,
+    onToggleExpanded: (String) -> Unit,
+    onToggleTask: (AgentTask) -> Unit,
+    onAddTask: (agentId: String, agentName: String, title: String, dueDate: Long) -> Unit,
+    onDeleteTask: (AgentTask) -> Unit
+) {
+    var showAddDialogForAccount by remember { mutableStateOf<Account?>(null) }
+
+    Column(modifier = Modifier.padding(top = 20.dp)) {
+        // Section header
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Agent Tasks",
+                style = boldTextStyle(HomeTextPrimary, 18.sp),
+                modifier = Modifier.weight(1f)
+            )
+        }
+
+        Spacer(Modifier.height(4.dp))
+
+        // Teal accent line
+        Box(
+            modifier = Modifier
+                .padding(horizontal = 20.dp)
+                .width(40.dp)
+                .height(3.dp)
+                .clip(RoundedCornerShape(2.dp))
+                .background(HomeTealAccent)
+        )
+
+        Spacer(Modifier.height(14.dp))
+
+        // Agent cards — one per account
+        accounts.forEachIndexed { index, account ->
+            val accountId = account.id ?: return@forEachIndexed
+            val tasks = agentTasks[accountId] ?: emptyList()
+            val isExpanded = expandedAgentId == accountId
+            val accentColor = agentColors[index % agentColors.size]
+
+            ExpandableAgentTaskCard(
+                account = account,
+                tasks = tasks,
+                isExpanded = isExpanded,
+                accentColor = accentColor,
+                onToggleExpanded = { onToggleExpanded(accountId) },
+                onToggleTask = onToggleTask,
+                onAddTaskClick = { showAddDialogForAccount = account },
+                onDeleteTask = onDeleteTask
+            )
+
+            if (index < accounts.lastIndex) {
+                Spacer(Modifier.height(10.dp))
+            }
+        }
+    }
+
+    // Add-task dialog
+    showAddDialogForAccount?.let { account ->
+        AddTaskDialog(
+            agentName = account.name ?: "Agent",
+            onDismiss = { showAddDialogForAccount = null },
+            onConfirm = { title, dueDate ->
+                onAddTask(account.id ?: "", account.name ?: "", title, dueDate)
+                showAddDialogForAccount = null
+            }
+        )
+    }
+}
+
+// ── Expandable Card ──────────────────────────────────────────────────────────
+
+@Composable
+private fun ExpandableAgentTaskCard(
+    account: Account,
+    tasks: List<AgentTask>,
+    isExpanded: Boolean,
+    accentColor: Color,
+    onToggleExpanded: () -> Unit,
+    onToggleTask: (AgentTask) -> Unit,
+    onAddTaskClick: () -> Unit,
+    onDeleteTask: (AgentTask) -> Unit
+) {
+    val agentName = account.name ?: "Agent"
+    val completedCount = tasks.count { it.isCompleted }
+    val totalCount = tasks.size
+    val progress = if (totalCount > 0) completedCount.toFloat() / totalCount else 0f
+
+    val chevronRotation by animateFloatAsState(
+        targetValue = if (isExpanded) 180f else 0f,
+        animationSpec = tween(250),
+        label = "chevron"
+    )
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = HomeDarkCard)
+    ) {
+        Column {
+            // ── Header (always visible) ──────────────────────────────────
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickWithNoRipple { onToggleExpanded() }
+                    .padding(14.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Avatar
+                Box(
+                    modifier = Modifier
+                        .size(38.dp)
+                        .clip(CircleShape)
+                        .background(accentColor.copy(alpha = 0.2f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = agentName.take(1).uppercase(),
+                        style = boldTextStyle(accentColor, 16.sp)
+                    )
+                }
+
+                Spacer(Modifier.width(12.dp))
+
+                // Name + subtitle
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = agentName,
+                        style = boldTextStyle(HomeTextPrimary, 15.sp),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    if (totalCount > 0) {
+                        Text(
+                            text = "$completedCount of $totalCount tasks done",
+                            style = regularTextStyle(HomeTextSecondary, 11.sp)
+                        )
+                    } else {
+                        Text(
+                            text = "No tasks yet",
+                            style = regularTextStyle(HomeTextSecondary, 11.sp)
+                        )
+                    }
+                }
+
+                // Circular progress ring
+                if (totalCount > 0) {
+                    CircularProgressRing(
+                        progress = progress,
+                        text = "$completedCount/$totalCount",
+                        accentColor = accentColor,
+                        modifier = Modifier.size(42.dp)
+                    )
+                    Spacer(Modifier.width(8.dp))
+                }
+
+                // Chevron
+                Icon(
+                    imageVector = Icons.Default.KeyboardArrowDown,
+                    contentDescription = if (isExpanded) "Collapse" else "Expand",
+                    tint = HomeTextSecondary,
+                    modifier = Modifier
+                        .size(22.dp)
+                        .rotate(chevronRotation)
+                )
+            }
+
+            // ── Expanded content ─────────────────────────────────────────
+            AnimatedVisibility(
+                visible = isExpanded,
+                enter = expandVertically(animationSpec = tween(250)),
+                exit = shrinkVertically(animationSpec = tween(250))
+            ) {
+                Column {
+                    // Divider
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 14.dp)
+                            .height(1.dp)
+                            .background(HomeDarkCardBorder)
+                    )
+
+                    // Task list
+                    if (tasks.isEmpty()) {
+                        Text(
+                            text = "No tasks yet. Tap + to add one.",
+                            style = regularTextStyle(HomeTextSecondary, 12.sp),
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 16.dp)
+                        )
+                    } else {
+                        Column(modifier = Modifier.padding(top = 4.dp, bottom = 4.dp)) {
+                            // Show incomplete first, then completed
+                            val sortedTasks = tasks.sortedWith(
+                                compareBy<AgentTask> { it.isCompleted }.thenBy { it.dueDate }
+                            )
+                            sortedTasks.forEach { task ->
+                                TaskRow(
+                                    task = task,
+                                    onToggle = { onToggleTask(task) },
+                                    onDelete = { onDeleteTask(task) }
+                                )
+                            }
+                        }
+                    }
+
+                    // Progress bar
+                    if (totalCount > 0) {
+                        val animatedProgress by animateFloatAsState(
+                            targetValue = progress,
+                            animationSpec = tween(400),
+                            label = "progress"
+                        )
+                        LinearProgressIndicator(
+                            progress = { animatedProgress },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 14.dp)
+                                .height(4.dp)
+                                .clip(RoundedCornerShape(2.dp)),
+                            color = accentColor,
+                            trackColor = HomeDarkCardBorder,
+                        )
+                        Spacer(Modifier.height(8.dp))
+                    }
+
+                    // + Add Task button
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(start = 14.dp, end = 14.dp, bottom = 12.dp, top = 4.dp),
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(HomeTealAccent.copy(alpha = 0.12f))
+                                .clickWithNoRipple { onAddTaskClick() }
+                                .padding(horizontal = 12.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Add,
+                                contentDescription = "Add Task",
+                                tint = HomeTealAccent,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Spacer(Modifier.width(4.dp))
+                            Text(
+                                text = "Add Task",
+                                style = boldTextStyle(HomeTealAccent, 12.sp)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ── Task Row ─────────────────────────────────────────────────────────────────
+
+@Composable
+private fun TaskRow(
+    task: AgentTask,
+    onToggle: () -> Unit,
+    onDelete: () -> Unit
+) {
+    val dueDateStr = formatDueDate(task.dueDate)
+    val dueDateColor = dueDateColor(task.dueDate, task.isCompleted)
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 6.dp, vertical = 1.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Checkbox(
+            checked = task.isCompleted,
+            onCheckedChange = { onToggle() },
+            colors = CheckboxDefaults.colors(
+                checkedColor = HomeTealAccent,
+                uncheckedColor = HomeTextSecondary,
+                checkmarkColor = HomeDarkBackground
+            ),
+            modifier = Modifier.size(36.dp)
+        )
+
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = task.title,
+                style = if (task.isCompleted) {
+                    regularTextStyle(
+                        HomeTextSecondary.copy(alpha = 0.5f), 13.sp,
+                        decoration = TextDecoration.LineThrough
+                    )
+                } else {
+                    regularTextStyle(HomeTextPrimary, 13.sp)
+                },
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+
+        // Due-date chip
+        if (task.dueDate > 0L) {
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(dueDateColor.copy(alpha = 0.15f))
+                    .padding(horizontal = 8.dp, vertical = 3.dp)
+            ) {
+                Text(
+                    text = dueDateStr,
+                    style = boldTextStyle(dueDateColor, 10.sp)
+                )
+            }
+        }
+
+        Spacer(Modifier.width(4.dp))
+
+        // Delete
+        Icon(
+            imageVector = Icons.Default.Close,
+            contentDescription = "Delete task",
+            tint = HomeTextSecondary.copy(alpha = 0.4f),
+            modifier = Modifier
+                .size(18.dp)
+                .clickWithNoRipple { onDelete() }
+        )
+    }
+}
+
+// ── Circular Progress Ring ───────────────────────────────────────────────────
+
+@Composable
+private fun CircularProgressRing(
+    progress: Float,
+    text: String,
+    accentColor: Color,
+    modifier: Modifier = Modifier
+) {
+    val animatedProgress by animateFloatAsState(
+        targetValue = progress,
+        animationSpec = tween(500),
+        label = "ringProgress"
+    )
+
+    Box(modifier = modifier, contentAlignment = Alignment.Center) {
+        Canvas(modifier = Modifier.matchParentSize()) {
+            val stroke = 4.dp.toPx()
+            val padding = stroke / 2
+            val arcSize = Size(size.width - stroke, size.height - stroke)
+
+            // Track
+            drawArc(
+                color = HomeDarkCardBorder,
+                startAngle = -90f,
+                sweepAngle = 360f,
+                useCenter = false,
+                topLeft = Offset(padding, padding),
+                size = arcSize,
+                style = Stroke(width = stroke, cap = StrokeCap.Round)
+            )
+
+            // Progress arc
+            drawArc(
+                color = accentColor,
+                startAngle = -90f,
+                sweepAngle = animatedProgress * 360f,
+                useCenter = false,
+                topLeft = Offset(padding, padding),
+                size = arcSize,
+                style = Stroke(width = stroke, cap = StrokeCap.Round)
+            )
+        }
+
+        Text(
+            text = text,
+            style = boldTextStyle(HomeTextPrimary, 9.sp)
+        )
+    }
+}
+
+// ── Add Task Dialog ──────────────────────────────────────────────────────────
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun AddTaskDialog(
+    agentName: String,
+    onDismiss: () -> Unit,
+    onConfirm: (title: String, dueDate: Long) -> Unit
+) {
+    var title by remember { mutableStateOf("") }
+    var selectedDate by remember { mutableStateOf(0L) }
+    var showDatePicker by remember { mutableStateOf(false) }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(containerColor = HomeDarkCard)
+        ) {
+            Column(modifier = Modifier.padding(20.dp)) {
+                // Title
+                Text(
+                    text = "New Task for $agentName",
+                    style = boldTextStyle(HomeTextPrimary, 16.sp)
+                )
+                Spacer(Modifier.height(16.dp))
+
+                // Task name field
+                OutlinedTextField(
+                    value = title,
+                    onValueChange = { title = it },
+                    placeholder = {
+                        Text(
+                            "Task description...",
+                            style = regularTextStyle(HomeTextSecondary, 14.sp)
+                        )
+                    },
+                    textStyle = regularTextStyle(HomeTextPrimary, 14.sp),
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = HomeTealAccent,
+                        unfocusedBorderColor = HomeDarkCardBorder,
+                        cursorColor = HomeTealAccent,
+                        focusedContainerColor = HomeDarkBackground,
+                        unfocusedContainerColor = HomeDarkBackground
+                    ),
+                    singleLine = true
+                )
+
+                Spacer(Modifier.height(12.dp))
+
+                // Due date picker button
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(12.dp))
+                        .background(HomeDarkBackground)
+                        .clickWithNoRipple { showDatePicker = true }
+                        .padding(horizontal = 14.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.CalendarToday,
+                        contentDescription = null,
+                        tint = if (selectedDate > 0) HomeTealAccent else HomeTextSecondary,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(Modifier.width(10.dp))
+                    Text(
+                        text = if (selectedDate > 0L) {
+                            SimpleDateFormat("MMM d, yyyy", Locale.getDefault()).format(Date(selectedDate))
+                        } else {
+                            "Select due date"
+                        },
+                        style = regularTextStyle(
+                            if (selectedDate > 0) HomeTextPrimary else HomeTextSecondary,
+                            14.sp
+                        )
+                    )
+                }
+
+                Spacer(Modifier.height(20.dp))
+
+                // Buttons
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    TextButton(onClick = onDismiss) {
+                        Text(
+                            "Cancel",
+                            style = boldTextStyle(HomeTextSecondary, 13.sp)
+                        )
+                    }
+                    Spacer(Modifier.width(8.dp))
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(
+                                if (title.isNotBlank()) HomeTealAccent
+                                else HomeTealAccent.copy(alpha = 0.3f)
+                            )
+                            .then(
+                                if (title.isNotBlank()) Modifier.clickWithNoRipple {
+                                    onConfirm(title.trim(), selectedDate)
+                                } else Modifier
+                            )
+                            .padding(horizontal = 20.dp, vertical = 10.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            "Add Task",
+                            style = boldTextStyle(HomeDarkBackground, 13.sp)
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    // Date picker dialog
+    if (showDatePicker) {
+        val datePickerState = rememberDatePickerState()
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    datePickerState.selectedDateMillis?.let { selectedDate = it }
+                    showDatePicker = false
+                }) {
+                    Text("OK", style = boldTextStyle(HomeTealAccent, 14.sp))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) {
+                    Text("Cancel", style = boldTextStyle(HomeTextSecondary, 14.sp))
+                }
+            }
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
+}
+
+// ── Due-date helpers ─────────────────────────────────────────────────────────
+
+private fun formatDueDate(epochMillis: Long): String {
+    if (epochMillis <= 0L) return ""
+    val now = System.currentTimeMillis()
+    val diffDays = ((epochMillis - now) / (24 * 60 * 60 * 1000)).toInt()
+    return when {
+        diffDays < -1 -> "${-diffDays}d overdue"
+        diffDays == -1 -> "Yesterday"
+        diffDays == 0 -> "Today"
+        diffDays == 1 -> "Tomorrow"
+        diffDays <= 7 -> "In ${diffDays}d"
+        else -> SimpleDateFormat("MMM d", Locale.getDefault()).format(Date(epochMillis))
+    }
+}
+
+private fun dueDateColor(epochMillis: Long, isCompleted: Boolean): Color {
+    if (isCompleted) return HomeGreenAccent
+    if (epochMillis <= 0L) return HomeTextSecondary
+    val now = System.currentTimeMillis()
+    val diffDays = ((epochMillis - now) / (24 * 60 * 60 * 1000)).toInt()
+    return when {
+        diffDays < 0 -> HomeRedAccent
+        diffDays <= 2 -> HomeOrangeAccent
+        diffDays <= 7 -> Color(0xFFFDD835) // yellow
+        else -> HomeTextSecondary
     }
 }
 
