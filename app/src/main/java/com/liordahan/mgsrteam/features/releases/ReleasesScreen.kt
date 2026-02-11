@@ -2,7 +2,13 @@ package com.liordahan.mgsrteam.features.releases
 
 import android.content.Context
 import android.content.Intent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
@@ -257,7 +263,7 @@ fun ReleasesScreen(
                 visible = releaseList.size
             )
 
-            // Position Filter Chips
+            // Position Filter Chips (with animated accent line)
             ReleasesPositionChips(
                 positionList = positionList,
                 selectedPosition = selectedPosition,
@@ -270,16 +276,6 @@ fun ReleasesScreen(
                     selectedPosition = null
                     viewModel.selectPosition(null)
                 }
-            )
-
-            // Teal accent line
-            Box(
-                modifier = Modifier
-                    .padding(horizontal = 20.dp)
-                    .width(40.dp)
-                    .height(3.dp)
-                    .clip(RoundedCornerShape(2.dp))
-                    .background(HomeTealAccent)
             )
 
             LazyColumn(
@@ -304,8 +300,14 @@ fun ReleasesScreen(
                         },
                         onAddToShortlistClicked = { url ->
                             scope.launch {
-                                shortlistRepository.addToShortlist(url)
-                                justAddedUrls = justAddedUrls + url
+                                val isInShortlist = url in shortlistUrls || url in justAddedUrls
+                                if (isInShortlist) {
+                                    shortlistRepository.removeFromShortlist(url)
+                                    justAddedUrls = justAddedUrls - url
+                                } else {
+                                    shortlistRepository.addToShortlist(url)
+                                    justAddedUrls = justAddedUrls + url
+                                }
                             }
                         },
                         isInShortlist = { url ->
@@ -477,69 +479,96 @@ private fun ReleasesPositionChips(
     val totalCount = originalReleaseList.size
     val isAllSelected = selectedPosition == null
 
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 4.dp)
-            .horizontalScroll(scrollState),
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-        verticalAlignment = Alignment.CenterVertically
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 4.dp)
+                .horizontalScroll(scrollState),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.Bottom
+        ) {
+            // All chip with line
+            ReleasesChipWithLine(
+                text = "All $totalCount",
+                isSelected = isAllSelected,
+                isDisabled = false,
+                onClick = onAllClicked
+            )
+
+            positionList.forEach { position ->
+                val count = originalReleaseList.count { it.playerPosition?.equals(position.name) == true }
+                val isSelected = selectedPosition == position
+                val isDisabled = count == 0
+                val positionName = position.name ?: ""
+
+                ReleasesChipWithLine(
+                    text = if (count > 0) "$positionName $count" else positionName,
+                    isSelected = isSelected,
+                    isDisabled = isDisabled,
+                    onClick = { if (!isDisabled) onPositionClicked(position) }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ReleasesChipWithLine(
+    text: String,
+    isSelected: Boolean,
+    isDisabled: Boolean,
+    onClick: () -> Unit
+) {
+    val bgColor by animateColorAsState(
+        targetValue = when {
+            isDisabled -> Color.Transparent
+            isSelected -> HomeTealAccent
+            else -> Color.Transparent
+        },
+        animationSpec = tween(280),
+        label = "chipBg"
+    )
+    val textColor = when {
+        isDisabled -> HomeTextSecondary.copy(alpha = 0.5f)
+        isSelected -> HomeDarkBackground
+        else -> HomeTextSecondary
+    }
+    val borderColor = when {
+        isDisabled -> HomeDarkCardBorder.copy(alpha = 0.5f)
+        isSelected -> HomeTealAccent
+        else -> HomeDarkCardBorder
+    }
+
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.padding(bottom = 4.dp)
     ) {
-        // All chip
-        val allBgColor by animateColorAsState(
-            targetValue = if (isAllSelected) HomeTealAccent else Color.Transparent,
-            label = "allChipBg"
-        )
-        val allTextColor = if (isAllSelected) HomeDarkBackground else HomeTextSecondary
-        val allBorderColor = if (isAllSelected) HomeTealAccent else HomeDarkCardBorder
         Text(
-            text = "All $totalCount",
-            style = boldTextStyle(allTextColor, 11.sp),
+            text = text,
+            style = boldTextStyle(textColor, 11.sp),
             modifier = Modifier
                 .clip(RoundedCornerShape(20.dp))
-                .background(allBgColor)
-                .border(1.dp, allBorderColor, RoundedCornerShape(20.dp))
-                .clickWithNoRipple { onAllClicked() }
+                .background(bgColor)
+                .border(1.dp, borderColor, RoundedCornerShape(20.dp))
+                .then(
+                    if (isDisabled) Modifier
+                    else Modifier.clickWithNoRipple(onClick = onClick)
+                )
                 .padding(horizontal = 14.dp, vertical = 5.dp)
         )
-
-        positionList.forEach { position ->
-            val count = originalReleaseList.count { it.playerPosition?.equals(position.name) == true }
-            val isSelected = selectedPosition == position
-            val isDisabled = count == 0
-
-            val bgColor by animateColorAsState(
-                targetValue = when {
-                    isDisabled -> Color.Transparent
-                    isSelected -> HomeTealAccent
-                    else -> Color.Transparent
-                },
-                label = "chipBg"
-            )
-            val textColor = when {
-                isDisabled -> HomeTextSecondary.copy(alpha = 0.5f)
-                isSelected -> HomeDarkBackground
-                else -> HomeTextSecondary
-            }
-            val borderColor = when {
-                isDisabled -> HomeDarkCardBorder.copy(alpha = 0.5f)
-                isSelected -> HomeTealAccent
-                else -> HomeDarkCardBorder
-            }
-
-            val positionName = position.name ?: ""
-            Text(
-                text = if (count > 0) "$positionName $count" else positionName,
-                style = boldTextStyle(textColor, 11.sp),
+        AnimatedVisibility(
+            visible = isSelected,
+            enter = fadeIn(tween(280)) + expandVertically(animationSpec = tween(280)),
+            exit = fadeOut(tween(280)) + shrinkVertically(animationSpec = tween(280))
+        ) {
+            Box(
                 modifier = Modifier
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(bgColor)
-                    .border(1.dp, borderColor, RoundedCornerShape(20.dp))
-                    .then(
-                        if (isDisabled) Modifier
-                        else Modifier.clickWithNoRipple { onPositionClicked(position) }
-                    )
-                    .padding(horizontal = 14.dp, vertical = 5.dp)
+                    .padding(top = 4.dp)
+                    .width(40.dp)
+                    .height(3.dp)
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(HomeTealAccent)
             )
         }
     }

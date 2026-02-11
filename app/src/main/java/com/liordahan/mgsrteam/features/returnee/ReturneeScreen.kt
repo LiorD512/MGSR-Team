@@ -229,8 +229,14 @@ fun ReturneeScreen(
                         },
                         onAddToShortlistClicked = { url ->
                             scope.launch {
-                                shortlistRepository.addToShortlist(url)
-                                justAddedUrls = justAddedUrls + url
+                                val isInShortlist = url in shortlistUrls || url in justAddedUrls
+                                if (isInShortlist) {
+                                    shortlistRepository.removeFromShortlist(url)
+                                    justAddedUrls = justAddedUrls - url
+                                } else {
+                                    shortlistRepository.addToShortlist(url)
+                                    justAddedUrls = justAddedUrls + url
+                                }
                             }
                         },
                         isInShortlist = { url ->
