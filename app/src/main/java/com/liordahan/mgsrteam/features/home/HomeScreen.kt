@@ -41,7 +41,8 @@ fun HomeScreen(
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
-    val isDashboard = currentRoute == Screens.DashboardScreen.route
+    val isDarkScreen = currentRoute == Screens.DashboardScreen.route ||
+            currentRoute == Screens.PlayersScreen.route
 
     LaunchedEffect(Unit) {
         mainViewModel.pendingDeepLinkPlayerId.collectLatest { playerId ->
@@ -54,7 +55,7 @@ fun HomeScreen(
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
-        containerColor = if (isDashboard) HomeDarkBackground else Color.White,
+        containerColor = if (isDarkScreen) HomeDarkBackground else Color.White,
         topBar = {
 
         },

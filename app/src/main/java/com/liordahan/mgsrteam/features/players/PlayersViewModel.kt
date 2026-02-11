@@ -44,7 +44,11 @@ data class PlayersUiState(
     val contractFilterOption: ContractFilterOption = ContractFilterOption.NONE,
     val sortOption: SortOption = SortOption.DEFAULT,
     val isWithNotesChecked: Boolean = false,
-    val searchQuery: String = ""
+    val searchQuery: String = "",
+    val totalPlayers: Int = 0,
+    val mandateCount: Int = 0,
+    val freeAgentCount: Int = 0,
+    val expiringCount: Int = 0
 )
 
 abstract class IPlayersViewModel : ViewModel() {
@@ -92,12 +96,24 @@ class PlayersViewModel(
                             .thenByDescending { it.notes?.isNotEmpty() ?: false }
                             .thenByDescending { it.createdAt })
                         ?.sortBySortOption(it.sortOption) ?: emptyList()
-                    val expiringSoon = it.playersList.filter { player ->
+                    val allPlayers = it.playersList
+                    val expiringSoon = allPlayers.filter { player ->
                         isContractExpiringWithinMonths(player.contractExpired, 5)
+                    }
+                    val mandateCount = allPlayers.count { player ->
+                        !player.agentInChargeName.isNullOrBlank()
+                    }
+                    val freeAgentCount = allPlayers.count { player ->
+                        player.currentClub?.clubName.equals("Without Club", ignoreCase = true) ||
+                                player.currentClub?.clubName.equals("Without club", ignoreCase = true)
                     }
                     it.copy(
                         visibleList = visible,
-                        expiringSoonPlayers = expiringSoon
+                        expiringSoonPlayers = expiringSoon,
+                        totalPlayers = allPlayers.size,
+                        mandateCount = mandateCount,
+                        freeAgentCount = freeAgentCount,
+                        expiringCount = expiringSoon.size
                     )
                 }
             }
