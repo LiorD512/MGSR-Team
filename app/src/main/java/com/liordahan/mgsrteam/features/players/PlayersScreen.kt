@@ -125,10 +125,6 @@ fun PlayersScreen(
     }
     val listState = rememberLazyListState()
 
-    BackHandler {
-        ActivityCompat.finishAffinity(context as Activity)
-    }
-
     Box(
         modifier = Modifier
             .fillMaxSize()

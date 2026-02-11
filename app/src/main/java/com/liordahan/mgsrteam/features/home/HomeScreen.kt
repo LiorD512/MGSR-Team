@@ -32,7 +32,6 @@ import com.liordahan.mgsrteam.features.releases.ReleasesScreen
 import com.liordahan.mgsrteam.features.contacts.ContactsScreen
 import com.liordahan.mgsrteam.features.returnee.ReturneeScreen
 import com.liordahan.mgsrteam.features.shortlist.ShortlistScreen
-import com.liordahan.mgsrteam.navigation.BottomNavigationUi
 import com.liordahan.mgsrteam.navigation.Screens
 import com.liordahan.mgsrteam.ui.theme.HomeDarkBackground
 
@@ -64,19 +63,7 @@ fun HomeScreen(
         topBar = {
 
         },
-        bottomBar = {
-            if (currentRoute in listOf(
-                    Screens.DashboardScreen.route,
-                    Screens.PlayersScreen.route,
-                    Screens.ReleasesScreen.route,
-                    Screens.ReturneeScreen.route,
-                    Screens.ContactsScreen.route,
-                    Screens.ShortlistScreen.route
-                )
-            ) {
-                BottomNavigationUi(navController = navController, currentRoute = currentRoute)
-            }
-        }
+        bottomBar = { }
     ) {
 
         NavHost(navController = navController, startDestination = Screens.DashboardScreen.route) {

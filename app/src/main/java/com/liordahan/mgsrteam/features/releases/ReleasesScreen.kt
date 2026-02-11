@@ -151,10 +151,6 @@ fun ReleasesScreen(
     }
     var justAddedUrls by remember { mutableStateOf(setOf<String>()) }
 
-    BackHandler {
-        ActivityCompat.finishAffinity(context as Activity)
-    }
-
     LaunchedEffect(showAddPlayerBottomSheet, addPlayerTmUrl) {
         if (showAddPlayerBottomSheet && !addPlayerTmUrl.isNullOrBlank()) {
             addPlayerViewModel.loadPlayerByTmProfileUrl(addPlayerTmUrl!!)

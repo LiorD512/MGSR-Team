@@ -28,7 +28,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Autorenew
+import androidx.compose.material.icons.filled.ContactPhone
+import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
@@ -39,6 +41,7 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.automirrored.filled.NoteAdd
 import androidx.compose.material.icons.automirrored.filled.TrendingDown
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.PersonOff
@@ -143,7 +146,7 @@ fun DashboardScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .weight(1f),
-            contentPadding = PaddingValues(bottom = 140.dp)
+            contentPadding = PaddingValues(bottom = 24.dp)
         ) {
             // ── Activity Feed ────────────────────────────────────────────
             item {
@@ -346,17 +349,33 @@ private fun QuickActionsRow(navController: NavController) {
     ) {
         item {
             QuickActionChip(
-                icon = Icons.Default.Add,
-                label = "Add Player",
+                icon = Icons.Default.People,
+                label = "Players",
                 color = HomeTealAccent,
-                onClick = { navController.navigate("${Screens.AddPlayerScreen.route}/") }
+                onClick = {
+                    navController.navigate(Screens.PlayersScreen.route) {
+                        launchSingleTop = true
+                    }
+                }
+            )
+        }
+        item {
+            QuickActionChip(
+                icon = Icons.Default.List,
+                label = "Shortlist",
+                color = HomeBlueAccent,
+                onClick = {
+                    navController.navigate(Screens.ShortlistScreen.route) {
+                        launchSingleTop = true
+                    }
+                }
             )
         }
         item {
             QuickActionChip(
                 icon = Icons.Default.Search,
                 label = "Releases",
-                color = HomeBlueAccent,
+                color = HomeOrangeAccent,
                 onClick = {
                     navController.navigate(Screens.ReleasesScreen.route) {
                         launchSingleTop = true
@@ -366,11 +385,23 @@ private fun QuickActionsRow(navController: NavController) {
         }
         item {
             QuickActionChip(
-                icon = Icons.Default.People,
-                label = "Players",
-                color = HomeOrangeAccent,
+                icon = Icons.Default.Autorenew,
+                label = "Returnees",
+                color = HomeRedAccent,
                 onClick = {
-                    navController.navigate(Screens.PlayersScreen.route) {
+                    navController.navigate(Screens.ReturneeScreen.route) {
+                        launchSingleTop = true
+                    }
+                }
+            )
+        }
+        item {
+            QuickActionChip(
+                icon = Icons.Default.ContactPhone,
+                label = "Contacts",
+                color = HomeTealAccent,
+                onClick = {
+                    navController.navigate(Screens.ContactsScreen.route) {
                         launchSingleTop = true
                     }
                 }

@@ -99,10 +99,6 @@ fun ReturneeScreen(
     }
     var justAddedUrls by remember { mutableStateOf(setOf<String>()) }
 
-    BackHandler {
-        ActivityCompat.finishAffinity(context as Activity)
-    }
-
     LaunchedEffect(Unit) {
         viewModel.fetchAllReturneesFromAllLeagues()
     }
