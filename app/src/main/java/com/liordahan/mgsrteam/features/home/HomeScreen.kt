@@ -142,7 +142,23 @@ fun HomeScreen(
                         type = NavType.StringType
                         defaultValue = ""
                     }
-                )
+                ),
+                enterTransition = {
+                    slideInHorizontally(initialOffsetX = { it }, animationSpec = tween(280)) +
+                            fadeIn(animationSpec = tween(280))
+                },
+                exitTransition = {
+                    slideOutHorizontally(targetOffsetX = { -it }, animationSpec = tween(280)) +
+                            fadeOut(animationSpec = tween(280))
+                },
+                popEnterTransition = {
+                    slideInHorizontally(initialOffsetX = { -it }, animationSpec = tween(280)) +
+                            fadeIn(animationSpec = tween(280))
+                },
+                popExitTransition = {
+                    slideOutHorizontally(targetOffsetX = { it }, animationSpec = tween(280)) +
+                            fadeOut(animationSpec = tween(280))
+                }
             ) { backStackEntry ->
                 val tmProfileUrl = backStackEntry.arguments?.getString("tmProfileUrl").orEmpty()
                 AddPlayerScreen(
@@ -153,7 +169,23 @@ fun HomeScreen(
 
             composable(
                 route = "${Screens.PlayerInfoScreen.route}/{playerId}",
-                arguments = listOf(navArgument("playerId") { NavType.StringType })
+                arguments = listOf(navArgument("playerId") { NavType.StringType }),
+                enterTransition = {
+                    slideInHorizontally(initialOffsetX = { it }, animationSpec = tween(280)) +
+                            fadeIn(animationSpec = tween(280))
+                },
+                exitTransition = {
+                    slideOutHorizontally(targetOffsetX = { -it }, animationSpec = tween(280)) +
+                            fadeOut(animationSpec = tween(280))
+                },
+                popEnterTransition = {
+                    slideInHorizontally(initialOffsetX = { -it }, animationSpec = tween(280)) +
+                            fadeIn(animationSpec = tween(280))
+                },
+                popExitTransition = {
+                    slideOutHorizontally(targetOffsetX = { it }, animationSpec = tween(280)) +
+                            fadeOut(animationSpec = tween(280))
+                }
             ) { backStackEntry ->
                 val playerId = backStackEntry.arguments?.getString("playerId") ?: return@composable
                 PlayerInfoScreen(playerId = playerId, navController = navController)
