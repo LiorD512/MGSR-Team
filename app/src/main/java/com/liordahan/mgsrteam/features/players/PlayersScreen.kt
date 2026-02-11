@@ -14,6 +14,8 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -37,8 +39,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.EditNote
-import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Handshake
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Person
@@ -47,7 +49,6 @@ import androidx.compose.material.icons.filled.PersonOff
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.automirrored.filled.StickyNote2
 import androidx.compose.material.icons.automirrored.filled.TrendingDown
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
@@ -56,6 +57,8 @@ import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -63,7 +66,6 @@ import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -93,14 +95,11 @@ import androidx.core.app.ActivityCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
-import com.liordahan.mgsrteam.features.players.filters.ContractFilterOption
-import com.liordahan.mgsrteam.features.players.filters.PlayerListFilterBottomSheet
 import com.liordahan.mgsrteam.features.players.models.Player
 import com.liordahan.mgsrteam.features.players.models.getAgentPhoneNumber
 import com.liordahan.mgsrteam.features.players.models.getPlayerPhoneNumber
-import com.liordahan.mgsrteam.features.players.sort.PlayerListSortBottomSheet
 import com.liordahan.mgsrteam.features.players.sort.SortOption
-import com.liordahan.mgsrteam.features.players.ui.EmptyState
+import com.liordahan.mgsrteam.features.players.ui.RosterEmptyState
 import com.liordahan.mgsrteam.navigation.Screens
 import com.liordahan.mgsrteam.ui.theme.*
 import com.liordahan.mgsrteam.ui.utils.boldTextStyle
@@ -121,21 +120,10 @@ fun PlayersScreen(
     val playersState by viewModel.playersFlow.collectAsStateWithLifecycle()
 
     var searchQuery by remember { mutableStateOf(viewModel.playersFlow.value.searchQuery) }
-    var showFilterBottomSheet by remember { mutableStateOf(false) }
-    var showSortBottomSheet by remember { mutableStateOf(false) }
     val showEmptyState by remember(playersState) {
         mutableStateOf(playersState.visibleList.isEmpty() && !playersState.showPageLoader)
     }
     val listState = rememberLazyListState()
-
-    val numberOfFilters by remember(playersState) {
-        derivedStateOf {
-            playersState.selectedPositions.size +
-                    playersState.selectedAccounts.size +
-                    (if (playersState.contractFilterOption != ContractFilterOption.NONE) 1 else 0) +
-                    (if (playersState.isWithNotesChecked) 1 else 0)
-        }
-    }
 
     BackHandler {
         ActivityCompat.finishAffinity(context as Activity)
@@ -172,18 +160,25 @@ fun PlayersScreen(
                 }
             )
 
-            // ── Filter Chips ─────────────────────────────────────────────
-            PositionFilterChips(
+            // ── Filter Chips + Sort Menu ──────────────────────────────────
+            PositionFilterChipsWithSortMenu(
                 selectedPositions = playersState.selectedPositions.mapNotNull { it.name },
-                onChipClick = { /* Handled by existing filter bottom sheet */ }
+                sortOption = playersState.sortOption,
+                onChipClick = { positionName -> viewModel.setPositionFilterByChip(positionName) },
+                onSortOptionSelected = { viewModel.setSortOption(it) },
+                onResetSort = { viewModel.resetSortOption() }
             )
 
-            // ── Sort / Filter Toolbar ────────────────────────────────────
-            SortFilterToolbar(
-                sortOption = playersState.sortOption,
-                numberOfFilters = numberOfFilters,
-                onSortClick = { showSortBottomSheet = true },
-                onFilterClick = { showFilterBottomSheet = true }
+            // ── Quick Filter Chips ───────────────────────────────────────
+            QuickFilterChips(
+                freeAgentsSelected = playersState.quickFilterFreeAgents,
+                contractExpiringSelected = playersState.quickFilterContractExpiring,
+                withMandateSelected = playersState.quickFilterWithMandate,
+                myPlayersOnlySelected = playersState.quickFilterMyPlayersOnly,
+                onFreeAgentsClick = { viewModel.toggleQuickFilterFreeAgents() },
+                onContractExpiringClick = { viewModel.toggleQuickFilterContractExpiring() },
+                onWithMandateClick = { viewModel.toggleQuickFilterWithMandate() },
+                onMyPlayersOnlyClick = { viewModel.toggleQuickFilterMyPlayersOnly() }
             )
 
             // ── Content ──────────────────────────────────────────────────
@@ -202,8 +197,8 @@ fun PlayersScreen(
                 }
 
                 showEmptyState -> {
-                    EmptyState(
-                        text = "No players found",
+                    RosterEmptyState(
+                        onAddPlayerClick = { navController.navigate("${Screens.AddPlayerScreen.route}/") },
                         onResetFiltersClicked = {
                             searchQuery = ""
                             viewModel.removeAllFilters()
@@ -272,25 +267,6 @@ fun PlayersScreen(
             )
         }
 
-        // ── Bottom Sheets ────────────────────────────────────────────────
-        if (showFilterBottomSheet) {
-            PlayerListFilterBottomSheet(
-                modifier = Modifier.align(Alignment.BottomEnd),
-                selectedPositionList = playersState.selectedPositions,
-                selectedAgentList = playersState.selectedAccounts,
-                selectedContractFilterOption = playersState.contractFilterOption,
-                isWithNotesChecked = playersState.isWithNotesChecked,
-                onDismiss = { showFilterBottomSheet = false }
-            )
-        }
-
-        if (showSortBottomSheet) {
-            PlayerListSortBottomSheet(
-                modifier = Modifier.align(Alignment.BottomEnd),
-                selectedSortOption = playersState.sortOption,
-                onDismissRequest = { showSortBottomSheet = false }
-            )
-        }
     }
 }
 
@@ -472,135 +448,230 @@ private fun PlayersSearchBar(
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
-//  POSITION FILTER CHIPS
+//  POSITION FILTER CHIPS + SORT MENU (3-dot)
 // ═════════════════════════════════════════════════════════════════════════════
 
 @Composable
-private fun PositionFilterChips(
+private fun PositionFilterChipsWithSortMenu(
     selectedPositions: List<String>,
-    onChipClick: (String) -> Unit
+    sortOption: SortOption,
+    onChipClick: (String) -> Unit,
+    onSortOptionSelected: (SortOption) -> Unit,
+    onResetSort: () -> Unit
 ) {
+    var sortMenuExpanded by remember { mutableStateOf(false) }
     val positions = listOf("All", "GK", "DEF", "MID", "FWD")
     val isAllSelected = selectedPositions.isEmpty()
-
-    LazyRow(
-        contentPadding = PaddingValues(horizontal = 16.dp),
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-        modifier = Modifier.padding(vertical = 4.dp)
-    ) {
-        items(positions) { position ->
-            val isSelected = if (position == "All") isAllSelected
-            else selectedPositions.any { it.equals(position, ignoreCase = true) }
-
-            val bgColor by animateColorAsState(
-                targetValue = if (isSelected) HomeTealAccent else Color.Transparent,
-                label = "chipBg"
-            )
-            val textColor = if (isSelected) HomeDarkBackground else HomeTextSecondary
-            val borderColor = if (isSelected) HomeTealAccent else HomeDarkCardBorder
-
-            Text(
-                text = position,
-                style = boldTextStyle(textColor, 11.sp),
-                modifier = Modifier
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(bgColor)
-                    .border(1.dp, borderColor, RoundedCornerShape(20.dp))
-                    .clickWithNoRipple { onChipClick(position) }
-                    .padding(horizontal = 14.dp, vertical = 5.dp)
-            )
-        }
-    }
-}
-
-// ═════════════════════════════════════════════════════════════════════════════
-//  SORT / FILTER TOOLBAR
-// ═════════════════════════════════════════════════════════════════════════════
-
-@Composable
-private fun SortFilterToolbar(
-    sortOption: SortOption,
-    numberOfFilters: Int,
-    onSortClick: () -> Unit,
-    onFilterClick: () -> Unit
-) {
-    val isSortActive = sortOption != SortOption.DEFAULT
-    val isFilterActive = numberOfFilters > 0
+    val scrollState = rememberScrollState()
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 4.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Sort button
-        ToolbarButton(
-            icon = Icons.AutoMirrored.Filled.Sort,
-            label = "Sort",
-            isActive = isSortActive,
-            badge = null,
-            onClick = onSortClick
-        )
+        Row(
+            modifier = Modifier
+                .weight(1f)
+                .horizontalScroll(scrollState),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            positions.forEach { position ->
+                val isSelected = if (position == "All") isAllSelected
+                else selectedPositions.any { it.equals(position, ignoreCase = true) }
 
-        // Filter button
-        ToolbarButton(
-            icon = Icons.Filled.FilterList,
-            label = "Filters",
-            isActive = isFilterActive,
-            badge = if (isFilterActive) numberOfFilters.toString() else null,
-            onClick = onFilterClick
-        )
-    }
-}
+                val bgColor by animateColorAsState(
+                    targetValue = if (isSelected) HomeTealAccent else Color.Transparent,
+                    label = "chipBg"
+                )
+                val textColor = if (isSelected) HomeDarkBackground else HomeTextSecondary
+                val borderColor = if (isSelected) HomeTealAccent else HomeDarkCardBorder
 
-@Composable
-private fun ToolbarButton(
-    icon: ImageVector,
-    label: String,
-    isActive: Boolean,
-    badge: String?,
-    onClick: () -> Unit
-) {
-    val bgColor = if (isActive) HomeTealAccent else Color.Transparent
-    val contentColor = if (isActive) HomeDarkBackground else HomeTextSecondary
-    val borderColor = if (isActive) HomeTealAccent else HomeDarkCardBorder
-
-    Row(
-        modifier = Modifier
-            .clip(RoundedCornerShape(10.dp))
-            .background(bgColor)
-            .border(1.dp, borderColor, RoundedCornerShape(10.dp))
-            .clickWithNoRipple { onClick() }
-            .padding(horizontal = 12.dp, vertical = 5.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(4.dp)
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = contentColor,
-            modifier = Modifier.size(14.dp)
-        )
-        Text(
-            text = label,
-            style = boldTextStyle(contentColor, 11.sp)
-        )
-        if (badge != null) {
-            Box(
-                modifier = Modifier
-                    .size(16.dp)
-                    .clip(CircleShape)
-                    .background(HomeDarkBackground),
-                contentAlignment = Alignment.Center
-            ) {
                 Text(
-                    text = badge,
-                    style = boldTextStyle(HomeTealAccent, 9.sp)
+                    text = position,
+                    style = boldTextStyle(textColor, 11.sp),
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(bgColor)
+                        .border(1.dp, borderColor, RoundedCornerShape(20.dp))
+                        .clickWithNoRipple { onChipClick(position) }
+                        .padding(horizontal = 14.dp, vertical = 5.dp)
+                )
+            }
+        }
+
+        Spacer(Modifier.width(4.dp))
+
+        Box {
+            Icon(
+                imageVector = Icons.Filled.MoreVert,
+                contentDescription = "Sort options",
+                tint = HomeTextSecondary,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(20.dp))
+                    .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(20.dp))
+                    .clickWithNoRipple { sortMenuExpanded = true }
+                    .padding(8.dp)
+            )
+
+            DropdownMenu(
+                expanded = sortMenuExpanded,
+                onDismissRequest = { sortMenuExpanded = false },
+                modifier = Modifier.background(HomeDarkCard),
+                containerColor = HomeDarkCard
+            ) {
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            text = "Reset",
+                            style = regularTextStyle(HomeTextPrimary, 13.sp)
+                        )
+                    },
+                    onClick = {
+                        onResetSort()
+                        sortMenuExpanded = false
+                    }
+                )
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            text = "Newest First",
+                            style = regularTextStyle(
+                                if (sortOption == SortOption.NEWEST) HomeTealAccent else HomeTextPrimary,
+                                13.sp
+                            )
+                        )
+                    },
+                    onClick = {
+                        onSortOptionSelected(SortOption.NEWEST)
+                        sortMenuExpanded = false
+                    }
+                )
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            text = "By Market Value",
+                            style = regularTextStyle(
+                                if (sortOption == SortOption.MARKET_VALUE) HomeTealAccent else HomeTextPrimary,
+                                13.sp
+                            )
+                        )
+                    },
+                    onClick = {
+                        onSortOptionSelected(SortOption.MARKET_VALUE)
+                        sortMenuExpanded = false
+                    }
+                )
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            text = "By Name",
+                            style = regularTextStyle(
+                                if (sortOption == SortOption.NAME) HomeTealAccent else HomeTextPrimary,
+                                13.sp
+                            )
+                        )
+                    },
+                    onClick = {
+                        onSortOptionSelected(SortOption.NAME)
+                        sortMenuExpanded = false
+                    }
+                )
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            text = "By Age",
+                            style = regularTextStyle(
+                                if (sortOption == SortOption.AGE) HomeTealAccent else HomeTextPrimary,
+                                13.sp
+                            )
+                        )
+                    },
+                    onClick = {
+                        onSortOptionSelected(SortOption.AGE)
+                        sortMenuExpanded = false
+                    }
                 )
             }
         }
     }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+//  QUICK FILTER CHIPS (Free Agents, Contract Expiring, My Players Only)
+// ═════════════════════════════════════════════════════════════════════════════
+
+@Composable
+private fun QuickFilterChips(
+    freeAgentsSelected: Boolean,
+    contractExpiringSelected: Boolean,
+    withMandateSelected: Boolean,
+    myPlayersOnlySelected: Boolean,
+    onFreeAgentsClick: () -> Unit,
+    onContractExpiringClick: () -> Unit,
+    onWithMandateClick: () -> Unit,
+    onMyPlayersOnlyClick: () -> Unit
+) {
+    LazyRow(
+        contentPadding = PaddingValues(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        modifier = Modifier.padding(vertical = 4.dp)
+    ) {
+        item(key = "free_agents") {
+            QuickFilterChip(
+                label = "Free Agents",
+                isSelected = freeAgentsSelected,
+                onClick = onFreeAgentsClick
+            )
+        }
+        item(key = "contract_expiring") {
+            QuickFilterChip(
+                label = "Contract Expiring",
+                isSelected = contractExpiringSelected,
+                onClick = onContractExpiringClick
+            )
+        }
+        item(key = "with_mandate") {
+            QuickFilterChip(
+                label = "With Mandate",
+                isSelected = withMandateSelected,
+                onClick = onWithMandateClick
+            )
+        }
+        item(key = "my_players") {
+            QuickFilterChip(
+                label = "My Players Only",
+                isSelected = myPlayersOnlySelected,
+                onClick = onMyPlayersOnlyClick
+            )
+        }
+    }
+}
+
+@Composable
+private fun QuickFilterChip(
+    label: String,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
+    val bgColor by animateColorAsState(
+        targetValue = if (isSelected) HomeTealAccent else Color.Transparent,
+        label = "quickChipBg"
+    )
+    val textColor = if (isSelected) HomeDarkBackground else HomeTextSecondary
+    val borderColor = if (isSelected) HomeTealAccent else HomeDarkCardBorder
+
+    Text(
+        text = label,
+        style = boldTextStyle(textColor, 11.sp),
+        modifier = Modifier
+            .clip(RoundedCornerShape(20.dp))
+            .background(bgColor)
+            .border(1.dp, borderColor, RoundedCornerShape(20.dp))
+            .clickWithNoRipple { onClick() }
+            .padding(horizontal = 14.dp, vertical = 5.dp)
+    )
 }
 
 // ═════════════════════════════════════════════════════════════════════════════

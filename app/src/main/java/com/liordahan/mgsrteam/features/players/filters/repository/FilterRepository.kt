@@ -13,14 +13,23 @@ interface IFilterRepository {
     val agentFilterList: StateFlow<List<Account>>
     val contractFilterOption: StateFlow<ContractFilterOption>
     val withNotesCheckedFlow: StateFlow<Boolean>
+    val quickFilterFreeAgents: StateFlow<Boolean>
+    val quickFilterContractExpiring: StateFlow<Boolean>
+    val quickFilterWithMandate: StateFlow<Boolean>
+    val quickFilterMyPlayersOnly: StateFlow<Boolean>
 
     fun addPositionFilter(position: Position)
     fun removePositionFilter(position: Position)
+    fun setPositionFiltersByNames(names: List<String>)
     fun addAgentFilter(agent: Account)
     fun removeAgentFilter(agent: Account)
     fun removeAllFilters()
     fun setContractFilterOption(option: ContractFilterOption)
     fun setIsWithNotesChecked(isChecked: Boolean)
+    fun toggleQuickFilterFreeAgents()
+    fun toggleQuickFilterContractExpiring()
+    fun toggleQuickFilterWithMandate()
+    fun toggleQuickFilterMyPlayersOnly()
 }
 
 class FilterRepository : IFilterRepository {
@@ -37,6 +46,18 @@ class FilterRepository : IFilterRepository {
     private val _withNotesCheckedFlow = MutableStateFlow(false)
     override val withNotesCheckedFlow: StateFlow<Boolean> = _withNotesCheckedFlow
 
+    private val _quickFilterFreeAgents = MutableStateFlow(false)
+    override val quickFilterFreeAgents: StateFlow<Boolean> = _quickFilterFreeAgents
+
+    private val _quickFilterContractExpiring = MutableStateFlow(false)
+    override val quickFilterContractExpiring: StateFlow<Boolean> = _quickFilterContractExpiring
+
+    private val _quickFilterWithMandate = MutableStateFlow(false)
+    override val quickFilterWithMandate: StateFlow<Boolean> = _quickFilterWithMandate
+
+    private val _quickFilterMyPlayersOnly = MutableStateFlow(false)
+    override val quickFilterMyPlayersOnly: StateFlow<Boolean> = _quickFilterMyPlayersOnly
+
     override fun addPositionFilter(position: Position) {
         val filters = positionFilterList.value.toMutableList()
         if (filters.contains(position)) return
@@ -48,6 +69,11 @@ class FilterRepository : IFilterRepository {
         val filters = positionFilterList.value.toMutableList()
         filters.remove(position)
         _positionFilterList.update { filters }
+    }
+
+    override fun setPositionFiltersByNames(names: List<String>) {
+        val positions = names.map { name -> Position(id = null, name = name) }
+        _positionFilterList.update { positions }
     }
 
     override fun addAgentFilter(agent: Account) {
@@ -77,6 +103,26 @@ class FilterRepository : IFilterRepository {
         _agentFilterList.update { emptyList() }
         _contractFilterOption.update { ContractFilterOption.NONE }
         _withNotesCheckedFlow.update { false }
+        _quickFilterFreeAgents.update { false }
+        _quickFilterContractExpiring.update { false }
+        _quickFilterWithMandate.update { false }
+        _quickFilterMyPlayersOnly.update { false }
+    }
+
+    override fun toggleQuickFilterFreeAgents() {
+        _quickFilterFreeAgents.update { !it }
+    }
+
+    override fun toggleQuickFilterContractExpiring() {
+        _quickFilterContractExpiring.update { !it }
+    }
+
+    override fun toggleQuickFilterWithMandate() {
+        _quickFilterWithMandate.update { !it }
+    }
+
+    override fun toggleQuickFilterMyPlayersOnly() {
+        _quickFilterMyPlayersOnly.update { !it }
     }
 
 }

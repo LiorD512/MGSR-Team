@@ -19,19 +19,23 @@ import com.liordahan.mgsrteam.features.players.filters.usecases.IAddAgentFilterU
 import com.liordahan.mgsrteam.features.players.filters.usecases.IAddPositionFilterUseCase
 import com.liordahan.mgsrteam.features.players.filters.usecases.IGetAgentFilterFlowUseCase
 import com.liordahan.mgsrteam.features.players.filters.usecases.IGetContractFilterOptionUseCase
+import com.liordahan.mgsrteam.features.players.filters.usecases.IQuickFilterUseCase
 import com.liordahan.mgsrteam.features.players.filters.usecases.IGetIsWithNotesCheckedUseCase
 import com.liordahan.mgsrteam.features.players.filters.usecases.IGetPositionFilterFlowUseCase
 import com.liordahan.mgsrteam.features.players.filters.usecases.IGetSortOptionUseCase
 import com.liordahan.mgsrteam.features.players.filters.usecases.IRemoveAgentFilterUseCase
 import com.liordahan.mgsrteam.features.players.filters.usecases.IRemoveAllFiltersUseCase
 import com.liordahan.mgsrteam.features.players.filters.usecases.IRemovePositionFilterUseCase
+import com.liordahan.mgsrteam.features.players.filters.usecases.ISetPositionFiltersByNamesUseCase
 import com.liordahan.mgsrteam.features.players.filters.usecases.IResetSortOptionUseCase
 import com.liordahan.mgsrteam.features.players.filters.usecases.ISetContractFilterOptionUseCase
 import com.liordahan.mgsrteam.features.players.filters.usecases.ISetIsWithNotesCheckedUseCase
 import com.liordahan.mgsrteam.features.players.filters.usecases.ISetSortOptionUseCase
+import com.liordahan.mgsrteam.features.players.filters.usecases.QuickFilterUseCase
 import com.liordahan.mgsrteam.features.players.filters.usecases.RemoveAgentFilterUseCase
 import com.liordahan.mgsrteam.features.players.filters.usecases.RemoveAllFiltersUseCase
 import com.liordahan.mgsrteam.features.players.filters.usecases.RemovePositionFilterUseCase
+import com.liordahan.mgsrteam.features.players.filters.usecases.SetPositionFiltersByNamesUseCase
 import com.liordahan.mgsrteam.features.players.filters.usecases.ResetSortOptionUseCase
 import com.liordahan.mgsrteam.features.players.filters.usecases.SetContractFilterOptionUseCase
 import com.liordahan.mgsrteam.features.players.filters.usecases.SetIsWithNotesCheckedUseCase
@@ -58,7 +62,7 @@ val playersModule = module {
         SortRepository()
     } bind ISortRepository::class
 
-    viewModel<IPlayersViewModel> { PlayersViewModel(get(), get(), get(), get(), get(), get(), get(), get()) }
+    viewModel<IPlayersViewModel> { PlayersViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
     single { PlayerDocumentsRepository(get()) }
     viewModel<IPlayerInfoViewModel> { PlayerInfoViewModel(get(), get(), get()) }
     viewModel<IPlayerListFiltersViewModel> {
@@ -86,6 +90,12 @@ val playersModule = module {
 
     factory<IRemovePositionFilterUseCase> {
         RemovePositionFilterUseCase(
+            get()
+        )
+    }
+
+    factory<ISetPositionFiltersByNamesUseCase> {
+        SetPositionFiltersByNamesUseCase(
             get()
         )
     }
@@ -160,5 +170,9 @@ val playersModule = module {
         GetIsWithNotesCheckedUseCase(
             get()
         )
+    }
+
+    factory<IQuickFilterUseCase> {
+        QuickFilterUseCase(get())
     }
 }
