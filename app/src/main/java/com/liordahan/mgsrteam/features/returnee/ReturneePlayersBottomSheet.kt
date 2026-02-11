@@ -36,7 +36,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -55,8 +54,12 @@ import com.liordahan.mgsrteam.features.players.ui.FilterStripUi
 import com.liordahan.mgsrteam.features.releases.ReleaseListItem
 import com.liordahan.mgsrteam.features.returnee.model.Leagues
 import com.liordahan.mgsrteam.transfermarket.LatestTransferModel
-import com.liordahan.mgsrteam.ui.theme.contentDefault
-import com.liordahan.mgsrteam.ui.theme.dividerColor
+import com.liordahan.mgsrteam.ui.theme.HomeDarkBackground
+import com.liordahan.mgsrteam.ui.theme.HomeDarkCard
+import com.liordahan.mgsrteam.ui.theme.HomeDarkCardBorder
+import com.liordahan.mgsrteam.ui.theme.HomeTealAccent
+import com.liordahan.mgsrteam.ui.theme.HomeTextPrimary
+import com.liordahan.mgsrteam.ui.theme.HomeTextSecondary
 import com.liordahan.mgsrteam.ui.utils.ProgressIndicator
 import com.liordahan.mgsrteam.ui.utils.boldTextStyle
 import kotlinx.coroutines.launch
@@ -129,7 +132,7 @@ fun ReturneePlayersBottomSheet(
             viewModel.updateSelectedPosition(null)
             onDismiss()
         },
-        containerColor = Color.White,
+        containerColor = HomeDarkCard,
         shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
         dragHandle = null
     ) {
@@ -151,6 +154,7 @@ fun ReturneePlayersBottomSheet(
                     shadowElevation = 6.dp,
                     tonalElevation = 12.dp,
                     shape = CircleShape,
+                    color = HomeDarkCard
                 ) {
                     AsyncImage(
                         modifier = Modifier
@@ -166,13 +170,13 @@ fun ReturneePlayersBottomSheet(
 
                 Text(
                     text = leagues.leagueName,
-                    style = boldTextStyle(contentDefault, 16.sp)
+                    style = boldTextStyle(HomeTextPrimary, 16.sp)
                 )
             }
 
             HorizontalDivider(
                 thickness = 1.dp,
-                color = dividerColor,
+                color = HomeDarkCardBorder,
                 modifier = Modifier.padding(top = 16.dp)
             )
 

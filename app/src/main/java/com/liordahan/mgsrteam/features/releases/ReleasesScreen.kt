@@ -84,6 +84,7 @@ import com.liordahan.mgsrteam.ui.theme.HomeDarkCard
 import com.liordahan.mgsrteam.ui.theme.HomeDarkCardBorder
 import com.liordahan.mgsrteam.ui.theme.HomeGreenAccent
 import com.liordahan.mgsrteam.ui.theme.HomeOrangeAccent
+import com.liordahan.mgsrteam.ui.theme.HomePurpleAccent
 import com.liordahan.mgsrteam.ui.theme.HomeTealAccent
 import com.liordahan.mgsrteam.ui.theme.HomeTextPrimary
 import com.liordahan.mgsrteam.ui.theme.HomeTextSecondary
@@ -594,12 +595,13 @@ fun ReleaseListItem(
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = HomeDarkCard)
     ) {
+        val accentColor = if (isFromReturnee) HomePurpleAccent else HomeTealAccent
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .drawBehind {
                     drawRect(
-                        color = HomeTealAccent,
+                        color = accentColor,
                         topLeft = Offset.Zero,
                         size = androidx.compose.ui.geometry.Size(
                             width = 3.dp.toPx(),
@@ -710,12 +712,18 @@ fun ReleaseListItem(
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(8.dp))
-                        .background(HomeOrangeAccent.copy(alpha = 0.15f))
+                        .background(
+                            if (isFromReturnee) HomePurpleAccent.copy(alpha = 0.15f)
+                            else HomeOrangeAccent.copy(alpha = 0.15f)
+                        )
                         .padding(horizontal = 8.dp, vertical = 3.dp)
                 ) {
                     Text(
-                        text = "Released",
-                        style = boldTextStyle(HomeOrangeAccent, 10.sp)
+                        text = if (isFromReturnee) "Loan Return" else "Released",
+                        style = boldTextStyle(
+                            if (isFromReturnee) HomePurpleAccent else HomeOrangeAccent,
+                            10.sp
+                        )
                     )
                 }
 
