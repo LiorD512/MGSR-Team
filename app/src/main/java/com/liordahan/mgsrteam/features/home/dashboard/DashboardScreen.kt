@@ -37,11 +37,13 @@ import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.Handshake
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.automirrored.filled.NoteAdd
+import androidx.compose.material.icons.automirrored.filled.TrendingDown
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.PersonOff
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -451,8 +453,15 @@ private fun FeedSectionHeader(
 @Composable
 private fun FeedEventCard(event: FeedEvent, navController: NavController) {
     val (icon, accentColor, title) = when (event.type) {
-        FeedEvent.TYPE_MARKET_VALUE_CHANGE -> Triple(Icons.AutoMirrored.Filled.TrendingUp, HomeGreenAccent, "Market Value Update")
-        FeedEvent.TYPE_CLUB_CHANGE -> Triple(Icons.Default.People, HomeBlueAccent, "Club Change Detected")
+        FeedEvent.TYPE_MARKET_VALUE_CHANGE -> {
+            val isDrop = isMarketValueDrop(event.oldValue, event.newValue)
+            if (isDrop) {
+                Triple(Icons.AutoMirrored.Filled.TrendingDown, HomeRedAccent, "Market Value Update")
+            } else {
+                Triple(Icons.AutoMirrored.Filled.TrendingUp, HomeGreenAccent, "Market Value Update")
+            }
+        }
+        FeedEvent.TYPE_CLUB_CHANGE -> Triple(Icons.Default.SwapHoriz, HomeBlueAccent, "Club Change Detected")
         FeedEvent.TYPE_BECAME_FREE_AGENT -> Triple(Icons.Default.PersonOff, HomeRedAccent, "Became Free Agent")
         FeedEvent.TYPE_CONTRACT_EXPIRING -> Triple(Icons.Default.Warning, HomeOrangeAccent, "Contract Expiring")
         FeedEvent.TYPE_NOTE_ADDED -> Triple(Icons.AutoMirrored.Filled.NoteAdd, HomePurpleAccent, "New Note")
@@ -566,6 +575,22 @@ private fun FeedEventCard(event: FeedEvent, navController: NavController) {
                 style = regularTextStyle(HomeTextSecondary, 10.sp)
             )
         }
+    }
+}
+
+private fun isMarketValueDrop(oldValue: String?, newValue: String?): Boolean {
+    if (oldValue.isNullOrBlank() || newValue.isNullOrBlank()) return false
+    val oldNum = oldValue.toMarketValueDouble()
+    val newNum = newValue.toMarketValueDouble()
+    return newNum < oldNum
+}
+
+private fun String.toMarketValueDouble(): Double {
+    val lower = this.lowercase().trim().removePrefix("€").replace(",", "")
+    return when {
+        lower.endsWith("k") -> lower.removeSuffix("k").toDoubleOrNull()?.times(1_000) ?: 0.0
+        lower.endsWith("m") -> lower.removeSuffix("m").toDoubleOrNull()?.times(1_000_000) ?: 0.0
+        else -> lower.toDoubleOrNull() ?: 0.0
     }
 }
 

@@ -101,7 +101,7 @@ class PlayersViewModel(
                         isContractExpiringWithinMonths(player.contractExpired, 5)
                     }
                     val mandateCount = allPlayers.count { player ->
-                        !player.agentInChargeName.isNullOrBlank()
+                        player.haveMandate
                     }
                     val freeAgentCount = allPlayers.count { player ->
                         player.currentClub?.clubName.equals("Without Club", ignoreCase = true) ||

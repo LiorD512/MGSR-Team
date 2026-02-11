@@ -22,6 +22,7 @@ data class Player(
     val currentClub: Club? = null,
     val agentInChargeId: String? = null,
     val agentInChargeName: String? = null,
+    val haveMandate: Boolean = false,
     val playerPhoneNumber: String? = null,
     val agentPhoneNumber: String? = null,
     val playerAdditionalInfoModel: PlayerAdditionalInfoModel? = null,

@@ -11,6 +11,7 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -40,6 +41,7 @@ import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Handshake
 import androidx.compose.material.icons.filled.People
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.PersonOff
 import androidx.compose.material.icons.filled.Phone
@@ -71,7 +73,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -114,7 +120,6 @@ fun PlayersScreen(
     val context = LocalContext.current
     val playersState by viewModel.playersFlow.collectAsStateWithLifecycle()
 
-    var userName by remember { mutableStateOf("") }
     var searchQuery by remember { mutableStateOf(viewModel.playersFlow.value.searchQuery) }
     var showFilterBottomSheet by remember { mutableStateOf(false) }
     var showSortBottomSheet by remember { mutableStateOf(false) }
@@ -136,10 +141,6 @@ fun PlayersScreen(
         ActivityCompat.finishAffinity(context as Activity)
     }
 
-    LaunchedEffect(Unit) {
-        userName = viewModel.getCurrentUserName() ?: ""
-    }
-
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -148,7 +149,7 @@ fun PlayersScreen(
         Column(modifier = Modifier.fillMaxSize()) {
 
             // ── Header ───────────────────────────────────────────────────
-            PlayersHeader(userName = userName)
+            PlayersHeader()
 
             // ── Stats Strip ──────────────────────────────────────────────
             StatsStrip(
@@ -246,14 +247,6 @@ fun PlayersScreen(
                                 onPlayerClick = {
                                     val encodedId = Uri.encode(player.tmProfile)
                                     navController.navigate("${Screens.PlayerInfoScreen.route}/$encodedId")
-                                },
-                                onPhoneClick = {
-                                    val phone = player.getPlayerPhoneNumber()
-                                        ?: player.getAgentPhoneNumber()
-                                    if (!phone.isNullOrBlank()) {
-                                        val intent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:$phone"))
-                                        context.startActivity(intent)
-                                    }
                                 }
                             )
                         }
@@ -306,7 +299,7 @@ fun PlayersScreen(
 // ═════════════════════════════════════════════════════════════════════════════
 
 @Composable
-private fun PlayersHeader(userName: String) {
+private fun PlayersHeader() {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -316,13 +309,6 @@ private fun PlayersHeader(userName: String) {
             text = "My Roster",
             style = boldTextStyle(HomeTextPrimary, 26.sp)
         )
-        if (userName.isNotBlank()) {
-            Text(
-                text = "Welcome, $userName",
-                style = regularTextStyle(HomeTextSecondary, 13.sp),
-                modifier = Modifier.padding(top = 2.dp)
-            )
-        }
     }
 }
 
@@ -434,7 +420,7 @@ private fun PlayersSearchBar(
             .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(14.dp)),
         placeholder = {
             Text(
-                text = "Search players, clubs...",
+                text = "Search players or notes...",
                 style = regularTextStyle(HomeTextSecondary.copy(alpha = 0.5f), 13.sp)
             )
         },
@@ -773,15 +759,14 @@ private fun ExpiringPlayerRow(player: Player, onClick: () -> Unit) {
 @Composable
 private fun PlayerCardVariantA(
     player: Player,
-    onPlayerClick: () -> Unit,
-    onPhoneClick: () -> Unit
+    onPlayerClick: () -> Unit
 ) {
     val isFreeAgent = player.currentClub?.clubName.equals("Without Club", ignoreCase = true) ||
             player.currentClub?.clubName.equals("Without club", ignoreCase = true)
     val isExpiring = remember(player.contractExpired) {
         isContractExpiringSoon(player.contractExpired)
     }
-    val hasMandate = false
+    val hasMandate = player.haveMandate
     val hasNotes = !player.notes.isNullOrEmpty() || !player.noteList.isNullOrEmpty()
     val noteCount = player.noteList?.size ?: if (!player.notes.isNullOrEmpty()) 1 else 0
 
@@ -836,7 +821,7 @@ private fun PlayerCardVariantA(
                             .size(52.dp)
                             .clip(CircleShape)
                             .border(2.dp, HomeDarkCardBorder, CircleShape),
-                        contentScale = ContentScale.Fit
+                        contentScale = ContentScale.Crop
                     )
                     // Status indicator dot
                     Box(
@@ -876,31 +861,31 @@ private fun PlayerCardVariantA(
 
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        modifier = Modifier.padding(top = 2.dp)
+                        horizontalArrangement = Arrangement.spacedBy(5.dp),
+                        modifier = Modifier.padding(top = 4.dp)
                     ) {
+
+                        AsyncImage(
+                            model = player.nationalityFlag,
+                            contentDescription = null,
+                            modifier = Modifier
+                                .size(12.dp)
+                                .clip(CircleShape),
+                            contentScale = ContentScale.Fit
+                        )
+
                         Text(
                             text = player.nationality ?: "",
                             style = regularTextStyle(HomeTextPrimary, 12.sp),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f, fill = false)
                         )
-                        if (!player.nationalityFlag.isNullOrBlank()) {
-                            AsyncImage(
-                                model = player.nationalityFlag,
-                                contentDescription = null,
-                                modifier = Modifier
-                                    .size(15.dp)
-                                    .clip(CircleShape)
-                            )
-                        }
                     }
 
                     // Club
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(top = 2.dp)
+                        modifier = Modifier.padding(top = 4.dp)
                     ) {
                         if (!isFreeAgent && player.currentClub?.clubLogo != null) {
                             AsyncImage(
@@ -981,11 +966,18 @@ private fun PlayerCardVariantA(
                 }
             }
 
+            // ── Value change sparkline ─────────────────────────────────
+            MarketValueSparkline(
+                history = player.marketValueHistory,
+                valueTrend = valueTrend,
+                modifier = Modifier.padding(top = 4.dp)
+            )
+
             // ── Bottom Row: Badges + Actions ────────────────────────────
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(start = 12.dp, end = 12.dp, bottom = 10.dp, top = 2.dp),
+                    .padding(start = 12.dp, end = 12.dp, bottom = 10.dp, top = 4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 // Badges row (wrap)
@@ -1037,23 +1029,93 @@ private fun PlayerCardVariantA(
                             contentColor = HomePurpleAccent
                         )
                     }
-                }
 
-                // Quick actions (show phone if player or agent has a number)
-                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    val hasAnyPhone = !player.getPlayerPhoneNumber().isNullOrBlank() ||
-                        !player.getAgentPhoneNumber().isNullOrBlank()
-                    if (hasAnyPhone) {
-                        QuickActionButton(
-                            icon = Icons.Filled.Phone,
-                            onClick = onPhoneClick
+                    if (!player.agentInChargeName.isNullOrBlank()) {
+                        PlayerBadge(
+                            icon = Icons.Filled.Person,
+                            text = player.agentInChargeName.orEmpty(),
+                            backgroundColor = HomeTealAccent.copy(alpha = 0.15f),
+                            contentColor = HomeTealAccent
                         )
                     }
-                    QuickActionButton(
-                        icon = Icons.Filled.EditNote,
-                        onClick = onPlayerClick
-                    )
                 }
+            }
+        }
+    }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+//  VALUE CHANGE SPARKLINE
+// ═════════════════════════════════════════════════════════════════════════════
+
+@Composable
+private fun MarketValueSparkline(
+    history: List<com.liordahan.mgsrteam.features.players.models.MarketValueEntry>?,
+    valueTrend: Int,
+    modifier: Modifier = Modifier
+) {
+    val sorted = remember(history) {
+        history?.filter { it.value != null && it.date != null }
+            ?.sortedBy { it.date }
+            ?.mapNotNull { it.value?.toMarketValueDouble() }
+            ?: emptyList()
+    }
+
+    if (sorted.size < 2) return
+
+    val lineColor = when {
+        valueTrend > 0 -> HomeGreenAccent
+        valueTrend < 0 -> HomeRedAccent
+        else -> HomeTealAccent
+    }
+
+    val minVal = sorted.minOrNull() ?: 0.0
+    val maxVal = sorted.maxOrNull() ?: 1.0
+    val range = (maxVal - minVal).coerceAtLeast(1.0)
+    val padding = 4.dp
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(32.dp)
+            .padding(horizontal = 14.dp, vertical = 4.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(lineColor.copy(alpha = 0.06f))
+    ) {
+        Canvas(modifier = Modifier.matchParentSize()) {
+            val w = size.width - padding.toPx() * 2
+            val h = size.height - padding.toPx() * 2
+            val pts = sorted.mapIndexed { i, v ->
+                val x = padding.toPx() + (i.toFloat() / (sorted.size - 1).coerceAtLeast(1)) * w
+                val y = padding.toPx() + h - ((v - minVal) / range * h).toFloat()
+                Offset(x, y)
+            }
+
+            // Fill under the line
+            val fillPath = Path().apply {
+                if (pts.isNotEmpty()) {
+                    moveTo(pts.first().x, size.height - padding.toPx())
+                    pts.forEach { lineTo(it.x, it.y) }
+                    lineTo(pts.last().x, size.height - padding.toPx())
+                    close()
+                }
+            }
+            drawPath(
+                path = fillPath,
+                color = lineColor.copy(alpha = 0.2f)
+            )
+
+            // Line
+            if (pts.size >= 2) {
+                val linePath = Path().apply {
+                    moveTo(pts.first().x, pts.first().y)
+                    pts.drop(1).forEach { lineTo(it.x, it.y) }
+                }
+                drawPath(
+                    path = linePath,
+                    color = lineColor,
+                    style = Stroke(width = 1.5.dp.toPx(), cap = StrokeCap.Round)
+                )
             }
         }
     }
@@ -1110,45 +1172,7 @@ private fun PlayerBadge(
     }
 }
 
-@Composable
-private fun QuickActionButton(
-    icon: ImageVector,
-    onClick: () -> Unit
-) {
-    Box(
-        modifier = Modifier
-            .size(28.dp)
-            .clip(RoundedCornerShape(8.dp))
-            .background(Color.White.copy(alpha = 0.04f))
-            .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(8.dp))
-            .clickWithNoRipple { onClick() },
-        contentAlignment = Alignment.Center
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = HomeTextSecondary,
-            modifier = Modifier.size(14.dp)
-        )
-    }
-}
 
-// ═════════════════════════════════════════════════════════════════════════════
-//  UTILITY HELPERS
-// ═════════════════════════════════════════════════════════════════════════════
-
-/** Display name for list/cards: use fullName only if it looks like a name (not a URL/tmProfile). */
-private fun Player.displayNameForList(): String {
-    val name = fullName?.trim().orEmpty()
-    if (name.isEmpty()) return "--"
-    // If fullName looks like a URL or profile id, don't show it as the name
-    if (name.contains("http", ignoreCase = true) ||
-        name.contains("transfermarkt", ignoreCase = true) ||
-        name.contains("/player/", ignoreCase = true) ||
-        name.startsWith("www.", ignoreCase = true)
-    ) return "--"
-    return name
-}
 
 private fun isContractExpiringSoon(contractExpired: String?): Boolean {
     if (contractExpired.isNullOrBlank() || contractExpired == "-") return false

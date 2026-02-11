@@ -1,6 +1,11 @@
 package com.liordahan.mgsrteam.features.home
 
 import android.annotation.SuppressLint
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
@@ -76,15 +81,69 @@ fun HomeScreen(
 
         NavHost(navController = navController, startDestination = Screens.DashboardScreen.route) {
 
-            composable(route = Screens.DashboardScreen.route) {
+            composable(
+                route = Screens.DashboardScreen.route,
+                enterTransition = {
+                    slideInHorizontally(initialOffsetX = { -it }, animationSpec = tween(280)) +
+                            fadeIn(animationSpec = tween(280))
+                },
+                exitTransition = {
+                    slideOutHorizontally(targetOffsetX = { it }, animationSpec = tween(280)) +
+                            fadeOut(animationSpec = tween(280))
+                },
+                popEnterTransition = {
+                    slideInHorizontally(initialOffsetX = { it }, animationSpec = tween(280)) +
+                            fadeIn(animationSpec = tween(280))
+                },
+                popExitTransition = {
+                    slideOutHorizontally(targetOffsetX = { -it }, animationSpec = tween(280)) +
+                            fadeOut(animationSpec = tween(280))
+                }
+            ) {
                 DashboardScreen(navController = navController)
             }
 
-            composable(route = Screens.PlayersScreen.route) {
+            composable(
+                route = Screens.PlayersScreen.route,
+                enterTransition = {
+                    slideInHorizontally(initialOffsetX = { it }, animationSpec = tween(280)) +
+                            fadeIn(animationSpec = tween(280))
+                },
+                exitTransition = {
+                    slideOutHorizontally(targetOffsetX = { -it }, animationSpec = tween(280)) +
+                            fadeOut(animationSpec = tween(280))
+                },
+                popEnterTransition = {
+                    slideInHorizontally(initialOffsetX = { -it }, animationSpec = tween(280)) +
+                            fadeIn(animationSpec = tween(280))
+                },
+                popExitTransition = {
+                    slideOutHorizontally(targetOffsetX = { it }, animationSpec = tween(280)) +
+                            fadeOut(animationSpec = tween(280))
+                }
+            ) {
                 PlayersScreen(navController = navController)
             }
 
-            composable(route = Screens.ReleasesScreen.route) {
+            composable(
+                route = Screens.ReleasesScreen.route,
+                enterTransition = {
+                    slideInHorizontally(initialOffsetX = { it }, animationSpec = tween(280)) +
+                            fadeIn(animationSpec = tween(280))
+                },
+                exitTransition = {
+                    slideOutHorizontally(targetOffsetX = { -it }, animationSpec = tween(280)) +
+                            fadeOut(animationSpec = tween(280))
+                },
+                popEnterTransition = {
+                    slideInHorizontally(initialOffsetX = { -it }, animationSpec = tween(280)) +
+                            fadeIn(animationSpec = tween(280))
+                },
+                popExitTransition = {
+                    slideOutHorizontally(targetOffsetX = { it }, animationSpec = tween(280)) +
+                            fadeOut(animationSpec = tween(280))
+                }
+            ) {
                 ReleasesScreen(navController = navController)
             }
 
@@ -112,15 +171,69 @@ fun HomeScreen(
                 PlayerInfoScreen(playerId = playerId, navController = navController)
             }
 
-            composable(route = Screens.ReturneeScreen.route) {
+            composable(
+                route = Screens.ReturneeScreen.route,
+                enterTransition = {
+                    slideInHorizontally(initialOffsetX = { it }, animationSpec = tween(280)) +
+                            fadeIn(animationSpec = tween(280))
+                },
+                exitTransition = {
+                    slideOutHorizontally(targetOffsetX = { -it }, animationSpec = tween(280)) +
+                            fadeOut(animationSpec = tween(280))
+                },
+                popEnterTransition = {
+                    slideInHorizontally(initialOffsetX = { -it }, animationSpec = tween(280)) +
+                            fadeIn(animationSpec = tween(280))
+                },
+                popExitTransition = {
+                    slideOutHorizontally(targetOffsetX = { it }, animationSpec = tween(280)) +
+                            fadeOut(animationSpec = tween(280))
+                }
+            ) {
                 ReturneeScreen(navController = navController)
             }
 
-            composable(route = Screens.ContactsScreen.route) {
+            composable(
+                route = Screens.ContactsScreen.route,
+                enterTransition = {
+                    slideInHorizontally(initialOffsetX = { it }, animationSpec = tween(280)) +
+                            fadeIn(animationSpec = tween(280))
+                },
+                exitTransition = {
+                    slideOutHorizontally(targetOffsetX = { -it }, animationSpec = tween(280)) +
+                            fadeOut(animationSpec = tween(280))
+                },
+                popEnterTransition = {
+                    slideInHorizontally(initialOffsetX = { -it }, animationSpec = tween(280)) +
+                            fadeIn(animationSpec = tween(280))
+                },
+                popExitTransition = {
+                    slideOutHorizontally(targetOffsetX = { it }, animationSpec = tween(280)) +
+                            fadeOut(animationSpec = tween(280))
+                }
+            ) {
                 ContactsScreen()
             }
 
-            composable(route = Screens.ShortlistScreen.route) {
+            composable(
+                route = Screens.ShortlistScreen.route,
+                enterTransition = {
+                    slideInHorizontally(initialOffsetX = { it }, animationSpec = tween(280)) +
+                            fadeIn(animationSpec = tween(280))
+                },
+                exitTransition = {
+                    slideOutHorizontally(targetOffsetX = { -it }, animationSpec = tween(280)) +
+                            fadeOut(animationSpec = tween(280))
+                },
+                popEnterTransition = {
+                    slideInHorizontally(initialOffsetX = { -it }, animationSpec = tween(280)) +
+                            fadeIn(animationSpec = tween(280))
+                },
+                popExitTransition = {
+                    slideOutHorizontally(targetOffsetX = { it }, animationSpec = tween(280)) +
+                            fadeOut(animationSpec = tween(280))
+                }
+            ) {
                 ShortlistScreen(navController = navController)
             }
         }
