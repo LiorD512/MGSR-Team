@@ -97,8 +97,19 @@ class Returnees {
             ?.toSet()
             ?: emptySet()
 
-        val returnees = playerRows.mapNotNull { playerRow ->
+        var returnees = playerRows.mapNotNull { playerRow ->
             parseReturneeRow(playerRow, departurePlayerUrls)
+        }
+
+        // Enrich missing market value / nationality from player profile when we have URL
+        returnees = returnees.map { model ->
+            if (model.playerUrl != null &&
+                (model.marketValue.isNullOrBlank() || model.playerNationality.isNullOrBlank())
+            ) {
+                enrichFromProfile(model)
+            } else {
+                model
+            }
         }
 
         if (returnees.isNotEmpty()) {
@@ -106,6 +117,33 @@ class Returnees {
         }
 
         return returnees
+    }
+
+    private fun enrichFromProfile(model: LatestTransferModel): LatestTransferModel {
+        return try {
+            val doc = fetchDocument(model.playerUrl!!)
+            val marketValue = model.marketValue?.takeIf { it.isNotBlank() }
+                ?: doc.select("div.data-header__box--small").text()
+                    .substringBefore("Last")
+                    .trim()
+                    .takeIf { it.isNotBlank() }
+            val nationalityElement = doc.select("[itemprop=nationality] img").firstOrNull()
+            val nationality = model.playerNationality?.takeIf { it.isNotBlank() }
+                ?: nationalityElement?.attr("title")?.takeIf { it.isNotBlank() }
+            val flagSrc = model.playerNationalityFlag?.takeIf { it.isNotBlank() }
+                ?: nationalityElement?.attr("src")?.takeIf { it.isNotBlank() }
+                    ?.replace("tiny", "head")
+                    ?.replace("verysmall", "head")
+                    ?.let { makeAbsoluteUrl(it) }
+            model.copy(
+                marketValue = marketValue ?: model.marketValue,
+                playerNationality = nationality ?: model.playerNationality,
+                playerNationalityFlag = flagSrc ?: model.playerNationalityFlag
+            )
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to enrich ${model.playerName}: ${e.message}")
+            model
+        }
     }
 
     private fun parseReturneeRow(
@@ -140,16 +178,44 @@ class Returnees {
             ?.replace("-", " ")
             .convertLongPositionNameToShort()
 
+        // Market value: from td.rechts that contains € (market value pattern)
+        val marketValue = playerRow.select("td.rechts")
+            .mapNotNull { it.text().trim().takeIf { t -> t.contains("€") && !t.contains("loan", ignoreCase = true) && !t.contains("End of loan", ignoreCase = true) } }
+            .firstOrNull()
+
+        // Nationality and flag: from td.zentriert img (flag images have alt/title with country name)
+        val nationalityImg = playerRow.select("td.zentriert img[title]").firstOrNull()
+            ?: playerRow.select("td img[alt]").firstOrNull { it.attr("alt").length in 2..50 }
+        val playerNationality = nationalityImg?.attr("title")?.takeIf { it.isNotBlank() }
+            ?: nationalityImg?.attr("alt")?.takeIf { it.isNotBlank() }
+        val flagSrc = nationalityImg?.attr("data-src")?.takeIf { it.isNotBlank() }
+            ?: nationalityImg?.attr("src")?.takeIf { it.isNotBlank() }
+        val playerNationalityFlag = flagSrc?.let { makeAbsoluteUrl(it) }
+            ?.replace("verysmall", "head")
+            ?.replace("tiny", "head")
+
         return if (!alsoInDeparture) {
             LatestTransferModel(
                 playerImage = imageUrl,
                 playerName = playerName,
                 playerUrl = playerUrl,
                 playerAge = age,
-                playerPosition = position
+                playerPosition = position,
+                playerNationality = playerNationality,
+                playerNationalityFlag = playerNationalityFlag,
+                marketValue = marketValue
             )
         } else {
             null
+        }
+    }
+
+    private fun makeAbsoluteUrl(url: String): String {
+        return when {
+            url.startsWith("//") -> "https:$url"
+            url.startsWith("/") -> "$TRANSFERMARKT_BASE_URL$url"
+            url.startsWith("http") -> url
+            else -> url
         }
     }
 }

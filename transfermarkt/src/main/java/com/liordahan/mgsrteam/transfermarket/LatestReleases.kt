@@ -9,6 +9,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.parcelize.Parcelize
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
+import org.jsoup.nodes.Element
 
 internal const val TRANSFERMARKT_BASE_URL: String = "https://www.transfermarkt.com"
 internal const val TRANSFERMARKT_USER_AGENT: String =
@@ -144,22 +145,81 @@ class LatestReleases {
                 val transferDate = element.select(QUERY_PARAM_TD_ZENTRIERT)[2].text()
                 val marketValue = element.select("td.rechts")[0].text()
 
-                LatestTransferModel(
+                val (playerNationality, playerNationalityFlag) = extractNationalityAndFlag(element)
+
+                var model = LatestTransferModel(
                     playerImage,
                     playerName,
                     playerUrl,
                     playerPosition.convertLongPositionNameToShort(),
                     playerAge,
-                    null,
-                    null,
+                    playerNationality,
+                    playerNationalityFlag,
                     null,
                     null,
                     transferDate,
                     marketValue
                 )
+
+                // Enrich missing market value / nationality from player profile (same as Returnees)
+                if (model.playerUrl != null &&
+                    (model.marketValue.isNullOrBlank() || model.playerNationality.isNullOrBlank())
+                ) {
+                    model = enrichFromProfile(model)
+                }
+
+                model
             } catch (e: Exception) {
                 null
             }
+        }
+    }
+
+    private fun extractNationalityAndFlag(element: Element): Pair<String?, String?> {
+        val nationalityImg = element.select("td.zentriert img[title]").firstOrNull()
+            ?: element.select("td img[alt]").firstOrNull { it.attr("alt").length in 2..50 }
+        val playerNationality = nationalityImg?.attr("title")?.takeIf { it.isNotBlank() }
+            ?: nationalityImg?.attr("alt")?.takeIf { it.isNotBlank() }
+        val flagSrc = nationalityImg?.attr("data-src")?.takeIf { it.isNotBlank() }
+            ?: nationalityImg?.attr("src")?.takeIf { it.isNotBlank() }
+        val playerNationalityFlag = flagSrc?.let { makeAbsoluteUrl(it) }
+            ?.replace("verysmall", "head")
+            ?.replace("tiny", "head")
+        return playerNationality to playerNationalityFlag
+    }
+
+    private fun enrichFromProfile(model: LatestTransferModel): LatestTransferModel {
+        return try {
+            val doc = fetchDocument(model.playerUrl!!)
+            val marketValue = model.marketValue?.takeIf { it.isNotBlank() }
+                ?: doc.select("div.data-header__box--small").text()
+                    .substringBefore("Last")
+                    .trim()
+                    .takeIf { it.isNotBlank() }
+            val nationalityElement = doc.select("[itemprop=nationality] img").firstOrNull()
+            val nationality = model.playerNationality?.takeIf { it.isNotBlank() }
+                ?: nationalityElement?.attr("title")?.takeIf { it.isNotBlank() }
+            val flagSrc = model.playerNationalityFlag?.takeIf { it.isNotBlank() }
+                ?: nationalityElement?.attr("src")?.takeIf { it.isNotBlank() }
+                    ?.replace("tiny", "head")
+                    ?.replace("verysmall", "head")
+                    ?.let { makeAbsoluteUrl(it) }
+            model.copy(
+                marketValue = marketValue ?: model.marketValue,
+                playerNationality = nationality ?: model.playerNationality,
+                playerNationalityFlag = flagSrc ?: model.playerNationalityFlag
+            )
+        } catch (e: Exception) {
+            model
+        }
+    }
+
+    private fun makeAbsoluteUrl(url: String): String {
+        return when {
+            url.startsWith("//") -> "https:$url"
+            url.startsWith("/") -> "$TRANSFERMARKT_BASE_URL$url"
+            url.startsWith("http") -> url
+            else -> url
         }
     }
 }

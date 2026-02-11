@@ -672,17 +672,45 @@ fun ReleaseListItem(
                                 )
                             }
                         }
+                        // Nationality flag + name (for returnees, or when available)
+                        if (!release.playerNationalityFlag.isNullOrBlank() || !release.playerNationality.isNullOrBlank()) {
+                            Row(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(HomeDarkCardBorder.copy(alpha = 0.5f))
+                                    .padding(horizontal = 6.dp, vertical = 2.dp),
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                if (!release.playerNationalityFlag.isNullOrBlank()) {
+                                    AsyncImage(
+                                        model = release.playerNationalityFlag,
+                                        contentDescription = release.playerNationality,
+                                        modifier = Modifier.size(14.dp).clip(CircleShape),
+                                        contentScale = ContentScale.Crop
+                                    )
+                                }
+                                release.playerNationality?.let { nat ->
+                                    Text(
+                                        text = nat,
+                                        style = regularTextStyle(HomeTextSecondary, 10.sp),
+                                        maxLines = 1
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
 
-                // Value and date
+                // Value and date (show market value for both releases and returnees when available)
                 Column(
                     modifier = Modifier.align(Alignment.Top),
                     horizontalAlignment = Alignment.End
                 ) {
-                    if (!isFromReturnee) {
+                    val valueToShow = release.marketValue?.takeIf { it.isNotBlank() }
+                    if (valueToShow != null) {
                         Text(
-                            text = release.marketValue ?: "--",
+                            text = valueToShow,
                             style = boldTextStyle(HomeTextPrimary, 14.sp)
                         )
                     }
