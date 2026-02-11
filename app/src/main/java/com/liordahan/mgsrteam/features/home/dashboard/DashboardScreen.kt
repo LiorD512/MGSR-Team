@@ -146,7 +146,7 @@ fun DashboardScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .weight(1f),
-            contentPadding = PaddingValues(bottom = 24.dp)
+            contentPadding = PaddingValues(bottom = 64.dp)
         ) {
             // ── Activity Feed ────────────────────────────────────────────
             item {
