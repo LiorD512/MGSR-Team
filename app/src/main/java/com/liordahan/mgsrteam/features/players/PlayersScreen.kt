@@ -251,7 +251,7 @@ fun PlayersScreen(
             onClick = { navController.navigate("${Screens.AddPlayerScreen.route}/") },
             modifier = Modifier
                 .align(Alignment.BottomEnd)
-                .padding(end = 20.dp, bottom = 24.dp),
+                .padding(end = 20.dp, bottom = 56.dp),
             shape = RoundedCornerShape(18.dp),
             containerColor = HomeTealAccent,
             contentColor = HomeDarkBackground

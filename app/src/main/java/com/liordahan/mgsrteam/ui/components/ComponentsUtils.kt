@@ -1,6 +1,7 @@
 package com.liordahan.mgsrteam.ui.components
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.border
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
@@ -35,6 +36,12 @@ import com.liordahan.mgsrteam.ui.theme.buttonEnabledBg
 import com.liordahan.mgsrteam.ui.theme.buttonLoadingBg
 import com.liordahan.mgsrteam.ui.theme.contentDefault
 import com.liordahan.mgsrteam.ui.theme.contentDisabled
+import com.liordahan.mgsrteam.ui.theme.HomeDarkBackground
+import com.liordahan.mgsrteam.ui.theme.HomeDarkCard
+import com.liordahan.mgsrteam.ui.theme.HomeDarkCardBorder
+import com.liordahan.mgsrteam.ui.theme.HomeTealAccent
+import com.liordahan.mgsrteam.ui.theme.HomeTextPrimary
+import com.liordahan.mgsrteam.ui.theme.HomeTextSecondary
 import com.liordahan.mgsrteam.ui.theme.searchHeaderButtonBackground
 import com.liordahan.mgsrteam.ui.utils.boldTextStyle
 import com.liordahan.mgsrteam.ui.utils.clickWithNoRipple
@@ -47,8 +54,11 @@ fun PrimaryButtonNewDesign(
     buttonElevation: Dp = 0.dp,
     isEnabled: Boolean,
     showProgress: Boolean,
-    onButtonClicked: () -> Unit
+    onButtonClicked: () -> Unit,
+    containerColor: Color? = null
 ) {
+    val enabledBg = containerColor ?: buttonEnabledBg
+    val contentColor = if (containerColor == HomeTealAccent) HomeDarkBackground else Color.White
 
     Box(
         modifier = Modifier
@@ -64,8 +74,9 @@ fun PrimaryButtonNewDesign(
                 .fillMaxWidth()
                 .height(50.dp),
             colors = ButtonDefaults.buttonColors(
-                containerColor = if (showProgress) buttonLoadingBg else buttonEnabledBg,
-                disabledContainerColor = buttonDisabledBg
+                containerColor = if (showProgress) buttonLoadingBg else enabledBg,
+                disabledContainerColor = buttonDisabledBg,
+                contentColor = contentColor
             ),
             elevation = ButtonDefaults.buttonElevation(buttonElevation),
             shape = RoundedCornerShape(500.dp),
@@ -92,7 +103,7 @@ fun PrimaryButtonNewDesign(
                     Text(
                         text = buttonText,
                         style = boldTextStyle(
-                            if (isEnabled) Color.White else contentDisabled,
+                            if (isEnabled) contentColor else contentDisabled,
                             16.sp
                         ).copy(lineHeight = 24.sp),
                         modifier = Modifier.align(Alignment.Center)
@@ -115,8 +126,14 @@ fun AppTextField(
     trailingIcon: ImageVector? = null,
     keyboardOptions: KeyboardOptions,
     onTrailingIconClicked: (() -> Unit)? = null,
-    onValueChange: (TextFieldValue) -> Unit
+    onValueChange: (TextFieldValue) -> Unit,
+    darkTheme: Boolean = false
 ) {
+    val textColor = if (darkTheme) HomeTextPrimary else contentDefault
+    val placeholderColor = if (darkTheme) HomeTextSecondary.copy(alpha = 0.5f) else contentDefault
+    val iconTint = if (darkTheme) HomeTextSecondary else contentDefault
+    val colors = if (darkTheme) setSearchViewTextFieldColorsDarkTheme() else setSearchViewTextFieldColors()
+
     BasicTextField(
         value = textInput,
         onValueChange = {
@@ -124,8 +141,12 @@ fun AppTextField(
         },
         modifier = modifier
             .fillMaxWidth()
-            .height(50.dp),
-        textStyle = regularTextStyle(contentDefault, 14.sp),
+            .height(50.dp)
+            .then(
+                if (darkTheme) Modifier.border(1.dp, HomeDarkCardBorder, RoundedCornerShape(14.dp))
+                else Modifier
+            ),
+        textStyle = regularTextStyle(textColor, 14.sp),
         enabled = true,
         singleLine = true,
         keyboardOptions = keyboardOptions,
@@ -138,13 +159,13 @@ fun AppTextField(
                 enabled = false,
                 isError = false,
                 contentPadding = PaddingValues(horizontal = 16.dp),
-                shape = RoundedCornerShape(38.dp),
-                colors = setSearchViewTextFieldColors(),
+                shape = RoundedCornerShape(14.dp),
+                colors = colors,
                 interactionSource = remember { MutableInteractionSource() },
                 placeholder = {
                     Text(
                         hint ?: "",
-                        style = regularTextStyle(contentDefault, 14.sp),
+                        style = regularTextStyle(placeholderColor, 14.sp),
                         modifier = Modifier.padding(end = 8.dp),
                         maxLines = 1
                     )
@@ -154,7 +175,7 @@ fun AppTextField(
                         Icon(
                             imageVector = leadingIcon,
                             contentDescription = null,
-                            tint = contentDefault
+                            tint = iconTint
                         )
                     }
                 },
@@ -165,7 +186,7 @@ fun AppTextField(
                             Icon(
                                 imageVector = trailingIcon,
                                 contentDescription = null,
-                                tint = contentDefault,
+                                tint = iconTint,
                                 modifier = Modifier.clickWithNoRipple { onTrailingIconClicked?.invoke() }
                             )
                         }
@@ -183,6 +204,19 @@ fun setSearchViewTextFieldColors(): TextFieldColors =
         focusedContainerColor = searchHeaderButtonBackground,
         unfocusedContainerColor = searchHeaderButtonBackground,
         disabledContainerColor = searchHeaderButtonBackground,
+        cursorColor = HomeTextSecondary,
+        focusedIndicatorColor = Color.Transparent,
+        unfocusedIndicatorColor = Color.Transparent,
+        disabledIndicatorColor = Color.Transparent
+    )
+
+@Composable
+fun setSearchViewTextFieldColorsDarkTheme(): TextFieldColors =
+    TextFieldDefaults.colors(
+        focusedContainerColor = HomeDarkCard,
+        unfocusedContainerColor = HomeDarkCard,
+        disabledContainerColor = HomeDarkCard,
+        cursorColor = HomeTextSecondary,
         focusedIndicatorColor = Color.Transparent,
         unfocusedIndicatorColor = Color.Transparent,
         disabledIndicatorColor = Color.Transparent
