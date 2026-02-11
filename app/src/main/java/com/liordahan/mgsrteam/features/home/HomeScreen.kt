@@ -46,7 +46,8 @@ fun HomeScreen(
     val currentRoute = navBackStackEntry?.destination?.route
 
     val isDarkScreen = currentRoute == Screens.DashboardScreen.route ||
-            currentRoute == Screens.PlayersScreen.route
+            currentRoute == Screens.PlayersScreen.route ||
+            currentRoute == Screens.ReleasesScreen.route
 
     LaunchedEffect(Unit) {
         mainViewModel.pendingDeepLinkPlayerId.collectLatest { playerId ->
@@ -131,7 +132,7 @@ fun HomeScreen(
                             fadeOut(animationSpec = tween(280))
                 }
             ) {
-                ReleasesScreen(navController = navController)
+                ReleasesScreen()
             }
 
             composable(

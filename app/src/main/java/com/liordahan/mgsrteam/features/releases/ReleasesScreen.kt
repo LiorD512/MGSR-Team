@@ -1,11 +1,11 @@
 package com.liordahan.mgsrteam.features.releases
 
-import android.app.Activity
 import android.content.Context
 import android.content.Intent
-import androidx.activity.compose.BackHandler
-import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,12 +14,14 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -29,21 +31,18 @@ import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -52,20 +51,16 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.app.ActivityCompat
 import androidx.core.net.toUri
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -77,12 +72,16 @@ import com.liordahan.mgsrteam.features.add.IAddPlayerViewModel
 import com.liordahan.mgsrteam.features.players.models.Position
 import com.liordahan.mgsrteam.features.players.ui.EmptyState
 import com.liordahan.mgsrteam.features.shortlist.ShortlistRepository
-import com.liordahan.mgsrteam.features.players.ui.FilterStripUi
 import com.liordahan.mgsrteam.transfermarket.LatestTransferModel
-import com.liordahan.mgsrteam.ui.theme.buttonLoadingBg
+import com.liordahan.mgsrteam.ui.theme.HomeDarkBackground
+import com.liordahan.mgsrteam.ui.theme.HomeDarkCard
+import com.liordahan.mgsrteam.ui.theme.HomeDarkCardBorder
+import com.liordahan.mgsrteam.ui.theme.HomeGreenAccent
+import com.liordahan.mgsrteam.ui.theme.HomeOrangeAccent
+import com.liordahan.mgsrteam.ui.theme.HomeTealAccent
+import com.liordahan.mgsrteam.ui.theme.HomeTextPrimary
+import com.liordahan.mgsrteam.ui.theme.HomeTextSecondary
 import com.liordahan.mgsrteam.ui.theme.contentDefault
-import com.liordahan.mgsrteam.ui.theme.dividerColor
-import com.liordahan.mgsrteam.ui.utils.ProgressIndicator
 import com.liordahan.mgsrteam.ui.utils.boldTextStyle
 import com.liordahan.mgsrteam.ui.utils.clickWithNoRipple
 import com.liordahan.mgsrteam.ui.utils.regularTextStyle
@@ -91,11 +90,11 @@ import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.koinInject
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Alignment
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ReleasesScreen(
-    navController: NavController,
     viewModel: IReleasesViewModel = koinViewModel(),
     addPlayerViewModel: IAddPlayerViewModel = koinViewModel(),
     shortlistRepository: ShortlistRepository = koinInject()
@@ -209,87 +208,91 @@ fun ReleasesScreen(
         }
     }
 
-    Scaffold(
-        modifier = Modifier.fillMaxSize(),
-        containerColor = Color.White,
-        topBar = {
-            ReleasesTopBar()
-        },
-        snackbarHost = {
-            SnackbarHost(
-                hostState = snackBarHostState,
-                snackbar = { Snackbar(it) }
-            )
-        }
-    ) { paddingValues ->
+    val shortlistedCount = remember(originalReleaseList, shortlistUrls, justAddedUrls) {
+        originalReleaseList.count { it.playerUrl in shortlistUrls || it.playerUrl in justAddedUrls }
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(HomeDarkBackground)
+    ) {
 
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
+
         ) {
 
+            // Header
+            ReleasesHeader()
+
             if (showLoader) {
-                Box(modifier = Modifier.fillMaxSize()) {
-                    ProgressIndicator(
-                        modifier = Modifier.align(Alignment.Center)
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(
+                        color = HomeTealAccent,
+                        strokeWidth = 3.dp,
+                        modifier = Modifier.size(44.dp)
                     )
-                    return@Box
+                    return@Column
                 }
             }
 
             if (showError) {
-                EmptyState("Transfermarkt is down\nTry again later"){}
+                EmptyState(
+                    text = "Transfermarkt is down\nTry again later",
+                    showResetFiltersButton = false,
+                    onResetFiltersClicked = {}
+                )
                 return@Column
             }
 
+            // Stats Strip
+            ReleasesStatsStrip(
+                total = originalReleaseList.size,
+                shortlisted = shortlistedCount,
+                visible = releaseList.size
+            )
+
+            // Position Filter Chips
+            ReleasesPositionChips(
+                positionList = positionList,
+                selectedPosition = selectedPosition,
+                originalReleaseList = originalReleaseList,
+                onPositionClicked = {
+                    selectedPosition = if (selectedPosition == it) null else it
+                    viewModel.selectPosition(selectedPosition)
+                },
+                onAllClicked = {
+                    selectedPosition = null
+                    viewModel.selectPosition(null)
+                }
+            )
+
+            // Teal accent line
+            Box(
+                modifier = Modifier
+                    .padding(horizontal = 20.dp)
+                    .width(40.dp)
+                    .height(3.dp)
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(HomeTealAccent)
+            )
 
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 state = state,
                 contentPadding = PaddingValues(
-                    top = 24.dp,
+                    top = 16.dp,
                     bottom = 100.dp,
-                    start = 12.dp,
-                    end = 12.dp
+                    start = 16.dp,
+                    end = 16.dp
                 ),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-
-                item {
-
-                    val positionCounts = remember(originalReleaseList) {
-                        positionList.associateWith { position ->
-                            originalReleaseList.count { player ->
-                                player.playerPosition?.equals(position.name) == true
-                            }
-                        }
-                    }
-
-                    FilterStripUi(
-                        positions = positionList,
-                        selectedPosition = selectedPosition,
-                        playerList = originalReleaseList,
-                        onPositionClicked = {
-                            selectedPosition = if (selectedPosition == it) {
-                                null
-                            } else {
-                                it
-                            }
-
-                            viewModel.selectPosition(selectedPosition)
-                        }
-                    )
-                }
-
-                item {
-                    HorizontalDivider(
-                        thickness = 1.dp,
-                        color = dividerColor,
-                        modifier = Modifier.padding(bottom = 16.dp)
-                    )
-                }
-
                 items(releaseList) {
                     ReleaseListItem(
                         context = context,
@@ -321,8 +324,8 @@ fun ReleasesScreen(
                         addPlayerViewModel.resetAfterAdd()
                     },
                     sheetState = sheetState,
-                    containerColor = Color.White,
-                    shape = RoundedCornerShape(16.dp),
+                    containerColor = HomeDarkCard,
+                    shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
                     tonalElevation = 8.dp
                 ) {
                     when {
@@ -333,7 +336,7 @@ fun ReleasesScreen(
                                     .padding(32.dp),
                                 contentAlignment = Alignment.Center
                             ) {
-                                CircularProgressIndicator(color = contentDefault)
+                                CircularProgressIndicator(color = HomeTealAccent)
                             }
                         }
                         selectedPlayer != null -> {
@@ -345,7 +348,7 @@ fun ReleasesScreen(
                         else -> {
                             Text(
                                 text = "Could not load player. They may already be in your roster.",
-                                style = regularTextStyle(contentDefault, 14.sp),
+                                style = regularTextStyle(HomeTextSecondary, 14.sp),
                                 modifier = Modifier.padding(24.dp)
                             )
                         }
@@ -357,6 +360,195 @@ fun ReleasesScreen(
 }
 
 
+// ═════════════════════════════════════════════════════════════════════════════
+//  HEADER
+// ═════════════════════════════════════════════════════════════════════════════
+
+@Composable
+private fun ReleasesHeader() {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 20.dp, end = 20.dp, top = 48.dp, bottom = 4.dp)
+    ) {
+        Text(
+            text = "Releases",
+            style = boldTextStyle(HomeTextPrimary, 26.sp)
+        )
+        Text(
+            text = "Latest free agents from Transfermarkt",
+            style = regularTextStyle(HomeTextSecondary, 13.sp),
+            modifier = Modifier.padding(top = 4.dp)
+        )
+    }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+//  STATS STRIP
+// ═════════════════════════════════════════════════════════════════════════════
+
+@Composable
+private fun ReleasesStatsStrip(total: Int, shortlisted: Int, visible: Int) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(HomeDarkCard)
+            .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(16.dp)),
+        horizontalArrangement = Arrangement.SpaceEvenly
+    ) {
+        ReleasesStatItem(
+            value = total.toString(),
+            label = "Total",
+            accentColor = HomeTealAccent,
+            modifier = Modifier.weight(1f)
+        )
+        ReleasesStatsStripDivider()
+        ReleasesStatItem(
+            value = shortlisted.toString(),
+            label = "Shortlisted",
+            accentColor = HomeGreenAccent,
+            modifier = Modifier.weight(1f)
+        )
+        ReleasesStatsStripDivider()
+        ReleasesStatItem(
+            value = visible.toString(),
+            label = "Visible",
+            accentColor = HomeOrangeAccent,
+            modifier = Modifier.weight(1f)
+        )
+    }
+}
+
+@Composable
+private fun ReleasesStatsStripDivider() {
+    Box(
+        modifier = Modifier
+            .width(1.dp)
+            .height(40.dp)
+            .padding(vertical = 4.dp)
+            .background(HomeDarkCardBorder)
+    )
+}
+
+@Composable
+private fun ReleasesStatItem(
+    value: String,
+    label: String,
+    accentColor: Color,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier.padding(vertical = 10.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Box(
+            modifier = Modifier
+                .size(6.dp)
+                .clip(CircleShape)
+                .background(accentColor)
+        )
+        Spacer(Modifier.height(4.dp))
+        Text(
+            text = value,
+            style = boldTextStyle(HomeTextPrimary, 18.sp)
+        )
+        Text(
+            text = label,
+            style = regularTextStyle(HomeTextSecondary, 9.sp)
+        )
+    }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+//  POSITION FILTER CHIPS
+// ═════════════════════════════════════════════════════════════════════════════
+
+@Composable
+private fun ReleasesPositionChips(
+    positionList: List<Position>,
+    selectedPosition: Position?,
+    originalReleaseList: List<LatestTransferModel>,
+    onPositionClicked: (Position) -> Unit,
+    onAllClicked: () -> Unit
+) {
+    val scrollState = rememberScrollState()
+    val totalCount = originalReleaseList.size
+    val isAllSelected = selectedPosition == null
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 4.dp)
+            .horizontalScroll(scrollState),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // All chip
+        val allBgColor by animateColorAsState(
+            targetValue = if (isAllSelected) HomeTealAccent else Color.Transparent,
+            label = "allChipBg"
+        )
+        val allTextColor = if (isAllSelected) HomeDarkBackground else HomeTextSecondary
+        val allBorderColor = if (isAllSelected) HomeTealAccent else HomeDarkCardBorder
+        Text(
+            text = "All $totalCount",
+            style = boldTextStyle(allTextColor, 11.sp),
+            modifier = Modifier
+                .clip(RoundedCornerShape(20.dp))
+                .background(allBgColor)
+                .border(1.dp, allBorderColor, RoundedCornerShape(20.dp))
+                .clickWithNoRipple { onAllClicked() }
+                .padding(horizontal = 14.dp, vertical = 5.dp)
+        )
+
+        positionList.forEach { position ->
+            val count = originalReleaseList.count { it.playerPosition?.equals(position.name) == true }
+            val isSelected = selectedPosition == position
+            val isDisabled = count == 0
+
+            val bgColor by animateColorAsState(
+                targetValue = when {
+                    isDisabled -> Color.Transparent
+                    isSelected -> HomeTealAccent
+                    else -> Color.Transparent
+                },
+                label = "chipBg"
+            )
+            val textColor = when {
+                isDisabled -> HomeTextSecondary.copy(alpha = 0.5f)
+                isSelected -> HomeDarkBackground
+                else -> HomeTextSecondary
+            }
+            val borderColor = when {
+                isDisabled -> HomeDarkCardBorder.copy(alpha = 0.5f)
+                isSelected -> HomeTealAccent
+                else -> HomeDarkCardBorder
+            }
+
+            val positionName = position.name ?: ""
+            Text(
+                text = if (count > 0) "$positionName $count" else positionName,
+                style = boldTextStyle(textColor, 11.sp),
+                modifier = Modifier
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(bgColor)
+                    .border(1.dp, borderColor, RoundedCornerShape(20.dp))
+                    .then(
+                        if (isDisabled) Modifier
+                        else Modifier.clickWithNoRipple { onPositionClicked(position) }
+                    )
+                    .padding(horizontal = 14.dp, vertical = 5.dp)
+            )
+        }
+    }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+//  RELEASE LIST ITEM
+// ═════════════════════════════════════════════════════════════════════════════
+
 @Composable
 fun ReleaseListItem(
     context: Context,
@@ -366,126 +558,165 @@ fun ReleaseListItem(
     onAddToShortlistClicked: ((String) -> Unit)? = null,
     isInShortlist: ((String) -> Boolean)? = null
 ) {
-
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickWithNoRipple {
-                openPlayerProfile(context, release.playerUrl)
-            },
+            .clickWithNoRipple { openPlayerProfile(context, release.playerUrl) },
         shape = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White)
+        colors = CardDefaults.cardColors(containerColor = HomeDarkCard)
     ) {
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .drawBehind {
+                    drawRect(
+                        color = HomeTealAccent,
+                        topLeft = Offset.Zero,
+                        size = androidx.compose.ui.geometry.Size(
+                            width = 3.dp.toPx(),
+                            height = size.height
+                        )
+                    )
+                }
         ) {
-
-            Surface(
-                shadowElevation = 6.dp,
-                tonalElevation = 12.dp,
-                shape = CircleShape
+            // Top row: Avatar + Name/Position + Value
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 12.dp, end = 12.dp, top = 12.dp, bottom = 6.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-
                 AsyncImage(
                     model = release.playerImage,
                     contentDescription = null,
                     modifier = Modifier
-                        .size(55.dp)
-                        .clip(CircleShape),
+                        .size(52.dp)
+                        .clip(CircleShape)
+                        .border(2.dp, HomeDarkCardBorder, CircleShape),
                     contentScale = ContentScale.Crop
                 )
-            }
 
-            Spacer(modifier = Modifier.width(12.dp))
+                Spacer(Modifier.width(10.dp))
 
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    release.playerName ?: "Unknown",
-                    style = boldTextStyle(contentDefault, 16.sp)
-                )
-                Text(
-                    text = buildAnnotatedString {
-                        append("Position: ")
-                        withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
-                            append(release.playerPosition)
-                        }
-                    },
-                    style = regularTextStyle(
-                        contentDefault, 12.sp
-                    )
-                )
-                Text(
-                    text = buildAnnotatedString {
-                        append("Age: ")
-                        withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
-                            append(release.playerAge ?: "-")
-                        }
-                    },
-                    style = regularTextStyle(
-                        contentDefault, 12.sp
-                    )
-                )
-                if (!isFromReturnee) {
+                // Name, position, age in column layout
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .align(Alignment.CenterVertically)
+                ) {
                     Text(
-                        text = buildAnnotatedString {
-                            append("Market value: ")
-                            withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
-                                append(release.marketValue ?: "--")
+                        text = release.playerName ?: "Unknown",
+                        style = boldTextStyle(HomeTextPrimary, 14.sp),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Row(
+                        modifier = Modifier.padding(top = 4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        release.playerPosition?.let { pos ->
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(HomeTealAccent.copy(alpha = 0.15f))
+                                    .padding(horizontal = 8.dp, vertical = 2.dp)
+                            ) {
+                                Text(
+                                    text = pos,
+                                    style = boldTextStyle(HomeTealAccent, 10.sp)
+                                )
                             }
-                        },
-                        style = regularTextStyle(
-                            contentDefault, 12.sp
-                        )
-                    )
-                }
-            }
-
-            if (!isFromReturnee) {
-                Text(
-                    text = buildAnnotatedString {
-                        append("Release date:")
-                        append("\n")
-                        withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
-                            append(release.transferDate ?: "-")
                         }
-                    },
-                    style = regularTextStyle(
-                        contentDefault, 12.sp
-                    ),
-                    textAlign = TextAlign.Center
-                )
-            }
-
-            onAddToAgencyClicked?.let { onAdd ->
-                IconButton(
-                    onClick = {
-                        release.playerUrl?.let { url -> onAdd(url) }
+                        release.playerAge?.let { age ->
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(HomeDarkCardBorder.copy(alpha = 0.5f))
+                                    .padding(horizontal = 8.dp, vertical = 2.dp)
+                            ) {
+                                Text(
+                                    text = "$age yrs",
+                                    style = regularTextStyle(HomeTextSecondary, 10.sp)
+                                )
+                            }
+                        }
                     }
+                }
+
+                // Value and date
+                Column(
+                    modifier = Modifier.align(Alignment.Top),
+                    horizontalAlignment = Alignment.End
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.PersonAdd,
-                        contentDescription = "Add to agency",
-                        tint = contentDefault
-                    )
+                    if (!isFromReturnee) {
+                        Text(
+                            text = release.marketValue ?: "--",
+                            style = boldTextStyle(HomeTextPrimary, 14.sp)
+                        )
+                    }
+                    release.transferDate?.let { date ->
+                        Text(
+                            text = date,
+                            style = regularTextStyle(HomeTextSecondary, 10.sp),
+                            modifier = Modifier.padding(top = 2.dp)
+                        )
+                    }
                 }
             }
-            onAddToShortlistClicked?.let { onAdd ->
-                val url = release.playerUrl
-                val isAdded = url != null && (isInShortlist?.invoke(url) == true)
-                IconButton(
-                    onClick = {
-                        url?.let { onAdd(it) }
-                    }
+
+            // Bottom row: Released badge + Actions
+            HorizontalDivider(
+                color = HomeDarkCardBorder.copy(alpha = 0.5f),
+                thickness = 1.dp,
+                modifier = Modifier.padding(horizontal = 12.dp)
+            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 12.dp, end = 12.dp, top = 8.dp, bottom = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(HomeOrangeAccent.copy(alpha = 0.15f))
+                        .padding(horizontal = 8.dp, vertical = 3.dp)
                 ) {
-                    Icon(
-                        imageVector = if (isAdded) Icons.Default.Bookmark else Icons.Default.BookmarkAdd,
-                        contentDescription = if (isAdded) "In shortlist" else "Add to shortlist",
-                        tint = if (isAdded) Color(0xFF4CAF50) else contentDefault
+                    Text(
+                        text = "Released",
+                        style = boldTextStyle(HomeOrangeAccent, 10.sp)
                     )
+                }
+
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    onAddToShortlistClicked?.let { onAdd ->
+                        val url = release.playerUrl
+                        val isAdded = url != null && (isInShortlist?.invoke(url) == true)
+                        IconButton(
+                            onClick = { url?.let { onAdd(it) } },
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Icon(
+                                imageVector = if (isAdded) Icons.Default.Bookmark else Icons.Default.BookmarkAdd,
+                                contentDescription = if (isAdded) "In shortlist" else "Add to shortlist",
+                                tint = if (isAdded) HomeGreenAccent else HomeTextSecondary
+                            )
+                        }
+                    }
+                    onAddToAgencyClicked?.let { onAdd ->
+                        IconButton(
+                            onClick = { release.playerUrl?.let { url -> onAdd(url) } },
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.PersonAdd,
+                                contentDescription = "Add to agency",
+                                tint = HomeTealAccent
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -496,30 +727,4 @@ private fun openPlayerProfile(context: Context, url: String?) {
     if (url?.isEmpty() == true) return
     val intent = Intent(Intent.ACTION_VIEW, url?.toUri())
     context.startActivity(intent)
-}
-
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun ReleasesTopBar() {
-    Surface(shadowElevation = 12.dp, color = Color.White) {
-        TopAppBar(
-            title = {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 12.dp)
-                ) {
-
-                    Text(
-                        text = "Released players",
-                        style = boldTextStyle(contentDefault, 21.sp),
-                        modifier = Modifier.weight(1f)
-                    )
-
-                }
-            },
-            colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White),
-        )
-    }
 }
