@@ -47,7 +47,9 @@ fun HomeScreen(
 
     val isDarkScreen = currentRoute == Screens.DashboardScreen.route ||
             currentRoute == Screens.PlayersScreen.route ||
-            currentRoute == Screens.ReleasesScreen.route
+            currentRoute == Screens.ReleasesScreen.route ||
+            currentRoute == Screens.ReturneeScreen.route ||
+            currentRoute == Screens.ShortlistScreen.route
 
     LaunchedEffect(Unit) {
         mainViewModel.pendingDeepLinkPlayerId.collectLatest { playerId ->

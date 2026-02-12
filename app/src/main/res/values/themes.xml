@@ -3,9 +3,9 @@
 
     <style name="Theme.MGSRTeam" parent="android:Theme.Material.Light.NoActionBar" />
 
-    <!-- Splash theme: uses the AndroidX SplashScreen API to show the app logo -->
+    <!-- Splash theme: uses the AndroidX SplashScreen API (Option B - logo + teal accent) -->
     <style name="Theme.MGSRTeam.Splash" parent="Theme.MGSRTeam">
         <item name="android:windowSplashScreenBackground">#0F1923</item>
-        <item name="android:windowSplashScreenAnimatedIcon">@drawable/rounded_logo_new</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/logo_white</item>
     </style>
 </resources>

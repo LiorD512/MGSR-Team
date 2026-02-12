@@ -229,14 +229,15 @@ fun ReturneeScreen(
                             addPlayerTmUrl = url
                             showAddPlayerBottomSheet = true
                         },
-                        onAddToShortlistClicked = { url ->
+                        onAddToShortlistClicked = { release ->
                             scope.launch {
+                                val url = release.playerUrl ?: return@launch
                                 val isInShortlist = url in shortlistUrls || url in justAddedUrls
                                 if (isInShortlist) {
                                     shortlistRepository.removeFromShortlist(url)
                                     justAddedUrls = justAddedUrls - url
                                 } else {
-                                    shortlistRepository.addToShortlist(url)
+                                    shortlistRepository.addToShortlist(release)
                                     justAddedUrls = justAddedUrls + url
                                 }
                             }

@@ -73,7 +73,7 @@ fun ReturneePlayersBottomSheet(
     viewModel: IReturneeViewModel,
     leagues: Leagues,
     onAddToAgencyClicked: (String) -> Unit,
-    onAddToShortlistClicked: ((String) -> Unit)? = null,
+    onAddToShortlistClicked: ((LatestTransferModel) -> Unit)? = null,
     isInShortlist: ((String) -> Boolean)? = null,
     onDismiss: () -> Unit
 ) {

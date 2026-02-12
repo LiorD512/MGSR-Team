@@ -301,14 +301,15 @@ fun ReleasesScreen(
                             addPlayerTmUrl = url
                             showAddPlayerBottomSheet = true
                         },
-                        onAddToShortlistClicked = { url ->
+                        onAddToShortlistClicked = { release ->
                             scope.launch {
+                                val url = release.playerUrl ?: return@launch
                                 val isInShortlist = url in shortlistUrls || url in justAddedUrls
                                 if (isInShortlist) {
                                     shortlistRepository.removeFromShortlist(url)
                                     justAddedUrls = justAddedUrls - url
                                 } else {
-                                    shortlistRepository.addToShortlist(url)
+                                    shortlistRepository.addToShortlist(release)
                                     justAddedUrls = justAddedUrls + url
                                 }
                             }
@@ -592,7 +593,7 @@ fun ReleaseListItem(
     release: LatestTransferModel,
     isFromReturnee: Boolean = false,
     onAddToAgencyClicked: ((String) -> Unit)? = null,
-    onAddToShortlistClicked: ((String) -> Unit)? = null,
+    onAddToShortlistClicked: ((LatestTransferModel) -> Unit)? = null,
     isInShortlist: ((String) -> Boolean)? = null
 ) {
     Card(
@@ -767,7 +768,7 @@ fun ReleaseListItem(
                         val url = release.playerUrl
                         val isAdded = url != null && (isInShortlist?.invoke(url) == true)
                         IconButton(
-                            onClick = { url?.let { onAdd(it) } },
+                            onClick = { onAdd(release) },
                             modifier = Modifier.size(36.dp)
                         ) {
                             Icon(
