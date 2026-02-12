@@ -49,7 +49,9 @@ fun HomeScreen(
             currentRoute == Screens.PlayersScreen.route ||
             currentRoute == Screens.ReleasesScreen.route ||
             currentRoute == Screens.ReturneeScreen.route ||
-            currentRoute == Screens.ShortlistScreen.route
+            currentRoute == Screens.ShortlistScreen.route ||
+            currentRoute == Screens.AddToShortlistScreen.route ||
+            currentRoute?.startsWith("${Screens.AddToShortlistScreen.route}/") == true
 
     LaunchedEffect(Unit) {
         mainViewModel.pendingDeepLinkPlayerId.collectLatest { playerId ->
@@ -166,6 +168,60 @@ fun HomeScreen(
                 AddPlayerScreen(
                     navController = navController,
                     initialTmProfileUrl = tmProfileUrl
+                )
+            }
+
+            composable(
+                route = Screens.AddToShortlistScreen.route,
+                enterTransition = {
+                    slideInHorizontally(initialOffsetX = { it }, animationSpec = tween(280)) +
+                            fadeIn(animationSpec = tween(280))
+                },
+                exitTransition = {
+                    slideOutHorizontally(targetOffsetX = { -it }, animationSpec = tween(280)) +
+                            fadeOut(animationSpec = tween(280))
+                },
+                popEnterTransition = {
+                    slideInHorizontally(initialOffsetX = { -it }, animationSpec = tween(280)) +
+                            fadeIn(animationSpec = tween(280))
+                },
+                popExitTransition = {
+                    slideOutHorizontally(targetOffsetX = { it }, animationSpec = tween(280)) +
+                            fadeOut(animationSpec = tween(280))
+                }
+            ) {
+                AddPlayerScreen(
+                    navController = navController,
+                    initialTmProfileUrl = "",
+                    forShortlist = true
+                )
+            }
+
+            composable(
+                route = "${Screens.AddToShortlistScreen.route}/{tmProfileUrl}",
+                arguments = listOf(navArgument("tmProfileUrl") { type = NavType.StringType }),
+                enterTransition = {
+                    slideInHorizontally(initialOffsetX = { it }, animationSpec = tween(280)) +
+                            fadeIn(animationSpec = tween(280))
+                },
+                exitTransition = {
+                    slideOutHorizontally(targetOffsetX = { -it }, animationSpec = tween(280)) +
+                            fadeOut(animationSpec = tween(280))
+                },
+                popEnterTransition = {
+                    slideInHorizontally(initialOffsetX = { -it }, animationSpec = tween(280)) +
+                            fadeIn(animationSpec = tween(280))
+                },
+                popExitTransition = {
+                    slideOutHorizontally(targetOffsetX = { it }, animationSpec = tween(280)) +
+                            fadeOut(animationSpec = tween(280))
+                }
+            ) { backStackEntry ->
+                val tmProfileUrl = backStackEntry.arguments?.getString("tmProfileUrl").orEmpty()
+                AddPlayerScreen(
+                    navController = navController,
+                    initialTmProfileUrl = tmProfileUrl,
+                    forShortlist = true
                 )
             }
 

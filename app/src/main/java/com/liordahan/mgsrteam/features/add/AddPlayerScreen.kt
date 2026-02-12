@@ -52,6 +52,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -85,6 +86,9 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.liordahan.mgsrteam.R
+import com.liordahan.mgsrteam.features.players.models.Player
+import com.liordahan.mgsrteam.features.shortlist.ShortlistRepository
+import com.liordahan.mgsrteam.transfermarket.LatestTransferModel
 import com.liordahan.mgsrteam.transfermarket.PlayerSearchModel
 import com.liordahan.mgsrteam.ui.components.AppTextField
 import com.liordahan.mgsrteam.ui.components.PrimaryButtonNewDesign
@@ -92,6 +96,7 @@ import com.liordahan.mgsrteam.ui.components.DarkSystemBarsForBottomSheet
 import com.liordahan.mgsrteam.ui.theme.HomeDarkBackground
 import com.liordahan.mgsrteam.ui.theme.HomeDarkCard
 import com.liordahan.mgsrteam.ui.theme.HomeDarkCardBorder
+import com.liordahan.mgsrteam.ui.theme.HomeRedAccent
 import com.liordahan.mgsrteam.ui.theme.HomeTealAccent
 import com.liordahan.mgsrteam.ui.theme.HomeTextPrimary
 import com.liordahan.mgsrteam.ui.theme.HomeTextSecondary
@@ -101,12 +106,14 @@ import com.liordahan.mgsrteam.ui.utils.regularTextStyle
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
+import org.koin.compose.koinInject
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddPlayerScreen(
     navController: NavController,
     initialTmProfileUrl: String = "",
+    forShortlist: Boolean = false,
     viewModel: IAddPlayerViewModel = koinViewModel()
 ) {
 
@@ -164,7 +171,7 @@ fun AddPlayerScreen(
 
             launch {
                 viewModel.isPlayerAddedFlow.collect {
-                    if (it) {
+                    if (it && !forShortlist) {
                         showAddContactBottomSheet = false
                         navController.popBackStack()
                     }
@@ -212,7 +219,8 @@ fun AddPlayerScreen(
                     searchText = it
                     viewModel.updateSearchQuery(searchText.text)
                 },
-                onBackClicked = { navController.popBackStack() }
+                onBackClicked = { navController.popBackStack() },
+                forShortlist = forShortlist
             )
 
             if (showSearchProgress) {
@@ -275,12 +283,22 @@ fun AddPlayerScreen(
                 }
 
                 if (showAddContactBottomSheet) {
-                    SavePlayerBottomSheetContent(
-                        modifier = Modifier,
-                        context = context,
-                        onDismissRequest = { showAddContactBottomSheet = false },
-                        viewModel = viewModel
-                    )
+                    if (forShortlist) {
+                        AddToShortlistBottomSheetContent(
+                            modifier = Modifier,
+                            context = context,
+                            onDismissRequest = { showAddContactBottomSheet = false },
+                            viewModel = viewModel,
+                            onAdded = { navController.popBackStack() }
+                        )
+                    } else {
+                        SavePlayerBottomSheetContent(
+                            modifier = Modifier,
+                            context = context,
+                            onDismissRequest = { showAddContactBottomSheet = false },
+                            viewModel = viewModel
+                        )
+                    }
                 }
             }
         }
@@ -478,6 +496,109 @@ fun AddPlayerContactFormContent(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
+fun AddToShortlistBottomSheetContent(
+    modifier: Modifier,
+    context: Context,
+    onDismissRequest: () -> Unit,
+    viewModel: IAddPlayerViewModel,
+    onAdded: () -> Unit,
+    shortlistRepository: ShortlistRepository = koinInject()
+) {
+    val selectedPlayer by viewModel.selectedPlayerFlow.collectAsStateWithLifecycle(initialValue = null)
+    val scope = rememberCoroutineScope()
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    ModalBottomSheet(
+        modifier = modifier,
+        onDismissRequest = onDismissRequest,
+        sheetState = sheetState,
+        containerColor = HomeDarkCard,
+        shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
+        tonalElevation = 8.dp,
+        properties = ModalBottomSheetProperties(
+            isAppearanceLightStatusBars = true,
+            isAppearanceLightNavigationBars = true
+        )
+    ) {
+        DarkSystemBarsForBottomSheet()
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp, vertical = 16.dp)
+                .navigationBarsPadding(),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = "Add to shortlist",
+                style = boldTextStyle(HomeTextPrimary, 20.sp)
+            )
+            selectedPlayer?.let { player ->
+                val subtitle = buildString {
+                    player.fullName?.let { append(it) }
+                    player.positions?.firstOrNull()?.let { append(" • $it") }
+                    player.currentClub?.clubName?.let { append(" • $it") }
+                }
+                if (subtitle.isNotEmpty()) {
+                    Text(
+                        text = subtitle,
+                        style = regularTextStyle(HomeTextSecondary, 13.sp),
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
+                }
+            }
+            errorMessage?.let { msg ->
+                Text(
+                    text = msg,
+                    style = regularTextStyle(HomeRedAccent, 13.sp),
+                    modifier = Modifier.padding(bottom = 8.dp),
+                    textAlign = TextAlign.Center
+                )
+            }
+            HorizontalDivider(
+                thickness = 1.dp,
+                color = HomeDarkCardBorder,
+                modifier = Modifier.padding(vertical = 16.dp)
+            )
+            PrimaryButtonNewDesign(
+                buttonText = "Add to shortlist",
+                isEnabled = selectedPlayer != null,
+                showProgress = false,
+                onButtonClicked = {
+                    selectedPlayer?.let { player ->
+                        errorMessage = null
+                        val release = LatestTransferModel(
+                            playerImage = player.profileImage,
+                            playerName = player.fullName,
+                            playerUrl = player.tmProfile,
+                            playerPosition = player.positions?.firstOrNull(),
+                            playerAge = player.age,
+                            playerNationality = player.nationality,
+                            playerNationalityFlag = player.nationalityFlag,
+                            clubJoinedLogo = player.currentClub?.clubLogo,
+                            clubJoinedName = player.currentClub?.clubName,
+                            marketValue = player.marketValue
+                        )
+                        scope.launch {
+                            val added = shortlistRepository.addToShortlist(release)
+                            if (added) {
+                                viewModel.resetAfterAdd()
+                                onAdded()
+                            } else {
+                                errorMessage = "Player is already in your shortlist"
+                            }
+                        }
+                    }
+                },
+                containerColor = HomeTealAccent
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
 fun SavePlayerBottomSheetContent(
     modifier: Modifier,
     context: Context,
@@ -612,7 +733,8 @@ fun launchPlayerContactPicker(
 fun AddPlayerHeader(
     searchPlayerInput: TextFieldValue,
     onValueChange: (TextFieldValue) -> Unit,
-    onBackClicked: () -> Unit
+    onBackClicked: () -> Unit,
+    forShortlist: Boolean = false
 ) {
     Column(
         modifier = Modifier
@@ -638,7 +760,7 @@ fun AddPlayerHeader(
                     style = boldTextStyle(HomeTextPrimary, 26.sp)
                 )
                 Text(
-                    text = "Search Transfermarkt to add to roster",
+                    text = if (forShortlist) "Search Transfermarkt to add to shortlist" else "Search Transfermarkt to add to roster",
                     style = regularTextStyle(HomeTextSecondary, 12.sp),
                     modifier = Modifier.padding(top = 4.dp)
                 )

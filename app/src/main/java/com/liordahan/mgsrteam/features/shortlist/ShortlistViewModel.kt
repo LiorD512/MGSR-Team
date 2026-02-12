@@ -17,6 +17,7 @@ interface IShortlistViewModel {
     val shortlistFlow: StateFlow<ShortlistUiState>
     fun remove(entry: ShortlistEntry)
     fun removeByUrl(tmProfileUrl: String)
+    fun addByUrl(tmProfileUrl: String)
 }
 
 class ShortlistViewModel(
@@ -43,6 +44,12 @@ class ShortlistViewModel(
     override fun removeByUrl(tmProfileUrl: String) {
         viewModelScope.launch {
             repository.removeFromShortlist(tmProfileUrl)
+        }
+    }
+
+    override fun addByUrl(tmProfileUrl: String) {
+        viewModelScope.launch {
+            repository.addToShortlist(tmProfileUrl)
         }
     }
 }

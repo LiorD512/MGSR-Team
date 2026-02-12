@@ -6,6 +6,6 @@
     <!-- Splash theme: uses the AndroidX SplashScreen API (Option B - logo + teal accent) -->
     <style name="Theme.MGSRTeam.Splash" parent="Theme.MGSRTeam">
         <item name="android:windowSplashScreenBackground">#0F1923</item>
-        <item name="android:windowSplashScreenAnimatedIcon">@drawable/logo_white</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/splash_screen_icon</item>
     </style>
 </resources>

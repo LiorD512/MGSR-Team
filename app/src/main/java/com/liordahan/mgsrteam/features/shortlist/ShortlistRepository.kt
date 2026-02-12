@@ -85,13 +85,16 @@ class ShortlistRepository(
         )
     }
 
-    suspend fun addToShortlist(release: LatestTransferModel) {
-        val url = release.playerUrl ?: return
+    /**
+     * Adds a player to shortlist. Returns true if added, false if already in shortlist.
+     */
+    suspend fun addToShortlist(release: LatestTransferModel): Boolean {
+        val url = release.playerUrl ?: return false
         val docRef = shortlistDocRef()
         val snapshot = docRef.get().await()
         @Suppress("UNCHECKED_CAST")
         val current = (snapshot.get("entries") as? List<Map<String, Any>>)?.toMutableList() ?: mutableListOf()
-        if (current.any { (it["tmProfileUrl"] as? String) == url }) return
+        if (current.any { (it["tmProfileUrl"] as? String) == url }) return false
         val entryMap = mutableMapOf<String, Any>(
             "tmProfileUrl" to url,
             "addedAt" to System.currentTimeMillis()
@@ -107,6 +110,26 @@ class ShortlistRepository(
         release.transferDate?.takeIf { it.isNotBlank() }?.let { entryMap["transferDate"] = it }
         release.marketValue?.takeIf { it.isNotBlank() }?.let { entryMap["marketValue"] = it }
         current.add(entryMap)
+        docRef.set(mapOf("entries" to current)).await()
+        return true
+    }
+
+    /**
+     * Add a player to shortlist by URL only (e.g. from manual paste).
+     * Stores minimal data; display will show Profile #ID until enriched from other sources.
+     */
+    suspend fun addToShortlist(tmProfileUrl: String) {
+        val url = tmProfileUrl.trim().takeIf { it.isNotBlank() } ?: return
+        if (!url.contains("transfermarkt", ignoreCase = true)) return
+        val docRef = shortlistDocRef()
+        val snapshot = docRef.get().await()
+        @Suppress("UNCHECKED_CAST")
+        val current = (snapshot.get("entries") as? List<Map<String, Any>>)?.toMutableList() ?: mutableListOf()
+        if (current.any { (it["tmProfileUrl"] as? String) == url }) return
+        current.add(mapOf(
+            "tmProfileUrl" to url,
+            "addedAt" to System.currentTimeMillis()
+        ))
         docRef.set(mapOf("entries" to current)).await()
     }
 

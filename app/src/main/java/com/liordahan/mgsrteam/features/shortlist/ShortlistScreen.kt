@@ -40,15 +40,20 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Snackbar
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.ui.window.Dialog
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -66,6 +71,9 @@ import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.liordahan.mgsrteam.features.add.AddPlayerContactFormContent
 import com.liordahan.mgsrteam.features.add.IAddPlayerViewModel
+import com.liordahan.mgsrteam.features.add.SnakeBarMessage
+import com.liordahan.mgsrteam.features.add.showSnakeBarMessage
+import kotlinx.coroutines.launch
 import com.liordahan.mgsrteam.ui.components.DarkSystemBarsForBottomSheet
 import com.liordahan.mgsrteam.navigation.Screens
 import com.liordahan.mgsrteam.ui.theme.HomeDarkBackground
@@ -144,6 +152,20 @@ fun ShortlistScreen(
     val addPlayerState = addPlayerViewModel.playerSearchStateFlow.collectAsState()
     val selectedPlayer by addPlayerViewModel.selectedPlayerFlow.collectAsState()
     val isPlayerAdded by addPlayerViewModel.isPlayerAddedFlow.collectAsState()
+    val snackBarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+
+    LaunchedEffect(Unit) {
+        addPlayerViewModel.errorMessageFlow.collect { message ->
+            if (!message.isNullOrEmpty()) {
+                showSnakeBarMessage(
+                    scope = scope,
+                    snackBarHostState = snackBarHostState,
+                    message = message
+                )
+            }
+        }
+    }
 
     LaunchedEffect(showAddPlayerBottomSheet, addPlayerTmUrl) {
         if (showAddPlayerBottomSheet && !addPlayerTmUrl.isNullOrBlank()) {
@@ -174,7 +196,13 @@ fun ShortlistScreen(
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
-        containerColor = HomeDarkBackground
+        containerColor = HomeDarkBackground,
+        snackbarHost = {
+            SnackbarHost(
+                hostState = snackBarHostState,
+                snackbar = { SnakeBarMessage(message = it.visuals.message) }
+            )
+        }
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -182,7 +210,7 @@ fun ShortlistScreen(
                 .padding(bottom = paddingValues.calculateBottomPadding())
         ) {
             ShortlistHeader(
-                onAddClick = { navController.navigate("${Screens.AddPlayerScreen.route}/") },
+                onAddClick = { navController.navigate(Screens.addToShortlistRoute()) },
                 onBackClicked = { navController.popBackStack() }
             )
 
