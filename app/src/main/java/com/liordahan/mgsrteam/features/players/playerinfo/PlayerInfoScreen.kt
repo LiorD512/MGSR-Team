@@ -238,6 +238,7 @@ fun PlayerInfoScreen(
     var showDeleteDialog by remember { mutableStateOf(false) }
     var noteToDelete by remember { mutableStateOf<NotesModel?>(null) }
     var docToDelete by remember { mutableStateOf<PlayerDocument?>(null) }
+    var isUploadingDocument by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
 
@@ -283,6 +284,12 @@ fun PlayerInfoScreen(
             launch {
                 viewModel.showDeletePlayerIconFlow.collect {
                     showDeletePlayerIcon = it
+                }
+            }
+
+            launch {
+                viewModel.isUploadingDocumentFlow.collect {
+                    isUploadingDocument = it
                 }
             }
         }
@@ -578,7 +585,27 @@ fun PlayerInfoScreen(
             }
             PlayerInfoSectionHeader("Documents")
             PlayerInfoCard(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
-                    if (documentsList.isEmpty()) {
+                    if (isUploadingDocument) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(20.dp),
+                                color = HomeTealAccent,
+                                strokeWidth = 2.dp
+                            )
+                            Spacer(Modifier.width(12.dp))
+                            Text(
+                                text = "Uploading document...",
+                                style = regularTextStyle(HomeTextSecondary, 14.sp),
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
+                    if (documentsList.isEmpty() && !isUploadingDocument) {
                         Text(
                             text = "No documents yet",
                             style = regularTextStyle(HomeTextSecondary, 14.sp),

@@ -30,6 +30,7 @@ abstract class IPlayerInfoViewModel : ViewModel() {
     abstract val showButtonProgress: StateFlow<Boolean>
     abstract val updatePlayerFlow: StateFlow<UiResult<String>>
     abstract val showDeletePlayerIconFlow: StateFlow<Boolean>
+    abstract val isUploadingDocumentFlow: StateFlow<Boolean>
     abstract val documentsFlow: Flow<List<PlayerDocument>>
     abstract fun getPlayerInfo(playerId: String)
     abstract fun deletePlayer(playerTmProfile: String, onDeleteSuccessfully: () -> Unit)
@@ -63,6 +64,9 @@ class PlayerInfoViewModel(
     private val _showDeletePlayerIconFlow = MutableStateFlow(false)
     override val showDeletePlayerIconFlow: StateFlow<Boolean>
         get() = _showDeletePlayerIconFlow
+
+    private val _isUploadingDocumentFlow = MutableStateFlow(false)
+    override val isUploadingDocumentFlow: StateFlow<Boolean> = _isUploadingDocumentFlow
 
     override val documentsFlow: Flow<List<PlayerDocument>> =
         _playerInfoFlow.flatMapLatest { player ->
@@ -282,7 +286,12 @@ class PlayerInfoViewModel(
     override fun uploadDocument(type: DocumentType, name: String, bytes: ByteArray, expiresAt: Long?) {
         viewModelScope.launch {
             val tmProfile = _playerInfoFlow.value?.tmProfile ?: return@launch
-            documentsRepository.uploadDocument(tmProfile, type, name, bytes, expiresAt)
+            _isUploadingDocumentFlow.value = true
+            try {
+                documentsRepository.uploadDocument(tmProfile, type, name, bytes, expiresAt)
+            } finally {
+                _isUploadingDocumentFlow.value = false
+            }
         }
     }
 

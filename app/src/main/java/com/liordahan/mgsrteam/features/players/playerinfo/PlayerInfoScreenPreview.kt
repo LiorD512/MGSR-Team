@@ -50,6 +50,7 @@ private class FakePlayerInfoViewModel : IPlayerInfoViewModel() {
     override val showButtonProgress: StateFlow<Boolean> = MutableStateFlow(false)
     override val updatePlayerFlow: StateFlow<UiResult<String>> = MutableStateFlow(UiResult.UnInitialized)
     override val showDeletePlayerIconFlow: StateFlow<Boolean> = MutableStateFlow(true)
+    override val isUploadingDocumentFlow: StateFlow<Boolean> = MutableStateFlow(false)
     override val documentsFlow: Flow<List<PlayerDocument>> = flowOf(
         listOf(
             PlayerDocument(name = "contract.pdf", type = "OTHER", storageUrl = null)
