@@ -45,6 +45,16 @@ class LoginScreenViewModel(
                         }
                     }
             }
+            .addOnFailureListener { e ->
+                val message = when {
+                    e.message?.contains("password", ignoreCase = true) == true -> "Invalid email or password. Please try again."
+                    e.message?.contains("email", ignoreCase = true) == true -> "Invalid email or password. Please try again."
+                    e.message?.contains("user", ignoreCase = true) == true -> "Invalid email or password. Please try again."
+                    e.message?.contains("INVALID", ignoreCase = true) == true -> "Invalid email or password. Please try again."
+                    else -> e.message ?: "Invalid email or password. Please try again."
+                }
+                _userLoginFlow.update { UiResult.Failed(message) }
+            }
     }
 
 }

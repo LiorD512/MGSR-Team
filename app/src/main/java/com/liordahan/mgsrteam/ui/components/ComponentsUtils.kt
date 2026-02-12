@@ -1,11 +1,18 @@
 package com.liordahan.mgsrteam.ui.components
 
+import android.app.Activity
+import android.app.Dialog
+import android.content.ContextWrapper
 import android.view.View
+import android.view.ViewParent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.border
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -18,6 +25,8 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextFieldColors
 import androidx.compose.material3.TextFieldDefaults
@@ -63,19 +72,51 @@ private const val DARK_NAV_BAR_COLOR = 0xFF0F1923.toInt()
 fun DarkSystemBarsForBottomSheet() {
     val view = LocalView.current
     DisposableEffect(Unit) {
-        var parent: Any? = view.parent
-        while (parent != null) {
-            if (parent is DialogWindowProvider) {
-                val window = parent.window
-                window.navigationBarColor = DARK_NAV_BAR_COLOR
-                window.statusBarColor = DARK_NAV_BAR_COLOR
-                WindowCompat.getInsetsController(window, view).apply {
-                    isAppearanceLightStatusBars = true
-                    isAppearanceLightNavigationBars = true
-                }
-                break
+        fun setWindowBars(window: android.view.Window) {
+            window.navigationBarColor = DARK_NAV_BAR_COLOR
+            window.statusBarColor = DARK_NAV_BAR_COLOR
+            WindowCompat.getInsetsController(window, view).apply {
+                isAppearanceLightStatusBars = true
+                isAppearanceLightNavigationBars = true
             }
-            parent = (parent as? View)?.parent
+        }
+
+        fun findAndSetWindow(): Boolean {
+            // Try DialogWindowProvider (Compose Dialog)
+            var parent: ViewParent? = view.parent
+            while (parent != null) {
+                if (parent is DialogWindowProvider) {
+                    setWindowBars(parent.window)
+                    return true
+                }
+                parent = parent.parent
+            }
+
+            // Fallback: traverse context chain to find Android Dialog (ModalBottomSheet uses BottomSheetDialog)
+            var ctx: android.content.Context? = view.context
+            while (ctx is ContextWrapper) {
+                if (ctx is Dialog) {
+                    ctx.window?.let { setWindowBars(it); return true }
+                    return false
+                }
+                ctx = ctx.baseContext
+            }
+
+            // Fallback: use Activity's window
+            ctx = view.context
+            while (ctx != null) {
+                if (ctx is Activity) {
+                    setWindowBars(ctx.window)
+                    return true
+                }
+                ctx = (ctx as? ContextWrapper)?.baseContext
+            }
+            return false
+        }
+
+        if (!findAndSetWindow()) {
+            // View may not be attached yet; try again after layout
+            view.post { findAndSetWindow() }
         }
         onDispose { }
     }
@@ -88,11 +129,14 @@ fun PrimaryButtonNewDesign(
     buttonElevation: Dp = 0.dp,
     isEnabled: Boolean,
     showProgress: Boolean,
+    loadingText: String? = null,
     onButtonClicked: () -> Unit,
-    containerColor: Color? = null
+    containerColor: Color? = null,
+    disabledContainerColor: Color? = null
 ) {
     val enabledBg = containerColor ?: buttonEnabledBg
-    val contentColor = if (containerColor == HomeTealAccent) HomeDarkBackground else Color.White
+    val disabledBg = disabledContainerColor ?: buttonDisabledBg
+    val contentColor = Color.White
 
     Box(
         modifier = Modifier
@@ -108,8 +152,8 @@ fun PrimaryButtonNewDesign(
                 .fillMaxWidth()
                 .height(50.dp),
             colors = ButtonDefaults.buttonColors(
-                containerColor = if (showProgress) buttonLoadingBg else enabledBg,
-                disabledContainerColor = buttonDisabledBg,
+                containerColor = if (showProgress && containerColor == null) buttonLoadingBg else enabledBg,
+                disabledContainerColor = disabledBg,
                 contentColor = contentColor
             ),
             elevation = ButtonDefaults.buttonElevation(buttonElevation),
@@ -117,33 +161,29 @@ fun PrimaryButtonNewDesign(
             contentPadding = PaddingValues(horizontal = 16.dp),
             enabled = isEnabled
         ) {
+            val displayText = if (showProgress && loadingText != null) loadingText else buttonText
+            val showSpinner = showProgress
 
-            AnimatedVisibility(
-                visible = showProgress,
-                content = {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                if (showSpinner) {
                     CircularProgressIndicator(
-                        color = if (isEnabled) Color.White else contentDisabled,
-                        modifier = Modifier.size(20.dp),
+                        color = Color.White,
+                        modifier = Modifier.size(24.dp),
                         strokeWidth = 2.dp
                     )
+                    Spacer(modifier = Modifier.size(10.dp))
                 }
-            )
-
-            AnimatedVisibility(
-                visible = !showProgress
-            )
-            {
-                Box(modifier = Modifier.fillMaxWidth()) {
-                    Text(
-                        text = buttonText,
-                        style = boldTextStyle(
-                            if (isEnabled) contentColor else contentDisabled,
-                            16.sp
-                        ).copy(lineHeight = 24.sp),
-                        modifier = Modifier.align(Alignment.Center)
-                    )
-                }
-
+                Text(
+                    text = displayText,
+                    style = boldTextStyle(
+                        Color.White,
+                        18.sp
+                    ).copy(lineHeight = 24.sp)
+                )
             }
         }
     }
@@ -158,10 +198,12 @@ fun AppTextField(
     hint: String?,
     leadingIcon: ImageVector? = null,
     trailingIcon: ImageVector? = null,
+    trailingIconAlwaysVisible: Boolean = false,
     keyboardOptions: KeyboardOptions,
     onTrailingIconClicked: (() -> Unit)? = null,
     onValueChange: (TextFieldValue) -> Unit,
-    darkTheme: Boolean = false
+    darkTheme: Boolean = false,
+    visualTransformation: VisualTransformation = VisualTransformation.None
 ) {
     val textColor = if (darkTheme) HomeTextPrimary else contentDefault
     val placeholderColor = if (darkTheme) HomeTextSecondary.copy(alpha = 0.5f) else contentDefault
@@ -189,7 +231,7 @@ fun AppTextField(
             TextFieldDefaults.DecorationBox(
                 value = textInput.text,
                 innerTextField = innerTextField,
-                visualTransformation = VisualTransformation.None,
+                visualTransformation = visualTransformation,
                 singleLine = true,
                 enabled = false,
                 isError = false,
@@ -216,14 +258,30 @@ fun AppTextField(
                 },
 
                 trailingIcon = {
-                    trailingIcon?.let {
-                        if (textInput.text.isNotEmpty()) {
-                            Icon(
-                                imageVector = trailingIcon,
-                                contentDescription = null,
-                                tint = iconTint,
-                                modifier = Modifier.clickWithNoRipple { onTrailingIconClicked?.invoke() }
-                            )
+                    trailingIcon?.let { icon ->
+                        if (trailingIconAlwaysVisible || textInput.text.isNotEmpty()) {
+                            if (onTrailingIconClicked != null) {
+                                IconButton(
+                                    onClick = { onTrailingIconClicked.invoke() },
+                                    modifier = Modifier.size(40.dp),
+                                    colors = IconButtonDefaults.iconButtonColors(
+                                        containerColor = Color.Transparent,
+                                        contentColor = iconTint
+                                    )
+                                ) {
+                                    Icon(
+                                        imageVector = icon,
+                                        contentDescription = null,
+                                        tint = iconTint
+                                    )
+                                }
+                            } else {
+                                Icon(
+                                    imageVector = icon,
+                                    contentDescription = null,
+                                    tint = iconTint
+                                )
+                            }
                         }
                     }
                 }

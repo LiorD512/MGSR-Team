@@ -31,6 +31,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkAdd
 import androidx.compose.material.icons.filled.PersonAdd
@@ -106,7 +107,8 @@ import androidx.compose.ui.Alignment
 fun ReleasesScreen(
     viewModel: IReleasesViewModel = koinViewModel(),
     addPlayerViewModel: IAddPlayerViewModel = koinViewModel(),
-    shortlistRepository: ShortlistRepository = koinInject()
+    shortlistRepository: ShortlistRepository = koinInject(),
+    navController: NavController
 ) {
 
     val scope = rememberCoroutineScope()
@@ -153,7 +155,8 @@ fun ReleasesScreen(
     val snackBarHostState = remember { SnackbarHostState() }
 
     // Track shortlist status
-    val shortlistEntries by shortlistRepository.getShortlistFlow().collectAsState(initial = emptyList())
+    val shortlistEntries by shortlistRepository.getShortlistFlow()
+        .collectAsState(initial = emptyList())
     val shortlistUrls = remember(shortlistEntries) {
         shortlistEntries.map { it.tmProfileUrl }.toSet()
     }
@@ -234,7 +237,7 @@ fun ReleasesScreen(
         ) {
 
             // Header
-            ReleasesHeader()
+            ReleasesHeader(onBackClicked = { navController.popBackStack() })
 
             if (showLoader) {
                 Box(
@@ -350,12 +353,14 @@ fun ReleasesScreen(
                                 CircularProgressIndicator(color = HomeTealAccent)
                             }
                         }
+
                         selectedPlayer != null -> {
                             AddPlayerContactFormContent(
                                 context = context,
                                 viewModel = addPlayerViewModel
                             )
                         }
+
                         else -> {
                             Text(
                                 text = "Could not load player. They may already be in your roster.",
@@ -376,21 +381,37 @@ fun ReleasesScreen(
 // ═════════════════════════════════════════════════════════════════════════════
 
 @Composable
-private fun ReleasesHeader() {
-    Column(
+private fun ReleasesHeader(onBackClicked: () -> Unit) {
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(start = 20.dp, end = 20.dp, top = 48.dp, bottom = 4.dp)
+            .padding(start = 20.dp, end = 12.dp, top = 48.dp, bottom = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(
-            text = "Releases",
-            style = boldTextStyle(HomeTextPrimary, 26.sp)
+
+        Icon(
+            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+            contentDescription = null,
+            tint = HomeTextSecondary,
+            modifier = Modifier
+                .size(24.dp)
+                .clickWithNoRipple { onBackClicked() }
         )
-        Text(
-            text = "Latest free agents from Transfermarkt",
-            style = regularTextStyle(HomeTextSecondary, 13.sp),
-            modifier = Modifier.padding(top = 4.dp)
-        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Column(
+            modifier = Modifier
+                .weight(1f)
+        ) {
+            Text(
+                text = "Releases",
+                style = boldTextStyle(HomeTextPrimary, 26.sp)
+            )
+            Text(
+                text = "Latest free agents from Transfermarkt",
+                style = regularTextStyle(HomeTextSecondary, 13.sp),
+                modifier = Modifier.padding(top = 4.dp)
+            )
+        }
     }
 }
 
@@ -506,7 +527,8 @@ private fun ReleasesPositionChips(
             )
 
             positionList.forEach { position ->
-                val count = originalReleaseList.count { it.playerPosition?.equals(position.name) == true }
+                val count =
+                    originalReleaseList.count { it.playerPosition?.equals(position.name) == true }
                 val isSelected = selectedPosition == position
                 val isDisabled = count == 0
                 val positionName = position.name ?: ""
@@ -694,7 +716,9 @@ fun ReleaseListItem(
                                     AsyncImage(
                                         model = release.playerNationalityFlag,
                                         contentDescription = release.playerNationality,
-                                        modifier = Modifier.size(14.dp).clip(CircleShape),
+                                        modifier = Modifier
+                                            .size(14.dp)
+                                            .clip(CircleShape),
                                         contentScale = ContentScale.Crop
                                     )
                                 }

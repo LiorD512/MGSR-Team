@@ -28,8 +28,11 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.ModalBottomSheetProperties
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -107,7 +110,8 @@ fun ReturneeScreen(
     val state = rememberLazyListState()
 
     // Track shortlist status
-    val shortlistEntries by shortlistRepository.getShortlistFlow().collectAsState(initial = emptyList())
+    val shortlistEntries by shortlistRepository.getShortlistFlow()
+        .collectAsState(initial = emptyList())
     val shortlistUrls = remember(shortlistEntries) {
         shortlistEntries.map { it.tmProfileUrl }.toSet()
     }
@@ -144,7 +148,7 @@ fun ReturneeScreen(
             modifier = Modifier.fillMaxSize()
         ) {
             // Header (same position/style as Releases)
-            ReturneesHeader()
+            ReturneesHeader(onBackClicked = { navController.popBackStack() })
 
             // Stats Strip (same structure as Releases)
             ReturneesStatsStrip(
@@ -278,12 +282,14 @@ fun ReturneeScreen(
                                 CircularProgressIndicator(color = HomeTealAccent)
                             }
                         }
+
                         selectedPlayer != null -> {
                             AddPlayerContactFormContent(
                                 context = context,
                                 viewModel = addPlayerViewModel
                             )
                         }
+
                         else -> {
                             Text(
                                 text = "Could not load player. They may already be in your roster.",
@@ -303,21 +309,37 @@ fun ReturneeScreen(
 // ═════════════════════════════════════════════════════════════════════════════
 
 @Composable
-private fun ReturneesHeader() {
-    Column(
+private fun ReturneesHeader(onBackClicked: () -> Unit) {
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(start = 20.dp, end = 20.dp, top = 48.dp, bottom = 4.dp)
+            .padding(start = 20.dp, end = 12.dp, top = 48.dp, bottom = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(
-            text = "Returnees",
-            style = boldTextStyle(HomeTextPrimary, 26.sp)
+        Icon(
+            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+            contentDescription = null,
+            tint = HomeTextSecondary,
+            modifier = Modifier
+                .size(24.dp)
+                .clickWithNoRipple { onBackClicked() }
         )
-        Text(
-            text = "Players returning from loan across European leagues",
-            style = regularTextStyle(HomeTextSecondary, 13.sp),
-            modifier = Modifier.padding(top = 4.dp)
-        )
+        Spacer(modifier = Modifier.width(8.dp))
+
+        Column(
+            modifier = Modifier
+                .weight(1f)
+        ) {
+            Text(
+                text = "Returnees",
+                style = boldTextStyle(HomeTextPrimary, 26.sp)
+            )
+            Text(
+                text = "Players returning from loan across European leagues",
+                style = regularTextStyle(HomeTextSecondary, 13.sp),
+                modifier = Modifier.padding(top = 4.dp)
+            )
+        }
     }
 }
 
@@ -432,7 +454,8 @@ private fun ReturneesPositionChips(
             )
 
             positionList.forEach { position ->
-                val count = originalReturneeList.count { it.playerPosition?.equals(position.name) == true }
+                val count =
+                    originalReturneeList.count { it.playerPosition?.equals(position.name) == true }
                 val isSelected = selectedPosition == position
                 val isDisabled = count == 0
                 val positionName = position.name ?: ""

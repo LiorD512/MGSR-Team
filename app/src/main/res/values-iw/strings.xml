@@ -10,6 +10,8 @@
     <string name="nav_item_shortlist">רשימת מעקב</string>
 
     <string name="login_button_title">התחברות</string>
+    <string name="login_signing_in">מתחבר…</string>
+    <string name="login_error_invalid_credentials">אימייל או סיסמה שגויים. אנא נסה שוב.</string>
     <string name="login_button_email_hint">הקלד כתובת מייל</string>
     <string name="login_button_password_hint">הקלד סיסמא</string>
 

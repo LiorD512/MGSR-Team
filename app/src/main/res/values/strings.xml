@@ -11,6 +11,8 @@
 
 
     <string name="login_button_title">Login</string>
+    <string name="login_signing_in">Signing in…</string>
+    <string name="login_error_invalid_credentials">Invalid email or password. Please try again.</string>
     <string name="login_button_email_hint">Your email address</string>
     <string name="login_button_password_hint">Your password</string>
 

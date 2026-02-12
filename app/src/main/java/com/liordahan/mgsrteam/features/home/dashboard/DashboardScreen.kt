@@ -28,20 +28,18 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Autorenew
-import androidx.compose.material.icons.filled.ContactPhone
-import androidx.compose.material.icons.filled.List
-import androidx.compose.material.icons.filled.CalendarToday
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Description
-import androidx.compose.material.icons.filled.FileDownload
-import androidx.compose.material.icons.filled.Handshake
-import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.automirrored.filled.NoteAdd
 import androidx.compose.material.icons.automirrored.filled.TrendingDown
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Autorenew
+import androidx.compose.material.icons.filled.CalendarToday
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.ContactPhone
+import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.Handshake
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.PersonOff
@@ -74,12 +72,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
@@ -88,7 +84,6 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
-import coil.compose.AsyncImage
 import com.liordahan.mgsrteam.features.home.DocumentReminder
 import com.liordahan.mgsrteam.features.home.FeedFilter
 import com.liordahan.mgsrteam.features.home.HomeDashboardState
@@ -98,7 +93,17 @@ import com.liordahan.mgsrteam.features.home.models.AgentTask
 import com.liordahan.mgsrteam.features.home.models.FeedEvent
 import com.liordahan.mgsrteam.features.login.models.Account
 import com.liordahan.mgsrteam.navigation.Screens
-import com.liordahan.mgsrteam.ui.theme.*
+import com.liordahan.mgsrteam.ui.theme.HomeBlueAccent
+import com.liordahan.mgsrteam.ui.theme.HomeDarkBackground
+import com.liordahan.mgsrteam.ui.theme.HomeDarkCard
+import com.liordahan.mgsrteam.ui.theme.HomeDarkCardBorder
+import com.liordahan.mgsrteam.ui.theme.HomeGreenAccent
+import com.liordahan.mgsrteam.ui.theme.HomeOrangeAccent
+import com.liordahan.mgsrteam.ui.theme.HomePurpleAccent
+import com.liordahan.mgsrteam.ui.theme.HomeRedAccent
+import com.liordahan.mgsrteam.ui.theme.HomeTealAccent
+import com.liordahan.mgsrteam.ui.theme.HomeTextPrimary
+import com.liordahan.mgsrteam.ui.theme.HomeTextSecondary
 import com.liordahan.mgsrteam.ui.utils.boldTextStyle
 import com.liordahan.mgsrteam.ui.utils.clickWithNoRipple
 import com.liordahan.mgsrteam.ui.utils.regularTextStyle
@@ -662,6 +667,17 @@ private fun AgentOverviewSection(agents: List<AgentSummary>) {
             text = "Agent Overview",
             style = boldTextStyle(HomeTextPrimary, 18.sp),
             modifier = Modifier.padding(horizontal = 20.dp)
+        )
+
+        Spacer(Modifier.height(4.dp))
+
+        Box(
+            modifier = Modifier
+                .padding(horizontal = 20.dp)
+                .width(40.dp)
+                .height(3.dp)
+                .clip(RoundedCornerShape(2.dp))
+                .background(HomeTealAccent)
         )
         Spacer(Modifier.height(10.dp))
         LazyRow(

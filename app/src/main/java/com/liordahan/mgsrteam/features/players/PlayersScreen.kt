@@ -37,6 +37,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.MoreVert
@@ -133,7 +134,9 @@ fun PlayersScreen(
         Column(modifier = Modifier.fillMaxSize()) {
 
             // ── Header ───────────────────────────────────────────────────
-            PlayersHeader()
+            PlayersHeader(
+                onBackClicked = { navController.popBackStack() }
+            )
 
             // ── Stats Strip ──────────────────────────────────────────────
             StatsStrip(
@@ -271,12 +274,22 @@ fun PlayersScreen(
 // ═════════════════════════════════════════════════════════════════════════════
 
 @Composable
-private fun PlayersHeader() {
-    Column(
+private fun PlayersHeader(onBackClicked: () -> Unit) {
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(start = 20.dp, end = 20.dp, top = 48.dp, bottom = 4.dp)
+            .padding(start = 20.dp, end = 20.dp, top = 48.dp, bottom = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
+        Icon(
+            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+            contentDescription = null,
+            tint = HomeTextSecondary,
+            modifier = Modifier
+                .size(24.dp)
+                .clickWithNoRipple { onBackClicked() }
+        )
+        Spacer(modifier = Modifier.width(8.dp))
         Text(
             text = "My Roster",
             style = boldTextStyle(HomeTextPrimary, 26.sp)
@@ -966,7 +979,8 @@ private fun PlayerCardVariantA(
                             Spacer(Modifier.width(5.dp))
                         }
                         Text(
-                            text = if (isFreeAgent) "Free Agent" else (player.currentClub?.clubName ?: ""),
+                            text = if (isFreeAgent) "Free Agent" else (player.currentClub?.clubName
+                                ?: ""),
                             style = if (isFreeAgent) boldTextStyle(HomeRedAccent, 11.sp)
                             else regularTextStyle(HomeTextSecondary, 11.sp),
                             maxLines = 1,
@@ -1240,7 +1254,6 @@ private fun PlayerBadge(
 }
 
 
-
 private fun isContractExpiringSoon(contractExpired: String?): Boolean {
     if (contractExpired.isNullOrBlank() || contractExpired == "-") return false
     return try {
@@ -1254,7 +1267,8 @@ private fun isContractExpiringSoon(contractExpired: String?): Boolean {
             try {
                 expiryDate = java.time.LocalDate.parse(contractExpired, fmt)
                 break
-            } catch (_: Exception) { }
+            } catch (_: Exception) {
+            }
         }
         if (expiryDate == null) return false
         val now = java.time.LocalDate.now()

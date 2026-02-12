@@ -136,7 +136,7 @@ fun HomeScreen(
                             fadeOut(animationSpec = tween(280))
                 }
             ) {
-                ReleasesScreen()
+                ReleasesScreen(navController = navController)
             }
 
             composable(
@@ -290,7 +290,7 @@ fun HomeScreen(
                             fadeOut(animationSpec = tween(280))
                 }
             ) {
-                ContactsScreen()
+                ContactsScreen(navController = navController)
             }
 
             composable(
