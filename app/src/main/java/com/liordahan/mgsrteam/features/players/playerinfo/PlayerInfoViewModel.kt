@@ -35,6 +35,7 @@ abstract class IPlayerInfoViewModel : ViewModel() {
     abstract fun deletePlayer(playerTmProfile: String, onDeleteSuccessfully: () -> Unit)
     abstract fun updatePlayerNumber(number: String)
     abstract fun updateAgentNumber(number: String)
+    abstract fun updateHaveMandate(hasMandate: Boolean)
     abstract fun updateNotes(notes: NotesModel)
     abstract fun refreshPlayerInfo()
     abstract fun onDeleteNoteClicked(note: NotesModel)
@@ -96,7 +97,6 @@ class PlayerInfoViewModel(
                     val player = value?.documents?.firstOrNull()?.toObject(Player::class.java)
                         ?: return@addSnapshotListener
                     _playerInfoFlow.update { player }
-                    refreshPlayerInfo()
                 }
             }
     }
@@ -137,6 +137,23 @@ class PlayerInfoViewModel(
     override fun updateAgentNumber(number: String) {
         _playerInfoFlow.update {
             it?.copy(agentPhoneNumber = number, playerAdditionalInfoModel = null)
+        }
+
+        _playerInfoFlow.value?.let { player ->
+            viewModelScope.launch {
+                val doc = firebaseHandler.firebaseStore
+                    .collection(firebaseHandler.playersTable)
+                    .whereEqualTo("tmProfile", player.tmProfile)
+                    .get().await().documents.firstOrNull()
+
+                doc?.reference?.set(player)?.await()
+            }
+        }
+    }
+
+    override fun updateHaveMandate(hasMandate: Boolean) {
+        _playerInfoFlow.update {
+            it?.copy(haveMandate = hasMandate)
         }
 
         _playerInfoFlow.value?.let { player ->
@@ -208,6 +225,7 @@ class PlayerInfoViewModel(
                         positions = response.data?.positions ?: player.positions,
                         currentClub = club ?: player.currentClub,
                         marketValueHistory = marketValueHistory,
+                        lastRefreshedAt = System.currentTimeMillis(),
                         noteList = if (player.notes?.isNotEmpty() == true) {
                             val currentNotes = player.noteList?.toMutableList() ?: mutableListOf()
                             currentNotes.add(

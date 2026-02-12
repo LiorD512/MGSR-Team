@@ -14,9 +14,11 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -25,6 +27,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -40,20 +43,22 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.PhoneIphone
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.VerifiedUser
 import androidx.compose.material.icons.filled.Whatsapp
+import androidx.compose.material.icons.automirrored.filled.TrendingDown
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextFieldDefaults
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -63,7 +68,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
@@ -102,6 +109,17 @@ import com.liordahan.mgsrteam.features.players.models.getAgentPhoneNumber
 import com.liordahan.mgsrteam.features.players.models.getPlayerPhoneNumber
 import com.liordahan.mgsrteam.helpers.UiResult
 import com.liordahan.mgsrteam.ui.components.setSearchViewTextFieldColors
+import com.liordahan.mgsrteam.ui.components.setSearchViewTextFieldColorsDarkTheme
+import com.liordahan.mgsrteam.ui.theme.HomeBlueAccent
+import com.liordahan.mgsrteam.ui.theme.HomeDarkBackground
+import com.liordahan.mgsrteam.ui.theme.HomeDarkCard
+import com.liordahan.mgsrteam.ui.theme.HomeDarkCardBorder
+import com.liordahan.mgsrteam.ui.theme.HomeGreenAccent
+import com.liordahan.mgsrteam.ui.theme.HomeOrangeAccent
+import com.liordahan.mgsrteam.ui.theme.HomeRedAccent
+import com.liordahan.mgsrteam.ui.theme.HomeTealAccent
+import com.liordahan.mgsrteam.ui.theme.HomeTextPrimary
+import com.liordahan.mgsrteam.ui.theme.HomeTextSecondary
 import com.liordahan.mgsrteam.ui.theme.contentDefault
 import com.liordahan.mgsrteam.ui.theme.dividerColor
 import com.liordahan.mgsrteam.ui.theme.redErrorColor
@@ -117,7 +135,6 @@ import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PlayerInfoScreen(
     viewModel: IPlayerInfoViewModel = koinViewModel(),
@@ -271,45 +288,17 @@ fun PlayerInfoScreen(
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
-        containerColor = Color.White,
-        topBar = {
-            PlayerInfoTopBar(
-                showDeletePlayerIcon = showDeletePlayerIcon,
-                onDeletePlayerClicked = {
-                    showDeleteDialog = true
-                },
-                onShareClicked = {
-                    com.liordahan.mgsrteam.analytics.AnalyticsHelper.logSharePlayer(playerToPresent?.tmProfile)
-                    val textToSend = buildAnnotatedString {
-                        playerToPresent?.let { player ->
-                            appendLine(player.tmProfile ?: "")
-                            append("\n\n")
-                            appendLine(
-                                listOfNotNull(
-                                    player.fullName,
-                                    player.positions?.getOrNull(0),
-                                    player.age,
-                                    player.height?.replace("m", ""),
-                                    player.nationality
-                                ).joinToString(", ")
-                            )
-                            append("Current Club: ${player.currentClub?.clubName ?: "Unknown"}")
-                        } ?: append("Player data not available.")
-                    }
-                    sharePlayerOnWhatsapp(context, textToSend.toString())
-                },
-                onBackClicked = {
-                    navController.popBackStack()
-                }
-            )
-        }
+        containerColor = HomeDarkBackground
     ) { paddingValues ->
 
         if (showLoader) {
-            Box(Modifier.fillMaxSize()) {
-                ProgressIndicator(
-                    modifier = Modifier.align(Alignment.Center)
-                )
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(HomeDarkBackground),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator(color = HomeTealAccent, strokeWidth = 3.dp)
             }
 
             return@Scaffold
@@ -318,7 +307,8 @@ fun PlayerInfoScreen(
         if (showPlayerUpdateUi) {
             UpdatePlayerUi(
                 modifier = Modifier.padding(paddingValues),
-                message = playerUpdateUiMessage
+                message = playerUpdateUiMessage,
+                useDarkTheme = true
             )
         }
 
@@ -333,95 +323,85 @@ fun PlayerInfoScreen(
             )
         }
 
+        val shareAction: () -> Unit = {
+            com.liordahan.mgsrteam.analytics.AnalyticsHelper.logSharePlayer(playerToPresent?.tmProfile)
+            val textToSend = buildAnnotatedString {
+                playerToPresent?.let { player ->
+                    appendLine(player.tmProfile ?: "")
+                    append("\n\n")
+                    appendLine(
+                        listOfNotNull(
+                            player.fullName,
+                            player.positions?.getOrNull(0),
+                            player.age,
+                            player.height?.replace("m", ""),
+                            player.nationality
+                        ).joinToString(", ")
+                    )
+                    append("Current Club: ${player.currentClub?.clubName ?: "Unknown"}")
+                } ?: append("Player data not available.")
+            }
+            sharePlayerOnWhatsapp(context, textToSend.toString())
+        }
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .verticalScroll(scrollState)
-                .padding(paddingValues)
-                .padding(top = 24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .padding(bottom = paddingValues.calculateBottomPadding())
         ) {
-            // Profile Image
+            PlayerInfoHeader(onBackClicked = { navController.popBackStack() })
 
-            Surface(
-                shadowElevation = 6.dp,
-                tonalElevation = 12.dp,
-                shape = CircleShape
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .verticalScroll(scrollState)
+                    .padding(top = 4.dp)
             ) {
-
-                AsyncImage(
-                    model = playerToPresent?.profileImage ?: "",
-                    contentDescription = "Player Image",
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier
-                        .size(120.dp)
-                        .clip(CircleShape)
+            // Hero Card
+            playerToPresent?.let { player ->
+                PlayerInfoHeroCard(
+                    player = player,
+                    onMandateChanged = { viewModel.updateHaveMandate(it) }
                 )
-
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            // Quick Actions
+            playerToPresent?.let { player ->
+                PlayerInfoQuickActions(player = player, context = context)
+            }
 
-            // Name
-            Text(
-                text = playerToPresent?.fullName ?: "Unknown",
-                style = boldTextStyle(contentDefault, 20.sp)
-            )
-
-            Spacer(Modifier.height(8.dp))
-
-            Text(
-                text = buildAnnotatedString {
-                    append("Added by - ")
-                    withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
-                        append(playerToPresent?.agentInChargeName)
-                    }
-                }
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Card(
-                modifier = Modifier.padding(16.dp),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
-                elevation = CardDefaults.cardElevation(8.dp)
+            // Section: General Info
+            PlayerInfoSectionHeader("General Info")
+            PlayerInfoCard(
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
             ) {
-
-                Column(modifier = Modifier.padding(16.dp)) {
-
-                    Text(
-                        text = "General Info",
-                        style = boldTextStyle(contentDefault, 16.sp),
-                    )
-
-                    Spacer(Modifier.height(24.dp))
-
-                    InfoRow(
+                InfoRow(
                         "Height",
                         playerToPresent?.height?.replace(",", "."),
+                        darkTheme = true,
                         icon = {
                             Icon(
                                 modifier = Modifier.size(24.dp),
                                 painter = painterResource(R.drawable.ic_height),
                                 contentDescription = null,
-                                tint = contentDefault
+                                tint = HomeTextSecondary
                             )
                         })
                     HorizontalDivider(
-                        color = dividerColor,
+                        color = HomeDarkCardBorder,
                         thickness = 0.5.dp,
                         modifier = Modifier.padding(vertical = 8.dp)
                     )
                     InfoRow(
                         "Age",
                         playerToPresent?.age,
+                        darkTheme = true,
                         icon = {
                             Icon(
                                 modifier = Modifier.size(24.dp),
                                 imageVector = Icons.Default.CalendarMonth,
                                 contentDescription = null,
-                                tint = contentDefault
+                                tint = HomeTextSecondary
                             )
                         })
                     HorizontalDivider(
@@ -433,26 +413,58 @@ fun PlayerInfoScreen(
                     InfoRow(
                         "Positions",
                         playerToPresent?.positions?.filterNotNull()?.joinToString(", "),
+                        darkTheme = true,
                         icon = {
                             Icon(
                                 modifier = Modifier.size(24.dp),
                                 painter = painterResource(R.drawable.ic_soccer),
                                 contentDescription = null,
-                                tint = contentDefault
+                                tint = HomeTextSecondary
                             )
                         }
                     )
-
                     HorizontalDivider(
-                        color = dividerColor,
+                        color = HomeDarkCardBorder,
                         thickness = 0.5.dp,
                         modifier = Modifier.padding(vertical = 8.dp)
                     )
-
                     NationalityInfoRow(
                         "Nationality",
                         playerToPresent?.nationality,
-                        playerToPresent?.nationalityFlag
+                        playerToPresent?.nationalityFlag,
+                        darkTheme = true
+                    )
+
+                    HorizontalDivider(
+                        color = HomeDarkCardBorder,
+                        thickness = 0.5.dp,
+                        modifier = Modifier.padding(vertical = 8.dp)
+                    )
+                    InfoRow(
+                        "Contract Expiry Date",
+                        getContractStatus(
+                            playerToPresent?.contractExpired?.replace("/", ".") ?: ""
+                        ),
+                        darkTheme = true,
+                        icon = {
+                            Icon(
+                                modifier = Modifier.size(24.dp),
+                                painter = painterResource(R.drawable.ic_contract),
+                                contentDescription = null,
+                                tint = HomeTextSecondary
+                            )
+                        })
+
+                    HorizontalDivider(
+                        color = HomeDarkCardBorder,
+                        thickness = 0.5.dp,
+                        modifier = Modifier.padding(vertical = 8.dp)
+                    )
+                    ClubInfoRow(
+                        "Current Club",
+                        playerToPresent?.currentClub?.clubName,
+                        playerToPresent?.currentClub?.clubLogo,
+                        darkTheme = true
                     )
 
                     HorizontalDivider(
@@ -462,45 +474,25 @@ fun PlayerInfoScreen(
                     )
 
                     InfoRow(
-                        "Contract Expiry Date",
-                        getContractStatus(
-                            playerToPresent?.contractExpired?.replace("/", ".") ?: ""
-                        ),
+                        "Market Value",
+                        playerToPresent?.marketValue?.let { value ->
+                            val trend = playerToPresent?.let { playerInfoComputeValueTrend(it.marketValueHistory) } ?: 0
+                            when {
+                                trend > 0 -> "$value ↑"
+                                trend < 0 -> "$value ↓"
+                                else -> value
+                            }
+                        },
+                        darkTheme = true,
                         icon = {
                             Icon(
                                 modifier = Modifier.size(24.dp),
-                                painter = painterResource(R.drawable.ic_contract),
+                                painter = painterResource(R.drawable.ic_euro),
                                 contentDescription = null,
-                                tint = contentDefault
+                                tint = HomeTextSecondary
                             )
-                        })
-
-                    HorizontalDivider(
-                        color = dividerColor,
-                        thickness = 0.5.dp,
-                        modifier = Modifier.padding(vertical = 8.dp)
+                        }
                     )
-
-                    ClubInfoRow(
-                        "Current Club",
-                        playerToPresent?.currentClub?.clubName,
-                        playerToPresent?.currentClub?.clubLogo
-                    )
-
-                    HorizontalDivider(
-                        color = dividerColor,
-                        thickness = 0.5.dp,
-                        modifier = Modifier.padding(vertical = 8.dp)
-                    )
-
-                    InfoRow("Market Value", playerToPresent?.marketValue, icon = {
-                        Icon(
-                            modifier = Modifier.size(24.dp),
-                            painter = painterResource(R.drawable.ic_euro),
-                            contentDescription = null,
-                            tint = contentDefault
-                        )
-                    })
 
                     playerToPresent?.marketValueHistory?.takeIf { it.size > 1 }?.let { history ->
                         val previous = history.sortedByDescending { it.date }.getOrNull(1)
@@ -508,33 +500,19 @@ fun PlayerInfoScreen(
                             Spacer(Modifier.height(4.dp))
                             Text(
                                 text = "Previously: ${it.value ?: ""} (${SimpleDateFormat("dd.MM.yy", Locale.getDefault()).format(Date(it.date ?: 0))})",
-                                style = regularTextStyle(contentDefault, 12.sp),
+                                style = regularTextStyle(HomeTextSecondary, 12.sp),
                                 modifier = Modifier.padding(start = 28.dp)
                             )
                         }
                     }
 
                 }
-            }
-
-            Card(
-                modifier = Modifier.padding(16.dp),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
-                elevation = CardDefaults.cardElevation(8.dp)
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-
-                    Text(
-                        text = "Contact Info",
-                        style = boldTextStyle(contentDefault, 16.sp),
-                    )
-
-                    Spacer(Modifier.height(24.dp))
-
+            PlayerInfoSectionHeader("Contact Info")
+            PlayerInfoCard(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
                     PhoneInfoRow(
                         "Player Phone",
                         playerToPresent?.getPlayerPhoneNumber(),
+                        darkTheme = true,
                         onEditPhoneClicked = {
                             launchPlayerContactPicker(
                                 context,
@@ -545,16 +523,15 @@ fun PlayerInfoScreen(
                         onClearClicked = {
                             viewModel.updatePlayerNumber("")
                         })
-
                     HorizontalDivider(
-                        color = dividerColor,
+                        color = HomeDarkCardBorder,
                         thickness = 0.5.dp,
                         modifier = Modifier.padding(vertical = 8.dp)
                     )
-
                     PhoneInfoRow(
                         "Agent Phone",
                         playerToPresent?.getAgentPhoneNumber(),
+                        darkTheme = true,
                         onEditPhoneClicked = {
                             launchPlayerContactPicker(
                                 context,
@@ -565,37 +542,24 @@ fun PlayerInfoScreen(
                         onClearClicked = {
                             viewModel.updateAgentNumber("")
                         })
-
                     HorizontalDivider(
-                        color = dividerColor,
+                        color = HomeDarkCardBorder,
                         thickness = 0.5.dp,
                         modifier = Modifier.padding(vertical = 8.dp)
                     )
-
-                    TransfermarketRow(context, "TM Profile", playerToPresent?.tmProfile)
+                    TransfermarketRow(context, "TM Profile", playerToPresent?.tmProfile, darkTheme = true)
                 }
-            }
 
             var documentsList by remember { mutableStateOf<List<PlayerDocument>>(emptyList()) }
             LaunchedEffect(Unit) {
                 viewModel.documentsFlow.collect { documentsList = it }
             }
-            Card(
-                modifier = Modifier.padding(16.dp),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
-                elevation = CardDefaults.cardElevation(8.dp)
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        text = "Documents",
-                        style = boldTextStyle(contentDefault, 16.sp),
-                    )
-                    Spacer(Modifier.height(12.dp))
+            PlayerInfoSectionHeader("Documents")
+            PlayerInfoCard(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
                     if (documentsList.isEmpty()) {
                         Text(
                             text = "No documents yet",
-                            style = regularTextStyle(contentDefault, 14.sp),
+                            style = regularTextStyle(HomeTextSecondary, 14.sp),
                         )
                     } else {
                         documentsList.forEach { doc ->
@@ -607,7 +571,7 @@ fun PlayerInfoScreen(
                             ) {
                                 Text(
                                     text = doc.name ?: doc.documentType.displayName,
-                                    style = regularTextStyle(contentDefault, 14.sp),
+                                    style = regularTextStyle(HomeTextPrimary, 14.sp),
                                     modifier = Modifier.weight(1f)
                                 )
                                 Icon(
@@ -620,14 +584,16 @@ fun PlayerInfoScreen(
                                                 val intent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url))
                                                 context.startActivity(intent)
                                             }
-                                        }
+                                        },
+                                    tint = HomeTealAccent
                                 )
                                 Icon(
                                     imageVector = Icons.Default.Delete,
                                     contentDescription = null,
                                     modifier = Modifier
                                         .size(20.dp)
-                                        .clickWithNoRipple { doc.id?.let { viewModel.deleteDocument(it) } }
+                                        .clickWithNoRipple { doc.id?.let { viewModel.deleteDocument(it) } },
+                                    tint = HomeTextSecondary
                                 )
                             }
                         }
@@ -635,37 +601,28 @@ fun PlayerInfoScreen(
                     Spacer(Modifier.height(8.dp))
                     Text(
                         text = "Add document",
-                        style = boldTextStyle(contentDefault, 14.sp),
+                        style = boldTextStyle(HomeTealAccent, 14.sp),
                         modifier = Modifier.clickWithNoRipple {
                             documentPickerLauncher.launch("*/*")
                         }
                     )
                 }
-            }
 
-            Card(
-                modifier = Modifier.padding(16.dp),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
-                elevation = CardDefaults.cardElevation(8.dp)
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-
+            PlayerInfoSectionHeader("Notes")
+            PlayerInfoCard(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-
                         Text(
                             text = "Notes",
-                            style = boldTextStyle(contentDefault, 16.sp),
+                            style = boldTextStyle(HomeTextPrimary, 16.sp),
                             modifier = Modifier.weight(1f)
                         )
-
                         Box(
                             modifier = Modifier
                                 .background(
-                                    contentDefault,
+                                    HomeTealAccent,
                                     shape = RoundedCornerShape(32.dp)
                                 )
                                 .padding(horizontal = 14.dp, vertical = 4.dp)
@@ -685,13 +642,11 @@ fun PlayerInfoScreen(
                         ) {
                             Text(
                                 text = "Add note",
-                                style = boldTextStyle(Color.White, 12.sp),
+                                style = boldTextStyle(HomeDarkBackground, 12.sp),
                             )
                         }
                     }
-
                     Spacer(Modifier.height(24.dp))
-
                     BasicTextField(
                         value = notesInputText,
                         onValueChange = {
@@ -700,7 +655,7 @@ fun PlayerInfoScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(80.dp),
-                        textStyle = regularTextStyle(contentDefault, 14.sp),
+                        textStyle = regularTextStyle(HomeTextPrimary, 14.sp),
                         enabled = true,
                         keyboardOptions = KeyboardOptions(
                             imeAction = ImeAction.Done,
@@ -716,12 +671,12 @@ fun PlayerInfoScreen(
                                 isError = false,
                                 contentPadding = PaddingValues(16.dp),
                                 shape = RoundedCornerShape(16.dp),
-                                colors = setSearchViewTextFieldColors(),
+                                colors = setSearchViewTextFieldColorsDarkTheme(),
                                 interactionSource = remember { MutableInteractionSource() },
                                 placeholder = {
                                     Text(
                                         "Add a new note...",
-                                        style = regularTextStyle(contentDefault, 14.sp),
+                                        style = regularTextStyle(HomeTextSecondary.copy(alpha = 0.5f), 14.sp),
                                         maxLines = 1
                                     )
                                 }
@@ -734,10 +689,258 @@ fun PlayerInfoScreen(
                     val notesList = playerToPresent?.noteList?.sortedByDescending { it.createdAt }
 
                     notesList?.forEach {
-                        NoteItemUi(it, onDeleteNoteClicked = { viewModel.onDeleteNoteClicked(it) })
+                        NoteItemUi(it, onDeleteNoteClicked = { viewModel.onDeleteNoteClicked(it) }, darkTheme = true)
                         Spacer(Modifier.height(4.dp))
                     }
+                }
+            }
 
+            PlayerInfoBottomBar(
+                showDeletePlayerIcon = showDeletePlayerIcon,
+                onRefreshClicked = { viewModel.refreshPlayerInfo() },
+                onDeletePlayerClicked = { showDeleteDialog = true },
+                onShareClicked = shareAction
+            )
+        }
+    }
+}
+
+@Composable
+private fun PlayerInfoHeroCard(
+    player: Player,
+    onMandateChanged: (Boolean) -> Unit
+) {
+    val valueTrend = remember(player.marketValueHistory) {
+        playerInfoComputeValueTrend(player.marketValueHistory)
+    }
+    val contractCountdown = remember(player.contractExpired) {
+        playerInfoGetContractCountdown(player.contractExpired)
+    }
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = HomeDarkCard),
+        border = BorderStroke(1.dp, HomeDarkCardBorder)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            AsyncImage(
+                model = player.profileImage ?: "",
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .size(96.dp)
+                    .clip(CircleShape)
+                    .border(2.dp, HomeDarkCardBorder, CircleShape)
+            )
+            Spacer(Modifier.height(12.dp))
+            Text(
+                text = player.fullName ?: "Unknown",
+                style = boldTextStyle(HomeTextPrimary, 22.sp)
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = buildString {
+                    player.positions?.firstOrNull()?.let { append(it) }
+                    player.age?.let { append(" • $it yrs") }
+                    player.currentClub?.clubName?.let { append(" • $it") }
+                }.ifEmpty { "—" },
+                style = regularTextStyle(HomeTextSecondary, 13.sp)
+            )
+            Spacer(Modifier.height(2.dp))
+            Text(
+                text = "Added by — ${player.agentInChargeName ?: "—"}",
+                style = regularTextStyle(HomeTextSecondary.copy(alpha = 0.8f), 11.sp)
+            )
+            player.lastRefreshedAt?.takeIf { it > 0 }?.let { ts ->
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = playerInfoFormatLastRefreshed(ts),
+                    style = regularTextStyle(HomeTextSecondary.copy(alpha = 0.7f), 11.sp)
+                )
+            }
+            Spacer(Modifier.height(12.dp))
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = player.marketValue ?: "—",
+                        style = boldTextStyle(
+                            when {
+                                valueTrend > 0 -> HomeGreenAccent
+                                valueTrend < 0 -> HomeRedAccent
+                                else -> HomeTealAccent
+                            },
+                            14.sp
+                        )
+                    )
+                    if (valueTrend != 0) {
+                        Icon(
+                            imageVector = if (valueTrend > 0) Icons.AutoMirrored.Filled.TrendingUp else Icons.AutoMirrored.Filled.TrendingDown,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp),
+                            tint = if (valueTrend > 0) HomeGreenAccent else HomeRedAccent
+                        )
+                    }
+                }
+                Box(modifier = Modifier.width(1.dp).height(14.dp).background(HomeDarkCardBorder))
+                Text(
+                    text = player.height?.replace(",", ".") ?: "—",
+                    style = regularTextStyle(HomeTextSecondary, 12.sp)
+                )
+                Box(modifier = Modifier.width(1.dp).height(14.dp).background(HomeDarkCardBorder))
+                Text(
+                    text = player.nationality ?: "—",
+                    style = regularTextStyle(HomeTextSecondary, 12.sp)
+                )
+                AsyncImage(
+                    model = player.nationalityFlag,
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp).clip(CircleShape),
+                    contentScale = ContentScale.Crop
+                )
+            }
+            contractCountdown?.let { text ->
+                Spacer(Modifier.height(8.dp))
+                val isExpired = text == "Contract Expired"
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(
+                            if (isExpired) HomeRedAccent.copy(alpha = 0.15f)
+                            else HomeOrangeAccent.copy(alpha = 0.15f)
+                        )
+                        .padding(horizontal = 10.dp, vertical = 4.dp)
+                ) {
+                    Text(
+                        text = "Contract $text",
+                        style = boldTextStyle(
+                            if (isExpired) HomeRedAccent else HomeOrangeAccent,
+                            11.sp
+                        )
+                    )
+                }
+            }
+            Spacer(Modifier.height(12.dp))
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(HomeDarkBackground)
+                    .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(12.dp))
+                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.VerifiedUser,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp),
+                        tint = if (player.haveMandate) HomeBlueAccent else HomeTextSecondary
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        text = "Mandate",
+                        style = boldTextStyle(
+                            if (player.haveMandate) HomeBlueAccent else HomeTextSecondary,
+                            14.sp
+                        )
+                    )
+                }
+                Switch(
+                    checked = player.haveMandate,
+                    onCheckedChange = onMandateChanged,
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = Color.White,
+                        checkedTrackColor = HomeBlueAccent,
+                        uncheckedThumbColor = HomeTextSecondary,
+                        uncheckedTrackColor = HomeDarkCardBorder
+                    )
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun PlayerInfoQuickActions(
+    player: Player,
+    context: Context
+) {
+    val playerPhone = player.getPlayerPhoneNumber()
+    val agentPhone = player.getAgentPhoneNumber()
+    val hasTmProfile = player.tmProfile != null
+    val hasAnyAction = playerPhone != null || agentPhone != null || hasTmProfile
+    if (!hasAnyAction) return
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = HomeDarkCard),
+        border = BorderStroke(1.dp, HomeDarkCardBorder)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceEvenly
+        ) {
+            if (playerPhone != null) {
+                PlayerInfoQuickActionWhatsApp(
+                    modifier = Modifier.weight(1f),
+                    label = "Player",
+                    phone = playerPhone,
+                    context = context
+                )
+                if (agentPhone != null || hasTmProfile) {
+                    Box(modifier = Modifier.width(1.dp).height(32.dp).background(HomeDarkCardBorder))
+                }
+            }
+            if (agentPhone != null) {
+                PlayerInfoQuickActionWhatsApp(
+                    modifier = Modifier.weight(1f),
+                    label = "Agent",
+                    phone = agentPhone,
+                    context = context
+                )
+                if (hasTmProfile) {
+                    Box(modifier = Modifier.width(1.dp).height(32.dp).background(HomeDarkCardBorder))
+                }
+            }
+            if (hasTmProfile) {
+                Row(
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(14.dp)
+                        .clickWithNoRipple {
+                            player.tmProfile.let { url ->
+                                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                            }
+                        },
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Link,
+                        contentDescription = null,
+                        modifier = Modifier.size(22.dp),
+                        tint = HomeTealAccent
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        text = "TM Profile",
+                        style = boldTextStyle(HomeTextSecondary, 11.sp)
+                    )
                 }
             }
         }
@@ -745,11 +948,92 @@ fun PlayerInfoScreen(
 }
 
 @Composable
+private fun PlayerInfoQuickActionWhatsApp(
+    modifier: Modifier = Modifier,
+    label: String,
+    phone: String,
+    context: Context
+) {
+    Row(
+        modifier = modifier
+            .padding(14.dp)
+            .clickWithNoRipple {
+                val clean = phone.filter { it.isDigit() }
+                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://wa.me/$clean")))
+            },
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center
+    ) {
+        Icon(
+            imageVector = Icons.Default.Whatsapp,
+            contentDescription = null,
+            modifier = Modifier.size(22.dp),
+            tint = HomeTealAccent
+        )
+        Spacer(Modifier.width(6.dp))
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                text = "WhatsApp",
+                style = boldTextStyle(HomeTextSecondary, 11.sp)
+            )
+            Text(
+                text = label,
+                style = regularTextStyle(HomeTextSecondary.copy(alpha = 0.9f), 10.sp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun PlayerInfoSectionHeader(title: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Text(
+            text = title,
+            style = boldTextStyle(HomeTextPrimary, 18.sp)
+        )
+        Box(
+            modifier = Modifier
+                .width(40.dp)
+                .height(3.dp)
+                .clip(RoundedCornerShape(2.dp))
+                .background(HomeTealAccent)
+        )
+    }
+}
+
+@Composable
+private fun PlayerInfoCard(
+    modifier: Modifier = Modifier,
+    content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit
+) {
+    Card(
+        modifier = modifier,
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = HomeDarkCard),
+        border = BorderStroke(1.dp, HomeDarkCardBorder)
+    ) {
+        Column(modifier = Modifier.padding(16.dp, 16.dp, 16.dp, 20.dp)) {
+            content()
+        }
+    }
+}
+
+@Composable
 fun NoteItemUi(
     notesModel: NotesModel,
-    onDeleteNoteClicked: () -> Unit
+    onDeleteNoteClicked: () -> Unit,
+    darkTheme: Boolean = false
 ) {
     var isInEditMode by remember { mutableStateOf(false) }
+    val cardColor = if (darkTheme) HomeDarkCard else Color.White
+    val textColor = if (darkTheme) HomeTextPrimary else contentDefault
+    val secondaryColor = if (darkTheme) HomeTextSecondary else contentDefault
 
     Card(
         modifier = Modifier
@@ -758,7 +1042,7 @@ fun NoteItemUi(
             .shadow(2.dp, RoundedCornerShape(4.dp))
             .clickWithNoRipple { isInEditMode = !isInEditMode },
         shape = RoundedCornerShape(4.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = cardColor),
         elevation = CardDefaults.cardElevation(4.dp)
     ) {
         val sdf = SimpleDateFormat("dd.MM.yyyy", Locale.getDefault())
@@ -780,25 +1064,24 @@ fun NoteItemUi(
                         modifier = Modifier.clickWithNoRipple {
                             onDeleteNoteClicked()
                             isInEditMode = false
-                        }
+                        },
+                        tint = HomeTealAccent
                     )
                 }
-
-
                 Text(
                     text = sdf.format(notesModel.createdAt),
-                    style = boldTextStyle(contentDefault, 12.sp),
+                    style = boldTextStyle(textColor, 12.sp),
                     modifier = Modifier.weight(1f)
                 )
                 Text(
                     text = notesModel.createBy ?: "",
-                    style = boldTextStyle(contentDefault, 12.sp)
+                    style = boldTextStyle(textColor, 12.sp)
                 )
             }
             Spacer(Modifier.height(8.dp))
             Text(
                 text = notesModel.notes ?: "",
-                style = regularTextStyle(contentDefault, 14.sp),
+                style = regularTextStyle(textColor, 14.sp),
                 textAlign = TextAlign.Start
             )
         }
@@ -816,13 +1099,22 @@ fun WhatsAppIcon(phoneNumber: String) {
         modifier = Modifier.clickWithNoRipple {
             val intent = Intent(Intent.ACTION_VIEW, uri)
             context.startActivity(intent)
-        }
+        },
+        tint = HomeTealAccent
     )
 }
 
 
 @Composable
-fun InfoRow(title: String, value: String?, icon: @Composable (() -> Unit)? = null) {
+fun InfoRow(
+    title: String,
+    value: String?,
+    darkTheme: Boolean = false,
+    icon: @Composable (() -> Unit)? = null
+) {
+    val labelColor = if (darkTheme) HomeTextSecondary else contentDefault
+    val valueColor = if (darkTheme) HomeTextPrimary else contentDefault
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -830,7 +1122,6 @@ fun InfoRow(title: String, value: String?, icon: @Composable (() -> Unit)? = nul
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-
         if (icon != null) {
             icon()
             Spacer(Modifier.width(4.dp))
@@ -838,19 +1129,30 @@ fun InfoRow(title: String, value: String?, icon: @Composable (() -> Unit)? = nul
 
         Text(
             text = title,
-            style = regularTextStyle(contentDefault, 14.sp),
+            style = regularTextStyle(labelColor, 14.sp),
             modifier = Modifier.weight(1f)
         )
         Text(
             text = value ?: "--",
-            style = boldTextStyle(contentDefault, 14.sp),
+            style = boldTextStyle(valueColor, 14.sp),
             textAlign = TextAlign.End
         )
     }
 }
 
 @Composable
-fun ClubInfoRow(title: String, value: String?, clubLogo: String?) {
+fun ClubInfoRow(
+    title: String,
+    value: String?,
+    clubLogo: String?,
+    darkTheme: Boolean = false
+) {
+    val labelColor = if (darkTheme) HomeTextSecondary else contentDefault
+    val valueColor = if (darkTheme) {
+        if (value.equals("Without club", true)) HomeRedAccent else HomeTextPrimary
+    } else {
+        if (value.equals("Without club", true)) redErrorColor else contentDefault
+    }
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -858,25 +1160,21 @@ fun ClubInfoRow(title: String, value: String?, clubLogo: String?) {
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-
         Image(
             modifier = Modifier.size(24.dp),
             painter = painterResource(R.drawable.ic_club_badge),
             contentDescription = null
         )
-
         Spacer(Modifier.width(4.dp))
-
         Text(
             text = title,
-            style = regularTextStyle(contentDefault, 14.sp),
+            style = regularTextStyle(labelColor, 14.sp),
             modifier = Modifier.weight(1f)
         )
-
         Text(
             text = value ?: "--",
             style = boldTextStyle(
-                if (value.equals("Without club", true)) redErrorColor else contentDefault,
+                valueColor,
                 14.sp
             ),
             textAlign = TextAlign.End,
@@ -884,20 +1182,24 @@ fun ClubInfoRow(title: String, value: String?, clubLogo: String?) {
             maxLines = 1,
             modifier = Modifier.weight(0.5f)
         )
-
         Spacer(Modifier.width(8.dp))
-
         AsyncImage(
             model = clubLogo,
             contentDescription = null,
             modifier = Modifier.size(24.dp)
         )
-
     }
 }
 
 @Composable
-fun NationalityInfoRow(title: String, value: String?, nationalityFlag: String?) {
+fun NationalityInfoRow(
+    title: String,
+    value: String?,
+    nationalityFlag: String?,
+    darkTheme: Boolean = false
+) {
+    val labelColor = if (darkTheme) HomeTextSecondary else contentDefault
+    val valueColor = if (darkTheme) HomeTextPrimary else contentDefault
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -905,28 +1207,24 @@ fun NationalityInfoRow(title: String, value: String?, nationalityFlag: String?) 
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-
         Icon(
             modifier = Modifier.size(24.dp),
             painter = painterResource(R.drawable.ic_world),
             contentDescription = null,
-            tint = contentDefault
+            tint = if (darkTheme) HomeTextSecondary else contentDefault
         )
-
         Spacer(Modifier.width(4.dp))
-
         Text(
             text = title,
-            style = regularTextStyle(contentDefault, 14.sp),
+            style = regularTextStyle(labelColor, 14.sp),
             modifier = Modifier.weight(1f)
         )
-
         Row(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
                 text = value ?: "--",
-                style = boldTextStyle(contentDefault, 14.sp),
+                style = boldTextStyle(valueColor, 14.sp),
                 textAlign = TextAlign.End
             )
 
@@ -947,9 +1245,11 @@ fun NationalityInfoRow(title: String, value: String?, nationalityFlag: String?) 
 fun PhoneInfoRow(
     title: String,
     phoneNumber: String?,
+    darkTheme: Boolean = false,
     onEditPhoneClicked: () -> Unit,
     onClearClicked: () -> Unit
 ) {
+    val labelColor = if (darkTheme) HomeTextSecondary else contentDefault
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -957,54 +1257,55 @@ fun PhoneInfoRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-
         Icon(
             modifier = Modifier.size(24.dp),
             imageVector = Icons.Default.PhoneIphone,
             contentDescription = null,
-            tint = contentDefault
+            tint = if (darkTheme) HomeTextSecondary else contentDefault
         )
-
         Spacer(Modifier.width(4.dp))
-
         Text(
             text = title,
-            style = regularTextStyle(contentDefault, 14.sp),
+            style = regularTextStyle(labelColor, 14.sp),
             modifier = Modifier.weight(1f)
         )
 
         if (phoneNumber.isNullOrEmpty()) {
             Text(
                 text = "--",
-                style = boldTextStyle(contentDefault, 14.sp),
+                style = boldTextStyle(if (darkTheme) HomeTextSecondary else contentDefault, 14.sp),
                 textAlign = TextAlign.End
             )
         } else {
             WhatsAppIcon(phoneNumber)
         }
-
         Spacer(Modifier.width(24.dp))
-
         Icon(
             imageVector = Icons.Default.Edit,
             contentDescription = null,
-            modifier = Modifier.clickWithNoRipple { onEditPhoneClicked() }
+            modifier = Modifier.clickWithNoRipple { onEditPhoneClicked() },
+            tint = if (darkTheme) HomeTealAccent else contentDefault
         )
-
         if (phoneNumber?.isNotEmpty() == true) {
             Spacer(Modifier.width(24.dp))
             Icon(
                 imageVector = Icons.Default.Clear,
                 contentDescription = null,
-                modifier = Modifier.clickWithNoRipple { onClearClicked() }
+                modifier = Modifier.clickWithNoRipple { onClearClicked() },
+                tint = if (darkTheme) HomeTextSecondary else contentDefault
             )
         }
-
     }
 }
 
 @Composable
-fun TransfermarketRow(context: Context, title: String, tmLink: String?) {
+fun TransfermarketRow(
+    context: Context,
+    title: String,
+    tmLink: String?,
+    darkTheme: Boolean = false
+) {
+    val labelColor = if (darkTheme) HomeTextSecondary else contentDefault
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -1012,21 +1313,17 @@ fun TransfermarketRow(context: Context, title: String, tmLink: String?) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-
         Image(
             modifier = Modifier.size(24.dp),
             painter = painterResource(R.drawable.transfermarkt_logo),
             contentDescription = null
         )
-
         Spacer(Modifier.width(4.dp))
-
         Text(
             text = title,
-            style = regularTextStyle(contentDefault, 14.sp),
+            style = regularTextStyle(labelColor, 14.sp),
             modifier = Modifier.weight(1f)
         )
-
         Icon(
             imageVector = Icons.Default.Link,
             contentDescription = null,
@@ -1037,32 +1334,31 @@ fun TransfermarketRow(context: Context, title: String, tmLink: String?) {
                         val intent = Intent(Intent.ACTION_VIEW, link.toUri())
                         context.startActivity(intent)
                     }
-                }
+                },
+            tint = if (darkTheme) HomeTealAccent else contentDefault
         )
-
     }
 }
 
 @Composable
-fun UpdatePlayerUi(modifier: Modifier, message: String) {
+fun UpdatePlayerUi(modifier: Modifier, message: String, useDarkTheme: Boolean = false) {
+    val indicatorColor = if (useDarkTheme) HomeTealAccent else Color.White
+    val textColor = if (useDarkTheme) HomeTextPrimary else Color.White
 
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.5f))
+            .background(Color.Black.copy(alpha = 0.6f))
             .zIndex(5f)
     ) {
-
-
         Column(
             modifier = Modifier.align(Alignment.Center)
         ) {
-
             CircularProgressIndicator(
                 modifier = Modifier
                     .size(48.dp)
                     .align(Alignment.CenterHorizontally),
-                color = Color.White,
+                color = indicatorColor,
                 strokeWidth = 4.dp
             )
 
@@ -1070,66 +1366,128 @@ fun UpdatePlayerUi(modifier: Modifier, message: String) {
 
             Text(
                 text = message,
-                style = regularTextStyle(Color.White, 18.sp),
+                style = regularTextStyle(textColor, 18.sp),
                 textAlign = TextAlign.Center
             )
-
         }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PlayerInfoTopBar(
-    showDeletePlayerIcon: Boolean,
-    onShareClicked: () -> Unit,
-    onDeletePlayerClicked: () -> Unit,
-    onBackClicked: () -> Unit = {}
-) {
-    Surface(shadowElevation = 12.dp, color = Color.White) {
-        TopAppBar(
-            title = {
-
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 12.dp)
-                ) {
-
-                    Text(
-                        text = "Player details",
-                        style = boldTextStyle(contentDefault, 21.sp),
-                        modifier = Modifier.weight(1f)
-                    )
-
-                    if (showDeletePlayerIcon) {
-                        Icon(
-                            imageVector = Icons.Default.Delete,
-                            contentDescription = null,
-                            modifier = Modifier
-                                .padding(end = 16.dp)
-                                .clickWithNoRipple { onDeletePlayerClicked() }
-                        )
-                    }
-
-                    Icon(
-                        imageVector = Icons.Default.Share,
-                        contentDescription = null,
-                        modifier = Modifier.clickWithNoRipple { onShareClicked() }
-                    )
-                }
-            },
-            colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White),
-            navigationIcon = {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = null,
-                    modifier = Modifier
-                        .padding(12.dp)
-                        .clickWithNoRipple { onBackClicked() }
+fun PlayerInfoHeader(onBackClicked: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 20.dp, end = 20.dp, top = 48.dp, bottom = 4.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                contentDescription = null,
+                tint = HomeTextSecondary,
+                modifier = Modifier
+                    .size(24.dp)
+                    .clickWithNoRipple { onBackClicked() }
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Player Info",
+                    style = boldTextStyle(HomeTextPrimary, 26.sp)
+                )
+                Text(
+                    text = "View and manage player details",
+                    style = regularTextStyle(HomeTextSecondary, 12.sp),
+                    modifier = Modifier.padding(top = 4.dp)
                 )
             }
-        )
+        }
+        Spacer(modifier = Modifier.height(12.dp))
+    }
+}
+
+@Composable
+private fun PlayerInfoBottomBar(
+    showDeletePlayerIcon: Boolean,
+    onRefreshClicked: () -> Unit,
+    onDeletePlayerClicked: () -> Unit,
+    onShareClicked: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
+        colors = CardDefaults.cardColors(containerColor = HomeDarkCard),
+        border = BorderStroke(1.dp, HomeDarkCardBorder)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp, vertical = 16.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly
+        ) {
+            Row(
+                modifier = Modifier
+                    .weight(1f)
+                    .clickWithNoRipple { onRefreshClicked() },
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Refresh,
+                    contentDescription = "Refresh from Transfermarkt",
+                    modifier = Modifier.size(24.dp),
+                    tint = HomeTealAccent
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    text = "Refresh",
+                    style = boldTextStyle(HomeTextSecondary, 12.sp)
+                )
+            }
+            if (showDeletePlayerIcon) {
+                Row(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickWithNoRipple { onDeletePlayerClicked() },
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = null,
+                        modifier = Modifier.size(24.dp),
+                        tint = HomeTealAccent
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        text = "Delete",
+                        style = boldTextStyle(HomeTextSecondary, 12.sp)
+                    )
+                }
+            }
+            Row(
+                modifier = Modifier
+                    .weight(1f)
+                    .clickWithNoRipple { onShareClicked() },
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Share,
+                    contentDescription = null,
+                    modifier = Modifier.size(24.dp),
+                    tint = HomeTealAccent
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    text = "Share",
+                    style = boldTextStyle(HomeTextSecondary, 12.sp)
+                )
+            }
+        }
     }
 }
 
@@ -1138,27 +1496,23 @@ fun DeletePlayerDialog(onDismissRequest: () -> Unit, onDeletePlayerClicked: () -
     Dialog(
         onDismissRequest = { onDismissRequest() }
     ) {
-
         Card(
             shape = RoundedCornerShape(16.dp),
             elevation = CardDefaults.cardElevation(8.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White),
+            colors = CardDefaults.cardColors(containerColor = HomeDarkCard),
+            border = BorderStroke(1.dp, HomeDarkCardBorder)
         ) {
-
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(16.dp)
             ) {
-
                 Text(
                     text = "Are you sure you want to delete this player?",
-                    style = boldTextStyle(contentDefault, 16.sp),
+                    style = boldTextStyle(HomeTextPrimary, 16.sp),
                     textAlign = TextAlign.Center
                 )
-
                 Spacer(Modifier.height(24.dp))
-
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -1166,37 +1520,32 @@ fun DeletePlayerDialog(onDismissRequest: () -> Unit, onDeletePlayerClicked: () -
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.End
                 ) {
-
                     Box(
                         modifier = Modifier
                             .background(
-                                Color.White,
+                                HomeDarkCard,
                                 shape = RoundedCornerShape(100.dp)
                             )
-                            .border(1.dp, contentDefault, RoundedCornerShape(100.dp))
+                            .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(100.dp))
                             .size(width = 80.dp, height = 30.dp)
-                            .clickWithNoRipple {},
+                            .clickWithNoRipple { },
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
                             text = "Cancel",
-                            style = boldTextStyle(contentDefault, 12.sp),
-                            modifier = Modifier.clickWithNoRipple {
-                                onDismissRequest()
-                            }
+                            style = boldTextStyle(HomeTextPrimary, 12.sp),
+                            modifier = Modifier.clickWithNoRipple { onDismissRequest() }
                         )
                     }
-
                     Spacer(Modifier.width(8.dp))
-
                     Box(
                         modifier = Modifier
                             .background(
-                                contentDefault,
+                                HomeRedAccent,
                                 shape = RoundedCornerShape(100.dp)
                             )
                             .size(width = 80.dp, height = 30.dp)
-                            .clickWithNoRipple {},
+                            .clickWithNoRipple { },
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
@@ -1205,7 +1554,6 @@ fun DeletePlayerDialog(onDismissRequest: () -> Unit, onDeletePlayerClicked: () -
                             modifier = Modifier.clickWithNoRipple { onDeletePlayerClicked() }
                         )
                     }
-
                 }
             }
         }
@@ -1249,5 +1597,66 @@ private fun getContractStatus(expiryDate: String): String {
         }
     } catch (e: Exception) {
         "--"
+    }
+}
+
+private fun playerInfoFormatLastRefreshed(timestampMs: Long): String {
+    val diff = System.currentTimeMillis() - timestampMs
+    val minutes = diff / (60 * 1000)
+    val hours = diff / (60 * 60 * 1000)
+    val days = diff / (24 * 60 * 60 * 1000)
+    return when {
+        minutes < 60 -> "Synced ${minutes}m ago"
+        hours < 24 -> "Synced ${hours}h ago"
+        days < 7 -> "Synced ${days}d ago"
+        else -> "Synced ${SimpleDateFormat("dd.MM", Locale.getDefault()).format(Date(timestampMs))}"
+    }
+}
+
+private fun playerInfoGetContractCountdown(contractExpired: String?): String? {
+    if (contractExpired.isNullOrBlank() || contractExpired == "-") return null
+    return try {
+        val formatters = listOf(
+            java.time.format.DateTimeFormatter.ofPattern("dd.MM.yyyy", Locale.getDefault()),
+            java.time.format.DateTimeFormatter.ofPattern("MMM d, yyyy", Locale.ENGLISH),
+            java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy", Locale.getDefault())
+        )
+        var expiryDate: java.time.LocalDate? = null
+        for (fmt in formatters) {
+            try {
+                expiryDate = java.time.LocalDate.parse(contractExpired, fmt)
+                break
+            } catch (_: Exception) { }
+        }
+        if (expiryDate == null) return null
+        val now = java.time.LocalDate.now()
+        when {
+            expiryDate.isBefore(now) -> "Expired"
+            else -> {
+                val months = java.time.temporal.ChronoUnit.MONTHS.between(now, expiryDate)
+                "Expires in ${months.toInt()} mo"
+            }
+        }
+    } catch (_: Exception) {
+        null
+    }
+}
+
+private fun playerInfoComputeValueTrend(history: List<com.liordahan.mgsrteam.features.players.models.MarketValueEntry>?): Int {
+    if (history.isNullOrEmpty() || history.size < 2) return 0
+    val sorted = history.sortedBy { it.date ?: 0L }
+    val prev = sorted[sorted.size - 2].value?.toMarketValueDouble() ?: return 0
+    val current = sorted.last().value?.toMarketValueDouble() ?: return 0
+    if (prev == 0.0) return 0
+    val pct = ((current - prev) / prev * 100).toInt()
+    return pct.coerceIn(-99, 999)
+}
+
+private fun String.toMarketValueDouble(): Double {
+    val lower = this.lowercase().trim().removePrefix("€").replace(",", "")
+    return when {
+        lower.endsWith("k") -> lower.removeSuffix("k").toDoubleOrNull()?.times(1_000) ?: 0.0
+        lower.endsWith("m") -> lower.removeSuffix("m").toDoubleOrNull()?.times(1_000_000) ?: 0.0
+        else -> lower.toDoubleOrNull() ?: 0.0
     }
 }

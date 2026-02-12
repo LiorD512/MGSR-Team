@@ -25,6 +25,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.VisualTransformation
@@ -147,6 +148,7 @@ fun AppTextField(
                 else Modifier
             ),
         textStyle = regularTextStyle(textColor, 14.sp),
+        cursorBrush = SolidColor(if (darkTheme) HomeTextSecondary else contentDefault),
         enabled = true,
         singleLine = true,
         keyboardOptions = keyboardOptions,
