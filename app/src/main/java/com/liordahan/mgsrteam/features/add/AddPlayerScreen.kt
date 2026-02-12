@@ -41,6 +41,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.ModalBottomSheetProperties
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Snackbar
@@ -87,6 +88,7 @@ import com.liordahan.mgsrteam.R
 import com.liordahan.mgsrteam.transfermarket.PlayerSearchModel
 import com.liordahan.mgsrteam.ui.components.AppTextField
 import com.liordahan.mgsrteam.ui.components.PrimaryButtonNewDesign
+import com.liordahan.mgsrteam.ui.components.DarkSystemBarsForBottomSheet
 import com.liordahan.mgsrteam.ui.theme.HomeDarkBackground
 import com.liordahan.mgsrteam.ui.theme.HomeDarkCard
 import com.liordahan.mgsrteam.ui.theme.HomeDarkCardBorder
@@ -202,7 +204,7 @@ fun AddPlayerScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
+                .padding(bottom = paddingValues.calculateBottomPadding())
         ) {
             AddPlayerHeader(
                 searchPlayerInput = searchText,
@@ -493,8 +495,13 @@ fun SavePlayerBottomSheetContent(
         sheetState = sheetState,
         containerColor = HomeDarkCard,
         shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
-        tonalElevation = 8.dp
+        tonalElevation = 8.dp,
+        properties = ModalBottomSheetProperties(
+            isAppearanceLightStatusBars = true,
+            isAppearanceLightNavigationBars = true
+        )
     ) {
+        DarkSystemBarsForBottomSheet()
         AddPlayerContactFormContent(context = context, viewModel = viewModel)
     }
 }
@@ -621,7 +628,7 @@ fun AddPlayerHeader(
                 contentDescription = null,
                 tint = HomeTextSecondary,
                 modifier = Modifier
-                    .size(48.dp)
+                    .size(24.dp)
                     .clickWithNoRipple { onBackClicked() }
             )
             Spacer(modifier = Modifier.width(8.dp))
@@ -637,14 +644,6 @@ fun AddPlayerHeader(
                 )
             }
         }
-        Box(
-            modifier = Modifier
-                .padding(top = 8.dp)
-                .width(40.dp)
-                .height(3.dp)
-                .clip(RoundedCornerShape(2.dp))
-                .background(HomeTealAccent)
-        )
         Spacer(modifier = Modifier.height(12.dp))
         AppTextField(
             modifier = Modifier.fillMaxWidth(),

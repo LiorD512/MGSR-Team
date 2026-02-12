@@ -1,5 +1,6 @@
 package com.liordahan.mgsrteam.ui.components
 
+import android.view.View
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.border
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -21,9 +22,12 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextFieldColors
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.window.DialogWindowProvider
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -47,6 +51,35 @@ import com.liordahan.mgsrteam.ui.theme.searchHeaderButtonBackground
 import com.liordahan.mgsrteam.ui.utils.boldTextStyle
 import com.liordahan.mgsrteam.ui.utils.clickWithNoRipple
 import com.liordahan.mgsrteam.ui.utils.regularTextStyle
+import androidx.core.view.WindowCompat
+
+private const val DARK_NAV_BAR_COLOR = 0xFF0F1923.toInt()
+
+/**
+ * Call from inside ModalBottomSheet content to keep the navigation bar and status bar
+ * dark (#0F1923) instead of switching to white when the sheet is shown.
+ */
+@Composable
+fun DarkSystemBarsForBottomSheet() {
+    val view = LocalView.current
+    DisposableEffect(Unit) {
+        var parent: Any? = view.parent
+        while (parent != null) {
+            if (parent is DialogWindowProvider) {
+                val window = parent.window
+                window.navigationBarColor = DARK_NAV_BAR_COLOR
+                window.statusBarColor = DARK_NAV_BAR_COLOR
+                WindowCompat.getInsetsController(window, view).apply {
+                    isAppearanceLightStatusBars = true
+                    isAppearanceLightNavigationBars = true
+                }
+                break
+            }
+            parent = (parent as? View)?.parent
+        }
+        onDispose { }
+    }
+}
 
 @Composable
 fun PrimaryButtonNewDesign(

@@ -186,8 +186,9 @@ class HomeScreenViewModel(
                     .whereEqualTo("type", "mandate")
                     .get().await()
                 val docs = docsSnap.toObjects(PlayerDocument::class.java)
-                val profilesWithMandate = docs.mapNotNull { it.playerTmProfile }.toSet()
-                val mandateCount = players.count { it.tmProfile in profilesWithMandate }
+                val profilesWithMandateDoc = docs.mapNotNull { it.playerTmProfile }.toSet()
+                // Count: player.haveMandate (from switch) OR has mandate document
+                val mandateCount = players.count { it.haveMandate || it.tmProfile in profilesWithMandateDoc }
 
                 _state.update { it.copy(withMandate = mandateCount) }
 
@@ -200,7 +201,7 @@ class HomeScreenViewModel(
                             agentId = list.firstOrNull()?.agentInChargeId,
                             agentName = name,
                             totalPlayers = list.size,
-                            withMandate = list.count { it.tmProfile in profilesWithMandate },
+                            withMandate = list.count { it.haveMandate || it.tmProfile in profilesWithMandateDoc },
                             expiringContracts = list.count { isContractExpiringWithinMonths(it.contractExpired, 5) },
                             withNotes = list.count { !it.noteList.isNullOrEmpty() }
                         )

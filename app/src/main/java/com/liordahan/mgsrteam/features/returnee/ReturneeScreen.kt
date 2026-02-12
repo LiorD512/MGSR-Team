@@ -31,6 +31,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.ModalBottomSheetProperties
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -50,6 +51,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.liordahan.mgsrteam.features.add.AddPlayerContactFormContent
+import com.liordahan.mgsrteam.ui.components.DarkSystemBarsForBottomSheet
 import com.liordahan.mgsrteam.features.add.IAddPlayerViewModel
 import com.liordahan.mgsrteam.features.players.models.Position
 import com.liordahan.mgsrteam.features.players.ui.EmptyState
@@ -257,8 +259,13 @@ fun ReturneeScreen(
                     sheetState = sheetState,
                     containerColor = HomeDarkCard,
                     shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
-                    tonalElevation = 8.dp
+                    tonalElevation = 8.dp,
+                    properties = ModalBottomSheetProperties(
+                        isAppearanceLightStatusBars = true,
+                        isAppearanceLightNavigationBars = true
+                    )
                 ) {
+                    DarkSystemBarsForBottomSheet()
                     when {
                         addPlayerState.value.showPlayerSelectedSearchProgress && selectedPlayer == null -> {
                             Box(

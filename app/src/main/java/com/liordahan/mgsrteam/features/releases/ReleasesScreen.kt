@@ -42,6 +42,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.ModalBottomSheetProperties
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Snackbar
@@ -74,6 +75,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.liordahan.mgsrteam.features.add.AddPlayerContactFormContent
+import com.liordahan.mgsrteam.ui.components.DarkSystemBarsForBottomSheet
 import com.liordahan.mgsrteam.features.add.IAddPlayerViewModel
 import com.liordahan.mgsrteam.features.players.models.Position
 import com.liordahan.mgsrteam.features.players.ui.EmptyState
@@ -329,8 +331,13 @@ fun ReleasesScreen(
                     sheetState = sheetState,
                     containerColor = HomeDarkCard,
                     shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
-                    tonalElevation = 8.dp
+                    tonalElevation = 8.dp,
+                    properties = ModalBottomSheetProperties(
+                        isAppearanceLightStatusBars = true,
+                        isAppearanceLightNavigationBars = true
+                    )
                 ) {
+                    DarkSystemBarsForBottomSheet()
                     when {
                         addPlayerState.value.showPlayerSelectedSearchProgress && selectedPlayer == null -> {
                             Box(

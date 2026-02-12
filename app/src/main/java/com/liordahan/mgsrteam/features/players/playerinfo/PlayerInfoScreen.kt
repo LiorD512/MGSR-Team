@@ -236,6 +236,8 @@ fun PlayerInfoScreen(
     }
 
     var showDeleteDialog by remember { mutableStateOf(false) }
+    var noteToDelete by remember { mutableStateOf<NotesModel?>(null) }
+    var docToDelete by remember { mutableStateOf<PlayerDocument?>(null) }
 
     LaunchedEffect(Unit) {
 
@@ -316,9 +318,29 @@ fun PlayerInfoScreen(
             DeletePlayerDialog(
                 onDismissRequest = { showDeleteDialog = false },
                 onDeletePlayerClicked = {
+                    showDeleteDialog = false
                     viewModel.deletePlayer(
                         playerToPresent?.tmProfile ?: "",
                         onDeleteSuccessfully = { navController.popBackStack() })
+                }
+            )
+        }
+        if (noteToDelete != null) {
+            DeleteNoteDialog(
+                onDismissRequest = { noteToDelete = null },
+                onDeleteClicked = {
+                    noteToDelete?.let { viewModel.onDeleteNoteClicked(it) }
+                    noteToDelete = null
+                }
+            )
+        }
+        if (docToDelete != null) {
+            DeleteDocumentDialog(
+                documentName = docToDelete?.name ?: docToDelete?.documentType?.displayName ?: "document",
+                onDismissRequest = { docToDelete = null },
+                onDeleteClicked = {
+                    docToDelete?.id?.let { viewModel.deleteDocument(it) }
+                    docToDelete = null
                 }
             )
         }
@@ -592,7 +614,7 @@ fun PlayerInfoScreen(
                                     contentDescription = null,
                                     modifier = Modifier
                                         .size(20.dp)
-                                        .clickWithNoRipple { doc.id?.let { viewModel.deleteDocument(it) } },
+                                        .clickWithNoRipple { docToDelete = doc },
                                     tint = HomeTextSecondary
                                 )
                             }
@@ -689,7 +711,7 @@ fun PlayerInfoScreen(
                     val notesList = playerToPresent?.noteList?.sortedByDescending { it.createdAt }
 
                     notesList?.forEach {
-                        NoteItemUi(it, onDeleteNoteClicked = { viewModel.onDeleteNoteClicked(it) }, darkTheme = true)
+                        NoteItemUi(it, onDeleteNoteClicked = { noteToDelete = it }, darkTheme = true)
                         Spacer(Modifier.height(4.dp))
                     }
                 }
@@ -841,25 +863,30 @@ private fun PlayerInfoHeroCard(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
+                var isMandateOn by remember(player.haveMandate) { mutableStateOf(player.haveMandate) }
+                LaunchedEffect(player.haveMandate) { isMandateOn = player.haveMandate }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
                         imageVector = Icons.Default.VerifiedUser,
                         contentDescription = null,
                         modifier = Modifier.size(20.dp),
-                        tint = if (player.haveMandate) HomeBlueAccent else HomeTextSecondary
+                        tint = if (isMandateOn) HomeBlueAccent else HomeTextSecondary
                     )
                     Spacer(Modifier.width(8.dp))
                     Text(
                         text = "Mandate",
                         style = boldTextStyle(
-                            if (player.haveMandate) HomeBlueAccent else HomeTextSecondary,
+                            if (isMandateOn) HomeBlueAccent else HomeTextSecondary,
                             14.sp
                         )
                     )
                 }
                 Switch(
-                    checked = player.haveMandate,
-                    onCheckedChange = onMandateChanged,
+                    checked = isMandateOn,
+                    onCheckedChange = {
+                        isMandateOn = it
+                        onMandateChanged(it)
+                    },
                     colors = SwitchDefaults.colors(
                         checkedThumbColor = Color.White,
                         checkedTrackColor = HomeBlueAccent,
@@ -1027,13 +1054,12 @@ private fun PlayerInfoCard(
 @Composable
 fun NoteItemUi(
     notesModel: NotesModel,
-    onDeleteNoteClicked: () -> Unit,
+    onDeleteNoteClicked: (NotesModel) -> Unit,
     darkTheme: Boolean = false
 ) {
     var isInEditMode by remember { mutableStateOf(false) }
     val cardColor = if (darkTheme) HomeDarkCard else Color.White
     val textColor = if (darkTheme) HomeTextPrimary else contentDefault
-    val secondaryColor = if (darkTheme) HomeTextSecondary else contentDefault
 
     Card(
         modifier = Modifier
@@ -1062,7 +1088,7 @@ fun NoteItemUi(
                         imageVector = Icons.Default.Delete,
                         contentDescription = null,
                         modifier = Modifier.clickWithNoRipple {
-                            onDeleteNoteClicked()
+                            onDeleteNoteClicked(notesModel)
                             isInEditMode = false
                         },
                         tint = HomeTealAccent
@@ -1552,6 +1578,147 @@ fun DeletePlayerDialog(onDismissRequest: () -> Unit, onDeletePlayerClicked: () -
                             text = "Delete",
                             style = boldTextStyle(Color.White, 12.sp),
                             modifier = Modifier.clickWithNoRipple { onDeletePlayerClicked() }
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DeleteNoteDialog(
+    onDismissRequest: () -> Unit,
+    onDeleteClicked: () -> Unit
+) {
+    Dialog(onDismissRequest = onDismissRequest) {
+        Card(
+            shape = RoundedCornerShape(16.dp),
+            elevation = CardDefaults.cardElevation(8.dp),
+            colors = CardDefaults.cardColors(containerColor = HomeDarkCard),
+            border = BorderStroke(1.dp, HomeDarkCardBorder)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+            ) {
+                Text(
+                    text = "Are you sure you want to delete this note?",
+                    style = boldTextStyle(HomeTextPrimary, 16.sp),
+                    textAlign = TextAlign.Center
+                )
+                Spacer(Modifier.height(24.dp))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .align(Alignment.End),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .background(
+                                HomeDarkCard,
+                                shape = RoundedCornerShape(100.dp)
+                            )
+                            .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(100.dp))
+                            .size(width = 80.dp, height = 30.dp)
+                            .clickWithNoRipple { },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "Cancel",
+                            style = boldTextStyle(HomeTextPrimary, 12.sp),
+                            modifier = Modifier.clickWithNoRipple { onDismissRequest() }
+                        )
+                    }
+                    Spacer(Modifier.width(8.dp))
+                    Box(
+                        modifier = Modifier
+                            .background(
+                                HomeRedAccent,
+                                shape = RoundedCornerShape(100.dp)
+                            )
+                            .size(width = 80.dp, height = 30.dp)
+                            .clickWithNoRipple { },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "Delete",
+                            style = boldTextStyle(Color.White, 12.sp),
+                            modifier = Modifier.clickWithNoRipple { onDeleteClicked() }
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DeleteDocumentDialog(
+    documentName: String,
+    onDismissRequest: () -> Unit,
+    onDeleteClicked: () -> Unit
+) {
+    Dialog(onDismissRequest = onDismissRequest) {
+        Card(
+            shape = RoundedCornerShape(16.dp),
+            elevation = CardDefaults.cardElevation(8.dp),
+            colors = CardDefaults.cardColors(containerColor = HomeDarkCard),
+            border = BorderStroke(1.dp, HomeDarkCardBorder)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+            ) {
+                Text(
+                    text = "Are you sure you want to delete \"$documentName\"?",
+                    style = boldTextStyle(HomeTextPrimary, 16.sp),
+                    textAlign = TextAlign.Center
+                )
+                Spacer(Modifier.height(24.dp))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .align(Alignment.End),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .background(
+                                HomeDarkCard,
+                                shape = RoundedCornerShape(100.dp)
+                            )
+                            .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(100.dp))
+                            .size(width = 80.dp, height = 30.dp)
+                            .clickWithNoRipple { },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "Cancel",
+                            style = boldTextStyle(HomeTextPrimary, 12.sp),
+                            modifier = Modifier.clickWithNoRipple { onDismissRequest() }
+                        )
+                    }
+                    Spacer(Modifier.width(8.dp))
+                    Box(
+                        modifier = Modifier
+                            .background(
+                                HomeRedAccent,
+                                shape = RoundedCornerShape(100.dp)
+                            )
+                            .size(width = 80.dp, height = 30.dp)
+                            .clickWithNoRipple { },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "Delete",
+                            style = boldTextStyle(Color.White, 12.sp),
+                            modifier = Modifier.clickWithNoRipple { onDeleteClicked() }
                         )
                     }
                 }
