@@ -1,7 +1,9 @@
 package com.liordahan.mgsrteam.features.home
 
+import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.liordahan.mgsrteam.R
 import com.liordahan.mgsrteam.features.home.models.AgentSummary
 import com.liordahan.mgsrteam.features.home.models.AgentTask
 import com.liordahan.mgsrteam.features.home.models.FeedEvent
@@ -24,7 +26,7 @@ import java.util.Locale
 
 data class HomeDashboardState(
     val userName: String = "",
-    val greeting: String = "",
+    @param:StringRes val greetingRes: Int = R.string.greeting_good_morning,
 
     // stats row
     val totalPlayers: Int = 0,
@@ -61,11 +63,11 @@ data class DocumentReminder(
     val isMissing: Boolean = false
 )
 
-enum class FeedFilter(val label: String) {
-    ALL("All"),
-    VALUE_CHANGES("Value"),
-    TRANSFERS("Transfers"),
-    NOTES("Notes")
+enum class FeedFilter(@param:StringRes val labelRes: Int) {
+    ALL(R.string.feed_filter_all),
+    VALUE_CHANGES(R.string.feed_filter_value),
+    TRANSFERS(R.string.feed_filter_transfers),
+    NOTES(R.string.feed_filter_notes)
 }
 
 // ─── ViewModel ───────────────────────────────────────────────────────────────
@@ -103,10 +105,10 @@ class HomeScreenViewModel(
 
     private fun loadGreeting() {
         viewModelScope.launch {
-            val greeting = when (Calendar.getInstance().get(Calendar.HOUR_OF_DAY)) {
-                in 5..11 -> "Good Morning"
-                in 12..17 -> "Good Afternoon"
-                else -> "Good Evening"
+            val greetingRes = when (Calendar.getInstance().get(Calendar.HOUR_OF_DAY)) {
+                in 5..11 -> R.string.greeting_good_morning
+                in 12..17 -> R.string.greeting_good_afternoon
+                else -> R.string.greeting_good_evening
             }
             val name = try {
                 val snap = firebaseHandler.firebaseStore
@@ -117,7 +119,7 @@ class HomeScreenViewModel(
                 }?.name ?: ""
             } catch (_: Exception) { "" }
 
-            _state.update { it.copy(greeting = greeting, userName = name) }
+            _state.update { it.copy(greetingRes = greetingRes, userName = name) }
         }
     }
 

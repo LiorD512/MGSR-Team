@@ -8,6 +8,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -77,6 +78,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
@@ -85,6 +89,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
+import com.liordahan.mgsrteam.R
 import com.liordahan.mgsrteam.features.home.DocumentReminder
 import com.liordahan.mgsrteam.features.home.FeedFilter
 import com.liordahan.mgsrteam.features.home.HomeDashboardState
@@ -93,6 +98,7 @@ import com.liordahan.mgsrteam.features.home.models.AgentSummary
 import com.liordahan.mgsrteam.features.home.models.AgentTask
 import com.liordahan.mgsrteam.features.home.models.FeedEvent
 import com.liordahan.mgsrteam.features.login.models.Account
+import com.liordahan.mgsrteam.localization.LocaleManager
 import com.liordahan.mgsrteam.navigation.Screens
 import com.liordahan.mgsrteam.ui.theme.HomeBlueAccent
 import com.liordahan.mgsrteam.ui.theme.HomeDarkBackground
@@ -124,6 +130,9 @@ fun DashboardScreen(
     navController: NavController
 ) {
     val state by viewModel.dashboardState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    val isHebrew = LocaleManager.isHebrew(context)
+    var showLanguageDialog by remember { mutableStateOf(false) }
 
     if (state.isLoading) {
         Box(
@@ -143,7 +152,11 @@ fun DashboardScreen(
             .background(HomeDarkBackground)
     ) {
         // ── Sticky top section (does NOT scroll) ─────────────────────────
-        GreetingHeader(state)
+        GreetingHeader(
+            state = state,
+            isHebrew = isHebrew,
+            onLanguageClick = { showLanguageDialog = true }
+        )
         StatsRow(state)
         QuickActionsRow(navController)
 
@@ -166,7 +179,7 @@ fun DashboardScreen(
             if (filteredEvents.isEmpty()) {
                 item {
                     Text(
-                        text = "No recent updates yet.\nUpdates will appear here after the daily sync.",
+                        text = stringResource(R.string.feed_empty),
                         style = regularTextStyle(HomeTextSecondary, 13.sp, textAlign = TextAlign.Center),
                         modifier = Modifier
                             .fillMaxWidth()
@@ -207,6 +220,102 @@ fun DashboardScreen(
             }
         }
     }
+
+    // ── Language change dialog ───────────────────────────────────────────
+    if (showLanguageDialog) {
+        val targetLanguageName = if (isHebrew) {
+            stringResource(R.string.language_english)
+        } else {
+            stringResource(R.string.language_hebrew)
+        }
+
+        LanguageChangeDialog(
+            targetLanguageName = targetLanguageName,
+            isHebrew = isHebrew,
+            onConfirm = {
+                val newLang = if (isHebrew) LocaleManager.LANG_ENGLISH else LocaleManager.LANG_HEBREW
+                LocaleManager.saveLanguage(context, newLang)
+                LocaleManager.applyLocale(context)
+            },
+            onDismiss = { showLanguageDialog = false }
+        )
+    }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+//  LANGUAGE CHANGE DIALOG
+// ═════════════════════════════════════════════════════════════════════════════
+
+@Composable
+private fun LanguageChangeDialog(
+    targetLanguageName: String,
+    isHebrew: Boolean,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(containerColor = HomeDarkCard)
+        ) {
+            Column(
+                modifier = Modifier.padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                // Flag icon
+                Image(
+                    painter = painterResource(
+                        if (isHebrew) R.drawable.ic_flag_usa else R.drawable.ic_flag_israel
+                    ),
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(CircleShape)
+                )
+
+                Spacer(Modifier.height(16.dp))
+
+                Text(
+                    text = stringResource(R.string.language_change_title),
+                    style = boldTextStyle(HomeTextPrimary, 18.sp)
+                )
+
+                Spacer(Modifier.height(12.dp))
+
+                Text(
+                    text = stringResource(R.string.language_change_message, targetLanguageName),
+                    style = regularTextStyle(HomeTextSecondary, 14.sp, textAlign = TextAlign.Center)
+                )
+
+                Spacer(Modifier.height(24.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.End)
+                ) {
+                    TextButton(onClick = onDismiss) {
+                        Text(
+                            stringResource(R.string.cancel),
+                            style = boldTextStyle(HomeTextSecondary, 14.sp)
+                        )
+                    }
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(HomeTealAccent)
+                            .clickWithNoRipple { onConfirm() }
+                            .padding(horizontal = 24.dp, vertical = 10.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            stringResource(R.string.language_confirm),
+                            style = boldTextStyle(HomeDarkBackground, 14.sp)
+                        )
+                    }
+                }
+            }
+        }
+    }
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -214,7 +323,11 @@ fun DashboardScreen(
 // ═════════════════════════════════════════════════════════════════════════════
 
 @Composable
-private fun GreetingHeader(state: HomeDashboardState) {
+private fun GreetingHeader(
+    state: HomeDashboardState,
+    isHebrew: Boolean,
+    onLanguageClick: () -> Unit
+) {
     val dateStr = SimpleDateFormat("EEEE, MMM d, yyyy", Locale.getDefault()).format(Date())
 
     Column(
@@ -229,27 +342,32 @@ private fun GreetingHeader(state: HomeDashboardState) {
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "${state.greeting},",
+                    text = "${stringResource(state.greetingRes)},",
                     style = regularTextStyle(HomeTextSecondary, 16.sp)
                 )
                 Text(
-                    text = state.userName.ifEmpty { "Agent" },
+                    text = state.userName.ifEmpty { stringResource(R.string.greeting_agent_default) },
                     style = boldTextStyle(HomeTextPrimary, 26.sp)
                 )
             }
+            // ── Language flag button ─────────────────────────────────
             Box(
                 modifier = Modifier
                     .size(40.dp)
                     .clip(CircleShape)
                     .background(HomeDarkCard)
-                    .border(1.dp, HomeDarkCardBorder, CircleShape),
+                    .border(1.dp, HomeDarkCardBorder, CircleShape)
+                    .clickWithNoRipple { onLanguageClick() },
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    imageVector = Icons.Default.Notifications,
-                    contentDescription = "Notifications",
-                    tint = HomeTextSecondary,
-                    modifier = Modifier.size(20.dp)
+                Image(
+                    painter = painterResource(
+                        if (isHebrew) R.drawable.ic_flag_usa else R.drawable.ic_flag_israel
+                    ),
+                    contentDescription = stringResource(R.string.language_switch_cd),
+                    modifier = Modifier
+                        .size(28.dp)
+                        .clip(CircleShape)
                 )
             }
         }
@@ -277,28 +395,28 @@ private fun StatsRow(state: HomeDashboardState) {
             modifier = Modifier.weight(1f),
             icon = Icons.Default.People,
             value = state.totalPlayers.toString(),
-            label = "Players",
+            label = stringResource(R.string.stat_players),
             accentColor = HomeTealAccent
         )
         StatCard(
             modifier = Modifier.weight(1f),
             icon = Icons.Default.Handshake,
             value = state.withMandate.toString(),
-            label = "Mandate",
+            label = stringResource(R.string.stat_mandate),
             accentColor = HomeBlueAccent
         )
         StatCard(
             modifier = Modifier.weight(1f),
             icon = Icons.Default.PersonOff,
             value = state.freeAgents.toString(),
-            label = "Free",
+            label = stringResource(R.string.stat_free),
             accentColor = HomeRedAccent
         )
         StatCard(
             modifier = Modifier.weight(1f),
             icon = Icons.Default.RequestQuote,
             value = state.requestsCount.toString(),
-            label = "Requests",
+            label = stringResource(R.string.stat_requests),
             accentColor = HomePurpleAccent
         )
     }
@@ -356,7 +474,7 @@ private fun QuickActionsRow(navController: NavController) {
         item {
             QuickActionChip(
                 icon = Icons.Default.People,
-                label = "Players",
+                label = stringResource(R.string.quick_action_players),
                 color = HomeTealAccent,
                 onClick = {
                     navController.navigate(Screens.PlayersScreen.route) {
@@ -368,7 +486,7 @@ private fun QuickActionsRow(navController: NavController) {
         item {
             QuickActionChip(
                 icon = Icons.Default.List,
-                label = "Shortlist",
+                label = stringResource(R.string.quick_action_shortlist),
                 color = HomeBlueAccent,
                 onClick = {
                     navController.navigate(Screens.ShortlistScreen.route) {
@@ -380,7 +498,7 @@ private fun QuickActionsRow(navController: NavController) {
         item {
             QuickActionChip(
                 icon = Icons.Default.Search,
-                label = "Releases",
+                label = stringResource(R.string.quick_action_releases),
                 color = HomeOrangeAccent,
                 onClick = {
                     navController.navigate(Screens.ReleasesScreen.route) {
@@ -392,7 +510,7 @@ private fun QuickActionsRow(navController: NavController) {
         item {
             QuickActionChip(
                 icon = Icons.Default.Autorenew,
-                label = "Returnees",
+                label = stringResource(R.string.quick_action_returnees),
                 color = HomeRedAccent,
                 onClick = {
                     navController.navigate(Screens.ReturneeScreen.route) {
@@ -404,7 +522,7 @@ private fun QuickActionsRow(navController: NavController) {
         item {
             QuickActionChip(
                 icon = Icons.Default.ContactPhone,
-                label = "Contacts",
+                label = stringResource(R.string.quick_action_contacts),
                 color = HomeTealAccent,
                 onClick = {
                     navController.navigate(Screens.ContactsScreen.route) {
@@ -416,7 +534,7 @@ private fun QuickActionsRow(navController: NavController) {
         item {
             QuickActionChip(
                 icon = Icons.Default.RequestQuote,
-                label = "Requests",
+                label = stringResource(R.string.quick_action_requests),
                 color = HomePurpleAccent,
                 onClick = {
                     navController.navigate(Screens.RequestsScreen.route) {
@@ -465,7 +583,7 @@ private fun FeedSectionHeader(
 ) {
     Column(modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 10.dp)) {
         Text(
-            text = "Recent Updates",
+            text = stringResource(R.string.feed_recent_updates),
             style = boldTextStyle(HomeTextPrimary, 18.sp)
         )
         Spacer(Modifier.height(10.dp))
@@ -479,7 +597,7 @@ private fun FeedSectionHeader(
                 val textColor = if (isSelected) HomeDarkBackground else HomeTextSecondary
 
                 Text(
-                    text = filter.label,
+                    text = stringResource(filter.labelRes),
                     style = boldTextStyle(textColor, 12.sp),
                     modifier = Modifier
                         .clip(RoundedCornerShape(16.dp))
@@ -505,17 +623,17 @@ private fun FeedEventCard(event: FeedEvent, navController: NavController) {
         FeedEvent.TYPE_MARKET_VALUE_CHANGE -> {
             val isDrop = isMarketValueDrop(event.oldValue, event.newValue)
             if (isDrop) {
-                Triple(Icons.AutoMirrored.Filled.TrendingDown, HomeRedAccent, "Market Value Update")
+                Triple(Icons.AutoMirrored.Filled.TrendingDown, HomeRedAccent, stringResource(R.string.feed_market_value_update))
             } else {
-                Triple(Icons.AutoMirrored.Filled.TrendingUp, HomeGreenAccent, "Market Value Update")
+                Triple(Icons.AutoMirrored.Filled.TrendingUp, HomeGreenAccent, stringResource(R.string.feed_market_value_update))
             }
         }
-        FeedEvent.TYPE_CLUB_CHANGE -> Triple(Icons.Default.SwapHoriz, HomeBlueAccent, "Club Change Detected")
-        FeedEvent.TYPE_BECAME_FREE_AGENT -> Triple(Icons.Default.PersonOff, HomeRedAccent, "Became Free Agent")
-        FeedEvent.TYPE_CONTRACT_EXPIRING -> Triple(Icons.Default.Warning, HomeOrangeAccent, "Contract Expiring")
-        FeedEvent.TYPE_NOTE_ADDED -> Triple(Icons.AutoMirrored.Filled.NoteAdd, HomePurpleAccent, "New Note")
-        FeedEvent.TYPE_PLAYER_ADDED -> Triple(Icons.Default.Add, HomeTealAccent, "Player Added")
-        else -> Triple(Icons.Default.Notifications, HomeTextSecondary, "Update")
+        FeedEvent.TYPE_CLUB_CHANGE -> Triple(Icons.Default.SwapHoriz, HomeBlueAccent, stringResource(R.string.feed_club_change))
+        FeedEvent.TYPE_BECAME_FREE_AGENT -> Triple(Icons.Default.PersonOff, HomeRedAccent, stringResource(R.string.feed_became_free_agent))
+        FeedEvent.TYPE_CONTRACT_EXPIRING -> Triple(Icons.Default.Warning, HomeOrangeAccent, stringResource(R.string.feed_contract_expiring))
+        FeedEvent.TYPE_NOTE_ADDED -> Triple(Icons.AutoMirrored.Filled.NoteAdd, HomePurpleAccent, stringResource(R.string.feed_new_note))
+        FeedEvent.TYPE_PLAYER_ADDED -> Triple(Icons.Default.Add, HomeTealAccent, stringResource(R.string.feed_player_added))
+        else -> Triple(Icons.Default.Notifications, HomeTextSecondary, stringResource(R.string.feed_update))
     }
 
     Card(
@@ -570,7 +688,11 @@ private fun FeedEventCard(event: FeedEvent, navController: NavController) {
                             style = boldTextStyle(HomeTextPrimary, 14.sp)
                         )
                         Text(
-                            text = "Value changed from ${event.oldValue ?: "?"} to ${event.newValue ?: "?"}",
+                            text = stringResource(
+                                R.string.feed_value_changed,
+                                event.oldValue ?: "?",
+                                event.newValue ?: "?"
+                            ),
                             style = regularTextStyle(HomeTextSecondary, 12.sp)
                         )
                     }
@@ -579,18 +701,22 @@ private fun FeedEventCard(event: FeedEvent, navController: NavController) {
                             text = event.playerName ?: "",
                             style = boldTextStyle(HomeTextPrimary, 14.sp)
                         )
-                        val clubText = buildString {
-                            append("Moved from ${event.oldValue ?: "?"} to ")
-                            append(event.newValue ?: "?")
-                        }
                         Text(
-                            text = clubText,
+                            text = stringResource(
+                                R.string.feed_moved_from_to,
+                                event.oldValue ?: "?",
+                                event.newValue ?: "?"
+                            ),
                             style = regularTextStyle(HomeTextSecondary, 12.sp)
                         )
                     }
                     FeedEvent.TYPE_NOTE_ADDED -> {
                         Text(
-                            text = "${event.agentName ?: "Agent"} added a note on ${event.playerName ?: ""}",
+                            text = stringResource(
+                                R.string.feed_note_added_by,
+                                event.agentName ?: stringResource(R.string.greeting_agent_default),
+                                event.playerName ?: ""
+                            ),
                             style = boldTextStyle(HomeTextPrimary, 14.sp)
                         )
                         event.extraInfo?.let {
@@ -618,7 +744,7 @@ private fun FeedEventCard(event: FeedEvent, navController: NavController) {
             }
 
             // Timestamp
-            val timeAgo = event.timestamp?.let { formatTimeAgo(it) } ?: ""
+            val timeAgo = formatTimeAgo(event.timestamp)
             Text(
                 text = timeAgo,
                 style = regularTextStyle(HomeTextSecondary, 10.sp)
@@ -643,17 +769,19 @@ private fun String.toMarketValueDouble(): Double {
     }
 }
 
-private fun formatTimeAgo(timestamp: Long): String {
+@Composable
+private fun formatTimeAgo(timestamp: Long?): String {
+    if (timestamp == null) return ""
     val now = System.currentTimeMillis()
     val diff = now - timestamp
     val minutes = TimeUnit.MILLISECONDS.toMinutes(diff)
     val hours = TimeUnit.MILLISECONDS.toHours(diff)
     val days = TimeUnit.MILLISECONDS.toDays(diff)
     return when {
-        minutes < 1 -> "Just now"
-        minutes < 60 -> "${minutes}m ago"
-        hours < 24 -> "${hours}h ago"
-        days < 7 -> "${days}d ago"
+        minutes < 1 -> stringResource(R.string.time_just_now)
+        minutes < 60 -> stringResource(R.string.time_minutes_ago, minutes)
+        hours < 24 -> stringResource(R.string.time_hours_ago, hours)
+        days < 7 -> stringResource(R.string.time_days_ago, days)
         else -> SimpleDateFormat("MMM d", Locale.getDefault()).format(Date(timestamp))
     }
 }
@@ -677,7 +805,7 @@ private fun List<FeedEvent>.filterByType(filter: FeedFilter): List<FeedEvent> {
 private fun AgentOverviewSection(agents: List<AgentSummary>) {
     Column(modifier = Modifier.padding(top = 16.dp)) {
         Text(
-            text = "Agent Overview",
+            text = stringResource(R.string.agent_overview_title),
             style = boldTextStyle(HomeTextPrimary, 18.sp),
             modifier = Modifier.padding(horizontal = 20.dp)
         )
@@ -739,7 +867,7 @@ private fun AgentCard(agent: AgentSummary) {
 
             // Stats
             Text(
-                text = "${agent.totalPlayers} players managed",
+                text = stringResource(R.string.agent_players_managed, agent.totalPlayers),
                 style = regularTextStyle(HomeTextSecondary, 12.sp)
             )
             Spacer(Modifier.height(8.dp))
@@ -749,9 +877,9 @@ private fun AgentCard(agent: AgentSummary) {
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                MiniStat(value = agent.withMandate.toString(), label = "Mandate", color = HomeBlueAccent)
-                MiniStat(value = agent.expiringContracts.toString(), label = "Expiring", color = HomeOrangeAccent)
-                MiniStat(value = agent.withNotes.toString(), label = "Notes", color = HomePurpleAccent)
+                MiniStat(value = agent.withMandate.toString(), label = stringResource(R.string.agent_stat_mandate), color = HomeBlueAccent)
+                MiniStat(value = agent.expiringContracts.toString(), label = stringResource(R.string.agent_stat_expiring), color = HomeOrangeAccent)
+                MiniStat(value = agent.withNotes.toString(), label = stringResource(R.string.agent_stat_notes), color = HomePurpleAccent)
             }
         }
     }
@@ -795,7 +923,7 @@ private fun AgentTasksSection(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "Agent Tasks",
+                text = stringResource(R.string.agent_tasks_title),
                 style = boldTextStyle(HomeTextPrimary, 18.sp),
                 modifier = Modifier.weight(1f)
             )
@@ -842,7 +970,7 @@ private fun AgentTasksSection(
     // Add-task dialog
     showAddDialogForAccount?.let { account ->
         AddTaskDialog(
-            agentName = account.name ?: "Agent",
+            agentName = account.name ?: stringResource(R.string.greeting_agent_default),
             onDismiss = { showAddDialogForAccount = null },
             onConfirm = { title, dueDate ->
                 onAddTask(account.id ?: "", account.name ?: "", title, dueDate)
@@ -865,7 +993,7 @@ private fun ExpandableAgentTaskCard(
     onAddTaskClick: () -> Unit,
     onDeleteTask: (AgentTask) -> Unit
 ) {
-    val agentName = account.name ?: "Agent"
+    val agentName = account.name ?: stringResource(R.string.greeting_agent_default)
     val completedCount = tasks.count { it.isCompleted }
     val totalCount = tasks.size
     val progress = if (totalCount > 0) completedCount.toFloat() / totalCount else 0f
@@ -918,12 +1046,12 @@ private fun ExpandableAgentTaskCard(
                     )
                     if (totalCount > 0) {
                         Text(
-                            text = "$completedCount of $totalCount tasks done",
+                            text = stringResource(R.string.agent_tasks_done, completedCount, totalCount),
                             style = regularTextStyle(HomeTextSecondary, 11.sp)
                         )
                     } else {
                         Text(
-                            text = "No tasks yet",
+                            text = stringResource(R.string.agent_no_tasks),
                             style = regularTextStyle(HomeTextSecondary, 11.sp)
                         )
                     }
@@ -943,7 +1071,7 @@ private fun ExpandableAgentTaskCard(
                 // Chevron
                 Icon(
                     imageVector = Icons.Default.KeyboardArrowDown,
-                    contentDescription = if (isExpanded) "Collapse" else "Expand",
+                    contentDescription = if (isExpanded) stringResource(R.string.collapse) else stringResource(R.string.expand),
                     tint = HomeTextSecondary,
                     modifier = Modifier
                         .size(22.dp)
@@ -970,7 +1098,7 @@ private fun ExpandableAgentTaskCard(
                     // Task list
                     if (tasks.isEmpty()) {
                         Text(
-                            text = "No tasks yet. Tap + to add one.",
+                            text = stringResource(R.string.agent_no_tasks_hint),
                             style = regularTextStyle(HomeTextSecondary, 12.sp),
                             modifier = Modifier.padding(horizontal = 14.dp, vertical = 16.dp)
                         )
@@ -1027,13 +1155,13 @@ private fun ExpandableAgentTaskCard(
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Add,
-                                contentDescription = "Add Task",
+                                contentDescription = stringResource(R.string.agent_add_task),
                                 tint = HomeTealAccent,
                                 modifier = Modifier.size(14.dp)
                             )
                             Spacer(Modifier.width(4.dp))
                             Text(
-                                text = "Add Task",
+                                text = stringResource(R.string.agent_add_task),
                                 style = boldTextStyle(HomeTealAccent, 12.sp)
                             )
                         }
@@ -1108,7 +1236,7 @@ private fun TaskRow(
         // Delete
         Icon(
             imageVector = Icons.Default.Close,
-            contentDescription = "Delete task",
+            contentDescription = stringResource(R.string.delete_task),
             tint = HomeTextSecondary.copy(alpha = 0.4f),
             modifier = Modifier
                 .size(18.dp)
@@ -1189,7 +1317,7 @@ private fun AddTaskDialog(
             Column(modifier = Modifier.padding(20.dp)) {
                 // Title
                 Text(
-                    text = "New Task for $agentName",
+                    text = stringResource(R.string.agent_new_task_for, agentName),
                     style = boldTextStyle(HomeTextPrimary, 16.sp)
                 )
                 Spacer(Modifier.height(16.dp))
@@ -1200,7 +1328,7 @@ private fun AddTaskDialog(
                     onValueChange = { title = it },
                     placeholder = {
                         Text(
-                            "Task description...",
+                            stringResource(R.string.agent_task_description_hint),
                             style = regularTextStyle(HomeTextSecondary, 14.sp)
                         )
                     },
@@ -1241,7 +1369,7 @@ private fun AddTaskDialog(
                         text = if (selectedDate > 0L) {
                             SimpleDateFormat("MMM d, yyyy", Locale.getDefault()).format(Date(selectedDate))
                         } else {
-                            "Select due date"
+                            stringResource(R.string.agent_select_due_date)
                         },
                         style = regularTextStyle(
                             if (selectedDate > 0) HomeTextPrimary else HomeTextSecondary,
@@ -1259,7 +1387,7 @@ private fun AddTaskDialog(
                 ) {
                     TextButton(onClick = onDismiss) {
                         Text(
-                            "Cancel",
+                            stringResource(R.string.cancel),
                             style = boldTextStyle(HomeTextSecondary, 13.sp)
                         )
                     }
@@ -1280,7 +1408,7 @@ private fun AddTaskDialog(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            "Add Task",
+                            stringResource(R.string.agent_add_task),
                             style = boldTextStyle(HomeDarkBackground, 13.sp)
                         )
                     }
@@ -1299,12 +1427,12 @@ private fun AddTaskDialog(
                     datePickerState.selectedDateMillis?.let { selectedDate = it }
                     showDatePicker = false
                 }) {
-                    Text("OK", style = boldTextStyle(HomeTealAccent, 14.sp))
+                    Text(stringResource(R.string.ok), style = boldTextStyle(HomeTealAccent, 14.sp))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showDatePicker = false }) {
-                    Text("Cancel", style = boldTextStyle(HomeTextSecondary, 14.sp))
+                    Text(stringResource(R.string.cancel), style = boldTextStyle(HomeTextSecondary, 14.sp))
                 }
             }
         ) {
@@ -1315,16 +1443,17 @@ private fun AddTaskDialog(
 
 // ── Due-date helpers ─────────────────────────────────────────────────────────
 
+@Composable
 private fun formatDueDate(epochMillis: Long): String {
     if (epochMillis <= 0L) return ""
     val now = System.currentTimeMillis()
     val diffDays = ((epochMillis - now) / (24 * 60 * 60 * 1000)).toInt()
     return when {
-        diffDays < -1 -> "${-diffDays}d overdue"
-        diffDays == -1 -> "Yesterday"
-        diffDays == 0 -> "Today"
-        diffDays == 1 -> "Tomorrow"
-        diffDays <= 7 -> "In ${diffDays}d"
+        diffDays < -1 -> stringResource(R.string.due_overdue, -diffDays)
+        diffDays == -1 -> stringResource(R.string.due_yesterday)
+        diffDays == 0 -> stringResource(R.string.due_today)
+        diffDays == 1 -> stringResource(R.string.due_tomorrow)
+        diffDays <= 7 -> stringResource(R.string.due_in_days, diffDays)
         else -> SimpleDateFormat("MMM d", Locale.getDefault()).format(Date(epochMillis))
     }
 }
@@ -1360,7 +1489,7 @@ private fun DocumentRemindersSection(reminders: List<DocumentReminder>) {
             )
             Spacer(Modifier.width(6.dp))
             Text(
-                text = "Document Reminders",
+                text = stringResource(R.string.document_reminders_title),
                 style = boldTextStyle(HomeTextPrimary, 16.sp)
             )
         }
@@ -1397,9 +1526,9 @@ private fun DocumentRemindersSection(reminders: List<DocumentReminder>) {
                 )
                 Text(
                     text = if (reminder.isMissing) {
-                        "${reminder.documentType} missing"
+                        stringResource(R.string.document_missing, reminder.documentType)
                     } else {
-                        "${reminder.documentType} expires in ${reminder.daysUntilExpiry}d"
+                        stringResource(R.string.document_expires_in, reminder.documentType, reminder.daysUntilExpiry ?: 0)
                     },
                     style = regularTextStyle(HomeTextSecondary, 13.sp),
                     modifier = Modifier.weight(1f)

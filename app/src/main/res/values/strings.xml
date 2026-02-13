@@ -1,6 +1,7 @@
 <resources>
-    <string name="app_name" translatable="false">MGSR Team</string>
+    <string name="app_name">MGSR Team</string>
 
+    <!-- Navigation -->
     <string name="nav_item_players">Players</string>
     <string name="nav_item_home">Home</string>
     <string name="nav_item_dashboard">Dashboard</string>
@@ -10,21 +11,22 @@
     <string name="nav_item_shortlist">Shortlist</string>
     <string name="nav_item_requests">Requests</string>
 
-
+    <!-- Login -->
     <string name="login_button_title">Login</string>
     <string name="login_signing_in">Signing in…</string>
     <string name="login_error_invalid_credentials">Invalid email or password. Please try again.</string>
     <string name="login_button_email_hint">Your email address</string>
     <string name="login_button_password_hint">Your password</string>
 
-
+    <!-- Search -->
     <string name="players_screen_hint">Search players or note by keyword</string>
     <string name="contacts_screen_search_hint">Search by name, club or country</string>
     <string name="add_player_screen_hint">Search</string>
 
-
+    <!-- Account -->
     <string name="account_not_allowed">Account not allowed</string>
 
+    <!-- Notifications -->
     <string name="notification_channel_name">MGSR Team Alerts</string>
     <string name="notification_channel_description">Contract reminders, new releases and agency updates</string>
     <string name="notification_channel_contract_reminder">Contract reminders</string>
@@ -33,4 +35,93 @@
     <string name="notification_channel_without_club">Without club alerts</string>
     <string name="notification_without_club_title">Player(s) without club</string>
     <string name="notification_without_club_body">%d player(s) became without club</string>
+
+    <!-- Greeting -->
+    <string name="greeting_good_morning">Good Morning</string>
+    <string name="greeting_good_afternoon">Good Afternoon</string>
+    <string name="greeting_good_evening">Good Evening</string>
+    <string name="greeting_agent_default">Agent</string>
+
+    <!-- Dashboard Stats -->
+    <string name="stat_players">Players</string>
+    <string name="stat_mandate">Mandate</string>
+    <string name="stat_free">Free</string>
+    <string name="stat_requests">Requests</string>
+
+    <!-- Quick Actions -->
+    <string name="quick_action_players">Players</string>
+    <string name="quick_action_shortlist">Shortlist</string>
+    <string name="quick_action_releases">Releases</string>
+    <string name="quick_action_returnees">Returnees</string>
+    <string name="quick_action_contacts">Contacts</string>
+    <string name="quick_action_requests">Requests</string>
+
+    <!-- Feed -->
+    <string name="feed_recent_updates">Recent Updates</string>
+    <string name="feed_filter_all">All</string>
+    <string name="feed_filter_value">Value</string>
+    <string name="feed_filter_transfers">Transfers</string>
+    <string name="feed_filter_notes">Notes</string>
+    <string name="feed_empty">No recent updates yet.\nUpdates will appear here after the daily sync.</string>
+    <string name="feed_market_value_update">Market Value Update</string>
+    <string name="feed_club_change">Club Change Detected</string>
+    <string name="feed_became_free_agent">Became Free Agent</string>
+    <string name="feed_contract_expiring">Contract Expiring</string>
+    <string name="feed_new_note">New Note</string>
+    <string name="feed_player_added">Player Added</string>
+    <string name="feed_update">Update</string>
+    <string name="feed_value_changed">Value changed from %1$s to %2$s</string>
+    <string name="feed_moved_from_to">Moved from %1$s to %2$s</string>
+    <string name="feed_note_added_by">%1$s added a note on %2$s</string>
+
+    <!-- Time Ago -->
+    <string name="time_just_now">Just now</string>
+    <string name="time_minutes_ago">%1$dm ago</string>
+    <string name="time_hours_ago">%1$dh ago</string>
+    <string name="time_days_ago">%1$dd ago</string>
+
+    <!-- Agent Overview -->
+    <string name="agent_overview_title">Agent Overview</string>
+    <string name="agent_players_managed">%d players managed</string>
+    <string name="agent_stat_mandate">Mandate</string>
+    <string name="agent_stat_expiring">Expiring</string>
+    <string name="agent_stat_notes">Notes</string>
+
+    <!-- Agent Tasks -->
+    <string name="agent_tasks_title">Agent Tasks</string>
+    <string name="agent_tasks_done">%1$d of %2$d tasks done</string>
+    <string name="agent_no_tasks">No tasks yet</string>
+    <string name="agent_no_tasks_hint">No tasks yet. Tap + to add one.</string>
+    <string name="agent_add_task">Add Task</string>
+    <string name="agent_new_task_for">New Task for %s</string>
+    <string name="agent_task_description_hint">Task description…</string>
+    <string name="agent_select_due_date">Select due date</string>
+
+    <!-- Due Dates -->
+    <string name="due_overdue">%dd overdue</string>
+    <string name="due_yesterday">Yesterday</string>
+    <string name="due_today">Today</string>
+    <string name="due_tomorrow">Tomorrow</string>
+    <string name="due_in_days">In %dd</string>
+
+    <!-- Document Reminders -->
+    <string name="document_reminders_title">Document Reminders</string>
+    <string name="document_missing">%s missing</string>
+    <string name="document_expires_in">%1$s expires in %2$dd</string>
+
+    <!-- General -->
+    <string name="cancel">Cancel</string>
+    <string name="ok">OK</string>
+    <string name="expand">Expand</string>
+    <string name="collapse">Collapse</string>
+    <string name="delete_task">Delete task</string>
+    <string name="notifications">Notifications</string>
+
+    <!-- Language -->
+    <string name="language_change_title">Change Language</string>
+    <string name="language_change_message">The app language will change to %s. The app will restart to apply the change.</string>
+    <string name="language_english">English</string>
+    <string name="language_hebrew">עברית</string>
+    <string name="language_confirm">Confirm</string>
+    <string name="language_switch_cd">Change language</string>
 </resources>
