@@ -32,6 +32,7 @@ import com.liordahan.mgsrteam.features.releases.ReleasesScreen
 import com.liordahan.mgsrteam.features.contacts.ContactsScreen
 import com.liordahan.mgsrteam.features.returnee.ReturneeScreen
 import com.liordahan.mgsrteam.features.shortlist.ShortlistScreen
+import com.liordahan.mgsrteam.features.requests.RequestsScreen
 import com.liordahan.mgsrteam.navigation.Screens
 import com.liordahan.mgsrteam.ui.theme.HomeDarkBackground
 
@@ -50,6 +51,7 @@ fun HomeScreen(
             currentRoute == Screens.ReleasesScreen.route ||
             currentRoute == Screens.ReturneeScreen.route ||
             currentRoute == Screens.ShortlistScreen.route ||
+            currentRoute == Screens.RequestsScreen.route ||
             currentRoute == Screens.AddToShortlistScreen.route ||
             currentRoute?.startsWith("${Screens.AddToShortlistScreen.route}/") == true
 
@@ -313,6 +315,28 @@ fun HomeScreen(
                 }
             ) {
                 ShortlistScreen(navController = navController)
+            }
+
+            composable(
+                route = Screens.RequestsScreen.route,
+                enterTransition = {
+                    slideInHorizontally(initialOffsetX = { it }, animationSpec = tween(280)) +
+                            fadeIn(animationSpec = tween(280))
+                },
+                exitTransition = {
+                    slideOutHorizontally(targetOffsetX = { -it }, animationSpec = tween(280)) +
+                            fadeOut(animationSpec = tween(280))
+                },
+                popEnterTransition = {
+                    slideInHorizontally(initialOffsetX = { -it }, animationSpec = tween(280)) +
+                            fadeIn(animationSpec = tween(280))
+                },
+                popExitTransition = {
+                    slideOutHorizontally(targetOffsetX = { it }, animationSpec = tween(280)) +
+                            fadeOut(animationSpec = tween(280))
+                }
+            ) {
+                RequestsScreen(navController = navController)
             }
         }
     }

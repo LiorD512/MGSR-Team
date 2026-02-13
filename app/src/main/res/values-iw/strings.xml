@@ -8,6 +8,7 @@
     <string name="nav_item_returnee">חזרו מהשאלה</string>
     <string name="nav_item_contacts">אנשי קשר</string>
     <string name="nav_item_shortlist">רשימת מעקב</string>
+    <string name="nav_item_requests">בקשות</string>
 
     <string name="login_button_title">התחברות</string>
     <string name="login_signing_in">מתחבר…</string>

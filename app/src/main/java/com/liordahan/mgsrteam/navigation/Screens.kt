@@ -13,6 +13,7 @@ sealed class Screens(val route: String) {
     data object ContactsScreen : Screens(ScreenName.CONTACTS)
     data object ShortlistScreen : Screens(ScreenName.SHORTLIST)
     data object AddToShortlistScreen : Screens(ScreenName.ADD_TO_SHORTLIST)
+    data object RequestsScreen : Screens(ScreenName.REQUESTS)
 
     companion object {
         fun addPlayerWithTmProfileRoute(tmProfileUrl: String) = "${ScreenName.ADD_PLAYER}/$tmProfileUrl"
@@ -33,4 +34,5 @@ object ScreenName {
     const val CONTACTS = "contacts"
     const val SHORTLIST = "shortlist"
     const val ADD_TO_SHORTLIST = "add_to_shortlist"
+    const val REQUESTS = "requests"
 }

@@ -38,6 +38,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContactPhone
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Handshake
+import androidx.compose.material.icons.filled.RequestQuote
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Notifications
@@ -407,6 +408,18 @@ private fun QuickActionsRow(navController: NavController) {
                 color = HomeTealAccent,
                 onClick = {
                     navController.navigate(Screens.ContactsScreen.route) {
+                        launchSingleTop = true
+                    }
+                }
+            )
+        }
+        item {
+            QuickActionChip(
+                icon = Icons.Default.RequestQuote,
+                label = "Requests",
+                color = HomePurpleAccent,
+                onClick = {
+                    navController.navigate(Screens.RequestsScreen.route) {
                         launchSingleTop = true
                     }
                 }

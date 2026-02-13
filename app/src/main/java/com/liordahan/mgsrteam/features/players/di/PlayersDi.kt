@@ -43,6 +43,8 @@ import com.liordahan.mgsrteam.features.players.filters.usecases.SetSortOptionUse
 import com.liordahan.mgsrteam.features.players.playerinfo.IPlayerInfoViewModel
 import com.liordahan.mgsrteam.features.players.playerinfo.PlayerInfoViewModel
 import com.liordahan.mgsrteam.features.players.playerinfo.documents.PlayerDocumentsRepository
+import com.liordahan.mgsrteam.features.players.repository.IPlayersRepository
+import com.liordahan.mgsrteam.features.players.repository.PlayersRepository
 import com.liordahan.mgsrteam.features.players.sort.IPlayerListSortBottomSheetViewModel
 import com.liordahan.mgsrteam.features.players.sort.PlayerListSortBottomSheetViewModel
 import com.liordahan.mgsrteam.transfermarket.PlayersUpdate
@@ -53,6 +55,8 @@ import org.koin.dsl.module
 val playersModule = module {
 
     single { PlayersUpdate() }
+
+    single { PlayersRepository(get()) } bind IPlayersRepository::class
 
     single {
         FilterRepository()
