@@ -289,17 +289,17 @@ private fun StatsRow(state: HomeDashboardState) {
         )
         StatCard(
             modifier = Modifier.weight(1f),
-            icon = Icons.Default.Warning,
-            value = state.expiringSoon.toString(),
-            label = "Expiring",
-            accentColor = HomeOrangeAccent
-        )
-        StatCard(
-            modifier = Modifier.weight(1f),
             icon = Icons.Default.PersonOff,
             value = state.freeAgents.toString(),
             label = "Free",
             accentColor = HomeRedAccent
+        )
+        StatCard(
+            modifier = Modifier.weight(1f),
+            icon = Icons.Default.RequestQuote,
+            value = state.requestsCount.toString(),
+            label = "Requests",
+            accentColor = HomePurpleAccent
         )
     }
 }

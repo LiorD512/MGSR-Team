@@ -33,6 +33,7 @@ import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Handshake
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.People
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Whatsapp
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -128,6 +129,7 @@ fun RequestsScreen(
     var expandedRequestIds by remember { mutableStateOf(setOf<String>()) }
 
     val snackbarHostState = remember { SnackbarHostState() }
+    val context = LocalContext.current
 
     LaunchedEffect(state.addRequestMessage) {
         state.addRequestMessage?.let { msg ->
@@ -169,7 +171,17 @@ fun RequestsScreen(
             ) {
                 RequestsHeader(
                     onAddClick = { showAddSheet = true },
-                    onBackClick = { navController.popBackStack() }
+                    onBackClick = { navController.popBackStack() },
+                    onShareClick = {
+                        val text = formatRequestsForShare(state.requestsByPositionCountry)
+                        val intent = Intent(Intent.ACTION_SEND).apply {
+                            type = "text/plain"
+                            putExtra(Intent.EXTRA_TEXT, text)
+                            putExtra(Intent.EXTRA_SUBJECT, "MGSR Team - Player Requests")
+                        }
+                        context.startActivity(Intent.createChooser(intent, "Share requests"))
+                    },
+                    canShare = state.requestsByPositionCountry.isNotEmpty()
                 )
 
                 when {
@@ -314,7 +326,12 @@ fun RequestsScreen(
 }
 
 @Composable
-private fun RequestsHeader(onAddClick: () -> Unit, onBackClick: () -> Unit) {
+private fun RequestsHeader(
+    onAddClick: () -> Unit,
+    onBackClick: () -> Unit,
+    onShareClick: () -> Unit,
+    canShare: Boolean
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -337,6 +354,11 @@ private fun RequestsHeader(onAddClick: () -> Unit, onBackClick: () -> Unit) {
                 style = regularTextStyle(HomeTextSecondary, 12.sp),
                 modifier = Modifier.padding(top = 4.dp)
             )
+        }
+        if (canShare) {
+            IconButton(onClick = onShareClick, modifier = Modifier.size(40.dp)) {
+                Icon(Icons.Default.Share, contentDescription = "Share requests", tint = HomeTealAccent)
+            }
         }
         IconButton(onClick = onAddClick, modifier = Modifier.size(40.dp)) {
             Icon(Icons.Default.Add, contentDescription = "Add request", tint = HomeTealAccent)
@@ -729,6 +751,41 @@ private fun RequestsEmptyState(onAddClick: () -> Unit) {
 private fun formatDate(timestamp: Long?): String {
     if (timestamp == null) return ""
     return SimpleDateFormat("MMM d, yyyy", Locale.getDefault()).format(Date(timestamp))
+}
+
+private fun formatRequestsForShare(requestsByPositionCountry: Map<String, Map<String, List<Request>>>): String {
+    if (requestsByPositionCountry.isEmpty()) return "No requests at the moment."
+    val sb = StringBuilder()
+    sb.appendLine("MGSR Team – Player Requests")
+    sb.appendLine("─────────────────────────")
+    sb.appendLine()
+    requestsByPositionCountry.forEach { (position, countries) ->
+        val longName = PositionDisplayNames.toLongName(position)
+        sb.appendLine("$longName ($position)")
+        countries.forEach { (country, requests) ->
+            requests.forEach { req ->
+                sb.appendLine("  • ${req.clubName ?: "Unknown"}${if (!country.isNullOrBlank() && country != "Other") " ($country)" else ""}")
+                val ageInfo = when {
+                    req.ageDoesntMatter == true -> "Age: Any"
+                    req.minAge != null && req.maxAge != null && req.minAge > 0 && req.maxAge > 0 ->
+                        "Age: ${req.minAge}-${req.maxAge}"
+                    else -> ""
+                }
+                val salaryInfo = req.salaryRange?.takeIf { it.isNotBlank() }?.let { "Salary: $it" } ?: ""
+                val feeInfo = req.transferFee?.takeIf { it.isNotBlank() }?.let { "Fee: $it" } ?: ""
+                val details = listOfNotNull(
+                    ageInfo.takeIf { it.isNotBlank() },
+                    salaryInfo,
+                    feeInfo
+                ).joinToString(" • ")
+                if (details.isNotBlank()) {
+                    sb.appendLine("    $details")
+                }
+                sb.appendLine()
+            }
+        }
+    }
+    return sb.toString().trimEnd()
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

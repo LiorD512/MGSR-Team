@@ -31,6 +31,7 @@ data class HomeDashboardState(
     val withMandate: Int = 0,
     val expiringSoon: Int = 0,
     val freeAgents: Int = 0,
+    val requestsCount: Int = 0,
 
     // activity feed
     val feedEvents: List<FeedEvent> = emptyList(),
@@ -92,6 +93,7 @@ class HomeScreenViewModel(
         loadGreeting()
         loadAllAccounts()
         listenToPlayers()
+        listenToRequests()
         loadFeedEvents()
         loadDocumentReminders()
         listenToAgentTasks()
@@ -209,6 +211,17 @@ class HomeScreenViewModel(
                 _state.update { it.copy(agentSummaries = updatedSummaries) }
             } catch (_: Exception) { }
         }
+    }
+
+    // ── Requests count ───────────────────────────────────────────────────────
+
+    private fun listenToRequests() {
+        firebaseHandler.firebaseStore.collection(firebaseHandler.clubRequestsTable)
+            .addSnapshotListener { snapshot, _ ->
+                if (snapshot == null) return@addSnapshotListener
+                val count = snapshot.size()
+                _state.update { it.copy(requestsCount = count) }
+            }
     }
 
     // ── Feed events ──────────────────────────────────────────────────────────
