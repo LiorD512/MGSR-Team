@@ -20,6 +20,63 @@
 
     <!-- Search -->
     <string name="players_screen_hint">Search players or note by keyword</string>
+
+    <!-- Players Screen -->
+    <string name="players_roster_title">My Roster</string>
+    <string name="players_stat_total">Total</string>
+    <string name="players_add_player">Add Player</string>
+    <string name="players_clear">Clear</string>
+    <string name="players_filter_all">All</string>
+    <string name="players_sort_options">Sort options</string>
+    <string name="players_reset">Reset</string>
+    <string name="players_sort_newest">Newest First</string>
+    <string name="players_sort_market_value">By Market Value</string>
+    <string name="players_sort_name">By Name</string>
+    <string name="players_sort_age">By Age</string>
+    <string name="players_filter_free_agents">Free Agents</string>
+    <string name="players_filter_contract_expiring">Contract Expiring</string>
+    <string name="players_filter_with_mandate">With Mandate</string>
+    <string name="players_filter_my_players_only">My Players Only</string>
+    <string name="players_expiring_soon_count">%d Contracts Expiring Soon</string>
+    <string name="players_expiring_action_needed">Action needed before contract ends</string>
+    <string name="players_free_agent">Free Agent</string>
+    <string name="players_years_suffix"> yrs</string>
+    <string name="players_no_players_found">No players found</string>
+    <string name="players_empty_hint">Add players to your roster or clear filters to see your full list.</string>
+    <string name="players_reset_filters">Reset Filters</string>
+    <string name="players_clear_all">Clear all</string>
+    <string name="players_filters">Filters</string>
+    <string name="players_filter_by_position">By Position</string>
+    <string name="players_filter_by_agent">By Agent</string>
+    <string name="players_filter_by_contract">By Contract</string>
+    <string name="players_filter_without_club">Without club</string>
+    <string name="players_filter_contract_finishing">Contract finishing soon</string>
+    <string name="players_filter_with_notes">With notes</string>
+    <string name="players_done">Done</string>
+
+    <!-- Shortlist Screen -->
+    <string name="shortlist_title">Shortlist</string>
+    <string name="shortlist_subtitle">Saved profiles from Releases &amp; Returnees — add to agency when ready</string>
+    <string name="shortlist_add_player">Add player</string>
+    <string name="shortlist_stat_this_week">This Week</string>
+    <string name="shortlist_could_not_load">Could not load player. They may already be in your roster.</string>
+    <string name="shortlist_years_suffix"> yrs</string>
+    <string name="shortlist_badge">Shortlisted</string>
+    <string name="shortlist_add_to_agency">Add to agency</string>
+    <string name="shortlist_open_tm">Open TM</string>
+    <string name="shortlist_remove">Remove</string>
+    <string name="shortlist_remove_confirm">Remove this player from your shortlist?</string>
+    <string name="shortlist_no_players">No players in shortlist</string>
+    <string name="shortlist_empty_hint">Add players from Releases or Returnees to save them for later. When ready, add them to your agency.</string>
+    <string name="shortlist_browse_releases">Browse Releases</string>
+    <string name="shortlist_browse_returnees">Browse Returnees</string>
+    <string name="shortlist_added_today">Added today</string>
+    <string name="shortlist_added_yesterday">Added yesterday</string>
+    <string name="shortlist_added_days_ago">Added %d days ago</string>
+    <string name="shortlist_added_week_ago">Added 1 week ago</string>
+    <string name="shortlist_added_weeks_ago">Added %d weeks ago</string>
+    <string name="shortlist_added_months_ago">Added %d months ago</string>
+
     <string name="contacts_screen_search_hint">Search by name, club or country</string>
     <string name="add_player_screen_hint">Search</string>
 
@@ -124,4 +181,128 @@
     <string name="language_hebrew">עברית</string>
     <string name="language_confirm">Confirm</string>
     <string name="language_switch_cd">Change language</string>
+
+    <!-- Releases Screen -->
+    <string name="releases_title">Releases</string>
+    <string name="releases_subtitle">Latest free agents from Transfermarkt</string>
+    <string name="releases_tm_down">Transfermarkt is down\nTry again later</string>
+    <string name="releases_stat_shortlisted">Shortlisted</string>
+    <string name="releases_stat_visible">Visible</string>
+    <string name="releases_all_count">All %d</string>
+    <string name="releases_add_to_agency">Add to agency</string>
+    <string name="releases_badge_released">Released</string>
+    <string name="releases_badge_loan_return">Loan Return</string>
+    <string name="shortlist_in_shortlist">In shortlist</string>
+    <string name="shortlist_add_to_shortlist">Add to shortlist</string>
+
+    <!-- Returnee Screen -->
+    <string name="returnee_title">Returnees</string>
+    <string name="returnee_subtitle">Players returning from loan across European leagues</string>
+    <string name="returnee_no_found">No returnees found</string>
+    <string name="returnee_loading">Loading (%1$d/%2$d leagues)…</string>
+    <string name="returnee_stat_leagues">Leagues</string>
+    <string name="returnee_all_count">All %d</string>
+
+    <!-- Requests Screen -->
+    <string name="requests_title">Requests</string>
+    <string name="requests_subtitle">Player requests from clubs by position</string>
+    <string name="requests_add">Add request</string>
+    <string name="requests_share">Share requests</string>
+    <string name="requests_stat_positions">Positions</string>
+    <string name="requests_matching_players_one">%d matching player</string>
+    <string name="requests_matching_players">%d matching players</string>
+    <string name="requests_no_match">No roster players match this request</string>
+    <string name="requests_no_requests">No requests yet</string>
+    <string name="requests_empty_hint">Add requests from clubs when they ask for players. Tap + to add your first request.</string>
+    <string name="requests_delete_title">Delete request</string>
+    <string name="requests_delete_confirm">Delete request for %1$s (%2$s)?</string>
+    <string name="requests_add_title">Add Request</string>
+    <string name="requests_add_subtitle">Search club on Transfermarkt, then select position</string>
+    <string name="requests_label_club">CLUB</string>
+    <string name="requests_search_club">Search club…</string>
+    <string name="requests_label_position">POSITION</string>
+    <string name="requests_label_contact">CONTACT</string>
+    <string name="requests_label_age">AGE</string>
+    <string name="requests_min">Min</string>
+    <string name="requests_max">Max</string>
+    <string name="requests_age_any">Age: Any</string>
+    <string name="requests_age_range">Age: %1$d-%2$d</string>
+    <string name="requests_salary">Salary: %s</string>
+    <string name="requests_fee">Fee: %s</string>
+    <string name="requests_via_contact">Via %1$s • %2$s</string>
+    <string name="requests_direct">Direct request • %s</string>
+    <string name="requests_notes_placeholder">Additional notes…</string>
+    <string name="requests_whatsapp">WhatsApp</string>
+    <string name="requests_delete">Delete</string>
+
+    <!-- Contacts Screen -->
+    <string name="contacts_title">Worldwide Contacts</string>
+    <string name="contacts_subtitle">Club contacts for player recruitment</string>
+    <string name="contacts_stat_countries">Countries</string>
+    <string name="contacts_add">Add contact</string>
+    <string name="contacts_clear_search">Clear search</string>
+    <string name="contacts_clear">Clear</string>
+    <string name="contacts_edit">Edit</string>
+    <string name="contacts_delete">Delete</string>
+    <string name="contacts_no_contacts">No contacts yet</string>
+    <string name="contacts_empty_hint">Add club contacts for player recruitment. Pick from your phone or add manually.</string>
+    <string name="contacts_add_contact">Add contact</string>
+    <string name="contacts_label_who">WHO</string>
+    <string name="contacts_import">Import from phone contacts</string>
+    <string name="contacts_enter_manually">or enter manually</string>
+    <string name="contacts_label_role">ROLE</string>
+    <string name="contacts_label_club">CLUB</string>
+    <string name="contacts_label_name">Name</string>
+    <string name="contacts_placeholder_name">Contact name</string>
+    <string name="contacts_label_phone">Phone (optional)</string>
+    <string name="contacts_placeholder_phone">Contact number (including phone code)</string>
+    <string name="contacts_no_contacts_found">No contacts found</string>
+    <string name="contacts_try_different_search">Try a different search or add a new contact</string>
+
+    <!-- Add Player Screen -->
+    <string name="add_player_contact_title">Add Player Contact</string>
+    <string name="add_player_save">Save Player</string>
+    <string name="add_player_to_shortlist">Add to shortlist</string>
+    <string name="add_player_title">Add Player</string>
+    <string name="add_player_search_roster">Search Transfermarkt to add to roster</string>
+    <string name="add_player_search_shortlist">Search Transfermarkt to add to shortlist</string>
+    <string name="add_player_search_hint_title">Search for a player to add</string>
+    <string name="add_player_search_desc">Type a name to find players on Transfermarkt</string>
+    <string name="add_player_label_player_number">Player Number</string>
+    <string name="add_player_label_agent_number">Agent Number</string>
+    <string name="add_player_tap_to_select">Tap to select</string>
+    <string name="add_player_already_in_shortlist">Player is already in your shortlist</string>
+
+    <!-- Player Info Screen -->
+    <string name="player_info_title">Player Info</string>
+    <string name="player_info_subtitle">View and manage player details</string>
+    <string name="player_info_refresh">Refresh</string>
+    <string name="player_info_refresh_cd">Refresh from Transfermarkt</string>
+    <string name="player_info_share">Share</string>
+    <string name="player_info_delete">Delete</string>
+    <string name="player_info_delete_player_confirm">Are you sure you want to delete this player?</string>
+    <string name="player_info_delete_note_confirm">Are you sure you want to delete this note?</string>
+    <string name="player_info_delete_doc_confirm">Are you sure you want to delete \"%s\"?</string>
+    <string name="player_info_contact_header">Contact Info</string>
+    <string name="player_info_player_phone">Player Phone</string>
+    <string name="player_info_agent_phone">Agent Phone</string>
+    <string name="player_info_tm_profile">TM Profile</string>
+    <string name="player_info_documents">Documents</string>
+    <string name="player_info_uploading">Uploading document…</string>
+    <string name="player_info_no_documents">No documents yet</string>
+    <string name="player_info_add_document">Add document</string>
+    <string name="player_info_notes">Notes</string>
+    <string name="player_info_add_note">Add note</string>
+    <string name="player_info_note_placeholder">Add a new note…</string>
+    <string name="player_info_previously">Previously: %1$s (%2$s)</string>
+    <string name="player_info_added_by">Added by — %s</string>
+    <string name="player_info_contract">Contract %s</string>
+    <string name="player_info_mandate">Mandate</string>
+    <string name="player_info_whatsapp">WhatsApp</string>
+
+    <!-- Returnee Players Bottom Sheet -->
+    <string name="returnee_no_players_league">No players found in this league</string>
+
+    <!-- Empty State (shared) -->
+    <string name="empty_try_filters">Try adjusting your filters or search query</string>
 </resources>

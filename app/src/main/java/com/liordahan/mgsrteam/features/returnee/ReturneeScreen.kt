@@ -50,9 +50,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import com.liordahan.mgsrteam.R
 import com.liordahan.mgsrteam.features.add.AddPlayerContactFormContent
 import com.liordahan.mgsrteam.ui.components.DarkSystemBarsForBottomSheet
 import com.liordahan.mgsrteam.features.add.IAddPlayerViewModel
@@ -175,7 +177,7 @@ fun ReturneeScreen(
             // Empty state when no returnees
             if (visibleReturneeList.isEmpty() && !isLoading) {
                 EmptyState(
-                    text = "No returnees found",
+                    text = stringResource(R.string.returnee_no_found),
                     showResetFiltersButton = selectedPosition != null,
                     onResetFiltersClicked = {
                         selectedPosition = null
@@ -216,7 +218,7 @@ fun ReturneeScreen(
                                 color = HomeTealAccent
                             )
                             Text(
-                                text = "Loading ($loadedCount/$totalCount leagues)...",
+                                text = stringResource(R.string.returnee_loading, loadedCount, totalCount),
                                 style = regularTextStyle(HomeTextSecondary, 12.sp),
                                 modifier = Modifier.padding(start = 8.dp)
                             )
@@ -292,7 +294,7 @@ fun ReturneeScreen(
 
                         else -> {
                             Text(
-                                text = "Could not load player. They may already be in your roster.",
+                                text = stringResource(R.string.shortlist_could_not_load),
                                 style = regularTextStyle(HomeTextSecondary, 14.sp),
                                 modifier = Modifier.padding(24.dp)
                             )
@@ -331,11 +333,11 @@ private fun ReturneesHeader(onBackClicked: () -> Unit) {
                 .weight(1f)
         ) {
             Text(
-                text = "Returnees",
+                text = stringResource(R.string.returnee_title),
                 style = boldTextStyle(HomeTextPrimary, 26.sp)
             )
             Text(
-                text = "Players returning from loan across European leagues",
+                text = stringResource(R.string.returnee_subtitle),
                 style = regularTextStyle(HomeTextSecondary, 13.sp),
                 modifier = Modifier.padding(top = 4.dp)
             )
@@ -360,21 +362,21 @@ private fun ReturneesStatsStrip(total: Int, shortlisted: Int, leaguesLoaded: Str
     ) {
         ReturneesStatItem(
             value = total.toString(),
-            label = "Total",
+            label = stringResource(R.string.players_stat_total),
             accentColor = HomeTealAccent,
             modifier = Modifier.weight(1f)
         )
         ReturneesStatsStripDivider()
         ReturneesStatItem(
             value = shortlisted.toString(),
-            label = "Shortlisted",
+            label = stringResource(R.string.releases_stat_shortlisted),
             accentColor = HomeGreenAccent,
             modifier = Modifier.weight(1f)
         )
         ReturneesStatsStripDivider()
         ReturneesStatItem(
             value = leaguesLoaded,
-            label = "Leagues",
+            label = stringResource(R.string.returnee_stat_leagues),
             accentColor = HomeTealAccent,
             modifier = Modifier.weight(1f)
         )
@@ -447,7 +449,7 @@ private fun ReturneesPositionChips(
             verticalAlignment = Alignment.Bottom
         ) {
             ReturneesChipWithLine(
-                text = "All $totalCount",
+                text = stringResource(R.string.returnee_all_count, totalCount),
                 isSelected = isAllSelected,
                 isDisabled = false,
                 onClick = onAllClicked

@@ -22,10 +22,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.liordahan.mgsrteam.R
 import com.liordahan.mgsrteam.features.players.filters.ContractFilterOption
 import com.liordahan.mgsrteam.features.players.filters.FilterCheckBox
 import com.liordahan.mgsrteam.ui.theme.contentDefault
@@ -83,7 +85,7 @@ fun PlayerListSortBottomSheet(
             Box(modifier = Modifier.fillMaxWidth()) {
 
                 Text(
-                    text = "Reset",
+                    text = stringResource(R.string.players_reset),
                     style = boldTextStyle(Color.White, 12.sp),
                     modifier = Modifier
                         .background(contentDefault, shape = RoundedCornerShape(32.dp))
@@ -97,7 +99,7 @@ fun PlayerListSortBottomSheet(
                 )
 
                 Text(
-                    text = "Sort Options",
+                    text = stringResource(R.string.players_sort_options),
                     style = boldTextStyle(contentDefault, 18.sp),
                     modifier = Modifier.align(Alignment.Center)
                 )
@@ -120,7 +122,7 @@ fun PlayerListSortBottomSheet(
 
                 FilterCheckBox(
                     isChecked = selectedSortOption == SortOption.NEWEST,
-                    text = "Newest First",
+                    text = stringResource(R.string.players_sort_newest),
                     onCheckedChange = { isChecked ->
                         selectedSortOption =
                             if (isChecked) SortOption.NEWEST else SortOption.DEFAULT
@@ -130,7 +132,7 @@ fun PlayerListSortBottomSheet(
 
                 FilterCheckBox(
                     isChecked = selectedSortOption == SortOption.MARKET_VALUE,
-                    text = "By Market Value",
+                    text = stringResource(R.string.players_sort_market_value),
                     onCheckedChange = { isChecked ->
                         selectedSortOption =
                             if (isChecked) SortOption.MARKET_VALUE else SortOption.DEFAULT
@@ -140,7 +142,7 @@ fun PlayerListSortBottomSheet(
 
                 FilterCheckBox(
                     isChecked = selectedSortOption == SortOption.NAME,
-                    text = "By Name",
+                    text = stringResource(R.string.players_sort_name),
                     onCheckedChange = { isChecked ->
                         selectedSortOption =
                             if (isChecked) SortOption.NAME else SortOption.DEFAULT
@@ -150,7 +152,7 @@ fun PlayerListSortBottomSheet(
 
                 FilterCheckBox(
                     isChecked = selectedSortOption == SortOption.AGE,
-                    text = "By Age",
+                    text = stringResource(R.string.players_sort_age),
                     onCheckedChange = { isChecked ->
                         selectedSortOption =
                             if (isChecked) SortOption.AGE else SortOption.DEFAULT

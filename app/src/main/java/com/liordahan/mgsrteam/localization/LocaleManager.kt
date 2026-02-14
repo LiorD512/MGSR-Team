@@ -60,7 +60,10 @@ object LocaleManager {
         Locale.setDefault(locale)
         val config = Configuration(context.resources.configuration)
         config.setLocale(locale)
-        
+        // Explicitly set layout direction from locale. Required for RTL on Android 8.0+ and
+        // some devices (e.g. Samsung) where updateConfiguration() alone doesn't propagate it.
+        config.setLayoutDirection(locale)
+
         // Use updateConfiguration for immediate effect
         @Suppress("DEPRECATION")
         context.resources.updateConfiguration(config, context.resources.displayMetrics)

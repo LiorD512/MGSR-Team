@@ -16,6 +16,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
@@ -69,7 +70,7 @@ fun EmptyState(
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
-                text = "Try adjusting your filters or search query",
+                text = stringResource(R.string.empty_try_filters),
                 style = regularTextStyle(HomeTextSecondary, 13.sp),
                 textAlign = TextAlign.Center
             )
@@ -86,7 +87,7 @@ fun EmptyState(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = optionalButtonText ?: "Reset Filters",
+                        text = optionalButtonText ?: stringResource(R.string.players_reset_filters),
                         style = boldTextStyle(HomeDarkBackground, 14.sp)
                     )
                 }
@@ -98,5 +99,5 @@ fun EmptyState(
 @Composable
 @Preview
 fun EmptyStatePreview() {
-    EmptyState(text = "No players found") {}
+    EmptyState(text = stringResource(R.string.players_no_players_found)) {}
 }

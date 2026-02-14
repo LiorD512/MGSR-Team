@@ -38,6 +38,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
@@ -45,6 +46,7 @@ import androidx.compose.ui.platform.rememberNestedScrollInteropConnection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.liordahan.mgsrteam.R
 import com.liordahan.mgsrteam.features.login.models.Account
 import com.liordahan.mgsrteam.features.players.models.Position
 import com.liordahan.mgsrteam.ui.components.PrimaryButtonNewDesign
@@ -110,7 +112,7 @@ fun PlayerListFilterBottomSheet(
             Box(modifier = Modifier.fillMaxWidth()) {
 
                 Text(
-                    text = "Clear all",
+                    text = stringResource(R.string.players_clear_all),
                     style = boldTextStyle(Color.White, 12.sp),
                     modifier = Modifier
                         .background(contentDefault, shape = RoundedCornerShape(32.dp))
@@ -124,7 +126,7 @@ fun PlayerListFilterBottomSheet(
                 )
 
                 Text(
-                    text = "Filters",
+                    text = stringResource(R.string.players_filters),
                     style = boldTextStyle(contentDefault, 18.sp),
                     modifier = Modifier.align(Alignment.Center)
                 )
@@ -147,7 +149,7 @@ fun PlayerListFilterBottomSheet(
             ) {
 
                 Text(
-                    text = "By Position",
+                    text = stringResource(R.string.players_filter_by_position),
                     style = boldTextStyle(contentDefault, 16.sp),
                     modifier = Modifier.padding(bottom = 16.dp)
                 )
@@ -190,7 +192,7 @@ fun PlayerListFilterBottomSheet(
                 )
 
                 Text(
-                    text = "By Agent",
+                    text = stringResource(R.string.players_filter_by_agent),
                     style = boldTextStyle(contentDefault, 16.sp),
                     modifier = Modifier.padding(bottom = 16.dp)
                 )
@@ -230,7 +232,7 @@ fun PlayerListFilterBottomSheet(
                 )
 
                 Text(
-                    text = "By Contract",
+                    text = stringResource(R.string.players_filter_by_contract),
                     style = boldTextStyle(contentDefault, 16.sp),
                     modifier = Modifier.padding(bottom = 16.dp)
                 )
@@ -245,7 +247,7 @@ fun PlayerListFilterBottomSheet(
 
                     FilterCheckBox(
                         isChecked = selectedOption == ContractFilterOption.WITHOUT_CLUB,
-                        text = "Without club",
+                        text = stringResource(R.string.players_filter_without_club),
                         onCheckedChange = { isChecked ->
                             selectedOption =
                                 if (isChecked) ContractFilterOption.WITHOUT_CLUB else ContractFilterOption.NONE
@@ -255,7 +257,7 @@ fun PlayerListFilterBottomSheet(
 
                     FilterCheckBox(
                         isChecked = selectedOption == ContractFilterOption.CONTRACT_FINISHING,
-                        text = "Contract finishing soon",
+                        text = stringResource(R.string.players_filter_contract_finishing),
                         onCheckedChange = { isChecked ->
                             selectedOption =
                                 if (isChecked) ContractFilterOption.CONTRACT_FINISHING else ContractFilterOption.NONE
@@ -265,7 +267,7 @@ fun PlayerListFilterBottomSheet(
 
                     FilterCheckBox(
                         isChecked = isWithNotesOnlySelected,
-                        text = "With notes",
+                        text = stringResource(R.string.players_filter_with_notes),
                         onCheckedChange = { isChecked ->
                             isWithNotesOnlySelected = isChecked
                             viewModel.setWithNotesChecked(isWithNotesOnlySelected)
@@ -283,7 +285,7 @@ fun PlayerListFilterBottomSheet(
 
                 PrimaryButtonNewDesign(
                     modifier = Modifier.size(height = 40.dp, width = 150.dp),
-                    buttonText = "Done",
+                    buttonText = stringResource(R.string.players_done),
                     showProgress = false,
                     isEnabled = true,
                     onButtonClicked = { onDismiss() }

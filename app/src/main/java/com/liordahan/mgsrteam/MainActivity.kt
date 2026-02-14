@@ -39,10 +39,10 @@ class MainActivity : AppCompatActivity() {
         // Keep the splash screen visible until the auth state is resolved
         splashScreen.setKeepOnScreenCondition { !viewModel.isReady.value }
 
+        val darkBg = "#0F1923".toColorInt()
         enableEdgeToEdge(
-            navigationBarStyle = SystemBarStyle.dark(
-                "#0F1923".toColorInt()
-            )
+            statusBarStyle = SystemBarStyle.light(darkBg, darkBg),
+            navigationBarStyle = SystemBarStyle.light(darkBg, darkBg)
         )
         handleDeepLink(intent)
 

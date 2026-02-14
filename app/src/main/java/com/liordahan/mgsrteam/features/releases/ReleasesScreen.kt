@@ -66,6 +66,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -75,6 +76,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
+import com.liordahan.mgsrteam.R
 import com.liordahan.mgsrteam.features.add.AddPlayerContactFormContent
 import com.liordahan.mgsrteam.ui.components.DarkSystemBarsForBottomSheet
 import com.liordahan.mgsrteam.features.add.IAddPlayerViewModel
@@ -255,7 +257,7 @@ fun ReleasesScreen(
 
             if (showError) {
                 EmptyState(
-                    text = "Transfermarkt is down\nTry again later",
+                    text = stringResource(R.string.releases_tm_down),
                     showResetFiltersButton = false,
                     onResetFiltersClicked = {}
                 )
@@ -363,7 +365,7 @@ fun ReleasesScreen(
 
                         else -> {
                             Text(
-                                text = "Could not load player. They may already be in your roster.",
+                                text = stringResource(R.string.shortlist_could_not_load),
                                 style = regularTextStyle(HomeTextSecondary, 14.sp),
                                 modifier = Modifier.padding(24.dp)
                             )
@@ -403,11 +405,11 @@ private fun ReleasesHeader(onBackClicked: () -> Unit) {
                 .weight(1f)
         ) {
             Text(
-                text = "Releases",
+                text = stringResource(R.string.releases_title),
                 style = boldTextStyle(HomeTextPrimary, 26.sp)
             )
             Text(
-                text = "Latest free agents from Transfermarkt",
+                text = stringResource(R.string.releases_subtitle),
                 style = regularTextStyle(HomeTextSecondary, 13.sp),
                 modifier = Modifier.padding(top = 4.dp)
             )
@@ -432,21 +434,21 @@ private fun ReleasesStatsStrip(total: Int, shortlisted: Int, visible: Int) {
     ) {
         ReleasesStatItem(
             value = total.toString(),
-            label = "Total",
+            label = stringResource(R.string.players_stat_total),
             accentColor = HomeTealAccent,
             modifier = Modifier.weight(1f)
         )
         ReleasesStatsStripDivider()
         ReleasesStatItem(
             value = shortlisted.toString(),
-            label = "Shortlisted",
+            label = stringResource(R.string.releases_stat_shortlisted),
             accentColor = HomeGreenAccent,
             modifier = Modifier.weight(1f)
         )
         ReleasesStatsStripDivider()
         ReleasesStatItem(
             value = visible.toString(),
-            label = "Visible",
+            label = stringResource(R.string.releases_stat_visible),
             accentColor = HomeOrangeAccent,
             modifier = Modifier.weight(1f)
         )
@@ -520,7 +522,7 @@ private fun ReleasesPositionChips(
         ) {
             // All chip with line
             ReleasesChipWithLine(
-                text = "All $totalCount",
+                text = stringResource(R.string.releases_all_count, totalCount),
                 isSelected = isAllSelected,
                 isDisabled = false,
                 onClick = onAllClicked
@@ -697,7 +699,7 @@ fun ReleaseListItem(
                                     .padding(horizontal = 8.dp, vertical = 2.dp)
                             ) {
                                 Text(
-                                    text = "$age yrs",
+                                    text = "$age${stringResource(R.string.players_years_suffix)}",
                                     style = regularTextStyle(HomeTextSecondary, 10.sp)
                                 )
                             }
@@ -779,7 +781,7 @@ fun ReleaseListItem(
                         .padding(horizontal = 8.dp, vertical = 3.dp)
                 ) {
                     Text(
-                        text = if (isFromReturnee) "Loan Return" else "Released",
+                        text = if (isFromReturnee) stringResource(R.string.releases_badge_loan_return) else stringResource(R.string.releases_badge_released),
                         style = boldTextStyle(
                             if (isFromReturnee) HomePurpleAccent else HomeOrangeAccent,
                             10.sp
@@ -797,7 +799,7 @@ fun ReleaseListItem(
                         ) {
                             Icon(
                                 imageVector = if (isAdded) Icons.Default.Bookmark else Icons.Default.BookmarkAdd,
-                                contentDescription = if (isAdded) "In shortlist" else "Add to shortlist",
+                                contentDescription = if (isAdded) stringResource(R.string.shortlist_in_shortlist) else stringResource(R.string.shortlist_add_to_shortlist),
                                 tint = if (isAdded) HomeGreenAccent else HomeTextSecondary
                             )
                         }
@@ -809,7 +811,7 @@ fun ReleaseListItem(
                         ) {
                             Icon(
                                 imageVector = Icons.Default.PersonAdd,
-                                contentDescription = "Add to agency",
+                                contentDescription = stringResource(R.string.releases_add_to_agency),
                                 tint = HomeTealAccent
                             )
                         }

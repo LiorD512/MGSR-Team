@@ -73,6 +73,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.unit.dp
@@ -81,6 +82,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
+import com.liordahan.mgsrteam.R
 import com.liordahan.mgsrteam.navigation.Screens
 import coil.compose.AsyncImage
 import com.liordahan.mgsrteam.features.contacts.models.Contact
@@ -155,7 +157,7 @@ fun RequestsScreen(
                 containerColor = HomeTealAccent,
                 contentColor = HomeDarkBackground
             ) {
-                Icon(Icons.Default.Add, contentDescription = "Add request", modifier = Modifier.size(24.dp))
+                Icon(Icons.Default.Add, contentDescription = stringResource(R.string.requests_add), modifier = Modifier.size(24.dp))
             }
         }
     ) { paddingValues ->
@@ -295,10 +297,10 @@ fun RequestsScreen(
             requestToDelete?.let { req ->
                 AlertDialog(
                     onDismissRequest = { requestToDelete = null },
-                    title = { Text("Delete request", style = boldTextStyle(HomeTextPrimary, 18.sp)) },
+                    title = { Text(stringResource(R.string.requests_delete_title), style = boldTextStyle(HomeTextPrimary, 18.sp)) },
                     text = {
                         Text(
-                            "Delete request for ${req.clubName} (${req.position})?",
+                            stringResource(R.string.requests_delete_confirm, req.clubName ?: "", req.position ?: ""),
                             style = regularTextStyle(HomeTextSecondary, 14.sp)
                         )
                     },
@@ -310,12 +312,12 @@ fun RequestsScreen(
                             },
                             colors = ButtonDefaults.buttonColors(containerColor = HomeRedAccent)
                         ) {
-                            Text("Delete", style = boldTextStyle(HomeTextPrimary, 14.sp))
+                            Text(stringResource(R.string.player_info_delete), style = boldTextStyle(HomeTextPrimary, 14.sp))
                         }
                     },
                     dismissButton = {
                         TextButton(onClick = { requestToDelete = null }) {
-                            Text("Cancel", style = regularTextStyle(HomeTextSecondary, 14.sp))
+                            Text(stringResource(R.string.cancel), style = regularTextStyle(HomeTextSecondary, 14.sp))
                         }
                     },
                     containerColor = HomeDarkCard
@@ -348,20 +350,20 @@ private fun RequestsHeader(
         )
         Spacer(Modifier.width(8.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Text("Requests", style = boldTextStyle(HomeTextPrimary, 26.sp))
+            Text(stringResource(R.string.requests_title), style = boldTextStyle(HomeTextPrimary, 26.sp))
             Text(
-                "Player requests from clubs by position",
+                stringResource(R.string.requests_subtitle),
                 style = regularTextStyle(HomeTextSecondary, 12.sp),
                 modifier = Modifier.padding(top = 4.dp)
             )
         }
         if (canShare) {
             IconButton(onClick = onShareClick, modifier = Modifier.size(40.dp)) {
-                Icon(Icons.Default.Share, contentDescription = "Share requests", tint = HomeTealAccent)
+                Icon(Icons.Default.Share, contentDescription = stringResource(R.string.requests_share), tint = HomeTealAccent)
             }
         }
         IconButton(onClick = onAddClick, modifier = Modifier.size(40.dp)) {
-            Icon(Icons.Default.Add, contentDescription = "Add request", tint = HomeTealAccent)
+            Icon(Icons.Default.Add, contentDescription = stringResource(R.string.requests_add), tint = HomeTealAccent)
         }
     }
 }
@@ -377,9 +379,9 @@ private fun RequestsStatsStrip(total: Int, positions: Int, pending: Int) {
             .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(16.dp)),
         horizontalArrangement = Arrangement.SpaceEvenly
     ) {
-        StatItem(value = total.toString(), label = "Total", accentColor = HomeTealAccent, modifier = Modifier.weight(1f))
+        StatItem(value = total.toString(), label = stringResource(R.string.players_stat_total), accentColor = HomeTealAccent, modifier = Modifier.weight(1f))
         Box(modifier = Modifier.width(1.dp).height(24.dp).background(HomeDarkCardBorder))
-        StatItem(value = positions.toString(), label = "Positions", accentColor = HomeOrangeAccent, modifier = Modifier.weight(1f))
+        StatItem(value = positions.toString(), label = stringResource(R.string.requests_stat_positions), accentColor = HomeOrangeAccent, modifier = Modifier.weight(1f))
     }
 }
 
@@ -535,9 +537,9 @@ private fun RequestCard(
                 val extraInfo = listOfNotNull(ageInfo.takeIf { it.isNotBlank() }, salaryInfo, transferFeeInfo).joinToString(" • ")
                 Text(
                     text = if (!request.contactName.isNullOrBlank()) {
-                        "Via ${request.contactName} • ${formatDate(request.createdAt)}"
+                        stringResource(R.string.requests_via_contact, request.contactName.orEmpty(), formatDate(request.createdAt))
                     } else {
-                        "Direct request • ${formatDate(request.createdAt)}"
+                        stringResource(R.string.requests_direct, formatDate(request.createdAt))
                     },
                     style = regularTextStyle(HomeTextSecondary, 11.sp),
                     modifier = Modifier.padding(start = 48.dp)
@@ -574,7 +576,7 @@ private fun RequestCard(
                             ) {
                                 Icon(
                                     Icons.Default.Whatsapp,
-                                    contentDescription = "WhatsApp",
+                                    contentDescription = stringResource(R.string.requests_whatsapp),
                                     tint = HomeTealAccent,
                                     modifier = Modifier.size(24.dp)
                                 )
@@ -586,7 +588,7 @@ private fun RequestCard(
                         ) {
                             Icon(
                                 Icons.Default.Delete,
-                                contentDescription = "Delete",
+                                contentDescription = stringResource(R.string.requests_delete),
                                 tint = HomeRedAccent,
                                 modifier = Modifier.size(24.dp)
                             )
@@ -612,7 +614,7 @@ private fun RequestCard(
                     )
                     Spacer(Modifier.width(8.dp))
                     Text(
-                        text = "${matchingPlayers.size} matching player${if (matchingPlayers.size == 1) "" else "s"}",
+                        text = if (matchingPlayers.size == 1) stringResource(R.string.requests_matching_players_one, matchingPlayers.size) else stringResource(R.string.requests_matching_players, matchingPlayers.size),
                         style = regularTextStyle(HomeTextPrimary, 13.sp)
                     )
                     Spacer(Modifier.weight(1f))
@@ -628,7 +630,7 @@ private fun RequestCard(
                 if (isExpanded) {
                     if (matchingPlayers.isEmpty()) {
                         Text(
-                            text = "No roster players match this request",
+                            text = stringResource(R.string.requests_no_match),
                             style = regularTextStyle(HomeTextSecondary, 12.sp),
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -729,12 +731,12 @@ private fun RequestsEmptyState(onAddClick: () -> Unit) {
         )
         Spacer(Modifier.height(20.dp))
         Text(
-            "No requests yet",
+            stringResource(R.string.requests_no_requests),
             style = boldTextStyle(HomeTextPrimary, 18.sp)
         )
         Spacer(Modifier.height(8.dp))
         Text(
-            "Add requests from clubs when they ask for players. Tap + to add your first request.",
+            stringResource(R.string.requests_empty_hint),
             style = regularTextStyle(HomeTextSecondary, 13.sp)
         )
         Spacer(Modifier.height(24.dp))
@@ -743,7 +745,7 @@ private fun RequestsEmptyState(onAddClick: () -> Unit) {
             colors = ButtonDefaults.buttonColors(containerColor = HomeTealAccent),
             shape = RoundedCornerShape(14.dp)
         ) {
-            Text("Add request", style = boldTextStyle(HomeDarkBackground, 14.sp))
+            Text(stringResource(R.string.requests_add), style = boldTextStyle(HomeDarkBackground, 14.sp))
         }
     }
 }
@@ -871,26 +873,26 @@ private fun AddRequestBottomSheet(
                 .navigationBarsPadding()
         ) {
             Text(
-                "Add Request",
+                stringResource(R.string.requests_add_title),
                 style = boldTextStyle(HomeTextPrimary, 20.sp),
                 modifier = Modifier.padding(vertical = 8.dp)
             )
             Text(
-                "Search club on Transfermarkt, then select position",
+                stringResource(R.string.requests_add_subtitle),
                 style = regularTextStyle(HomeTextSecondary, 12.sp),
                 modifier = Modifier.padding(bottom = 8.dp)
             )
             HorizontalDivider(color = HomeDarkCardBorder, thickness = 1.dp)
             Spacer(Modifier.height(16.dp))
 
-            Text("CLUB", style = regularTextStyle(HomeTextSecondary, 11.sp), modifier = Modifier.padding(bottom = 10.dp))
+            Text(stringResource(R.string.requests_label_club), style = regularTextStyle(HomeTextSecondary, 11.sp), modifier = Modifier.padding(bottom = 10.dp))
             OutlinedTextField(
                 value = clubSearchQuery,
                 onValueChange = {
                     clubSearchQuery = it
                     if (selectedClub != null && it != selectedClub?.clubName) selectedClub = null
                 },
-                placeholder = { Text("Search club...", style = regularTextStyle(HomeTextSecondary, 14.sp)) },
+                placeholder = { Text(stringResource(R.string.requests_search_club), style = regularTextStyle(HomeTextSecondary, 14.sp)) },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
                 colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(
@@ -1044,7 +1046,7 @@ private fun AddRequestBottomSheet(
                     OutlinedTextField(
                         value = minAge,
                         onValueChange = { minAge = it.filter { c -> c.isDigit() }.take(2) },
-                        placeholder = { Text("Min", style = regularTextStyle(HomeTextSecondary, 14.sp)) },
+                        placeholder = { Text(stringResource(R.string.requests_min), style = regularTextStyle(HomeTextSecondary, 14.sp)) },
                         modifier = Modifier.weight(1f),
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
@@ -1058,7 +1060,7 @@ private fun AddRequestBottomSheet(
                     OutlinedTextField(
                         value = maxAge,
                         onValueChange = { maxAge = it.filter { c -> c.isDigit() }.take(2) },
-                        placeholder = { Text("Max", style = regularTextStyle(HomeTextSecondary, 14.sp)) },
+                        placeholder = { Text(stringResource(R.string.requests_max), style = regularTextStyle(HomeTextSecondary, 14.sp)) },
                         modifier = Modifier.weight(1f),
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
@@ -1126,7 +1128,7 @@ private fun AddRequestBottomSheet(
             OutlinedTextField(
                 value = notes,
                 onValueChange = { notes = it },
-                placeholder = { Text("Additional notes...", style = regularTextStyle(HomeTextSecondary, 14.sp)) },
+                placeholder = { Text(stringResource(R.string.requests_notes_placeholder), style = regularTextStyle(HomeTextSecondary, 14.sp)) },
                 modifier = Modifier.fillMaxWidth(),
                 minLines = 2,
                 colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(

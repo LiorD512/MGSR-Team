@@ -40,6 +40,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.platform.rememberNestedScrollInteropConnection
@@ -49,6 +50,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
 import coil.compose.AsyncImage
+import com.liordahan.mgsrteam.R
 import com.liordahan.mgsrteam.features.players.models.Position
 import com.liordahan.mgsrteam.features.players.ui.EmptyState
 import com.liordahan.mgsrteam.features.players.ui.FilterStripUi
@@ -203,7 +205,7 @@ fun ReturneePlayersBottomSheet(
                     modifier = Modifier.fillMaxSize()
                 ) {
                     EmptyState(
-                        text = "No players found in this league",
+                        text = stringResource(R.string.returnee_no_players_league),
                         showResetFiltersButton = false,
                         onResetFiltersClicked = {}
                     )

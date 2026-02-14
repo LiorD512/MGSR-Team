@@ -64,6 +64,7 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
@@ -428,7 +429,7 @@ fun AddPlayerContactFormContent(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
-            text = "Add Player Contact",
+            text = stringResource(R.string.add_player_contact_title),
             style = boldTextStyle(HomeTextPrimary, 20.sp)
         )
         val subtitle = buildString {
@@ -450,7 +451,7 @@ fun AddPlayerContactFormContent(
         )
 
         ContactPickerRow(
-            label = "Player Number",
+            label = stringResource(R.string.add_player_label_player_number),
             value = playerNumber,
             onClick = {
                 launchPlayerContactPicker(
@@ -464,7 +465,7 @@ fun AddPlayerContactFormContent(
         Spacer(modifier = Modifier.height(12.dp))
 
         ContactPickerRow(
-            label = "Agent Number",
+            label = stringResource(R.string.add_player_label_agent_number),
             value = agentNumber,
             onClick = {
                 launchPlayerContactPicker(
@@ -478,7 +479,7 @@ fun AddPlayerContactFormContent(
         Spacer(modifier = Modifier.height(24.dp))
 
         PrimaryButtonNewDesign(
-            buttonText = "Save Player",
+            buttonText = stringResource(R.string.add_player_save),
             isEnabled = true,
             showProgress = false,
             onButtonClicked = { viewModel.onSavePlayerClicked() },
@@ -500,6 +501,7 @@ fun AddToShortlistBottomSheetContent(
     val selectedPlayer by viewModel.selectedPlayerFlow.collectAsStateWithLifecycle(initialValue = null)
     val scope = rememberCoroutineScope()
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    val alreadyInShortlistMsg = stringResource(R.string.add_player_already_in_shortlist)
 
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
@@ -524,7 +526,7 @@ fun AddToShortlistBottomSheetContent(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                text = "Add to shortlist",
+                text = stringResource(R.string.add_player_to_shortlist),
                 style = boldTextStyle(HomeTextPrimary, 20.sp)
             )
             selectedPlayer?.let { player ->
@@ -555,7 +557,7 @@ fun AddToShortlistBottomSheetContent(
                 modifier = Modifier.padding(vertical = 16.dp)
             )
             PrimaryButtonNewDesign(
-                buttonText = "Add to shortlist",
+                buttonText = stringResource(R.string.add_player_to_shortlist),
                 isEnabled = selectedPlayer != null,
                 showProgress = false,
                 onButtonClicked = {
@@ -579,7 +581,7 @@ fun AddToShortlistBottomSheetContent(
                                 viewModel.resetAfterAdd()
                                 onAdded()
                             } else {
-                                errorMessage = "Player is already in your shortlist"
+                                errorMessage = alreadyInShortlistMsg
                             }
                         }
                     }
@@ -654,7 +656,7 @@ fun ContactPickerRow(
                     style = boldTextStyle(HomeTextPrimary, 14.sp)
                 )
                 Text(
-                    text = value.takeIf { !it.isNullOrEmpty() } ?: "Tap to select",
+                    text = value.takeIf { !it.isNullOrEmpty() } ?: stringResource(R.string.add_player_tap_to_select),
                     style = regularTextStyle(
                         if (value.isNullOrEmpty()) HomeTextSecondary else HomeTextPrimary,
                         14.sp
@@ -749,11 +751,11 @@ fun AddPlayerHeader(
             Spacer(modifier = Modifier.width(8.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "Add Player",
+                    text = stringResource(R.string.add_player_title),
                     style = boldTextStyle(HomeTextPrimary, 26.sp)
                 )
                 Text(
-                    text = if (forShortlist) "Search Transfermarkt to add to shortlist" else "Search Transfermarkt to add to roster",
+                    text = if (forShortlist) stringResource(R.string.add_player_search_shortlist) else stringResource(R.string.add_player_search_roster),
                     style = regularTextStyle(HomeTextSecondary, 12.sp),
                     modifier = Modifier.padding(top = 4.dp)
                 )
@@ -790,12 +792,12 @@ private fun AddPlayerEmptyState(modifier: Modifier = Modifier) {
         )
         Spacer(modifier = Modifier.height(16.dp))
         Text(
-            text = "Search for a player to add",
+            text = stringResource(R.string.add_player_search_hint_title),
             style = boldTextStyle(HomeTextPrimary, 16.sp)
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            text = "Type a name to find players on Transfermarkt",
+            text = stringResource(R.string.add_player_search_desc),
             style = regularTextStyle(HomeTextSecondary, 13.sp)
         )
     }

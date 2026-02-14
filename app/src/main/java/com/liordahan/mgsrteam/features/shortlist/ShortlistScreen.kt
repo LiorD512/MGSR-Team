@@ -62,6 +62,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -69,6 +70,7 @@ import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
+import com.liordahan.mgsrteam.R
 import com.liordahan.mgsrteam.features.add.AddPlayerContactFormContent
 import com.liordahan.mgsrteam.features.add.IAddPlayerViewModel
 import com.liordahan.mgsrteam.features.add.SnakeBarMessage
@@ -114,18 +116,19 @@ private fun formatShortlistProfileDisplay(entry: ShortlistEntry): String {
         .let { if (it.length == entry.tmProfileUrl.length) it else "$it…" }
 }
 
+@Composable
 private fun formatRelativeDate(addedAt: Long): String {
     val now = System.currentTimeMillis()
     val diff = now - addedAt
-    val days = diff / (24 * 60 * 60 * 1000)
+    val days = (diff / (24 * 60 * 60 * 1000)).toInt()
     val weeks = days / 7
     return when {
-        days < 1 -> "Added today"
-        days == 1L -> "Added yesterday"
-        days < 7 -> "Added $days days ago"
-        weeks == 1L -> "Added 1 week ago"
-        weeks < 4 -> "Added $weeks weeks ago"
-        else -> "Added ${days / 30} months ago"
+        days < 1 -> stringResource(R.string.shortlist_added_today)
+        days == 1 -> stringResource(R.string.shortlist_added_yesterday)
+        days < 7 -> stringResource(R.string.shortlist_added_days_ago, days)
+        weeks == 1 -> stringResource(R.string.shortlist_added_week_ago)
+        weeks < 4 -> stringResource(R.string.shortlist_added_weeks_ago, weeks)
+        else -> stringResource(R.string.shortlist_added_months_ago, days / 30)
     }
 }
 
@@ -289,7 +292,7 @@ fun ShortlistScreen(
                     }
                     else -> {
                         Text(
-                            text = "Could not load player. They may already be in your roster.",
+                            text = stringResource(R.string.shortlist_could_not_load),
                             style = regularTextStyle(HomeTextSecondary, 14.sp),
                             modifier = Modifier.padding(24.dp)
                         )
@@ -336,11 +339,11 @@ private fun ShortlistHeader(
         Spacer(modifier = Modifier.width(8.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = "Shortlist",
+                text = stringResource(R.string.shortlist_title),
                 style = boldTextStyle(HomeTextPrimary, 26.sp)
             )
             Text(
-                text = "Saved profiles from Releases & Returnees — add to agency when ready",
+                text = stringResource(R.string.shortlist_subtitle),
                 style = regularTextStyle(HomeTextSecondary, 12.sp),
                 modifier = Modifier.padding(top = 4.dp)
             )
@@ -351,7 +354,7 @@ private fun ShortlistHeader(
         ) {
             Icon(
                 imageVector = Icons.Rounded.Add,
-                contentDescription = "Add player",
+                contentDescription = stringResource(R.string.shortlist_add_player),
                 tint = HomeTealAccent
             )
         }
@@ -378,14 +381,14 @@ private fun ShortlistStatsStrip(
     ) {
         ShortlistStatItem(
             value = total.toString(),
-            label = "Total",
+            label = stringResource(R.string.players_stat_total),
             accentColor = HomeTealAccent,
             modifier = Modifier.weight(1f)
         )
         ShortlistStatsStripDivider()
         ShortlistStatItem(
             value = thisWeek.toString(),
-            label = "This Week",
+            label = stringResource(R.string.shortlist_stat_this_week),
             accentColor = HomeOrangeAccent,
             modifier = Modifier.weight(1f)
         )
@@ -535,7 +538,7 @@ private fun ShortlistCard(
                                     .padding(horizontal = 8.dp, vertical = 2.dp)
                             ) {
                                 Text(
-                                    text = "$age yrs",
+                                    text = "$age${stringResource(R.string.shortlist_years_suffix)}",
                                     style = regularTextStyle(HomeTextSecondary, 10.sp)
                                 )
                             }
@@ -606,7 +609,7 @@ private fun ShortlistCard(
                         .padding(horizontal = 8.dp, vertical = 3.dp)
                 ) {
                     Text(
-                        text = "Shortlisted",
+                        text = stringResource(R.string.shortlist_badge),
                         style = boldTextStyle(HomeTealAccent, 10.sp)
                     )
                 }
@@ -617,7 +620,7 @@ private fun ShortlistCard(
                     ) {
                         Icon(
                             imageVector = Icons.Default.PersonAdd,
-                            contentDescription = "Add to agency",
+                            contentDescription = stringResource(R.string.shortlist_add_to_agency),
                             tint = HomeTealAccent
                         )
                     }
@@ -627,7 +630,7 @@ private fun ShortlistCard(
                     ) {
                         Icon(
                             imageVector = Icons.Default.Link,
-                            contentDescription = "Open TM",
+                            contentDescription = stringResource(R.string.shortlist_open_tm),
                             tint = HomeTextSecondary
                         )
                     }
@@ -637,7 +640,7 @@ private fun ShortlistCard(
                     ) {
                         Icon(
                             imageVector = Icons.Default.Delete,
-                            contentDescription = "Remove",
+                            contentDescription = stringResource(R.string.shortlist_remove),
                             tint = HomeRedAccent
                         )
                     }
@@ -669,7 +672,7 @@ private fun DeleteShortlistDialog(
                     .padding(16.dp)
             ) {
                 Text(
-                    text = "Remove this player from your shortlist?",
+                    text = stringResource(R.string.shortlist_remove_confirm),
                     style = boldTextStyle(HomeTextPrimary, 16.sp),
                     textAlign = TextAlign.Center
                 )
@@ -693,7 +696,7 @@ private fun DeleteShortlistDialog(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = "Cancel",
+                            text = stringResource(R.string.cancel),
                             style = boldTextStyle(HomeTextPrimary, 12.sp),
                             modifier = Modifier.clickWithNoRipple { onDismissRequest() }
                         )
@@ -710,7 +713,7 @@ private fun DeleteShortlistDialog(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = "Remove",
+                            text = stringResource(R.string.shortlist_remove),
                             style = boldTextStyle(Color.White, 12.sp),
                             modifier = Modifier.clickWithNoRipple { onRemoveClicked() }
                         )
@@ -745,13 +748,13 @@ private fun ShortlistEmptyState(
         )
         Spacer(Modifier.height(20.dp))
         Text(
-            text = "No players in shortlist",
+            text = stringResource(R.string.shortlist_no_players),
             style = boldTextStyle(HomeTextPrimary, 18.sp),
             textAlign = androidx.compose.ui.text.style.TextAlign.Center
         )
         Spacer(Modifier.height(10.dp))
         Text(
-            text = "Add players from Releases or Returnees to save them for later. When ready, add them to your agency.",
+            text = stringResource(R.string.shortlist_empty_hint),
             style = regularTextStyle(HomeTextSecondary, 13.sp),
             textAlign = androidx.compose.ui.text.style.TextAlign.Center
         )
@@ -770,7 +773,7 @@ private fun ShortlistEmptyState(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "Browse Releases",
+                    text = stringResource(R.string.shortlist_browse_releases),
                     style = boldTextStyle(Color.White, 14.sp)
                 )
             }
@@ -784,7 +787,7 @@ private fun ShortlistEmptyState(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "Browse Returnees",
+                    text = stringResource(R.string.shortlist_browse_returnees),
                     style = boldTextStyle(HomeTextPrimary, 14.sp)
                 )
             }

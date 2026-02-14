@@ -306,7 +306,7 @@ fun ContactsScreen(
             ) {
                 Icon(
                     Icons.Default.Add,
-                    contentDescription = "Add contact",
+                    contentDescription = stringResource(R.string.contacts_add),
                     modifier = Modifier.size(24.dp)
                 )
             }
@@ -357,7 +357,12 @@ fun ContactsScreen(
                                 focusManager.clearFocus()
                             }
                         )
-                        ContactsEmptyState(onAddContact = { showAddEditSheet = true })
+                        ContactsEmptyState(
+                            title = stringResource(R.string.contacts_no_contacts),
+                            subtitle = stringResource(R.string.contacts_empty_hint),
+                            buttonText = stringResource(R.string.contacts_add_contact),
+                            onAddContact = { showAddEditSheet = true }
+                        )
                     }
 
                     filteredContacts.isEmpty() -> {
@@ -377,9 +382,9 @@ fun ContactsScreen(
                             }
                         )
                         ContactsEmptyState(
-                            title = "No contacts found",
-                            subtitle = "Try a different search or add a new contact",
-                            buttonText = "Clear search",
+                            title = stringResource(R.string.contacts_no_contacts_found),
+                            subtitle = stringResource(R.string.contacts_try_different_search),
+                            buttonText = stringResource(R.string.contacts_clear_search),
                             onButtonClick = { searchContactInput = TextFieldValue("") }
                         )
                     }
@@ -563,11 +568,11 @@ private fun ContactsHeader(onAddClick: () -> Unit, onBackClicked: () -> Unit) {
 
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = "Worldwide Contacts",
+                text = stringResource(R.string.contacts_title),
                 style = boldTextStyle(HomeTextPrimary, 26.sp)
             )
             Text(
-                text = "Club contacts for player recruitment",
+                text = stringResource(R.string.contacts_subtitle),
                 style = regularTextStyle(HomeTextSecondary, 12.sp),
                 modifier = Modifier.padding(top = 4.dp)
             )
@@ -578,7 +583,7 @@ private fun ContactsHeader(onAddClick: () -> Unit, onBackClicked: () -> Unit) {
         ) {
             Icon(
                 Icons.Default.Add,
-                contentDescription = "Add contact",
+                contentDescription = stringResource(R.string.contacts_add),
                 tint = HomeTealAccent
             )
         }
@@ -605,14 +610,14 @@ private fun ContactsStatsStrip(
     ) {
         ContactsStatItem(
             value = total.toString(),
-            label = "Total",
+            label = stringResource(R.string.players_stat_total),
             accentColor = HomeTealAccent,
             modifier = Modifier.weight(1f)
         )
         ContactsStatsStripDivider()
         ContactsStatItem(
             value = countries.toString(),
-            label = "Countries",
+            label = stringResource(R.string.contacts_stat_countries),
             accentColor = HomeBlueAccent,
             modifier = Modifier.weight(1f)
         )
@@ -698,7 +703,7 @@ private fun ContactsSearchBar(
             if (query.isNotEmpty()) {
                 Icon(
                     imageVector = Icons.Filled.Close,
-                    contentDescription = "Clear",
+                    contentDescription = stringResource(R.string.contacts_clear),
                     tint = HomeTextSecondary,
                     modifier = Modifier
                         .size(18.dp)
@@ -937,14 +942,14 @@ private fun ContactCard(
                     IconButton(onClick = onEdit, modifier = Modifier.size(36.dp)) {
                         Icon(
                             Icons.Default.Edit,
-                            contentDescription = "Edit",
+                            contentDescription = stringResource(R.string.contacts_edit),
                             tint = HomeTextSecondary
                         )
                     }
                     IconButton(onClick = onDelete, modifier = Modifier.size(36.dp)) {
                         Icon(
                             Icons.Default.Delete,
-                            contentDescription = "Delete",
+                            contentDescription = stringResource(R.string.contacts_delete),
                             tint = HomeRedAccent
                         )
                     }
@@ -1052,7 +1057,7 @@ private fun AddEditContactBottomSheet(
 
             // ── WHO section ──
             Text(
-                text = "WHO",
+                text = stringResource(R.string.contacts_label_who),
                 style = regularTextStyle(HomeTextSecondary, 11.sp),
                 modifier = Modifier.padding(bottom = 10.dp)
             )
@@ -1077,30 +1082,30 @@ private fun AddEditContactBottomSheet(
                     )
                     Spacer(Modifier.width(12.dp))
                     Text(
-                        text = "Import from phone contacts",
+                        text = stringResource(R.string.contacts_import),
                         style = boldTextStyle(HomeTealAccent, 14.sp)
                     )
                 }
             }
             Spacer(Modifier.height(8.dp))
             Text(
-                text = "or enter manually",
+                text = stringResource(R.string.contacts_enter_manually),
                 style = regularTextStyle(HomeTextSecondary, 12.sp),
                 modifier = Modifier.padding(bottom = 8.dp)
             )
             AddContactTextField(
-                label = "Name",
+                label = stringResource(R.string.contacts_label_name),
                 value = pickedName,
                 onValueChange = onNameChange,
-                placeholder = "Contact name",
+                placeholder = stringResource(R.string.contacts_placeholder_name),
                 modifier = Modifier.fillMaxWidth()
             )
             Spacer(Modifier.height(8.dp))
             AddContactTextField(
-                label = "Phone (optional)",
+                label = stringResource(R.string.contacts_label_phone),
                 value = pickedPhone,
                 onValueChange = onPhoneChange,
-                placeholder = "Contact number (including phone code)",
+                placeholder = stringResource(R.string.contacts_placeholder_phone),
                 modifier = Modifier.fillMaxWidth()
             )
 
@@ -1108,7 +1113,7 @@ private fun AddEditContactBottomSheet(
 
             // ── ROLE section ──
             Text(
-                text = "ROLE",
+                text = stringResource(R.string.contacts_label_role),
                 style = regularTextStyle(HomeTextSecondary, 11.sp),
                 modifier = Modifier.padding(bottom = 10.dp)
             )
@@ -1131,7 +1136,7 @@ private fun AddEditContactBottomSheet(
 
             // ── CLUB section ──
             Text(
-                text = "CLUB",
+                text = stringResource(R.string.contacts_label_club),
                 style = regularTextStyle(HomeTextSecondary, 11.sp),
                 modifier = Modifier.padding(bottom = 10.dp)
             )
@@ -1143,7 +1148,7 @@ private fun AddEditContactBottomSheet(
                 },
                 placeholder = {
                     Text(
-                        "Search club...",
+                        stringResource(R.string.requests_search_club),
                         style = regularTextStyle(HomeTextSecondary, 14.sp)
                     )
                 },

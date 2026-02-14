@@ -77,6 +77,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -528,7 +529,7 @@ fun PlayerInfoScreen(
                         previous?.let {
                             Spacer(Modifier.height(4.dp))
                             Text(
-                                text = "Previously: ${it.value ?: ""} (${SimpleDateFormat("dd.MM.yy", Locale.getDefault()).format(Date(it.date ?: 0))})",
+                                text = stringResource(R.string.player_info_previously, it.value ?: "", SimpleDateFormat("dd.MM.yy", Locale.getDefault()).format(Date(it.date ?: 0))),
                                 style = regularTextStyle(HomeTextSecondary, 12.sp),
                                 modifier = Modifier.padding(start = 28.dp)
                             )
@@ -536,10 +537,10 @@ fun PlayerInfoScreen(
                     }
 
                 }
-            PlayerInfoSectionHeader("Contact Info")
+            PlayerInfoSectionHeader(stringResource(R.string.player_info_contact_header))
             PlayerInfoCard(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
                     PhoneInfoRow(
-                        "Player Phone",
+                        stringResource(R.string.player_info_player_phone),
                         playerToPresent?.getPlayerPhoneNumber(),
                         darkTheme = true,
                         onEditPhoneClicked = {
@@ -558,7 +559,7 @@ fun PlayerInfoScreen(
                         modifier = Modifier.padding(vertical = 8.dp)
                     )
                     PhoneInfoRow(
-                        "Agent Phone",
+                        stringResource(R.string.player_info_agent_phone),
                         playerToPresent?.getAgentPhoneNumber(),
                         darkTheme = true,
                         onEditPhoneClicked = {
@@ -576,14 +577,14 @@ fun PlayerInfoScreen(
                         thickness = 0.5.dp,
                         modifier = Modifier.padding(vertical = 8.dp)
                     )
-                    TransfermarketRow(context, "TM Profile", playerToPresent?.tmProfile, darkTheme = true)
+                    TransfermarketRow(context, stringResource(R.string.player_info_tm_profile), playerToPresent?.tmProfile, darkTheme = true)
                 }
 
             var documentsList by remember { mutableStateOf<List<PlayerDocument>>(emptyList()) }
             LaunchedEffect(Unit) {
                 viewModel.documentsFlow.collect { documentsList = it }
             }
-            PlayerInfoSectionHeader("Documents")
+            PlayerInfoSectionHeader(stringResource(R.string.player_info_documents))
             PlayerInfoCard(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
                     if (isUploadingDocument) {
                         Row(
@@ -599,7 +600,7 @@ fun PlayerInfoScreen(
                             )
                             Spacer(Modifier.width(12.dp))
                             Text(
-                                text = "Uploading document...",
+                                text = stringResource(R.string.player_info_uploading),
                                 style = regularTextStyle(HomeTextSecondary, 14.sp),
                                 modifier = Modifier.weight(1f)
                             )
@@ -607,7 +608,7 @@ fun PlayerInfoScreen(
                     }
                     if (documentsList.isEmpty() && !isUploadingDocument) {
                         Text(
-                            text = "No documents yet",
+                            text = stringResource(R.string.player_info_no_documents),
                             style = regularTextStyle(HomeTextSecondary, 14.sp),
                         )
                     } else {
@@ -649,7 +650,7 @@ fun PlayerInfoScreen(
                     }
                     Spacer(Modifier.height(8.dp))
                     Text(
-                        text = "Add document",
+                        text = stringResource(R.string.player_info_add_document),
                         style = boldTextStyle(HomeTealAccent, 14.sp),
                         modifier = Modifier.clickWithNoRipple {
                             documentPickerLauncher.launch("*/*")
@@ -657,14 +658,14 @@ fun PlayerInfoScreen(
                     )
                 }
 
-            PlayerInfoSectionHeader("Notes")
+            PlayerInfoSectionHeader(stringResource(R.string.player_info_notes))
             PlayerInfoCard(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "Notes",
+                            text = stringResource(R.string.player_info_notes),
                             style = boldTextStyle(HomeTextPrimary, 16.sp),
                             modifier = Modifier.weight(1f)
                         )
@@ -690,7 +691,7 @@ fun PlayerInfoScreen(
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                text = "Add note",
+                                text = stringResource(R.string.player_info_add_note),
                                 style = boldTextStyle(HomeDarkBackground, 12.sp),
                             )
                         }
@@ -724,7 +725,7 @@ fun PlayerInfoScreen(
                                 interactionSource = remember { MutableInteractionSource() },
                                 placeholder = {
                                     Text(
-                                        "Add a new note...",
+                                        stringResource(R.string.player_info_note_placeholder),
                                         style = regularTextStyle(HomeTextSecondary.copy(alpha = 0.5f), 14.sp),
                                         maxLines = 1
                                     )
@@ -805,7 +806,7 @@ private fun PlayerInfoHeroCard(
             )
             Spacer(Modifier.height(2.dp))
             Text(
-                text = "Added by — ${player.agentInChargeName ?: "—"}",
+                text = stringResource(R.string.player_info_added_by, player.agentInChargeName ?: "—"),
                 style = regularTextStyle(HomeTextSecondary.copy(alpha = 0.8f), 11.sp)
             )
             player.lastRefreshedAt?.takeIf { it > 0 }?.let { ts ->
@@ -871,7 +872,7 @@ private fun PlayerInfoHeroCard(
                         .padding(horizontal = 10.dp, vertical = 4.dp)
                 ) {
                     Text(
-                        text = "Contract $text",
+                        text = stringResource(R.string.player_info_contract, text),
                         style = boldTextStyle(
                             if (isExpired) HomeRedAccent else HomeOrangeAccent,
                             11.sp
@@ -901,7 +902,7 @@ private fun PlayerInfoHeroCard(
                     )
                     Spacer(Modifier.width(8.dp))
                     Text(
-                        text = "Mandate",
+                        text = stringResource(R.string.player_info_mandate),
                         style = boldTextStyle(
                             if (isMandateOn) HomeBlueAccent else HomeTextSecondary,
                             14.sp
@@ -1027,7 +1028,7 @@ private fun PlayerInfoQuickActionWhatsApp(
         Spacer(Modifier.width(6.dp))
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
-                text = "WhatsApp",
+                text = stringResource(R.string.player_info_whatsapp),
                 style = boldTextStyle(HomeTextSecondary, 11.sp)
             )
             Text(
@@ -1448,11 +1449,11 @@ fun PlayerInfoHeader(onBackClicked: () -> Unit) {
             Spacer(modifier = Modifier.width(8.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "Player Info",
+                    text = stringResource(R.string.player_info_title),
                     style = boldTextStyle(HomeTextPrimary, 26.sp)
                 )
                 Text(
-                    text = "View and manage player details",
+                    text = stringResource(R.string.player_info_subtitle),
                     style = regularTextStyle(HomeTextSecondary, 12.sp),
                     modifier = Modifier.padding(top = 4.dp)
                 )
@@ -1490,13 +1491,13 @@ private fun PlayerInfoBottomBar(
             ) {
                 Icon(
                     imageVector = Icons.Default.Refresh,
-                    contentDescription = "Refresh from Transfermarkt",
+                    contentDescription = stringResource(R.string.player_info_refresh_cd),
                     modifier = Modifier.size(24.dp),
                     tint = HomeTealAccent
                 )
                 Spacer(Modifier.width(8.dp))
                 Text(
-                    text = "Refresh",
+                    text = stringResource(R.string.player_info_refresh),
                     style = boldTextStyle(HomeTextSecondary, 12.sp)
                 )
             }
@@ -1516,7 +1517,7 @@ private fun PlayerInfoBottomBar(
                     )
                     Spacer(Modifier.width(8.dp))
                     Text(
-                        text = "Delete",
+                        text = stringResource(R.string.player_info_delete),
                         style = boldTextStyle(HomeTextSecondary, 12.sp)
                     )
                 }
@@ -1536,7 +1537,7 @@ private fun PlayerInfoBottomBar(
                 )
                 Spacer(Modifier.width(8.dp))
                 Text(
-                    text = "Share",
+                    text = stringResource(R.string.player_info_share),
                     style = boldTextStyle(HomeTextSecondary, 12.sp)
                 )
             }
@@ -1561,7 +1562,7 @@ fun DeletePlayerDialog(onDismissRequest: () -> Unit, onDeletePlayerClicked: () -
                     .padding(16.dp)
             ) {
                 Text(
-                    text = "Are you sure you want to delete this player?",
+                    text = stringResource(R.string.player_info_delete_player_confirm),
                     style = boldTextStyle(HomeTextPrimary, 16.sp),
                     textAlign = TextAlign.Center
                 )
@@ -1585,7 +1586,7 @@ fun DeletePlayerDialog(onDismissRequest: () -> Unit, onDeletePlayerClicked: () -
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = "Cancel",
+                            text = stringResource(R.string.cancel),
                             style = boldTextStyle(HomeTextPrimary, 12.sp),
                             modifier = Modifier.clickWithNoRipple { onDismissRequest() }
                         )
@@ -1602,7 +1603,7 @@ fun DeletePlayerDialog(onDismissRequest: () -> Unit, onDeletePlayerClicked: () -
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = "Delete",
+                            text = stringResource(R.string.player_info_delete),
                             style = boldTextStyle(Color.White, 12.sp),
                             modifier = Modifier.clickWithNoRipple { onDeletePlayerClicked() }
                         )
@@ -1631,7 +1632,7 @@ private fun DeleteNoteDialog(
                     .padding(16.dp)
             ) {
                 Text(
-                    text = "Are you sure you want to delete this note?",
+                    text = stringResource(R.string.player_info_delete_note_confirm),
                     style = boldTextStyle(HomeTextPrimary, 16.sp),
                     textAlign = TextAlign.Center
                 )
@@ -1655,7 +1656,7 @@ private fun DeleteNoteDialog(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = "Cancel",
+                            text = stringResource(R.string.cancel),
                             style = boldTextStyle(HomeTextPrimary, 12.sp),
                             modifier = Modifier.clickWithNoRipple { onDismissRequest() }
                         )
@@ -1672,7 +1673,7 @@ private fun DeleteNoteDialog(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = "Delete",
+                            text = stringResource(R.string.player_info_delete),
                             style = boldTextStyle(Color.White, 12.sp),
                             modifier = Modifier.clickWithNoRipple { onDeleteClicked() }
                         )
@@ -1702,7 +1703,7 @@ private fun DeleteDocumentDialog(
                     .padding(16.dp)
             ) {
                 Text(
-                    text = "Are you sure you want to delete \"$documentName\"?",
+                    text = stringResource(R.string.player_info_delete_doc_confirm, documentName),
                     style = boldTextStyle(HomeTextPrimary, 16.sp),
                     textAlign = TextAlign.Center
                 )
@@ -1726,7 +1727,7 @@ private fun DeleteDocumentDialog(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = "Cancel",
+                            text = stringResource(R.string.cancel),
                             style = boldTextStyle(HomeTextPrimary, 12.sp),
                             modifier = Modifier.clickWithNoRipple { onDismissRequest() }
                         )
@@ -1743,7 +1744,7 @@ private fun DeleteDocumentDialog(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = "Delete",
+                            text = stringResource(R.string.player_info_delete),
                             style = boldTextStyle(Color.White, 12.sp),
                             modifier = Modifier.clickWithNoRipple { onDeleteClicked() }
                         )

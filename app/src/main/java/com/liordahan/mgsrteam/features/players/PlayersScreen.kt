@@ -88,6 +88,7 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -100,6 +101,7 @@ import com.liordahan.mgsrteam.features.players.models.Player
 import com.liordahan.mgsrteam.features.players.models.getAgentPhoneNumber
 import com.liordahan.mgsrteam.features.players.models.getPlayerPhoneNumber
 import com.liordahan.mgsrteam.features.players.sort.SortOption
+import com.liordahan.mgsrteam.R
 import com.liordahan.mgsrteam.features.players.ui.RosterEmptyState
 import com.liordahan.mgsrteam.navigation.Screens
 import com.liordahan.mgsrteam.ui.theme.*
@@ -261,7 +263,7 @@ fun PlayersScreen(
         ) {
             Icon(
                 imageVector = Icons.Filled.PersonAdd,
-                contentDescription = "Add Player",
+                contentDescription = stringResource(R.string.players_add_player),
                 modifier = Modifier.size(24.dp)
             )
         }
@@ -291,7 +293,7 @@ private fun PlayersHeader(onBackClicked: () -> Unit) {
         )
         Spacer(modifier = Modifier.width(8.dp))
         Text(
-            text = "My Roster",
+            text = stringResource(R.string.players_roster_title),
             style = boldTextStyle(HomeTextPrimary, 26.sp)
         )
     }
@@ -314,28 +316,28 @@ private fun StatsStrip(total: Int, mandate: Int, expiring: Int, free: Int) {
     ) {
         StatsStripItem(
             value = total.toString(),
-            label = "Total",
+            label = stringResource(R.string.players_stat_total),
             accentColor = HomeTealAccent,
             modifier = Modifier.weight(1f)
         )
         StatsStripDivider()
         StatsStripItem(
             value = mandate.toString(),
-            label = "Mandate",
+            label = stringResource(R.string.stat_mandate),
             accentColor = HomeBlueAccent,
             modifier = Modifier.weight(1f)
         )
         StatsStripDivider()
         StatsStripItem(
             value = expiring.toString(),
-            label = "Expiring",
+            label = stringResource(R.string.agent_stat_expiring),
             accentColor = HomeOrangeAccent,
             modifier = Modifier.weight(1f)
         )
         StatsStripDivider()
         StatsStripItem(
             value = free.toString(),
-            label = "Free",
+            label = stringResource(R.string.stat_free),
             accentColor = HomeRedAccent,
             modifier = Modifier.weight(1f)
         )
@@ -405,7 +407,7 @@ private fun PlayersSearchBar(
             .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(14.dp)),
         placeholder = {
             Text(
-                text = "Search players or notes...",
+                text = stringResource(R.string.players_screen_hint),
                 style = regularTextStyle(HomeTextSecondary.copy(alpha = 0.5f), 13.sp)
             )
         },
@@ -421,7 +423,7 @@ private fun PlayersSearchBar(
             if (query.isNotEmpty()) {
                 Icon(
                     imageVector = Icons.Filled.Close,
-                    contentDescription = "Clear",
+                    contentDescription = stringResource(R.string.players_clear),
                     tint = HomeTextSecondary,
                     modifier = Modifier
                         .size(18.dp)
@@ -498,7 +500,7 @@ private fun PositionFilterChipsWithSortMenu(
                 val borderColor = if (isSelected) HomeTealAccent else HomeDarkCardBorder
 
                 Text(
-                    text = position,
+                    text = if (position == "All") stringResource(R.string.players_filter_all) else position,
                     style = boldTextStyle(textColor, 11.sp),
                     modifier = Modifier
                         .clip(RoundedCornerShape(20.dp))
@@ -515,7 +517,7 @@ private fun PositionFilterChipsWithSortMenu(
         Box {
             Icon(
                 imageVector = Icons.Filled.MoreVert,
-                contentDescription = "Sort options",
+                contentDescription = stringResource(R.string.players_sort_options),
                 tint = HomeTextSecondary,
                 modifier = Modifier
                     .clip(RoundedCornerShape(20.dp))
@@ -533,7 +535,7 @@ private fun PositionFilterChipsWithSortMenu(
                 DropdownMenuItem(
                     text = {
                         Text(
-                            text = "Reset",
+                            text = stringResource(R.string.players_reset),
                             style = regularTextStyle(HomeTextPrimary, 13.sp)
                         )
                     },
@@ -545,7 +547,7 @@ private fun PositionFilterChipsWithSortMenu(
                 DropdownMenuItem(
                     text = {
                         Text(
-                            text = "Newest First",
+                            text = stringResource(R.string.players_sort_newest),
                             style = regularTextStyle(
                                 if (sortOption == SortOption.NEWEST) HomeTealAccent else HomeTextPrimary,
                                 13.sp
@@ -560,7 +562,7 @@ private fun PositionFilterChipsWithSortMenu(
                 DropdownMenuItem(
                     text = {
                         Text(
-                            text = "By Market Value",
+                            text = stringResource(R.string.players_sort_market_value),
                             style = regularTextStyle(
                                 if (sortOption == SortOption.MARKET_VALUE) HomeTealAccent else HomeTextPrimary,
                                 13.sp
@@ -575,7 +577,7 @@ private fun PositionFilterChipsWithSortMenu(
                 DropdownMenuItem(
                     text = {
                         Text(
-                            text = "By Name",
+                            text = stringResource(R.string.players_sort_name),
                             style = regularTextStyle(
                                 if (sortOption == SortOption.NAME) HomeTealAccent else HomeTextPrimary,
                                 13.sp
@@ -590,7 +592,7 @@ private fun PositionFilterChipsWithSortMenu(
                 DropdownMenuItem(
                     text = {
                         Text(
-                            text = "By Age",
+                            text = stringResource(R.string.players_sort_age),
                             style = regularTextStyle(
                                 if (sortOption == SortOption.AGE) HomeTealAccent else HomeTextPrimary,
                                 13.sp
@@ -629,28 +631,28 @@ private fun QuickFilterChips(
     ) {
         item(key = "free_agents") {
             QuickFilterChip(
-                label = "Free Agents",
+                label = stringResource(R.string.players_filter_free_agents),
                 isSelected = freeAgentsSelected,
                 onClick = onFreeAgentsClick
             )
         }
         item(key = "contract_expiring") {
             QuickFilterChip(
-                label = "Contract Expiring",
+                label = stringResource(R.string.players_filter_contract_expiring),
                 isSelected = contractExpiringSelected,
                 onClick = onContractExpiringClick
             )
         }
         item(key = "with_mandate") {
             QuickFilterChip(
-                label = "With Mandate",
+                label = stringResource(R.string.players_filter_with_mandate),
                 isSelected = withMandateSelected,
                 onClick = onWithMandateClick
             )
         }
         item(key = "my_players") {
             QuickFilterChip(
-                label = "My Players Only",
+                label = stringResource(R.string.players_filter_my_players_only),
                 isSelected = myPlayersOnlySelected,
                 onClick = onMyPlayersOnlyClick
             )
@@ -729,11 +731,11 @@ private fun ExpiringAlertBanner(
                 Spacer(Modifier.width(10.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "$count Contracts Expiring Soon",
+                        text = stringResource(R.string.players_expiring_soon_count, count),
                         style = boldTextStyle(HomeOrangeAccent, 12.sp)
                     )
                     Text(
-                        text = "Action needed before contract ends",
+                        text = stringResource(R.string.players_expiring_action_needed),
                         style = regularTextStyle(HomeTextSecondary, 10.sp)
                     )
                 }
@@ -979,7 +981,7 @@ private fun PlayerCardVariantA(
                             Spacer(Modifier.width(5.dp))
                         }
                         Text(
-                            text = if (isFreeAgent) "Free Agent" else (player.currentClub?.clubName
+                            text = if (isFreeAgent) stringResource(R.string.players_free_agent) else (player.currentClub?.clubName
                                 ?: ""),
                             style = if (isFreeAgent) boldTextStyle(HomeRedAccent, 11.sp)
                             else regularTextStyle(HomeTextSecondary, 11.sp),
@@ -994,7 +996,7 @@ private fun PlayerCardVariantA(
                         modifier = Modifier.padding(top = 5.dp)
                     ) {
                         if (!player.age.isNullOrBlank()) {
-                            PlayerTag(text = "${player.age} yrs")
+                            PlayerTag(text = "${player.age}${stringResource(R.string.players_years_suffix)}")
                         }
                         player.positions?.filterNotNull()?.take(2)?.forEach { pos ->
                             PlayerTag(
@@ -1069,7 +1071,7 @@ private fun PlayerCardVariantA(
                     if (hasMandate) {
                         PlayerBadge(
                             icon = Icons.Filled.Handshake,
-                            text = "Mandate",
+                            text = stringResource(R.string.stat_mandate),
                             backgroundColor = HomeBlueAccent.copy(alpha = 0.15f),
                             contentColor = HomeBlueAccent
                         )
@@ -1078,7 +1080,7 @@ private fun PlayerCardVariantA(
                     if (isExpiring) {
                         PlayerBadge(
                             icon = Icons.Filled.Schedule,
-                            text = "Expiring",
+                            text = stringResource(R.string.agent_stat_expiring),
                             backgroundColor = HomeOrangeAccent.copy(alpha = 0.15f),
                             contentColor = HomeOrangeAccent
                         )
@@ -1087,7 +1089,7 @@ private fun PlayerCardVariantA(
                     if (isFreeAgent) {
                         PlayerBadge(
                             icon = Icons.Filled.PersonOff,
-                            text = "Free Agent",
+                            text = stringResource(R.string.players_free_agent),
                             backgroundColor = HomeRedAccent.copy(alpha = 0.15f),
                             contentColor = HomeRedAccent
                         )

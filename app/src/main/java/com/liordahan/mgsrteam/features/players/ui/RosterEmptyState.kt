@@ -18,6 +18,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.layout.ContentScale
@@ -65,7 +66,7 @@ fun RosterEmptyState(
             Spacer(modifier = Modifier.height(24.dp))
 
             Text(
-                text = "No players found",
+                text = stringResource(R.string.players_no_players_found),
                 style = boldTextStyle(HomeTextPrimary, 20.sp),
                 textAlign = TextAlign.Center
             )
@@ -73,7 +74,7 @@ fun RosterEmptyState(
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
-                text = "Add players to your roster or clear filters to see your full list.",
+                text = stringResource(R.string.players_empty_hint),
                 style = regularTextStyle(HomeTextSecondary, 14.sp),
                 textAlign = TextAlign.Center
             )
@@ -95,7 +96,7 @@ fun RosterEmptyState(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "Add Player",
+                        text = stringResource(R.string.players_add_player),
                         style = boldTextStyle(Color.White, 14.sp)
                     )
                 }
@@ -111,7 +112,7 @@ fun RosterEmptyState(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "Reset Filters",
+                        text = stringResource(R.string.players_reset_filters),
                         style = boldTextStyle(HomeTealAccent, 14.sp)
                     )
                 }
