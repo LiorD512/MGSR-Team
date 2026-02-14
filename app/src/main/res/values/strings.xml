@@ -161,6 +161,12 @@
     <string name="due_tomorrow">Tomorrow</string>
     <string name="due_in_days">In %dd</string>
 
+    <!-- Transfer Windows -->
+    <string name="transfer_windows_title">Open Transfer Windows</string>
+    <string name="transfer_windows_days_left">%d days left</string>
+    <string name="transfer_windows_open">Open</string>
+    <string name="transfer_windows_empty">No open transfer windows at the moment.</string>
+
     <!-- Document Reminders -->
     <string name="document_reminders_title">Document Reminders</string>
     <string name="document_missing">%s missing</string>

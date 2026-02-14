@@ -160,6 +160,12 @@
     <string name="due_tomorrow">מחר</string>
     <string name="due_in_days">בעוד %d ימים</string>
 
+    <!-- Transfer Windows -->
+    <string name="transfer_windows_title">חלונות העברה פתוחים</string>
+    <string name="transfer_windows_days_left">%d ימים נותרו</string>
+    <string name="transfer_windows_open">פתוח</string>
+    <string name="transfer_windows_empty">אין חלונות העברה פתוחים כרגע.</string>
+
     <!-- Document Reminders -->
     <string name="document_reminders_title">תזכורות מסמכים</string>
     <string name="document_missing">%s חסר</string>

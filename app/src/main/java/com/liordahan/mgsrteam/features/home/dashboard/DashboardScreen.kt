@@ -72,6 +72,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
@@ -90,6 +91,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
+import coil.compose.AsyncImage
 import com.liordahan.mgsrteam.R
 import com.liordahan.mgsrteam.features.home.DocumentReminder
 import com.liordahan.mgsrteam.features.home.FeedFilter
@@ -98,6 +100,7 @@ import com.liordahan.mgsrteam.features.home.IHomeScreenViewModel
 import com.liordahan.mgsrteam.features.home.models.AgentSummary
 import com.liordahan.mgsrteam.features.home.models.AgentTask
 import com.liordahan.mgsrteam.features.home.models.FeedEvent
+import com.liordahan.mgsrteam.transfermarket.TransferWindow
 import com.liordahan.mgsrteam.features.login.models.Account
 import com.liordahan.mgsrteam.localization.LocaleManager
 import com.liordahan.mgsrteam.navigation.Screens
@@ -213,6 +216,14 @@ fun DashboardScreen(
                         onDeleteTask = { viewModel.deleteTask(it) }
                     )
                 }
+            }
+
+            // ── Transfer Windows ───────────────────────────────────────────
+            item {
+                TransferWindowsSection(
+                    windows = state.transferWindows,
+                    isLoading = state.transferWindowsLoading
+                )
             }
 
             // ── Document Reminders ───────────────────────────────────────
@@ -885,6 +896,130 @@ private fun MiniStat(value: String, label: String, color: Color) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(text = value, style = boldTextStyle(color, 14.sp))
         Text(text = label, style = regularTextStyle(HomeTextSecondary, 9.sp))
+    }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+//  TRANSFER WINDOWS  (Open worldwide)
+// ═════════════════════════════════════════════════════════════════════════════
+
+@Composable
+private fun TransferWindowsSection(
+    windows: List<TransferWindow>,
+    isLoading: Boolean
+) {
+    Column(modifier = Modifier.padding(top = 20.dp)) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = stringResource(R.string.transfer_windows_title),
+                style = boldTextStyle(HomeTextPrimary, 18.sp),
+                modifier = Modifier.weight(1f)
+            )
+        }
+
+        Spacer(Modifier.height(4.dp))
+
+        Box(
+            modifier = Modifier
+                .padding(horizontal = 20.dp)
+                .width(40.dp)
+                .height(3.dp)
+                .clip(RoundedCornerShape(2.dp))
+                .background(HomeTealAccent)
+        )
+
+        Spacer(Modifier.height(14.dp))
+
+        when {
+            isLoading -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 24.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(28.dp),
+                        color = HomeTealAccent,
+                        strokeWidth = 2.dp
+                    )
+                }
+            }
+            windows.isEmpty() -> {
+                Text(
+                    text = stringResource(R.string.transfer_windows_empty),
+                    style = regularTextStyle(HomeTextSecondary, 13.sp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp, vertical = 16.dp)
+                )
+            }
+            else -> {
+                Column(modifier = Modifier.padding(horizontal = 20.dp)) {
+                    windows.take(25).forEach { window ->
+                        TransferWindowRow(window = window)
+                        Spacer(Modifier.height(8.dp))
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TransferWindowRow(window: TransferWindow) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .background(HomeDarkCard)
+            .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(8.dp))
+            .padding(horizontal = 14.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Flag (circular with elevation) + country name grouped together
+        Row(
+            modifier = Modifier.weight(1f),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            if (window.flagUrl != null) {
+                Box(
+                    modifier = Modifier
+                        .shadow(3.dp, CircleShape)
+                        .size(22.dp)
+                        .clip(CircleShape)
+                ) {
+                    AsyncImage(
+                        model = window.flagUrl,
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                }
+                Spacer(Modifier.width(10.dp))
+            }
+            Text(
+                text = window.countryName,
+                style = boldTextStyle(HomeTextPrimary, 14.sp)
+            )
+        }
+        // Days left on the right
+        window.daysLeft?.let { days ->
+            Text(
+                text = stringResource(R.string.transfer_windows_days_left, days),
+                style = regularTextStyle(HomeTealAccent, 13.sp)
+            )
+        } ?: run {
+            Text(
+                text = stringResource(R.string.transfer_windows_open),
+                style = regularTextStyle(HomeTextSecondary, 12.sp)
+            )
+        }
     }
 }
 

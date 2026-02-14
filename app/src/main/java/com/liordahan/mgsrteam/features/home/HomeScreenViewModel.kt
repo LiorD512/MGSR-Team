@@ -7,6 +7,8 @@ import com.liordahan.mgsrteam.R
 import com.liordahan.mgsrteam.features.home.models.AgentSummary
 import com.liordahan.mgsrteam.features.home.models.AgentTask
 import com.liordahan.mgsrteam.features.home.models.FeedEvent
+import com.liordahan.mgsrteam.transfermarket.TransferWindow
+import com.liordahan.mgsrteam.transfermarket.TransferWindows
 import com.liordahan.mgsrteam.features.login.models.Account
 import com.liordahan.mgsrteam.features.players.models.Player
 import com.liordahan.mgsrteam.features.players.playerinfo.documents.PlayerDocument
@@ -52,6 +54,10 @@ data class HomeDashboardState(
     // document reminders
     val documentReminders: List<DocumentReminder> = emptyList(),
 
+    // transfer windows (open worldwide)
+    val transferWindows: List<TransferWindow> = emptyList(),
+    val transferWindowsLoading: Boolean = false,
+
     // loading
     val isLoading: Boolean = true
 )
@@ -82,7 +88,8 @@ abstract class IHomeScreenViewModel : ViewModel() {
 }
 
 class HomeScreenViewModel(
-    private val firebaseHandler: FirebaseHandler
+    private val firebaseHandler: FirebaseHandler,
+    private val transferWindows: TransferWindows
 ) : IHomeScreenViewModel() {
 
     private val _state = MutableStateFlow(HomeDashboardState())
@@ -99,6 +106,7 @@ class HomeScreenViewModel(
         loadFeedEvents()
         loadDocumentReminders()
         listenToAgentTasks()
+        loadTransferWindows()
     }
 
     // ── Greeting ─────────────────────────────────────────────────────────────
@@ -345,6 +353,30 @@ class HomeScreenViewModel(
                     .delete()
                     .await()
             } catch (_: Exception) { }
+        }
+    }
+
+    // ── Transfer Windows ───────────────────────────────────────────────────────
+
+    private fun loadTransferWindows() {
+        viewModelScope.launch {
+            _state.update { it.copy(transferWindowsLoading = true) }
+            when (val result = transferWindows.fetchOpenTransferWindows()) {
+                is com.liordahan.mgsrteam.transfermarket.TransfermarktResult.Success ->
+                    _state.update {
+                        it.copy(
+                            transferWindows = result.data,
+                            transferWindowsLoading = false
+                        )
+                    }
+                is com.liordahan.mgsrteam.transfermarket.TransfermarktResult.Failed ->
+                    _state.update {
+                        it.copy(
+                            transferWindows = emptyList(),
+                            transferWindowsLoading = false
+                        )
+                    }
+            }
         }
     }
 
