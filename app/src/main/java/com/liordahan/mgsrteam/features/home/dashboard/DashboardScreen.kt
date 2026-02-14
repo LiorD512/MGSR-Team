@@ -78,6 +78,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -265,7 +266,7 @@ private fun LanguageChangeDialog(
                 // Flag icon
                 Image(
                     painter = painterResource(
-                        if (isHebrew) R.drawable.ic_flag_usa else R.drawable.ic_flag_israel
+                        if (isHebrew) R.drawable.use_flag else R.drawable.israel_flag
                     ),
                     contentDescription = null,
                     modifier = Modifier
@@ -351,26 +352,20 @@ private fun GreetingHeader(
                 )
             }
             // ── Language flag button ─────────────────────────────────
-            Box(
+
+            Image(
+                painter = painterResource(
+                    if (isHebrew) R.drawable.use_flag else R.drawable.israel_flag
+                ),
+                contentDescription = stringResource(R.string.language_switch_cd),
                 modifier = Modifier
                     .size(40.dp)
                     .clip(CircleShape)
-                    .background(HomeDarkCard)
-                    .border(1.dp, HomeDarkCardBorder, CircleShape)
                     .clickWithNoRipple { onLanguageClick() },
-                contentAlignment = Alignment.Center
-            ) {
-                Image(
-                    painter = painterResource(
-                        if (isHebrew) R.drawable.ic_flag_usa else R.drawable.ic_flag_israel
-                    ),
-                    contentDescription = stringResource(R.string.language_switch_cd),
-                    modifier = Modifier
-                        .size(28.dp)
-                        .clip(CircleShape)
-                )
-            }
+                contentScale = ContentScale.Fit
+            )
         }
+
         Text(
             text = dateStr,
             style = regularTextStyle(HomeTextSecondary, 13.sp),

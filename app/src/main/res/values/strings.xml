@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">MGSR Team</string>
+    <string name="app_name" translatable="false">MGSR Team</string>
 
     <!-- Navigation -->
     <string name="nav_item_players">Players</string>

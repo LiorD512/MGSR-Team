@@ -85,8 +85,10 @@ fun LoginScreen(
     var loginError by remember { mutableStateOf<String?>(null) }
 
     val context = LocalContext.current
+    android.util.Log.d("LoginScreen", "LoginScreen context locale: ${context.resources.configuration.locales[0]}, language: ${context.resources.configuration.locales[0].language}")
     val currentLang = remember { mutableStateOf(LocaleManager.getSavedLanguage(context)) }
     val isHebrew = currentLang.value == LocaleManager.LANG_HEBREW
+    android.util.Log.d("LoginScreen", "currentLang: ${currentLang.value}, isHebrew: $isHebrew")
 
     val view = LocalView.current
     DisposableEffect(Unit) {
@@ -169,10 +171,12 @@ fun LoginScreen(
                         .padding(20.dp)
                 ) {
                     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        val emailHint = stringResource(R.string.login_button_email_hint)
+                        android.util.Log.d("LoginScreen", "Email hint resolved to: $emailHint")
                         AppTextField(
                             textInput = email,
                             onValueChange = { email = it; loginError = null },
-                            hint = stringResource(R.string.login_button_email_hint),
+                            hint = emailHint,
                             leadingIcon = Icons.Default.Mail,
                             keyboardOptions = KeyboardOptions(
                                 keyboardType = KeyboardType.Email,

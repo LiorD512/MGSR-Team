@@ -17,6 +17,7 @@ import com.liordahan.mgsrteam.localization.LocaleManager
 import com.liordahan.mgsrteam.navigation.NavGraph
 import com.liordahan.mgsrteam.ui.theme.MGSRTeamTheme
 import org.koin.androidx.viewmodel.ext.android.viewModel
+import androidx.core.graphics.toColorInt
 
 class MainActivity : AppCompatActivity() {
 
@@ -28,7 +29,7 @@ class MainActivity : AppCompatActivity() {
      * language and the Activity is recreated, we must apply the new locale here.
      */
     override fun attachBaseContext(newBase: Context) {
-        super.attachBaseContext(LocaleManager.wrapContext(newBase))
+        super.attachBaseContext(LocaleManager.setLocale(newBase))
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -40,7 +41,7 @@ class MainActivity : AppCompatActivity() {
 
         enableEdgeToEdge(
             navigationBarStyle = SystemBarStyle.dark(
-                android.graphics.Color.parseColor("#0F1923")
+                "#0F1923".toColorInt()
             )
         )
         handleDeepLink(intent)

@@ -29,20 +29,11 @@ class MGSRTeamApplication : Application(), KoinComponent {
      * the user's choice, not the system locale.
      */
     override fun attachBaseContext(base: Context) {
-        super.attachBaseContext(LocaleManager.wrapContext(base))
+        super.attachBaseContext(LocaleManager.setLocale(base))
     }
 
     override fun onCreate() {
         super.onCreate()
-
-        // Sync our saved language with AppCompat BEFORE any Activity is created.
-        // This ensures AppCompatActivity.attachBaseContext applies the correct
-        // locale when the first Activity starts. Since no Activity exists yet,
-        // this call just stores the value — no recreation happens.
-        val savedLang = LocaleManager.getSavedLanguage(this)
-        AppCompatDelegate.setApplicationLocales(
-            LocaleListCompat.forLanguageTags(savedLang)
-        )
 
         startKoin {
             androidContext(this@MGSRTeamApplication)
