@@ -729,18 +729,32 @@ fun ReleaseListItem(
 
                 Spacer(Modifier.width(10.dp))
 
-                // Name, position, age in column layout
+                // Name + market value on same line; position, age below
                 Column(
                     modifier = Modifier
                         .weight(1f)
                         .align(Alignment.CenterVertically)
                 ) {
-                    Text(
-                        text = release.playerName ?: "Unknown",
-                        style = boldTextStyle(HomeTextPrimary, 14.sp),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = release.playerName ?: "Unknown",
+                            style = boldTextStyle(HomeTextPrimary, 14.sp),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false)
+                        )
+                        release.marketValue?.takeIf { it.isNotBlank() }?.let { value ->
+                            Text(
+                                text = value,
+                                style = boldTextStyle(HomeTextPrimary, 14.sp),
+                                modifier = Modifier.padding(start = 8.dp)
+                            )
+                        }
+                    }
                     Row(
                         modifier = Modifier.padding(top = 4.dp),
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -803,27 +817,6 @@ fun ReleaseListItem(
                         }
                     }
                 }
-
-                // Value and date (show market value for both releases and returnees when available)
-                Column(
-                    modifier = Modifier.align(Alignment.Top),
-                    horizontalAlignment = Alignment.End
-                ) {
-                    val valueToShow = release.marketValue?.takeIf { it.isNotBlank() }
-                    if (valueToShow != null) {
-                        Text(
-                            text = valueToShow,
-                            style = boldTextStyle(HomeTextPrimary, 14.sp)
-                        )
-                    }
-                    release.transferDate?.let { date ->
-                        Text(
-                            text = date,
-                            style = regularTextStyle(HomeTextSecondary, 10.sp),
-                            modifier = Modifier.padding(top = 2.dp)
-                        )
-                    }
-                }
             }
 
             // Bottom row: Released badge + Actions
@@ -848,8 +841,13 @@ fun ReleaseListItem(
                         )
                         .padding(horizontal = 8.dp, vertical = 3.dp)
                 ) {
+                    val transferDate = release.transferDate
                     Text(
-                        text = if (isFromReturnee) stringResource(R.string.releases_badge_loan_return) else stringResource(R.string.releases_badge_released),
+                        text = when {
+                            isFromReturnee -> stringResource(R.string.releases_badge_loan_return)
+                            !transferDate.isNullOrBlank() -> stringResource(R.string.releases_badge_released_on, transferDate)
+                            else -> stringResource(R.string.releases_badge_released)
+                        },
                         style = boldTextStyle(
                             if (isFromReturnee) HomePurpleAccent else HomeOrangeAccent,
                             10.sp

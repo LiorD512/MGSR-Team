@@ -197,6 +197,7 @@
     <string name="releases_all_count">All %d</string>
     <string name="releases_add_to_agency">Add to agency</string>
     <string name="releases_badge_released">Released</string>
+    <string name="releases_badge_released_on">Released on %1$s</string>
     <string name="releases_badge_loan_return">Loan Return</string>
     <string name="releases_roster_teammates_one">%d roster teammate</string>
     <string name="releases_roster_teammates">%d roster teammates</string>

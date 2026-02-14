@@ -74,14 +74,17 @@ class LatestReleases {
             try {
                 val firstPageUrl = buildUrl(minValue, maxValue, page = 1)
                 val firstDoc = fetchDocument(firstPageUrl)
-                val pageCount = getTotalPages(firstDoc)
+                var pageCount = getTotalPages(firstDoc)
 
                 val allTransfers = mutableListOf<LatestTransferModel>()
 
                 // Parse first page synchronously to validate structure early
                 allTransfers += parseTransferList(firstDoc)
 
-                if (pageCount > 1) {
+                // Fallback: if pagination says 1 page but we got a full page (25 items typical), fetch more
+                if (pageCount == 1 && allTransfers.size >= 20) {
+                    fetchUntilEmpty(minValue, maxValue, allTransfers)
+                } else if (pageCount > 1) {
                     // Fetch remaining pages in parallel for better throughput
                     val otherTransfers = coroutineScope {
                         (2..pageCount).map { page ->
@@ -116,21 +119,64 @@ class LatestReleases {
 
     private fun fetchDocument(url: String): Document {
         return Jsoup.connect(url)
-            .userAgent(TRANSFERMARKT_USER_AGENT)
+            .userAgent(getRandomUserAgent())
             .timeout(TRANSFERMARKT_TIMEOUT_MS)
             .get()
     }
 
     private fun getTotalPages(doc: Document): Int {
-        return doc.select("div.pager li.tm-pagination__list-item")
-            .mapNotNull { it.text().toIntOrNull() }
-            .maxOrNull() ?: 1
+        val paginationSelectors = listOf(
+            "div.pager li.tm-pagination__list-item",
+            "li.tm-pagination__list-item",
+            "ul.tm-pagination li",
+            "div.pager li"
+        )
+        for (selector in paginationSelectors) {
+            val fromPager = doc.select(selector)
+                .mapNotNull { it.text().trim().toIntOrNull() }
+                .maxOrNull()
+            if (fromPager != null && fromPager >= 1) return fromPager
+        }
+        // Fallback: check for page numbers in any links
+        val pageLinks = doc.select("a[href*='page=']")
+        val maxPage = pageLinks.mapNotNull { link ->
+            Regex("""page=(\d+)""").find(link.attr("href"))?.groupValues?.getOrNull(1)?.toIntOrNull()
+        }.maxOrNull()
+        return (maxPage ?: 1).coerceAtLeast(1)
+    }
+
+    /** When pagination is not detected, fetch pages sequentially until we get fewer than 20 items. */
+    private fun fetchUntilEmpty(minValue: Int, maxValue: Int, into: MutableList<LatestTransferModel>) {
+        var page = 2
+        while (true) {
+            val doc = fetchDocument(buildUrl(minValue, maxValue, page))
+            val items = parseTransferList(doc)
+            if (items.isEmpty()) break
+            into += items
+            if (items.size < 20) break
+            page++
+        }
+    }
+
+    /** "Without Club" in various languages - only include players who are free agents */
+    private val WITHOUT_CLUB_VARIANTS = setOf(
+        "without club", "ohne verein", "sans club", "sin club", "senza squadra",
+        "sem clube", "geen club", "bez klubu", "klubsuz", "free agent"
+    )
+
+    private fun isWithoutClub(row: Element): Boolean {
+        val tables = row.select("table.inline-table")
+        if (tables.size < 3) return false
+        val newClubCell = tables[2]
+        val imgAlt = newClubCell.select("img").attr("alt").trim().lowercase()
+        val cellText = newClubCell.text().trim().lowercase()
+        return WITHOUT_CLUB_VARIANTS.any { imgAlt.contains(it) || cellText.contains(it) }
     }
 
     private fun parseTransferList(doc: Document): List<LatestTransferModel> {
         val transferRows = doc.select("table.items")
             .flatMap { it.select("tr.odd, tr.even") }
-            .filter { it.select("table.inline-table")[2].select("img").attr("alt") == "Without Club" }
+            .filter { isWithoutClub(it) }
 
         return transferRows.mapNotNull { element ->
             try {
@@ -161,11 +207,11 @@ class LatestReleases {
                     marketValue
                 )
 
-                // Enrich missing market value / nationality from player profile (same as Returnees)
-                if (model.playerUrl != null &&
-                    (model.marketValue.isNullOrBlank() || model.playerNationality.isNullOrBlank())
-                ) {
-                    model = enrichFromProfile(model)
+                // Always verify via profile: player must still be without club; also enrich missing data
+                if (model.playerUrl != null) {
+                    val enriched = enrichFromProfile(model)
+                    if (enriched == null) return@mapNotNull null // Player has found a club - exclude
+                    model = enriched
                 }
 
                 model
@@ -188,9 +234,43 @@ class LatestReleases {
         return playerNationality to playerNationalityFlag
     }
 
-    private fun enrichFromProfile(model: LatestTransferModel): LatestTransferModel {
+    private fun enrichFromProfile(model: LatestTransferModel): LatestTransferModel? {
         return try {
             val doc = fetchDocument(model.playerUrl!!)
+            // Verify player is still without club (may have joined since list was updated)
+            val clubSelectors = listOf(
+                "span.data-header__club a",
+                "span.data-header__club",
+                "div.data-header a[href*='/startseite/verein/']",
+                "div.info-table__content--bold a[href*='/startseite/verein/']"
+            )
+            var clubName = ""
+            for (sel in clubSelectors) {
+                val elements = doc.select(sel)
+                for (el in elements) {
+                    val text = (el.attr("title").ifBlank { el.text() }.trim()).lowercase()
+                    if (text.isNotBlank() && text.length < 80 && !text.contains("transfermarkt")) {
+                        clubName = text
+                        break
+                    }
+                }
+                if (clubName.isNotBlank()) break
+            }
+            // Fallback: find "Current club" / "Verein" row and get linked club
+            if (clubName.isBlank()) {
+                for (el in doc.select("dt, span.info-table__content--bold, td")) {
+                    val label = el.text().trim().lowercase()
+                    if (label.contains("current club") || label == "verein" || label.contains("aktueller verein")) {
+                        val link = el.nextElementSibling()?.select("a[href*='verein/']")?.firstOrNull()
+                            ?: el.parent()?.select("a[href*='verein/']")?.firstOrNull()
+                        clubName = (link?.attr("title")?.ifBlank { link.text() }?.trim() ?: "").lowercase()
+                        if (clubName.isNotBlank()) break
+                    }
+                }
+            }
+            if (clubName.isNotBlank() && !WITHOUT_CLUB_VARIANTS.any { clubName.contains(it) }) {
+                return null // Player has found a club - exclude from list
+            }
             val marketValue = model.marketValue?.takeIf { it.isNotBlank() }
                 ?: doc.select("div.data-header__box--small").text()
                     .substringBefore("Last")
