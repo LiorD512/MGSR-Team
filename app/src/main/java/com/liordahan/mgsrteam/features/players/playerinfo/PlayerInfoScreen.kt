@@ -87,6 +87,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
@@ -241,6 +242,8 @@ fun PlayerInfoScreen(
     var docToDelete by remember { mutableStateOf<PlayerDocument?>(null) }
     var isUploadingDocument by remember { mutableStateOf(false) }
 
+    val updatingText = stringResource(R.string.player_info_updating)
+
     LaunchedEffect(Unit) {
 
         launch {
@@ -267,7 +270,7 @@ fun PlayerInfoScreen(
 
                         UiResult.Loading -> {
                             showPlayerUpdateUi = true
-                            playerUpdateUiMessage = "Updating..."
+                            playerUpdateUiMessage = updatingText
                         }
 
                         is UiResult.Success<String> -> {
@@ -368,8 +371,8 @@ fun PlayerInfoScreen(
                             player.nationality
                         ).joinToString(", ")
                     )
-                    append("Current Club: ${player.currentClub?.clubName ?: "Unknown"}")
-                } ?: append("Player data not available.")
+                    append(context.getString(R.string.player_info_current_club_share, player.currentClub?.clubName ?: context.getString(R.string.player_info_unknown)))
+                } ?: append(context.getString(R.string.player_info_player_data_not_available))
             }
             sharePlayerOnWhatsapp(context, textToSend.toString())
         }
@@ -401,12 +404,12 @@ fun PlayerInfoScreen(
             }
 
             // Section: General Info
-            PlayerInfoSectionHeader("General Info")
+            PlayerInfoSectionHeader(stringResource(R.string.player_info_general_info))
             PlayerInfoCard(
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
             ) {
                 InfoRow(
-                        "Height",
+                        stringResource(R.string.player_info_height),
                         playerToPresent?.height?.replace(",", "."),
                         darkTheme = true,
                         icon = {
@@ -423,7 +426,7 @@ fun PlayerInfoScreen(
                         modifier = Modifier.padding(vertical = 8.dp)
                     )
                     InfoRow(
-                        "Age",
+                        stringResource(R.string.player_info_age),
                         playerToPresent?.age,
                         darkTheme = true,
                         icon = {
@@ -441,7 +444,7 @@ fun PlayerInfoScreen(
                     )
 
                     InfoRow(
-                        "Positions",
+                        stringResource(R.string.player_info_positions),
                         playerToPresent?.positions?.filterNotNull()?.joinToString(", "),
                         darkTheme = true,
                         icon = {
@@ -459,7 +462,7 @@ fun PlayerInfoScreen(
                         modifier = Modifier.padding(vertical = 8.dp)
                     )
                     NationalityInfoRow(
-                        "Nationality",
+                        stringResource(R.string.player_info_nationality),
                         playerToPresent?.nationality,
                         playerToPresent?.nationalityFlag,
                         darkTheme = true
@@ -471,8 +474,9 @@ fun PlayerInfoScreen(
                         modifier = Modifier.padding(vertical = 8.dp)
                     )
                     InfoRow(
-                        "Contract Expiry Date",
+                        stringResource(R.string.player_info_contract_expiry_date),
                         getContractStatus(
+                            LocalContext.current.resources,
                             playerToPresent?.contractExpired?.replace("/", ".") ?: ""
                         ),
                         darkTheme = true,
@@ -491,7 +495,7 @@ fun PlayerInfoScreen(
                         modifier = Modifier.padding(vertical = 8.dp)
                     )
                     ClubInfoRow(
-                        "Current Club",
+                        stringResource(R.string.player_info_current_club),
                         playerToPresent?.currentClub?.clubName,
                         playerToPresent?.currentClub?.clubLogo,
                         darkTheme = true
@@ -504,7 +508,7 @@ fun PlayerInfoScreen(
                     )
 
                     InfoRow(
-                        "Market Value",
+                        stringResource(R.string.player_info_market_value),
                         playerToPresent?.marketValue?.let { value ->
                             val trend = playerToPresent?.let { playerInfoComputeValueTrend(it.marketValueHistory) } ?: 0
                             when {
@@ -705,7 +709,7 @@ fun PlayerInfoScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(80.dp),
-                        textStyle = regularTextStyle(HomeTextPrimary, 14.sp),
+                        textStyle = regularTextStyle(HomeTextPrimary, 14.sp, direction = TextDirection.ContentOrRtl),
                         enabled = true,
                         keyboardOptions = KeyboardOptions(
                             imeAction = ImeAction.Done,
@@ -760,11 +764,12 @@ private fun PlayerInfoHeroCard(
     player: Player,
     onMandateChanged: (Boolean) -> Unit
 ) {
+    val resources = LocalContext.current.resources
     val valueTrend = remember(player.marketValueHistory) {
         playerInfoComputeValueTrend(player.marketValueHistory)
     }
-    val contractCountdown = remember(player.contractExpired) {
-        playerInfoGetContractCountdown(player.contractExpired)
+    val contractCountdown = remember(player.contractExpired, resources) {
+        playerInfoGetContractCountdown(resources, player.contractExpired)
     }
 
     Card(
@@ -792,14 +797,14 @@ private fun PlayerInfoHeroCard(
             )
             Spacer(Modifier.height(12.dp))
             Text(
-                text = player.fullName ?: "Unknown",
+                text = player.fullName ?: stringResource(R.string.player_info_unknown),
                 style = boldTextStyle(HomeTextPrimary, 22.sp)
             )
             Spacer(Modifier.height(4.dp))
             Text(
                 text = buildString {
                     player.positions?.firstOrNull()?.let { append(it) }
-                    player.age?.let { append(" • $it yrs") }
+                    player.age?.let { append(" • $it ${stringResource(R.string.player_info_years_short)}") }
                     player.currentClub?.clubName?.let { append(" • $it") }
                 }.ifEmpty { "—" },
                 style = regularTextStyle(HomeTextSecondary, 13.sp)
@@ -812,7 +817,7 @@ private fun PlayerInfoHeroCard(
             player.lastRefreshedAt?.takeIf { it > 0 }?.let { ts ->
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    text = playerInfoFormatLastRefreshed(ts),
+                    text = playerInfoFormatLastRefreshed(resources, ts),
                     style = regularTextStyle(HomeTextSecondary.copy(alpha = 0.7f), 11.sp)
                 )
             }
@@ -861,7 +866,7 @@ private fun PlayerInfoHeroCard(
             }
             contractCountdown?.let { text ->
                 Spacer(Modifier.height(8.dp))
-                val isExpired = text == "Contract Expired"
+                val isExpired = text == resources.getString(R.string.player_info_expired)
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(8.dp))
@@ -953,7 +958,7 @@ private fun PlayerInfoQuickActions(
             if (playerPhone != null) {
                 PlayerInfoQuickActionWhatsApp(
                     modifier = Modifier.weight(1f),
-                    label = "Player",
+                    label = stringResource(R.string.player_info_player_label),
                     phone = playerPhone,
                     context = context
                 )
@@ -964,7 +969,7 @@ private fun PlayerInfoQuickActions(
             if (agentPhone != null) {
                 PlayerInfoQuickActionWhatsApp(
                     modifier = Modifier.weight(1f),
-                    label = "Agent",
+                    label = stringResource(R.string.player_info_agent_label),
                     phone = agentPhone,
                     context = context
                 )
@@ -993,7 +998,7 @@ private fun PlayerInfoQuickActions(
                     )
                     Spacer(Modifier.width(6.dp))
                     Text(
-                        text = "TM Profile",
+                        text = stringResource(R.string.player_info_tm_profile),
                         style = boldTextStyle(HomeTextSecondary, 11.sp)
                     )
                 }
@@ -1135,8 +1140,9 @@ fun NoteItemUi(
             Spacer(Modifier.height(8.dp))
             Text(
                 text = notesModel.notes ?: "",
-                style = regularTextStyle(textColor, 14.sp),
-                textAlign = TextAlign.Start
+                style = regularTextStyle(textColor, 14.sp, direction = TextDirection.ContentOrRtl),
+                textAlign = TextAlign.Start,
+                modifier = Modifier.fillMaxWidth()
             )
         }
     }
@@ -1760,7 +1766,7 @@ private fun sharePlayerOnWhatsapp(context: Context, message: String?) {
         type = "text/plain"
         putExtra(Intent.EXTRA_TEXT, message)
     }
-    context.startActivity(Intent.createChooser(i, "Share with"))
+    context.startActivity(Intent.createChooser(i, context.getString(R.string.player_info_share_with)))
 }
 
 fun launchPlayerContactPicker(
@@ -1777,7 +1783,7 @@ fun launchPlayerContactPicker(
     }
 }
 
-private fun getContractStatus(expiryDate: String): String {
+private fun getContractStatus(resources: android.content.res.Resources, expiryDate: String): String {
     val sdf = SimpleDateFormat("dd.MM.yyyy", Locale.getDefault())
     sdf.isLenient = false
 
@@ -1786,7 +1792,7 @@ private fun getContractStatus(expiryDate: String): String {
         val today = Calendar.getInstance().time
 
         if (contractDate.before(today)) {
-            "Contract Expired"
+            resources.getString(R.string.player_info_contract_expired)
         } else {
             expiryDate
         }
@@ -1795,20 +1801,20 @@ private fun getContractStatus(expiryDate: String): String {
     }
 }
 
-private fun playerInfoFormatLastRefreshed(timestampMs: Long): String {
+private fun playerInfoFormatLastRefreshed(resources: android.content.res.Resources, timestampMs: Long): String {
     val diff = System.currentTimeMillis() - timestampMs
     val minutes = diff / (60 * 1000)
     val hours = diff / (60 * 60 * 1000)
     val days = diff / (24 * 60 * 60 * 1000)
     return when {
-        minutes < 60 -> "Synced ${minutes}m ago"
-        hours < 24 -> "Synced ${hours}h ago"
-        days < 7 -> "Synced ${days}d ago"
-        else -> "Synced ${SimpleDateFormat("dd.MM", Locale.getDefault()).format(Date(timestampMs))}"
+        minutes < 60 -> resources.getString(R.string.player_info_synced_minutes, minutes.toInt())
+        hours < 24 -> resources.getString(R.string.player_info_synced_hours, hours.toInt())
+        days < 7 -> resources.getString(R.string.player_info_synced_days, days.toInt())
+        else -> resources.getString(R.string.player_info_synced_date, SimpleDateFormat("dd.MM", Locale.getDefault()).format(Date(timestampMs)))
     }
 }
 
-private fun playerInfoGetContractCountdown(contractExpired: String?): String? {
+private fun playerInfoGetContractCountdown(resources: android.content.res.Resources, contractExpired: String?): String? {
     if (contractExpired.isNullOrBlank() || contractExpired == "-") return null
     return try {
         val formatters = listOf(
@@ -1826,10 +1832,10 @@ private fun playerInfoGetContractCountdown(contractExpired: String?): String? {
         if (expiryDate == null) return null
         val now = java.time.LocalDate.now()
         when {
-            expiryDate.isBefore(now) -> "Expired"
+            expiryDate.isBefore(now) -> resources.getString(R.string.player_info_expired)
             else -> {
                 val months = java.time.temporal.ChronoUnit.MONTHS.between(now, expiryDate)
-                "Expires in ${months.toInt()} mo"
+                resources.getString(R.string.player_info_expires_in_months, months.toInt())
             }
         }
     } catch (_: Exception) {

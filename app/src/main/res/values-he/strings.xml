@@ -299,6 +299,30 @@
     <string name="player_info_contract">חוזה %s</string>
     <string name="player_info_mandate">מנדט</string>
     <string name="player_info_whatsapp">WhatsApp</string>
+    <string name="player_info_general_info">מידע כללי</string>
+    <string name="player_info_height">גובה</string>
+    <string name="player_info_age">גיל</string>
+    <string name="player_info_positions">עמדות</string>
+    <string name="player_info_nationality">לאום</string>
+    <string name="player_info_contract_expiry_date">תאריך סיום חוזה</string>
+    <string name="player_info_current_club">מועדון נוכחי</string>
+    <string name="player_info_market_value">שווי שוק</string>
+    <string name="player_info_updating">מעדכן…</string>
+    <string name="player_info_player_label">שחקן</string>
+    <string name="player_info_agent_label">סוכן</string>
+    <string name="player_info_contract_expired">חוזה פג תוקף</string>
+    <string name="player_info_expired">פג תוקף</string>
+    <string name="player_info_expires_in_months">פג תוקף בעוד %d חודשים</string>
+    <string name="player_info_without_club">ללא מועדון</string>
+    <string name="player_info_unknown">לא ידוע</string>
+    <string name="player_info_player_data_not_available">נתוני שחקן לא זמינים</string>
+    <string name="player_info_current_club_share">מועדון נוכחי: %s</string>
+    <string name="player_info_share_with">שתף עם</string>
+    <string name="player_info_synced_minutes">סונכרן לפני %d דקות</string>
+    <string name="player_info_synced_hours">סונכרן לפני %d שעות</string>
+    <string name="player_info_synced_days">סונכרן לפני %d ימים</string>
+    <string name="player_info_synced_date">סונכרן %s</string>
+    <string name="player_info_years_short">שנים</string>
 
     <!-- Returnee Players Bottom Sheet -->
     <string name="returnee_no_players_league">לא נמצאו שחקנים בליגה זו</string>

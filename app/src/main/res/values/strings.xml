@@ -299,6 +299,30 @@
     <string name="player_info_contract">Contract %s</string>
     <string name="player_info_mandate">Mandate</string>
     <string name="player_info_whatsapp">WhatsApp</string>
+    <string name="player_info_general_info">General Info</string>
+    <string name="player_info_height">Height</string>
+    <string name="player_info_age">Age</string>
+    <string name="player_info_positions">Positions</string>
+    <string name="player_info_nationality">Nationality</string>
+    <string name="player_info_contract_expiry_date">Contract Expiry Date</string>
+    <string name="player_info_current_club">Current Club</string>
+    <string name="player_info_market_value">Market Value</string>
+    <string name="player_info_updating">Updating…</string>
+    <string name="player_info_player_label">Player</string>
+    <string name="player_info_agent_label">Agent</string>
+    <string name="player_info_contract_expired">Contract Expired</string>
+    <string name="player_info_expired">Expired</string>
+    <string name="player_info_expires_in_months">Expires in %d mo</string>
+    <string name="player_info_without_club">Without club</string>
+    <string name="player_info_unknown">Unknown</string>
+    <string name="player_info_player_data_not_available">Player data not available</string>
+    <string name="player_info_current_club_share">Current Club: %s</string>
+    <string name="player_info_share_with">Share with</string>
+    <string name="player_info_synced_minutes">Synced %dm ago</string>
+    <string name="player_info_synced_hours">Synced %dh ago</string>
+    <string name="player_info_synced_days">Synced %dd ago</string>
+    <string name="player_info_synced_date">Synced %s</string>
+    <string name="player_info_years_short">yrs</string>
 
     <!-- Returnee Players Bottom Sheet -->
     <string name="returnee_no_players_league">No players found in this league</string>
