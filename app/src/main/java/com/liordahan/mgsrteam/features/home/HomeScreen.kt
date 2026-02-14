@@ -64,6 +64,15 @@ fun HomeScreen(
         }
     }
 
+    LaunchedEffect(Unit) {
+        mainViewModel.pendingAddPlayerTmUrl.collectLatest { tmUrl ->
+            if (!tmUrl.isNullOrBlank()) {
+                navController.navigate(Screens.PlayersScreen.route)
+                // URL is consumed by PlayersScreen when it shows the add-player sheet
+            }
+        }
+    }
+
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         containerColor = if (isDarkScreen) HomeDarkBackground else Color.White,
@@ -116,7 +125,10 @@ fun HomeScreen(
                             fadeOut(animationSpec = tween(280))
                 }
             ) {
-                PlayersScreen(navController = navController)
+                PlayersScreen(
+                    navController = navController,
+                    mainViewModel = mainViewModel
+                )
             }
 
             composable(

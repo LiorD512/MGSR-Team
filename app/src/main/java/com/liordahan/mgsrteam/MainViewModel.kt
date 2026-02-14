@@ -12,6 +12,10 @@ abstract class IMainViewModel : ViewModel() {
     abstract val pendingDeepLinkPlayerId: StateFlow<String?>
     abstract fun setPendingDeepLinkPlayerId(playerId: String?)
     abstract fun clearPendingDeepLink()
+    /** Transfermarkt player URL from Share/View intent — when set, navigate to Players and show add-player sheet. */
+    abstract val pendingAddPlayerTmUrl: StateFlow<String?>
+    abstract fun setPendingAddPlayerTmUrl(url: String?)
+    abstract fun clearPendingAddPlayerTmUrl()
 }
 
 class MainViewModel(
@@ -27,12 +31,23 @@ class MainViewModel(
     private val _pendingDeepLinkPlayerId = MutableStateFlow<String?>(null)
     override val pendingDeepLinkPlayerId: StateFlow<String?> = _pendingDeepLinkPlayerId
 
+    private val _pendingAddPlayerTmUrl = MutableStateFlow<String?>(null)
+    override val pendingAddPlayerTmUrl: StateFlow<String?> = _pendingAddPlayerTmUrl
+
     override fun setPendingDeepLinkPlayerId(playerId: String?) {
         _pendingDeepLinkPlayerId.value = playerId
     }
 
     override fun clearPendingDeepLink() {
         _pendingDeepLinkPlayerId.value = null
+    }
+
+    override fun setPendingAddPlayerTmUrl(url: String?) {
+        _pendingAddPlayerTmUrl.value = url
+    }
+
+    override fun clearPendingAddPlayerTmUrl() {
+        _pendingAddPlayerTmUrl.value = null
     }
 
     init {

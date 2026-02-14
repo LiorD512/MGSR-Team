@@ -41,6 +41,20 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="mgsrteam" android:host="player" android:pathPrefix="/" />
             </intent-filter>
+            <!-- Receive Transfermarkt player profile links from Share (WhatsApp, Gmail, etc.) -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+            <!-- Open Transfermarkt player URLs directly in app -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="www.transfermarkt.com" android:pathPrefix="/" />
+                <data android:scheme="https" android:host="transfermarkt.com" android:pathPrefix="/" />
+            </intent-filter>
         </activity>
 
 

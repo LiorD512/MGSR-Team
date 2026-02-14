@@ -2,6 +2,7 @@ package com.liordahan.mgsrteam
 
 import android.Manifest
 import android.content.Context
+import android.content.Intent
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.SystemBarStyle
@@ -14,6 +15,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.core.content.PermissionChecker
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.liordahan.mgsrteam.localization.LocaleManager
+import com.liordahan.mgsrteam.utils.extractTransfermarktPlayerUrl
 import com.liordahan.mgsrteam.navigation.NavGraph
 import com.liordahan.mgsrteam.ui.theme.MGSRTeamTheme
 import org.koin.androidx.viewmodel.ext.android.viewModel
@@ -72,11 +74,30 @@ class MainActivity : AppCompatActivity() {
         handleDeepLink(intent)
     }
 
-    private fun handleDeepLink(intent: android.content.Intent?) {
-        val uri = intent?.data ?: return
-        if (uri.scheme == "mgsrteam" && uri.host == "player") {
-            val path = uri.path?.trimStart('/') ?: uri.lastPathSegment
-            path?.takeIf { it.isNotBlank() }?.let { viewModel.setPendingDeepLinkPlayerId(it) }
+    private fun handleDeepLink(intent: Intent?) {
+        if (intent == null) return
+
+        // Handle Share intent (WhatsApp, Gmail, etc.) — extract Transfermarkt URL from shared text
+        if (intent.action == Intent.ACTION_SEND && intent.type == "text/plain") {
+            val sharedText = intent.getStringExtra(Intent.EXTRA_TEXT)
+            extractTransfermarktPlayerUrl(sharedText)?.let { url ->
+                viewModel.setPendingAddPlayerTmUrl(url)
+            }
+            return
+        }
+
+        // Handle VIEW intent with Transfermarkt URL
+        val uri = intent.data ?: return
+        when {
+            uri.scheme == "mgsrteam" && uri.host == "player" -> {
+                val path = uri.path?.trimStart('/') ?: uri.lastPathSegment
+                path?.takeIf { it.isNotBlank() }?.let { viewModel.setPendingDeepLinkPlayerId(it) }
+            }
+            (uri.scheme == "https" && uri.host?.contains("transfermarkt") == true) -> {
+                extractTransfermarktPlayerUrl(uri.toString())?.let { url ->
+                    viewModel.setPendingAddPlayerTmUrl(url)
+                }
+            }
         }
     }
 }

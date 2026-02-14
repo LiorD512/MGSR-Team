@@ -58,6 +58,9 @@ import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Snackbar
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FloatingActionButton
@@ -65,6 +68,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -97,32 +101,93 @@ import androidx.core.app.ActivityCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
+import com.liordahan.mgsrteam.features.add.AddPlayerContactFormContent
+import com.liordahan.mgsrteam.features.add.IAddPlayerViewModel
+import com.liordahan.mgsrteam.features.add.SnakeBarMessage
+import com.liordahan.mgsrteam.features.add.showSnakeBarMessage
 import com.liordahan.mgsrteam.features.players.models.Player
 import com.liordahan.mgsrteam.features.players.models.getAgentPhoneNumber
 import com.liordahan.mgsrteam.features.players.models.getPlayerPhoneNumber
 import com.liordahan.mgsrteam.features.players.sort.SortOption
+import com.liordahan.mgsrteam.IMainViewModel
 import com.liordahan.mgsrteam.R
 import com.liordahan.mgsrteam.features.players.ui.RosterEmptyState
 import com.liordahan.mgsrteam.navigation.Screens
+import com.liordahan.mgsrteam.ui.components.DarkSystemBarsForBottomSheet
 import com.liordahan.mgsrteam.ui.theme.*
 import com.liordahan.mgsrteam.ui.utils.boldTextStyle
 import com.liordahan.mgsrteam.ui.utils.clickWithNoRipple
 import com.liordahan.mgsrteam.ui.utils.regularTextStyle
+import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.ModalBottomSheetProperties
+import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.runtime.rememberCoroutineScope
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  PLAYERS SCREEN — Variant A (Enhanced Roster View)
 // ═════════════════════════════════════════════════════════════════════════════
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PlayersScreen(
     viewModel: IPlayersViewModel = koinViewModel(),
-    navController: NavController
+    navController: NavController,
+    mainViewModel: IMainViewModel? = null,
+    addPlayerViewModel: IAddPlayerViewModel = koinViewModel()
 ) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     val playersState by viewModel.playersFlow.collectAsStateWithLifecycle()
 
     var searchQuery by remember { mutableStateOf(viewModel.playersFlow.value.searchQuery) }
+    var showAddPlayerBottomSheet by remember { mutableStateOf(false) }
+    var addPlayerTmUrl by remember { mutableStateOf<String?>(null) }
+
+    val addPlayerState = addPlayerViewModel.playerSearchStateFlow.collectAsState()
+    val selectedPlayer by addPlayerViewModel.selectedPlayerFlow.collectAsState()
+    val isPlayerAdded by addPlayerViewModel.isPlayerAddedFlow.collectAsState()
+    val snackBarHostState = remember { SnackbarHostState() }
+
+    // Consume pending URL from Share/View intent (mainViewModel is null when navigated from FAB)
+    LaunchedEffect(mainViewModel) {
+        mainViewModel ?: return@LaunchedEffect
+        mainViewModel.pendingAddPlayerTmUrl.collect { url ->
+            if (!url.isNullOrBlank()) {
+                mainViewModel.clearPendingAddPlayerTmUrl()
+                addPlayerTmUrl = url
+                showAddPlayerBottomSheet = true
+            }
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        addPlayerViewModel.errorMessageFlow.collect { message ->
+            if (!message.isNullOrEmpty()) {
+                showSnakeBarMessage(
+                    scope = scope,
+                    snackBarHostState = snackBarHostState,
+                    message = message
+                )
+            }
+        }
+    }
+
+    LaunchedEffect(showAddPlayerBottomSheet, addPlayerTmUrl) {
+        if (showAddPlayerBottomSheet && !addPlayerTmUrl.isNullOrBlank()) {
+            addPlayerViewModel.loadPlayerByTmProfileUrl(addPlayerTmUrl!!)
+        }
+    }
+
+    LaunchedEffect(isPlayerAdded) {
+        if (isPlayerAdded) {
+            showAddPlayerBottomSheet = false
+            addPlayerTmUrl = null
+            addPlayerViewModel.resetAfterAdd()
+        }
+    }
     val showEmptyState by remember(playersState) {
         mutableStateOf(playersState.visibleList.isEmpty() && !playersState.showPageLoader)
     }
@@ -268,6 +333,62 @@ fun PlayersScreen(
             )
         }
 
+        // ── Snackbar for add-player errors ────────────────────────────────
+        SnackbarHost(
+            hostState = snackBarHostState,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 16.dp)
+        ) { data ->
+            SnakeBarMessage(message = data.visuals.message)
+        }
+
+        // ── Add Player bottom sheet (from Share/View intent) ───────────────
+        if (showAddPlayerBottomSheet) {
+            val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+            ModalBottomSheet(
+                onDismissRequest = {
+                    showAddPlayerBottomSheet = false
+                    addPlayerTmUrl = null
+                    addPlayerViewModel.resetAfterAdd()
+                },
+                sheetState = sheetState,
+                containerColor = HomeDarkCard,
+                shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
+                tonalElevation = 8.dp,
+                properties = ModalBottomSheetProperties(
+                    isAppearanceLightStatusBars = true,
+                    isAppearanceLightNavigationBars = true
+                )
+            ) {
+                DarkSystemBarsForBottomSheet()
+                when {
+                    addPlayerState.value.showPlayerSelectedSearchProgress && selectedPlayer == null -> {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(32.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(color = HomeTealAccent)
+                        }
+                    }
+                    selectedPlayer != null -> {
+                        AddPlayerContactFormContent(
+                            context = context,
+                            viewModel = addPlayerViewModel
+                        )
+                    }
+                    else -> {
+                        Text(
+                            text = stringResource(R.string.shortlist_could_not_load),
+                            style = regularTextStyle(HomeTextSecondary, 14.sp),
+                            modifier = Modifier.padding(24.dp)
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 
