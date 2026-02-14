@@ -198,6 +198,12 @@
     <string name="releases_add_to_agency">Add to agency</string>
     <string name="releases_badge_released">Released</string>
     <string name="releases_badge_loan_return">Loan Return</string>
+    <string name="releases_roster_teammates_one">%d roster teammate</string>
+    <string name="releases_roster_teammates">%d roster teammates</string>
+    <string name="releases_no_roster_teammates">No roster players played with this player</string>
+    <string name="releases_roster_teammates_loading">Loading teammates…</string>
+    <string name="releases_games_together">%d games together</string>
+    <string name="releases_roster_teammates_tap">Roster teammates</string>
     <string name="shortlist_in_shortlist">In shortlist</string>
     <string name="shortlist_add_to_shortlist">Add to shortlist</string>
 

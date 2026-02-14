@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- Navigation -->
+    <string name="nav_item_players">שחקנים</string>
+    <string name="nav_item_home">בית</string>
+    <string name="nav_item_dashboard">פיד</string>
+    <string name="nav_item_releases">שחרורים</string>
+    <string name="nav_item_returnee">חזרו מהשאלה</string>
+    <string name="nav_item_contacts">אנשי קשר</string>
+    <string name="nav_item_shortlist">רשימת מעקב</string>
+    <string name="nav_item_requests">בקשות</string>
+
+    <!-- Login -->
+    <string name="login_button_title">התחברות</string>
+    <string name="login_signing_in">מתחבר…</string>
+    <string name="login_error_invalid_credentials">אימייל או סיסמה שגויים. אנא נסה שוב.</string>
+    <string name="login_button_email_hint">הקלד כתובת מייל</string>
+    <string name="login_button_password_hint">הקלד סיסמא</string>
+
+    <!-- Search -->
+    <string name="players_screen_hint">חפש שחקן לפי שם</string>
+    <string name="contacts_screen_search_hint">חפש לפי שם, מועדון או מדינה</string>
+    <string name="add_player_screen_hint">חיפוש</string>
+
+    <!-- Account -->
+    <string name="account_not_allowed">חשבון לא מורשה</string>
+
+    <!-- Notifications -->
+    <string name="notification_channel_name">התראות MGSR Team</string>
+    <string name="notification_channel_description">תזכורות חוזים, שחרורים ועדכוני סוכנות</string>
+    <string name="notification_channel_contract_reminder">תזכורות חוזים</string>
+    <string name="notification_contract_reminder_title">חוזה מסתיים בקרוב</string>
+    <string name="notification_contract_reminder_body">ל-%d שחקנים חוזה שמסתיים ב-5 החודשים הקרובים</string>
+    <string name="notification_channel_without_club">התראות שחקנים ללא מועדון</string>
+    <string name="notification_without_club_title">שחקן/ים ללא מועדון</string>
+    <string name="notification_without_club_body">%d שחקנים הפכו ללא מועדון</string>
+
+    <!-- Greeting -->
+    <string name="greeting_good_morning">בוקר טוב</string>
+    <string name="greeting_good_afternoon">צהריים טובים</string>
+    <string name="greeting_good_evening">ערב טוב</string>
+    <string name="greeting_agent_default">סוכן</string>
+
+    <!-- Dashboard Stats -->
+    <string name="stat_players">שחקנים</string>
+    <string name="stat_mandate">ייפוי כוח</string>
+    <string name="stat_free">חופשיים</string>
+    <string name="stat_requests">בקשות</string>
+
+    <!-- Quick Actions -->
+    <string name="quick_action_players">שחקנים</string>
+    <string name="quick_action_shortlist">רשימת מעקב</string>
+    <string name="quick_action_releases">שחרורים</string>
+    <string name="quick_action_returnees">חזרו מהשאלה</string>
+    <string name="quick_action_contacts">אנשי קשר</string>
+    <string name="quick_action_requests">בקשות</string>
+
+    <!-- Feed -->
+    <string name="feed_recent_updates">עדכונים אחרונים</string>
+    <string name="feed_filter_all">הכל</string>
+    <string name="feed_filter_value">שווי</string>
+    <string name="feed_filter_transfers">העברות</string>
+    <string name="feed_filter_notes">הערות</string>
+    <string name="feed_empty">אין עדכונים אחרונים עדיין.\nעדכונים יופיעו כאן לאחר הסנכרון היומי.</string>
+    <string name="feed_market_value_update">עדכון שווי שוק</string>
+    <string name="feed_club_change">זוהה שינוי מועדון</string>
+    <string name="feed_became_free_agent">הפך לשחקן חופשי</string>
+    <string name="feed_contract_expiring">חוזה מסתיים</string>
+    <string name="feed_new_note">הערה חדשה</string>
+    <string name="feed_player_added">שחקן נוסף</string>
+    <string name="feed_update">עדכון</string>
+    <string name="feed_value_changed">שווי השתנה מ-%1$s ל-%2$s</string>
+    <string name="feed_moved_from_to">עבר מ-%1$s ל-%2$s</string>
+    <string name="feed_note_added_by">%1$s הוסיף הערה על %2$s</string>
+
+    <!-- Time Ago -->
+    <string name="time_just_now">עכשיו</string>
+    <string name="time_minutes_ago">לפני %1$d דק׳</string>
+    <string name="time_hours_ago">לפני %1$d שע׳</string>
+    <string name="time_days_ago">לפני %1$d ימים</string>
+
+    <!-- Agent Overview -->
+    <string name="agent_overview_title">סקירת סוכנים</string>
+    <string name="agent_players_managed">%d שחקנים מנוהלים</string>
+    <string name="agent_stat_mandate">ייפוי כוח</string>
+    <string name="agent_stat_expiring">מסתיימים</string>
+    <string name="agent_stat_notes">הערות</string>
+
+    <!-- Agent Tasks -->
+    <string name="agent_tasks_title">משימות סוכנים</string>
+    <string name="agent_tasks_done">%1$d מתוך %2$d משימות הושלמו</string>
+    <string name="agent_no_tasks">אין משימות עדיין</string>
+    <string name="agent_no_tasks_hint">אין משימות עדיין. לחץ + להוספה.</string>
+    <string name="agent_add_task">הוסף משימה</string>
+    <string name="agent_new_task_for">משימה חדשה עבור %s</string>
+    <string name="agent_task_description_hint">תיאור המשימה…</string>
+    <string name="agent_select_due_date">בחר תאריך יעד</string>
+
+    <!-- Due Dates -->
+    <string name="due_overdue">איחור של %d ימים</string>
+    <string name="due_yesterday">אתמול</string>
+    <string name="due_today">היום</string>
+    <string name="due_tomorrow">מחר</string>
+    <string name="due_in_days">בעוד %d ימים</string>
+
+    <!-- Transfer Windows -->
+    <string name="transfer_windows_title">חלונות העברה פתוחים</string>
+    <string name="transfer_windows_days_left">%d ימים נותרו</string>
+    <string name="transfer_windows_open">פתוח</string>
+    <string name="transfer_windows_empty">אין חלונות העברה פתוחים כרגע.</string>
+
+    <!-- Document Reminders -->
+    <string name="document_reminders_title">תזכורות מסמכים</string>
+    <string name="document_missing">%s חסר</string>
+    <string name="document_expires_in">%1$s פג תוקף בעוד %2$d ימים</string>
+
+    <!-- General -->
+    <string name="cancel">ביטול</string>
+    <string name="ok">אישור</string>
+    <string name="expand">הרחב</string>
+    <string name="collapse">צמצם</string>
+    <string name="delete_task">מחק משימה</string>
+    <string name="notifications">התראות</string>
+
+    <!-- Language -->
+    <string name="language_change_title">שנה שפה</string>
+    <string name="language_change_message">שפת האפליקציה תשתנה ל%s. האפליקציה תופעל מחדש כדי להחיל את השינוי.</string>
+    <string name="language_english">English</string>
+    <string name="language_hebrew">עברית</string>
+    <string name="language_confirm">אישור</string>
+    <string name="language_switch_cd">שנה שפה</string>
+</resources>

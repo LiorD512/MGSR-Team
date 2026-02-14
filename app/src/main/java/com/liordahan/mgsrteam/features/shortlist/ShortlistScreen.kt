@@ -89,25 +89,8 @@ import com.liordahan.mgsrteam.ui.theme.HomeTextSecondary
 import com.liordahan.mgsrteam.ui.utils.boldTextStyle
 import com.liordahan.mgsrteam.ui.utils.clickWithNoRipple
 import com.liordahan.mgsrteam.ui.utils.regularTextStyle
+import com.liordahan.mgsrteam.utils.extractPlayerIdFromUrl
 import org.koin.androidx.compose.koinViewModel
-
-// ═════════════════════════════════════════════════════════════════════════════
-//  URL PARSING (for legacy entries without enriched data)
-// ═════════════════════════════════════════════════════════════════════════════
-
-private fun extractPlayerIdFromUrl(url: String): String? {
-    return try {
-        val parts = url.trim().split("/")
-        val spielerIndex = parts.indexOfLast { it.equals("spieler", ignoreCase = true) }
-        if (spielerIndex >= 0 && spielerIndex < parts.lastIndex) {
-            parts[spielerIndex + 1].takeIf { it.all(Char::isDigit) }
-        } else {
-            parts.lastOrNull()?.takeIf { it.all(Char::isDigit) }
-        }
-    } catch (_: Exception) {
-        null
-    }
-}
 
 private fun formatShortlistProfileDisplay(entry: ShortlistEntry): String {
     entry.playerName?.takeIf { it.isNotBlank() }?.let { return it }

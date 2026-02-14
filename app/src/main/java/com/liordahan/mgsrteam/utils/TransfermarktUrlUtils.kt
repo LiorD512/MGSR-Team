@@ -1,6 +1,47 @@
 package com.liordahan.mgsrteam.utils
 
 /**
+ * Extracts the Transfermarkt player ID from a profile or gemeinsameSpiele URL.
+ * Supports URLs like:
+ * - https://www.transfermarkt.com/player-name/profil/spieler/12345
+ * - https://www.transfermarkt.com/player-name/gemeinsameSpiele/spieler/12345/...
+ */
+fun extractPlayerIdFromUrl(url: String?): String? {
+    val input = url?.trim() ?: return null
+    if (input.isBlank()) return null
+    return try {
+        val parts = input.split("/")
+        val spielerIndex = parts.indexOfLast { it.equals("spieler", ignoreCase = true) }
+        if (spielerIndex >= 0 && spielerIndex < parts.lastIndex) {
+            parts[spielerIndex + 1].takeIf { it.all(Char::isDigit) }
+        } else {
+            parts.lastOrNull()?.takeIf { it.all(Char::isDigit) }
+        }
+    } catch (_: Exception) {
+        null
+    }
+}
+
+/**
+ * Builds the "Games played together" (gemeinsameSpiele) URL for a player profile.
+ * Input: https://www.transfermarkt.com/erling-haaland/profil/spieler/418560
+ * Output: https://www.transfermarkt.com/erling-haaland/gemeinsameSpiele/spieler/418560/...
+ */
+fun buildGemeinsameSpieleUrl(playerProfileUrl: String?): String? {
+    val url = playerProfileUrl?.trim()?.substringBefore("?") ?: return null
+    if (url.isBlank()) return null
+    val playerId = extractPlayerIdFromUrl(url) ?: return null
+    val base = url
+        .replace("/profil/spieler/", "/gemeinsameSpiele/spieler/", ignoreCase = true)
+        .replace("/profile/player/", "/gemeinsameSpiele/spieler/", ignoreCase = true)
+    return if (base != url) {
+        "$base/plus/0/galerie/0?gegner=0&kriterium=0&wettbewerb=&liga=&verein=&pos=&status=1"
+    } else {
+        null
+    }
+}
+
+/**
  * Extracts and normalizes a Transfermarkt player profile URL from shared text.
  * Supports URLs like:
  * - https://www.transfermarkt.com/player-name/profil/spieler/12345

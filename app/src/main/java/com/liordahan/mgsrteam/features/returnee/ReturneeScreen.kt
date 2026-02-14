@@ -59,10 +59,16 @@ import com.liordahan.mgsrteam.features.add.AddPlayerContactFormContent
 import com.liordahan.mgsrteam.ui.components.DarkSystemBarsForBottomSheet
 import com.liordahan.mgsrteam.features.add.IAddPlayerViewModel
 import com.liordahan.mgsrteam.features.players.models.Position
+import com.liordahan.mgsrteam.features.players.repository.IPlayersRepository
 import com.liordahan.mgsrteam.features.players.ui.EmptyState
 import com.liordahan.mgsrteam.features.releases.ReleaseListItem
+import com.liordahan.mgsrteam.features.releases.RosterTeammateMatch
 import com.liordahan.mgsrteam.features.shortlist.ShortlistRepository
+import com.liordahan.mgsrteam.navigation.Screens
 import com.liordahan.mgsrteam.transfermarket.LatestTransferModel
+import com.liordahan.mgsrteam.transfermarket.TeammatesFetcher
+import com.liordahan.mgsrteam.transfermarket.TransfermarktResult
+import com.liordahan.mgsrteam.utils.extractPlayerIdFromUrl
 import com.liordahan.mgsrteam.ui.theme.HomeDarkBackground
 import com.liordahan.mgsrteam.ui.theme.HomeDarkCard
 import com.liordahan.mgsrteam.ui.theme.HomeDarkCardBorder
@@ -73,6 +79,7 @@ import com.liordahan.mgsrteam.ui.theme.HomeTextSecondary
 import com.liordahan.mgsrteam.ui.utils.boldTextStyle
 import com.liordahan.mgsrteam.ui.utils.clickWithNoRipple
 import com.liordahan.mgsrteam.ui.utils.regularTextStyle
+import android.net.Uri
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.koinInject
@@ -84,11 +91,18 @@ fun ReturneeScreen(
     navController: NavController,
     viewModel: IReturneeViewModel = koinViewModel(),
     addPlayerViewModel: IAddPlayerViewModel = koinViewModel(),
-    shortlistRepository: ShortlistRepository = koinInject()
+    shortlistRepository: ShortlistRepository = koinInject(),
+    playersRepository: IPlayersRepository = koinInject(),
+    teammatesFetcher: TeammatesFetcher = koinInject()
 ) {
 
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+
+    val rosterPlayers by playersRepository.playersFlow().collectAsState(initial = emptyList())
+    var expandedPlayerUrl by remember { mutableStateOf<String?>(null) }
+    var teammatesCache by remember { mutableStateOf<Map<String, List<RosterTeammateMatch>>>(emptyMap()) }
+    var loadingPlayerUrl by remember { mutableStateOf<String?>(null) }
 
     val returneeState by viewModel.returneeFlow.collectAsState()
     val visibleReturneeList = returneeState.visibleList
@@ -139,6 +153,30 @@ fun ReturneeScreen(
             addPlayerTmUrl = null
             addPlayerViewModel.resetAfterAdd()
         }
+    }
+
+    LaunchedEffect(expandedPlayerUrl) {
+        val url = expandedPlayerUrl ?: return@LaunchedEffect
+        if (url in teammatesCache) return@LaunchedEffect
+        loadingPlayerUrl = url
+        when (val result = teammatesFetcher.fetchTeammates(url)) {
+            is TransfermarktResult.Success -> {
+                val rosterIds = rosterPlayers.mapNotNull { extractPlayerIdFromUrl(it.tmProfile) }.toSet()
+                val matches = result.data
+                    .filter { teammate -> extractPlayerIdFromUrl(teammate.tmProfileUrl) in rosterIds }
+                    .mapNotNull { teammate ->
+                        val id = extractPlayerIdFromUrl(teammate.tmProfileUrl) ?: return@mapNotNull null
+                        rosterPlayers.firstOrNull { extractPlayerIdFromUrl(it.tmProfile) == id }
+                            ?.let { RosterTeammateMatch(it, teammate.matchesPlayedTogether) }
+                    }
+                    .sortedByDescending { it.matchesPlayedTogether }
+                teammatesCache = teammatesCache + (url to matches)
+            }
+            is TransfermarktResult.Failed -> {
+                teammatesCache = teammatesCache + (url to emptyList())
+            }
+        }
+        loadingPlayerUrl = null
     }
 
     Box(
@@ -226,24 +264,39 @@ fun ReturneeScreen(
                     }
                 }
 
-                items(visibleReturneeList) {
+                items(visibleReturneeList) { release ->
+                    val playerUrl = release.playerUrl
+                    val isExpanded = playerUrl != null && expandedPlayerUrl == playerUrl
+                    val rosterTeammates = playerUrl?.let { teammatesCache[it] }
+                    val isLoadingTeammates = playerUrl != null && loadingPlayerUrl == playerUrl
                     ReleaseListItem(
                         context = context,
-                        release = it,
+                        release = release,
                         isFromReturnee = true,
+                        rosterTeammates = rosterTeammates,
+                        isLoadingTeammates = isLoadingTeammates,
+                        isTeammatesExpanded = isExpanded,
+                        onToggleTeammatesExpand = {
+                            expandedPlayerUrl = if (isExpanded) null else playerUrl
+                        },
+                        onRosterTeammateClick = { player ->
+                            player.tmProfile?.let { profile ->
+                                navController.navigate("${Screens.PlayerInfoScreen.route}/${Uri.encode(profile)}")
+                            }
+                        },
                         onAddToAgencyClicked = { url ->
                             addPlayerTmUrl = url
                             showAddPlayerBottomSheet = true
                         },
-                        onAddToShortlistClicked = { release ->
+                        onAddToShortlistClicked = { r ->
                             scope.launch {
-                                val url = release.playerUrl ?: return@launch
+                                val url = r.playerUrl ?: return@launch
                                 val isInShortlist = url in shortlistUrls || url in justAddedUrls
                                 if (isInShortlist) {
                                     shortlistRepository.removeFromShortlist(url)
                                     justAddedUrls = justAddedUrls - url
                                 } else {
-                                    shortlistRepository.addToShortlist(release)
+                                    shortlistRepository.addToShortlist(r)
                                     justAddedUrls = justAddedUrls + url
                                 }
                             }
