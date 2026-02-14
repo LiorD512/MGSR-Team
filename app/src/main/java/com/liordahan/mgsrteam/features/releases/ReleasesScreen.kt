@@ -815,6 +815,35 @@ fun ReleaseListItem(
                                 }
                             }
                         }
+                        // Club returned to (returnees only)
+                        if (isFromReturnee && (!release.clubJoinedName.isNullOrBlank() || !release.clubJoinedLogo.isNullOrBlank())) {
+                            Row(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(HomePurpleAccent.copy(alpha = 0.15f))
+                                    .padding(horizontal = 6.dp, vertical = 2.dp),
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                if (!release.clubJoinedLogo.isNullOrBlank()) {
+                                    AsyncImage(
+                                        model = release.clubJoinedLogo,
+                                        contentDescription = release.clubJoinedName,
+                                        modifier = Modifier
+                                            .size(14.dp)
+                                            .clip(RoundedCornerShape(4.dp)),
+                                        contentScale = ContentScale.Crop
+                                    )
+                                }
+                                release.clubJoinedName?.let { club ->
+                                    Text(
+                                        text = club,
+                                        style = regularTextStyle(HomePurpleAccent, 10.sp),
+                                        maxLines = 1
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -844,6 +873,7 @@ fun ReleaseListItem(
                     val transferDate = release.transferDate
                     Text(
                         text = when {
+                            isFromReturnee && !transferDate.isNullOrBlank() -> stringResource(R.string.releases_badge_returned_on, transferDate)
                             isFromReturnee -> stringResource(R.string.releases_badge_loan_return)
                             !transferDate.isNullOrBlank() -> stringResource(R.string.releases_badge_released_on, transferDate)
                             else -> stringResource(R.string.releases_badge_released)

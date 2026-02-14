@@ -207,8 +207,10 @@ class LatestReleases {
                     marketValue
                 )
 
-                // Always verify via profile: player must still be without club; also enrich missing data
-                if (model.playerUrl != null) {
+                // Enrich missing data from profile; when we fetch profile, verify still without club
+                if (model.playerUrl != null &&
+                    (model.marketValue.isNullOrBlank() || model.playerNationality.isNullOrBlank())
+                ) {
                     val enriched = enrichFromProfile(model)
                     if (enriched == null) return@mapNotNull null // Player has found a club - exclude
                     model = enriched

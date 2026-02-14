@@ -199,6 +199,8 @@
     <string name="releases_badge_released">Released</string>
     <string name="releases_badge_released_on">Released on %1$s</string>
     <string name="releases_badge_loan_return">Loan Return</string>
+    <string name="releases_badge_returned_on">Returned on %1$s</string>
+    <string name="releases_returned_to">Returned to %1$s</string>
     <string name="releases_roster_teammates_one">%d roster teammate</string>
     <string name="releases_roster_teammates">%d roster teammates</string>
     <string name="releases_no_roster_teammates">No roster players played with this player</string>

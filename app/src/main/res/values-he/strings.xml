@@ -199,6 +199,8 @@
     <string name="releases_badge_released">שוחרר</string>
     <string name="releases_badge_released_on">שוחרר ב-%1$s</string>
     <string name="releases_badge_loan_return">חזר מהשאלה</string>
+    <string name="releases_badge_returned_on">חזר ב-%1$s</string>
+    <string name="releases_returned_to">חזר ל-%1$s</string>
     <string name="releases_roster_teammates_one">%d שחקן מהסגל שיחק איתו</string>
     <string name="releases_roster_teammates">%d שחקנים מהסגל שיחקו איתו</string>
     <string name="releases_no_roster_teammates">אין שחקנים מהסגל ששיחקו עם שחקן זה</string>

@@ -101,11 +101,9 @@ class Returnees {
             parseReturneeRow(playerRow, departurePlayerUrls)
         }
 
-        // Enrich missing market value / nationality from player profile when we have URL
-        returnees = returnees.map { model ->
-            if (model.playerUrl != null &&
-                (model.marketValue.isNullOrBlank() || model.playerNationality.isNullOrBlank())
-            ) {
+        // Verify Returnee badge on profile + enrich club/market value/nationality; filter out if no longer returnee
+        returnees = returnees.mapNotNull { model ->
+            if (model.playerUrl != null) {
                 enrichFromProfile(model)
             } else {
                 model
@@ -119,9 +117,36 @@ class Returnees {
         return returnees
     }
 
-    private fun enrichFromProfile(model: LatestTransferModel): LatestTransferModel {
+    private fun enrichFromProfile(model: LatestTransferModel): LatestTransferModel? {
         return try {
             val doc = fetchDocument(model.playerUrl!!)
+            // Verify player still has Returnee badge when we can find it (div.data-header_ribbon or data-header__ribbon)
+            val ribbon = doc.select("div.data-header_ribbon, div.data-header__ribbon").firstOrNull()
+            val ribbonText = ribbon?.text()?.trim()?.lowercase() ?: ""
+            val ribbonTitle = ribbon?.select("a")?.attr("title") ?: ""
+            val ribbonTitleLower = ribbonTitle.lowercase()
+            val hasReturneeBadge = ribbonText.contains("returnee") ||
+                ribbonTitleLower.contains("returned after loan") ||
+                ribbonTitleLower.contains("loan spell")
+            // Only filter out if we found a ribbon and it's NOT a returnee badge (page structure may vary)
+            if (ribbon != null && !hasReturneeBadge) {
+                Log.d(TAG, "Filtered ${model.playerName}: ribbon found but not Returnee")
+                return null
+            }
+            // Extract return date from title: "Returned after loan spell with X; date: 30/06/2025; fee: End of loan"
+            val returnDate = Regex("""date:\s*(\d{1,2}/\d{1,2}/\d{2,4})""", RegexOption.IGNORE_CASE)
+                .find(ribbonTitle)
+                ?.groupValues?.getOrNull(1)
+            // Extract club they returned to (current club from data-header)
+            val clubSection = doc.select("span.data-header__club").firstOrNull()
+                ?: doc.select("div.data-header").firstOrNull()
+            val clubLink = clubSection?.select("a[href*='/startseite/verein/']")?.firstOrNull()
+            val clubName = clubLink?.attr("title")?.takeIf { it.isNotBlank() }
+                ?: clubLink?.text()?.trim()?.takeIf { it.isNotBlank() }
+            val clubImg = clubSection?.select("img")?.firstOrNull()
+            val clubLogo = (clubImg?.attr("data-src")?.ifBlank { null } ?: clubImg?.attr("src"))
+                ?.takeIf { it.isNotBlank() }
+                ?.let { makeAbsoluteUrl(it) }
             val marketValue = model.marketValue?.takeIf { it.isNotBlank() }
                 ?: doc.select("div.data-header__box--small").text()
                     .substringBefore("Last")
@@ -136,6 +161,9 @@ class Returnees {
                     ?.replace("verysmall", "head")
                     ?.let { makeAbsoluteUrl(it) }
             model.copy(
+                clubJoinedName = clubName ?: model.clubJoinedName,
+                clubJoinedLogo = clubLogo ?: model.clubJoinedLogo,
+                transferDate = returnDate ?: model.transferDate,
                 marketValue = marketValue ?: model.marketValue,
                 playerNationality = nationality ?: model.playerNationality,
                 playerNationalityFlag = flagSrc ?: model.playerNationalityFlag
