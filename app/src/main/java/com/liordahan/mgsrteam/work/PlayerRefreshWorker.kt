@@ -112,7 +112,11 @@ class PlayerRefreshWorker(
                             val newValueRaw = data.marketValue
                             // Treat no market value as €0
                             val newValue = newValueRaw?.takeIf { it.isNotBlank() } ?: "€0"
-                            val valueChanged = newValue != (currentValue ?: "€0")
+                            // Don't create feed events when both old and new mean "no value" (-, €0, blank)
+                            val valueChanged = when {
+                                isNoMarketValue(currentValue) && isNoMarketValue(newValue) -> false
+                                else -> newValue != (currentValue ?: "€0")
+                            }
                             val history = if (valueChanged) {
                                 val entry = MarketValueEntry(value = newValue, date = System.currentTimeMillis())
                                 val list = (player.marketValueHistory?.toMutableList() ?: mutableListOf()).apply { add(entry) }
@@ -243,6 +247,19 @@ class PlayerRefreshWorker(
         try {
             feedRef.add(event).await()
         } catch (_: Exception) { /* best-effort */ }
+    }
+
+    /** Returns true if the value represents "no market value" (-, €0, blank, or parses to 0). */
+    private fun isNoMarketValue(value: String?): Boolean {
+        if (value.isNullOrBlank()) return true
+        val trimmed = value.trim()
+        if (trimmed == "-" || trimmed == "€0") return true
+        val lower = trimmed.lowercase().removePrefix("€").replace(",", "")
+        return when {
+            lower.endsWith("k") -> (lower.removeSuffix("k").toDoubleOrNull() ?: 0.0) == 0.0
+            lower.endsWith("m") -> (lower.removeSuffix("m").toDoubleOrNull() ?: 0.0) == 0.0
+            else -> (lower.toDoubleOrNull() ?: 0.0) == 0.0
+        }
     }
 
     companion object {
