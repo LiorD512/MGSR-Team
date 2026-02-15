@@ -18,6 +18,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -78,9 +79,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
@@ -911,46 +914,56 @@ private fun ExpiringAlertBanner(
 
 @Composable
 private fun ExpiringPlayerRow(player: Player, onClick: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickWithNoRipple { onClick() }
-            .padding(vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        AsyncImage(
-            model = player.profileImage,
-            contentDescription = null,
+    Box(modifier = Modifier.fillMaxWidth()) {
+        Row(
             modifier = Modifier
-                .size(34.dp)
-                .clip(CircleShape),
-            contentScale = ContentScale.Crop
-        )
-        Spacer(Modifier.width(10.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = player.fullName ?: "",
-                style = boldTextStyle(HomeTextPrimary, 13.sp),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            Text(
-                text = player.currentClub?.clubName ?: "",
-                style = regularTextStyle(HomeTextSecondary, 11.sp),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
-        Box(
-            modifier = Modifier
-                .clip(RoundedCornerShape(10.dp))
-                .background(HomeOrangeAccent.copy(alpha = 0.12f))
-                .padding(horizontal = 8.dp, vertical = 3.dp)
+                .fillMaxWidth()
+                .clickWithNoRipple { onClick() }
+                .padding(vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = player.contractExpired ?: "",
-                style = boldTextStyle(HomeOrangeAccent, 10.sp)
+            AsyncImage(
+                model = player.profileImage,
+                contentDescription = null,
+                modifier = Modifier
+                    .size(34.dp)
+                    .clip(CircleShape),
+                contentScale = ContentScale.Crop
             )
+            Spacer(Modifier.width(10.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Text(
+                        text = player.fullName ?: "",
+                        style = boldTextStyle(HomeTextPrimary, 13.sp),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    if (player.isOnLoan) {
+                        OnLoanPill(text = stringResource(R.string.players_on_loan))
+                    }
+                }
+                Text(
+                    text = player.currentClub?.clubName ?: "",
+                    style = regularTextStyle(HomeTextSecondary, 11.sp),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(HomeOrangeAccent.copy(alpha = 0.12f))
+                    .padding(horizontal = 8.dp, vertical = 3.dp)
+            ) {
+                Text(
+                    text = player.contractExpired ?: "",
+                    style = boldTextStyle(HomeOrangeAccent, 10.sp)
+                )
+            }
         }
     }
 }
@@ -986,17 +999,18 @@ private fun PlayerCardVariantA(
         computeValueTrend(player.marketValueHistory)
     }
 
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickWithNoRipple { onPlayerClick() },
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = HomeDarkCard)
-    ) {
-        Column(
+    Box(modifier = Modifier.fillMaxWidth()) {
+        Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .drawBehind {
+                .clickWithNoRipple { onPlayerClick() },
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = HomeDarkCard)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .drawBehind {
                     // Left color accent bar
                     drawRect(
                         color = borderColor,
@@ -1177,18 +1191,23 @@ private fun PlayerCardVariantA(
                 modifier = Modifier.padding(top = 4.dp)
             )
 
-            // ── Bottom Row: Badges + Actions ────────────────────────────
+            // ── Bottom Row: Badges (aligned with content: avatar 52 + spacer 10 = 62 from row start) ──
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(start = 12.dp, end = 12.dp, bottom = 10.dp, top = 4.dp),
+                    .padding(start = 74.dp, end = 12.dp, bottom = 10.dp, top = 4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Badges row (wrap)
+                // Badges row - same start as name/club above
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.weight(1f)
                 ) {
+                    if (player.isOnLoan) {
+                        OnLoanPill(text = stringResource(R.string.players_on_loan))
+                    }
+
                     if (hasMandate) {
                         PlayerBadge(
                             icon = Icons.Filled.Handshake,
@@ -1245,6 +1264,35 @@ private fun PlayerCardVariantA(
                 }
             }
         }
+        }
+    }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+//  ON LOAN PILL (Option C — inline badge)
+// ═════════════════════════════════════════════════════════════════════════════
+
+@Composable
+private fun OnLoanPill(
+    text: String,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(8.dp))
+            .background(
+                Brush.linearGradient(
+                    colors = listOf(HomePurpleAccent, Color(0xFF7B1FA2))
+                )
+            )
+            .padding(horizontal = 6.dp, vertical = 3.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = text,
+            style = boldTextStyle(Color.White, 9.sp),
+            maxLines = 1
+        )
     }
 }
 

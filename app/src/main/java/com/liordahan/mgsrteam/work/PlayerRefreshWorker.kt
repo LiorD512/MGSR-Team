@@ -166,7 +166,9 @@ class PlayerRefreshWorker(
                                 positions = data.positions ?: player.positions,
                                 currentClub = club ?: player.currentClub,
                                 marketValueHistory = history,
-                                lastRefreshedAt = System.currentTimeMillis()
+                                lastRefreshedAt = System.currentTimeMillis(),
+                                isOnLoan = data.isOnLoan,
+                                onLoanFromClub = data.onLoanFromClub
                             )
                             docRef.set(updated).await()
                         }

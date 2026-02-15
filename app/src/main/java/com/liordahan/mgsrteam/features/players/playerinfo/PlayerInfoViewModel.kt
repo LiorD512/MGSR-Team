@@ -159,14 +159,12 @@ class PlayerInfoViewModel(
         _playerInfoFlow.update {
             it?.copy(haveMandate = hasMandate)
         }
-
-        _playerInfoFlow.value?.let { player ->
-            viewModelScope.launch {
+        viewModelScope.launch {
+            _playerInfoFlow.value?.let { player ->
                 val doc = firebaseHandler.firebaseStore
                     .collection(firebaseHandler.playersTable)
                     .whereEqualTo("tmProfile", player.tmProfile)
                     .get().await().documents.firstOrNull()
-
                 doc?.reference?.set(player)?.await()
             }
         }
@@ -230,6 +228,7 @@ class PlayerInfoViewModel(
                         currentClub = club ?: player.currentClub,
                         marketValueHistory = marketValueHistory,
                         lastRefreshedAt = System.currentTimeMillis(),
+                        isOnLoan = response.data?.isOnLoan ?: player.isOnLoan,
                         noteList = if (player.notes?.isNotEmpty() == true) {
                             val currentNotes = player.noteList?.toMutableList() ?: mutableListOf()
                             currentNotes.add(

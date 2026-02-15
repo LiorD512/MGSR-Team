@@ -45,6 +45,7 @@ import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.PhoneIphone
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.filled.VerifiedUser
 import androidx.compose.material.icons.filled.Whatsapp
 import androidx.compose.material.icons.automirrored.filled.TrendingDown
@@ -71,6 +72,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
@@ -118,6 +120,7 @@ import com.liordahan.mgsrteam.ui.theme.HomeDarkCard
 import com.liordahan.mgsrteam.ui.theme.HomeDarkCardBorder
 import com.liordahan.mgsrteam.ui.theme.HomeGreenAccent
 import com.liordahan.mgsrteam.ui.theme.HomeOrangeAccent
+import com.liordahan.mgsrteam.ui.theme.HomePurpleAccent
 import com.liordahan.mgsrteam.ui.theme.HomeRedAccent
 import com.liordahan.mgsrteam.ui.theme.HomeTealAccent
 import com.liordahan.mgsrteam.ui.theme.HomeTextPrimary
@@ -501,6 +504,29 @@ fun PlayerInfoScreen(
                         darkTheme = true
                     )
 
+                    playerToPresent?.let { player ->
+                        if (player.isOnLoan) {
+                            HorizontalDivider(
+                                color = HomeDarkCardBorder,
+                                thickness = 0.5.dp,
+                                modifier = Modifier.padding(vertical = 8.dp)
+                            )
+                            InfoRow(
+                                stringResource(R.string.players_on_loan_from_label),
+                                player.onLoanFromClub?.takeIf { it.isNotBlank() } ?: "—",
+                                darkTheme = true,
+                                icon = {
+                                    Icon(
+                                        modifier = Modifier.size(24.dp),
+                                        imageVector = Icons.Default.SwapHoriz,
+                                        contentDescription = null,
+                                        tint = HomePurpleAccent
+                                    )
+                                }
+                            )
+                        }
+                    }
+
                     HorizontalDivider(
                         color = dividerColor,
                         thickness = 0.5.dp,
@@ -800,6 +826,13 @@ private fun PlayerInfoHeroCard(
                 text = player.fullName ?: stringResource(R.string.player_info_unknown),
                 style = boldTextStyle(HomeTextPrimary, 22.sp)
             )
+            if (player.isOnLoan) {
+                Spacer(Modifier.height(6.dp))
+                val loanText = player.onLoanFromClub?.let { club ->
+                    stringResource(R.string.players_on_loan_from, club)
+                } ?: stringResource(R.string.players_on_loan)
+                PlayerInfoOnLoanPill(text = loanText)
+            }
             Spacer(Modifier.height(4.dp))
             Text(
                 text = buildString {
@@ -929,6 +962,26 @@ private fun PlayerInfoHeroCard(
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun PlayerInfoOnLoanPill(text: String) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(12.dp))
+            .background(
+                Brush.linearGradient(
+                    colors = listOf(HomePurpleAccent, Color(0xFF7B1FA2))
+                )
+            )
+            .padding(horizontal = 12.dp, vertical = 5.dp)
+    ) {
+        Text(
+            text = text,
+            style = boldTextStyle(Color.White, 11.sp),
+            maxLines = 1
+        )
     }
 }
 

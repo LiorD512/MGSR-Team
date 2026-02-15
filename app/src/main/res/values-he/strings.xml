@@ -40,6 +40,9 @@
     <string name="players_expiring_soon_count">%d חוזים מסתיימים בקרוב</string>
     <string name="players_expiring_action_needed">נדרש טיפול לפני סיום החוזה</string>
     <string name="players_free_agent">שחקן חופשי</string>
+    <string name="players_on_loan">בהשאלה</string>
+    <string name="players_on_loan_from">בהשאלה מ-%s</string>
+    <string name="players_on_loan_from_label">בהשאלה מ</string>
     <string name="players_years_suffix"> שנים</string>
     <string name="players_no_players_found">לא נמצאו שחקנים</string>
     <string name="players_empty_hint">הוסף שחקנים לסגל או נקה מסננים כדי לראות את הרשימה המלאה.</string>

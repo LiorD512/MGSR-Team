@@ -2,6 +2,7 @@ package com.liordahan.mgsrteam.features.players.models
 
 import android.os.Parcelable
 import com.google.firebase.firestore.DocumentId
+import com.google.firebase.firestore.PropertyName
 import kotlinx.parcelize.Parcelize
 
 @Parcelize
@@ -30,7 +31,9 @@ data class Player(
     val noteList: List<NotesModel>? = null,
     val marketValueHistory: List<MarketValueEntry>? = null,
     val linkedContactId: String? = null,
-    val lastRefreshedAt: Long? = null
+    val lastRefreshedAt: Long? = null,
+    @PropertyName("onLoan") val isOnLoan: Boolean = false,
+    @PropertyName("onLoanFromClub") val onLoanFromClub: String? = null
 ) : Parcelable
 
 @Parcelize

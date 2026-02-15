@@ -18,6 +18,8 @@ data class PlayerToUpdateValues(
     val contract: String?,
     val positions: List<String?>?,
     val currentClub: TransfermarktClub?,
+    val isOnLoan: Boolean = false,
+    val onLoanFromClub: String? = null
 )
 
 class PlayersUpdate {
@@ -113,6 +115,42 @@ class PlayersUpdate {
                     clubCountry = clubCountry
                 )
 
+                // Detect "On loan" badge - ribbon has <a title="On loan from X until Y"> (same location as returnee badge)
+                val ribbon = doc.select("div.data-header_ribbon, div.data-header__ribbon").firstOrNull()
+                    ?: doc.select("div[class*='ribbon']").firstOrNull()
+                val ribbonLinkTitleRaw = ribbon?.select("a")?.firstOrNull()?.attr("title")
+                    ?: doc.select("a[title*='on loan from']").firstOrNull()?.attr("title")
+                    ?: ""
+                val ribbonLinkTitle = ribbonLinkTitleRaw.lowercase()
+                val ribbonText = ribbon?.text()?.trim()?.lowercase() ?: ""
+                val clubSectionText = doc.select("span.data-header__club, div.data-header__club-info").text().lowercase()
+                val infoBoxText = doc.select("div.data-header__info-box").text().lowercase()
+                val headerText = doc.select("div.data-header").text().lowercase()
+                val combined = "$ribbonLinkTitle $ribbonText $clubSectionText $infoBoxText $headerText"
+                val hasLoanIndicator = ribbonLinkTitle.contains("on loan from") ||
+                    combined.contains("on loan") || combined.contains("leihe") ||
+                    combined.contains("ausgeliehen") || combined.contains("on loan from") ||
+                    combined.contains("leihe von") || combined.contains("ausgeliehen von") ||
+                    combined.contains("prêt") || combined.contains("en préstamo") || combined.contains("in prestito") ||
+                    (combined.contains("loan") && !combined.contains("end of loan") && !combined.contains("loan return") && !combined.contains("loan spell"))
+                val isReturnee = combined.contains("returnee") || combined.contains("returned after loan")
+                val isOnLoan = hasLoanIndicator && !isReturnee
+                val onLoanFromClub = if (isOnLoan) {
+                    val headerTextRaw = doc.select("div.data-header").text()
+                    val infoBoxTextRaw = doc.select("div.data-header__info-box").text()
+                    val searchText = ribbonLinkTitleRaw.ifEmpty { headerTextRaw.ifEmpty { infoBoxTextRaw } }
+                    // Match "On loan from: Hapoel Beer Sheva Contract" or "On loan from X until Y"
+                    listOf(
+                        Regex("""(?:on loan from|leihe von|ausgeliehen von)\s*:?\s*(.+?)\s+(?:contract|until|bis)""", RegexOption.IGNORE_CASE),
+                        Regex("""(?:on loan from|leihe von|ausgeliehen von)\s*:?\s*(.+?)(?:\s*$|\s*;)""", RegexOption.IGNORE_CASE)
+                    ).firstNotNullOfOrNull { regex ->
+                        regex.find(searchText)?.groupValues?.getOrNull(1)?.trim()?.takeIf { it.isNotBlank() }
+                    }
+                        ?: doc.select("div.data-header a[href*='/verein/']")
+                            .mapNotNull { it.attr("title").takeIf { t -> t.isNotBlank() } ?: it.text().trim().takeIf { t -> t.isNotBlank() } }
+                            .firstOrNull { it != clubName }
+                } else null
+
                 TransfermarktResult.Success(
                     PlayerToUpdateValues(
                         marketValue = marketValue,
@@ -122,7 +160,9 @@ class PlayersUpdate {
                         age = age,
                         contract = contract,
                         positions = positionsList,
-                        currentClub = club
+                        currentClub = club,
+                        isOnLoan = isOnLoan,
+                        onLoanFromClub = onLoanFromClub
                     )
                 )
             } catch (ex: Exception) {
