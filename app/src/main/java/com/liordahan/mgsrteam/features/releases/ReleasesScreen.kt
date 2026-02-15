@@ -70,6 +70,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -1045,8 +1046,8 @@ private fun RosterTeammateRow(
                 style = boldTextStyle(HomeTextPrimary, 14.sp)
             )
             Text(
-                "${player.age ?: "-"} • ${player.positions?.firstOrNull()?.takeIf { it.isNotBlank() } ?: "-"} • ${player.marketValue ?: "-"} • ${stringResource(R.string.releases_games_together, matchesPlayedTogether)}",
-                style = regularTextStyle(HomeTextSecondary, 11.sp),
+                text = "${player.age ?: "-"} • ${player.positions?.firstOrNull()?.takeIf { it.isNotBlank() } ?: "-"} • ${player.marketValue ?: "-"} • ${stringResource(R.string.releases_games_together, matchesPlayedTogether)}",
+                style = regularTextStyle(HomeTextSecondary, 11.sp, direction = TextDirection.Ltr),
                 modifier = Modifier.padding(top = 2.dp)
             )
         }
