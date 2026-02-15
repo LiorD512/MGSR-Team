@@ -3,7 +3,6 @@ package com.liordahan.mgsrteam.transfermarket
 import android.util.Log
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -29,7 +28,7 @@ class ContractFinisher {
         private const val MAX_VALUE = 3_000_000
         private const val MAX_AGE = 31
         private const val MAX_PAGES = 80
-        private const val DELAY_MS = 800
+        private const val DELAY_MS = 600
     }
 
     enum class TransferWindow { SUMMER, WINTER }
@@ -49,26 +48,6 @@ class ContractFinisher {
             WindowConfig(TransferWindow.SUMMER, "Summer", listOf(safeYear))
         } else {
             WindowConfig(TransferWindow.WINTER, "Winter", listOf(safeYear, safeYear + 1))
-        }
-    }
-
-    /**
-     * Fetches contract finishers from endendevertraege. Paginates through all results,
-     * filters for market value 150K–3M and age ≤31.
-     */
-    suspend fun fetchByDetailsuche(
-        config: WindowConfig,
-        maxRetries: Int = 2
-    ): TransfermarktResult<List<LatestTransferModel>> = withContext(Dispatchers.IO) {
-        try {
-            Log.d(TAG, "ContractFinisher starting yearsToQuery=${config.yearsToQuery}")
-            val all = fetchViaEndendevertraege(config, maxRetries)
-            val distinct = all.distinctBy { it.playerUrl }.sortedByDescending { it.getRealMarketValue() }
-            Log.d(TAG, "ContractFinisher total: ${distinct.size} players (150K–3M, age≤$MAX_AGE)")
-            TransfermarktResult.Success(distinct)
-        } catch (ex: Exception) {
-            Log.w(TAG, "ContractFinisher failed: ${ex.message}")
-            TransfermarktResult.Failed(ex.localizedMessage)
         }
     }
 
@@ -95,9 +74,7 @@ class ContractFinisher {
 
                     while (attempt < maxRetries) {
                         try {
-                            val url = "$TRANSFERMARKT_BASE_URL/transfers/endendevertraege/statistik" +
-                                "?plus=1&jahr=$jahr&land_id=0&ausrichtung=alle&spielerposition_id=alle" +
-                                "&altersklasse=alle&page=$page"
+                            val url = buildEndendevertraegeUrl(jahr, page)
                             doc = Jsoup.connect(url)
                                 .userAgent(getRandomUserAgent())
                                 .timeout(TIMEOUT_MS)
@@ -123,7 +100,7 @@ class ContractFinisher {
                                 .map { it.copy(transferDate = contractExpiryDate) }
 
                             val newOnes = filtered.filter { it.playerUrl !in seenUrls }
-                            newOnes.forEach { it.playerUrl?.let { u -> seenUrls.add(u) } }
+                            seenUrls.addAll(newOnes.mapNotNull { it.playerUrl })
                             all.addAll(newOnes)
 
                             if (raw.isEmpty()) {
@@ -134,12 +111,11 @@ class ContractFinisher {
                                 val maxValueOnPage = raw.maxOfOrNull { it.getRealMarketValue() } ?: 0
                                 if (maxValueOnPage < MIN_VALUE) shouldBreak = true
                             }
+                            totalPagesFetched++
                         } catch (e: Exception) {
                             Log.w(TAG, "Parse failed page $page: ${e.message}")
                         }
                     }
-
-                    totalPagesFetched++
                     val distinct = all.distinctBy { it.playerUrl }.sortedByDescending { it.getRealMarketValue() }
                     emit(ContractFinisherProgress(players = distinct, pagesLoaded = totalPagesFetched, isLoading = true))
 
@@ -168,79 +144,10 @@ class ContractFinisher {
         val error: String? = null
     )
 
-    private suspend fun fetchViaEndendevertraege(
-        config: WindowConfig,
-        maxRetries: Int
-    ): List<LatestTransferModel> {
-        val all = mutableListOf<LatestTransferModel>()
-        val seenUrls = mutableSetOf<String>()
-
-        for (jahr in config.yearsToQuery) {
-            var page = 1
-            var consecutiveEmpty = 0
-
-            while (page <= MAX_PAGES) {
-                var attempt = 0
-                var doc: Document? = null
-
-                while (attempt < maxRetries) {
-                    try {
-                        val url = "$TRANSFERMARKT_BASE_URL/transfers/endendevertraege/statistik" +
-                            "?plus=1&jahr=$jahr&land_id=0&ausrichtung=alle&spielerposition_id=alle" +
-                            "&altersklasse=alle&page=$page"
-                        doc = Jsoup.connect(url)
-                            .userAgent(getRandomUserAgent())
-                            .timeout(TIMEOUT_MS)
-                            .header("Accept-Language", "en-US,en;q=0.9")
-                            .get()
-                        break
-                    } catch (e: Exception) {
-                        Log.w(TAG, "Endendevertraege jahr=$jahr page=$page attempt ${attempt + 1}: ${e.message}")
-                        attempt++
-                        if (attempt < maxRetries) delay(500L * (attempt + 1))
-                    }
-                }
-
-                if (doc == null) {
-                    page++
-                    delay(DELAY_MS.toLong())
-                    continue
-                }
-
-                val raw = parseEndendevertraegeResults(doc)
-                val contractExpiryDate = formatContractExpiryDate(config, jahr)
-                val filtered = raw
-                    .filter { it.playerUrl != null }
-                    .filter { (it.playerAge?.toIntOrNull() ?: 99) <= MAX_AGE }
-                    .filter { it.getRealMarketValue() in MIN_VALUE..MAX_VALUE }
-                    .map { it.copy(transferDate = contractExpiryDate) }
-
-                val newOnes = filtered.filter { it.playerUrl !in seenUrls }
-                newOnes.forEach { it.playerUrl?.let { u -> seenUrls.add(u) } }
-                all.addAll(newOnes)
-
-                if (raw.isEmpty()) {
-                    consecutiveEmpty++
-                    if (consecutiveEmpty >= 1) break
-                } else {
-                    consecutiveEmpty = 0
-                }
-
-                if (raw.isNotEmpty()) {
-                    val maxValueOnPage = raw.maxOfOrNull { it.getRealMarketValue() } ?: 0
-                    if (maxValueOnPage < MIN_VALUE) {
-                        Log.d(TAG, "Endendevertraege jahr=$jahr: passed value range at page $page")
-                        break
-                    }
-                }
-
-                page++
-                delay(DELAY_MS.toLong())
-            }
-        }
-
-        return all
-    }
+    private fun buildEndendevertraegeUrl(jahr: Int, page: Int): String =
+        "$TRANSFERMARKT_BASE_URL/transfers/endendevertraege/statistik" +
+            "?plus=1&jahr=$jahr&land_id=0&ausrichtung=alle&spielerposition_id=alle" +
+            "&altersklasse=alle&page=$page"
 
     private fun parseEndendevertraegeResults(doc: Document): List<LatestTransferModel> {
         val rows = doc.select("table.items tbody tr.odd, table.items tbody tr.even")

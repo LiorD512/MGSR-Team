@@ -194,7 +194,7 @@ fun ContractFinisherScreen(
 
             if (state.visibleList.isEmpty() && !state.isLoading) {
                 EmptyState(
-                    text = stringResource(R.string.releases_tm_down),
+                    text = stringResource(R.string.contract_finisher_no_found),
                     showResetFiltersButton = true,
                     optionalButtonText = stringResource(R.string.contract_finisher_retry),
                     onResetFiltersClicked = { viewModel.retry() }
@@ -205,7 +205,7 @@ fun ContractFinisherScreen(
             ContractFinisherPositionChips(
                 positionList = positionList,
                 selectedPosition = selectedPosition,
-                originalReleaseList = state.releasesList,
+                playersCount = state.playersCount,
                 onPositionClicked = {
                     selectedPosition = if (selectedPosition == it) null else it
                 },
@@ -243,7 +243,10 @@ fun ContractFinisherScreen(
                         }
                     }
                 }
-                items(state.visibleList) { release ->
+                items(
+                    items = state.visibleList,
+                    key = { it.playerUrl ?: it.playerName ?: it.hashCode().toString() }
+                ) { release ->
                     val playerUrl = release.playerUrl
                     val isExpanded = playerUrl != null && expandedPlayerUrl == playerUrl
                     val rosterTeammates = playerUrl?.let { teammatesCache[it] }
@@ -449,12 +452,12 @@ private fun ContractFinisherStatItem(
 private fun ContractFinisherPositionChips(
     positionList: List<Position>,
     selectedPosition: Position?,
-    originalReleaseList: List<LatestTransferModel>,
+    playersCount: Map<String, Int>,
     onPositionClicked: (Position) -> Unit,
     onAllClicked: () -> Unit
 ) {
     val scrollState = rememberScrollState()
-    val totalCount = originalReleaseList.size
+    val totalCount = playersCount.values.sum()
     val isAllSelected = selectedPosition == null
 
     Column(modifier = Modifier.fillMaxWidth()) {
@@ -473,7 +476,7 @@ private fun ContractFinisherPositionChips(
                 onClick = onAllClicked
             )
             positionList.forEach { position ->
-                val count = originalReleaseList.count { it.playerPosition?.equals(position.name) == true }
+                val count = playersCount[position.name ?: ""] ?: 0
                 val isSelected = selectedPosition == position
                 val isDisabled = count == 0
                 val positionName = position.name ?: ""

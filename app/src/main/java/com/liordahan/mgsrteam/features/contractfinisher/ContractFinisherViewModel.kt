@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
 data class ContractFinisherUiState(
@@ -48,6 +49,7 @@ class ContractFinisherViewModel(
     private val _positionsFlow = MutableStateFlow<List<Position>>(emptyList())
     private val _fetchErrorFlow = MutableStateFlow<String?>(null)
     private val _isLoadingFlow = MutableStateFlow(true)
+    private var fetchJob: Job? = null
 
     override val selectedPositionFlow: StateFlow<Position?> = _selectedPositionFlow.asStateFlow()
     override val positionsFlow: StateFlow<List<Position>> = _positionsFlow.asStateFlow()
@@ -86,7 +88,8 @@ class ContractFinisherViewModel(
      * Fetches contract finishers page by page, updating UI after each page (like Returnees).
      */
     private fun fetchByDetailsuche() {
-        viewModelScope.launch {
+        fetchJob?.cancel()
+        fetchJob = viewModelScope.launch {
             _isLoadingFlow.value = true
             _fetchErrorFlow.value = null
 

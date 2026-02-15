@@ -135,6 +135,7 @@
     <string name="contract_finisher_loading_more">טוען עוד…</string>
     <string name="contract_finisher_retry">נסה שוב</string>
     <string name="contract_finisher_badge">תאריך סיום חוזה - %1$s</string>
+    <string name="contract_finisher_no_found">לא נמצאו מסיימי חוזה בטווח זה</string>
 
     <!-- Feed -->
     <string name="feed_recent_updates">עדכונים אחרונים</string>

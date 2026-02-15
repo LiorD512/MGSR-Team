@@ -135,6 +135,7 @@
     <string name="contract_finisher_loading_more">Loading more…</string>
     <string name="contract_finisher_retry">Retry</string>
     <string name="contract_finisher_badge">Release date - %1$s</string>
+    <string name="contract_finisher_no_found">No contract finishers found in this range</string>
 
     <!-- Feed -->
     <string name="feed_recent_updates">Recent Updates</string>
