@@ -55,6 +55,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.automirrored.filled.StickyNote2
 import androidx.compose.material.icons.automirrored.filled.TrendingDown
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
+import androidx.compose.material.icons.filled.VerifiedUser
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
@@ -111,6 +112,7 @@ import com.liordahan.mgsrteam.features.add.IAddPlayerViewModel
 import com.liordahan.mgsrteam.features.add.SnakeBarMessage
 import com.liordahan.mgsrteam.features.add.showSnakeBarMessage
 import com.liordahan.mgsrteam.features.players.models.Player
+import com.liordahan.mgsrteam.features.players.PlayerWithMandateExpiry
 import com.liordahan.mgsrteam.features.players.models.getAgentPhoneNumber
 import com.liordahan.mgsrteam.features.players.sort.SortOption
 import com.liordahan.mgsrteam.features.players.models.getPlayerPhoneNumber
@@ -301,6 +303,19 @@ fun PlayersScreen(
                                     players = playersState.expiringSoonPlayers,
                                     onPlayerClick = { player ->
                                         val encodedId = Uri.encode(player.tmProfile)
+                                        navController.navigate("${Screens.PlayerInfoScreen.route}/$encodedId")
+                                    }
+                                )
+                            }
+                        }
+
+                        // Mandate Section
+                        if (playersState.playersWithMandate.isNotEmpty()) {
+                            item(key = "mandate_section") {
+                                MandateAlertBanner(
+                                    playersWithMandate = playersState.playersWithMandate,
+                                    onPlayerClick = { pwm ->
+                                        val encodedId = Uri.encode(pwm.player.tmProfile)
                                         navController.navigate("${Screens.PlayerInfoScreen.route}/$encodedId")
                                     }
                                 )
@@ -927,6 +942,168 @@ private fun ExpiringAlertBanner(
                     displayPlayers.forEach { player ->
                         ExpiringPlayerRow(player = player, onClick = { onPlayerClick(player) })
                     }
+                }
+            }
+        }
+    }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+//  MANDATE SECTION BANNER
+// ═════════════════════════════════════════════════════════════════════════════
+
+@Composable
+private fun MandateAlertBanner(
+    playersWithMandate: List<PlayerWithMandateExpiry>,
+    onPlayerClick: (PlayerWithMandateExpiry) -> Unit
+) {
+    var isExpanded by remember { mutableStateOf(false) }
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickWithNoRipple { isExpanded = !isExpanded },
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = HomeDarkCard)
+    ) {
+        Column {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .drawBehind {
+                        drawRect(
+                            color = HomeBlueAccent,
+                            topLeft = Offset.Zero,
+                            size = androidx.compose.ui.geometry.Size(
+                                width = 3.dp.toPx(),
+                                height = size.height
+                            )
+                        )
+                    }
+                    .padding(start = 14.dp, end = 14.dp, top = 12.dp, bottom = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.VerifiedUser,
+                    contentDescription = null,
+                    tint = HomeBlueAccent,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(Modifier.width(10.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = stringResource(R.string.players_with_mandate_count, playersWithMandate.size),
+                        style = boldTextStyle(HomeBlueAccent, 12.sp)
+                    )
+                    Text(
+                        text = stringResource(R.string.players_with_mandate_subtitle),
+                        style = regularTextStyle(HomeTextSecondary, 10.sp)
+                    )
+                }
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(HomeBlueAccent.copy(alpha = 0.15f))
+                        .padding(horizontal = 8.dp, vertical = 3.dp)
+                ) {
+                    Text(
+                        text = playersWithMandate.size.toString(),
+                        style = boldTextStyle(HomeBlueAccent, 11.sp)
+                    )
+                }
+                Spacer(Modifier.width(4.dp))
+                Icon(
+                    imageVector = if (isExpanded) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
+                    contentDescription = null,
+                    tint = HomeTextSecondary,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+
+            AnimatedVisibility(
+                visible = isExpanded,
+                enter = expandVertically(animationSpec = tween(250)) + fadeIn(),
+                exit = shrinkVertically(animationSpec = tween(200)) + fadeOut()
+            ) {
+                Column(
+                    modifier = Modifier.padding(
+                        start = 14.dp,
+                        end = 14.dp,
+                        bottom = 10.dp
+                    )
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(1.dp)
+                            .background(HomeDarkCardBorder)
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    playersWithMandate.forEach { pwm ->
+                        MandatePlayerRow(pwm = pwm, onClick = { onPlayerClick(pwm) })
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MandatePlayerRow(pwm: PlayerWithMandateExpiry, onClick: () -> Unit) {
+    val player = pwm.player
+    val expiryStr = pwm.mandateExpiryAt?.let { ts ->
+        java.text.SimpleDateFormat("dd/MM/yyyy", java.util.Locale.US).format(java.util.Date(ts))
+    }
+    Box(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickWithNoRipple { onClick() }
+                .padding(vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            AsyncImage(
+                model = player.profileImage,
+                contentDescription = null,
+                modifier = Modifier
+                    .size(34.dp)
+                    .clip(CircleShape),
+                contentScale = ContentScale.Crop
+            )
+            Spacer(Modifier.width(10.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Text(
+                        text = player.fullName ?: "",
+                        style = boldTextStyle(HomeTextPrimary, 13.sp),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    if (player.isOnLoan) {
+                        OnLoanPill(text = stringResource(R.string.players_on_loan))
+                    }
+                }
+                Text(
+                    text = player.currentClub?.clubName ?: "",
+                    style = regularTextStyle(HomeTextSecondary, 11.sp),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            if (expiryStr != null) {
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(HomeBlueAccent.copy(alpha = 0.12f))
+                        .padding(horizontal = 8.dp, vertical = 3.dp)
+                ) {
+                    Text(
+                        text = stringResource(R.string.players_mandate_expires, expiryStr),
+                        style = boldTextStyle(HomeBlueAccent, 10.sp)
+                    )
                 }
             }
         }

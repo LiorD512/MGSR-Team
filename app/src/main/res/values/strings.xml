@@ -44,6 +44,9 @@
     <string name="players_filter_loan_players_only">Loan Players Only</string>
     <string name="players_expiring_soon_count">%d Contracts Expiring Soon</string>
     <string name="players_expiring_action_needed">Action needed before contract ends</string>
+    <string name="players_with_mandate_count">%d Players with Mandate</string>
+    <string name="players_with_mandate_subtitle">Players with active mandate</string>
+    <string name="players_mandate_expires">Mandate: %s</string>
     <string name="players_free_agent">Free Agent</string>
     <string name="players_on_loan">On loan</string>
     <string name="players_on_loan_from">On loan from %s</string>

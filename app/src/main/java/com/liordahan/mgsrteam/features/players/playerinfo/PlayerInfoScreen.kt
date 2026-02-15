@@ -929,21 +929,6 @@ private fun PlayerInfoHeroCard(
                     )
                 }
             }
-            if (player.haveMandate && mandateExpiryAt != null) {
-                Spacer(Modifier.height(8.dp))
-                val mandateExpiryStr = java.text.SimpleDateFormat("dd/MM/yyyy", java.util.Locale.US).format(java.util.Date(mandateExpiryAt))
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(HomeBlueAccent.copy(alpha = 0.15f))
-                        .padding(horizontal = 10.dp, vertical = 4.dp)
-                ) {
-                    Text(
-                        text = stringResource(R.string.player_info_mandate_expires, mandateExpiryStr),
-                        style = boldTextStyle(HomeBlueAccent, 11.sp)
-                    )
-                }
-            }
             Spacer(Modifier.height(12.dp))
             Row(
                 modifier = Modifier
@@ -965,18 +950,25 @@ private fun PlayerInfoHeroCard(
                         tint = if (isMandateOn) HomeBlueAccent else HomeTextSecondary
                     )
                     Spacer(Modifier.width(8.dp))
-                    Text(
-                        text = if (mandateExpiryAt != null) {
-                            val mandateExpiryStr = java.text.SimpleDateFormat("dd/MM/yyyy", java.util.Locale.US).format(java.util.Date(mandateExpiryAt))
-                            stringResource(R.string.player_info_mandate_expires, mandateExpiryStr)
-                        } else {
-                            stringResource(R.string.player_info_mandate)
-                        },
-                        style = boldTextStyle(
-                            if (isMandateOn) HomeBlueAccent else HomeTextSecondary,
-                            14.sp
+                    Column {
+                        Text(
+                            text = stringResource(R.string.player_info_mandate),
+                            style = boldTextStyle(
+                                if (isMandateOn) HomeBlueAccent else HomeTextSecondary,
+                                16.sp
+                            )
                         )
-                    )
+                        if (isMandateOn && mandateExpiryAt != null) {
+                            val mandateExpiryStr = java.text.SimpleDateFormat("dd/MM/yyyy", java.util.Locale.US).format(java.util.Date(mandateExpiryAt))
+                            Text(
+                                text = mandateExpiryStr,
+                                style = regularTextStyle(
+                                    if (isMandateOn) HomeBlueAccent else HomeTextSecondary,
+                                    11.sp
+                                )
+                            )
+                        }
+                    }
                 }
                 Switch(
                     checked = isMandateOn,
@@ -1575,46 +1567,6 @@ private fun PlayerInfoBottomBar(
                 .padding(horizontal = 24.dp, vertical = 16.dp),
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {
-            Row(
-                modifier = Modifier
-                    .weight(1f)
-                    .clickWithNoRipple { onRefreshClicked() },
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Refresh,
-                    contentDescription = stringResource(R.string.player_info_refresh_cd),
-                    modifier = Modifier.size(24.dp),
-                    tint = HomeTealAccent
-                )
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    text = stringResource(R.string.player_info_refresh),
-                    style = boldTextStyle(HomeTextSecondary, 12.sp)
-                )
-            }
-            if (showDeletePlayerIcon) {
-                Row(
-                    modifier = Modifier
-                        .weight(1f)
-                        .clickWithNoRipple { onDeletePlayerClicked() },
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Delete,
-                        contentDescription = null,
-                        modifier = Modifier.size(24.dp),
-                        tint = HomeTealAccent
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        text = stringResource(R.string.player_info_delete),
-                        style = boldTextStyle(HomeTextSecondary, 12.sp)
-                    )
-                }
-            }
             if (hasPassportDetails) {
                 Row(
                     modifier = Modifier
@@ -1645,6 +1597,25 @@ private fun PlayerInfoBottomBar(
             Row(
                 modifier = Modifier
                     .weight(1f)
+                    .clickWithNoRipple { onRefreshClicked() },
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Refresh,
+                    contentDescription = stringResource(R.string.player_info_refresh_cd),
+                    modifier = Modifier.size(24.dp),
+                    tint = HomeTealAccent
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    text = stringResource(R.string.player_info_refresh),
+                    style = boldTextStyle(HomeTextSecondary, 12.sp)
+                )
+            }
+            Row(
+                modifier = Modifier
+                    .weight(1f)
                     .clickWithNoRipple { onShareClicked() },
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Center
@@ -1660,6 +1631,27 @@ private fun PlayerInfoBottomBar(
                     text = stringResource(R.string.player_info_share),
                     style = boldTextStyle(HomeTextSecondary, 12.sp)
                 )
+            }
+            if (showDeletePlayerIcon) {
+                Row(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickWithNoRipple { onDeletePlayerClicked() },
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = null,
+                        modifier = Modifier.size(24.dp),
+                        tint = HomeTealAccent
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        text = stringResource(R.string.player_info_delete),
+                        style = boldTextStyle(HomeTextSecondary, 12.sp)
+                    )
+                }
             }
         }
     }

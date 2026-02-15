@@ -18,6 +18,7 @@ import com.liordahan.mgsrteam.features.players.filters.usecases.IResetSortOption
 import com.liordahan.mgsrteam.features.players.filters.usecases.ISetSortOptionUseCase
 import com.liordahan.mgsrteam.features.players.filters.usecases.ISetPositionFiltersByNamesUseCase
 import com.liordahan.mgsrteam.features.players.models.Player
+import com.liordahan.mgsrteam.features.players.playerinfo.documents.PlayerDocument
 import com.liordahan.mgsrteam.features.players.models.Position
 import com.liordahan.mgsrteam.features.players.sort.SortOption
 import com.liordahan.mgsrteam.firebase.FirebaseHandler
@@ -37,11 +38,14 @@ import java.time.format.DateTimeParseException
 import java.util.Locale
 
 
+data class PlayerWithMandateExpiry(val player: Player, val mandateExpiryAt: Long?)
+
 data class PlayersUiState(
     val playersList: List<Player> = emptyList(),
     val visibleList: List<Player> = emptyList(),
     val allAccounts: List<Account> = emptyList(),
     val expiringSoonPlayers: List<Player> = emptyList(),
+    val playersWithMandate: List<PlayerWithMandateExpiry> = emptyList(),
     val showPageLoader: Boolean = false,
     val showRefreshButton: Boolean = false,
     val selectedPositions: List<Position> = emptyList(),
@@ -97,9 +101,12 @@ class PlayersViewModel(
     private val _playersFlow = MutableStateFlow(PlayersUiState())
     override val playersFlow: StateFlow<PlayersUiState> = _playersFlow
 
+    private val _mandateExpiryByPlayer = MutableStateFlow<Map<String, Long>>(emptyMap())
+
     init {
         getAllPlayers()
         loadAllAccounts()
+        loadMandateDocuments()
 
         viewModelScope.launch {
             val name = getCurrentUserName()
@@ -117,7 +124,7 @@ class PlayersViewModel(
                             quickFilterContractExpiring = it.quickFilterContractExpiring,
                             contractFilterOption = it.contractFilterOption
                         )
-                        ?.filterPlayersByWithMandate(it.quickFilterWithMandate)
+                        ?.filterPlayersByWithMandate(it.quickFilterWithMandate, _mandateExpiryByPlayer.value)
                         ?.filterPlayersByMyPlayersOnly(it.quickFilterMyPlayersOnly, it.currentUserName)
                         ?.filterPlayersByLoanPlayers(it.quickFilterLoanPlayersOnly)
                         ?.filterByNotes(it.isWithNotesChecked)
@@ -127,8 +134,20 @@ class PlayersViewModel(
                     val expiringSoon = allPlayers.filter { player ->
                         isContractExpiringWithinMonths(player.contractExpired, 5)
                     }
+                    val mandateExpiryMap = _mandateExpiryByPlayer.value
+                    val playersWithMandate = allPlayers
+                        .filter { player ->
+                            player.haveMandate || (player.tmProfile != null && player.tmProfile in mandateExpiryMap)
+                        }
+                        .map { player ->
+                            PlayerWithMandateExpiry(
+                                player = player,
+                                mandateExpiryAt = player.tmProfile?.let { mandateExpiryMap[it] }
+                            )
+                        }
+                        .sortedBy { it.mandateExpiryAt ?: Long.MAX_VALUE }
                     val mandateCount = allPlayers.count { player ->
-                        player.haveMandate
+                        player.haveMandate || (player.tmProfile != null && player.tmProfile in mandateExpiryMap)
                     }
                     val freeAgentCount = allPlayers.count { player ->
                         player.currentClub?.clubName.equals("Without Club", ignoreCase = true) ||
@@ -137,6 +156,7 @@ class PlayersViewModel(
                     it.copy(
                         visibleList = visible,
                         expiringSoonPlayers = expiringSoon,
+                        playersWithMandate = playersWithMandate,
                         totalPlayers = allPlayers.size,
                         mandateCount = mandateCount,
                         freeAgentCount = freeAgentCount,
@@ -369,8 +389,14 @@ class PlayersViewModel(
         }
     }
 
-    private fun List<Player>?.filterPlayersByWithMandate(enabled: Boolean): List<Player>? {
-        return if (!enabled) this else this?.filter { it.haveMandate }
+    private fun List<Player>?.filterPlayersByWithMandate(
+        enabled: Boolean,
+        mandateExpiryByPlayer: Map<String, Long> = emptyMap()
+    ): List<Player>? {
+        return if (!enabled) this
+        else this?.filter { player ->
+            player.haveMandate || (player.tmProfile != null && player.tmProfile in mandateExpiryByPlayer)
+        }
     }
 
     private fun List<Player>?.filterPlayersByMyPlayersOnly(enabled: Boolean, currentUserName: String?): List<Player>? {
@@ -456,6 +482,35 @@ class PlayersViewModel(
         val now = LocalDate.now()
         val threshold = now.plusMonths(months.toLong())
         return !expiryDate.isBefore(now) && !expiryDate.isAfter(threshold)
+    }
+
+    private fun loadMandateDocuments() {
+        firebaseHandler.firebaseStore.collection(firebaseHandler.playerDocumentsTable)
+            .whereEqualTo("type", "MANDATE")
+            .addSnapshotListener { snapshot, _ ->
+                if (snapshot == null) return@addSnapshotListener
+                val docs = snapshot.toObjects(PlayerDocument::class.java)
+                val map = docs
+                    .filter { it.playerTmProfile != null && it.expiresAt != null }
+                    .groupBy { it.playerTmProfile!! }
+                    .mapValues { (_, list) -> list.maxOf { it.expiresAt!! } }
+                _mandateExpiryByPlayer.value = map
+                _playersFlow.update { state ->
+                    val allPlayers = state.playersList
+                    val playersWithMandate = allPlayers
+                        .filter { player ->
+                            player.haveMandate || (player.tmProfile != null && player.tmProfile in map)
+                        }
+                        .map { player ->
+                            PlayerWithMandateExpiry(
+                                player = player,
+                                mandateExpiryAt = player.tmProfile?.let { map[it] }
+                            )
+                        }
+                        .sortedBy { it.mandateExpiryAt ?: Long.MAX_VALUE }
+                    state.copy(playersWithMandate = playersWithMandate)
+                }
+            }
     }
 
     private fun loadAllAccounts() {

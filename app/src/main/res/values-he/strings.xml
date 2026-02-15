@@ -44,6 +44,9 @@
     <string name="players_filter_loan_players_only">שחקנים בהשאלה בלבד</string>
     <string name="players_expiring_soon_count">%d חוזים מסתיימים בקרוב</string>
     <string name="players_expiring_action_needed">נדרש טיפול לפני סיום החוזה</string>
+    <string name="players_with_mandate_count">%d שחקנים עם מנדט</string>
+    <string name="players_with_mandate_subtitle">שחקנים עם מנדט פעיל</string>
+    <string name="players_mandate_expires">מנדט: %s</string>
     <string name="players_free_agent">שחקן חופשי</string>
     <string name="players_on_loan">בהשאלה</string>
     <string name="players_on_loan_from">בהשאלה מ-%s</string>
