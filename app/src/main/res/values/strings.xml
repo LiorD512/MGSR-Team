@@ -2,7 +2,7 @@
     <string name="app_name" translatable="false">MGSR Team</string>
 
     <!-- Navigation -->
-    <string name="nav_item_players">Players</string>
+    <string name="nav_item_players">Our Roster</string>
     <string name="nav_item_home">Home</string>
     <string name="nav_item_dashboard">Dashboard</string>
     <string name="nav_item_releases">Releases</string>
@@ -22,7 +22,7 @@
     <string name="players_screen_hint">Search players or note by keyword</string>
 
     <!-- Players Screen -->
-    <string name="players_roster_title">My Roster</string>
+    <string name="players_roster_title">Our Roster</string>
     <string name="players_stat_total">Total</string>
     <string name="players_add_player">Add Player</string>
     <string name="players_clear">Clear</string>
@@ -111,13 +111,13 @@
     <string name="greeting_agent_default">Agent</string>
 
     <!-- Dashboard Stats -->
-    <string name="stat_players">Players</string>
+    <string name="stat_players">Our Roster</string>
     <string name="stat_mandate">Mandate</string>
     <string name="stat_free">Free</string>
     <string name="stat_requests">Requests</string>
 
     <!-- Quick Actions -->
-    <string name="quick_action_players">Players</string>
+    <string name="quick_action_players">Our Roster</string>
     <string name="quick_action_shortlist">Shortlist</string>
     <string name="quick_action_releases">Releases</string>
     <string name="quick_action_returnees">Returnees</string>
