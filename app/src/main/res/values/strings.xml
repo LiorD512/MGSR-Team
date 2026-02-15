@@ -339,6 +339,7 @@
     <string name="mandate_preview_title">Preview mandate</string>
     <string name="mandate_preview_page">Page %d</string>
     <string name="mandate_done">Done</string>
+    <string name="mandate_error_generate_failed">Failed to generate PDF: %1$s</string>
     <string name="player_info_delete">Delete</string>
     <string name="player_info_delete_player_confirm">Are you sure you want to delete this player?</string>
     <string name="player_info_delete_note_confirm">Are you sure you want to delete this note?</string>

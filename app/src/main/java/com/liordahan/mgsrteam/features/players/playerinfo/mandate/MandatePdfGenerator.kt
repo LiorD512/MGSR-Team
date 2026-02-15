@@ -5,6 +5,7 @@ import android.graphics.Typeface
 import android.graphics.pdf.PdfDocument
 import com.liordahan.mgsrteam.features.players.models.PassportDetails
 import com.liordahan.mgsrteam.transfermarket.ClubSearchModel
+import java.io.BufferedOutputStream
 import java.io.File
 import java.io.FileOutputStream
 import java.text.SimpleDateFormat
@@ -60,8 +61,8 @@ object MandatePdfGenerator {
 
     fun generatePdf(data: MandateData, outputFile: File): Result<File> = runCatching {
         val doc = PdfDocument()
-        val pageInfo = PdfDocument.PageInfo.Builder(PAGE_WIDTH, PAGE_HEIGHT, 1).create()
-        var page = doc.startPage(pageInfo)
+        fun createPageInfo(pageNum: Int) = PdfDocument.PageInfo.Builder(PAGE_WIDTH, PAGE_HEIGHT, pageNum).create()
+        var page = doc.startPage(createPageInfo(1))
         var canvas = page.canvas
         var y = MARGIN.toFloat()
 
@@ -80,8 +81,28 @@ object MandatePdfGenerator {
             typeface = Typeface.DEFAULT
             isAntiAlias = true
         }
+        val boldBodyPaint = Paint().apply {
+            textSize = BODY_SIZE
+            typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+            isAntiAlias = true
+        }
 
         var pageNum = 1
+        fun drawTextCentered(text: String, paint: Paint): Float {
+            val x = (PAGE_WIDTH - paint.measureText(text)) / 2f
+            if (y > PAGE_HEIGHT - MARGIN - 30) {
+                val pageFooterPaint = Paint(bodyPaint).apply { textSize = 9f }
+                canvas.drawText("-- $pageNum --", (PAGE_WIDTH / 2 - 25).toFloat(), PAGE_HEIGHT - 20f, pageFooterPaint)
+                doc.finishPage(page)
+                pageNum++
+                page = doc.startPage(createPageInfo(pageNum))
+                canvas = page.canvas
+                y = MARGIN.toFloat()
+            }
+            canvas.drawText(text, x, y, paint)
+            y += LINE_HEIGHT
+            return y
+        }
         fun drawText(text: String, paint: Paint): Float {
             val lines = wrapText(text, paint, PAGE_WIDTH - 2 * MARGIN)
             for (line in lines) {
@@ -90,7 +111,7 @@ object MandatePdfGenerator {
                     canvas.drawText("-- $pageNum --", (PAGE_WIDTH / 2 - 25).toFloat(), PAGE_HEIGHT - 20f, pageFooterPaint)
                     doc.finishPage(page)
                     pageNum++
-                    page = doc.startPage(pageInfo)
+                    page = doc.startPage(createPageInfo(pageNum))
                     canvas = page.canvas
                     y = MARGIN.toFloat()
                 }
@@ -104,10 +125,62 @@ object MandatePdfGenerator {
             y += spacing
         }
 
-        // Header
-        y = drawText("Agent Service Authorization", titlePaint)
+        fun drawMixedText(segments: List<Pair<String, Paint>>, maxWidth: Int): Float {
+            fun ensurePage() {
+                if (y > PAGE_HEIGHT - MARGIN - 30) {
+                    val pageFooterPaint = Paint(bodyPaint).apply { textSize = 9f }
+                    canvas.drawText("-- $pageNum --", (PAGE_WIDTH / 2 - 25).toFloat(), PAGE_HEIGHT - 20f, pageFooterPaint)
+                    doc.finishPage(page)
+                    pageNum++
+                    page = doc.startPage(createPageInfo(pageNum))
+                    canvas = page.canvas
+                    y = MARGIN.toFloat()
+                }
+            }
+            val wordsWithPaint = segments.flatMap { (text, paint) ->
+                text.split(" ").map { word -> (word to paint) }
+            }.filter { it.first.isNotEmpty() }
+            var lineWords = mutableListOf<Pair<String, Paint>>()
+            var lineWidth = 0f
+            for ((word, paint) in wordsWithPaint) {
+                val spaceW = if (lineWidth > 0) paint.measureText(" ") else 0f
+                val wordW = paint.measureText(word)
+                if (lineWidth + spaceW + wordW > maxWidth && lineWords.isNotEmpty()) {
+                    ensurePage()
+                    var x = MARGIN.toFloat()
+                    for (i in lineWords.indices) {
+                        val (w, p) = lineWords[i]
+                        canvas.drawText(w, x, y, p)
+                        x += p.measureText(w)
+                        if (i < lineWords.size - 1) x += p.measureText(" ")
+                    }
+                    y += LINE_HEIGHT
+                    lineWords = mutableListOf(word to paint)
+                    lineWidth = wordW
+                } else {
+                    if (lineWidth > 0) lineWidth += spaceW
+                    lineWidth += wordW
+                    lineWords.add(word to paint)
+                }
+            }
+            if (lineWords.isNotEmpty()) {
+                ensurePage()
+                var x = MARGIN.toFloat()
+                for (i in lineWords.indices) {
+                    val (w, p) = lineWords[i]
+                    canvas.drawText(w, x, y, p)
+                    x += p.measureText(w)
+                    if (i < lineWords.size - 1) x += p.measureText(" ")
+                }
+                y += LINE_HEIGHT
+            }
+            return y
+        }
+
+        // Header (centered titles)
+        y = drawTextCentered("Agent Service Authorization", titlePaint)
         drawLine(4)
-        y = drawText("FOOTBALL AGENT MANDATE", headingPaint)
+        y = drawTextCentered("FOOTBALL AGENT MANDATE", headingPaint)
         drawLine(8)
 
         val effectiveStr = dateFormat.format(data.effectiveDate)
@@ -123,14 +196,31 @@ object MandatePdfGenerator {
         val nationality = data.passportDetails.nationality ?: "—"
         val passportNo = data.passportDetails.passportNumber ?: "—"
 
-        y = drawText(
-            "1. $playerName, born: $dob. Nationality: $nationality, identification document: passport No. $passportNo Valid passport must be added.",
-            bodyPaint
+        y = drawMixedText(
+            listOf(
+                "1. " to bodyPaint,
+                playerName to boldBodyPaint,
+                ", born: " to bodyPaint,
+                dob to boldBodyPaint,
+                ". Nationality: " to bodyPaint,
+                nationality to boldBodyPaint,
+                ", identification document: passport No. " to bodyPaint,
+                passportNo to boldBodyPaint,
+                " Valid passport must be added." to bodyPaint
+            ),
+            PAGE_WIDTH - 2 * MARGIN
         )
         drawLine(4)
-        y = drawText(
-            "$AGENT_NAME - FIFA Licensed Football Agent (FIFA Football Agent License ID: $FIFA_LICENSE_ID, acting through $AGENCY_NAME.",
-            bodyPaint
+        y = drawMixedText(
+            listOf(
+                AGENT_NAME to boldBodyPaint,
+                " - FIFA Licensed Football Agent (FIFA Football Agent License ID: " to bodyPaint,
+                FIFA_LICENSE_ID to boldBodyPaint,
+                ", acting through " to bodyPaint,
+                AGENCY_NAME to boldBodyPaint,
+                "." to bodyPaint
+            ),
+            PAGE_WIDTH - 2 * MARGIN
         )
         drawLine(4)
         y = drawText("The Player and the Football Agent are the \"Parties\" and each a \"Party.\"", bodyPaint)
@@ -204,7 +294,7 @@ object MandatePdfGenerator {
         y = drawText("V. CUMULATIVE PENALTY", headingPaint)
         drawLine(4)
         y = drawText(
-            "12. If the Player breaches this Mandate, including by violating exclusivity, using a third party to perform football agent services, or revoking or terminating the Mandate at an inopportune time, the Player shall pay a contractual penalty equal to [●] or fifty percent (50%) of the outstanding amount due at the time of breach, whichever is higher. The penalty is cumulative and payable in addition to the service fee.",
+            "12. If the Player breaches this Mandate, including by violating exclusivity, using a third party to perform football agent services, or revoking or terminating the Mandate at an inopportune time, the Player shall pay a contractual penalty equal to [ ] or fifty percent (50%) of the outstanding amount due at the time of breach, whichever is higher. The penalty is cumulative and payable in addition to the service fee.",
             bodyPaint
         )
         drawLine(8)
@@ -283,7 +373,10 @@ object MandatePdfGenerator {
         val pageFooterPaint = Paint(bodyPaint).apply { textSize = 9f }
         canvas.drawText("-- $pageNum --", (PAGE_WIDTH / 2 - 25).toFloat(), PAGE_HEIGHT - 20f, pageFooterPaint)
         doc.finishPage(page)
-        FileOutputStream(outputFile).use { doc.writeTo(it) }
+        BufferedOutputStream(FileOutputStream(outputFile)).use { stream ->
+            doc.writeTo(stream)
+            stream.flush()
+        }
         doc.close()
         outputFile
     }

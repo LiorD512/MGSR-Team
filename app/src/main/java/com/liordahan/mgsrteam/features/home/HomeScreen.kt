@@ -28,6 +28,8 @@ import com.liordahan.mgsrteam.features.add.AddPlayerScreen
 import com.liordahan.mgsrteam.features.home.dashboard.DashboardScreen
 import com.liordahan.mgsrteam.features.players.PlayersScreen
 import com.liordahan.mgsrteam.features.players.playerinfo.PlayerInfoScreen
+import com.liordahan.mgsrteam.features.players.playerinfo.mandate.GenerateMandateScreen
+import com.liordahan.mgsrteam.features.players.playerinfo.mandate.MandatePreviewScreen
 import com.liordahan.mgsrteam.features.releases.ReleasesScreen
 import com.liordahan.mgsrteam.features.contacts.ContactsScreen
 import com.liordahan.mgsrteam.features.returnee.ReturneeScreen
@@ -263,6 +265,65 @@ fun HomeScreen(
             ) { backStackEntry ->
                 val playerId = backStackEntry.arguments?.getString("playerId") ?: return@composable
                 PlayerInfoScreen(playerId = playerId, navController = navController)
+            }
+
+            composable(
+                route = "${Screens.GenerateMandateScreen.route}/{playerId}",
+                arguments = listOf(navArgument("playerId") { type = NavType.StringType }),
+                enterTransition = {
+                    slideInHorizontally(initialOffsetX = { it }, animationSpec = tween(280)) +
+                            fadeIn(animationSpec = tween(280))
+                },
+                exitTransition = {
+                    slideOutHorizontally(targetOffsetX = { -it }, animationSpec = tween(280)) +
+                            fadeOut(animationSpec = tween(280))
+                },
+                popEnterTransition = {
+                    slideInHorizontally(initialOffsetX = { -it }, animationSpec = tween(280)) +
+                            fadeIn(animationSpec = tween(280))
+                },
+                popExitTransition = {
+                    slideOutHorizontally(targetOffsetX = { it }, animationSpec = tween(280)) +
+                            fadeOut(animationSpec = tween(280))
+                }
+            ) { backStackEntry ->
+                val genPlayerId = backStackEntry.arguments?.getString("playerId") ?: return@composable
+                GenerateMandateScreen(
+                    playerId = genPlayerId,
+                    navController = navController
+                )
+            }
+
+            composable(
+                route = "${Screens.MandatePreviewScreen.route}/{playerId}/{pdfFilename}",
+                arguments = listOf(
+                    navArgument("playerId") { type = NavType.StringType },
+                    navArgument("pdfFilename") { type = NavType.StringType }
+                ),
+                enterTransition = {
+                    slideInHorizontally(initialOffsetX = { it }, animationSpec = tween(280)) +
+                            fadeIn(animationSpec = tween(280))
+                },
+                exitTransition = {
+                    slideOutHorizontally(targetOffsetX = { -it }, animationSpec = tween(280)) +
+                            fadeOut(animationSpec = tween(280))
+                },
+                popEnterTransition = {
+                    slideInHorizontally(initialOffsetX = { -it }, animationSpec = tween(280)) +
+                            fadeIn(animationSpec = tween(280))
+                },
+                popExitTransition = {
+                    slideOutHorizontally(targetOffsetX = { it }, animationSpec = tween(280)) +
+                            fadeOut(animationSpec = tween(280))
+                }
+            ) { backStackEntry ->
+                val mandatePlayerId = backStackEntry.arguments?.getString("playerId") ?: return@composable
+                val pdfFilename = backStackEntry.arguments?.getString("pdfFilename") ?: return@composable
+                MandatePreviewScreen(
+                    playerId = mandatePlayerId,
+                    pdfFilename = pdfFilename,
+                    navController = navController
+                )
             }
 
             composable(

@@ -328,6 +328,7 @@
     <string name="mandate_preview_title">תצוגה מקדימה של המנדט</string>
     <string name="mandate_preview_page">עמוד %d</string>
     <string name="mandate_done">סיום</string>
+    <string name="mandate_error_generate_failed">יצירת ה-PDF נכשלה: %1$s</string>
     <string name="player_info_delete">מחק</string>
     <string name="player_info_delete_player_confirm">האם אתה בטוח שברצונך למחוק את השחקן?</string>
     <string name="player_info_delete_note_confirm">האם אתה בטוח שברצונך למחוק את ההערה?</string>

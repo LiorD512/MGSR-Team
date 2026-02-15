@@ -107,7 +107,7 @@ import com.liordahan.mgsrteam.features.add.getPhoneNumberFromContactUri
 import com.liordahan.mgsrteam.features.players.models.NotesModel
 import com.liordahan.mgsrteam.features.players.models.Player
 import com.liordahan.mgsrteam.features.players.playerinfo.documents.DocumentType
-import com.liordahan.mgsrteam.features.players.playerinfo.mandate.GenerateMandateSheet
+import com.liordahan.mgsrteam.navigation.Screens
 import com.liordahan.mgsrteam.features.players.playerinfo.documents.PlayerDocument
 import com.liordahan.mgsrteam.features.players.models.getAgentPhoneNumber
 import com.liordahan.mgsrteam.features.players.models.getPlayerPhoneNumber
@@ -243,7 +243,6 @@ fun PlayerInfoScreen(
 
     var showDeleteDialog by remember { mutableStateOf(false) }
     var noteToDelete by remember { mutableStateOf<NotesModel?>(null) }
-    var showGenerateMandateSheet by remember { mutableStateOf(false) }
     var documentsList by remember { mutableStateOf<List<PlayerDocument>>(emptyList()) }
     var docToDelete by remember { mutableStateOf<PlayerDocument?>(null) }
     var isUploadingDocument by remember { mutableStateOf(false) }
@@ -345,13 +344,6 @@ fun PlayerInfoScreen(
                         playerToPresent?.tmProfile ?: "",
                         onDeleteSuccessfully = { navController.popBackStack() })
                 }
-            )
-        }
-        if (showGenerateMandateSheet && playerToPresent != null && playerToPresent?.passportDetails != null) {
-            GenerateMandateSheet(
-                player = playerToPresent!!,
-                onDismiss = { showGenerateMandateSheet = false },
-                onGenerated = { }
             )
         }
         if (noteToDelete != null) {
@@ -782,7 +774,9 @@ fun PlayerInfoScreen(
                 onRefreshClicked = { viewModel.refreshPlayerInfo() },
                 onDeletePlayerClicked = { showDeleteDialog = true },
                 onShareClicked = shareAction,
-                onGenerateMandateClicked = { showGenerateMandateSheet = true }
+                onGenerateMandateClicked = {
+                    navController.navigate("${Screens.GenerateMandateScreen.route}/${Uri.encode(playerId)}")
+                }
             )
         }
     }
@@ -959,7 +953,12 @@ private fun PlayerInfoHeroCard(
                     )
                     Spacer(Modifier.width(8.dp))
                     Text(
-                        text = stringResource(R.string.player_info_mandate),
+                        text = if (mandateExpiryAt != null) {
+                            val mandateExpiryStr = java.text.SimpleDateFormat("dd/MM/yyyy", java.util.Locale.US).format(java.util.Date(mandateExpiryAt))
+                            stringResource(R.string.player_info_mandate_expires, mandateExpiryStr)
+                        } else {
+                            stringResource(R.string.player_info_mandate)
+                        },
                         style = boldTextStyle(
                             if (isMandateOn) HomeBlueAccent else HomeTextSecondary,
                             14.sp
