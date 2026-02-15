@@ -45,7 +45,6 @@ import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.PhoneIphone
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.filled.VerifiedUser
 import androidx.compose.material.icons.filled.Whatsapp
 import androidx.compose.material.icons.automirrored.filled.TrendingDown
@@ -503,29 +502,6 @@ fun PlayerInfoScreen(
                         playerToPresent?.currentClub?.clubLogo,
                         darkTheme = true
                     )
-
-                    playerToPresent?.let { player ->
-                        if (player.isOnLoan) {
-                            HorizontalDivider(
-                                color = HomeDarkCardBorder,
-                                thickness = 0.5.dp,
-                                modifier = Modifier.padding(vertical = 8.dp)
-                            )
-                            InfoRow(
-                                stringResource(R.string.players_on_loan_from_label),
-                                player.onLoanFromClub?.takeIf { it.isNotBlank() } ?: "—",
-                                darkTheme = true,
-                                icon = {
-                                    Icon(
-                                        modifier = Modifier.size(24.dp),
-                                        imageVector = Icons.Default.SwapHoriz,
-                                        contentDescription = null,
-                                        tint = HomePurpleAccent
-                                    )
-                                }
-                            )
-                        }
-                    }
 
                     HorizontalDivider(
                         color = dividerColor,
@@ -1284,23 +1260,23 @@ fun ClubInfoRow(
             style = regularTextStyle(labelColor, 14.sp),
             modifier = Modifier.weight(1f)
         )
-        Text(
-            text = value ?: "--",
-            style = boldTextStyle(
-                valueColor,
-                14.sp
-            ),
-            textAlign = TextAlign.End,
-            overflow = TextOverflow.Ellipsis,
-            maxLines = 1,
-            modifier = Modifier.weight(0.5f)
-        )
-        Spacer(Modifier.width(8.dp))
-        AsyncImage(
-            model = clubLogo,
-            contentDescription = null,
-            modifier = Modifier.size(24.dp)
-        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Text(
+                text = value ?: "--",
+                style = boldTextStyle(valueColor, 14.sp),
+                textAlign = TextAlign.End,
+                overflow = TextOverflow.Ellipsis,
+                maxLines = 1
+            )
+            AsyncImage(
+                model = clubLogo,
+                contentDescription = null,
+                modifier = Modifier.size(24.dp)
+            )
+        }
     }
 }
 
