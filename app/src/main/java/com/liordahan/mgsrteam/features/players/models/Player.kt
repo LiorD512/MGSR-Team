@@ -33,7 +33,18 @@ data class Player(
     val linkedContactId: String? = null,
     val lastRefreshedAt: Long? = null,
     @PropertyName("onLoan") val isOnLoan: Boolean = false,
-    @PropertyName("onLoanFromClub") val onLoanFromClub: String? = null
+    @PropertyName("onLoanFromClub") val onLoanFromClub: String? = null,
+    val passportDetails: PassportDetails? = null
+) : Parcelable
+
+@Parcelize
+data class PassportDetails(
+    val firstName: String? = null,
+    val lastName: String? = null,
+    val dateOfBirth: String? = null,
+    val passportNumber: String? = null,
+    val nationality: String? = null,
+    val lastUpdatedAt: Long? = null
 ) : Parcelable
 
 @Parcelize

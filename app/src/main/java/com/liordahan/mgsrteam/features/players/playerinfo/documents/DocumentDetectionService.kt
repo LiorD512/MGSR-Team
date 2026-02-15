@@ -18,6 +18,7 @@ import kotlinx.coroutines.withContext
 import java.io.ByteArrayInputStream
 import java.io.File
 import java.text.Normalizer
+import java.util.Calendar
 import java.util.regex.Pattern
 import kotlin.coroutines.resume
 
@@ -38,25 +39,28 @@ class DocumentDetectionService(
     private val textRecognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
 
     /**
-     * Extracted passport info from MRZ (Machine Readable Zone).
+     * Extracted passport info from MRZ (Machine Readable Zone) or visual zone.
      */
     data class PassportInfo(
         val firstName: String,
         val lastName: String,
         val dateOfBirth: String?,
-        val passportNumber: String?
+        val passportNumber: String?,
+        val nationality: String? = null
     )
 
     /**
      * Result of document detection.
-     * @param documentType Detected type (PASSPORT or OTHER)
-     * @param suggestedName Suggested file name (e.g. "Passport_Poulolo")
+     * @param documentType Detected type (PASSPORT, MANDATE or OTHER)
+     * @param suggestedName Suggested file name (e.g. "Passport_Poulolo", "Mandate_PlayerName")
      * @param passportInfo Extracted passport data when MRZ is parsed (null for non-passport or when parsing fails)
+     * @param mandateExpiresAt Expiry date in millis when mandate is detected (parsed from PDF content)
      */
     data class DetectionResult(
         val documentType: DocumentType,
         val suggestedName: String,
-        val passportInfo: PassportInfo? = null
+        val passportInfo: PassportInfo? = null,
+        val mandateExpiresAt: Long? = null
     )
 
     /**
@@ -104,6 +108,10 @@ class DocumentDetectionService(
                     bitmap.recycle()
                 }
             }
+
+            // 2.5. Check for mandate (filename or content)
+            val mandateResult = parseForMandate(text, originalFileName, playerName)
+            if (mandateResult != null) return@withContext mandateResult
 
             // 3. Parse: MRZ first (most reliable), then English-only visual parser
             parseForPassport(text, originalFileName, playerName)
@@ -266,6 +274,55 @@ class DocumentDetectionService(
     }
 
     /**
+     * Detects mandate documents by filename (Mandate_*) or content (FOOTBALL AGENT MANDATE).
+     * Extracts expiry date from "ends on DD/MM/YYYY" in content.
+     */
+    private fun parseForMandate(text: String, originalFileName: String, playerName: String?): DetectionResult? {
+        val fileNameLower = originalFileName.lowercase().substringBeforeLast(".")
+        val isMandateFilename = fileNameLower.startsWith("mandate_") || fileNameLower.startsWith("mandate ")
+        val hasMandateContent = text.contains("FOOTBALL AGENT MANDATE", ignoreCase = true) ||
+            (text.contains("Mandate", ignoreCase = true) && text.contains("ends on", ignoreCase = true))
+        if (!isMandateFilename && !hasMandateContent) return null
+
+        val suggestedName = "Mandate_${sanitizeFileName(playerName ?: extractNameFromMandateFilename(originalFileName) ?: "player")}"
+        val expiresAt = extractMandateExpiryFromText(text)
+        return DetectionResult(
+            documentType = DocumentType.MANDATE,
+            suggestedName = suggestedName,
+            passportInfo = null,
+            mandateExpiresAt = expiresAt
+        )
+    }
+
+    private fun extractNameFromMandateFilename(fileName: String): String? {
+        val withoutExt = fileName.substringBeforeLast(".")
+        val prefix = "mandate"
+        val idx = withoutExt.lowercase().indexOf(prefix)
+        if (idx < 0) return null
+        val after = withoutExt.substring(idx + prefix.length).trim().trimStart('_', ' ', '-')
+        return after.takeIf { it.isNotBlank() }
+    }
+
+    private fun extractMandateExpiryFromText(text: String): Long? {
+        val regex = Regex("ends on\\s+(\\d{1,2})/(\\d{1,2})/(\\d{4})", RegexOption.IGNORE_CASE)
+        val match = regex.find(text) ?: return null
+        val (dd, mm, yy) = match.destructured
+        return try {
+            java.util.Calendar.getInstance().apply {
+                set(Calendar.YEAR, yy.toInt())
+                set(Calendar.MONTH, mm.toInt() - 1)
+                set(Calendar.DAY_OF_MONTH, dd.toInt())
+                set(Calendar.HOUR_OF_DAY, 23)
+                set(Calendar.MINUTE, 59)
+                set(Calendar.SECOND, 59)
+                set(Calendar.MILLISECOND, 999)
+            }.timeInMillis
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    /**
      * Parses OCR text for passport indicators:
      * 1. Prefer Visual Zone (labeled fields: Surname, Passport no) - correct layout positions
      * 2. Use MRZ as fallback/supplement for any missing fields
@@ -292,6 +349,8 @@ class DocumentDetectionService(
             ?: englishResult?.passportNumber?.takeIf { it.isNotBlank() }
         val dateOfBirth = mrzResult?.dateOfBirthFormatted?.takeIf { it.isNotBlank() }
             ?: englishResult?.dateOfBirth?.takeIf { it.isNotBlank() }
+        val nationality = englishResult?.nationality?.takeIf { it.isNotBlank() }
+            ?: mrzResult?.nationality?.let { CountryCodeUtils.alpha3ToCountryName(it) }?.takeIf { it.isNotBlank() }
 
         if (lastName != null) {
             return DetectionResult(
@@ -301,13 +360,15 @@ class DocumentDetectionService(
                     firstName = firstName ?: "",
                     lastName = lastName,
                     dateOfBirth = dateOfBirth,
-                    passportNumber = passportNumber
+                    passportNumber = passportNumber,
+                    nationality = nationality
                 )
             )
         }
 
         // 2. Fall back to MRZ-only if visual zone didn't find surname
         MrzParser.parse(ocrText)?.let { mrz ->
+            val mrzNationality = CountryCodeUtils.alpha3ToCountryName(mrz.nationality)
             return DetectionResult(
                 DocumentType.PASSPORT,
                 "Passport_${sanitizeFileName(mrz.lastName)}",
@@ -315,7 +376,8 @@ class DocumentDetectionService(
                     firstName = mrz.firstName,
                     lastName = mrz.lastName,
                     dateOfBirth = mrz.dateOfBirthFormatted,
-                    passportNumber = mrz.documentNumber
+                    passportNumber = mrz.documentNumber,
+                    nationality = mrzNationality
                 )
             )
         }
@@ -326,6 +388,7 @@ class DocumentDetectionService(
 
         for (textToParse in mrzCandidates.distinct()) {
             MrzParser.parse(textToParse)?.let { mrz ->
+                val mrzNationality = CountryCodeUtils.alpha3ToCountryName(mrz.nationality)
                 return DetectionResult(
                     DocumentType.PASSPORT,
                     "Passport_${sanitizeFileName(mrz.lastName)}",
@@ -333,7 +396,8 @@ class DocumentDetectionService(
                         firstName = mrz.firstName,
                         lastName = mrz.lastName,
                         dateOfBirth = mrz.dateOfBirthFormatted,
-                        passportNumber = mrz.documentNumber
+                        passportNumber = mrz.documentNumber,
+                        nationality = mrzNationality
                     )
                 )
             }

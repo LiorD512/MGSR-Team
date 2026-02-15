@@ -6,11 +6,13 @@ import androidx.lifecycle.viewModelScope
 import com.liordahan.mgsrteam.features.login.models.Account
 import com.liordahan.mgsrteam.features.players.models.MarketValueEntry
 import com.liordahan.mgsrteam.features.players.models.NotesModel
+import com.liordahan.mgsrteam.features.players.models.PassportDetails
 import com.liordahan.mgsrteam.features.players.models.Player
 import com.liordahan.mgsrteam.features.players.playerinfo.documents.DocumentDetectionService
 import com.liordahan.mgsrteam.features.players.playerinfo.documents.DocumentType
 import com.liordahan.mgsrteam.features.players.playerinfo.documents.PlayerDocument
 import com.liordahan.mgsrteam.features.players.playerinfo.documents.PlayerDocumentsRepository
+import com.google.firebase.firestore.FieldValue
 import com.liordahan.mgsrteam.firebase.FirebaseHandler
 import com.liordahan.mgsrteam.helpers.UiResult
 import com.liordahan.mgsrteam.transfermarket.PlayersUpdate
@@ -43,7 +45,7 @@ abstract class IPlayerInfoViewModel : ViewModel() {
     abstract fun refreshPlayerInfo()
     abstract fun onDeleteNoteClicked(note: NotesModel)
     abstract fun uploadDocument(uri: android.net.Uri?, bytes: ByteArray, name: String, mimeType: String?, expiresAt: Long?)
-    abstract fun deleteDocument(documentId: String)
+    abstract fun deleteDocument(documentId: String, isPassport: Boolean = false)
 }
 
 
@@ -78,6 +80,42 @@ class PlayerInfoViewModel(
             if (player?.tmProfile != null) documentsRepository.getDocumentsFlow(player.tmProfile)
             else flowOf(emptyList())
         }
+
+    init {
+        viewModelScope.launch {
+            documentsFlow.collect { docs ->
+                val player = _playerInfoFlow.value ?: return@collect
+                val tmProfile = player.tmProfile ?: return@collect
+                val mandateDocs = docs.filter { it.documentType == DocumentType.MANDATE }
+                val now = System.currentTimeMillis()
+                for (mandate in mandateDocs) {
+                    val expiresAt = mandate.expiresAt ?: continue
+                    if (expiresAt < now) {
+                        mandate.id?.let { documentsRepository.deleteDocument(it) }
+                    }
+                }
+                val validMandates = docs.filter {
+                    it.documentType == DocumentType.MANDATE &&
+                        (it.expiresAt == null || it.expiresAt >= now)
+                }
+                val hasValidMandate = validMandates.isNotEmpty()
+                if (player.haveMandate != hasValidMandate) {
+                    _playerInfoFlow.update { it?.copy(haveMandate = hasValidMandate) }
+                    withContext(Dispatchers.IO) {
+                        try {
+                            val doc = firebaseHandler.firebaseStore
+                                .collection(firebaseHandler.playersTable)
+                                .whereEqualTo("tmProfile", tmProfile)
+                                .get().await().documents.firstOrNull()
+                            doc?.reference?.update("haveMandate", hasValidMandate)?.await()
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Failed to sync haveMandate", e)
+                        }
+                    }
+                }
+            }
+        }
+    }
 
     init {
         viewModelScope.launch {
@@ -305,6 +343,15 @@ class PlayerInfoViewModel(
                         val info = detection.passportInfo!!
                         Log.i(TAG, "Passport uploaded - First name: ${info.firstName}, Last name: ${info.lastName}, " +
                             "Date of birth: ${info.dateOfBirth ?: "N/A"}, Passport number: ${info.passportNumber ?: "N/A"}")
+                        val passportDetails = PassportDetails(
+                            firstName = info.firstName.takeIf { it.isNotBlank() },
+                            lastName = info.lastName.takeIf { it.isNotBlank() },
+                            dateOfBirth = info.dateOfBirth?.takeIf { it.isNotBlank() },
+                            passportNumber = info.passportNumber?.takeIf { it.isNotBlank() },
+                            nationality = info.nationality?.takeIf { it.isNotBlank() },
+                            lastUpdatedAt = System.currentTimeMillis()
+                        )
+                        savePassportDetailsToPlayer(tmProfile, passportDetails)
                     }
                     detection.documentType == DocumentType.PASSPORT && detection.passportInfo == null -> {
                         Log.w(TAG, "Passport detected but MRZ parsing failed - could not extract name, DOB, or passport number")
@@ -313,12 +360,13 @@ class PlayerInfoViewModel(
                         Log.w(TAG, "Document not detected as passport (type: ${detection.documentType})")
                     }
                 }
+                val docExpiresAt = detection.mandateExpiresAt ?: expiresAt
                 documentsRepository.uploadDocument(
                     tmProfile,
                     detection.documentType,
                     detection.suggestedName,
                     bytes,
-                    expiresAt
+                    docExpiresAt
                 )
             } finally {
                 _isUploadingDocumentFlow.value = false
@@ -326,9 +374,43 @@ class PlayerInfoViewModel(
         }
     }
 
-    override fun deleteDocument(documentId: String) {
+    override fun deleteDocument(documentId: String, isPassport: Boolean) {
         viewModelScope.launch {
             documentsRepository.deleteDocument(documentId)
+            if (isPassport) {
+                clearPassportDetails()
+            }
+        }
+    }
+
+    private suspend fun clearPassportDetails() {
+        val tmProfile = _playerInfoFlow.value?.tmProfile ?: return
+        withContext(Dispatchers.IO) {
+            try {
+                val doc = firebaseHandler.firebaseStore
+                    .collection(firebaseHandler.playersTable)
+                    .whereEqualTo("tmProfile", tmProfile)
+                    .get().await().documents.firstOrNull()
+                doc?.reference?.update("passportDetails", FieldValue.delete())?.await()
+                _playerInfoFlow.update { it?.copy(passportDetails = null) }
+            } catch (e: Exception) {
+                android.util.Log.e(TAG, "Failed to clear passport details", e)
+            }
+        }
+    }
+
+    private suspend fun savePassportDetailsToPlayer(tmProfile: String, passportDetails: PassportDetails) {
+        withContext(Dispatchers.IO) {
+            try {
+                val doc = firebaseHandler.firebaseStore
+                    .collection(firebaseHandler.playersTable)
+                    .whereEqualTo("tmProfile", tmProfile)
+                    .get().await().documents.firstOrNull()
+                doc?.reference?.update("passportDetails", passportDetails)?.await()
+                _playerInfoFlow.update { it?.copy(passportDetails = passportDetails) }
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to save passport details", e)
+            }
         }
     }
 

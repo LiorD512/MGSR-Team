@@ -66,7 +66,7 @@ private class FakePlayerInfoViewModel : IPlayerInfoViewModel() {
     override fun refreshPlayerInfo() {}
     override fun onDeleteNoteClicked(note: NotesModel) {}
     override fun uploadDocument(uri: android.net.Uri?, bytes: ByteArray, name: String, mimeType: String?, expiresAt: Long?) {}
-    override fun deleteDocument(documentId: String) {}
+    override fun deleteDocument(documentId: String, isPassport: Boolean) {}
 }
 
 @Preview(

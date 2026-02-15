@@ -12,7 +12,8 @@ object EnglishPassportParser {
         val firstName: String?,
         val lastName: String?,
         val dateOfBirth: String?,
-        val passportNumber: String?
+        val passportNumber: String?,
+        val nationality: String? = null
     )
 
     // English labels only - with common OCR misreads (Sumame, Giver Namas, etc.)
@@ -20,6 +21,7 @@ object EnglishPassportParser {
     private val GIVEN_NAMES_LABELS = listOf("given names", "giver namas", "giver names", "given name", "first name", "first names")
     private val PASSPORT_NO_LABELS = listOf("passport no", "passport no.", "passport number", "document no")
     private val DOB_LABELS = listOf("date of birth", "birth date", "dob")
+    private val NATIONALITY_LABELS = listOf("nationality", "nationalité", "nationaliteit", "nacionalidad")
 
     /** Reject: lines that ARE labels (never use as value) */
     private fun isLabelLine(s: String): Boolean {
@@ -59,6 +61,7 @@ object EnglishPassportParser {
         var lastName: String? = null
         var dateOfBirth: String? = null
         var passportNumber: String? = null
+        var nationality: String? = null
 
         for (i in lines.indices) {
             val line = lines[i]
@@ -91,10 +94,16 @@ object EnglishPassportParser {
                 dateOfBirth = lines.getOrNull(i + 1)?.takeIf { looksLikeDate(it) }?.let { normalizeDate(it) }
                     ?: extractValueAfterLabel(line, DOB_LABELS)?.takeIf { looksLikeDate(it) }?.let { normalizeDate(it) }
             }
+
+            // Nationality: value on same line after label or next line (country name)
+            if (NATIONALITY_LABELS.any { lower.contains(it) }) {
+                nationality = extractValueAfterLabel(line, NATIONALITY_LABELS)
+                    ?: lines.getOrNull(i + 1)?.takeIf { it.length in 2..50 && it.count { c -> c.isLetter() || c == ' ' } >= it.length * 2 / 3 }?.let { sanitize(it) }
+            }
         }
 
         if (firstName == null && lastName == null && passportNumber == null) return null
-        return PassportData(firstName, lastName, dateOfBirth, passportNumber)
+        return PassportData(firstName, lastName, dateOfBirth, passportNumber, nationality)
     }
 
     private fun looksLikeName(s: String): Boolean {

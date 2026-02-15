@@ -321,6 +321,24 @@
     <string name="player_info_refresh">רענן</string>
     <string name="player_info_refresh_cd">רענן מ-Transfermarkt</string>
     <string name="player_info_share">שתף</string>
+    <string name="player_info_generate_mandate">יצירת מנדט</string>
+
+    <!-- Generate Mandate Sheet -->
+    <string name="mandate_generate_title">יצירת מנדט</string>
+    <string name="mandate_expiry_date">תאריך תפוגת המנדט</string>
+    <string name="mandate_select_expiry">בחר תאריך תפוגה</string>
+    <string name="mandate_valid_leagues">ליגות / מדינות תקפות</string>
+    <string name="mandate_select_country">בחר מדינה</string>
+    <string name="mandate_entire_country">כל המדינה</string>
+    <string name="mandate_add_to_list">הוסף לרשימה</string>
+    <string name="mandate_added_entries">רשומות שנוספו (לחץ X להסרה)</string>
+    <string name="mandate_pending_clubs">%d מועדון(ים) נבחרו</string>
+    <string name="mandate_generate_pdf">יצירת PDF</string>
+    <string name="mandate_confirm">אישור</string>
+    <string name="mandate_cancel">ביטול</string>
+    <string name="mandate_preview_title">תצוגה מקדימה של המנדט</string>
+    <string name="mandate_preview_page">עמוד %d</string>
+    <string name="mandate_done">סיום</string>
     <string name="player_info_delete">מחק</string>
     <string name="player_info_delete_player_confirm">האם אתה בטוח שברצונך למחוק את השחקן?</string>
     <string name="player_info_delete_note_confirm">האם אתה בטוח שברצונך למחוק את ההערה?</string>
@@ -329,6 +347,11 @@
     <string name="player_info_player_phone">טלפון שחקן</string>
     <string name="player_info_agent_phone">טלפון סוכן</string>
     <string name="player_info_tm_profile">פרופיל TM</string>
+    <string name="player_info_passport_details">פרטי דרכון</string>
+    <string name="player_info_passport_first_name">שם פרטי</string>
+    <string name="player_info_passport_last_name">שם משפחה</string>
+    <string name="player_info_passport_number">מספר דרכון</string>
+    <string name="player_info_passport_dob">תאריך לידה</string>
     <string name="player_info_documents">מסמכים</string>
     <string name="player_info_uploading">מעלה מסמך…</string>
     <string name="player_info_no_documents">אין מסמכים עדיין</string>
@@ -340,6 +363,7 @@
     <string name="player_info_added_by">נוסף על ידי — %s</string>
     <string name="player_info_contract">חוזה %s</string>
     <string name="player_info_mandate">מנדט</string>
+    <string name="player_info_mandate_expires">תוקף מנדט: %s</string>
     <string name="player_info_whatsapp">WhatsApp</string>
     <string name="player_info_general_info">מידע כללי</string>
     <string name="player_info_height">גובה</string>

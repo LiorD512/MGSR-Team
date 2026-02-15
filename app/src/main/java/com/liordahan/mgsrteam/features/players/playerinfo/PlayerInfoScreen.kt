@@ -107,6 +107,7 @@ import com.liordahan.mgsrteam.features.add.getPhoneNumberFromContactUri
 import com.liordahan.mgsrteam.features.players.models.NotesModel
 import com.liordahan.mgsrteam.features.players.models.Player
 import com.liordahan.mgsrteam.features.players.playerinfo.documents.DocumentType
+import com.liordahan.mgsrteam.features.players.playerinfo.mandate.GenerateMandateSheet
 import com.liordahan.mgsrteam.features.players.playerinfo.documents.PlayerDocument
 import com.liordahan.mgsrteam.features.players.models.getAgentPhoneNumber
 import com.liordahan.mgsrteam.features.players.models.getPlayerPhoneNumber
@@ -242,6 +243,8 @@ fun PlayerInfoScreen(
 
     var showDeleteDialog by remember { mutableStateOf(false) }
     var noteToDelete by remember { mutableStateOf<NotesModel?>(null) }
+    var showGenerateMandateSheet by remember { mutableStateOf(false) }
+    var documentsList by remember { mutableStateOf<List<PlayerDocument>>(emptyList()) }
     var docToDelete by remember { mutableStateOf<PlayerDocument?>(null) }
     var isUploadingDocument by remember { mutableStateOf(false) }
 
@@ -299,6 +302,11 @@ fun PlayerInfoScreen(
                     isUploadingDocument = it
                 }
             }
+            launch {
+                viewModel.documentsFlow.collect {
+                    documentsList = it
+                }
+            }
         }
     }
 
@@ -339,6 +347,13 @@ fun PlayerInfoScreen(
                 }
             )
         }
+        if (showGenerateMandateSheet && playerToPresent != null && playerToPresent?.passportDetails != null) {
+            GenerateMandateSheet(
+                player = playerToPresent!!,
+                onDismiss = { showGenerateMandateSheet = false },
+                onGenerated = { }
+            )
+        }
         if (noteToDelete != null) {
             DeleteNoteDialog(
                 onDismissRequest = { noteToDelete = null },
@@ -353,7 +368,9 @@ fun PlayerInfoScreen(
                 documentName = docToDelete?.name ?: docToDelete?.documentType?.displayName ?: "document",
                 onDismissRequest = { docToDelete = null },
                 onDeleteClicked = {
-                    docToDelete?.id?.let { viewModel.deleteDocument(it) }
+                    docToDelete?.let { doc ->
+                        doc.id?.let { viewModel.deleteDocument(it, doc.documentType == DocumentType.PASSPORT) }
+                    }
                     docToDelete = null
                 }
             )
@@ -395,8 +412,14 @@ fun PlayerInfoScreen(
             ) {
             // Hero Card
             playerToPresent?.let { player ->
+                val mandateExpiry = documentsList
+                    .filter { it.documentType == DocumentType.MANDATE }
+                    .mapNotNull { it.expiresAt }
+                    .filter { it >= System.currentTimeMillis() }
+                    .maxOrNull()
                 PlayerInfoHeroCard(
                     player = player,
+                    mandateExpiryAt = mandateExpiry,
                     onMandateChanged = { viewModel.updateHaveMandate(it) }
                 )
             }
@@ -587,10 +610,6 @@ fun PlayerInfoScreen(
                     TransfermarketRow(context, stringResource(R.string.player_info_tm_profile), playerToPresent?.tmProfile, darkTheme = true)
                 }
 
-            var documentsList by remember { mutableStateOf<List<PlayerDocument>>(emptyList()) }
-            LaunchedEffect(Unit) {
-                viewModel.documentsFlow.collect { documentsList = it }
-            }
             PlayerInfoSectionHeader(stringResource(R.string.player_info_documents))
             PlayerInfoCard(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
                     if (isUploadingDocument) {
@@ -752,11 +771,18 @@ fun PlayerInfoScreen(
                 }
             }
 
+            val hasValidMandate = documentsList.any {
+                it.documentType == DocumentType.MANDATE &&
+                    (it.expiresAt == null || it.expiresAt >= System.currentTimeMillis())
+            }
             PlayerInfoBottomBar(
                 showDeletePlayerIcon = showDeletePlayerIcon,
+                hasPassportDetails = playerToPresent?.passportDetails != null,
+                hasValidMandate = hasValidMandate,
                 onRefreshClicked = { viewModel.refreshPlayerInfo() },
                 onDeletePlayerClicked = { showDeleteDialog = true },
-                onShareClicked = shareAction
+                onShareClicked = shareAction,
+                onGenerateMandateClicked = { showGenerateMandateSheet = true }
             )
         }
     }
@@ -765,6 +791,7 @@ fun PlayerInfoScreen(
 @Composable
 private fun PlayerInfoHeroCard(
     player: Player,
+    mandateExpiryAt: Long? = null,
     onMandateChanged: (Boolean) -> Unit
 ) {
     val resources = LocalContext.current.resources
@@ -892,6 +919,21 @@ private fun PlayerInfoHeroCard(
                             if (isExpired) HomeRedAccent else HomeOrangeAccent,
                             11.sp
                         )
+                    )
+                }
+            }
+            if (player.haveMandate && mandateExpiryAt != null) {
+                Spacer(Modifier.height(8.dp))
+                val mandateExpiryStr = java.text.SimpleDateFormat("dd/MM/yyyy", java.util.Locale.US).format(java.util.Date(mandateExpiryAt))
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(HomeBlueAccent.copy(alpha = 0.15f))
+                        .padding(horizontal = 10.dp, vertical = 4.dp)
+                ) {
+                    Text(
+                        text = stringResource(R.string.player_info_mandate_expires, mandateExpiryStr),
+                        style = boldTextStyle(HomeBlueAccent, 11.sp)
                     )
                 }
             }
@@ -1502,9 +1544,12 @@ fun PlayerInfoHeader(onBackClicked: () -> Unit) {
 @Composable
 private fun PlayerInfoBottomBar(
     showDeletePlayerIcon: Boolean,
+    hasPassportDetails: Boolean,
+    hasValidMandate: Boolean,
     onRefreshClicked: () -> Unit,
     onDeletePlayerClicked: () -> Unit,
-    onShareClicked: () -> Unit
+    onShareClicked: () -> Unit,
+    onGenerateMandateClicked: () -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -1555,6 +1600,33 @@ private fun PlayerInfoBottomBar(
                     Text(
                         text = stringResource(R.string.player_info_delete),
                         style = boldTextStyle(HomeTextSecondary, 12.sp)
+                    )
+                }
+            }
+            if (hasPassportDetails) {
+                Row(
+                    modifier = Modifier
+                        .weight(1f)
+                        .then(
+                            if (hasValidMandate) Modifier
+                            else Modifier.clickWithNoRipple { onGenerateMandateClicked() }
+                        ),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.VerifiedUser,
+                        contentDescription = null,
+                        modifier = Modifier.size(24.dp),
+                        tint = if (hasValidMandate) HomeTextSecondary.copy(alpha = 0.5f) else HomeTealAccent
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        text = stringResource(R.string.player_info_generate_mandate),
+                        style = boldTextStyle(
+                            if (hasValidMandate) HomeTextSecondary.copy(alpha = 0.5f) else HomeTextSecondary,
+                            12.sp
+                        )
                     )
                 }
             }
