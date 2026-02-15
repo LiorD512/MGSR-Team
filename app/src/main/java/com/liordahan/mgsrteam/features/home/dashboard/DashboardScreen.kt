@@ -162,7 +162,7 @@ fun DashboardScreen(
             onLanguageClick = { showLanguageDialog = true }
         )
         StatsRow(state)
-        QuickActionsRow(navController)
+        QuickActionsRow(navController = navController)
 
         // ── Scrollable section (from Recent Updates downward) ────────────
         LazyColumn(

@@ -17,15 +17,23 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Dispatchers
+import android.util.Log
 import androidx.work.CoroutineWorker
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import kotlin.random.Random
+import java.util.concurrent.TimeUnit
 
 /**
  * Background worker that refreshes players from Transfermarkt and appends market value history.
  *
  * **Access control**: Only the device signed in as [AUTHORIZED_EMAIL] executes the scraping.
  * All other devices silently succeed without doing any work.
+ *
+ * **Schedule**: Triggered daily by a periodic work. When a run processes a full batch
+ * ([BATCH_SIZE] players), it chains a follow-up run 2–3 minutes later. This continues
+ * until the roster is fully updated (fewer than [BATCH_SIZE] players remain).
  *
  * **Push notifications**: When changes are detected the worker writes [FeedEvent] documents
  * to Firestore. A Firebase Cloud Function (`onNewFeedEvent`) watches that collection and
@@ -78,6 +86,7 @@ class PlayerRefreshWorker(
             // ── 2. Detect available networks for IP rotation ──
             val networks = getAvailableNetworks()
             var networkIndex = 0
+            var successCount = 0
 
             for ((index, pair) in playersWithDocs.withIndex()) {
                 val (player, docRef) = pair
@@ -171,9 +180,13 @@ class PlayerRefreshWorker(
                                 onLoanFromClub = data.onLoanFromClub
                             )
                             docRef.set(updated).await()
+                            successCount++
+                            Log.i(TAG, "PlayerRefreshWorker: update succeed — ${player.fullName ?: "unknown"}")
+                            Log.i(TAG, "PlayerRefreshWorker: $successCount player(s) successfully updated so far")
                         }
                     }
                     is TransfermarktResult.Failed -> {
+                        Log.w(TAG, "PlayerRefreshWorker: update failed — ${player.fullName ?: "unknown"} — ${result.cause ?: "unknown error"}")
                         // Skip this player – will be retried on the next run
                         // (it stays at the top of the staleness queue)
                     }
@@ -181,6 +194,19 @@ class PlayerRefreshWorker(
 
                 // Randomised delay between individual requests
                 delay(DELAY_MIN_MS + Random.nextLong(DELAY_VARIANCE_MS))
+            }
+
+            // ── 3. Chain follow-up if more players remain ──
+            // Processed a full batch → there may be more; schedule next run in 2–3 min
+            if (playersWithDocs.size == BATCH_SIZE) {
+                val delayMinutes = CHAIN_DELAY_MIN_MINUTES + Random.nextLong(CHAIN_DELAY_EXTRA_MINUTES)
+                val followUp = OneTimeWorkRequestBuilder<PlayerRefreshWorker>()
+                    .setInitialDelay(delayMinutes, TimeUnit.MINUTES)
+                    .build()
+                WorkManager.getInstance(applicationContext).enqueue(followUp)
+                Log.i(TAG, "PlayerRefreshWorker: run complete ($successCount succeeded). Scheduled follow-up in $delayMinutes min")
+            } else {
+                Log.i(TAG, "PlayerRefreshWorker: roster fully updated ($successCount succeeded this run)")
             }
 
             Result.success()
@@ -217,6 +243,8 @@ class PlayerRefreshWorker(
     }
 
     companion object {
+        private const val TAG = "PlayerRefreshWorker"
+
         /** Only this user's device will execute the Transfermarkt scraping. */
         private const val AUTHORIZED_EMAIL = "dahanliordahan@gmail.com"
 
@@ -235,5 +263,9 @@ class PlayerRefreshWorker(
         /** Longer pause when switching networks (ms). */
         private const val COOLDOWN_MIN_MS = 12_000L
         private const val COOLDOWN_VARIANCE_MS = 8_000L // 12-20 s
+
+        /** Delay before chained follow-up run: 2 + random(0..1) = 2–3 min. */
+        private const val CHAIN_DELAY_MIN_MINUTES = 2L
+        private const val CHAIN_DELAY_EXTRA_MINUTES = 2L // nextLong(2) yields 0 or 1
     }
 }
