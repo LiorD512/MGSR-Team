@@ -8,6 +8,7 @@ import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import com.google.firebase.messaging.FirebaseMessaging
+import com.tom_roush.pdfbox.android.PDFBoxResourceLoader
 import com.liordahan.mgsrteam.application.di.applicationModules
 import com.liordahan.mgsrteam.firebase.FcmTokenManager
 import com.liordahan.mgsrteam.localization.LocaleManager
@@ -34,6 +35,8 @@ class MGSRTeamApplication : Application(), KoinComponent {
 
     override fun onCreate() {
         super.onCreate()
+
+        PDFBoxResourceLoader.init(applicationContext)
 
         startKoin {
             androidContext(this@MGSRTeamApplication)

@@ -89,6 +89,7 @@ class PlayerInfoViewModel(
 
     init {
         viewModelScope.launch {
+            var prevMandateCount: Int? = null
             documentsFlow.collect { docs ->
                 val player = _playerInfoFlow.value ?: return@collect
                 val tmProfile = player.tmProfile ?: return@collect
@@ -100,8 +101,12 @@ class PlayerInfoViewModel(
                         mandate.id?.let { documentsRepository.deleteDocument(it) }
                     }
                 }
-                // Note: haveMandate is now controlled manually by the user via the switch.
-                // We no longer auto-sync it from mandate documents.
+                // Auto-sync mandate switch: ON when mandate docs exist, OFF when none. Manual toggle preserved until docs change.
+                val count = mandateDocs.size
+                if (prevMandateCount == null || count != prevMandateCount) {
+                    prevMandateCount = count
+                    updateHaveMandate(count > 0)
+                }
             }
         }
     }

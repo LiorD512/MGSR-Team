@@ -418,7 +418,6 @@ fun PlayerInfoScreen(
                 val mandateExpiry = documentsList
                     .filter { it.documentType == DocumentType.MANDATE }
                     .mapNotNull { it.expiresAt }
-                    .filter { it >= System.currentTimeMillis() }
                     .maxOrNull()
                 PlayerInfoHeroCard(
                     player = player,

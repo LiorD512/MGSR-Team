@@ -63,6 +63,7 @@ navigation = { module = "androidx.navigation:navigation-compose", version.ref = 
 splash-screen = { module = "androidx.core:core-splashscreen", version.ref = "splashScreen" }
 androidx-exifinterface = { module = "androidx.exifinterface:exifinterface", version.ref = "exifinterface" }
 mlkit-text-recognition = { module = "com.google.mlkit:text-recognition", version.ref = "mlkitTextRecognition" }
+pdfbox-android = { module = "com.tom-roush:pdfbox-android", version = "2.0.27.0" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

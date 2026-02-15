@@ -17,6 +17,8 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import java.io.ByteArrayInputStream
 import java.io.File
+import com.tom_roush.pdfbox.pdmodel.PDDocument
+import com.tom_roush.pdfbox.text.PDFTextStripper
 import java.text.Normalizer
 import java.util.Calendar
 import java.util.regex.Pattern
@@ -112,11 +114,11 @@ class DocumentDetectionService(
             // 2.5. Check for mandate (filename or content)
             var mandateResult = parseForMandate(text, originalFileName, playerName)
             if (mandateResult != null) {
-                // If mandate but no expiry from OCR, try extracting from raw PDF bytes (our generated PDFs have embedded text)
+                // If mandate but no expiry from OCR, scan PDF for Term section date (second date in "starts on X and ends on Y")
                 if (mandateResult.mandateExpiresAt == null && isPdfMimeType(mimeType)) {
-                    val expiryFromBytes = extractMandateExpiryFromPdfBytes(bytes)
-                    if (expiryFromBytes != null) {
-                        mandateResult = mandateResult.copy(mandateExpiresAt = expiryFromBytes)
+                    val expiryFromPdf = extractMandateExpiryFromPdf(bytes)
+                    if (expiryFromPdf != null) {
+                        mandateResult = mandateResult.copy(mandateExpiresAt = expiryFromPdf)
                     }
                 }
                 return@withContext mandateResult
@@ -339,17 +341,72 @@ class DocumentDetectionService(
                 null
             }
         }
+        // Fallback: Term section has "starts on DATE1 and ends on DATE2 (the Term)" - second date is expiry
+        val dateRegex = Regex("(\\d{1,2})/(\\d{1,2})/(\\d{4})")
+        val termLine = text.lines().find { it.contains("Term", ignoreCase = true) && it.contains("Mandate", ignoreCase = true) }
+            ?: text.lines().find { it.contains("Term", ignoreCase = true) && (it.contains("starts", ignoreCase = true) || it.contains("ends", ignoreCase = true)) }
+            ?: text.lines().find { it.contains("starts", ignoreCase = true) && it.contains("ends", ignoreCase = true) }
+        val searchText = termLine
+        if (searchText != null) {
+            val datesInLine = dateRegex.findAll(searchText).map { it.destructured }.toList()
+            val targetDate = when {
+                datesInLine.size >= 2 -> datesInLine.last() // second date = end/expiry
+                datesInLine.size == 1 && searchText.contains("ends", ignoreCase = true) -> datesInLine.first() // line split: "and ends on DD/MM/YYYY (Term)"
+                else -> null
+            }
+            if (targetDate != null) {
+                val (dd, mm, yy) = targetDate
+                return try {
+                    java.util.Calendar.getInstance().apply {
+                        set(Calendar.YEAR, yy.toInt())
+                        set(Calendar.MONTH, mm.toInt() - 1)
+                        set(Calendar.DAY_OF_MONTH, dd.toInt())
+                        set(Calendar.HOUR_OF_DAY, 23)
+                        set(Calendar.MINUTE, 59)
+                        set(Calendar.SECOND, 59)
+                        set(Calendar.MILLISECOND, 999)
+                    }.timeInMillis
+                } catch (_: Exception) {
+                    null
+                }
+            }
+        }
         return null
     }
 
-    /** Fallback: extract expiry from raw PDF bytes (PDF often has readable text embedded) */
-    private fun extractMandateExpiryFromPdfBytes(bytes: ByteArray): Long? {
-        return try {
-            val str = String(bytes, Charsets.UTF_8)
-            extractMandateExpiryFromText(str)
-        } catch (_: Exception) {
-            null
+    /**
+     * Scans the PDF during upload to find the Term section and extract the expiry date.
+     * Uses PdfBox to extract embedded text (reliable for our generated PDFs), then finds
+     * the second date in "starts on DATE1 and ends on DATE2 (the Term)".
+     */
+    private fun extractMandateExpiryFromPdf(bytes: ByteArray): Long? {
+        // 1. PdfBox extracts actual embedded text from PDF streams (most reliable)
+        val pdfBoxText = extractTextFromPdfWithPdfBox(bytes) ?: return null
+        var result = extractMandateExpiryFromText(pdfBoxText)
+        if (result != null) return result
+        // 2. Fallback: raw byte decode (sometimes works for simple PDFs)
+        val rawStr = String(bytes, Charsets.UTF_8)
+        result = extractMandateExpiryFromText(rawStr)
+        if (result != null) return result
+        val rawLatin = String(bytes, Charsets.ISO_8859_1)
+        return extractMandateExpiryFromText(rawLatin)
+    }
+
+    private fun extractTextFromPdfWithPdfBox(bytes: ByteArray): String? = try {
+        ByteArrayInputStream(bytes).use { input ->
+            val document = PDDocument.load(input)
+            try {
+                val stripper = PDFTextStripper()
+                stripper.setStartPage(0)
+                stripper.setEndPage(minOf(2, document.numberOfPages)) // first 2 pages
+                stripper.getText(document)
+            } finally {
+                document.close()
+            }
         }
+    } catch (e: Exception) {
+        Log.w(TAG, "PdfBox text extraction failed", e)
+        null
     }
 
     /**

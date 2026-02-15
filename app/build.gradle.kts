@@ -111,4 +111,7 @@ dependencies {
 
     // ML Kit for document type detection (passport OCR)
     implementation(libs.mlkit.text.recognition)
+
+    // PdfBox-Android for extracting text from mandate PDFs (Term section date)
+    implementation(libs.pdfbox.android)
 }
