@@ -35,7 +35,6 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -52,7 +51,6 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
 import androidx.navigation.NavController
 import com.liordahan.mgsrteam.R
-import com.liordahan.mgsrteam.features.players.playerinfo.IPlayerInfoViewModel
 import com.liordahan.mgsrteam.ui.theme.HomeDarkBackground
 import com.liordahan.mgsrteam.ui.theme.HomeDarkCardBorder
 import com.liordahan.mgsrteam.ui.theme.HomeTealAccent
@@ -61,7 +59,6 @@ import com.liordahan.mgsrteam.ui.utils.boldTextStyle
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import com.liordahan.mgsrteam.navigation.Screens
-import org.koin.androidx.compose.koinViewModel
 import androidx.compose.foundation.Image
 import java.io.File
 
@@ -70,10 +67,7 @@ import java.io.File
 fun MandatePreviewScreen(
     playerId: String,
     pdfFilename: String,
-    navController: NavController,
-    viewModel: IPlayerInfoViewModel = koinViewModel(
-        viewModelStoreOwner = navController.previousBackStackEntry!!
-    )
+    navController: NavController
 ) {
     val context = LocalContext.current
     val pdfFile = remember(pdfFilename) {
@@ -81,7 +75,6 @@ fun MandatePreviewScreen(
     }
 
     var pageBitmaps by remember { mutableStateOf<List<android.graphics.Bitmap>>(emptyList()) }
-    val isUploading by viewModel.isUploadingDocumentFlow.collectAsState(initial = false)
 
     LaunchedEffect(pdfFile) {
         pageBitmaps = withContext(Dispatchers.IO) {
@@ -186,27 +179,12 @@ fun MandatePreviewScreen(
                     Text(stringResource(R.string.player_info_share))
                 }
                 Button(
-                    onClick = {
-                        val bytes = pdfFile.readBytes()
-                        viewModel.uploadDocument(
-                            uri = null,
-                            bytes = bytes,
-                            name = pdfFile.name,
-                            mimeType = "application/pdf",
-                            expiresAt = null
-                        )
-                        viewModel.updateHaveMandate(true)
-                        navController.popBackStack()
-                    },
+                    onClick = { navController.popBackStack() },
                     modifier = Modifier.weight(1f),
-                    enabled = (isUploading == false) && pdfFile.exists(),
                     colors = ButtonDefaults.buttonColors(containerColor = HomeDarkCardBorder),
                     shape = RoundedCornerShape(12.dp)
                 ) {
-                    Text(
-                        if (isUploading) stringResource(R.string.player_info_uploading)
-                        else stringResource(R.string.mandate_done)
-                    )
+                    Text(stringResource(R.string.mandate_done))
                 }
             }
         }

@@ -110,8 +110,17 @@ class DocumentDetectionService(
             }
 
             // 2.5. Check for mandate (filename or content)
-            val mandateResult = parseForMandate(text, originalFileName, playerName)
-            if (mandateResult != null) return@withContext mandateResult
+            var mandateResult = parseForMandate(text, originalFileName, playerName)
+            if (mandateResult != null) {
+                // If mandate but no expiry from OCR, try extracting from raw PDF bytes (our generated PDFs have embedded text)
+                if (mandateResult.mandateExpiresAt == null && isPdfMimeType(mimeType)) {
+                    val expiryFromBytes = extractMandateExpiryFromPdfBytes(bytes)
+                    if (expiryFromBytes != null) {
+                        mandateResult = mandateResult.copy(mandateExpiresAt = expiryFromBytes)
+                    }
+                }
+                return@withContext mandateResult
+            }
 
             // 3. Parse: MRZ first (most reliable), then English-only visual parser
             parseForPassport(text, originalFileName, playerName)
@@ -304,19 +313,40 @@ class DocumentDetectionService(
     }
 
     private fun extractMandateExpiryFromText(text: String): Long? {
-        val regex = Regex("ends on\\s+(\\d{1,2})/(\\d{1,2})/(\\d{4})", RegexOption.IGNORE_CASE)
-        val match = regex.find(text) ?: return null
-        val (dd, mm, yy) = match.destructured
+        // Try multiple patterns - OCR may produce variations
+        val patterns = listOf(
+            Regex("ends on\\s+(\\d{1,2})/(\\d{1,2})/(\\d{4})", RegexOption.IGNORE_CASE),
+            Regex("end on\\s+(\\d{1,2})/(\\d{1,2})/(\\d{4})", RegexOption.IGNORE_CASE),
+            Regex("ends on\\s+(\\d{1,2})-(\\d{1,2})-(\\d{4})", RegexOption.IGNORE_CASE),
+            Regex("ends on\\s+(\\d{1,2})\\.(\\d{1,2})\\.(\\d{4})", RegexOption.IGNORE_CASE),
+            Regex("and ends on\\s+(\\d{1,2})/(\\d{1,2})/(\\d{4})", RegexOption.IGNORE_CASE),
+            Regex("(\\d{1,2})/(\\d{1,2})/(\\d{4})\\s*\\([^)]*Term[^)]*\\)", RegexOption.IGNORE_CASE)
+        )
+        for (regex in patterns) {
+            val match = regex.find(text) ?: continue
+            val (dd, mm, yy) = match.destructured
+            return try {
+                java.util.Calendar.getInstance().apply {
+                    set(Calendar.YEAR, yy.toInt())
+                    set(Calendar.MONTH, mm.toInt() - 1)
+                    set(Calendar.DAY_OF_MONTH, dd.toInt())
+                    set(Calendar.HOUR_OF_DAY, 23)
+                    set(Calendar.MINUTE, 59)
+                    set(Calendar.SECOND, 59)
+                    set(Calendar.MILLISECOND, 999)
+                }.timeInMillis
+            } catch (_: Exception) {
+                null
+            }
+        }
+        return null
+    }
+
+    /** Fallback: extract expiry from raw PDF bytes (PDF often has readable text embedded) */
+    private fun extractMandateExpiryFromPdfBytes(bytes: ByteArray): Long? {
         return try {
-            java.util.Calendar.getInstance().apply {
-                set(Calendar.YEAR, yy.toInt())
-                set(Calendar.MONTH, mm.toInt() - 1)
-                set(Calendar.DAY_OF_MONTH, dd.toInt())
-                set(Calendar.HOUR_OF_DAY, 23)
-                set(Calendar.MINUTE, 59)
-                set(Calendar.SECOND, 59)
-                set(Calendar.MILLISECOND, 999)
-            }.timeInMillis
+            val str = String(bytes, Charsets.UTF_8)
+            extractMandateExpiryFromText(str)
         } catch (_: Exception) {
             null
         }

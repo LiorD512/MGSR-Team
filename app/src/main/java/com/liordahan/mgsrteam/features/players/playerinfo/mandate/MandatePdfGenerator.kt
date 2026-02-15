@@ -1,8 +1,13 @@
 package com.liordahan.mgsrteam.features.players.playerinfo.mandate
 
+import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Typeface
 import android.graphics.pdf.PdfDocument
+import androidx.core.content.ContextCompat
+import com.liordahan.mgsrteam.R
 import com.liordahan.mgsrteam.features.players.models.PassportDetails
 import com.liordahan.mgsrteam.transfermarket.ClubSearchModel
 import java.io.BufferedOutputStream
@@ -25,9 +30,9 @@ object MandatePdfGenerator {
     private const val TITLE_SIZE = 16f
     private const val HEADING_SIZE = 12f
     private const val BODY_SIZE = 10f
-    private const val AGENT_NAME = "Lior Dahan"
-    private const val FIFA_LICENSE_ID = "22412-9595"
     private const val AGENCY_NAME = "MGSR Group"
+    private const val LOGO_WIDTH_PT = 120
+    private const val LOGO_HEIGHT_PT = 42
 
     private val dateFormat = SimpleDateFormat("dd/MM/yyyy", Locale.US)
 
@@ -56,15 +61,27 @@ object MandatePdfGenerator {
         val passportDetails: PassportDetails,
         val effectiveDate: Date,
         val expiryDate: Date,
-        val validLeagues: List<String> // "Israel" or "Maccabi Haifa - Israel", sorted by country then club
+        val validLeagues: List<String>, // "Israel" or "Maccabi Haifa - Israel", sorted by country then club
+        val agentName: String = "Lior Dahan",
+        val fifaLicenseId: String = "22412-9595"
     )
 
-    fun generatePdf(data: MandateData, outputFile: File): Result<File> = runCatching {
+    fun generatePdf(data: MandateData, outputFile: File, context: Context): Result<File> = runCatching {
         val doc = PdfDocument()
         fun createPageInfo(pageNum: Int) = PdfDocument.PageInfo.Builder(PAGE_WIDTH, PAGE_HEIGHT, pageNum).create()
         var page = doc.startPage(createPageInfo(1))
         var canvas = page.canvas
         var y = MARGIN.toFloat()
+
+        // Logo at top left (PDF canvas uses points; bitmap drawn at pixel size = point size)
+        ContextCompat.getDrawable(context, R.drawable.logo_black)?.let { drawable ->
+            val bitmap = Bitmap.createBitmap(LOGO_WIDTH_PT, LOGO_HEIGHT_PT, Bitmap.Config.ARGB_8888)
+            val bitmapCanvas = Canvas(bitmap)
+            drawable.setBounds(0, 0, LOGO_WIDTH_PT, LOGO_HEIGHT_PT)
+            drawable.draw(bitmapCanvas)
+            canvas.drawBitmap(bitmap, MARGIN.toFloat(), y, Paint().apply { isAntiAlias = true })
+            y += LOGO_HEIGHT_PT + 12
+        }
 
         val titlePaint = Paint().apply {
             textSize = TITLE_SIZE
@@ -206,16 +223,16 @@ object MandatePdfGenerator {
                 nationality to boldBodyPaint,
                 ", identification document: passport No. " to bodyPaint,
                 passportNo to boldBodyPaint,
-                " Valid passport must be added." to bodyPaint
+                "." to bodyPaint
             ),
             PAGE_WIDTH - 2 * MARGIN
         )
         drawLine(4)
         y = drawMixedText(
             listOf(
-                AGENT_NAME to boldBodyPaint,
+                data.agentName to boldBodyPaint,
                 " - FIFA Licensed Football Agent (FIFA Football Agent License ID: " to bodyPaint,
-                FIFA_LICENSE_ID to boldBodyPaint,
+                data.fifaLicenseId to boldBodyPaint,
                 ", acting through " to bodyPaint,
                 AGENCY_NAME to boldBodyPaint,
                 "." to bodyPaint
@@ -368,7 +385,7 @@ object MandatePdfGenerator {
         drawLine(4)
         y = drawText("Signed by the Agent: __________________________Date:", bodyPaint)
         drawLine(4)
-        y = drawText("Print Name: ______________\t$AGENT_NAME", bodyPaint)
+        y = drawText("Print Name: ______________\t${data.agentName}", bodyPaint)
 
         val pageFooterPaint = Paint(bodyPaint).apply { textSize = 9f }
         canvas.drawText("-- $pageNum --", (PAGE_WIDTH / 2 - 25).toFloat(), PAGE_HEIGHT - 20f, pageFooterPaint)

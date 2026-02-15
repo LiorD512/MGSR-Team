@@ -12,7 +12,9 @@ import com.liordahan.mgsrteam.features.players.playerinfo.documents.DocumentType
 import com.liordahan.mgsrteam.features.players.playerinfo.documents.PlayerDocument
 import com.liordahan.mgsrteam.helpers.UiResult
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.flowOf
 
@@ -51,6 +53,7 @@ private class FakePlayerInfoViewModel : IPlayerInfoViewModel() {
     override val updatePlayerFlow: StateFlow<UiResult<String>> = MutableStateFlow(UiResult.UnInitialized)
     override val showDeletePlayerIconFlow: StateFlow<Boolean> = MutableStateFlow(true)
     override val isUploadingDocumentFlow: StateFlow<Boolean> = MutableStateFlow(false)
+    override val uploadErrorFlow: SharedFlow<String> = MutableSharedFlow()
     override val documentsFlow: Flow<List<PlayerDocument>> = flowOf(
         listOf(
             PlayerDocument(name = "contract.pdf", type = "OTHER", storageUrl = null)

@@ -19,7 +19,9 @@ import com.liordahan.mgsrteam.transfermarket.PlayersUpdate
 import com.liordahan.mgsrteam.transfermarket.TransfermarktResult
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
@@ -35,6 +37,7 @@ abstract class IPlayerInfoViewModel : ViewModel() {
     abstract val updatePlayerFlow: StateFlow<UiResult<String>>
     abstract val showDeletePlayerIconFlow: StateFlow<Boolean>
     abstract val isUploadingDocumentFlow: StateFlow<Boolean>
+    abstract val uploadErrorFlow: SharedFlow<String>
     abstract val documentsFlow: Flow<List<PlayerDocument>>
     abstract fun getPlayerInfo(playerId: String)
     abstract fun deletePlayer(playerTmProfile: String, onDeleteSuccessfully: () -> Unit)
@@ -75,6 +78,9 @@ class PlayerInfoViewModel(
     private val _isUploadingDocumentFlow = MutableStateFlow(false)
     override val isUploadingDocumentFlow: StateFlow<Boolean> = _isUploadingDocumentFlow
 
+    private val _uploadErrorFlow = MutableSharedFlow<String>()
+    override val uploadErrorFlow: SharedFlow<String> = _uploadErrorFlow
+
     override val documentsFlow: Flow<List<PlayerDocument>> =
         _playerInfoFlow.flatMapLatest { player ->
             if (player?.tmProfile != null) documentsRepository.getDocumentsFlow(player.tmProfile)
@@ -94,25 +100,8 @@ class PlayerInfoViewModel(
                         mandate.id?.let { documentsRepository.deleteDocument(it) }
                     }
                 }
-                val validMandates = docs.filter {
-                    it.documentType == DocumentType.MANDATE &&
-                        (it.expiresAt == null || it.expiresAt >= now)
-                }
-                val hasValidMandate = validMandates.isNotEmpty()
-                if (player.haveMandate != hasValidMandate) {
-                    _playerInfoFlow.update { it?.copy(haveMandate = hasValidMandate) }
-                    withContext(Dispatchers.IO) {
-                        try {
-                            val doc = firebaseHandler.firebaseStore
-                                .collection(firebaseHandler.playersTable)
-                                .whereEqualTo("tmProfile", tmProfile)
-                                .get().await().documents.firstOrNull()
-                            doc?.reference?.update("haveMandate", hasValidMandate)?.await()
-                        } catch (e: Exception) {
-                            Log.e(TAG, "Failed to sync haveMandate", e)
-                        }
-                    }
-                }
+                // Note: haveMandate is now controlled manually by the user via the switch.
+                // We no longer auto-sync it from mandate documents.
             }
         }
     }
@@ -338,6 +327,10 @@ class PlayerInfoViewModel(
                     originalFileName = name,
                     playerName = player.fullName
                 )
+                if (detection.documentType == DocumentType.PASSPORT && player.passportDetails != null) {
+                    _uploadErrorFlow.emit("passport_already_exists")
+                    return@launch
+                }
                 when {
                     detection.documentType == DocumentType.PASSPORT && detection.passportInfo != null -> {
                         val info = detection.passportInfo!!

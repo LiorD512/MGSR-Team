@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -304,6 +305,16 @@ fun PlayerInfoScreen(
             launch {
                 viewModel.documentsFlow.collect {
                     documentsList = it
+                }
+            }
+
+            launch {
+                viewModel.uploadErrorFlow.collect { errorKey ->
+                    val message = when (errorKey) {
+                        "passport_already_exists" -> context.getString(R.string.player_info_passport_already_exists)
+                        else -> errorKey
+                    }
+                    android.widget.Toast.makeText(context, message, android.widget.Toast.LENGTH_LONG).show()
                 }
             }
         }
@@ -634,7 +645,8 @@ fun PlayerInfoScreen(
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(vertical = 4.dp),
+                                    .heightIn(min = 48.dp)
+                                    .padding(vertical = 8.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
@@ -642,6 +654,7 @@ fun PlayerInfoScreen(
                                     style = regularTextStyle(HomeTextPrimary, 14.sp),
                                     modifier = Modifier.weight(1f)
                                 )
+                                Spacer(Modifier.width(16.dp))
                                 Icon(
                                     imageVector = Icons.Default.Link,
                                     contentDescription = null,
@@ -655,6 +668,7 @@ fun PlayerInfoScreen(
                                         },
                                     tint = HomeTealAccent
                                 )
+                                Spacer(Modifier.width(16.dp))
                                 Icon(
                                     imageVector = Icons.Default.Delete,
                                     contentDescription = null,

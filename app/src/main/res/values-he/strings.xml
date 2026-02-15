@@ -338,8 +338,10 @@
     <string name="mandate_cancel">ביטול</string>
     <string name="mandate_preview_title">תצוגה מקדימה של המנדט</string>
     <string name="mandate_preview_page">עמוד %d</string>
-    <string name="mandate_done">סיום</string>
+    <string name="mandate_done">ביטול</string>
     <string name="mandate_error_generate_failed">יצירת ה-PDF נכשלה: %1$s</string>
+    <string name="mandate_select_agent">בחר סוכן</string>
+    <string name="mandate_no_agents_fifa">לא נמצאו סוכנים עם רישיון פיפ״א</string>
     <string name="player_info_delete">מחק</string>
     <string name="player_info_delete_player_confirm">האם אתה בטוח שברצונך למחוק את השחקן?</string>
     <string name="player_info_delete_note_confirm">האם אתה בטוח שברצונך למחוק את ההערה?</string>
@@ -349,6 +351,7 @@
     <string name="player_info_agent_phone">טלפון סוכן</string>
     <string name="player_info_tm_profile">פרופיל TM</string>
     <string name="player_info_passport_details">פרטי דרכון</string>
+    <string name="player_info_passport_already_exists">כבר קיים דרכון לשחקן זה</string>
     <string name="player_info_passport_first_name">שם פרטי</string>
     <string name="player_info_passport_last_name">שם משפחה</string>
     <string name="player_info_passport_number">מספר דרכון</string>

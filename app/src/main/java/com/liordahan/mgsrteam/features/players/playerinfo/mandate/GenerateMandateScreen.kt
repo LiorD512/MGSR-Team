@@ -66,7 +66,9 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.liordahan.mgsrteam.navigation.Screens
 import com.liordahan.mgsrteam.R
+import com.liordahan.mgsrteam.features.login.models.Account
 import com.liordahan.mgsrteam.features.players.models.Player
+import com.liordahan.mgsrteam.firebase.FirebaseHandler
 import com.liordahan.mgsrteam.ui.theme.HomeDarkBackground
 import com.liordahan.mgsrteam.ui.theme.HomeDarkCard
 import com.liordahan.mgsrteam.ui.theme.HomeDarkCardBorder
@@ -83,6 +85,7 @@ import coil.compose.AsyncImage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import com.liordahan.mgsrteam.features.players.playerinfo.IPlayerInfoViewModel
 import org.koin.androidx.compose.koinViewModel
@@ -101,25 +104,41 @@ fun GenerateMandateScreen(
     val viewModel: IPlayerInfoViewModel = koinViewModel(
         viewModelStoreOwner = navController.previousBackStackEntry!!
     )
+    val mandateViewModel: GenerateMandateViewModel = koinViewModel(
+        viewModelStoreOwner = navController.currentBackStackEntry!!
+    )
     val player by viewModel.playerInfoFlow.collectAsState(initial = null)
     val passportDetails = player?.passportDetails
     val clubSearch: ClubSearch = koinInject()
+    val firebaseHandler: FirebaseHandler = koinInject()
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
-    var expiryDate by remember { mutableStateOf<Date?>(null) }
-    var showDatePicker by remember { mutableStateOf(false) }
-    var countryOnly by remember { mutableStateOf<List<String>>(emptyList()) }
-    var selectedClubs by remember { mutableStateOf<List<ClubSearchModel>>(emptyList()) }
-    var pendingClubs by remember { mutableStateOf<List<ClubSearchModel>>(emptyList()) }
+    val agentsWithFifaLicense by mandateViewModel.agentsWithFifaLicense.collectAsState()
+    val selectedAgent by mandateViewModel.selectedAgent.collectAsState()
+    val expiryDate by mandateViewModel.expiryDate.collectAsState()
+    val showDatePicker by mandateViewModel.showDatePicker.collectAsState()
+    val countryOnly by mandateViewModel.countryOnly.collectAsState()
+    val selectedClubs by mandateViewModel.selectedClubs.collectAsState()
+    val pendingClubs by mandateViewModel.pendingClubs.collectAsState()
+    val currentCountry by mandateViewModel.currentCountry.collectAsState()
+    val entireCountry by mandateViewModel.entireCountry.collectAsState()
+    val clubSearchQuery by mandateViewModel.clubSearchQuery.collectAsState()
+    val countrySearchQuery by mandateViewModel.countrySearchQuery.collectAsState()
+    val isGenerating by mandateViewModel.isGenerating.collectAsState()
 
-    var currentCountry by remember { mutableStateOf<String?>(null) }
-    var entireCountry by remember { mutableStateOf(true) }
-    var clubSearchQuery by remember { mutableStateOf("") }
     var clubSearchResults by remember { mutableStateOf<List<ClubSearchModel>>(emptyList()) }
     var isSearchingClubs by remember { mutableStateOf(false) }
-    var countrySearchQuery by remember { mutableStateOf("") }
-    var isGenerating by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        val snapshot = firebaseHandler.firebaseStore
+            .collection(firebaseHandler.accountsTable)
+            .get()
+            .await()
+        mandateViewModel.setAgentsWithFifaLicense(
+            snapshot.toObjects(Account::class.java).filter { it.fifaLicenseId?.isNotBlank() == true }
+        )
+    }
 
     LaunchedEffect(clubSearchQuery) {
         if (clubSearchQuery.length < 2) {
@@ -207,7 +226,7 @@ fun GenerateMandateScreen(
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { showDatePicker = true },
+                        .clickable { mandateViewModel.setShowDatePicker(true) },
                     shape = RoundedCornerShape(12.dp),
                     colors = CardDefaults.cardColors(containerColor = HomeDarkCard),
                     border = BorderStroke(1.dp, HomeDarkCardBorder)
@@ -240,26 +259,81 @@ fun GenerateMandateScreen(
                         initialSelectedDateMillis = Calendar.getInstance().apply { add(Calendar.MONTH, 6) }.timeInMillis
                     )
                     DatePickerDialog(
-                        onDismissRequest = { showDatePicker = false },
+                        onDismissRequest = { mandateViewModel.setShowDatePicker(false) },
                         confirmButton = {
                             TextButton(
                                 onClick = {
                                     datePickerState.selectedDateMillis?.let { ms ->
-                                        expiryDate = Date(ms)
+                                        mandateViewModel.setExpiryDate(Date(ms))
                                     }
-                                    showDatePicker = false
+                                    mandateViewModel.setShowDatePicker(false)
                                 }
                             ) {
                                 Text(stringResource(R.string.mandate_confirm), color = HomeTealAccent)
                             }
                         },
                         dismissButton = {
-                            TextButton(onClick = { showDatePicker = false }) {
+                            TextButton(onClick = { mandateViewModel.setShowDatePicker(false) }) {
                                 Text(stringResource(R.string.mandate_cancel), color = HomeTextSecondary)
                             }
                         }
                     ) {
                         DatePicker(state = datePickerState)
+                    }
+                }
+
+                Spacer(Modifier.height(24.dp))
+
+                // Agent selection
+                Text(
+                    text = stringResource(R.string.mandate_select_agent),
+                    style = regularTextStyle(HomeTextSecondary, 11.sp),
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+                if (agentsWithFifaLicense.isEmpty()) {
+                    Text(
+                        text = stringResource(R.string.mandate_no_agents_fifa),
+                        style = regularTextStyle(HomeTextSecondary, 14.sp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 12.dp)
+                    )
+                } else {
+                    agentsWithFifaLicense.forEach { agent ->
+                        val isSelected = selectedAgent?.id == agent.id
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp)
+                                .clickWithNoRipple { mandateViewModel.setSelectedAgent(agent) },
+                            shape = RoundedCornerShape(12.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = if (isSelected) HomeTealAccent.copy(alpha = 0.2f) else HomeDarkCard
+                            ),
+                            border = BorderStroke(
+                                if (isSelected) 2.dp else 1.dp,
+                                if (isSelected) HomeTealAccent else HomeDarkCardBorder
+                            )
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(14.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = agent.getDisplayName(context),
+                                    style = regularTextStyle(HomeTextPrimary, 14.sp),
+                                    modifier = Modifier.weight(1f)
+                                )
+                                agent.fifaLicenseId?.let { id ->
+                                    Text(
+                                        text = id,
+                                        style = regularTextStyle(HomeTextSecondary, 12.sp)
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
 
@@ -276,8 +350,8 @@ fun GenerateMandateScreen(
                 OutlinedTextField(
                     value = currentCountry ?: countrySearchQuery,
                     onValueChange = {
-                        if (currentCountry != null) currentCountry = null
-                        countrySearchQuery = it
+                        if (currentCountry != null) mandateViewModel.setCurrentCountry(null)
+                        mandateViewModel.setCountrySearchQuery(it)
                     },
                     placeholder = { Text(stringResource(R.string.mandate_select_country), style = regularTextStyle(HomeTextSecondary, 14.sp)) },
                     modifier = Modifier.fillMaxWidth(),
@@ -290,7 +364,7 @@ fun GenerateMandateScreen(
                         cursorColor = HomeTealAccent
                     )
                 )
-                if (filteredCountries.isNotEmpty() && currentCountry == null) {
+                if (countrySearchQuery.isNotBlank() && filteredCountries.isNotEmpty() && currentCountry == null) {
                     LazyColumn(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -303,8 +377,8 @@ fun GenerateMandateScreen(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clickWithNoRipple {
-                                        currentCountry = country
-                                        countrySearchQuery = ""
+                                        mandateViewModel.setCurrentCountry(country)
+                                        mandateViewModel.setCountrySearchQuery("")
                                     },
                                 shape = RoundedCornerShape(12.dp),
                                 colors = CardDefaults.cardColors(containerColor = HomeDarkCard),
@@ -334,7 +408,7 @@ fun GenerateMandateScreen(
                     )
                     Switch(
                         checked = entireCountry,
-                        onCheckedChange = { entireCountry = it },
+                        onCheckedChange = { mandateViewModel.setEntireCountry(it) },
                         colors = SwitchDefaults.colors(
                             checkedThumbColor = HomeTealAccent,
                             checkedTrackColor = HomeTealAccent.copy(alpha = 0.5f)
@@ -346,7 +420,7 @@ fun GenerateMandateScreen(
                     Spacer(Modifier.height(8.dp))
                     OutlinedTextField(
                         value = clubSearchQuery,
-                        onValueChange = { clubSearchQuery = it },
+                        onValueChange = { mandateViewModel.setClubSearchQuery(it) },
                         placeholder = { Text(stringResource(R.string.requests_search_club), style = regularTextStyle(HomeTextSecondary, 14.sp)) },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
@@ -377,10 +451,8 @@ fun GenerateMandateScreen(
                                 ClubRow(
                                     club = club,
                                     onClick = {
-                                        if (pendingClubs.none { it.clubName == club.clubName && it.clubCountry == club.clubCountry }) {
-                                            pendingClubs = pendingClubs + club
-                                        }
-                                        clubSearchQuery = ""
+                                        mandateViewModel.addToPendingClubs(club)
+                                        mandateViewModel.setClubSearchQuery("")
                                     }
                                 )
                             }
@@ -403,15 +475,12 @@ fun GenerateMandateScreen(
                         val country = currentCountry
                         if (country != null && (entireCountry || pendingClubs.isNotEmpty())) {
                             if (entireCountry) {
-                                countryOnly = (countryOnly + country).distinct().sorted()
+                                mandateViewModel.addToCountryOnly(country)
                             } else {
                                 val toAdd = pendingClubs.filter { it.clubCountry.equals(country, ignoreCase = true) }
-                                selectedClubs = (selectedClubs + toAdd).distinctBy { "${it.clubName}-${it.clubCountry}" }
+                                mandateViewModel.addToSelectedClubs(toAdd)
                             }
-                            currentCountry = null
-                            entireCountry = true
-                            pendingClubs = emptyList()
-                            clubSearchQuery = ""
+                            mandateViewModel.resetCountrySelection()
                         }
                     },
                     modifier = Modifier.fillMaxWidth(),
@@ -445,12 +514,12 @@ fun GenerateMandateScreen(
                             IconButton(
                                 onClick = {
                                     if (Countries.all.contains(entry)) {
-                                        countryOnly = countryOnly - entry
+                                        mandateViewModel.removeFromCountryOnly(entry)
                                     } else {
                                         val parts = entry.split(" - ", limit = 2)
                                         if (parts.size == 2) {
                                             val (clubName, country) = parts
-                                            selectedClubs = selectedClubs.filter { !(it.clubName == clubName && it.clubCountry == country) }
+                                            mandateViewModel.removeClubFromSelected(clubName, country)
                                         }
                                     }
                                 }
@@ -466,7 +535,7 @@ fun GenerateMandateScreen(
                 Button(
                     onClick = {
                         if (expiryDate == null || validLeagues.isEmpty()) return@Button
-                        isGenerating = true
+                        mandateViewModel.setIsGenerating(true)
                         scope.launch {
                             val result = withContext(Dispatchers.IO) {
                                 val cacheDir = File(context.cacheDir, "mandate_pdfs").apply { mkdirs() }
@@ -474,25 +543,24 @@ fun GenerateMandateScreen(
                                     .joinToString("_").replace(Regex("[^a-zA-Z0-9_-]"), "")
                                 val fileName = "Mandate_${playerName.ifBlank { "player" }}.pdf"
                                 val file = File(cacheDir, fileName)
+                                val agentName = selectedAgent?.name ?: "Lior Dahan"
+                                val fifaLicenseId = selectedAgent?.fifaLicenseId ?: "22412-9595"
                                 val data = MandatePdfGenerator.MandateData(
                                     passportDetails = passportDetails,
                                     effectiveDate = Date(),
                                     expiryDate = expiryDate!!,
-                                    validLeagues = validLeagues
+                                    validLeagues = validLeagues,
+                                    agentName = agentName,
+                                    fifaLicenseId = fifaLicenseId
                                 )
-                                MandatePdfGenerator.generatePdf(data, file)
+                                MandatePdfGenerator.generatePdf(data, file, context)
                             }
-                            isGenerating = false
+                            mandateViewModel.setIsGenerating(false)
                             result.fold(
                                 onSuccess = { pdfFile ->
-                                    val currentRoute = navController.currentBackStackEntry?.destination?.route
                                     navController.navigate(
                                         "${Screens.MandatePreviewScreen.route}/${Uri.encode(playerId)}/${Uri.encode(pdfFile.name)}"
-                                    ) {
-                                        currentRoute?.let { route ->
-                                            popUpTo(route) { inclusive = true }
-                                        }
-                                    }
+                                    )
                                 },
                                 onFailure = { e ->
                                     Log.e("GenerateMandate", "PDF generation failed", e)
@@ -506,7 +574,7 @@ fun GenerateMandateScreen(
                         }
                     },
                     modifier = Modifier.fillMaxWidth(),
-                    enabled = expiryDate != null && validLeagues.isNotEmpty() && !isGenerating,
+                    enabled = expiryDate != null && selectedAgent != null && validLeagues.isNotEmpty() && !isGenerating,
                     colors = ButtonDefaults.buttonColors(containerColor = HomeTealAccent),
                     shape = RoundedCornerShape(12.dp)
                 ) {

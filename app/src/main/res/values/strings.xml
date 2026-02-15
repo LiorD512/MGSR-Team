@@ -338,8 +338,10 @@
     <string name="mandate_cancel">Cancel</string>
     <string name="mandate_preview_title">Preview mandate</string>
     <string name="mandate_preview_page">Page %d</string>
-    <string name="mandate_done">Done</string>
+    <string name="mandate_done">Cancel</string>
     <string name="mandate_error_generate_failed">Failed to generate PDF: %1$s</string>
+    <string name="mandate_select_agent">Select agent</string>
+    <string name="mandate_no_agents_fifa">No agents with FIFA license found</string>
     <string name="player_info_delete">Delete</string>
     <string name="player_info_delete_player_confirm">Are you sure you want to delete this player?</string>
     <string name="player_info_delete_note_confirm">Are you sure you want to delete this note?</string>
@@ -349,6 +351,7 @@
     <string name="player_info_agent_phone">Agent Phone</string>
     <string name="player_info_tm_profile">TM Profile</string>
     <string name="player_info_passport_details">Passport Details</string>
+    <string name="player_info_passport_already_exists">There is already a passport for this player</string>
     <string name="player_info_passport_first_name">First name</string>
     <string name="player_info_passport_last_name">Last name</string>
     <string name="player_info_passport_number">Passport number</string>

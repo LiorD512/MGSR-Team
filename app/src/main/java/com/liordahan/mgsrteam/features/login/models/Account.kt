@@ -12,7 +12,8 @@ data class Account(
     val id: String? = null,
     val email: String? = null,
     val name: String? = null,
-    val hebrewName: String? = null
+    val hebrewName: String? = null,
+    val fifaLicenseId: String? = null
 ): Parcelable {
 
     /** Returns name or hebrewName based on app language. Use for display only. */
