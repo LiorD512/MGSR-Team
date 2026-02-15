@@ -362,7 +362,7 @@ class DocumentDetectionService(
      */
     private fun tryParseMrz(text: String): DetectionResult? {
         // Parse line 2: passport number (9 chars) + check + country (3) + DOB (6 digits)
-        // Allow O for 0 in passport number; OCR may misread characters
+        // Document number can contain letter O (e.g. O00761338) - do NOT replace O with 0
         val line2Patterns = listOf(
             Pattern.compile("([A-Z0-9O<]{8,9})[A-Z0-9O]?[A-Z]{2,3}([0-9O]{6})"),
             Pattern.compile("([A-Z0-9<]{9})[A-Z0-9][A-Z]{3}([0-9]{6})"),
@@ -374,7 +374,7 @@ class DocumentDetectionService(
         for (pattern in line2Patterns) {
             val m = pattern.matcher(text)
             if (m.find()) {
-                val docNum = m.group(1)?.replace("<", "")?.replace("O", "0")?.trim()
+                val docNum = m.group(1)?.replace("<", "")?.trim()
                 if (docNum != null && docNum.length in 5..9 && docNum.any { it.isLetter() }) {
                     passportNumber = docNum
                 }

@@ -96,8 +96,10 @@ object MrzParser {
         val givenNames = (nameParts.getOrNull(1) ?: "").replace("<", " ").trim()
 
         // Line 2: Doc#(9) + check(1) + Country(3) + DOB(6) + check(1) + Sex(1) + Expiry(6) + check(1)
-        val documentNumber = l2.substring(0, 9).replace("<", "").replace("O", "0").trim()
+        // Document number can contain letter O (e.g. O00761338) - do NOT replace O with 0
+        val documentNumber = l2.substring(0, 9).replace("<", "").trim()
         val nationality = l2.substring(10, 13)
+        // DOB and expiry are numeric (YYMMDD) - O is typically OCR misread of 0
         val dateOfBirth = l2.substring(13, 19).replace("O", "0")
         val expiryDate = l2.substring(21, 27).replace("O", "0")
 
@@ -161,11 +163,12 @@ object MrzParser {
         return String.format("%04d-%02d-%02d", year, mm, dd)
     }
 
-    /** Try common OCR substitutions when check digit fails */
+    /** Try common OCR substitutions when check digit fails. Excludes O<->0 for document number (positions 0-8 of line2). */
     private fun tryOcrCorrections(line1: String, line2: String): List<Pair<String, String>> {
         val results = mutableListOf<Pair<String, String>>()
+        // Do NOT substitute O<->0 - document number can contain letter O (e.g. O00761338)
         val subs = listOf(
-            'O' to '0', '0' to 'O', '1' to 'I', 'I' to '1', 'l' to '1', '1' to 'l',
+            '1' to 'I', 'I' to '1', 'l' to '1', '1' to 'l',
             '5' to 'S', 'S' to '5', '8' to 'B', 'B' to '8', '2' to 'Z', 'Z' to '2'
         )
         for ((from, to) in subs) {
