@@ -220,10 +220,47 @@ fun DashboardScreen(
 
             // ── Transfer Windows ───────────────────────────────────────────
             item {
-                TransferWindowsSection(
-                    windows = state.transferWindows,
-                    isLoading = state.transferWindowsLoading
-                )
+                TransferWindowsSectionHeader()
+            }
+            when {
+                state.transferWindowsLoading -> {
+                    item {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 24.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(28.dp),
+                                color = HomeTealAccent,
+                                strokeWidth = 2.dp
+                            )
+                        }
+                    }
+                }
+                state.transferWindows.isEmpty() -> {
+                    item {
+                        Text(
+                            text = stringResource(R.string.transfer_windows_empty),
+                            style = regularTextStyle(HomeTextSecondary, 13.sp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 20.dp, vertical = 16.dp)
+                        )
+                    }
+                }
+                else -> {
+                    items(
+                        items = state.transferWindows,
+                        key = { it.countryName }
+                    ) { window ->
+                        TransferWindowRow(
+                            window = window,
+                            modifier = Modifier.padding(horizontal = 20.dp)
+                        )
+                    }
+                }
             }
 
             // ── Document Reminders ───────────────────────────────────────
@@ -713,16 +750,36 @@ private fun FeedEventCard(event: FeedEvent, navController: NavController) {
                             text = event.playerName ?: "",
                             style = boldTextStyle(HomeTextPrimary, 14.sp)
                         )
+                        val newValueDisplay = when {
+                            event.newValue.isNullOrBlank() -> stringResource(R.string.feed_market_value_no_value)
+                            event.newValue == "€0" -> stringResource(R.string.feed_market_value_no_value)
+                            event.newValue == "-" -> stringResource(R.string.feed_market_value_no_value)
+                            (event.newValue ?: "").toMarketValueDouble() == 0.0 -> stringResource(R.string.feed_market_value_no_value)
+                            else -> event.newValue!!
+                        }
                         Text(
                             text = stringResource(
                                 R.string.feed_value_changed,
                                 event.oldValue ?: "?",
-                                event.newValue ?: "?"
+                                newValueDisplay
                             ),
                             style = regularTextStyle(HomeTextSecondary, 12.sp)
                         )
                     }
-                    FeedEvent.TYPE_CLUB_CHANGE, FeedEvent.TYPE_BECAME_FREE_AGENT -> {
+                    FeedEvent.TYPE_BECAME_FREE_AGENT -> {
+                        Text(
+                            text = event.playerName ?: "",
+                            style = boldTextStyle(HomeTextPrimary, 14.sp)
+                        )
+                        Text(
+                            text = stringResource(
+                                R.string.feed_released_from,
+                                event.oldValue ?: "?"
+                            ),
+                            style = regularTextStyle(HomeTextSecondary, 12.sp)
+                        )
+                    }
+                    FeedEvent.TYPE_CLUB_CHANGE -> {
                         Text(
                             text = event.playerName ?: "",
                             style = boldTextStyle(HomeTextPrimary, 14.sp)
@@ -780,9 +837,9 @@ private fun FeedEventCard(event: FeedEvent, navController: NavController) {
 }
 
 private fun isMarketValueDrop(oldValue: String?, newValue: String?): Boolean {
-    if (oldValue.isNullOrBlank() || newValue.isNullOrBlank()) return false
-    val oldNum = oldValue.toMarketValueDouble()
-    val newNum = newValue.toMarketValueDouble()
+    // Treat null/blank as 0: no market value = 0, so drop to 0 should show red
+    val oldNum = (oldValue ?: "").toMarketValueDouble()
+    val newNum = (newValue ?: "").toMarketValueDouble()
     return newNum < oldNum
 }
 
@@ -933,10 +990,7 @@ private fun MiniStat(value: String, label: String, color: Color) {
 // ═════════════════════════════════════════════════════════════════════════════
 
 @Composable
-private fun TransferWindowsSection(
-    windows: List<TransferWindow>,
-    isLoading: Boolean
-) {
+private fun TransferWindowsSectionHeader() {
     Column(modifier = Modifier.padding(top = 20.dp)) {
         Row(
             modifier = Modifier
@@ -963,48 +1017,18 @@ private fun TransferWindowsSection(
         )
 
         Spacer(Modifier.height(14.dp))
-
-        when {
-            isLoading -> {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 24.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(28.dp),
-                        color = HomeTealAccent,
-                        strokeWidth = 2.dp
-                    )
-                }
-            }
-            windows.isEmpty() -> {
-                Text(
-                    text = stringResource(R.string.transfer_windows_empty),
-                    style = regularTextStyle(HomeTextSecondary, 13.sp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 20.dp, vertical = 16.dp)
-                )
-            }
-            else -> {
-                Column(modifier = Modifier.padding(horizontal = 20.dp)) {
-                    windows.take(25).forEach { window ->
-                        TransferWindowRow(window = window)
-                        Spacer(Modifier.height(8.dp))
-                    }
-                }
-            }
-        }
     }
 }
 
 @Composable
-private fun TransferWindowRow(window: TransferWindow) {
+private fun TransferWindowRow(
+    window: TransferWindow,
+    modifier: Modifier = Modifier
+) {
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
+            .padding(bottom = 8.dp)
             .clip(RoundedCornerShape(8.dp))
             .background(HomeDarkCard)
             .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(8.dp))

@@ -109,8 +109,11 @@ class PlayerRefreshWorker(
                     is TransfermarktResult.Success -> {
                         result.data?.let { data ->
                             val currentValue = player.marketValue
-                            val newValue = data.marketValue
-                            val history = if (newValue != null && newValue != currentValue) {
+                            val newValueRaw = data.marketValue
+                            // Treat no market value as €0
+                            val newValue = newValueRaw?.takeIf { it.isNotBlank() } ?: "€0"
+                            val valueChanged = newValue != (currentValue ?: "€0")
+                            val history = if (valueChanged) {
                                 val entry = MarketValueEntry(value = newValue, date = System.currentTimeMillis())
                                 val list = (player.marketValueHistory?.toMutableList() ?: mutableListOf()).apply { add(entry) }
                                 list.takeLast(MAX_HISTORY_ENTRIES)
@@ -135,7 +138,7 @@ class PlayerRefreshWorker(
                             //  documents and sends push notifications to ALL users.)
                             val now = System.currentTimeMillis()
 
-                            if (newValue != null && newValue != currentValue) {
+                            if (valueChanged) {
                                 writeFeedEvent(feedRef, FeedEvent(
                                     type = FeedEvent.TYPE_MARKET_VALUE_CHANGE,
                                     playerName = player.fullName,
@@ -166,7 +169,7 @@ class PlayerRefreshWorker(
                             }
 
                             val updated = player.copy(
-                                marketValue = newValue ?: player.marketValue,
+                                marketValue = newValue,
                                 profileImage = data.profileImage ?: player.profileImage,
                                 nationalityFlag = data.nationalityFlag ?: player.nationalityFlag,
                                 nationality = data.citizenship ?: player.nationality,

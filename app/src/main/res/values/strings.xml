@@ -152,7 +152,9 @@
     <string name="feed_player_added">Player Added</string>
     <string name="feed_update">Update</string>
     <string name="feed_value_changed">Value changed from %1$s to %2$s</string>
+    <string name="feed_market_value_no_value">No value</string>
     <string name="feed_moved_from_to">Moved from %1$s to %2$s</string>
+    <string name="feed_released_from">Released from %1$s</string>
     <string name="feed_note_added_by">%1$s added a note on %2$s</string>
 
     <!-- Time Ago -->
