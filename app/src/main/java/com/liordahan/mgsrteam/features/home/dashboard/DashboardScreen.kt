@@ -198,7 +198,7 @@ fun DashboardScreen(
 
             // ── Agent Overview ────────────────────────────────────────────
             if (state.agentSummaries.isNotEmpty()) {
-                item { AgentOverviewSection(state.agentSummaries) }
+                item { AgentOverviewSection(state.agentSummaries, state.allAccounts) }
             }
 
             // ── Agent Tasks ──────────────────────────────────────────────
@@ -340,6 +340,9 @@ private fun GreetingHeader(
     isHebrew: Boolean,
     onLanguageClick: () -> Unit
 ) {
+    val context = LocalContext.current
+    val userName = state.currentUserAccount?.getDisplayName(context)?.takeIf { it.isNotBlank() }
+        ?: stringResource(R.string.greeting_agent_default)
     val dateStr = SimpleDateFormat("EEEE, MMM d, yyyy", Locale.getDefault()).format(Date())
 
     Column(
@@ -358,7 +361,7 @@ private fun GreetingHeader(
                     style = regularTextStyle(HomeTextSecondary, 16.sp)
                 )
                 Text(
-                    text = state.userName.ifEmpty { stringResource(R.string.greeting_agent_default) },
+                    text = userName,
                     style = boldTextStyle(HomeTextPrimary, 26.sp)
                 )
             }
@@ -808,7 +811,8 @@ private fun List<FeedEvent>.filterByType(filter: FeedFilter): List<FeedEvent> {
 // ═════════════════════════════════════════════════════════════════════════════
 
 @Composable
-private fun AgentOverviewSection(agents: List<AgentSummary>) {
+private fun AgentOverviewSection(agents: List<AgentSummary>, allAccounts: List<Account>) {
+    val context = LocalContext.current
     Column(modifier = Modifier.padding(top = 16.dp)) {
         Text(
             text = stringResource(R.string.agent_overview_title),
@@ -832,14 +836,22 @@ private fun AgentOverviewSection(agents: List<AgentSummary>) {
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             items(agents) { agent ->
-                AgentCard(agent)
+                AgentCard(agent = agent, allAccounts = allAccounts, context = context)
             }
         }
     }
 }
 
 @Composable
-private fun AgentCard(agent: AgentSummary) {
+private fun AgentCard(
+    agent: AgentSummary,
+    allAccounts: List<Account>,
+    context: android.content.Context
+) {
+    val agentDisplayName = allAccounts
+        .find { it.name.equals(agent.agentName, ignoreCase = true) || it.hebrewName?.equals(agent.agentName, ignoreCase = true) == true }
+        ?.getDisplayName(context)
+        ?: agent.agentName
     Card(
         modifier = Modifier.width(220.dp),
         shape = RoundedCornerShape(16.dp),
@@ -856,13 +868,13 @@ private fun AgentCard(agent: AgentSummary) {
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = agent.agentName.take(1).uppercase(),
+                        text = agentDisplayName.take(1).uppercase(),
                         style = boldTextStyle(HomeTealAccent, 14.sp)
                     )
                 }
                 Spacer(Modifier.width(8.dp))
                 Text(
-                    text = agent.agentName,
+                    text = agentDisplayName,
                     style = boldTextStyle(HomeTextPrimary, 14.sp),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -1099,11 +1111,12 @@ private fun AgentTasksSection(
 
     // Add-task dialog
     showAddDialogForAccount?.let { account ->
+        val context = LocalContext.current
         AddTaskDialog(
-            agentName = account.name ?: stringResource(R.string.greeting_agent_default),
+            agentName = account.getDisplayName(context).ifEmpty { stringResource(R.string.greeting_agent_default) },
             onDismiss = { showAddDialogForAccount = null },
             onConfirm = { title, dueDate ->
-                onAddTask(account.id ?: "", account.name ?: "", title, dueDate)
+                onAddTask(account.id ?: "", account.getDisplayName(context).ifEmpty { account.name ?: "" }, title, dueDate)
                 showAddDialogForAccount = null
             }
         )
@@ -1123,7 +1136,8 @@ private fun ExpandableAgentTaskCard(
     onAddTaskClick: () -> Unit,
     onDeleteTask: (AgentTask) -> Unit
 ) {
-    val agentName = account.name ?: stringResource(R.string.greeting_agent_default)
+    val context = LocalContext.current
+    val agentName = account.getDisplayName(context).ifEmpty { stringResource(R.string.greeting_agent_default) }
     val completedCount = tasks.count { it.isCompleted }
     val totalCount = tasks.size
     val progress = if (totalCount > 0) completedCount.toFloat() / totalCount else 0f

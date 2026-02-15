@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -41,8 +42,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.EditNote
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Handshake
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Person
@@ -55,7 +56,8 @@ import androidx.compose.material.icons.automirrored.filled.StickyNote2
 import androidx.compose.material.icons.automirrored.filled.TrendingDown
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material.icons.rounded.ChevronRight
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -110,8 +112,8 @@ import com.liordahan.mgsrteam.features.add.SnakeBarMessage
 import com.liordahan.mgsrteam.features.add.showSnakeBarMessage
 import com.liordahan.mgsrteam.features.players.models.Player
 import com.liordahan.mgsrteam.features.players.models.getAgentPhoneNumber
-import com.liordahan.mgsrteam.features.players.models.getPlayerPhoneNumber
 import com.liordahan.mgsrteam.features.players.sort.SortOption
+import com.liordahan.mgsrteam.features.players.models.getPlayerPhoneNumber
 import com.liordahan.mgsrteam.IMainViewModel
 import com.liordahan.mgsrteam.R
 import com.liordahan.mgsrteam.features.players.ui.RosterEmptyState
@@ -244,10 +246,14 @@ fun PlayersScreen(
                 contractExpiringSelected = playersState.quickFilterContractExpiring,
                 withMandateSelected = playersState.quickFilterWithMandate,
                 myPlayersOnlySelected = playersState.quickFilterMyPlayersOnly,
+                loanPlayersOnlySelected = playersState.quickFilterLoanPlayersOnly,
+                withNotesOnlySelected = playersState.isWithNotesChecked,
                 onFreeAgentsClick = { viewModel.toggleQuickFilterFreeAgents() },
                 onContractExpiringClick = { viewModel.toggleQuickFilterContractExpiring() },
                 onWithMandateClick = { viewModel.toggleQuickFilterWithMandate() },
-                onMyPlayersOnlyClick = { viewModel.toggleQuickFilterMyPlayersOnly() }
+                onMyPlayersOnlyClick = { viewModel.toggleQuickFilterMyPlayersOnly() },
+                onLoanPlayersOnlyClick = { viewModel.toggleQuickFilterLoanPlayersOnly() },
+                onWithNotesOnlyClick = { viewModel.toggleQuickFilterWithNotesOnly() }
             )
 
             // ── Content ──────────────────────────────────────────────────
@@ -308,6 +314,7 @@ fun PlayersScreen(
                         ) { player ->
                             PlayerCardVariantA(
                                 player = player,
+                                allAccounts = playersState.allAccounts,
                                 onPlayerClick = {
                                     val encodedId = Uri.encode(player.tmProfile)
                                     navController.navigate("${Screens.PlayerInfoScreen.route}/$encodedId")
@@ -624,7 +631,14 @@ private fun PositionFilterChipsWithSortMenu(
                 val borderColor = if (isSelected) HomeTealAccent else HomeDarkCardBorder
 
                 Text(
-                    text = if (position == "All") stringResource(R.string.players_filter_all) else position,
+                    text = when (position) {
+                        "All" -> stringResource(R.string.players_filter_all)
+                        "GK" -> stringResource(R.string.players_filter_position_gk)
+                        "DEF" -> stringResource(R.string.players_filter_position_def)
+                        "MID" -> stringResource(R.string.players_filter_position_mid)
+                        "FWD" -> stringResource(R.string.players_filter_position_fwd)
+                        else -> position
+                    },
                     style = boldTextStyle(textColor, 11.sp),
                     modifier = Modifier
                         .clip(RoundedCornerShape(20.dp))
@@ -665,21 +679,6 @@ private fun PositionFilterChipsWithSortMenu(
                     },
                     onClick = {
                         onResetSort()
-                        sortMenuExpanded = false
-                    }
-                )
-                DropdownMenuItem(
-                    text = {
-                        Text(
-                            text = stringResource(R.string.players_sort_newest),
-                            style = regularTextStyle(
-                                if (sortOption == SortOption.NEWEST) HomeTealAccent else HomeTextPrimary,
-                                13.sp
-                            )
-                        )
-                    },
-                    onClick = {
-                        onSortOptionSelected(SortOption.NEWEST)
                         sortMenuExpanded = false
                     }
                 )
@@ -743,10 +742,14 @@ private fun QuickFilterChips(
     contractExpiringSelected: Boolean,
     withMandateSelected: Boolean,
     myPlayersOnlySelected: Boolean,
+    loanPlayersOnlySelected: Boolean,
+    withNotesOnlySelected: Boolean,
     onFreeAgentsClick: () -> Unit,
     onContractExpiringClick: () -> Unit,
     onWithMandateClick: () -> Unit,
-    onMyPlayersOnlyClick: () -> Unit
+    onMyPlayersOnlyClick: () -> Unit,
+    onLoanPlayersOnlyClick: () -> Unit,
+    onWithNotesOnlyClick: () -> Unit
 ) {
     LazyRow(
         contentPadding = PaddingValues(horizontal = 16.dp),
@@ -779,6 +782,20 @@ private fun QuickFilterChips(
                 label = stringResource(R.string.players_filter_my_players_only),
                 isSelected = myPlayersOnlySelected,
                 onClick = onMyPlayersOnlyClick
+            )
+        }
+        item(key = "loan_players") {
+            QuickFilterChip(
+                label = stringResource(R.string.players_filter_loan_players_only),
+                isSelected = loanPlayersOnlySelected,
+                onClick = onLoanPlayersOnlyClick
+            )
+        }
+        item(key = "with_notes") {
+            QuickFilterChip(
+                label = stringResource(R.string.players_filter_with_notes),
+                isSelected = withNotesOnlySelected,
+                onClick = onWithNotesOnlyClick
             )
         }
     }
@@ -820,6 +837,10 @@ private fun ExpiringAlertBanner(
     onPlayerClick: (Player) -> Unit
 ) {
     var isExpanded by remember { mutableStateOf(false) }
+    var displayPlayers by remember { mutableStateOf<List<Player>>(emptyList()) }
+    LaunchedEffect(isExpanded, players) {
+        if (isExpanded) displayPlayers = players.shuffled().take(5)
+    }
 
     Card(
         modifier = Modifier
@@ -876,7 +897,7 @@ private fun ExpiringAlertBanner(
                 }
                 Spacer(Modifier.width(4.dp))
                 Icon(
-                    imageVector = Icons.Rounded.ChevronRight,
+                    imageVector = if (isExpanded) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
                     contentDescription = null,
                     tint = HomeTextSecondary,
                     modifier = Modifier.size(18.dp)
@@ -903,7 +924,7 @@ private fun ExpiringAlertBanner(
                             .background(HomeDarkCardBorder)
                     )
                     Spacer(Modifier.height(8.dp))
-                    players.take(5).forEach { player ->
+                    displayPlayers.forEach { player ->
                         ExpiringPlayerRow(player = player, onClick = { onPlayerClick(player) })
                     }
                 }
@@ -960,7 +981,12 @@ private fun ExpiringPlayerRow(player: Player, onClick: () -> Unit) {
                     .padding(horizontal = 8.dp, vertical = 3.dp)
             ) {
                 Text(
-                    text = player.contractExpired ?: "",
+                    text = when {
+                        player.contractExpired.isNullOrBlank() || player.contractExpired == "-" ||
+                            player.contractExpired.equals("Unknown", ignoreCase = true) ->
+                            stringResource(R.string.players_contract_not_available)
+                        else -> player.contractExpired.orEmpty()
+                    },
                     style = boldTextStyle(HomeOrangeAccent, 10.sp)
                 )
             }
@@ -975,8 +1001,10 @@ private fun ExpiringPlayerRow(player: Player, onClick: () -> Unit) {
 @Composable
 private fun PlayerCardVariantA(
     player: Player,
+    allAccounts: List<com.liordahan.mgsrteam.features.login.models.Account>,
     onPlayerClick: () -> Unit
 ) {
+    val context = LocalContext.current
     val isFreeAgent = player.currentClub?.clubName.equals("Without Club", ignoreCase = true) ||
             player.currentClub?.clubName.equals("Without club", ignoreCase = true)
     val isExpiring = remember(player.contractExpired) {
@@ -1125,13 +1153,14 @@ private fun PlayerCardVariantA(
                         )
                     }
 
-                    // Tags: age, positions, height
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                        modifier = Modifier.padding(top = 5.dp)
+                    // Tags: age, positions, height — FlowRow for wrapping when crowded
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                        modifier = Modifier.padding(top = 8.dp)
                     ) {
                         if (!player.age.isNullOrBlank()) {
-                            PlayerTag(text = "${player.age}${stringResource(R.string.players_years_suffix)}")
+                            PlayerTag(text = stringResource(R.string.players_age_format, player.age))
                         }
                         player.positions?.filterNotNull()?.take(2)?.forEach { pos ->
                             PlayerTag(
@@ -1139,7 +1168,7 @@ private fun PlayerCardVariantA(
                                 isPosition = true
                             )
                         }
-                        if (!player.height.isNullOrBlank()) {
+                        if (!player.height.isNullOrBlank() && !player.height.equals("Unknown", ignoreCase = true)) {
                             PlayerTag(text = player.height)
                         }
                     }
@@ -1220,7 +1249,7 @@ private fun PlayerCardVariantA(
                     if (isExpiring) {
                         PlayerBadge(
                             icon = Icons.Filled.Schedule,
-                            text = stringResource(R.string.agent_stat_expiring),
+                            text = stringResource(R.string.players_expiring_badge),
                             backgroundColor = HomeOrangeAccent.copy(alpha = 0.15f),
                             contentColor = HomeOrangeAccent
                         )
@@ -1235,14 +1264,17 @@ private fun PlayerCardVariantA(
                         )
                     }
 
-                    if (!player.contractExpired.isNullOrBlank() && player.contractExpired != "-") {
-                        PlayerBadge(
-                            icon = Icons.Filled.CalendarMonth,
-                            text = player.contractExpired.orEmpty(),
-                            backgroundColor = Color.White.copy(alpha = 0.05f),
-                            contentColor = HomeTextSecondary
-                        )
-                    }
+                    PlayerBadge(
+                        icon = Icons.Filled.CalendarMonth,
+                        text = when {
+                            player.contractExpired.isNullOrBlank() || player.contractExpired == "-" ||
+                                player.contractExpired.equals("Unknown", ignoreCase = true) ->
+                                stringResource(R.string.players_contract_not_available)
+                            else -> player.contractExpired.orEmpty()
+                        },
+                        backgroundColor = Color.White.copy(alpha = 0.05f),
+                        contentColor = HomeTextSecondary
+                    )
 
                     if (hasNotes && noteCount > 0) {
                         PlayerBadge(
@@ -1254,9 +1286,18 @@ private fun PlayerCardVariantA(
                     }
 
                     if (!player.agentInChargeName.isNullOrBlank()) {
+                        val rawAgentName = player.agentInChargeName.orEmpty()
+                        val agentDisplayName = when {
+                            rawAgentName.equals("Unknown", ignoreCase = true) ->
+                                stringResource(R.string.player_info_unknown)
+                            else -> allAccounts
+                                .find { it.name.equals(rawAgentName, ignoreCase = true) }
+                                ?.getDisplayName(context)
+                                ?: rawAgentName
+                        }
                         PlayerBadge(
                             icon = Icons.Filled.Person,
-                            text = player.agentInChargeName.orEmpty(),
+                            text = agentDisplayName,
                             backgroundColor = HomeTealAccent.copy(alpha = 0.15f),
                             contentColor = HomeTealAccent
                         )

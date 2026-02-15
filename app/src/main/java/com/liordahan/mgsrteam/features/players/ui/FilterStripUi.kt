@@ -21,6 +21,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -166,7 +167,7 @@ fun AccountFilterTypeItemUi(
             verticalArrangement = Arrangement.Center
         ) {
             Text(
-                text = account.name?.take(10) ?: "",
+                text = account.getDisplayName(LocalContext.current).take(10).ifEmpty { account.name?.take(10) ?: "" },
                 style = if (isSelected) boldTextStyle(Color.White, 14.sp)
                 else regularTextStyle(contentDefault, 14.sp),
                 modifier = Modifier.padding(top = 2.dp),

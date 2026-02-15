@@ -40,6 +40,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.platform.rememberNestedScrollInteropConnection
@@ -215,7 +216,7 @@ fun PlayerListFilterBottomSheet(
 
                         FilterCheckBox(
                             isChecked = isSelected,
-                            text = account.name ?: "",
+                            text = account.getDisplayName(LocalContext.current).ifEmpty { account.name ?: "" },
                             onCheckedChange = { isChecked ->
                                 isSelected = isChecked
                                 viewModel.manageAgentFilter(isSelected, account)

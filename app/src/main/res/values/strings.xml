@@ -27,6 +27,10 @@
     <string name="players_add_player">Add Player</string>
     <string name="players_clear">Clear</string>
     <string name="players_filter_all">All</string>
+    <string name="players_filter_position_gk">GK</string>
+    <string name="players_filter_position_def">DEF</string>
+    <string name="players_filter_position_mid">MID</string>
+    <string name="players_filter_position_fwd">FWD</string>
     <string name="players_sort_options">Sort options</string>
     <string name="players_reset">Reset</string>
     <string name="players_sort_newest">Newest First</string>
@@ -37,6 +41,7 @@
     <string name="players_filter_contract_expiring">Contract Expiring</string>
     <string name="players_filter_with_mandate">With Mandate</string>
     <string name="players_filter_my_players_only">My Players Only</string>
+    <string name="players_filter_loan_players_only">Loan Players Only</string>
     <string name="players_expiring_soon_count">%d Contracts Expiring Soon</string>
     <string name="players_expiring_action_needed">Action needed before contract ends</string>
     <string name="players_free_agent">Free Agent</string>
@@ -44,6 +49,7 @@
     <string name="players_on_loan_from">On loan from %s</string>
     <string name="players_on_loan_from_label">On loan from</string>
     <string name="players_years_suffix"> yrs</string>
+    <string name="players_age_format">%s yrs</string>
     <string name="players_no_players_found">No players found</string>
     <string name="players_empty_hint">Add players to your roster or clear filters to see your full list.</string>
     <string name="players_reset_filters">Reset Filters</string>
@@ -55,6 +61,8 @@
     <string name="players_filter_without_club">Without club</string>
     <string name="players_filter_contract_finishing">Contract finishing soon</string>
     <string name="players_filter_with_notes">With notes</string>
+    <string name="players_expiring_badge">Contract Expiring</string>
+    <string name="players_contract_not_available">Contract not available</string>
     <string name="players_done">Done</string>
 
     <!-- Shortlist Screen -->

@@ -17,6 +17,7 @@ interface IFilterRepository {
     val quickFilterContractExpiring: StateFlow<Boolean>
     val quickFilterWithMandate: StateFlow<Boolean>
     val quickFilterMyPlayersOnly: StateFlow<Boolean>
+    val quickFilterLoanPlayersOnly: StateFlow<Boolean>
 
     fun addPositionFilter(position: Position)
     fun removePositionFilter(position: Position)
@@ -30,6 +31,8 @@ interface IFilterRepository {
     fun toggleQuickFilterContractExpiring()
     fun toggleQuickFilterWithMandate()
     fun toggleQuickFilterMyPlayersOnly()
+    fun toggleQuickFilterLoanPlayersOnly()
+    fun toggleQuickFilterWithNotesOnly()
 }
 
 class FilterRepository : IFilterRepository {
@@ -57,6 +60,9 @@ class FilterRepository : IFilterRepository {
 
     private val _quickFilterMyPlayersOnly = MutableStateFlow(false)
     override val quickFilterMyPlayersOnly: StateFlow<Boolean> = _quickFilterMyPlayersOnly
+
+    private val _quickFilterLoanPlayersOnly = MutableStateFlow(false)
+    override val quickFilterLoanPlayersOnly: StateFlow<Boolean> = _quickFilterLoanPlayersOnly
 
     override fun addPositionFilter(position: Position) {
         val filters = positionFilterList.value.toMutableList()
@@ -107,6 +113,7 @@ class FilterRepository : IFilterRepository {
         _quickFilterContractExpiring.update { false }
         _quickFilterWithMandate.update { false }
         _quickFilterMyPlayersOnly.update { false }
+        _quickFilterLoanPlayersOnly.update { false }
     }
 
     override fun toggleQuickFilterFreeAgents() {
@@ -123,6 +130,14 @@ class FilterRepository : IFilterRepository {
 
     override fun toggleQuickFilterMyPlayersOnly() {
         _quickFilterMyPlayersOnly.update { !it }
+    }
+
+    override fun toggleQuickFilterLoanPlayersOnly() {
+        _quickFilterLoanPlayersOnly.update { !it }
+    }
+
+    override fun toggleQuickFilterWithNotesOnly() {
+        _withNotesCheckedFlow.update { !it }
     }
 
 }

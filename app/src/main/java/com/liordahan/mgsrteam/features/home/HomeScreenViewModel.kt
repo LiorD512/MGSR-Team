@@ -27,7 +27,7 @@ import java.util.Locale
 // ─── UI State ────────────────────────────────────────────────────────────────
 
 data class HomeDashboardState(
-    val userName: String = "",
+    val currentUserAccount: Account? = null,
     @param:StringRes val greetingRes: Int = R.string.greeting_good_morning,
 
     // stats row
@@ -118,16 +118,16 @@ class HomeScreenViewModel(
                 in 12..17 -> R.string.greeting_good_afternoon
                 else -> R.string.greeting_good_evening
             }
-            val name = try {
+            val currentAccount = try {
                 val snap = firebaseHandler.firebaseStore
                     .collection(firebaseHandler.accountsTable).get().await()
                 val accounts = snap.toObjects(com.liordahan.mgsrteam.features.login.models.Account::class.java)
                 accounts.firstOrNull {
                     it.email.equals(firebaseHandler.firebaseAuth.currentUser?.email, true)
-                }?.name ?: ""
-            } catch (_: Exception) { "" }
+                }
+            } catch (_: Exception) { null }
 
-            _state.update { it.copy(greetingRes = greetingRes, userName = name) }
+            _state.update { it.copy(greetingRes = greetingRes, currentUserAccount = currentAccount) }
         }
     }
 

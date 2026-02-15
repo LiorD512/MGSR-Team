@@ -13,8 +13,8 @@ import com.liordahan.mgsrteam.features.players.filters.usecases.IGetIsWithNotesC
 import com.liordahan.mgsrteam.features.players.filters.usecases.IGetPositionFilterFlowUseCase
 import com.liordahan.mgsrteam.features.players.filters.usecases.IGetSortOptionUseCase
 import com.liordahan.mgsrteam.features.players.filters.usecases.IQuickFilterUseCase
-import com.liordahan.mgsrteam.features.players.filters.usecases.IResetSortOptionUseCase
 import com.liordahan.mgsrteam.features.players.filters.usecases.IRemoveAllFiltersUseCase
+import com.liordahan.mgsrteam.features.players.filters.usecases.IResetSortOptionUseCase
 import com.liordahan.mgsrteam.features.players.filters.usecases.ISetSortOptionUseCase
 import com.liordahan.mgsrteam.features.players.filters.usecases.ISetPositionFiltersByNamesUseCase
 import com.liordahan.mgsrteam.features.players.models.Player
@@ -40,6 +40,7 @@ import java.util.Locale
 data class PlayersUiState(
     val playersList: List<Player> = emptyList(),
     val visibleList: List<Player> = emptyList(),
+    val allAccounts: List<Account> = emptyList(),
     val expiringSoonPlayers: List<Player> = emptyList(),
     val showPageLoader: Boolean = false,
     val showRefreshButton: Boolean = false,
@@ -57,6 +58,7 @@ data class PlayersUiState(
     val quickFilterContractExpiring: Boolean = false,
     val quickFilterWithMandate: Boolean = false,
     val quickFilterMyPlayersOnly: Boolean = false,
+    val quickFilterLoanPlayersOnly: Boolean = false,
     val currentUserName: String? = null
 )
 
@@ -70,6 +72,8 @@ abstract class IPlayersViewModel : ViewModel() {
     abstract fun toggleQuickFilterContractExpiring()
     abstract fun toggleQuickFilterWithMandate()
     abstract fun toggleQuickFilterMyPlayersOnly()
+    abstract fun toggleQuickFilterLoanPlayersOnly()
+    abstract fun toggleQuickFilterWithNotesOnly()
     abstract fun setSortOption(option: SortOption)
     abstract fun resetSortOption()
     abstract suspend fun exportRosterCsv(): Result<ByteArray>
@@ -95,6 +99,7 @@ class PlayersViewModel(
 
     init {
         getAllPlayers()
+        loadAllAccounts()
 
         viewModelScope.launch {
             val name = getCurrentUserName()
@@ -114,19 +119,10 @@ class PlayersViewModel(
                         )
                         ?.filterPlayersByWithMandate(it.quickFilterWithMandate)
                         ?.filterPlayersByMyPlayersOnly(it.quickFilterMyPlayersOnly, it.currentUserName)
+                        ?.filterPlayersByLoanPlayers(it.quickFilterLoanPlayersOnly)
                         ?.filterByNotes(it.isWithNotesChecked)
                         ?.filterPlayersByNameOrByNote(it.searchQuery)
-                        ?.sortedWith(compareByDescending<Player> {
-                            it.noteList?.isNotEmpty() ?: false
-                        }
-                            .thenByDescending { player ->
-                                player.noteList?.maxOfOrNull { note ->
-                                    note.createdAt ?: Long.MIN_VALUE
-                                } ?: Long.MIN_VALUE
-                            }
-                            .thenByDescending { it.notes?.isNotEmpty() ?: false }
-                            .thenByDescending { it.createdAt })
-                        ?.sortBySortOption(it.sortOption) ?: emptyList()
+                        ?.sortPlayers(it.isWithNotesChecked, it.sortOption) ?: emptyList()
                     val allPlayers = it.playersList
                     val expiringSoon = allPlayers.filter { player ->
                         isContractExpiringWithinMonths(player.contractExpired, 5)
@@ -204,6 +200,12 @@ class PlayersViewModel(
                     _playersFlow.update { it.copy(quickFilterMyPlayersOnly = enabled) }
                 }
             }
+
+            launch {
+                quickFilterUseCase.quickFilterLoanPlayersOnly.collect { enabled ->
+                    _playersFlow.update { it.copy(quickFilterLoanPlayersOnly = enabled) }
+                }
+            }
         }
     }
 
@@ -264,7 +266,8 @@ class PlayersViewModel(
     override fun toggleQuickFilterContractExpiring() = quickFilterUseCase.toggleContractExpiring()
     override fun toggleQuickFilterWithMandate() = quickFilterUseCase.toggleWithMandate()
     override fun toggleQuickFilterMyPlayersOnly() = quickFilterUseCase.toggleMyPlayersOnly()
-
+    override fun toggleQuickFilterLoanPlayersOnly() = quickFilterUseCase.toggleLoanPlayersOnly()
+    override fun toggleQuickFilterWithNotesOnly() = quickFilterUseCase.toggleWithNotesOnly()
     override fun setSortOption(option: SortOption) = setSortOptionUseCase(option)
     override fun resetSortOption() = resetSortOptionUseCase()
 
@@ -375,10 +378,26 @@ class PlayersViewModel(
         else this?.filter { it.agentInChargeName.equals(currentUserName, ignoreCase = true) }
     }
 
+    private fun List<Player>?.filterPlayersByLoanPlayers(enabled: Boolean): List<Player>? {
+        return if (!enabled) this else this?.filter { it.isOnLoan }
+    }
+
+    /** Newest first by default. When withNotesOnly is on, players with most recent note date come first. */
+    private fun List<Player>?.sortPlayers(withNotesOnly: Boolean, sortOption: SortOption): List<Player>? {
+        return if (withNotesOnly) {
+            this?.sortedWith(
+                compareByDescending<Player> { player ->
+                    player.noteList?.maxOfOrNull { note -> note.createdAt ?: Long.MIN_VALUE } ?: Long.MIN_VALUE
+                }.thenByDescending { it.createdAt }
+            )
+        } else {
+            this?.sortBySortOption(sortOption)
+        }
+    }
+
     private fun List<Player>?.sortBySortOption(sortOption: SortOption): List<Player>? {
         return when (sortOption) {
-            SortOption.DEFAULT -> this
-            SortOption.NEWEST -> this?.sortedByDescending { it.createdAt }
+            SortOption.DEFAULT, SortOption.NEWEST -> this?.sortedByDescending { it.createdAt }
             SortOption.MARKET_VALUE -> this?.sortedByDescending { it.marketValue?.toNumericValue() }
             SortOption.NAME -> this?.sortedBy { it.fullName }
             SortOption.AGE -> this?.sortedBy { it.age }
@@ -437,6 +456,15 @@ class PlayersViewModel(
         val now = LocalDate.now()
         val threshold = now.plusMonths(months.toLong())
         return !expiryDate.isBefore(now) && !expiryDate.isAfter(threshold)
+    }
+
+    private fun loadAllAccounts() {
+        firebaseHandler.firebaseStore.collection(firebaseHandler.accountsTable)
+            .addSnapshotListener { snapshot, _ ->
+                if (snapshot == null) return@addSnapshotListener
+                val accounts = snapshot.toObjects(Account::class.java)
+                _playersFlow.update { it.copy(allAccounts = accounts) }
+            }
     }
 
     private fun getAllPlayers() {

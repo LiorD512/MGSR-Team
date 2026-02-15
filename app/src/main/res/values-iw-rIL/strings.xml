@@ -84,7 +84,8 @@
     <string name="agent_overview_title">סקירת סוכנים</string>
     <string name="agent_players_managed">%d שחקנים מנוהלים</string>
     <string name="agent_stat_mandate">ייפוי כוח</string>
-    <string name="agent_stat_expiring">מסתיימים</string>
+    <string name="agent_stat_expiring">מסיימי חוזה</string>
+    <string name="players_expiring_badge">מסיים חוזה</string>
     <string name="agent_stat_notes">הערות</string>
 
     <!-- Agent Tasks -->

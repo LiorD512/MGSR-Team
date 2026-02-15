@@ -27,6 +27,10 @@
     <string name="players_add_player">הוסף שחקן</string>
     <string name="players_clear">נקה</string>
     <string name="players_filter_all">הכל</string>
+    <string name="players_filter_position_gk">שוערים</string>
+    <string name="players_filter_position_def">שחקני הגנה</string>
+    <string name="players_filter_position_mid">שחקני קישור</string>
+    <string name="players_filter_position_fwd">שחקני התקפה</string>
     <string name="players_sort_options">אפשרויות מיון</string>
     <string name="players_reset">איפוס</string>
     <string name="players_sort_newest">החדשים קודם</string>
@@ -37,6 +41,7 @@
     <string name="players_filter_contract_expiring">חוזה מסתיים</string>
     <string name="players_filter_with_mandate">עם מנדט</string>
     <string name="players_filter_my_players_only">השחקנים שלי בלבד</string>
+    <string name="players_filter_loan_players_only">שחקנים בהשאלה בלבד</string>
     <string name="players_expiring_soon_count">%d חוזים מסתיימים בקרוב</string>
     <string name="players_expiring_action_needed">נדרש טיפול לפני סיום החוזה</string>
     <string name="players_free_agent">שחקן חופשי</string>
@@ -44,6 +49,7 @@
     <string name="players_on_loan_from">בהשאלה מ-%s</string>
     <string name="players_on_loan_from_label">בהשאלה מ</string>
     <string name="players_years_suffix"> שנים</string>
+    <string name="players_age_format">בן %s</string>
     <string name="players_no_players_found">לא נמצאו שחקנים</string>
     <string name="players_empty_hint">הוסף שחקנים לסגל או נקה מסננים כדי לראות את הרשימה המלאה.</string>
     <string name="players_reset_filters">איפוס מסננים</string>
@@ -55,6 +61,8 @@
     <string name="players_filter_without_club">ללא מועדון</string>
     <string name="players_filter_contract_finishing">חוזה מסתיים בקרוב</string>
     <string name="players_filter_with_notes">עם הערות</string>
+    <string name="players_expiring_badge">מסיים חוזה</string>
+    <string name="players_contract_not_available">חוזה לא זמין</string>
     <string name="players_done">סיום</string>
 
     <!-- Shortlist Screen -->
@@ -143,7 +151,7 @@
     <string name="agent_overview_title">סקירת סוכנים</string>
     <string name="agent_players_managed">%d שחקנים מנוהלים</string>
     <string name="agent_stat_mandate">מנדט</string>
-    <string name="agent_stat_expiring">מסתיימים</string>
+    <string name="agent_stat_expiring">מסיימי חוזה</string>
     <string name="agent_stat_notes">הערות</string>
 
     <!-- Agent Tasks -->
