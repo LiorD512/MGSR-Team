@@ -518,6 +518,23 @@ private fun QuickActionsRow(navController: NavController) {
         }
         item {
             QuickActionChip(
+                icon = Icons.Default.CalendarToday,
+                label = stringResource(
+                    if (java.util.Calendar.getInstance().get(java.util.Calendar.MONTH) + 1 in 2..9)
+                        R.string.quick_action_contract_finisher_summer
+                    else
+                        R.string.quick_action_contract_finisher_winter
+                ),
+                color = HomeOrangeAccent,
+                onClick = {
+                    navController.navigate(Screens.ContractFinisherScreen.route) {
+                        launchSingleTop = true
+                    }
+                }
+            )
+        }
+        item {
+            QuickActionChip(
                 icon = Icons.Default.Autorenew,
                 label = stringResource(R.string.quick_action_returnees),
                 color = HomeRedAccent,

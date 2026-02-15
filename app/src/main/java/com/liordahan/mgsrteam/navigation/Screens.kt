@@ -10,6 +10,7 @@ sealed class Screens(val route: String) {
     data object AddPlayerScreen : Screens(ScreenName.ADD_PLAYER)
     data object PlayerInfoScreen : Screens(ScreenName.PLAYER_INFO)
     data object ReturneeScreen : Screens(ScreenName.RETURNEE)
+    data object ContractFinisherScreen : Screens(ScreenName.CONTRACT_FINISHER)
     data object ContactsScreen : Screens(ScreenName.CONTACTS)
     data object ShortlistScreen : Screens(ScreenName.SHORTLIST)
     data object AddToShortlistScreen : Screens(ScreenName.ADD_TO_SHORTLIST)
@@ -31,6 +32,7 @@ object ScreenName {
     const val ADD_PLAYER = "add_player"
     const val PLAYER_INFO = "player_info"
     const val RETURNEE = "returnee"
+    const val CONTRACT_FINISHER = "contract_finisher"
     const val CONTACTS = "contacts"
     const val SHORTLIST = "shortlist"
     const val ADD_TO_SHORTLIST = "add_to_shortlist"

@@ -31,6 +31,7 @@ import com.liordahan.mgsrteam.features.players.playerinfo.PlayerInfoScreen
 import com.liordahan.mgsrteam.features.releases.ReleasesScreen
 import com.liordahan.mgsrteam.features.contacts.ContactsScreen
 import com.liordahan.mgsrteam.features.returnee.ReturneeScreen
+import com.liordahan.mgsrteam.features.contractfinisher.ContractFinisherScreen
 import com.liordahan.mgsrteam.features.shortlist.ShortlistScreen
 import com.liordahan.mgsrteam.features.requests.RequestsScreen
 import com.liordahan.mgsrteam.navigation.Screens
@@ -50,6 +51,7 @@ fun HomeScreen(
             currentRoute == Screens.PlayersScreen.route ||
             currentRoute == Screens.ReleasesScreen.route ||
             currentRoute == Screens.ReturneeScreen.route ||
+            currentRoute == Screens.ContractFinisherScreen.route ||
             currentRoute == Screens.ShortlistScreen.route ||
             currentRoute == Screens.RequestsScreen.route ||
             currentRoute == Screens.AddToShortlistScreen.route ||
@@ -283,6 +285,28 @@ fun HomeScreen(
                 }
             ) {
                 ReturneeScreen(navController = navController)
+            }
+
+            composable(
+                route = Screens.ContractFinisherScreen.route,
+                enterTransition = {
+                    slideInHorizontally(initialOffsetX = { it }, animationSpec = tween(280)) +
+                            fadeIn(animationSpec = tween(280))
+                },
+                exitTransition = {
+                    slideOutHorizontally(targetOffsetX = { -it }, animationSpec = tween(280)) +
+                            fadeOut(animationSpec = tween(280))
+                },
+                popEnterTransition = {
+                    slideInHorizontally(initialOffsetX = { -it }, animationSpec = tween(280)) +
+                            fadeIn(animationSpec = tween(280))
+                },
+                popExitTransition = {
+                    slideOutHorizontally(targetOffsetX = { it }, animationSpec = tween(280)) +
+                            fadeOut(animationSpec = tween(280))
+                }
+            ) {
+                ContractFinisherScreen(navController = navController)
             }
 
             composable(

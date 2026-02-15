@@ -55,6 +55,18 @@
     <string name="quick_action_returnees">חזרו מהשאלה</string>
     <string name="quick_action_contacts">אנשי קשר</string>
     <string name="quick_action_requests">בקשות</string>
+    <string name="quick_action_contract_finisher_summer">מסיימי חוזה - קיץ</string>
+    <string name="quick_action_contract_finisher_winter">מסיימי חוזה - חורף</string>
+
+    <!-- Contract Finisher Screen -->
+    <string name="contract_finisher_title">מסיימי חוזה</string>
+    <string name="contract_finisher_subtitle">חוזים שמסתיימים בחלון %1$s</string>
+    <string name="contract_finisher_subtitle_summer">חוזים שמסתיימים לקראת חלון קיץ</string>
+    <string name="contract_finisher_subtitle_winter">חוזים שמסתיימים לקראת חלון חורף</string>
+    <string name="contract_finisher_loading">טוען… %1$d שחקנים</string>
+    <string name="contract_finisher_loading_more">טוען עוד…</string>
+    <string name="contract_finisher_retry">נסה שוב</string>
+    <string name="contract_finisher_badge">תאריך סיום חוזה - %1$s</string>
 
     <!-- Feed -->
     <string name="feed_recent_updates">עדכונים אחרונים</string>

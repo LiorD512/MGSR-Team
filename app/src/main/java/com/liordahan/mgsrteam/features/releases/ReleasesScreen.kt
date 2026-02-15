@@ -680,6 +680,7 @@ fun ReleaseListItem(
     context: Context,
     release: LatestTransferModel,
     isFromReturnee: Boolean = false,
+    isContractFinisher: Boolean = false,
     rosterTeammates: List<RosterTeammateMatch>? = null,
     isLoadingTeammates: Boolean = false,
     isTeammatesExpanded: Boolean = false,
@@ -782,7 +783,7 @@ fun ReleaseListItem(
                                     .padding(horizontal = 8.dp, vertical = 2.dp)
                             ) {
                                 Text(
-                                    text = "$age${stringResource(R.string.players_years_suffix)}",
+                                    text = stringResource(R.string.players_age_format, age),
                                     style = regularTextStyle(HomeTextSecondary, 10.sp)
                                 )
                             }
@@ -874,6 +875,7 @@ fun ReleaseListItem(
                     val transferDate = release.transferDate
                     Text(
                         text = when {
+                            isContractFinisher && !transferDate.isNullOrBlank() -> stringResource(R.string.contract_finisher_badge, transferDate)
                             isFromReturnee && !transferDate.isNullOrBlank() -> stringResource(R.string.releases_badge_returned_on, transferDate)
                             isFromReturnee -> stringResource(R.string.releases_badge_loan_return)
                             !transferDate.isNullOrBlank() -> stringResource(R.string.releases_badge_released_on, transferDate)
