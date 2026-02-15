@@ -18,6 +18,18 @@ android {
         versionName = "3.7"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // Google Cloud Vision API key for passport OCR (1000 free/month). Add to local.properties: VISION_API_KEY=your_key
+        val localPropertiesFile = rootProject.file("local.properties")
+        val visionApiKey = if (localPropertiesFile.exists()) {
+            localPropertiesFile.readLines()
+                .filter { it.contains("=") && !it.trim().startsWith("#") }
+                .mapNotNull { line ->
+                    val (key, value) = line.split("=", limit = 2).map { it.trim() }
+                    if (key == "VISION_API_KEY") value else null
+                }.firstOrNull() ?: ""
+        } else ""
+        buildConfigField("String", "VISION_API_KEY", "\"$visionApiKey\"")
     }
 
     buildTypes {
@@ -36,6 +48,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
@@ -52,6 +65,7 @@ dependencies {
     implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.appcompat)
+    implementation(libs.androidx.exifinterface)
     implementation(libs.splash.screen)
     implementation(libs.compose.constraintLayout)
     implementation(platform(libs.androidx.compose.bom))
@@ -94,4 +108,7 @@ dependencies {
     implementation(libs.coil.compose)
 
     implementation(project(":transfermarkt"))
+
+    // ML Kit for document type detection (passport OCR)
+    implementation(libs.mlkit.text.recognition)
 }

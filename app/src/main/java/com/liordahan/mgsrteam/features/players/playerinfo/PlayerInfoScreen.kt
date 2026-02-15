@@ -211,11 +211,12 @@ fun PlayerInfoScreen(
             try {
                 context.contentResolver.openInputStream(it)?.use { stream ->
                     val bytes = stream.readBytes()
-                    val name = context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+                    val name = context.contentResolver.query(it, null, null, null, null)?.use { cursor ->
                         val nameIdx = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
                         if (cursor.moveToFirst() && nameIdx >= 0) cursor.getString(nameIdx) else "document"
                     } ?: "document"
-                    viewModel.uploadDocument(DocumentType.OTHER, name, bytes, null)
+                    val mimeType = context.contentResolver.getType(it)
+                    viewModel.uploadDocument(it, bytes, name, mimeType, null)
                 }
             } catch (_: Exception) { }
         }

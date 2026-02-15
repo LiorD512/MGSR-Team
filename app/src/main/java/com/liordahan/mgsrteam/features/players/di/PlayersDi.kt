@@ -1,5 +1,7 @@
 package com.liordahan.mgsrteam.features.players.di
 
+import android.content.Context
+import com.liordahan.mgsrteam.BuildConfig
 import com.liordahan.mgsrteam.features.players.IPlayersViewModel
 import com.liordahan.mgsrteam.features.players.PlayersViewModel
 import com.liordahan.mgsrteam.features.players.filters.IPlayerListFiltersViewModel
@@ -42,6 +44,8 @@ import com.liordahan.mgsrteam.features.players.filters.usecases.SetIsWithNotesCh
 import com.liordahan.mgsrteam.features.players.filters.usecases.SetSortOptionUseCase
 import com.liordahan.mgsrteam.features.players.playerinfo.IPlayerInfoViewModel
 import com.liordahan.mgsrteam.features.players.playerinfo.PlayerInfoViewModel
+import com.liordahan.mgsrteam.features.players.playerinfo.documents.CloudVisionOcrProvider
+import com.liordahan.mgsrteam.features.players.playerinfo.documents.DocumentDetectionService
 import com.liordahan.mgsrteam.features.players.playerinfo.documents.PlayerDocumentsRepository
 import com.liordahan.mgsrteam.features.players.repository.IPlayersRepository
 import com.liordahan.mgsrteam.features.players.repository.PlayersRepository
@@ -68,7 +72,12 @@ val playersModule = module {
 
     viewModel<IPlayersViewModel> { PlayersViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
     single { PlayerDocumentsRepository(get()) }
-    viewModel<IPlayerInfoViewModel> { PlayerInfoViewModel(get(), get(), get()) }
+    single {
+        val apiKey = BuildConfig.VISION_API_KEY
+        CloudVisionOcrProvider(if (apiKey.isBlank()) null else apiKey)
+    }
+    single { DocumentDetectionService(get<Context>(), get<CloudVisionOcrProvider>()) }
+    viewModel<IPlayerInfoViewModel> { PlayerInfoViewModel(get(), get(), get(), get()) }
     viewModel<IPlayerListFiltersViewModel> {
         PlayerListFiltersViewModel(
             get(),

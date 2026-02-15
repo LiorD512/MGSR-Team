@@ -1,11 +1,13 @@
 package com.liordahan.mgsrteam.features.players.playerinfo
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.liordahan.mgsrteam.features.login.models.Account
 import com.liordahan.mgsrteam.features.players.models.MarketValueEntry
 import com.liordahan.mgsrteam.features.players.models.NotesModel
 import com.liordahan.mgsrteam.features.players.models.Player
+import com.liordahan.mgsrteam.features.players.playerinfo.documents.DocumentDetectionService
 import com.liordahan.mgsrteam.features.players.playerinfo.documents.DocumentType
 import com.liordahan.mgsrteam.features.players.playerinfo.documents.PlayerDocument
 import com.liordahan.mgsrteam.features.players.playerinfo.documents.PlayerDocumentsRepository
@@ -40,15 +42,18 @@ abstract class IPlayerInfoViewModel : ViewModel() {
     abstract fun updateNotes(notes: NotesModel)
     abstract fun refreshPlayerInfo()
     abstract fun onDeleteNoteClicked(note: NotesModel)
-    abstract fun uploadDocument(type: DocumentType, name: String, bytes: ByteArray, expiresAt: Long?)
+    abstract fun uploadDocument(uri: android.net.Uri?, bytes: ByteArray, name: String, mimeType: String?, expiresAt: Long?)
     abstract fun deleteDocument(documentId: String)
 }
 
 
+private const val TAG = "PassportUpload"
+
 class PlayerInfoViewModel(
     private val firebaseHandler: FirebaseHandler,
     private val playersUpdate: PlayersUpdate,
-    private val documentsRepository: PlayerDocumentsRepository
+    private val documentsRepository: PlayerDocumentsRepository,
+    private val documentDetectionService: DocumentDetectionService
 ) : IPlayerInfoViewModel() {
 
     private val _playerInfoFlow = MutableStateFlow<Player?>(null)
@@ -282,12 +287,39 @@ class PlayerInfoViewModel(
         }
     }
 
-    override fun uploadDocument(type: DocumentType, name: String, bytes: ByteArray, expiresAt: Long?) {
+    override fun uploadDocument(uri: android.net.Uri?, bytes: ByteArray, name: String, mimeType: String?, expiresAt: Long?) {
         viewModelScope.launch {
-            val tmProfile = _playerInfoFlow.value?.tmProfile ?: return@launch
+            val player = _playerInfoFlow.value ?: return@launch
+            val tmProfile = player.tmProfile ?: return@launch
             _isUploadingDocumentFlow.value = true
             try {
-                documentsRepository.uploadDocument(tmProfile, type, name, bytes, expiresAt)
+                val detection = documentDetectionService.detectDocumentType(
+                    uri = uri,
+                    bytes = bytes,
+                    mimeType = mimeType,
+                    originalFileName = name,
+                    playerName = player.fullName
+                )
+                when {
+                    detection.documentType == DocumentType.PASSPORT && detection.passportInfo != null -> {
+                        val info = detection.passportInfo!!
+                        Log.i(TAG, "Passport uploaded - First name: ${info.firstName}, Last name: ${info.lastName}, " +
+                            "Date of birth: ${info.dateOfBirth ?: "N/A"}, Passport number: ${info.passportNumber ?: "N/A"}")
+                    }
+                    detection.documentType == DocumentType.PASSPORT && detection.passportInfo == null -> {
+                        Log.w(TAG, "Passport detected but MRZ parsing failed - could not extract name, DOB, or passport number")
+                    }
+                    detection.documentType != DocumentType.PASSPORT -> {
+                        Log.w(TAG, "Document not detected as passport (type: ${detection.documentType})")
+                    }
+                }
+                documentsRepository.uploadDocument(
+                    tmProfile,
+                    detection.documentType,
+                    detection.suggestedName,
+                    bytes,
+                    expiresAt
+                )
             } finally {
                 _isUploadingDocumentFlow.value = false
             }
