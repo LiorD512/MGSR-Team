@@ -105,7 +105,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -1304,6 +1306,7 @@ private fun AddEditContactBottomSheet(
                 onValueChange = onPhoneChange,
                 placeholder = stringResource(R.string.contacts_placeholder_phone),
                 keyboardType = KeyboardType.Phone,
+                contentTextDirection = TextDirection.Ltr,
                 modifier = Modifier.fillMaxWidth()
             )
 
@@ -1410,8 +1413,17 @@ private fun AddContactTextField(
     onValueChange: (String) -> Unit,
     placeholder: String,
     keyboardType: KeyboardType = KeyboardType.Text,
+    contentTextDirection: TextDirection? = null,
     modifier: Modifier = Modifier
 ) {
+    val textStyle = if (contentTextDirection != null) {
+        regularTextStyle(HomeTextPrimary, 14.sp, direction = contentTextDirection)
+    } else null
+    val placeholderStyle = if (contentTextDirection != null) {
+        regularTextStyle(HomeTextSecondary.copy(alpha = 0.6f), 14.sp, direction = contentTextDirection)
+    } else {
+        regularTextStyle(HomeTextSecondary.copy(alpha = 0.6f), 14.sp)
+    }
     Column(modifier = modifier) {
         Text(
             text = label,
@@ -1421,11 +1433,12 @@ private fun AddContactTextField(
         OutlinedTextField(
             value = value,
             onValueChange = onValueChange,
+            textStyle = textStyle ?: TextStyle(),
             keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
             placeholder = {
                 Text(
                     placeholder,
-                    style = regularTextStyle(HomeTextSecondary.copy(alpha = 0.6f), 14.sp)
+                    style = placeholderStyle
                 )
             },
             modifier = Modifier.fillMaxWidth(),
