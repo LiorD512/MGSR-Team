@@ -46,6 +46,7 @@ import com.liordahan.mgsrteam.features.players.playerinfo.IPlayerInfoViewModel
 import com.liordahan.mgsrteam.features.players.playerinfo.PlayerInfoViewModel
 import com.liordahan.mgsrteam.features.players.playerinfo.documents.CloudVisionOcrProvider
 import com.liordahan.mgsrteam.features.players.playerinfo.documents.DocumentDetectionService
+import com.liordahan.mgsrteam.features.players.playerinfo.documents.GeminiPassportOcrProvider
 import com.liordahan.mgsrteam.features.players.playerinfo.mandate.GenerateMandateViewModel
 import com.liordahan.mgsrteam.features.players.playerinfo.ai.AiHelperService
 import com.liordahan.mgsrteam.transfermarket.PlayerSearch
@@ -80,7 +81,8 @@ val playersModule = module {
         val apiKey = BuildConfig.VISION_API_KEY
         CloudVisionOcrProvider(if (apiKey.isBlank()) null else apiKey)
     }
-    single { DocumentDetectionService(get<Context>(), get<CloudVisionOcrProvider>()) }
+    single { GeminiPassportOcrProvider() }
+    single { DocumentDetectionService(get<Context>(), get<CloudVisionOcrProvider>(), get<GeminiPassportOcrProvider>()) }
     viewModel<IPlayerInfoViewModel> { PlayerInfoViewModel(get(), get(), get(), get(), get()) }
     viewModel { GenerateMandateViewModel() }
     viewModel<IPlayerListFiltersViewModel> {

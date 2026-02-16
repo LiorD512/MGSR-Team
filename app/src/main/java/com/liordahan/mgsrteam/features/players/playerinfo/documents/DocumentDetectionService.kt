@@ -31,11 +31,13 @@ private const val TAG = "DocumentDetection"
  * Uses Google Cloud Vision API when configured (best accuracy, structured output with bounding boxes).
  * Falls back to ML Kit with structured block/line extraction.
  * Supports passport detection via MRZ (Machine Readable Zone) or "PASSPORT"/"PASSEPORT" text.
+ * When MRZ/visual parsers fail, uses Gemini vision OCR for all passport types (any country, any language).
  * Logs all detected OCR elements and which field each was assigned to.
  */
 class DocumentDetectionService(
     private val context: Context,
-    private val cloudVisionOcr: CloudVisionOcrProvider?
+    private val cloudVisionOcr: CloudVisionOcrProvider?,
+    private val geminiPassportOcr: GeminiPassportOcrProvider?
 ) {
 
     private val textRecognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
@@ -80,6 +82,20 @@ class DocumentDetectionService(
         playerName: String? = null
     ): DetectionResult = withContext(Dispatchers.IO) {
         try {
+            // 0. PDF: Try Gemini FIRST - image-in-PDF (e.g. JPG.pdf) often fails OCR but Gemini vision works
+            // Skip for likely mandates to avoid unnecessary API calls
+            val likelyMandate = originalFileName.lowercase().contains("mandate")
+            if (isPdfMimeType(mimeType) && bytes.isNotEmpty() && !likelyMandate) {
+                runGeminiPassportOcr(bytes, mimeType)?.let { geminiInfo ->
+                    Log.i(TAG, "Gemini OCR (PDF-first): ${geminiInfo.lastName}, ${geminiInfo.firstName}")
+                    return@withContext DetectionResult(
+                        documentType = DocumentType.PASSPORT,
+                        suggestedName = "Passport_${sanitizeFileName(geminiInfo.lastName)}",
+                        passportInfo = geminiInfo
+                    )
+                }
+            }
+
             // 1. Get OCR text - Cloud Vision (best) or ML Kit
             var text = if (isImageMimeType(mimeType) || mimeType.isNullOrBlank()) {
                 cloudVisionOcr?.extractText(bytes) ?: ""
@@ -124,8 +140,33 @@ class DocumentDetectionService(
                 return@withContext mandateResult
             }
 
-            // 3. Parse: MRZ first (most reliable), then English-only visual parser
-            parseForPassport(text, originalFileName, playerName)
+            // 3. Parse: MRZ first (most reliable), then English + multi-language visual parsers
+            var result = parseForPassport(text, originalFileName, playerName)
+
+            // 4. Gemini fallback: when passport detected but details couldn't be extracted from OCR
+            if (result.documentType == DocumentType.PASSPORT && result.passportInfo == null && bytes.isNotEmpty()) {
+                runGeminiPassportOcr(bytes, mimeType)?.let { geminiInfo ->
+                    result = result.copy(
+                        passportInfo = geminiInfo,
+                        suggestedName = "Passport_${sanitizeFileName(geminiInfo.lastName)}"
+                    )
+                    Log.i(TAG, "Gemini OCR extracted passport: ${geminiInfo.lastName}, ${geminiInfo.firstName}")
+                }
+            }
+
+            // 5. Gemini for OTHER: detect passports that OCR missed (non-Latin, PDFs, unusual layouts)
+            if (result.documentType == DocumentType.OTHER && bytes.isNotEmpty()) {
+                runGeminiPassportOcr(bytes, mimeType)?.let { geminiInfo ->
+                    result = DetectionResult(
+                        documentType = DocumentType.PASSPORT,
+                        suggestedName = "Passport_${sanitizeFileName(geminiInfo.lastName)}",
+                        passportInfo = geminiInfo
+                    )
+                    Log.i(TAG, "Gemini OCR identified passport (was OTHER): ${geminiInfo.lastName}, ${geminiInfo.firstName}")
+                }
+            }
+
+            result
         } catch (e: Exception) {
             Log.e(TAG, "Document detection failed", e)
             DetectionResult(DocumentType.OTHER, originalFileName, null)
@@ -210,6 +251,26 @@ class DocumentDetectionService(
         return mimeType?.lowercase() == "application/pdf"
     }
 
+    /**
+     * Runs Gemini passport OCR on document bytes.
+     * Handles both images (JPEG, PNG, etc.) and PDFs (extracts first page as bitmap).
+     */
+    private suspend fun runGeminiPassportOcr(bytes: ByteArray, mimeType: String?): DocumentDetectionService.PassportInfo? {
+        return when {
+            isImageMimeType(mimeType) || mimeType.isNullOrBlank() ->
+                geminiPassportOcr?.extractPassportFromImage(bytes, mimeType)
+            isPdfMimeType(mimeType) -> {
+                val bitmap = extractFirstPageAsBitmap(bytes)
+                try {
+                    bitmap?.let { geminiPassportOcr?.extractPassportFromBitmap(it) }
+                } finally {
+                    bitmap?.recycle()
+                }
+            }
+            else -> null
+        }
+    }
+
     private fun getExifRotation(bytes: ByteArray, mimeType: String?): Int {
         if (!isImageMimeType(mimeType) && mimeType != null) return 0
         return try {
@@ -246,9 +307,11 @@ class DocumentDetectionService(
             val pfd = ParcelFileDescriptor.open(tempFile, ParcelFileDescriptor.MODE_READ_ONLY)
             val renderer = PdfRenderer(pfd)
             val page = renderer.openPage(0)
+            // 4x scale for better quality - PdfRenderer often produces blurry output at 2x
+            val scale = 4
             val bitmap = Bitmap.createBitmap(
-                page.width * 2, // Scale for better OCR
-                page.height * 2,
+                page.width * scale,
+                page.height * scale,
                 Bitmap.Config.ARGB_8888
             )
             page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
@@ -424,18 +487,25 @@ class DocumentDetectionService(
             Log.i(TAG, "MRZ parsed: ${mrzResult.lastName}, ${mrzResult.firstName}, ${mrzResult.documentNumber}")
         }
 
-        // 2. English-only visual parser (ICAO: all passports have English labels)
+        // 2. English visual parser (ICAO: all passports have English labels)
         val englishResult = EnglishPassportParser.parse(ocrText)
 
-        // Merge: prefer MRZ (most reliable), use English visual for missing fields only
+        // 3. Multi-language visual parser (French, German, Spanish, Italian, etc.)
+        val visualResult = VisualZoneParser.parse(ocrText)
+
+        // Merge: prefer MRZ (most reliable), then English, then multi-language visual for missing fields
         val firstName = mrzResult?.firstName?.takeIf { it.isNotBlank() }
             ?: englishResult?.firstName?.takeIf { it.isNotBlank() }
+            ?: visualResult?.firstName?.takeIf { it.isNotBlank() }
         val lastName = mrzResult?.lastName?.takeIf { it.isNotBlank() }
             ?: englishResult?.lastName?.takeIf { it.isNotBlank() }
+            ?: visualResult?.lastName?.takeIf { it.isNotBlank() }
         val passportNumber = mrzResult?.documentNumber?.takeIf { it.isNotBlank() }
             ?: englishResult?.passportNumber?.takeIf { it.isNotBlank() }
+            ?: visualResult?.passportNumber?.takeIf { it.isNotBlank() }
         val dateOfBirth = mrzResult?.dateOfBirthFormatted?.takeIf { it.isNotBlank() }
             ?: englishResult?.dateOfBirth?.takeIf { it.isNotBlank() }
+            ?: visualResult?.dateOfBirth?.takeIf { it.isNotBlank() }
         val nationality = englishResult?.nationality?.takeIf { it.isNotBlank() }
             ?: mrzResult?.nationality?.let { CountryCodeUtils.alpha3ToCountryName(it) }?.takeIf { it.isNotBlank() }
 
