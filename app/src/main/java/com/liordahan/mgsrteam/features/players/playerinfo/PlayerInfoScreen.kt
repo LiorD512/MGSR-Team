@@ -46,7 +46,6 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.PhoneIphone
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.VerifiedUser
 import androidx.compose.material.icons.filled.Whatsapp
@@ -69,14 +68,17 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
@@ -237,13 +239,7 @@ fun PlayerInfoScreen(
         }
     }
 
-    var showPlayerUpdateUi by remember {
-        mutableStateOf(false)
-    }
-
-    var playerUpdateUiMessage by remember {
-        mutableStateOf("")
-    }
+    val isRefreshingPlayer by viewModel.updatePlayerFlow.collectAsState(initial = UiResult.UnInitialized)
 
     var showDeletePlayerIcon by remember { mutableStateOf(false) }
 
@@ -261,8 +257,6 @@ fun PlayerInfoScreen(
     var documentsList by remember { mutableStateOf<List<PlayerDocument>>(emptyList()) }
     var docToDelete by remember { mutableStateOf<PlayerDocument?>(null) }
     var isUploadingDocument by remember { mutableStateOf(false) }
-
-    val updatingText = stringResource(R.string.player_info_updating)
 
     LaunchedEffect(Unit) {
 
@@ -282,25 +276,12 @@ fun PlayerInfoScreen(
                 viewModel.updatePlayerFlow.collect {
                     when (it) {
                         is UiResult.Failed -> {
-                            showPlayerUpdateUi = true
-                            playerUpdateUiMessage = it.cause
-                            delay(1000)
-                            showPlayerUpdateUi = false
+                            android.widget.Toast.makeText(context, it.cause, android.widget.Toast.LENGTH_LONG).show()
                         }
-
-                        UiResult.Loading -> {
-                            showPlayerUpdateUi = true
-                            playerUpdateUiMessage = updatingText
+                        is UiResult.Success -> {
+                            android.widget.Toast.makeText(context, it.data, android.widget.Toast.LENGTH_SHORT).show()
                         }
-
-                        is UiResult.Success<String> -> {
-                            showPlayerUpdateUi = true
-                            playerUpdateUiMessage = it.data
-                            delay(1000)
-                            showPlayerUpdateUi = false
-                        }
-
-                        UiResult.UnInitialized -> {}
+                        UiResult.Loading, UiResult.UnInitialized -> {}
                     }
                 }
             }
@@ -350,14 +331,6 @@ fun PlayerInfoScreen(
             }
 
             return@Scaffold
-        }
-
-        if (showPlayerUpdateUi) {
-            UpdatePlayerUi(
-                modifier = Modifier.padding(paddingValues),
-                message = playerUpdateUiMessage,
-                useDarkTheme = true
-            )
         }
 
         if (showDeleteDialog) {
@@ -428,6 +401,8 @@ fun PlayerInfoScreen(
             sharePlayerOnWhatsapp(context, textToSend.toString())
         }
 
+        val isRefreshing = isRefreshingPlayer is UiResult.Loading
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -435,12 +410,23 @@ fun PlayerInfoScreen(
         ) {
             PlayerInfoHeader(onBackClicked = { navController.popBackStack() })
 
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .verticalScroll(scrollState)
-                    .padding(top = 4.dp)
-            ) {
+            Box(modifier = Modifier.weight(1f)) {
+                PullToRefreshBox(
+                    isRefreshing = isRefreshing,
+                    onRefresh = { viewModel.refreshPlayerInfo() },
+                    modifier = Modifier.fillMaxSize(),
+                    indicator = { } // Use custom overlay instead
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .verticalScroll(scrollState)
+                            .then(
+                                if (isRefreshing) Modifier.blur(16.dp)
+                                else Modifier
+                            )
+                            .padding(top = 4.dp)
+                    ) {
             // Hero Card
             playerToPresent?.let { player ->
                 val mandateExpiry = documentsList
@@ -804,6 +790,23 @@ fun PlayerInfoScreen(
                     }
                 }
             }
+                    }
+                if (isRefreshing) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Color.Black.copy(alpha = 0.3f))
+                            .zIndex(1f),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(
+                            color = HomeTealAccent,
+                            strokeWidth = 3.dp,
+                            modifier = Modifier.size(48.dp)
+                        )
+                    }
+                }
+            }
 
             val hasValidMandate = documentsList.any {
                 it.documentType == DocumentType.MANDATE &&
@@ -813,7 +816,6 @@ fun PlayerInfoScreen(
                 showDeletePlayerIcon = showDeletePlayerIcon,
                 hasPassportDetails = playerToPresent?.passportDetails != null,
                 hasValidMandate = hasValidMandate,
-                onRefreshClicked = { viewModel.refreshPlayerInfo() },
                 onDeletePlayerClicked = { showDeleteDialog = true },
                 onShareClicked = shareAction,
                 onGenerateMandateClicked = {
@@ -1743,7 +1745,6 @@ private fun PlayerInfoBottomBar(
     showDeletePlayerIcon: Boolean,
     hasPassportDetails: Boolean,
     hasValidMandate: Boolean,
-    onRefreshClicked: () -> Unit,
     onDeletePlayerClicked: () -> Unit,
     onShareClicked: () -> Unit,
     onGenerateMandateClicked: () -> Unit
@@ -1786,25 +1787,6 @@ private fun PlayerInfoBottomBar(
                         )
                     )
                 }
-            }
-            Row(
-                modifier = Modifier
-                    .weight(1f)
-                    .clickWithNoRipple { onRefreshClicked() },
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Refresh,
-                    contentDescription = stringResource(R.string.player_info_refresh_cd),
-                    modifier = Modifier.size(24.dp),
-                    tint = HomeTealAccent
-                )
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    text = stringResource(R.string.player_info_refresh),
-                    style = boldTextStyle(HomeTextSecondary, 12.sp)
-                )
             }
             Row(
                 modifier = Modifier
