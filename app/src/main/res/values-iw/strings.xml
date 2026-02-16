@@ -285,6 +285,9 @@
     <string name="contacts_no_contacts">אין אנשי קשר עדיין</string>
     <string name="contacts_empty_hint">הוסף אנשי קשר במועדונים לגיוס שחקנים. בחר מהטלפון או הוסף ידנית.</string>
     <string name="contacts_add_contact">הוסף איש קשר</string>
+    <string name="contacts_edit_contact">ערוך איש קשר</string>
+    <string name="contacts_button_add">הוסף</string>
+    <string name="contacts_button_save">שמור</string>
     <string name="contacts_label_who">מי</string>
     <string name="contacts_import">ייבא מאנשי קשר בטלפון</string>
     <string name="contacts_enter_manually">או הזן ידנית</string>
@@ -296,6 +299,17 @@
     <string name="contacts_placeholder_phone">מספר טלפון (כולל קידומת)</string>
     <string name="contacts_no_contacts_found">לא נמצאו אנשי קשר</string>
     <string name="contacts_try_different_search">נסה חיפוש אחר או הוסף איש קשר חדש</string>
+
+    <!-- Contact roles (add/edit contact screen) -->
+    <string name="contact_role_other">אחר</string>
+    <string name="contact_role_coach">מאמן</string>
+    <string name="contact_role_asst_coach">עוזר מאמן</string>
+    <string name="contact_role_sport_dir">ספורט דיירקטור</string>
+    <string name="contact_role_board">דירקטור</string>
+    <string name="contact_role_ceo">מנכ״ל</string>
+    <string name="contact_role_president">נשיא</string>
+    <string name="contact_role_scout">סקאוט</string>
+
     <string name="add_player_contact_title">הוסף פרטי קשר לשחקן</string>
     <string name="add_player_save">שמור שחקן</string>
     <string name="add_player_to_shortlist">הוסף לרשימת מעקב</string>

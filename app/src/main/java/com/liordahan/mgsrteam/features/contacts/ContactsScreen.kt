@@ -24,10 +24,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -85,7 +87,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.platform.rememberNestedScrollInteropConnection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -902,7 +906,7 @@ private fun ContactCard(
                                     .padding(horizontal = 10.dp, vertical = 4.dp)
                             ) {
                                 Text(
-                                    text = role.displayName,
+                                    text = getRoleDisplayLabel(role),
                                     style = regularTextStyle(HomeTealAccent, 10.sp)
                                 )
                             }
@@ -959,12 +963,16 @@ private fun ContactCard(
     }
 }
 
-private fun getRoleChipLabel(role: ContactRole): String = when (role) {
-    ContactRole.UNKNOWN -> "Other"
-    ContactRole.ASSISTANT_COACH -> "Asst Coach"
-    ContactRole.SPORT_DIRECTOR -> "Sport Dir"
-    ContactRole.BOARD_MEMBER -> "Board"
-    else -> role.displayName
+@Composable
+private fun getRoleDisplayLabel(role: ContactRole): String = when (role) {
+    ContactRole.UNKNOWN -> stringResource(R.string.contact_role_other)
+    ContactRole.COACH -> stringResource(R.string.contact_role_coach)
+    ContactRole.ASSISTANT_COACH -> stringResource(R.string.contact_role_asst_coach)
+    ContactRole.SPORT_DIRECTOR -> stringResource(R.string.contact_role_sport_dir)
+    ContactRole.BOARD_MEMBER -> stringResource(R.string.contact_role_board)
+    ContactRole.CEO -> stringResource(R.string.contact_role_ceo)
+    ContactRole.PRESIDENT -> stringResource(R.string.contact_role_president)
+    ContactRole.SCOUT -> stringResource(R.string.contact_role_scout)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -1043,11 +1051,14 @@ private fun AddEditContactBottomSheet(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp)
+                .verticalScroll(rememberScrollState())
+                .nestedScroll(rememberNestedScrollInteropConnection())
+                .imePadding()
                 .padding(bottom = 32.dp)
                 .navigationBarsPadding()
         ) {
             Text(
-                text = if (initialContact != null) "Edit contact" else "Add contact",
+                text = if (initialContact != null) stringResource(R.string.contacts_edit_contact) else stringResource(R.string.contacts_add_contact),
                 style = boldTextStyle(HomeTextPrimary, 20.sp),
                 modifier = Modifier.padding(vertical = 8.dp)
             )
@@ -1055,86 +1066,7 @@ private fun AddEditContactBottomSheet(
 
             Spacer(Modifier.height(16.dp))
 
-            // ── WHO section ──
-            Text(
-                text = stringResource(R.string.contacts_label_who),
-                style = regularTextStyle(HomeTextSecondary, 11.sp),
-                modifier = Modifier.padding(bottom = 10.dp)
-            )
-            OutlinedCard(
-                onClick = onPickContact,
-                shape = RoundedCornerShape(12.dp),
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.outlinedCardColors(containerColor = HomeTealAccent.copy(alpha = 0.15f)),
-                border = BorderStroke(1.dp, HomeTealAccent)
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(14.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Person,
-                        contentDescription = null,
-                        tint = HomeTealAccent,
-                        modifier = Modifier.size(22.dp)
-                    )
-                    Spacer(Modifier.width(12.dp))
-                    Text(
-                        text = stringResource(R.string.contacts_import),
-                        style = boldTextStyle(HomeTealAccent, 14.sp)
-                    )
-                }
-            }
-            Spacer(Modifier.height(8.dp))
-            Text(
-                text = stringResource(R.string.contacts_enter_manually),
-                style = regularTextStyle(HomeTextSecondary, 12.sp),
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
-            AddContactTextField(
-                label = stringResource(R.string.contacts_label_name),
-                value = pickedName,
-                onValueChange = onNameChange,
-                placeholder = stringResource(R.string.contacts_placeholder_name),
-                modifier = Modifier.fillMaxWidth()
-            )
-            Spacer(Modifier.height(8.dp))
-            AddContactTextField(
-                label = stringResource(R.string.contacts_label_phone),
-                value = pickedPhone,
-                onValueChange = onPhoneChange,
-                placeholder = stringResource(R.string.contacts_placeholder_phone),
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            Spacer(Modifier.height(20.dp))
-
-            // ── ROLE section ──
-            Text(
-                text = stringResource(R.string.contacts_label_role),
-                style = regularTextStyle(HomeTextSecondary, 11.sp),
-                modifier = Modifier.padding(bottom = 10.dp)
-            )
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                ContactRole.entries.forEach { role ->
-                    RoleChip(
-                        label = getRoleChipLabel(role),
-                        isSelected = selectedRole == role,
-                        onClick = { selectedRole = role }
-                    )
-                }
-            }
-
-            Spacer(Modifier.height(20.dp))
-
-            // ── CLUB section ──
+            // ── CLUB section (at top so it's visible when keyboard opens) ──
             Text(
                 text = stringResource(R.string.contacts_label_club),
                 style = regularTextStyle(HomeTextSecondary, 11.sp),
@@ -1228,6 +1160,85 @@ private fun AddEditContactBottomSheet(
                 }
             }
 
+            Spacer(Modifier.height(20.dp))
+
+            // ── WHO section ──
+            Text(
+                text = stringResource(R.string.contacts_label_who),
+                style = regularTextStyle(HomeTextSecondary, 11.sp),
+                modifier = Modifier.padding(bottom = 10.dp)
+            )
+            OutlinedCard(
+                onClick = onPickContact,
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.outlinedCardColors(containerColor = HomeTealAccent.copy(alpha = 0.15f)),
+                border = BorderStroke(1.dp, HomeTealAccent)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(14.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Person,
+                        contentDescription = null,
+                        tint = HomeTealAccent,
+                        modifier = Modifier.size(22.dp)
+                    )
+                    Spacer(Modifier.width(12.dp))
+                    Text(
+                        text = stringResource(R.string.contacts_import),
+                        style = boldTextStyle(HomeTealAccent, 14.sp)
+                    )
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = stringResource(R.string.contacts_enter_manually),
+                style = regularTextStyle(HomeTextSecondary, 12.sp),
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+            AddContactTextField(
+                label = stringResource(R.string.contacts_label_name),
+                value = pickedName,
+                onValueChange = onNameChange,
+                placeholder = stringResource(R.string.contacts_placeholder_name),
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(Modifier.height(8.dp))
+            AddContactTextField(
+                label = stringResource(R.string.contacts_label_phone),
+                value = pickedPhone,
+                onValueChange = onPhoneChange,
+                placeholder = stringResource(R.string.contacts_placeholder_phone),
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(Modifier.height(20.dp))
+
+            // ── ROLE section ──
+            Text(
+                text = stringResource(R.string.contacts_label_role),
+                style = regularTextStyle(HomeTextSecondary, 11.sp),
+                modifier = Modifier.padding(bottom = 10.dp)
+            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                ContactRole.entries.forEach { role ->
+                    RoleChip(
+                        label = getRoleDisplayLabel(role),
+                        isSelected = selectedRole == role,
+                        onClick = { selectedRole = role }
+                    )
+                }
+            }
+
             Spacer(Modifier.height(24.dp))
 
             // ── Actions ──
@@ -1239,7 +1250,7 @@ private fun AddEditContactBottomSheet(
                     onClick = onDismiss,
                     modifier = Modifier.weight(1f)
                 ) {
-                    Text("Cancel", style = regularTextStyle(HomeTextSecondary, 14.sp))
+                    Text(stringResource(R.string.cancel), style = regularTextStyle(HomeTextSecondary, 14.sp))
                 }
                 Button(
                     onClick = {
@@ -1264,7 +1275,7 @@ private fun AddEditContactBottomSheet(
                     colors = ButtonDefaults.buttonColors(containerColor = HomeTealAccent)
                 ) {
                     Text(
-                        if (initialContact != null) "Save" else "Add contact",
+                        if (initialContact != null) stringResource(R.string.contacts_button_save) else stringResource(R.string.contacts_button_add),
                         style = boldTextStyle(HomeDarkBackground, 14.sp)
                     )
                 }

@@ -292,6 +292,9 @@
     <string name="contacts_no_contacts">No contacts yet</string>
     <string name="contacts_empty_hint">Add club contacts for player recruitment. Pick from your phone or add manually.</string>
     <string name="contacts_add_contact">Add contact</string>
+    <string name="contacts_edit_contact">Edit contact</string>
+    <string name="contacts_button_add">Add</string>
+    <string name="contacts_button_save">Save</string>
     <string name="contacts_label_who">WHO</string>
     <string name="contacts_import">Import from phone contacts</string>
     <string name="contacts_enter_manually">or enter manually</string>
@@ -303,6 +306,16 @@
     <string name="contacts_placeholder_phone">Contact number (including phone code)</string>
     <string name="contacts_no_contacts_found">No contacts found</string>
     <string name="contacts_try_different_search">Try a different search or add a new contact</string>
+
+    <!-- Contact roles (add/edit contact screen) -->
+    <string name="contact_role_other">Other</string>
+    <string name="contact_role_coach">Coach</string>
+    <string name="contact_role_asst_coach">Asst Coach</string>
+    <string name="contact_role_sport_dir">Sport Dir</string>
+    <string name="contact_role_board">Board</string>
+    <string name="contact_role_ceo">CEO</string>
+    <string name="contact_role_president">President</string>
+    <string name="contact_role_scout">Scout</string>
 
     <!-- Add Player Screen -->
     <string name="add_player_contact_title">Add Player Contact</string>
