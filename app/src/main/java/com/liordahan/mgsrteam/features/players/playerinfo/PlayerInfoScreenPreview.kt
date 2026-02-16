@@ -61,6 +61,8 @@ private class FakePlayerInfoViewModel : IPlayerInfoViewModel() {
             PlayerDocument(name = "contract.pdf", type = "OTHER", storageUrl = null)
         )
     )
+    override val similarPlayersFlow: StateFlow<List<com.liordahan.mgsrteam.features.players.playerinfo.ai.AiHelperService.SimilarPlayerSuggestion>> = MutableStateFlow(emptyList())
+    override val isSimilarPlayersLoading: StateFlow<Boolean> = MutableStateFlow(false)
 
     override fun getPlayerInfo(playerId: String) {}
     override fun deletePlayer(playerTmProfile: String, onDeleteSuccessfully: () -> Unit) {}
@@ -74,6 +76,7 @@ private class FakePlayerInfoViewModel : IPlayerInfoViewModel() {
     override fun onDeleteNoteClicked(note: NotesModel) {}
     override fun uploadDocument(uri: android.net.Uri?, bytes: ByteArray, name: String, mimeType: String?, expiresAt: Long?) {}
     override fun deleteDocument(documentId: String, isPassport: Boolean) {}
+    override fun findSimilarPlayers(player: Player) {}
 }
 
 @Preview(

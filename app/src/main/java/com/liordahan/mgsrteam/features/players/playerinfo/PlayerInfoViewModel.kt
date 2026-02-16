@@ -8,6 +8,7 @@ import com.liordahan.mgsrteam.features.players.models.MarketValueEntry
 import com.liordahan.mgsrteam.features.players.models.NotesModel
 import com.liordahan.mgsrteam.features.players.models.PassportDetails
 import com.liordahan.mgsrteam.features.players.models.Player
+import com.liordahan.mgsrteam.features.players.playerinfo.ai.AiHelperService
 import com.liordahan.mgsrteam.features.players.playerinfo.documents.DocumentDetectionService
 import com.liordahan.mgsrteam.features.players.playerinfo.documents.DocumentType
 import com.liordahan.mgsrteam.features.players.playerinfo.documents.PlayerDocument
@@ -39,6 +40,8 @@ abstract class IPlayerInfoViewModel : ViewModel() {
     abstract val isUploadingDocumentFlow: StateFlow<Boolean>
     abstract val uploadErrorFlow: SharedFlow<String>
     abstract val documentsFlow: Flow<List<PlayerDocument>>
+    abstract val similarPlayersFlow: StateFlow<List<AiHelperService.SimilarPlayerSuggestion>>
+    abstract val isSimilarPlayersLoading: StateFlow<Boolean>
     abstract fun getPlayerInfo(playerId: String)
     abstract fun deletePlayer(playerTmProfile: String, onDeleteSuccessfully: () -> Unit)
     abstract fun updatePlayerNumber(number: String)
@@ -51,6 +54,7 @@ abstract class IPlayerInfoViewModel : ViewModel() {
     abstract fun onDeleteNoteClicked(note: NotesModel)
     abstract fun uploadDocument(uri: android.net.Uri?, bytes: ByteArray, name: String, mimeType: String?, expiresAt: Long?)
     abstract fun deleteDocument(documentId: String, isPassport: Boolean = false)
+    abstract fun findSimilarPlayers(player: Player)
 }
 
 
@@ -60,7 +64,8 @@ class PlayerInfoViewModel(
     private val firebaseHandler: FirebaseHandler,
     private val playersUpdate: PlayersUpdate,
     private val documentsRepository: PlayerDocumentsRepository,
-    private val documentDetectionService: DocumentDetectionService
+    private val documentDetectionService: DocumentDetectionService,
+    private val aiHelperService: AiHelperService
 ) : IPlayerInfoViewModel() {
 
     private val _playerInfoFlow = MutableStateFlow<Player?>(null)
@@ -88,6 +93,12 @@ class PlayerInfoViewModel(
             if (player?.tmProfile != null) documentsRepository.getDocumentsFlow(player.tmProfile)
             else flowOf(emptyList())
         }
+
+    private val _similarPlayersFlow = MutableStateFlow<List<AiHelperService.SimilarPlayerSuggestion>>(emptyList())
+    override val similarPlayersFlow: StateFlow<List<AiHelperService.SimilarPlayerSuggestion>> = _similarPlayersFlow
+
+    private val _isSimilarPlayersLoading = MutableStateFlow(false)
+    override val isSimilarPlayersLoading: StateFlow<Boolean> = _isSimilarPlayersLoading
 
     init {
         viewModelScope.launch {
@@ -410,6 +421,23 @@ class PlayerInfoViewModel(
             if (isPassport) {
                 clearPassportDetails()
             }
+        }
+    }
+
+    override fun findSimilarPlayers(player: Player) {
+        viewModelScope.launch {
+            _isSimilarPlayersLoading.update { true }
+            _similarPlayersFlow.update { emptyList() }
+            aiHelperService.findSimilarPlayers(player)
+                .onSuccess { suggestions ->
+                    _similarPlayersFlow.update { suggestions }
+                    Log.d(TAG, "findSimilarPlayers: found ${suggestions.size} similar players for ${player.fullName}")
+                }
+                .onFailure { e ->
+                    Log.e(TAG, "findSimilarPlayers failed for ${player.fullName}", e)
+                    _similarPlayersFlow.update { emptyList() }
+                }
+            _isSimilarPlayersLoading.update { false }
         }
     }
 

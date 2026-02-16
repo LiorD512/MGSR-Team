@@ -47,6 +47,8 @@ import com.liordahan.mgsrteam.features.players.playerinfo.PlayerInfoViewModel
 import com.liordahan.mgsrteam.features.players.playerinfo.documents.CloudVisionOcrProvider
 import com.liordahan.mgsrteam.features.players.playerinfo.documents.DocumentDetectionService
 import com.liordahan.mgsrteam.features.players.playerinfo.mandate.GenerateMandateViewModel
+import com.liordahan.mgsrteam.features.players.playerinfo.ai.AiHelperService
+import com.liordahan.mgsrteam.transfermarket.PlayerSearch
 import com.liordahan.mgsrteam.features.players.playerinfo.documents.PlayerDocumentsRepository
 import com.liordahan.mgsrteam.features.players.repository.IPlayersRepository
 import com.liordahan.mgsrteam.features.players.repository.PlayersRepository
@@ -73,12 +75,13 @@ val playersModule = module {
 
     viewModel<IPlayersViewModel> { PlayersViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
     single { PlayerDocumentsRepository(get()) }
+    single { AiHelperService(get<PlayerSearch>()) }
     single {
         val apiKey = BuildConfig.VISION_API_KEY
         CloudVisionOcrProvider(if (apiKey.isBlank()) null else apiKey)
     }
     single { DocumentDetectionService(get<Context>(), get<CloudVisionOcrProvider>()) }
-    viewModel<IPlayerInfoViewModel> { PlayerInfoViewModel(get(), get(), get(), get()) }
+    viewModel<IPlayerInfoViewModel> { PlayerInfoViewModel(get(), get(), get(), get(), get()) }
     viewModel { GenerateMandateViewModel() }
     viewModel<IPlayerListFiltersViewModel> {
         PlayerListFiltersViewModel(

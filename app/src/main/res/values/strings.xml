@@ -430,6 +430,12 @@
     <string name="player_info_salary_transfer_fee_hint">Tap to set for request matching</string>
     <string name="player_info_salary_transfer_fee_sheet_title">Set match criteria</string>
 
+    <!-- AI Helper -->
+    <string name="player_info_ai_helper">AI Helper</string>
+    <string name="player_info_ai_find_similar_players">Find me similar players</string>
+    <string name="player_info_ai_create_scout_report">Create scout report for %s</string>
+    <string name="player_info_ai_no_similar_players">No similar players found</string>
+
     <!-- Returnee Players Bottom Sheet -->
     <string name="returnee_no_players_league">No players found in this league</string>
 

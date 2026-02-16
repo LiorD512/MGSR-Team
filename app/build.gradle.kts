@@ -109,6 +109,9 @@ dependencies {
 
     implementation(project(":transfermarkt"))
 
+    // Firebase AI Logic (Gemini)
+    implementation("com.google.firebase:firebase-ai")
+
     // ML Kit for document type detection (passport OCR)
     implementation(libs.mlkit.text.recognition)
 

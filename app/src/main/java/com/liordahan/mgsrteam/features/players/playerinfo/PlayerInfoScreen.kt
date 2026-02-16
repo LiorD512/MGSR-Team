@@ -43,12 +43,14 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.PhoneIphone
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.VerifiedUser
 import androidx.compose.material.icons.filled.Whatsapp
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.TrendingDown
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material3.Button
@@ -81,8 +83,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
@@ -117,6 +121,7 @@ import coil.compose.AsyncImage
 import com.liordahan.mgsrteam.R
 import com.liordahan.mgsrteam.features.add.getPhoneNumberFromContactUri
 import com.liordahan.mgsrteam.features.players.models.NotesModel
+import com.liordahan.mgsrteam.features.players.playerinfo.ai.AiHelperService
 import com.liordahan.mgsrteam.features.players.models.Player
 import com.liordahan.mgsrteam.features.requests.models.SalaryRangeOptions
 import com.liordahan.mgsrteam.features.requests.models.TransferFeeOptions
@@ -445,6 +450,18 @@ fun PlayerInfoScreen(
             // Quick Actions
             playerToPresent?.let { player ->
                 PlayerInfoQuickActions(player = player, context = context)
+            }
+
+            // Section: AI Helper
+            playerToPresent?.let { player ->
+                PlayerInfoAiHelperSection(
+                    player = player,
+                    viewModel = viewModel,
+                    onScoutReportClicked = {
+                        // TODO: Implement create scout report
+                        ToastManager.showSuccess(context.getString(R.string.player_info_ai_create_scout_report, player.fullName ?: ""))
+                    }
+                )
             }
 
             // Section: General Info
@@ -1311,6 +1328,259 @@ private fun PlayerInfoQuickActionWhatsApp(
             Text(
                 text = label,
                 style = regularTextStyle(HomeTextSecondary.copy(alpha = 0.9f), 10.sp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun PlayerInfoAiHelperSection(
+    player: Player,
+    viewModel: IPlayerInfoViewModel,
+    onScoutReportClicked: () -> Unit
+) {
+    val context = LocalContext.current
+    var isFindSimilarExpanded by remember { mutableStateOf(false) }
+    var expandedSimilarIndex by remember { mutableStateOf<Int?>(null) }
+    val similarPlayers by viewModel.similarPlayersFlow.collectAsState()
+    val isSimilarLoading by viewModel.isSimilarPlayersLoading.collectAsState()
+
+    PlayerInfoSectionHeader(stringResource(R.string.player_info_ai_helper))
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        // Expandable: Find Similar Players
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickWithNoRipple {
+                    isFindSimilarExpanded = !isFindSimilarExpanded
+                    if (isFindSimilarExpanded && similarPlayers.isEmpty() && !isSimilarLoading) {
+                        viewModel.findSimilarPlayers(player)
+                    }
+                },
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = HomeDarkCard),
+            border = BorderStroke(1.dp, HomeDarkCardBorder)
+        ) {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .drawBehind {
+                            drawRect(
+                                color = HomeTealAccent,
+                                topLeft = Offset.Zero,
+                                size = Size(3.dp.toPx(), size.height)
+                            )
+                        }
+                        .padding(start = 3.dp)
+                        .padding(14.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = stringResource(R.string.player_info_ai_find_similar_players),
+                        style = boldTextStyle(HomeTextPrimary, 15.sp),
+                        modifier = Modifier.weight(1f)
+                    )
+                    if (similarPlayers.isNotEmpty()) {
+                        Text(
+                            "(${similarPlayers.size})",
+                            style = regularTextStyle(HomeTextSecondary, 12.sp),
+                            modifier = Modifier.padding(end = 8.dp)
+                        )
+                    }
+                    Icon(
+                        Icons.Default.ExpandMore,
+                        contentDescription = if (isFindSimilarExpanded) "Collapse" else "Expand",
+                        tint = HomeTextSecondary,
+                        modifier = Modifier
+                            .size(22.dp)
+                            .graphicsLayer { rotationZ = if (isFindSimilarExpanded) 180f else 0f }
+                    )
+                }
+                AnimatedVisibility(visible = isFindSimilarExpanded) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(start = 17.dp, end = 12.dp, bottom = 12.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        if (isSimilarLoading) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(24.dp),
+                                    color = HomeTealAccent,
+                                    strokeWidth = 2.dp
+                                )
+                                Spacer(Modifier.width(12.dp))
+                                Text(
+                                    stringResource(R.string.player_info_updating),
+                                    style = regularTextStyle(HomeTextSecondary, 13.sp)
+                                )
+                            }
+                        } else if (similarPlayers.isEmpty()) {
+                            Text(
+                                stringResource(R.string.player_info_ai_no_similar_players),
+                                style = regularTextStyle(HomeTextSecondary, 12.sp),
+                                modifier = Modifier.padding(12.dp)
+                            )
+                        } else {
+                            similarPlayers.forEachIndexed { index, suggestion ->
+                                SimilarPlayerSuggestionRow(
+                                    suggestion = suggestion,
+                                    isExpanded = expandedSimilarIndex == index,
+                                    onToggleExpand = { expandedSimilarIndex = if (expandedSimilarIndex == index) null else index },
+                                    onTmLinkClick = {
+                                        suggestion.transfermarktUrl?.let { url ->
+                                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                                        }
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Create Scout Report (non-expandable)
+        AiHelperActionItem(
+            title = stringResource(R.string.player_info_ai_create_scout_report, player.fullName ?: stringResource(R.string.player_info_unknown)),
+            onClick = onScoutReportClicked
+        )
+    }
+}
+
+@Composable
+private fun SimilarPlayerSuggestionRow(
+    suggestion: AiHelperService.SimilarPlayerSuggestion,
+    isExpanded: Boolean,
+    onToggleExpand: () -> Unit,
+    onTmLinkClick: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(10.dp))
+            .background(HomeDarkBackground)
+            .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(10.dp))
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickWithNoRipple { onToggleExpand() }
+                .padding(10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .background(HomeDarkCardBorder),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    suggestion.name.take(2).uppercase(),
+                    style = boldTextStyle(HomeTextSecondary, 12.sp)
+                )
+            }
+            Spacer(Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    suggestion.name,
+                    style = boldTextStyle(HomeTextPrimary, 14.sp)
+                )
+                Text(
+                    "${suggestion.age ?: "-"} • ${suggestion.position ?: "-"} • ${suggestion.marketValue ?: "-"}",
+                    style = regularTextStyle(HomeTextSecondary, 11.sp),
+                    modifier = Modifier.padding(top = 2.dp)
+                )
+            }
+            if (suggestion.transfermarktUrl != null) {
+                Icon(
+                    Icons.Default.Link,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(20.dp)
+                        .clickWithNoRipple { onTmLinkClick() },
+                    tint = HomeTealAccent
+                )
+                Spacer(Modifier.width(8.dp))
+            }
+            Icon(
+                Icons.Default.ExpandMore,
+                contentDescription = if (isExpanded) "Collapse" else "Expand",
+                tint = HomeTextSecondary,
+                modifier = Modifier
+                    .size(20.dp)
+                    .graphicsLayer { rotationZ = if (isExpanded) 180f else 0f }
+            )
+        }
+        AnimatedVisibility(visible = isExpanded && !suggestion.similarityReason.isNullOrBlank()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 10.dp, end = 10.dp, bottom = 10.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(HomeDarkCard)
+                    .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(8.dp))
+                    .padding(12.dp)
+            ) {
+                Text(
+                    text = suggestion.similarityReason ?: "",
+                    style = regularTextStyle(HomeTextSecondary, 12.sp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun AiHelperActionItem(
+    title: String,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickWithNoRipple { onClick() },
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = HomeDarkCard),
+        border = BorderStroke(1.dp, HomeDarkCardBorder)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .drawBehind {
+                    drawRect(
+                        color = HomeTealAccent,
+                        topLeft = Offset.Zero,
+                        size = Size(3.dp.toPx(), size.height)
+                    )
+                }
+                .padding(start = 3.dp)
+                .padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = title,
+                style = boldTextStyle(HomeTextPrimary, 15.sp),
+                modifier = Modifier.weight(1f)
+            )
+            Icon(
+                Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = null,
+                tint = HomeTextSecondary,
+                modifier = Modifier.size(22.dp)
             )
         }
     }
