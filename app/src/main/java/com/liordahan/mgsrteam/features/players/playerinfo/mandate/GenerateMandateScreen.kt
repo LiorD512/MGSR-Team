@@ -58,13 +58,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import android.util.Log
-import android.widget.Toast
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.liordahan.mgsrteam.navigation.Screens
+import com.liordahan.mgsrteam.ui.components.ToastManager
 import com.liordahan.mgsrteam.R
 import com.liordahan.mgsrteam.features.login.models.Account
 import com.liordahan.mgsrteam.features.players.models.Player
@@ -564,11 +564,9 @@ fun GenerateMandateScreen(
                                 },
                                 onFailure = { e ->
                                     Log.e("GenerateMandate", "PDF generation failed", e)
-                                    Toast.makeText(
-                                        context,
-                                        context.getString(R.string.mandate_error_generate_failed, e.message ?: ""),
-                                        Toast.LENGTH_LONG
-                                    ).show()
+                                    ToastManager.showError(
+                                        context.getString(R.string.mandate_error_generate_failed, e.message ?: "")
+                                    )
                                 }
                             )
                         }

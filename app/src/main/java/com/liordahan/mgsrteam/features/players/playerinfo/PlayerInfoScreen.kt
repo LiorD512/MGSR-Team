@@ -129,6 +129,7 @@ import com.liordahan.mgsrteam.helpers.UiResult
 import com.liordahan.mgsrteam.ui.components.DarkSystemBarsForBottomSheet
 import com.liordahan.mgsrteam.ui.components.setSearchViewTextFieldColors
 import com.liordahan.mgsrteam.ui.components.setSearchViewTextFieldColorsDarkTheme
+import com.liordahan.mgsrteam.ui.components.ToastManager
 import com.liordahan.mgsrteam.ui.theme.HomeBlueAccent
 import com.liordahan.mgsrteam.ui.theme.HomeDarkBackground
 import com.liordahan.mgsrteam.ui.theme.HomeDarkCard
@@ -276,10 +277,10 @@ fun PlayerInfoScreen(
                 viewModel.updatePlayerFlow.collect {
                     when (it) {
                         is UiResult.Failed -> {
-                            android.widget.Toast.makeText(context, it.cause, android.widget.Toast.LENGTH_LONG).show()
+                            ToastManager.showError(it.cause)
                         }
                         is UiResult.Success -> {
-                            android.widget.Toast.makeText(context, it.data, android.widget.Toast.LENGTH_SHORT).show()
+                            ToastManager.showSuccess(it.data)
                         }
                         UiResult.Loading, UiResult.UnInitialized -> {}
                     }
@@ -309,7 +310,7 @@ fun PlayerInfoScreen(
                         "passport_already_exists" -> context.getString(R.string.player_info_passport_already_exists)
                         else -> errorKey
                     }
-                    android.widget.Toast.makeText(context, message, android.widget.Toast.LENGTH_LONG).show()
+                    ToastManager.showError(message)
                 }
             }
         }
