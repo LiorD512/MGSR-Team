@@ -8,6 +8,8 @@ import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
 import java.io.IOException
+import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
 
 @Parcelize
 data class PlayerSearchModel(
@@ -58,8 +60,9 @@ class PlayerSearch {
             }
 
             try {
+                val encodedQuery = URLEncoder.encode(sanitizedQuery, StandardCharsets.UTF_8.toString())
                 val searchUrl =
-                    "$TRANSFERMARKT_BASE_URL/schnellsuche/ergebnis/schnellsuche?query=$sanitizedQuery"
+                    "$TRANSFERMARKT_BASE_URL/schnellsuche/ergebnis/schnellsuche?query=$encodedQuery"
                 val doc = fetchDocument(searchUrl)
 
                 val playerSection = doc.select("div.box").firstOrNull {

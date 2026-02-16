@@ -42,6 +42,8 @@ abstract class IPlayerInfoViewModel : ViewModel() {
     abstract val documentsFlow: Flow<List<PlayerDocument>>
     abstract val similarPlayersFlow: StateFlow<List<AiHelperService.SimilarPlayerSuggestion>>
     abstract val isSimilarPlayersLoading: StateFlow<Boolean>
+    abstract val scoutReportFlow: StateFlow<String?>
+    abstract val isScoutReportLoading: StateFlow<Boolean>
     abstract fun getPlayerInfo(playerId: String)
     abstract fun deletePlayer(playerTmProfile: String, onDeleteSuccessfully: () -> Unit)
     abstract fun updatePlayerNumber(number: String)
@@ -54,7 +56,8 @@ abstract class IPlayerInfoViewModel : ViewModel() {
     abstract fun onDeleteNoteClicked(note: NotesModel)
     abstract fun uploadDocument(uri: android.net.Uri?, bytes: ByteArray, name: String, mimeType: String?, expiresAt: Long?)
     abstract fun deleteDocument(documentId: String, isPassport: Boolean = false)
-    abstract fun findSimilarPlayers(player: Player)
+    abstract fun findSimilarPlayers(player: Player, languageCode: String = "en")
+    abstract fun generateScoutReport(player: Player, languageCode: String = "en")
 }
 
 
@@ -100,6 +103,12 @@ class PlayerInfoViewModel(
     private val _isSimilarPlayersLoading = MutableStateFlow(false)
     override val isSimilarPlayersLoading: StateFlow<Boolean> = _isSimilarPlayersLoading
 
+    private val _scoutReportFlow = MutableStateFlow<String?>(null)
+    override val scoutReportFlow: StateFlow<String?> = _scoutReportFlow
+
+    private val _isScoutReportLoading = MutableStateFlow(false)
+    override val isScoutReportLoading: StateFlow<Boolean> = _isScoutReportLoading
+
     init {
         viewModelScope.launch {
             var prevMandateCount: Int? = null
@@ -143,6 +152,7 @@ class PlayerInfoViewModel(
     }
 
     override fun getPlayerInfo(playerId: String) {
+        _scoutReportFlow.update { null }
         firebaseHandler.firebaseStore.collection(firebaseHandler.playersTable)
             .whereEqualTo("tmProfile", playerId).addSnapshotListener { value, error ->
                 if (error != null) {
@@ -424,11 +434,11 @@ class PlayerInfoViewModel(
         }
     }
 
-    override fun findSimilarPlayers(player: Player) {
+    override fun findSimilarPlayers(player: Player, languageCode: String) {
         viewModelScope.launch {
             _isSimilarPlayersLoading.update { true }
             _similarPlayersFlow.update { emptyList() }
-            aiHelperService.findSimilarPlayers(player)
+            aiHelperService.findSimilarPlayers(player, languageCode)
                 .onSuccess { suggestions ->
                     _similarPlayersFlow.update { suggestions }
                     Log.d(TAG, "findSimilarPlayers: found ${suggestions.size} similar players for ${player.fullName}")
@@ -438,6 +448,23 @@ class PlayerInfoViewModel(
                     _similarPlayersFlow.update { emptyList() }
                 }
             _isSimilarPlayersLoading.update { false }
+        }
+    }
+
+    override fun generateScoutReport(player: Player, languageCode: String) {
+        viewModelScope.launch {
+            _isScoutReportLoading.update { true }
+            _scoutReportFlow.update { null }
+            aiHelperService.generateScoutReport(player, languageCode)
+                .onSuccess { report ->
+                    _scoutReportFlow.update { report }
+                    Log.d(TAG, "generateScoutReport: success for ${player.fullName}")
+                }
+                .onFailure { e ->
+                    Log.e(TAG, "generateScoutReport failed for ${player.fullName}", e)
+                    _scoutReportFlow.update { null }
+                }
+            _isScoutReportLoading.update { false }
         }
     }
 

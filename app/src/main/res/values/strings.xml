@@ -434,6 +434,8 @@
     <string name="player_info_ai_helper">AI Helper</string>
     <string name="player_info_ai_find_similar_players">Find me similar players</string>
     <string name="player_info_ai_create_scout_report">Create scout report for %s</string>
+    <string name="player_info_ai_generating_scout_report">Generating scout report…</string>
+    <string name="player_info_ai_scout_report_error">Could not generate scout report. Please try again.</string>
     <string name="player_info_ai_no_similar_players">No similar players found</string>
 
     <!-- Returnee Players Bottom Sheet -->

@@ -430,6 +430,14 @@
     <string name="player_info_salary_transfer_fee_hint">לחץ להגדרה להתאמת בקשות</string>
     <string name="player_info_salary_transfer_fee_sheet_title">הגדר קריטריוני התאמה</string>
 
+    <!-- AI Helper -->
+    <string name="player_info_ai_helper">עוזר AI</string>
+    <string name="player_info_ai_find_similar_players">מצא שחקנים דומים</string>
+    <string name="player_info_ai_create_scout_report">צור דוח סקאוט עבור %s</string>
+    <string name="player_info_ai_generating_scout_report">מייצר דוח סקאוט…</string>
+    <string name="player_info_ai_scout_report_error">לא ניתן ליצור דוח סקאוט. נסה שוב.</string>
+    <string name="player_info_ai_no_similar_players">לא נמצאו שחקנים דומים</string>
+
     <!-- Returnee Players Bottom Sheet -->
     <string name="returnee_no_players_league">לא נמצאו שחקנים בליגה זו</string>
 

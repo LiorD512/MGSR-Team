@@ -122,6 +122,7 @@ import com.liordahan.mgsrteam.R
 import com.liordahan.mgsrteam.features.add.getPhoneNumberFromContactUri
 import com.liordahan.mgsrteam.features.players.models.NotesModel
 import com.liordahan.mgsrteam.features.players.playerinfo.ai.AiHelperService
+import com.liordahan.mgsrteam.localization.LocaleManager
 import com.liordahan.mgsrteam.features.players.models.Player
 import com.liordahan.mgsrteam.features.requests.models.SalaryRangeOptions
 import com.liordahan.mgsrteam.features.requests.models.TransferFeeOptions
@@ -456,11 +457,7 @@ fun PlayerInfoScreen(
             playerToPresent?.let { player ->
                 PlayerInfoAiHelperSection(
                     player = player,
-                    viewModel = viewModel,
-                    onScoutReportClicked = {
-                        // TODO: Implement create scout report
-                        ToastManager.showSuccess(context.getString(R.string.player_info_ai_create_scout_report, player.fullName ?: ""))
-                    }
+                    viewModel = viewModel
                 )
             }
 
@@ -1336,14 +1333,16 @@ private fun PlayerInfoQuickActionWhatsApp(
 @Composable
 private fun PlayerInfoAiHelperSection(
     player: Player,
-    viewModel: IPlayerInfoViewModel,
-    onScoutReportClicked: () -> Unit
+    viewModel: IPlayerInfoViewModel
 ) {
     val context = LocalContext.current
     var isFindSimilarExpanded by remember { mutableStateOf(false) }
     var expandedSimilarIndex by remember { mutableStateOf<Int?>(null) }
     val similarPlayers by viewModel.similarPlayersFlow.collectAsState()
     val isSimilarLoading by viewModel.isSimilarPlayersLoading.collectAsState()
+    var isScoutReportExpanded by remember { mutableStateOf(false) }
+    val scoutReport by viewModel.scoutReportFlow.collectAsState()
+    val isScoutReportLoading by viewModel.isScoutReportLoading.collectAsState()
 
     PlayerInfoSectionHeader(stringResource(R.string.player_info_ai_helper))
     Column(
@@ -1359,7 +1358,7 @@ private fun PlayerInfoAiHelperSection(
                 .clickWithNoRipple {
                     isFindSimilarExpanded = !isFindSimilarExpanded
                     if (isFindSimilarExpanded && similarPlayers.isEmpty() && !isSimilarLoading) {
-                        viewModel.findSimilarPlayers(player)
+                        viewModel.findSimilarPlayers(player, LocaleManager.getSavedLanguage(context))
                     }
                 },
             shape = RoundedCornerShape(16.dp),
@@ -1452,11 +1451,118 @@ private fun PlayerInfoAiHelperSection(
             }
         }
 
-        // Create Scout Report (non-expandable)
-        AiHelperActionItem(
-            title = stringResource(R.string.player_info_ai_create_scout_report, player.fullName ?: stringResource(R.string.player_info_unknown)),
-            onClick = onScoutReportClicked
-        )
+        // Expandable: Create Scout Report
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickWithNoRipple {
+                    isScoutReportExpanded = !isScoutReportExpanded
+                    if (isScoutReportExpanded && scoutReport == null && !isScoutReportLoading) {
+                        viewModel.generateScoutReport(player, LocaleManager.getSavedLanguage(context))
+                    }
+                },
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = HomeDarkCard),
+            border = BorderStroke(1.dp, HomeDarkCardBorder)
+        ) {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .drawBehind {
+                            drawRect(
+                                color = HomeTealAccent,
+                                topLeft = Offset.Zero,
+                                size = Size(3.dp.toPx(), size.height)
+                            )
+                        }
+                        .padding(start = 3.dp)
+                        .padding(14.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = stringResource(R.string.player_info_ai_create_scout_report, player.fullName ?: stringResource(R.string.player_info_unknown)),
+                        style = boldTextStyle(HomeTextPrimary, 15.sp),
+                        modifier = Modifier.weight(1f)
+                    )
+                    if (scoutReport != null) {
+                        Icon(
+                            Icons.Default.Share,
+                            contentDescription = stringResource(R.string.player_info_share),
+                            tint = HomeTealAccent,
+                            modifier = Modifier
+                                .size(22.dp)
+                                .clickWithNoRipple {
+                                    val shareText = buildString {
+                                        player.tmProfile?.takeIf { it.isNotBlank() }?.let { append(it) }
+                                        if (isNotEmpty()) append("\n\n")
+                                        scoutReport?.let { append(it) }
+                                    }
+                                    val intent = Intent(Intent.ACTION_SEND).apply {
+                                        type = "text/plain"
+                                        putExtra(Intent.EXTRA_TEXT, shareText)
+                                    }
+                                    context.startActivity(Intent.createChooser(intent, context.getString(R.string.player_info_share_with)))
+                                }
+                                .padding(end = 8.dp)
+                        )
+                    }
+                    Icon(
+                        Icons.Default.ExpandMore,
+                        contentDescription = if (isScoutReportExpanded) "Collapse" else "Expand",
+                        tint = HomeTextSecondary,
+                        modifier = Modifier
+                            .size(22.dp)
+                            .graphicsLayer { rotationZ = if (isScoutReportExpanded) 180f else 0f }
+                    )
+                }
+                AnimatedVisibility(visible = isScoutReportExpanded) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(start = 17.dp, end = 12.dp, bottom = 12.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        if (isScoutReportLoading) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(24.dp),
+                                    color = HomeTealAccent,
+                                    strokeWidth = 2.dp
+                                )
+                                Spacer(Modifier.width(12.dp))
+                                Text(
+                                    stringResource(R.string.player_info_ai_generating_scout_report),
+                                    style = regularTextStyle(HomeTextSecondary, 13.sp)
+                                )
+                            }
+                        } else if (scoutReport != null) {
+                            Text(
+                                text = scoutReport!!,
+                                style = regularTextStyle(HomeTextPrimary, 13.sp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(12.dp)
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(HomeDarkBackground)
+                                    .padding(12.dp)
+                            )
+                        } else {
+                            Text(
+                                stringResource(R.string.player_info_ai_scout_report_error),
+                                style = regularTextStyle(HomeTextSecondary, 12.sp),
+                                modifier = Modifier.padding(12.dp)
+                            )
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
