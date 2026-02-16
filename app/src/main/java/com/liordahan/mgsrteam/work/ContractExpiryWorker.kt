@@ -73,7 +73,8 @@ class ContractExpiryWorker(
             manager.createNotificationChannel(channel)
         }
         val notification = NotificationCompat.Builder(applicationContext, channelId)
-            .setSmallIcon(R.drawable.mgsr_circle_black)
+            .setSmallIcon(R.drawable.ic_stat_mgsr)
+            .setColor(0xFF39D164.toInt())
             .setContentTitle(applicationContext.getString(R.string.notification_contract_reminder_title))
             .setContentText(applicationContext.getString(R.string.notification_contract_reminder_body, count))
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)

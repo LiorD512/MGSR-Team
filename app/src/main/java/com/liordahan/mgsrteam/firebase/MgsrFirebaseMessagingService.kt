@@ -5,8 +5,12 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.drawable.Drawable
 import android.os.Build
 import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.messaging.FirebaseMessagingService
@@ -64,18 +68,40 @@ class MgsrFirebaseMessagingService : FirebaseMessagingService() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        val notification = NotificationCompat.Builder(this, channelId)
-            .setSmallIcon(R.drawable.mgsr_circle_black)
+        val type = data[KEY_TYPE].orEmpty()
+        val accentColor = when (type) {
+            "CLUB_CHANGE" -> 0xFF2196F3.toInt()      // Blue
+            "BECAME_FREE_AGENT" -> 0xFFFF9800.toInt() // Orange
+            else -> 0xFF39D164.toInt()               // MGSR green (market value, default)
+        }
+
+        val largeIcon = drawableToBitmap(R.drawable.for_app_logo, 256)
+
+        val builder = NotificationCompat.Builder(this, channelId)
+            .setSmallIcon(R.drawable.ic_stat_mgsr)
             .setContentTitle(title)
             .setContentText(body)
             .setStyle(NotificationCompat.BigTextStyle().bigText(body))
+            .setColor(accentColor)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)
+
+        val notification = builder
             .build()
 
+        val notificationId = NOTIFICATION_ID + (data[KEY_PLAYER_ID]?.hashCode()?.and(0x7FFF) ?: 0)
         val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        notificationManager.notify(NOTIFICATION_ID, notification)
+        notificationManager.notify(notificationId, notification)
+    }
+
+    private fun drawableToBitmap(drawableRes: Int, sizePx: Int): Bitmap? {
+        val drawable = ContextCompat.getDrawable(this, drawableRes) ?: return null
+        val bitmap = Bitmap.createBitmap(sizePx, sizePx, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+        drawable.setBounds(0, 0, sizePx, sizePx)
+        drawable.draw(canvas)
+        return bitmap
     }
 
     private fun createNotificationChannel(channelId: String) {
@@ -116,5 +142,6 @@ class MgsrFirebaseMessagingService : FirebaseMessagingService() {
         const val EXTRA_SCREEN = "screen"
         private const val KEY_PLAYER_ID = "playerId"
         private const val KEY_SCREEN = "screen"
+        private const val KEY_TYPE = "type"
     }
 }
