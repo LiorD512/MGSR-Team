@@ -4,6 +4,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -24,17 +25,28 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.togetherWith
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Handshake
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.filled.Whatsapp
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -99,7 +111,7 @@ import com.liordahan.mgsrteam.ui.components.DarkSystemBarsForBottomSheet
 import com.liordahan.mgsrteam.ui.theme.HomeDarkBackground
 import com.liordahan.mgsrteam.ui.theme.HomeDarkCard
 import com.liordahan.mgsrteam.ui.theme.HomeDarkCardBorder
-import com.liordahan.mgsrteam.ui.theme.HomeGreenAccent
+import com.liordahan.mgsrteam.features.players.playerinfo.WhatsAppIcon
 import com.liordahan.mgsrteam.ui.theme.HomeOrangeAccent
 import com.liordahan.mgsrteam.ui.theme.HomeRedAccent
 import com.liordahan.mgsrteam.ui.theme.HomeTealAccent
@@ -129,6 +141,8 @@ fun RequestsScreen(
     var showAddSheet by remember { mutableStateOf(false) }
     var requestToDelete by remember { mutableStateOf<Request?>(null) }
     var expandedRequestIds by remember { mutableStateOf(setOf<String>()) }
+    var expandedPositions by remember { mutableStateOf(setOf<String>()) }
+    var expandedCountryKeys by remember { mutableStateOf(setOf<String>()) }
 
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
@@ -218,50 +232,70 @@ fun RequestsScreen(
                             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 100.dp),
                             verticalArrangement = Arrangement.spacedBy(0.dp)
                         ) {
-                            state.requestsByPositionCountry.keys.forEachIndexed { index, position ->
-                                if (index > 0) {
-                                    item(key = "divider_$position") {
-                                        HorizontalDivider(
-                                            modifier = Modifier.padding(vertical = 8.dp),
-                                            color = HomeDarkCardBorder,
-                                            thickness = 1.dp
-                                        )
-                                    }
-                                }
-                                val countries = state.requestsByPositionCountry[position] ?: emptyMap()
+                            state.requestsByPositionCountry.forEach { (position, countries) ->
+                                val isPositionExpanded = position in expandedPositions
                                 val positionCount = countries.values.sumOf { it.size }
                                 item(key = "pos_$position") {
-                                    PositionSectionHeader(
+                                    PositionExpandableCard(
                                         position = position,
-                                        count = positionCount
+                                        count = positionCount,
+                                        isExpanded = isPositionExpanded,
+                                        onToggleExpand = {
+                                            expandedPositions = if (isPositionExpanded) {
+                                                expandedPositions - position
+                                            } else {
+                                                expandedPositions + position
+                                            }
+                                        }
                                     )
                                 }
-                                countries.forEach { (country, requests) ->
-                                    item(key = "country_${position}_$country") {
-                                        CountrySectionHeader(
-                                            country = country,
-                                            countryFlag = requests.firstOrNull()?.clubCountryFlag
-                                        )
-                                        Spacer(Modifier.height(6.dp))
-                                    }
-                                    items(requests, key = { it.id ?: it.hashCode().toString() }) { request ->
-                                        val matchingPlayers = state.matchingPlayersByRequestId[request.id ?: ""] ?: emptyList()
-                                        val isExpanded = (request.id ?: "") in expandedRequestIds
-                                        RequestCard(
-                                            request = request,
-                                            matchingPlayers = matchingPlayers,
-                                            isExpanded = isExpanded,
-                                            onToggleExpand = {
-                                                val id = request.id ?: return@RequestCard
-                                                expandedRequestIds = if (isExpanded) expandedRequestIds - id else expandedRequestIds + id
-                                            },
-                                            onPlayerClick = { player ->
-                                                player.tmProfile?.let { profile ->
-                                                    navController.navigate("${Screens.PlayerInfoScreen.route}/${Uri.encode(profile)}")
+                                if (isPositionExpanded) {
+                                    countries.forEach { (country, requests) ->
+                                        val countryKey = "${position}_$country"
+                                        val isCountryExpanded = countryKey in expandedCountryKeys
+                                        item(key = "country_$countryKey") {
+                                            CountryExpandableRow(
+                                                country = country,
+                                                countryFlag = requests.firstOrNull()?.clubCountryFlag,
+                                                count = requests.size,
+                                                isExpanded = isCountryExpanded,
+                                                onToggleExpand = {
+                                                    expandedCountryKeys = if (isCountryExpanded) {
+                                                        expandedCountryKeys - countryKey
+                                                    } else {
+                                                        expandedCountryKeys + countryKey
+                                                    }
                                                 }
-                                            },
-                                            onDelete = { requestToDelete = request }
-                                        )
+                                            )
+                                        }
+                                        if (isCountryExpanded) {
+                                            items(
+                                                requests,
+                                                key = { it.id ?: it.hashCode().toString() }
+                                            ) { request ->
+                                                val matchingPlayers = state.matchingPlayersByRequestId[request.id ?: ""] ?: emptyList()
+                                                val isRequestExpanded = (request.id ?: "") in expandedRequestIds
+                                                RequestCard(
+                                                    request = request,
+                                                    matchingPlayers = matchingPlayers,
+                                                    isExpanded = isRequestExpanded,
+                                                    modifier = Modifier.padding(start = 24.dp, top = 6.dp),
+                                                    onToggleExpand = {
+                                                        val id = request.id ?: return@RequestCard
+                                                        expandedRequestIds = if (isRequestExpanded) expandedRequestIds - id else expandedRequestIds + id
+                                                    },
+                                                    onPlayerClick = { player ->
+                                                        player.tmProfile?.let { profile ->
+                                                            navController.navigate("${Screens.PlayerInfoScreen.route}/${Uri.encode(profile)}")
+                                                        }
+                                                    },
+                                                    onDelete = { requestToDelete = request }
+                                                )
+                                            }
+                                        }
+                                    }
+                                    item(key = "spacer_$position") {
+                                        Spacer(Modifier.height(20.dp))
                                     }
                                 }
                             }
@@ -404,11 +438,80 @@ private fun StatItem(value: String, label: String, accentColor: androidx.compose
 }
 
 @Composable
-private fun CountrySectionHeader(country: String, countryFlag: String?) {
+private fun PositionExpandableCard(
+    position: String,
+    count: Int,
+    isExpanded: Boolean,
+    onToggleExpand: () -> Unit
+) {
+    val longName = PositionDisplayNames.toLongName(position)
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 8.dp)
+            .clickWithNoRipple { onToggleExpand() },
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = HomeDarkCard),
+        border = BorderStroke(1.dp, HomeDarkCardBorder)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .drawBehind {
+                    drawRect(
+                        color = HomeTealAccent,
+                        topLeft = Offset.Zero,
+                        size = Size(3.dp.toPx(), size.height)
+                    )
+                }
+                .padding(start = 3.dp)
+                .padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(HomeTealAccent.copy(alpha = 0.15f))
+                    .padding(horizontal = 10.dp, vertical = 4.dp)
+            ) {
+                Text(position, style = boldTextStyle(HomeTealAccent, 11.sp))
+            }
+            Spacer(Modifier.width(12.dp))
+            Text(longName, style = boldTextStyle(HomeTextPrimary, 15.sp))
+            Spacer(Modifier.weight(1f))
+            Text(
+                "($count)",
+                style = regularTextStyle(HomeTextSecondary, 12.sp)
+            )
+            Icon(
+                Icons.Default.ExpandMore,
+                contentDescription = if (isExpanded) "Collapse" else "Expand",
+                tint = HomeTextSecondary,
+                modifier = Modifier
+                    .size(22.dp)
+                    .graphicsLayer { rotationZ = if (isExpanded) 180f else 0f }
+            )
+        }
+    }
+}
+
+@Composable
+private fun CountryExpandableRow(
+    country: String,
+    countryFlag: String?,
+    count: Int,
+    isExpanded: Boolean,
+    onToggleExpand: () -> Unit
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(start = 8.dp, top = 12.dp, bottom = 4.dp),
+            .padding(start = 12.dp, end = 0.dp, top = 8.dp, bottom = 0.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(HomeDarkBackground)
+            .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(12.dp))
+            .clickWithNoRipple { onToggleExpand() }
+            .padding(10.dp, 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         if (!countryFlag.isNullOrBlank()) {
@@ -422,34 +525,43 @@ private fun CountrySectionHeader(country: String, countryFlag: String?) {
             )
             Spacer(Modifier.width(8.dp))
         }
+        if (countryFlag.isNullOrBlank()) {
+            Box(
+                modifier = Modifier
+                    .size(24.dp)
+                    .clip(CircleShape)
+                    .background(HomeDarkCardBorder),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    country.take(1).uppercase(),
+                    style = boldTextStyle(HomeTextSecondary, 10.sp)
+                )
+            }
+            Spacer(Modifier.width(8.dp))
+        }
         Text(
             country,
-            style = boldTextStyle(HomeTextSecondary, 13.sp)
+            style = boldTextStyle(HomeTextPrimary, 14.sp)
         )
-    }
-}
-
-@Composable
-private fun PositionSectionHeader(position: String, count: Int) {
-    val longName = PositionDisplayNames.toLongName(position)
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 12.dp, horizontal = 0.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Box(
-            modifier = Modifier
-                .clip(RoundedCornerShape(8.dp))
-                .background(HomeTealAccent.copy(alpha = 0.15f))
-                .padding(horizontal = 10.dp, vertical = 4.dp)
-        ) {
-            Text(position, style = boldTextStyle(HomeTealAccent, 14.sp))
-        }
-        Spacer(Modifier.width(10.dp))
-        Text(longName, style = boldTextStyle(HomeTextPrimary, 18.sp))
         Spacer(Modifier.weight(1f))
-        Text("($count)", style = regularTextStyle(HomeTextSecondary, 14.sp))
+        Text(
+            text = if (count == 1) {
+                stringResource(R.string.requests_country_club_one)
+            } else {
+                stringResource(R.string.requests_country_clubs, count)
+            },
+            style = regularTextStyle(HomeTextSecondary, 11.sp)
+        )
+        Spacer(Modifier.width(4.dp))
+        Icon(
+            Icons.Default.ExpandMore,
+            contentDescription = if (isExpanded) "Collapse" else "Expand",
+            tint = HomeTextSecondary,
+            modifier = Modifier
+                .size(18.dp)
+                .graphicsLayer { rotationZ = if (isExpanded) 180f else 0f }
+        )
     }
 }
 
@@ -458,16 +570,42 @@ private fun RequestCard(
     request: Request,
     matchingPlayers: List<Player>,
     isExpanded: Boolean,
+    modifier: Modifier = Modifier,
     onToggleExpand: () -> Unit,
     onPlayerClick: (Player) -> Unit,
     onDelete: () -> Unit
 ) {
+    val viaShort = formatViaShort(
+        request.contactName,
+        request.createdAt,
+        stringResource(R.string.requests_via_short),
+        stringResource(R.string.requests_direct_short)
+    )
+    val ageLabel = when {
+        request.ageDoesntMatter == true -> null
+        request.minAge != null && request.maxAge != null && request.minAge > 0 && request.maxAge > 0 ->
+            stringResource(R.string.requests_age_range, request.minAge, request.maxAge)
+        else -> null
+    }
+    val salaryLabel = request.salaryRange?.takeIf { it.isNotBlank() }?.let {
+        stringResource(R.string.requests_salary, it)
+    }
+    val feeLabel = request.transferFee?.takeIf { it.isNotBlank() }?.let { fee ->
+        val displayFee = when (fee) {
+            "Free/Free loan" -> stringResource(R.string.requests_transfer_fee_free_loan)
+            "<200" -> stringResource(R.string.requests_transfer_fee_lt200)
+            else -> fee
+        }
+        stringResource(R.string.requests_fee, displayFee)
+    }
+    val notesText = request.notes?.takeIf { it.isNotBlank() }
+
     Card(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .padding(bottom = 8.dp)
             .clickWithNoRipple { },
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = HomeDarkCard),
         border = BorderStroke(1.dp, HomeDarkCardBorder)
     ) {
@@ -483,164 +621,213 @@ private fun RequestCard(
                 }
                 .padding(start = 3.dp)
         ) {
-            Column(
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(12.dp)
+                    .padding(10.dp, 10.dp, 12.dp, 10.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    request.clubLogo?.let { logo ->
-                        AsyncImage(
-                            model = logo,
-                            contentDescription = null,
-                            modifier = Modifier.size(36.dp),
-                            contentScale = ContentScale.Fit
-                        )
-                        Spacer(Modifier.width(12.dp))
-                    }
-                    if (request.clubLogo == null) {
-                        Box(
-                            modifier = Modifier
-                                .size(36.dp)
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(HomeDarkCardBorder),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                (request.clubName?.take(2) ?: "?").uppercase(),
-                                style = boldTextStyle(HomeTextSecondary, 12.sp)
-                            )
-                        }
-                        Spacer(Modifier.width(12.dp))
-                    }
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(request.clubName ?: "", style = boldTextStyle(HomeTextPrimary, 14.sp))
-                        Text(
-                            request.clubCountry ?: "",
-                            style = regularTextStyle(HomeTextSecondary, 11.sp),
-                            modifier = Modifier.padding(top = 2.dp)
-                        )
-                    }
-                }
-                Spacer(Modifier.height(6.dp))
-                val ageInfo = when {
-                    request.ageDoesntMatter == true -> "Age: Any"
-                    request.minAge != null && request.maxAge != null && request.minAge > 0 && request.maxAge > 0 ->
-                        "Age: ${request.minAge}-${request.maxAge}"
-                    else -> ""
-                }
-                val salaryInfo = request.salaryRange?.takeIf { it.isNotBlank() }?.let { "Salary: $it" } ?: ""
-                val transferFeeInfo = request.transferFee?.takeIf { it.isNotBlank() }?.let { "Fee: $it" } ?: ""
-                val extraInfo = listOfNotNull(ageInfo.takeIf { it.isNotBlank() }, salaryInfo, transferFeeInfo).joinToString(" • ")
-                Text(
-                    text = if (!request.contactName.isNullOrBlank()) {
-                        stringResource(R.string.requests_via_contact, request.contactName.orEmpty(), formatDate(request.createdAt))
-                    } else {
-                        stringResource(R.string.requests_direct, formatDate(request.createdAt))
-                    },
-                    style = regularTextStyle(HomeTextSecondary, 11.sp),
-                    modifier = Modifier.padding(start = 48.dp)
-                )
-                if (extraInfo.isNotBlank()) {
-                    Text(
-                        text = extraInfo,
-                        style = regularTextStyle(HomeTextSecondary, 10.sp),
-                        modifier = Modifier.padding(start = 48.dp, top = 2.dp)
+                request.clubLogo?.let { logo ->
+                    AsyncImage(
+                        model = logo,
+                        contentDescription = null,
+                        modifier = Modifier.size(32.dp),
+                        contentScale = ContentScale.Fit
                     )
                 }
-                Spacer(Modifier.height(10.dp))
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(start = 48.dp)
-                        .padding(top = 8.dp),
-                    horizontalArrangement = Arrangement.End,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Spacer(Modifier.weight(1f))
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                if (request.clubLogo == null) {
+                    Box(
+                        modifier = Modifier
+                            .size(32.dp)
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(HomeDarkCardBorder),
+                        contentAlignment = Alignment.Center
                     ) {
-                        request.contactPhoneNumber?.takeIf { it.isNotBlank() }?.let { phone ->
-                            val context = LocalContext.current
-                            IconButton(
-                                onClick = {
-                                    val uri = "https://wa.me/${phone.filter { it.isDigit() }}".toUri()
-                                    context.startActivity(Intent(Intent.ACTION_VIEW, uri))
-                                },
-                                modifier = Modifier.size(36.dp)
-                            ) {
-                                Icon(
-                                    Icons.Default.Whatsapp,
-                                    contentDescription = stringResource(R.string.requests_whatsapp),
-                                    tint = HomeTealAccent,
-                                    modifier = Modifier.size(24.dp)
+                        Text(
+                            (request.clubName?.take(2) ?: "?").uppercase(),
+                            style = boldTextStyle(HomeTextSecondary, 11.sp)
+                        )
+                    }
+                }
+                Spacer(Modifier.width(10.dp))
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    Text(
+                        request.clubName ?: "",
+                        style = boldTextStyle(HomeTextPrimary, 13.sp)
+                    )
+                    Text(
+                        viaShort,
+                        style = regularTextStyle(HomeTextSecondary, 10.sp)
+                    )
+                    if (ageLabel != null || salaryLabel != null || feeLabel != null || notesText != null) {
+                        FlowRow(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            ageLabel?.let { RequestChip(text = it) }
+                            salaryLabel?.let { RequestChip(text = it) }
+                            feeLabel?.let { RequestChip(text = it) }
+                            notesText?.let { notes ->
+                                val displayNotes = if (notes.length > 80) "${notes.take(80)}…" else notes
+                                RequestChip(
+                                    text = "${stringResource(R.string.requests_notes_label)}: $displayNotes"
                                 )
                             }
                         }
+                    }
+                }
+                Spacer(Modifier.width(8.dp))
+                var actionsExpanded by remember { mutableStateOf(false) }
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    if (!request.contactPhoneNumber.isNullOrBlank()) {
+                        AnimatedVisibility(
+                            visible = !actionsExpanded,
+                            enter = fadeIn(tween(200)),
+                            exit = fadeOut(tween(200))
+                        ) {
+                            Box(
+                                modifier = Modifier.size(28.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                WhatsAppIcon(request.contactPhoneNumber!!)
+                            }
+                        }
+                    }
+                    AnimatedVisibility(
+                        visible = actionsExpanded,
+                        enter = fadeIn(tween(200)) + slideInHorizontally(
+                            initialOffsetX = { it },
+                            animationSpec = tween(200)
+                        ),
+                        exit = fadeOut(tween(200)) + slideOutHorizontally(
+                            targetOffsetX = { it },
+                            animationSpec = tween(200)
+                        )
+                    ) {
                         IconButton(
-                            onClick = onDelete,
-                            modifier = Modifier.size(36.dp)
+                            onClick = {
+                                onDelete()
+                                actionsExpanded = false
+                            },
+                            modifier = Modifier.size(28.dp)
                         ) {
                             Icon(
                                 Icons.Default.Delete,
                                 contentDescription = stringResource(R.string.requests_delete),
                                 tint = HomeRedAccent,
-                                modifier = Modifier.size(24.dp)
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    }
+                    IconButton(
+                        onClick = { actionsExpanded = !actionsExpanded },
+                        modifier = Modifier.size(28.dp)
+                    ) {
+                        AnimatedContent(
+                            targetState = actionsExpanded,
+                            transitionSpec = {
+                                fadeIn(tween(150)) togetherWith fadeOut(tween(150))
+                            },
+                            label = "request_menu_icon"
+                        ) { expanded ->
+                            Icon(
+                                imageVector = if (expanded) Icons.Default.Close else Icons.Default.MoreVert,
+                                contentDescription = if (expanded) "Close" else "More",
+                                tint = HomeTextSecondary,
+                                modifier = Modifier.size(18.dp)
                             )
                         }
                     }
                 }
-                Spacer(Modifier.height(10.dp))
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(HomeDarkBackground)
-                        .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(12.dp))
-                        .clickWithNoRipple { onToggleExpand() }
-                        .padding(8.dp, 12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        Icons.Default.People,
-                        contentDescription = null,
-                        tint = HomeTealAccent,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        text = if (matchingPlayers.size == 1) stringResource(R.string.requests_matching_players_one, matchingPlayers.size) else stringResource(R.string.requests_matching_players, matchingPlayers.size),
-                        style = regularTextStyle(HomeTextPrimary, 13.sp)
-                    )
-                    Spacer(Modifier.weight(1f))
-                    Icon(
-                        Icons.Default.ExpandMore,
-                        contentDescription = if (isExpanded) "Collapse" else "Expand",
-                        tint = HomeTextSecondary,
-                        modifier = Modifier
-                            .size(20.dp)
-                            .graphicsLayer { rotationZ = if (isExpanded) 180f else 0f }
-                    )
-                }
-                if (isExpanded) {
-                    if (matchingPlayers.isEmpty()) {
-                        Text(
-                            text = stringResource(R.string.requests_no_match),
-                            style = regularTextStyle(HomeTextSecondary, 12.sp),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 8.dp)
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(HomeDarkBackground)
-                                .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(12.dp))
-                                .padding(12.dp)
-                        )
+            }
+            Spacer(Modifier.height(8.dp))
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 12.dp, end = 12.dp, bottom = 10.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(HomeDarkBackground)
+                    .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(10.dp))
+                    .clickWithNoRipple { onToggleExpand() }
+                    .padding(12.dp, 10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    Icons.Default.People,
+                    contentDescription = null,
+                    tint = HomeTealAccent,
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(Modifier.width(10.dp))
+                Text(
+                    text = if (matchingPlayers.size == 1) {
+                        stringResource(R.string.requests_matching_players_one, matchingPlayers.size)
                     } else {
+                        stringResource(R.string.requests_matching_players, matchingPlayers.size)
+                    },
+                    style = regularTextStyle(HomeTextPrimary, 12.sp)
+                )
+                Spacer(Modifier.weight(1f))
+                Icon(
+                    Icons.Default.ExpandMore,
+                    contentDescription = if (isExpanded) "Collapse" else "Expand",
+                    tint = HomeTextSecondary,
+                    modifier = Modifier
+                        .size(20.dp)
+                        .graphicsLayer { rotationZ = if (isExpanded) 180f else 0f }
+                )
+            }
+            if (isExpanded) {
+                var isContentReady by remember(isExpanded) { mutableStateOf(false) }
+                LaunchedEffect(isExpanded) {
+                    if (isExpanded) {
+                        isContentReady = false
+                        delay(120)
+                        isContentReady = true
+                    } else {
+                        isContentReady = false
+                    }
+                }
+                if (!isContentReady) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(start = 12.dp, end = 12.dp, bottom = 10.dp)
+                            .padding(24.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(
+                            color = HomeTealAccent,
+                            strokeWidth = 2.dp,
+                            modifier = Modifier.size(28.dp)
+                        )
+                    }
+                } else if (matchingPlayers.isEmpty()) {
+                    Text(
+                        text = stringResource(R.string.requests_no_match),
+                        style = regularTextStyle(HomeTextSecondary, 11.sp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(start = 12.dp, end = 12.dp, bottom = 10.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(HomeDarkBackground)
+                            .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(8.dp))
+                            .padding(10.dp)
+                    )
+                } else {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(start = 12.dp, end = 12.dp, bottom = 10.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
                         matchingPlayers.forEach { player ->
                             MatchingPlayerRow(
                                 player = player,
@@ -655,6 +842,44 @@ private fun RequestCard(
 }
 
 @Composable
+private fun RequestChip(text: String) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(6.dp))
+            .background(HomeDarkBackground)
+            .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(6.dp))
+            .padding(horizontal = 8.dp, vertical = 2.dp)
+    ) {
+        Text(
+            text = text,
+            style = regularTextStyle(HomeTextSecondary, 10.sp)
+        )
+    }
+}
+
+private fun formatViaShort(
+    contactName: String?,
+    createdAt: Long?,
+    viaPrefix: String,
+    directPrefix: String
+): String {
+    val dateStr = if (createdAt != null) {
+        SimpleDateFormat("MMM d", Locale.getDefault()).format(Date(createdAt))
+    } else ""
+    val datePart = if (dateStr.isNotBlank()) " • $dateStr" else ""
+    return when {
+        !contactName.isNullOrBlank() -> {
+            val short = contactName.trim().split(" ").let { parts ->
+                if (parts.size >= 2) "${parts.first()} ${parts.drop(1).map { it.firstOrNull()?.uppercaseChar() ?: "" }.joinToString(".")}."
+                else parts.firstOrNull() ?: ""
+            }
+            "$viaPrefix $short$datePart"
+        }
+        else -> "$directPrefix$datePart"
+    }
+}
+
+@Composable
 private fun MatchingPlayerRow(
     player: Player,
     onClick: () -> Unit
@@ -662,12 +887,11 @@ private fun MatchingPlayerRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(top = 6.dp)
-            .clip(RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(10.dp))
             .background(HomeDarkBackground)
-            .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(12.dp))
+            .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(10.dp))
             .clickWithNoRipple { onClick() }
-            .padding(10.dp, 12.dp),
+            .padding(10.dp, 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         player.profileImage?.let { url ->
@@ -961,45 +1185,57 @@ private fun AddRequestBottomSheet(
                         }
                     }
                     TextButton(onClick = { selectedClub = null; clubSearchQuery = "" }) {
-                        Text("Change", style = regularTextStyle(HomeTealAccent, 12.sp))
+                        Text(stringResource(R.string.requests_change_club), style = regularTextStyle(HomeTealAccent, 12.sp))
                     }
                 }
             }
 
-            Spacer(Modifier.height(20.dp))
+            AnimatedVisibility(
+                visible = selectedClub != null,
+                enter = fadeIn(tween(200)) + slideInVertically(
+                    initialOffsetY = { -it / 4 },
+                    animationSpec = tween(250)
+                ),
+                exit = fadeOut(tween(150)) + slideOutVertically(
+                    targetOffsetY = { it / 4 },
+                    animationSpec = tween(150)
+                )
+            ) {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Spacer(Modifier.height(20.dp))
 
-            Text("CONTACT (optional)", style = regularTextStyle(HomeTextSecondary, 11.sp), modifier = Modifier.padding(bottom = 10.dp))
-            if (selectedClub != null && filteredContacts.isNotEmpty()) {
-                LazyColumn(
-                    modifier = Modifier.fillMaxWidth().heightIn(max = 120.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    items(filteredContacts) { contact ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(10.dp))
-                                .background(if (selectedContact?.id == contact.id) HomeTealAccent.copy(alpha = 0.2f) else HomeDarkBackground)
-                                .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(10.dp))
-                                .clickWithNoRipple { selectedContact = if (selectedContact?.id == contact.id) null else contact }
-                                .padding(12.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                    Text(stringResource(R.string.requests_contact_optional), style = regularTextStyle(HomeTextSecondary, 11.sp), modifier = Modifier.padding(bottom = 10.dp))
+                    if (filteredContacts.isNotEmpty()) {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxWidth().heightIn(max = 120.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
-                            Text(contact.name ?: "", style = boldTextStyle(HomeTextPrimary, 13.sp))
-                            Spacer(Modifier.weight(1f))
-                            if (selectedContact?.id == contact.id) {
-                                Icon(Icons.Default.Check, contentDescription = null, tint = HomeTealAccent, modifier = Modifier.size(18.dp))
+                            items(filteredContacts) { contact ->
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .background(if (selectedContact?.id == contact.id) HomeTealAccent.copy(alpha = 0.2f) else HomeDarkBackground)
+                                        .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(10.dp))
+                                        .clickWithNoRipple { selectedContact = if (selectedContact?.id == contact.id) null else contact }
+                                        .padding(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(contact.name ?: "", style = boldTextStyle(HomeTextPrimary, 13.sp))
+                                    Spacer(Modifier.weight(1f))
+                                    if (selectedContact?.id == contact.id) {
+                                        Icon(Icons.Default.Check, contentDescription = null, tint = HomeTealAccent, modifier = Modifier.size(18.dp))
+                                    }
+                                }
                             }
                         }
+                    } else {
+                        Text(stringResource(R.string.requests_no_contacts_for_club), style = regularTextStyle(HomeTextSecondary, 12.sp), modifier = Modifier.padding(bottom = 8.dp))
                     }
-                }
-            } else if (selectedClub != null) {
-                Text("No contacts for this club", style = regularTextStyle(HomeTextSecondary, 12.sp), modifier = Modifier.padding(bottom = 8.dp))
-            }
 
-            Spacer(Modifier.height(20.dp))
+                    Spacer(Modifier.height(20.dp))
 
-            Text("POSITION", style = regularTextStyle(HomeTextSecondary, 11.sp), modifier = Modifier.padding(bottom = 10.dp))
+                    Text(stringResource(R.string.requests_label_position), style = regularTextStyle(HomeTextSecondary, 11.sp), modifier = Modifier.padding(bottom = 10.dp))
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -1026,7 +1262,7 @@ private fun AddRequestBottomSheet(
 
             Spacer(Modifier.height(20.dp))
 
-            Text("AGE", style = regularTextStyle(HomeTextSecondary, 11.sp), modifier = Modifier.padding(bottom = 10.dp))
+            Text(stringResource(R.string.requests_label_age), style = regularTextStyle(HomeTextSecondary, 11.sp), modifier = Modifier.padding(bottom = 10.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
@@ -1036,7 +1272,7 @@ private fun AddRequestBottomSheet(
                     onCheckedChange = { ageDoesntMatter = it },
                     colors = CheckboxDefaults.colors(checkedColor = HomeTealAccent)
                 )
-                Text("Doesn't matter", style = regularTextStyle(HomeTextPrimary, 14.sp), modifier = Modifier.clickWithNoRipple { ageDoesntMatter = !ageDoesntMatter })
+                Text(stringResource(R.string.requests_age_doesnt_matter), style = regularTextStyle(HomeTextPrimary, 14.sp), modifier = Modifier.clickWithNoRipple { ageDoesntMatter = !ageDoesntMatter })
             }
             if (!ageDoesntMatter) {
                 Row(
@@ -1076,7 +1312,7 @@ private fun AddRequestBottomSheet(
 
             Spacer(Modifier.height(20.dp))
 
-            Text("SALARY RANGE", style = regularTextStyle(HomeTextSecondary, 11.sp), modifier = Modifier.padding(bottom = 10.dp))
+            Text(stringResource(R.string.requests_label_salary_range), style = regularTextStyle(HomeTextSecondary, 11.sp), modifier = Modifier.padding(bottom = 10.dp))
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -1100,7 +1336,7 @@ private fun AddRequestBottomSheet(
 
             Spacer(Modifier.height(20.dp))
 
-            Text("TRANSFER FEE", style = regularTextStyle(HomeTextSecondary, 11.sp), modifier = Modifier.padding(bottom = 10.dp))
+            Text(stringResource(R.string.requests_label_transfer_fee), style = regularTextStyle(HomeTextSecondary, 11.sp), modifier = Modifier.padding(bottom = 10.dp))
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -1109,8 +1345,13 @@ private fun AddRequestBottomSheet(
             ) {
                 TransferFeeOptions.all.forEach { fee ->
                     val isSelected = selectedTransferFee == fee
+                    val displayFee = when (fee) {
+                        "Free/Free loan" -> stringResource(R.string.requests_transfer_fee_free_loan)
+                        "<200" -> stringResource(R.string.requests_transfer_fee_lt200)
+                        else -> fee
+                    }
                     Text(
-                        text = fee,
+                        text = displayFee,
                         style = regularTextStyle(if (isSelected) HomeTealAccent else HomeTextSecondary, 12.sp),
                         modifier = Modifier
                             .clip(RoundedCornerShape(20.dp))
@@ -1124,7 +1365,7 @@ private fun AddRequestBottomSheet(
 
             Spacer(Modifier.height(20.dp))
 
-            Text("NOTES (optional)", style = regularTextStyle(HomeTextSecondary, 11.sp), modifier = Modifier.padding(bottom = 10.dp))
+            Text(stringResource(R.string.requests_notes_optional), style = regularTextStyle(HomeTextSecondary, 11.sp), modifier = Modifier.padding(bottom = 10.dp))
             OutlinedTextField(
                 value = notes,
                 onValueChange = { notes = it },
@@ -1146,7 +1387,7 @@ private fun AddRequestBottomSheet(
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 TextButton(onClick = onDismiss, modifier = Modifier.weight(1f)) {
-                    Text("Cancel", style = regularTextStyle(HomeTextSecondary, 14.sp))
+                    Text(stringResource(R.string.cancel), style = regularTextStyle(HomeTextSecondary, 14.sp))
                 }
                 Button(
                     onClick = {
@@ -1168,11 +1409,19 @@ private fun AddRequestBottomSheet(
                             )
                         }
                     },
+                    enabled = selectedClub != null && selectedPosition != null && selectedSalaryRange != null && selectedTransferFee != null,
                     modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = HomeTealAccent)
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = HomeTealAccent,
+                        contentColor = androidx.compose.ui.graphics.Color.White,
+                        disabledContainerColor = HomeTealAccent.copy(alpha = 0.4f),
+                        disabledContentColor = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.6f)
+                    )
                 ) {
-                    Text("Save Request", style = boldTextStyle(HomeDarkBackground, 14.sp))
+                    Text(stringResource(R.string.requests_save_request), style = boldTextStyle(androidx.compose.ui.graphics.Color.White, 14.sp))
+                }
+            }
                 }
             }
         }

@@ -44,6 +44,8 @@ abstract class IPlayerInfoViewModel : ViewModel() {
     abstract fun updatePlayerNumber(number: String)
     abstract fun updateAgentNumber(number: String)
     abstract fun updateHaveMandate(hasMandate: Boolean)
+    abstract fun updateSalaryRange(salaryRange: String?)
+    abstract fun updateTransferFee(transferFee: String?)
     abstract fun updateNotes(notes: NotesModel)
     abstract fun refreshPlayerInfo()
     abstract fun onDeleteNoteClicked(note: NotesModel)
@@ -195,6 +197,36 @@ class PlayerInfoViewModel(
     override fun updateHaveMandate(hasMandate: Boolean) {
         _playerInfoFlow.update {
             it?.copy(haveMandate = hasMandate)
+        }
+        viewModelScope.launch {
+            _playerInfoFlow.value?.let { player ->
+                val doc = firebaseHandler.firebaseStore
+                    .collection(firebaseHandler.playersTable)
+                    .whereEqualTo("tmProfile", player.tmProfile)
+                    .get().await().documents.firstOrNull()
+                doc?.reference?.set(player)?.await()
+            }
+        }
+    }
+
+    override fun updateSalaryRange(salaryRange: String?) {
+        _playerInfoFlow.update {
+            it?.copy(salaryRange = salaryRange)
+        }
+        viewModelScope.launch {
+            _playerInfoFlow.value?.let { player ->
+                val doc = firebaseHandler.firebaseStore
+                    .collection(firebaseHandler.playersTable)
+                    .whereEqualTo("tmProfile", player.tmProfile)
+                    .get().await().documents.firstOrNull()
+                doc?.reference?.set(player)?.await()
+            }
+        }
+    }
+
+    override fun updateTransferFee(transferFee: String?) {
+        _playerInfoFlow.update {
+            it?.copy(transferFee = transferFee)
         }
         viewModelScope.launch {
             _playerInfoFlow.value?.let { player ->

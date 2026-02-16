@@ -254,6 +254,8 @@
     <string name="requests_add">הוסף בקשה</string>
     <string name="requests_share">שתף בקשות</string>
     <string name="requests_stat_positions">עמדות</string>
+    <string name="requests_country_club_one">מועדון 1</string>
+    <string name="requests_country_clubs">%d מועדונים</string>
     <string name="requests_matching_players_one">%d שחקן תואם</string>
     <string name="requests_matching_players">%d שחקנים תואמים</string>
     <string name="requests_no_match">אין שחקנים בסגל התואמים לבקשה זו</string>
@@ -272,13 +274,26 @@
     <string name="requests_max">מקסימום</string>
     <string name="requests_age_any">גיל: כלשהו</string>
     <string name="requests_age_range">גיל: %1$d-%2$d</string>
-    <string name="requests_salary">משכורת: %s</string>
+    <string name="requests_salary">שכר: %s</string>
     <string name="requests_fee">דמי העברה: %s</string>
     <string name="requests_via_contact">דרך %1$s • %2$s</string>
     <string name="requests_direct">בקשה ישירה • %s</string>
+    <string name="requests_via_short">דרך</string>
+    <string name="requests_direct_short">בקשה ישירה</string>
     <string name="requests_notes_placeholder">הערות נוספות…</string>
+    <string name="requests_notes_label">הערות</string>
     <string name="requests_whatsapp">WhatsApp</string>
     <string name="requests_delete">מחק</string>
+    <string name="requests_change_club">החלף</string>
+    <string name="requests_contact_optional">איש קשר (אופציונלי)</string>
+    <string name="requests_no_contacts_for_club">אין אנשי קשר למועדון זה</string>
+    <string name="requests_age_doesnt_matter">לא משנה</string>
+    <string name="requests_label_salary_range">טווח שכר</string>
+    <string name="requests_label_transfer_fee">דמי העברה</string>
+    <string name="requests_notes_optional">הערות (אופציונלי)</string>
+    <string name="requests_save_request">שמור בקשה</string>
+    <string name="requests_transfer_fee_free_loan">חופשי/השאלה בחינם</string>
+    <string name="requests_transfer_fee_lt200">מתחת ל-200</string>
 
     <!-- Contacts Screen -->
     <string name="contacts_title">אנשי קשר בעולם</string>
@@ -411,6 +426,9 @@
     <string name="player_info_synced_days">סונכרן לפני %d ימים</string>
     <string name="player_info_synced_date">סונכרן %s</string>
     <string name="player_info_years_short">שנים</string>
+    <string name="player_info_salary_transfer_fee">שכר ודמי העברה</string>
+    <string name="player_info_salary_transfer_fee_hint">לחץ להגדרה להתאמת בקשות</string>
+    <string name="player_info_salary_transfer_fee_sheet_title">הגדר קריטריוני התאמה</string>
 
     <!-- Returnee Players Bottom Sheet -->
     <string name="returnee_no_players_league">לא נמצאו שחקנים בליגה זו</string>

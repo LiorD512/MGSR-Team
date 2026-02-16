@@ -32,6 +32,8 @@ data class Player(
     val marketValueHistory: List<MarketValueEntry>? = null,
     val linkedContactId: String? = null,
     val lastRefreshedAt: Long? = null,
+    val salaryRange: String? = null, // Same as Request: ">5", "6-10", "11-15", "16-20", "20-25", "26-30", "30+"
+    val transferFee: String? = null, // Same as Request: "Free/Free loan", "<200", "300-600", "700-900", "1m+"
     @PropertyName("onLoan") val isOnLoan: Boolean = false,
     @PropertyName("onLoanFromClub") val onLoanFromClub: String? = null,
     val passportDetails: PassportDetails? = null

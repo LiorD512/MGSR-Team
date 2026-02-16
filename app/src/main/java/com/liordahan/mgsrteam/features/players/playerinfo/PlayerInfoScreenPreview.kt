@@ -44,7 +44,9 @@ private val previewPlayer = Player(
         MarketValueEntry(value = "€2.0M", date = System.currentTimeMillis() - 86400000 * 30),
         MarketValueEntry(value = "€2.5M", date = System.currentTimeMillis())
     ),
-    lastRefreshedAt = System.currentTimeMillis() - 7200000
+    lastRefreshedAt = System.currentTimeMillis() - 7200000,
+    salaryRange = "6-10",
+    transferFee = "Free/Free loan"
 )
 
 private class FakePlayerInfoViewModel : IPlayerInfoViewModel() {
@@ -65,6 +67,8 @@ private class FakePlayerInfoViewModel : IPlayerInfoViewModel() {
     override fun updatePlayerNumber(number: String) {}
     override fun updateAgentNumber(number: String) {}
     override fun updateHaveMandate(hasMandate: Boolean) {}
+    override fun updateSalaryRange(salaryRange: String?) {}
+    override fun updateTransferFee(transferFee: String?) {}
     override fun updateNotes(notes: NotesModel) {}
     override fun refreshPlayerInfo() {}
     override fun onDeleteNoteClicked(note: NotesModel) {}

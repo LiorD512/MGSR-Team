@@ -254,6 +254,8 @@
     <string name="requests_add">Add request</string>
     <string name="requests_share">Share requests</string>
     <string name="requests_stat_positions">Positions</string>
+    <string name="requests_country_club_one">1 club</string>
+    <string name="requests_country_clubs">%d clubs</string>
     <string name="requests_matching_players_one">%d matching player</string>
     <string name="requests_matching_players">%d matching players</string>
     <string name="requests_no_match">No roster players match this request</string>
@@ -276,9 +278,22 @@
     <string name="requests_fee">Fee: %s</string>
     <string name="requests_via_contact">Via %1$s • %2$s</string>
     <string name="requests_direct">Direct request • %s</string>
+    <string name="requests_via_short">Via</string>
+    <string name="requests_direct_short">Direct</string>
     <string name="requests_notes_placeholder">Additional notes…</string>
+    <string name="requests_notes_label">Notes</string>
     <string name="requests_whatsapp">WhatsApp</string>
     <string name="requests_delete">Delete</string>
+    <string name="requests_change_club">Change</string>
+    <string name="requests_contact_optional">CONTACT (optional)</string>
+    <string name="requests_no_contacts_for_club">No contacts for this club</string>
+    <string name="requests_age_doesnt_matter">Doesn\'t matter</string>
+    <string name="requests_label_salary_range">SALARY RANGE</string>
+    <string name="requests_label_transfer_fee">TRANSFER FEE</string>
+    <string name="requests_notes_optional">NOTES (optional)</string>
+    <string name="requests_save_request">Save Request</string>
+    <string name="requests_transfer_fee_free_loan">Free/Free loan</string>
+    <string name="requests_transfer_fee_lt200">Lower than 200</string>
 
     <!-- Contacts Screen -->
     <string name="contacts_title">Worldwide Contacts</string>
@@ -411,6 +426,9 @@
     <string name="player_info_synced_days">Synced %dd ago</string>
     <string name="player_info_synced_date">Synced %s</string>
     <string name="player_info_years_short">yrs</string>
+    <string name="player_info_salary_transfer_fee">Salary &amp; Transfer Fee</string>
+    <string name="player_info_salary_transfer_fee_hint">Tap to set for request matching</string>
+    <string name="player_info_salary_transfer_fee_sheet_title">Set match criteria</string>
 
     <!-- Returnee Players Bottom Sheet -->
     <string name="returnee_no_players_league">No players found in this league</string>

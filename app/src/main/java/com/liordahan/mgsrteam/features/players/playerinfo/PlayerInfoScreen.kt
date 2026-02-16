@@ -26,11 +26,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -50,9 +52,16 @@ import androidx.compose.material.icons.filled.VerifiedUser
 import androidx.compose.material.icons.filled.Whatsapp
 import androidx.compose.material.icons.automirrored.filled.TrendingDown
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.ModalBottomSheetProperties
+import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
@@ -107,12 +116,15 @@ import com.liordahan.mgsrteam.R
 import com.liordahan.mgsrteam.features.add.getPhoneNumberFromContactUri
 import com.liordahan.mgsrteam.features.players.models.NotesModel
 import com.liordahan.mgsrteam.features.players.models.Player
+import com.liordahan.mgsrteam.features.requests.models.SalaryRangeOptions
+import com.liordahan.mgsrteam.features.requests.models.TransferFeeOptions
 import com.liordahan.mgsrteam.features.players.playerinfo.documents.DocumentType
 import com.liordahan.mgsrteam.navigation.Screens
 import com.liordahan.mgsrteam.features.players.playerinfo.documents.PlayerDocument
 import com.liordahan.mgsrteam.features.players.models.getAgentPhoneNumber
 import com.liordahan.mgsrteam.features.players.models.getPlayerPhoneNumber
 import com.liordahan.mgsrteam.helpers.UiResult
+import com.liordahan.mgsrteam.ui.components.DarkSystemBarsForBottomSheet
 import com.liordahan.mgsrteam.ui.components.setSearchViewTextFieldColors
 import com.liordahan.mgsrteam.ui.components.setSearchViewTextFieldColorsDarkTheme
 import com.liordahan.mgsrteam.ui.theme.HomeBlueAccent
@@ -141,6 +153,7 @@ import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PlayerInfoScreen(
     viewModel: IPlayerInfoViewModel = koinViewModel(),
@@ -243,6 +256,7 @@ fun PlayerInfoScreen(
     }
 
     var showDeleteDialog by remember { mutableStateOf(false) }
+    var showSalaryTransferFeeSheet by remember { mutableStateOf(false) }
     var noteToDelete by remember { mutableStateOf<NotesModel?>(null) }
     var documentsList by remember { mutableStateOf<List<PlayerDocument>>(emptyList()) }
     var docToDelete by remember { mutableStateOf<PlayerDocument?>(null) }
@@ -378,6 +392,20 @@ fun PlayerInfoScreen(
                 }
             )
         }
+        if (showSalaryTransferFeeSheet) {
+            playerToPresent?.let { player ->
+                SalaryTransferFeeBottomSheet(
+                    currentSalaryRange = player.salaryRange,
+                    currentTransferFee = player.transferFee,
+                    onDismiss = { showSalaryTransferFeeSheet = false },
+                    onSave = { salaryRange, transferFee ->
+                        viewModel.updateSalaryRange(salaryRange)
+                        viewModel.updateTransferFee(transferFee)
+                        showSalaryTransferFeeSheet = false
+                    }
+                )
+            }
+        }
 
         val shareAction: () -> Unit = {
             com.liordahan.mgsrteam.analytics.AnalyticsHelper.logSharePlayer(playerToPresent?.tmProfile)
@@ -422,7 +450,8 @@ fun PlayerInfoScreen(
                 PlayerInfoHeroCard(
                     player = player,
                     mandateExpiryAt = mandateExpiry,
-                    onMandateChanged = { viewModel.updateHaveMandate(it) }
+                    onMandateChanged = { viewModel.updateHaveMandate(it) },
+                    onSalaryTransferFeeClicked = { showSalaryTransferFeeSheet = true }
                 )
             }
 
@@ -795,11 +824,139 @@ fun PlayerInfoScreen(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SalaryTransferFeeBottomSheet(
+    currentSalaryRange: String?,
+    currentTransferFee: String?,
+    onDismiss: () -> Unit,
+    onSave: (salaryRange: String?, transferFee: String?) -> Unit
+) {
+    var selectedSalaryRange by remember(currentSalaryRange) { mutableStateOf(currentSalaryRange) }
+    var selectedTransferFee by remember(currentTransferFee) { mutableStateOf(currentTransferFee) }
+    LaunchedEffect(currentSalaryRange, currentTransferFee) {
+        selectedSalaryRange = currentSalaryRange
+        selectedTransferFee = currentTransferFee
+    }
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
+        containerColor = HomeDarkCard,
+        properties = ModalBottomSheetProperties(
+            isAppearanceLightStatusBars = true,
+            isAppearanceLightNavigationBars = true
+        )
+    ) {
+        DarkSystemBarsForBottomSheet()
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
+                .padding(bottom = 32.dp)
+                .navigationBarsPadding()
+        ) {
+            Text(
+                text = stringResource(R.string.player_info_salary_transfer_fee_sheet_title),
+                style = boldTextStyle(HomeTextPrimary, 20.sp),
+                modifier = Modifier.padding(vertical = 8.dp)
+            )
+            HorizontalDivider(color = HomeDarkCardBorder, thickness = 1.dp)
+            Spacer(Modifier.height(16.dp))
+
+            Text(
+                stringResource(R.string.requests_label_salary_range),
+                style = regularTextStyle(HomeTextSecondary, 11.sp),
+                modifier = Modifier.padding(bottom = 10.dp)
+            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                SalaryRangeOptions.all.forEach { range ->
+                    val isSelected = selectedSalaryRange == range
+                    Text(
+                        text = range,
+                        style = regularTextStyle(if (isSelected) HomeTealAccent else HomeTextSecondary, 12.sp),
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(if (isSelected) HomeTealAccent.copy(alpha = 0.2f) else Color.Transparent)
+                            .border(1.dp, if (isSelected) HomeTealAccent else HomeDarkCardBorder, RoundedCornerShape(20.dp))
+                            .clickWithNoRipple { selectedSalaryRange = if (isSelected) null else range }
+                            .padding(horizontal = 14.dp, vertical = 8.dp)
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(20.dp))
+
+            Text(
+                stringResource(R.string.requests_label_transfer_fee),
+                style = regularTextStyle(HomeTextSecondary, 11.sp),
+                modifier = Modifier.padding(bottom = 10.dp)
+            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                TransferFeeOptions.all.forEach { fee ->
+                    val isSelected = selectedTransferFee == fee
+                    val displayFee = when (fee) {
+                        "Free/Free loan" -> stringResource(R.string.requests_transfer_fee_free_loan)
+                        "<200" -> stringResource(R.string.requests_transfer_fee_lt200)
+                        else -> fee
+                    }
+                    Text(
+                        text = displayFee,
+                        style = regularTextStyle(if (isSelected) HomeTealAccent else HomeTextSecondary, 12.sp),
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(if (isSelected) HomeTealAccent.copy(alpha = 0.2f) else Color.Transparent)
+                            .border(1.dp, if (isSelected) HomeTealAccent else HomeDarkCardBorder, RoundedCornerShape(20.dp))
+                            .clickWithNoRipple { selectedTransferFee = if (isSelected) null else fee }
+                            .padding(horizontal = 14.dp, vertical = 8.dp)
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(24.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                TextButton(onClick = onDismiss, modifier = Modifier.weight(1f)) {
+                    Text(stringResource(R.string.cancel), style = regularTextStyle(HomeTextSecondary, 14.sp))
+                }
+                Button(
+                    onClick = {
+                        onSave(selectedSalaryRange, selectedTransferFee)
+                    },
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = HomeTealAccent,
+                        contentColor = Color.White
+                    )
+                ) {
+                    Text(stringResource(R.string.contacts_button_save), style = boldTextStyle(Color.White, 14.sp))
+                }
+            }
+        }
+    }
+}
+
 @Composable
 private fun PlayerInfoHeroCard(
     player: Player,
     mandateExpiryAt: Long? = null,
-    onMandateChanged: (Boolean) -> Unit
+    onMandateChanged: (Boolean) -> Unit,
+    onSalaryTransferFeeClicked: () -> Unit = {}
 ) {
     val resources = LocalContext.current.resources
     val valueTrend = remember(player.marketValueHistory) {
@@ -982,6 +1139,42 @@ private fun PlayerInfoHeroCard(
                         uncheckedThumbColor = HomeTextSecondary,
                         uncheckedTrackColor = HomeDarkCardBorder
                     )
+                )
+            }
+            Spacer(Modifier.height(8.dp))
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(HomeDarkBackground)
+                    .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(12.dp))
+                    .padding(horizontal = 14.dp, vertical = 10.dp)
+                    .clickWithNoRipple(onSalaryTransferFeeClicked),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column {
+                    Text(
+                        text = stringResource(R.string.player_info_salary_transfer_fee),
+                        style = boldTextStyle(HomeTextPrimary, 14.sp)
+                    )
+                    val salaryStr = player.salaryRange?.takeIf { it.isNotBlank() } ?: "—"
+                    val feeDisplay = when (player.transferFee) {
+                        "Free/Free loan" -> stringResource(R.string.requests_transfer_fee_free_loan)
+                        "<200" -> stringResource(R.string.requests_transfer_fee_lt200)
+                        else -> player.transferFee?.takeIf { it.isNotBlank() } ?: "—"
+                    }
+                    Text(
+                        text = "$salaryStr • $feeDisplay",
+                        style = regularTextStyle(HomeTextSecondary, 11.sp),
+                        modifier = Modifier.padding(top = 2.dp)
+                    )
+                }
+                Icon(
+                    imageVector = Icons.Default.Edit,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                    tint = HomeTealAccent
                 )
             }
         }
