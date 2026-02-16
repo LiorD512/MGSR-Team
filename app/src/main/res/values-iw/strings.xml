@@ -282,6 +282,8 @@
     <string name="contacts_clear">נקה</string>
     <string name="contacts_edit">ערוך</string>
     <string name="contacts_delete">מחק</string>
+    <string name="contacts_close">סגור</string>
+    <string name="contacts_menu">אפשרויות נוספות</string>
     <string name="contacts_no_contacts">אין אנשי קשר עדיין</string>
     <string name="contacts_empty_hint">הוסף אנשי קשר במועדונים לגיוס שחקנים. בחר מהטלפון או הוסף ידנית.</string>
     <string name="contacts_add_contact">הוסף איש קשר</string>
@@ -295,7 +297,7 @@
     <string name="contacts_label_club">מועדון</string>
     <string name="contacts_label_name">שם</string>
     <string name="contacts_placeholder_name">שם איש קשר</string>
-    <string name="contacts_label_phone">טלפון (אופציונלי)</string>
+    <string name="contacts_label_phone">טלפון</string>
     <string name="contacts_placeholder_phone">מספר טלפון (כולל קידומת)</string>
     <string name="contacts_no_contacts_found">לא נמצאו אנשי קשר</string>
     <string name="contacts_try_different_search">נסה חיפוש אחר או הוסף איש קשר חדש</string>

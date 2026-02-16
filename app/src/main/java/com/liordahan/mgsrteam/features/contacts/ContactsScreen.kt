@@ -6,6 +6,14 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.provider.ContactsContract
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
+import androidx.compose.animation.core.tween
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
@@ -44,6 +52,7 @@ import androidx.compose.material.icons.filled.ContactPage
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -75,6 +84,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
@@ -95,6 +106,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
@@ -848,113 +860,191 @@ private fun ContactCard(
     onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
-    val context = LocalContext.current
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .clickWithNoRipple { },
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = HomeDarkCard),
         border = BorderStroke(1.dp, HomeDarkCardBorder)
     ) {
-        Column(
+        val layoutDirection = LocalLayoutDirection.current
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .drawBehind {
+                    val barWidth = 3.dp.toPx()
+                    val x = when (layoutDirection) {
+                        LayoutDirection.Rtl -> size.width - barWidth
+                        LayoutDirection.Ltr -> 0f
+                    }
                     drawRect(
                         color = HomeTealAccent,
-                        topLeft = Offset.Zero,
-                        size = Size(3.dp.toPx(), size.height)
+                        topLeft = Offset(x, 0f),
+                        size = Size(barWidth, size.height)
                     )
                 }
                 .padding(start = 3.dp)
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(0.dp)
         ) {
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .background(HomeDarkCardBorder)
+                    .border(2.dp, HomeDarkCardBorder, CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                contact.clubLogo?.let { logo ->
+                    AsyncImage(
+                        model = logo,
+                        contentDescription = null,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(CircleShape),
+                        contentScale = ContentScale.Fit
+                    )
+                } ?: run {
+                    Text(
+                        text = getInitialsFromName(contact.name),
+                        style = boldTextStyle(HomeTextSecondary, 12.sp)
+                    )
+                }
+            }
+
+            Spacer(Modifier.width(10.dp))
+
             Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(12.dp)
+                    .weight(1f)
+                    .padding(end = 8.dp),
+                horizontalAlignment = Alignment.Start
             ) {
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .size(44.dp)
-                            .clip(CircleShape)
-                            .background(HomeDarkCardBorder)
-                            .border(2.dp, HomeDarkCardBorder, CircleShape),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = getInitialsFromName(contact.name),
-                            style = boldTextStyle(HomeTextSecondary, 14.sp)
-                        )
-                    }
-                    Spacer(Modifier.width(12.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = contact.name ?: "",
-                            style = boldTextStyle(HomeTextPrimary, 14.sp)
-                        )
-                        contact.roleEnum?.let { role ->
-                            Spacer(Modifier.height(4.dp))
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .background(HomeTealAccent.copy(alpha = 0.15f))
-                                    .padding(horizontal = 10.dp, vertical = 4.dp)
-                            ) {
-                                Text(
-                                    text = getRoleDisplayLabel(role),
-                                    style = regularTextStyle(HomeTealAccent, 10.sp)
-                                )
-                            }
+                    Text(
+                        text = contact.name ?: "",
+                        style = boldTextStyle(HomeTextPrimary, 13.sp)
+                    )
+                    contact.roleEnum?.let { role ->
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(HomeTealAccent.copy(alpha = 0.15f))
+                                .padding(horizontal = 8.dp, vertical = 2.dp)
+                        ) {
+                            Text(
+                                text = getRoleDisplayLabel(role),
+                                style = regularTextStyle(HomeTealAccent, 10.sp)
+                            )
                         }
-                        Spacer(Modifier.height(4.dp))
-                        Text(
-                            text = when {
-                                !contact.clubName.isNullOrBlank() -> buildString {
-                                    append(contact.clubName)
-                                    contact.clubCountry?.takeIf { it.isNotBlank() }
-                                        ?.let { append(" • $it") }
-                                }
-
-                                else -> "Without club"
-                            },
-                            style = regularTextStyle(HomeTextSecondary, 12.sp)
-                        )
-                    }
-                    contact.clubLogo?.let { logo ->
-                        Spacer(Modifier.width(8.dp))
-                        AsyncImage(
-                            model = logo,
-                            contentDescription = null,
-                            modifier = Modifier.size(28.dp),
-                            contentScale = ContentScale.Fit
-                        )
                     }
                 }
-                Spacer(Modifier.height(10.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End,
-                    verticalAlignment = Alignment.CenterVertically
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    text = when {
+                        !contact.clubName.isNullOrBlank() -> buildString {
+                            append(contact.clubName)
+                            contact.clubCountry?.takeIf { it.isNotBlank() }
+                                ?.let { append(" • $it") }
+                        }
+                        else -> "Without club"
+                    },
+                    style = regularTextStyle(HomeTextSecondary, 11.sp),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+
+            var actionsExpanded by remember { mutableStateOf(false) }
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                AnimatedVisibility(
+                    visible = !actionsExpanded,
+                    enter = fadeIn(tween(200)),
+                    exit = fadeOut(tween(200))
                 ) {
-                    WhatsAppIcon(contact.phoneNumber ?: "")
-                    Spacer(Modifier.width(4.dp))
-                    IconButton(onClick = onEdit, modifier = Modifier.size(36.dp)) {
-                        Icon(
-                            Icons.Default.Edit,
-                            contentDescription = stringResource(R.string.contacts_edit),
-                            tint = HomeTextSecondary
-                        )
+                    Box(
+                        modifier = Modifier.size(20.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        WhatsAppIcon(contact.phoneNumber ?: "")
                     }
-                    IconButton(onClick = onDelete, modifier = Modifier.size(36.dp)) {
+                }
+
+                AnimatedVisibility(
+                    visible = actionsExpanded,
+                    enter = fadeIn(tween(200)) + slideInHorizontally(
+                        initialOffsetX = { it },
+                        animationSpec = tween(200)
+                    ),
+                    exit = fadeOut(tween(200)) + slideOutHorizontally(
+                        targetOffsetX = { it },
+                        animationSpec = tween(200)
+                    )
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        IconButton(
+                            onClick = {
+                                onEdit()
+                                actionsExpanded = false
+                            },
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Edit,
+                                contentDescription = stringResource(R.string.contacts_edit),
+                                tint = HomeTextSecondary,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+
+                        IconButton(
+                            onClick = {
+                                onDelete()
+                                actionsExpanded = false
+                            },
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Delete,
+                                contentDescription = stringResource(R.string.contacts_delete),
+                                tint = HomeRedAccent,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    }
+                }
+
+                IconButton(
+                    onClick = { actionsExpanded = !actionsExpanded },
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    AnimatedContent(
+                        targetState = actionsExpanded,
+                        transitionSpec = {
+                            fadeIn(tween(150)) togetherWith fadeOut(tween(150))
+                        },
+                        label = "menu_icon"
+                    ) { expanded ->
                         Icon(
-                            Icons.Default.Delete,
-                            contentDescription = stringResource(R.string.contacts_delete),
-                            tint = HomeRedAccent
+                            imageVector = if (expanded) Icons.Filled.Close else Icons.Filled.MoreVert,
+                            contentDescription = if (expanded) {
+                                stringResource(R.string.contacts_close)
+                            } else {
+                                stringResource(R.string.contacts_menu)
+                            },
+                            tint = HomeTextSecondary,
+                            modifier = Modifier.size(18.dp)
                         )
                     }
                 }
@@ -1213,6 +1303,7 @@ private fun AddEditContactBottomSheet(
                 value = pickedPhone,
                 onValueChange = onPhoneChange,
                 placeholder = stringResource(R.string.contacts_placeholder_phone),
+                keyboardType = KeyboardType.Phone,
                 modifier = Modifier.fillMaxWidth()
             )
 
@@ -1252,14 +1343,15 @@ private fun AddEditContactBottomSheet(
                 ) {
                     Text(stringResource(R.string.cancel), style = regularTextStyle(HomeTextSecondary, 14.sp))
                 }
+                val canSave = pickedName.isNotBlank() && pickedPhone.isNotBlank()
                 Button(
                     onClick = {
-                        if (pickedName.isNotBlank()) {
+                        if (pickedName.isNotBlank() && pickedPhone.isNotBlank()) {
                             onSave(
                                 Contact(
                                     id = initialContact?.id,
                                     name = pickedName.trim(),
-                                    phoneNumber = pickedPhone.trim().takeIf { it.isNotBlank() },
+                                    phoneNumber = pickedPhone.trim(),
                                     role = selectedRole.name,
                                     clubName = selectedClub?.clubName ?: clubSearchQuery.trim()
                                         .takeIf { it.isNotBlank() },
@@ -1270,13 +1362,17 @@ private fun AddEditContactBottomSheet(
                             )
                         }
                     },
+                    enabled = canSave,
                     modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = HomeTealAccent)
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = HomeTealAccent,
+                        disabledContainerColor = HomeTealAccent.copy(alpha = 0.4f)
+                    )
                 ) {
                     Text(
                         if (initialContact != null) stringResource(R.string.contacts_button_save) else stringResource(R.string.contacts_button_add),
-                        style = boldTextStyle(HomeDarkBackground, 14.sp)
+                        style = boldTextStyle(Color.White, 14.sp)
                     )
                 }
             }
@@ -1313,6 +1409,7 @@ private fun AddContactTextField(
     value: String,
     onValueChange: (String) -> Unit,
     placeholder: String,
+    keyboardType: KeyboardType = KeyboardType.Text,
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier) {
@@ -1324,6 +1421,7 @@ private fun AddContactTextField(
         OutlinedTextField(
             value = value,
             onValueChange = onValueChange,
+            keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
             placeholder = {
                 Text(
                     placeholder,
