@@ -98,6 +98,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.platform.rememberNestedScrollInteropConnection
@@ -1084,10 +1086,14 @@ private fun AddEditContactBottomSheet(
     val clubSearch: ClubSearch = koinInject()
 
     var clubSearchQuery by remember(initialContact) {
-        mutableStateOf(initialContact?.clubName ?: "")
+        mutableStateOf(
+            if (initialContact != null && !initialContact.clubName.isNullOrBlank()) ""
+            else initialContact?.clubName ?: ""
+        )
     }
 
     var clubSearchResults by remember { mutableStateOf<List<ClubSearchModel>>(emptyList()) }
+    val clubSearchFocusRequester = remember { FocusRequester() }
     var isSearchingClubs by remember { mutableStateOf(false) }
     var selectedClub by remember(initialContact) {
         mutableStateOf(
@@ -1103,7 +1109,11 @@ private fun AddEditContactBottomSheet(
         )
     }
 
-    androidx.compose.runtime.LaunchedEffect(clubSearchQuery) {
+    androidx.compose.runtime.LaunchedEffect(clubSearchQuery, selectedClub) {
+        if (selectedClub != null) {
+            clubSearchResults = emptyList()
+            return@LaunchedEffect
+        }
         if (clubSearchQuery.length < 2) {
             clubSearchResults = emptyList()
             return@LaunchedEffect
@@ -1125,6 +1135,7 @@ private fun AddEditContactBottomSheet(
     val containerSize = LocalWindowInfo.current.containerSize
     val density = LocalDensity.current.density
     val screenHeight = containerSize.height.dp / density
+    val keyboardController = LocalSoftwareKeyboardController.current
 
     ModalBottomSheet(
         sheetState = sheetState,
@@ -1176,7 +1187,9 @@ private fun AddEditContactBottomSheet(
                         style = regularTextStyle(HomeTextSecondary, 14.sp)
                     )
                 },
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .focusRequester(clubSearchFocusRequester),
                 singleLine = true,
                 colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(
                     focusedTextColor = HomeTextPrimary,
@@ -1246,7 +1259,13 @@ private fun AddEditContactBottomSheet(
                             )
                         }
                     }
-                    TextButton(onClick = { selectedClub = null; clubSearchQuery = "" }) {
+                    TextButton(onClick = {
+                        selectedClub = null
+                        clubSearchQuery = ""
+                        clubSearchResults = emptyList()
+                        clubSearchFocusRequester.requestFocus()
+                        keyboardController?.show()
+                    }) {
                         Text("Change", style = regularTextStyle(HomeTealAccent, 12.sp))
                     }
                 }
