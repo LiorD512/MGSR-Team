@@ -26,8 +26,11 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Link
+import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PersonAdd
+import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -63,7 +66,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -90,7 +95,13 @@ import com.liordahan.mgsrteam.ui.utils.boldTextStyle
 import com.liordahan.mgsrteam.ui.utils.clickWithNoRipple
 import com.liordahan.mgsrteam.ui.utils.regularTextStyle
 import com.liordahan.mgsrteam.utils.extractPlayerIdFromUrl
+import com.liordahan.mgsrteam.features.players.models.Player
+import com.liordahan.mgsrteam.features.players.repository.IPlayersRepository
+import com.liordahan.mgsrteam.features.releases.RosterTeammateMatch
+import com.liordahan.mgsrteam.transfermarket.TeammatesFetcher
+import com.liordahan.mgsrteam.transfermarket.TransfermarktResult
 import org.koin.androidx.compose.koinViewModel
+import org.koin.compose.koinInject
 
 private fun formatShortlistProfileDisplay(entry: ShortlistEntry): String {
     entry.playerName?.takeIf { it.isNotBlank() }?.let { return it }
@@ -124,7 +135,9 @@ private fun formatRelativeDate(addedAt: Long): String {
 fun ShortlistScreen(
     navController: NavController,
     viewModel: IShortlistViewModel = koinViewModel<ShortlistViewModel>(),
-    addPlayerViewModel: IAddPlayerViewModel = koinViewModel()
+    addPlayerViewModel: IAddPlayerViewModel = koinViewModel(),
+    playersRepository: IPlayersRepository = koinInject(),
+    teammatesFetcher: TeammatesFetcher = koinInject()
 ) {
     val state by viewModel.shortlistFlow.collectAsState()
     val context = LocalContext.current
@@ -134,6 +147,12 @@ fun ShortlistScreen(
     var showAddPlayerBottomSheet by remember { mutableStateOf(false) }
     var addPlayerTmUrl by remember { mutableStateOf<String?>(null) }
     var entryToDelete by remember { mutableStateOf<ShortlistEntry?>(null) }
+
+    // Roster teammates feature (same as Releases)
+    val rosterPlayers by playersRepository.playersFlow().collectAsState(initial = emptyList())
+    var expandedPlayerUrl by remember { mutableStateOf<String?>(null) }
+    var teammatesCache by remember { mutableStateOf<Map<String, List<RosterTeammateMatch>>>(emptyMap()) }
+    var loadingPlayerUrl by remember { mutableStateOf<String?>(null) }
 
     val addPlayerState = addPlayerViewModel.playerSearchStateFlow.collectAsState()
     val selectedPlayer by addPlayerViewModel.selectedPlayerFlow.collectAsState()
@@ -166,6 +185,31 @@ fun ShortlistScreen(
             addPlayerTmUrl = null
             addPlayerViewModel.resetAfterAdd()
         }
+    }
+
+    // Fetch teammates when user expands a card
+    LaunchedEffect(expandedPlayerUrl) {
+        val url = expandedPlayerUrl ?: return@LaunchedEffect
+        if (url in teammatesCache) return@LaunchedEffect
+        loadingPlayerUrl = url
+        when (val result = teammatesFetcher.fetchTeammates(url)) {
+            is TransfermarktResult.Success -> {
+                val rosterIds = rosterPlayers.mapNotNull { extractPlayerIdFromUrl(it.tmProfile) }.toSet()
+                val matches = result.data
+                    .filter { teammate -> extractPlayerIdFromUrl(teammate.tmProfileUrl) in rosterIds }
+                    .mapNotNull { teammate ->
+                        val id = extractPlayerIdFromUrl(teammate.tmProfileUrl) ?: return@mapNotNull null
+                        rosterPlayers.firstOrNull { extractPlayerIdFromUrl(it.tmProfile) == id }
+                            ?.let { RosterTeammateMatch(it, teammate.matchesPlayedTogether) }
+                    }
+                    .sortedByDescending { it.matchesPlayedTogether }
+                teammatesCache = teammatesCache + (url to matches)
+            }
+            is TransfermarktResult.Failed -> {
+                teammatesCache = teammatesCache + (url to emptyList())
+            }
+        }
+        loadingPlayerUrl = null
     }
 
     if (state.isLoading) {
@@ -217,8 +261,21 @@ fun ShortlistScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     items(state.entries) { entry ->
+                        val playerUrl = entry.tmProfileUrl
+                        val isExpanded = playerUrl == expandedPlayerUrl
                         ShortlistCard(
                             entry = entry,
+                            rosterTeammates = teammatesCache[playerUrl],
+                            isLoadingTeammates = loadingPlayerUrl == playerUrl,
+                            isTeammatesExpanded = isExpanded,
+                            onToggleTeammatesExpand = {
+                                expandedPlayerUrl = if (isExpanded) null else playerUrl
+                            },
+                            onRosterTeammateClick = { player ->
+                                player.tmProfile?.let { profile ->
+                                    navController.navigate("${Screens.PlayerInfoScreen.route}/${Uri.encode(profile)}")
+                                }
+                            },
                             onAddToAgency = {
                                 addPlayerTmUrl = entry.tmProfileUrl
                                 showAddPlayerBottomSheet = true
@@ -425,6 +482,11 @@ private fun ShortlistStatsStripDivider() {
 @Composable
 private fun ShortlistCard(
     entry: ShortlistEntry,
+    rosterTeammates: List<RosterTeammateMatch>? = null,
+    isLoadingTeammates: Boolean = false,
+    isTeammatesExpanded: Boolean = false,
+    onToggleTeammatesExpand: () -> Unit = {},
+    onRosterTeammateClick: (Player) -> Unit = {},
     onAddToAgency: () -> Unit,
     onOpenTm: () -> Unit,
     onRemove: () -> Unit
@@ -578,6 +640,85 @@ private fun ShortlistCard(
                 thickness = 1.dp,
                 modifier = Modifier.padding(horizontal = 12.dp)
             )
+            // Roster teammates section (same as Releases)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 8.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(HomeDarkBackground)
+                    .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(12.dp))
+                    .clickWithNoRipple { onToggleTeammatesExpand() }
+                    .padding(8.dp, 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    Icons.Default.People,
+                    contentDescription = null,
+                    tint = HomeTealAccent,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    text = when {
+                        isTeammatesExpanded && isLoadingTeammates -> stringResource(R.string.releases_roster_teammates_loading)
+                        isTeammatesExpanded && rosterTeammates != null -> if (rosterTeammates.size == 1) stringResource(R.string.releases_roster_teammates_one, rosterTeammates.size) else stringResource(R.string.releases_roster_teammates, rosterTeammates.size)
+                        else -> stringResource(R.string.releases_roster_teammates_tap)
+                    },
+                    style = regularTextStyle(HomeTextPrimary, 13.sp)
+                )
+                Spacer(Modifier.weight(1f))
+                Icon(
+                    Icons.Default.ExpandMore,
+                    contentDescription = if (isTeammatesExpanded) "Collapse" else "Expand",
+                    tint = HomeTextSecondary,
+                    modifier = Modifier
+                        .size(20.dp)
+                        .graphicsLayer { rotationZ = if (isTeammatesExpanded) 180f else 0f }
+                )
+            }
+            if (isTeammatesExpanded) {
+                if (isLoadingTeammates) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(start = 12.dp, end = 12.dp, bottom = 8.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(HomeDarkBackground)
+                            .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(12.dp))
+                            .padding(16.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(
+                            color = HomeTealAccent,
+                            modifier = Modifier.size(24.dp),
+                            strokeWidth = 2.dp
+                        )
+                    }
+                } else if (rosterTeammates.isNullOrEmpty()) {
+                    Text(
+                        text = stringResource(R.string.releases_no_roster_teammates),
+                        style = regularTextStyle(HomeTextSecondary, 12.sp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(start = 12.dp, end = 12.dp, bottom = 8.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(HomeDarkBackground)
+                            .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(12.dp))
+                            .padding(12.dp)
+                    )
+                } else {
+                    Column(modifier = Modifier.padding(start = 12.dp, end = 12.dp, bottom = 8.dp)) {
+                        rosterTeammates.forEach { match ->
+                            ShortlistRosterTeammateRow(
+                                player = match.player,
+                                matchesPlayedTogether = match.matchesPlayedTogether,
+                                onClick = { onRosterTeammateClick(match.player) }
+                            )
+                        }
+                    }
+                }
+            }
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -630,6 +771,67 @@ private fun ShortlistCard(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun ShortlistRosterTeammateRow(
+    player: Player,
+    matchesPlayedTogether: Int,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 6.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(HomeDarkBackground)
+            .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(12.dp))
+            .clickWithNoRipple { onClick() }
+            .padding(10.dp, 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        player.profileImage?.let { url ->
+            AsyncImage(
+                model = url,
+                contentDescription = null,
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(CircleShape),
+                contentScale = ContentScale.Crop
+            )
+        } ?: run {
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .background(HomeDarkCardBorder),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    (player.fullName?.take(2) ?: "?").uppercase(),
+                    style = boldTextStyle(HomeTextSecondary, 12.sp)
+                )
+            }
+        }
+        Spacer(Modifier.width(12.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                player.fullName ?: "Unknown",
+                style = boldTextStyle(HomeTextPrimary, 14.sp)
+            )
+            Text(
+                text = "${player.age ?: "-"} • ${player.positions?.firstOrNull()?.takeIf { it.isNotBlank() } ?: "-"} • ${player.marketValue ?: "-"} • ${stringResource(R.string.releases_games_together, matchesPlayedTogether)}",
+                style = regularTextStyle(HomeTextSecondary, 11.sp, direction = TextDirection.Ltr),
+                modifier = Modifier.padding(top = 2.dp)
+            )
+        }
+        Icon(
+            Icons.AutoMirrored.Filled.KeyboardArrowRight,
+            contentDescription = null,
+            tint = HomeTextSecondary,
+            modifier = Modifier.size(20.dp)
+        )
     }
 }
 
