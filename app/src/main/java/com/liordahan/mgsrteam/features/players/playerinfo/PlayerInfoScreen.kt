@@ -40,6 +40,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.filled.BookmarkAdd
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Delete
@@ -76,6 +78,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -127,7 +130,9 @@ import com.liordahan.mgsrteam.features.players.models.Player
 import com.liordahan.mgsrteam.features.requests.models.SalaryRangeOptions
 import com.liordahan.mgsrteam.features.requests.models.TransferFeeOptions
 import com.liordahan.mgsrteam.features.players.playerinfo.documents.DocumentType
+import com.liordahan.mgsrteam.features.shortlist.ShortlistRepository
 import com.liordahan.mgsrteam.navigation.Screens
+import com.liordahan.mgsrteam.transfermarket.LatestTransferModel
 import com.liordahan.mgsrteam.features.players.playerinfo.documents.PlayerDocument
 import com.liordahan.mgsrteam.features.players.models.getAgentPhoneNumber
 import com.liordahan.mgsrteam.features.players.models.getPlayerPhoneNumber
@@ -157,6 +162,7 @@ import com.liordahan.mgsrteam.ui.utils.regularTextStyle
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
+import org.koin.compose.koinInject
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -1333,9 +1339,14 @@ private fun PlayerInfoQuickActionWhatsApp(
 @Composable
 private fun PlayerInfoAiHelperSection(
     player: Player,
-    viewModel: IPlayerInfoViewModel
+    viewModel: IPlayerInfoViewModel,
+    shortlistRepository: ShortlistRepository = koinInject()
 ) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val shortlistEntries by shortlistRepository.getShortlistFlow().collectAsState(initial = emptyList())
+    val shortlistUrls = remember(shortlistEntries) { shortlistEntries.map { it.tmProfileUrl }.toSet() }
+    var justAddedUrls by remember { mutableStateOf<Set<String>>(emptySet()) }
     var isFindSimilarExpanded by remember { mutableStateOf(false) }
     var expandedSimilarIndex by remember { mutableStateOf<Int?>(null) }
     val similarPlayers by viewModel.similarPlayersFlow.collectAsState()
@@ -1442,7 +1453,34 @@ private fun PlayerInfoAiHelperSection(
                                         suggestion.transfermarktUrl?.let { url ->
                                             context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
                                         }
-                                    }
+                                    },
+                                    onAddToShortlistClick = suggestion.transfermarktUrl?.let { url ->
+                                        {
+                                            scope.launch {
+                                                val isInShortlist = url in shortlistUrls || url in justAddedUrls
+                                                if (isInShortlist) {
+                                                    shortlistRepository.removeFromShortlist(url)
+                                                    justAddedUrls = justAddedUrls - url
+                                                } else {
+                                                    val model = LatestTransferModel(
+                                                        playerName = suggestion.name,
+                                                        playerUrl = url,
+                                                        playerPosition = suggestion.position,
+                                                        playerAge = suggestion.age,
+                                                        marketValue = suggestion.marketValue
+                                                    )
+                                                    if (shortlistRepository.addToShortlist(model)) {
+                                                        justAddedUrls = justAddedUrls + url
+                                                    } else {
+                                                        ToastManager.showSuccess(context.getString(R.string.add_player_already_in_shortlist))
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    },
+                                    isInShortlist = suggestion.transfermarktUrl?.let { url ->
+                                        url in shortlistUrls || url in justAddedUrls
+                                    } ?: false
                                 )
                             }
                         }
@@ -1571,7 +1609,9 @@ private fun SimilarPlayerSuggestionRow(
     suggestion: AiHelperService.SimilarPlayerSuggestion,
     isExpanded: Boolean,
     onToggleExpand: () -> Unit,
-    onTmLinkClick: () -> Unit
+    onTmLinkClick: () -> Unit,
+    onAddToShortlistClick: (() -> Unit)? = null,
+    isInShortlist: Boolean = false
 ) {
     Column(
         modifier = Modifier
@@ -1619,6 +1659,17 @@ private fun SimilarPlayerSuggestionRow(
                         .size(20.dp)
                         .clickWithNoRipple { onTmLinkClick() },
                     tint = HomeTealAccent
+                )
+                Spacer(Modifier.width(8.dp))
+            }
+            onAddToShortlistClick?.let { onAdd ->
+                Icon(
+                    imageVector = if (isInShortlist) Icons.Default.Bookmark else Icons.Default.BookmarkAdd,
+                    contentDescription = if (isInShortlist) stringResource(R.string.shortlist_in_shortlist) else stringResource(R.string.shortlist_add_to_shortlist),
+                    modifier = Modifier
+                        .size(20.dp)
+                        .clickWithNoRipple { onAdd() },
+                    tint = if (isInShortlist) HomeGreenAccent else HomeTextSecondary
                 )
                 Spacer(Modifier.width(8.dp))
             }

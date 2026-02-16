@@ -68,27 +68,18 @@ class AiHelperService(
                 )
 
                 val playerContext = buildPlayerContext(player)
-                val ageConstraint = buildAgeRangeConstraint(player)
-                val valueConstraint = buildMarketValueRangeConstraint(player)
-                val positionConstraint = buildPositionConstraint(player)
-                val constraints = listOfNotNull(ageConstraint, valueConstraint, positionConstraint)
-                    .joinToString("\n")
-                    .ifBlank { "Consider age (±2 years), positions (same role), and market value range when suggesting similar players." }
                 val outputLanguage = if (languageCode == "he" || languageCode == "iw") "Hebrew" else "English"
                 val prompt = """
-                    You are a football scout assistant. Find 8-12 similar professional football (soccer) players to this player.
+                    You are one of the best football scouts in the world with 20 years of experience behind you. You have the most updated data and analysis tools to assess players.
+                    
+                    Find me similar players to the player in the player info below. Consider his playing style, his physicality, his position, his market value and age. Only offer players that fit and can help. Do not suggest players that are already in my roster (e.g. teammates from the same club).
                     
                     Player profile:
                     $playerContext
                     
-                    STRICT REQUIREMENTS (you MUST follow these):
-                    $constraints
+                    Suggest 8-12 players who have a profile on Transfermarkt.com. For each player, provide the full name EXACTLY as it appears on Transfermarkt (e.g. "Lionel Messi" not "Messi"). Do NOT provide URLs. Focus on current active players (2024-2025 season).
                     
-                    CRITICAL: Suggest ONLY players who have a profile on Transfermarkt.com. Prefer well-known players from top leagues (Premier League, La Liga, Serie A, Bundesliga, Ligue 1, etc.) or established national team players. Avoid obscure players from lower divisions who may not be on Transfermarkt.
-                    For each player, provide the full name EXACTLY as it appears on Transfermarkt (e.g. "Lionel Messi" not "Messi"). Use standard spelling.
-                    Do NOT provide URLs. Focus on current active players (2024-2025 season).
-                    
-                    IMPORTANT: Write the similarityReason field in $outputLanguage. The app language is $outputLanguage.
+                    Write the similarityReason field in $outputLanguage. The app language is $outputLanguage.
                 """.trimIndent()
 
                 val response = model.generateContent(prompt)
