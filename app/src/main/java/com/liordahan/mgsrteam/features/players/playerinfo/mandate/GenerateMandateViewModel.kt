@@ -7,13 +7,37 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import java.util.Calendar
 import java.util.Date
 
 /**
- * ViewModel for GenerateMandateScreen. Holds mandate details state so it survives
- * navigation to MandatePreviewScreen and back (e.g. when user clicks Cancel).
+ * ViewModel for the Generate Mandate wizard.
+ * Manages a 3-step flow: Agent → Validity → Review.
+ * State survives navigation to MandatePreviewScreen and back.
  */
 class GenerateMandateViewModel : ViewModel() {
+
+    // ── Step management ──
+
+    private val _currentStep = MutableStateFlow(0)
+    val currentStep: StateFlow<Int> = _currentStep.asStateFlow()
+
+    fun setCurrentStep(step: Int) {
+        _currentStep.value = step.coerceIn(0, 2)
+    }
+
+    fun goNext() {
+        _currentStep.update { (it + 1).coerceAtMost(2) }
+    }
+
+    fun goBack() {
+        _currentStep.update { (it - 1).coerceAtLeast(0) }
+    }
+
+    // ── Step 1: Agent selection ──
+
+    private val _isLoadingAgents = MutableStateFlow(true)
+    val isLoadingAgents: StateFlow<Boolean> = _isLoadingAgents.asStateFlow()
 
     private val _agentsWithFifaLicense = MutableStateFlow<List<Account>>(emptyList())
     val agentsWithFifaLicense: StateFlow<List<Account>> = _agentsWithFifaLicense.asStateFlow()
@@ -21,7 +45,20 @@ class GenerateMandateViewModel : ViewModel() {
     private val _selectedAgent = MutableStateFlow<Account?>(null)
     val selectedAgent: StateFlow<Account?> = _selectedAgent.asStateFlow()
 
-    private val _expiryDate = MutableStateFlow<Date?>(null)
+    fun setAgentsWithFifaLicense(agents: List<Account>) {
+        _agentsWithFifaLicense.value = agents
+        _isLoadingAgents.value = false
+    }
+
+    fun setSelectedAgent(agent: Account?) {
+        _selectedAgent.value = agent
+    }
+
+    // ── Step 2: Validity (date + leagues) ──
+
+    private val _expiryDate = MutableStateFlow<Date?>(
+        Calendar.getInstance().apply { add(Calendar.MONTH, 6) }.time
+    )
     val expiryDate: StateFlow<Date?> = _expiryDate.asStateFlow()
 
     private val _showDatePicker = MutableStateFlow(false)
@@ -33,31 +70,47 @@ class GenerateMandateViewModel : ViewModel() {
     private val _selectedClubs = MutableStateFlow<List<ClubSearchModel>>(emptyList())
     val selectedClubs: StateFlow<List<ClubSearchModel>> = _selectedClubs.asStateFlow()
 
-    private val _pendingClubs = MutableStateFlow<List<ClubSearchModel>>(emptyList())
-    val pendingClubs: StateFlow<List<ClubSearchModel>> = _pendingClubs.asStateFlow()
+    private val _showAddLeagueSheet = MutableStateFlow(false)
+    val showAddLeagueSheet: StateFlow<Boolean> = _showAddLeagueSheet.asStateFlow()
 
-    private val _currentCountry = MutableStateFlow<String?>(null)
-    val currentCountry: StateFlow<String?> = _currentCountry.asStateFlow()
+    // ── Add-league bottom sheet state ──
 
-    private val _entireCountry = MutableStateFlow(true)
-    val entireCountry: StateFlow<Boolean> = _entireCountry.asStateFlow()
+    private val _sheetCountryQuery = MutableStateFlow("")
+    val sheetCountryQuery: StateFlow<String> = _sheetCountryQuery.asStateFlow()
 
-    private val _clubSearchQuery = MutableStateFlow("")
-    val clubSearchQuery: StateFlow<String> = _clubSearchQuery.asStateFlow()
+    private val _sheetSelectedCountry = MutableStateFlow<String?>(null)
+    val sheetSelectedCountry: StateFlow<String?> = _sheetSelectedCountry.asStateFlow()
 
-    private val _countrySearchQuery = MutableStateFlow("")
-    val countrySearchQuery: StateFlow<String> = _countrySearchQuery.asStateFlow()
+    private val _sheetEntireCountry = MutableStateFlow(true)
+    val sheetEntireCountry: StateFlow<Boolean> = _sheetEntireCountry.asStateFlow()
+
+    private val _sheetClubQuery = MutableStateFlow("")
+    val sheetClubQuery: StateFlow<String> = _sheetClubQuery.asStateFlow()
+
+    private val _sheetPendingClubs = MutableStateFlow<List<ClubSearchModel>>(emptyList())
+    val sheetPendingClubs: StateFlow<List<ClubSearchModel>> = _sheetPendingClubs.asStateFlow()
+
+    // ── PDF generation ──
 
     private val _isGenerating = MutableStateFlow(false)
     val isGenerating: StateFlow<Boolean> = _isGenerating.asStateFlow()
 
-    fun setAgentsWithFifaLicense(agents: List<Account>) {
-        _agentsWithFifaLicense.value = agents
-    }
+    // ── Step 1 validation ──
 
-    fun setSelectedAgent(agent: Account?) {
-        _selectedAgent.value = agent
-    }
+    val canProceedStep1: Boolean
+        get() = _selectedAgent.value != null
+
+    // ── Step 2 validation ──
+
+    val canProceedStep2: Boolean
+        get() = _expiryDate.value != null && validLeagues.isNotEmpty()
+
+    // ── Valid leagues (computed) ──
+
+    val validLeagues: List<String>
+        get() = MandatePdfGenerator.buildValidLeagues(_countryOnly.value, _selectedClubs.value)
+
+    // ── Actions ──
 
     fun setExpiryDate(date: Date?) {
         _expiryDate.value = date
@@ -67,8 +120,9 @@ class GenerateMandateViewModel : ViewModel() {
         _showDatePicker.value = show
     }
 
-    fun setCountryOnly(countries: List<String>) {
-        _countryOnly.update { countries }
+    fun setShowAddLeagueSheet(show: Boolean) {
+        _showAddLeagueSheet.value = show
+        if (!show) resetSheetState()
     }
 
     fun addToCountryOnly(country: String) {
@@ -77,10 +131,6 @@ class GenerateMandateViewModel : ViewModel() {
 
     fun removeFromCountryOnly(country: String) {
         _countryOnly.update { it - country }
-    }
-
-    fun setSelectedClubs(clubs: List<ClubSearchModel>) {
-        _selectedClubs.value = clubs
     }
 
     fun addToSelectedClubs(clubs: List<ClubSearchModel>) {
@@ -93,42 +143,61 @@ class GenerateMandateViewModel : ViewModel() {
         _selectedClubs.update { it.filter { c -> !(c.clubName == clubName && c.clubCountry == clubCountry) } }
     }
 
-    fun setPendingClubs(clubs: List<ClubSearchModel>) {
-        _pendingClubs.value = clubs
-    }
-
-    fun addToPendingClubs(club: ClubSearchModel) {
-        _pendingClubs.update { if (it.none { c -> c.clubName == club.clubName && c.clubCountry == club.clubCountry }) it + club else it }
-    }
-
-    fun clearPendingClubs() {
-        _pendingClubs.value = emptyList()
-    }
-
-    fun setCurrentCountry(country: String?) {
-        _currentCountry.value = country
-    }
-
-    fun setEntireCountry(entire: Boolean) {
-        _entireCountry.value = entire
-    }
-
-    fun setClubSearchQuery(query: String) {
-        _clubSearchQuery.value = query
-    }
-
-    fun setCountrySearchQuery(query: String) {
-        _countrySearchQuery.value = query
-    }
-
     fun setIsGenerating(generating: Boolean) {
         _isGenerating.value = generating
     }
 
-    fun resetCountrySelection() {
-        _currentCountry.value = null
-        _entireCountry.value = true
-        _pendingClubs.value = emptyList()
-        _clubSearchQuery.value = ""
+    // ── Bottom sheet actions ──
+
+    fun setSheetCountryQuery(query: String) {
+        _sheetCountryQuery.value = query
     }
+
+    fun setSheetSelectedCountry(country: String?) {
+        _sheetSelectedCountry.value = country
+        _sheetClubQuery.value = ""
+        _sheetPendingClubs.value = emptyList()
+    }
+
+    fun setSheetEntireCountry(entire: Boolean) {
+        _sheetEntireCountry.value = entire
+    }
+
+    fun setSheetClubQuery(query: String) {
+        _sheetClubQuery.value = query
+    }
+
+    fun addToSheetPendingClubs(club: ClubSearchModel) {
+        _sheetPendingClubs.update {
+            if (it.none { c -> c.clubName == club.clubName && c.clubCountry == club.clubCountry }) it + club else it
+        }
+    }
+
+    fun removeFromSheetPendingClubs(club: ClubSearchModel) {
+        _sheetPendingClubs.update { it.filter { c -> c.clubName != club.clubName || c.clubCountry != club.clubCountry } }
+    }
+
+    fun confirmSheetSelection() {
+        val country = _sheetSelectedCountry.value ?: return
+        if (_sheetEntireCountry.value) {
+            addToCountryOnly(country)
+        } else {
+            val clubs = _sheetPendingClubs.value.filter { it.clubCountry.equals(country, ignoreCase = true) }
+            if (clubs.isNotEmpty()) addToSelectedClubs(clubs)
+        }
+        setShowAddLeagueSheet(false)
+    }
+
+    private fun resetSheetState() {
+        _sheetCountryQuery.value = ""
+        _sheetSelectedCountry.value = null
+        _sheetEntireCountry.value = true
+        _sheetClubQuery.value = ""
+        _sheetPendingClubs.value = emptyList()
+    }
+
+    // ── Navigate to specific step from review ──
+
+    fun editAgent() { _currentStep.value = 0 }
+    fun editValidity() { _currentStep.value = 1 }
 }

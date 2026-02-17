@@ -389,25 +389,56 @@
     <string name="player_info_share">שתף</string>
     <string name="player_info_generate_mandate">יצירת מנדט</string>
 
-    <!-- Generate Mandate Sheet -->
+    <!-- Generate Mandate Wizard -->
     <string name="mandate_generate_title">יצירת מנדט</string>
-    <string name="mandate_expiry_date">תאריך תפוגת המנדט</string>
+    <string name="mandate_expiry_date">תאריך תפוגה</string>
     <string name="mandate_select_expiry">בחר תאריך תפוגה</string>
     <string name="mandate_valid_leagues">ליגות / מדינות תקפות</string>
-    <string name="mandate_select_country">בחר מדינה</string>
-    <string name="mandate_entire_country">כל המדינה</string>
-    <string name="mandate_add_to_list">הוסף לרשימה</string>
-    <string name="mandate_added_entries">רשומות שנוספו (לחץ X להסרה)</string>
-    <string name="mandate_pending_clubs">%d מועדון(ים) נבחרו</string>
-    <string name="mandate_generate_pdf">יצירת PDF</string>
+    <string name="mandate_select_country">חפש מדינה…</string>
+    <string name="mandate_entire_country">כל המדינה (כל המועדונים)</string>
+    <string name="mandate_generate_pdf">יצירת מנדט</string>
+    <string name="mandate_generating">מייצר…</string>
     <string name="mandate_confirm">אישור</string>
     <string name="mandate_cancel">ביטול</string>
-    <string name="mandate_preview_title">תצוגה מקדימה של המנדט</string>
+    <string name="mandate_preview_title">תצוגה מקדימה</string>
     <string name="mandate_preview_page">עמוד %d</string>
-    <string name="mandate_done">ביטול</string>
+    <string name="mandate_done">סיום</string>
     <string name="mandate_error_generate_failed">יצירת ה-PDF נכשלה: %1$s</string>
-    <string name="mandate_select_agent">בחר סוכן</string>
     <string name="mandate_no_agents_fifa">לא נמצאו סוכנים עם רישיון פיפ״א</string>
+    <string name="mandate_next">הבא</string>
+    <string name="mandate_remove">הסר</string>
+
+    <!-- Mandate Wizard Steps -->
+    <string name="mandate_step_of">שלב %1$d מתוך 3</string>
+    <string name="mandate_step_agent">סוכן</string>
+    <string name="mandate_step_validity">תוקף</string>
+    <string name="mandate_step_review">סקירה</string>
+    <string name="mandate_step1_title">בחר סוכן</string>
+    <string name="mandate_step1_subtitle">מי ייצג את השחקן?</string>
+    <string name="mandate_step2_title">פרטי תוקף</string>
+    <string name="mandate_step2_subtitle">הגדר את משך המנדט והיכן הוא תקף</string>
+    <string name="mandate_step3_title">סקירה ויצירה</string>
+    <string name="mandate_step3_subtitle">אשר את כל הפרטים לפני יצירת המנדט</string>
+    <string name="mandate_fifa_license">רישיון פיפ״א: %1$s</string>
+    <string name="mandate_tap_to_change">לחץ לשינוי</string>
+    <string name="mandate_add_country_league">הוסף מדינה / ליגה</string>
+    <string name="mandate_no_leagues_hint">לא נוספו ליגות עדיין.\nלחץ על הכפתור למעלה להוספת מדינות או מועדונים.</string>
+    <string name="mandate_hint_select_agent">בחר סוכן כדי להמשיך</string>
+    <string name="mandate_hint_date_and_leagues">הגדר תאריך תפוגה והוסף לפחות ליגה אחת</string>
+    <string name="mandate_hint_select_date">בחר תאריך תפוגה כדי להמשיך</string>
+    <string name="mandate_hint_add_league">הוסף לפחות ליגה או מדינה אחת</string>
+
+    <!-- Mandate Review -->
+    <string name="mandate_review_player">שחקן</string>
+    <string name="mandate_review_agent">סוכן</string>
+    <string name="mandate_review_validity">תוקף</string>
+    <string name="mandate_review_fifa_id">מספר רישיון פיפ״א</string>
+
+    <!-- Mandate Bottom Sheet -->
+    <string name="mandate_sheet_search_country">חפש מדינה</string>
+    <string name="mandate_sheet_search_clubs">חפש מועדונים ב%1$s…</string>
+    <string name="mandate_selected_clubs">%d מועדון(ים) נבחרו</string>
+    <string name="mandate_sheet_add_button">הוסף למנדט</string>
     <string name="player_info_delete">מחק</string>
     <string name="player_info_delete_player_confirm">האם אתה בטוח שברצונך למחוק את השחקן?</string>
     <string name="player_info_delete_note_confirm">האם אתה בטוח שברצונך למחוק את ההערה?</string>

@@ -158,31 +158,38 @@ fun MandatePreviewScreen(
                 }
             }
             Spacer(Modifier.height(16.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            Button(
+                onClick = { shareMandatePdf(context, pdfFile) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(52.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = HomeTealAccent),
+                shape = RoundedCornerShape(12.dp)
             ) {
-                Button(
-                    onClick = {
-                        shareMandatePdf(context, pdfFile)
-                        navController.popBackStack()
-                    },
-                    modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.buttonColors(containerColor = HomeTealAccent),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text(stringResource(R.string.player_info_share))
-                }
-                Button(
-                    onClick = { navController.popBackStack() },
-                    modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.buttonColors(containerColor = HomeDarkCardBorder),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Text(stringResource(R.string.mandate_done))
-                }
+                Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(20.dp))
+                Spacer(Modifier.width(10.dp))
+                Text(
+                    stringResource(R.string.player_info_share),
+                    style = com.liordahan.mgsrteam.ui.utils.boldTextStyle(
+                        androidx.compose.ui.graphics.Color.White, 15.sp
+                    )
+                )
+            }
+            Spacer(Modifier.height(8.dp))
+            Button(
+                onClick = { navController.popBackStack() },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = HomeDarkCardBorder),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text(
+                    stringResource(R.string.mandate_cancel),
+                    style = com.liordahan.mgsrteam.ui.utils.regularTextStyle(
+                        com.liordahan.mgsrteam.ui.theme.HomeTextPrimary, 14.sp
+                    )
+                )
             }
         }
     }

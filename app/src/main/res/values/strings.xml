@@ -389,25 +389,56 @@
     <string name="player_info_share">Share</string>
     <string name="player_info_generate_mandate">Generate mandate</string>
 
-    <!-- Generate Mandate Sheet -->
+    <!-- Generate Mandate Wizard -->
     <string name="mandate_generate_title">Generate Mandate</string>
-    <string name="mandate_expiry_date">Mandate expiry date</string>
+    <string name="mandate_expiry_date">Expiry date</string>
     <string name="mandate_select_expiry">Select expiry date</string>
     <string name="mandate_valid_leagues">Valid leagues / countries</string>
-    <string name="mandate_select_country">Select country</string>
-    <string name="mandate_entire_country">Entire country</string>
-    <string name="mandate_add_to_list">Add to list</string>
-    <string name="mandate_added_entries">Added entries (tap X to remove)</string>
-    <string name="mandate_pending_clubs">%d club(s) selected</string>
-    <string name="mandate_generate_pdf">Generate PDF</string>
+    <string name="mandate_select_country">Search country…</string>
+    <string name="mandate_entire_country">Entire country (all clubs)</string>
+    <string name="mandate_generate_pdf">Generate Mandate</string>
+    <string name="mandate_generating">Generating…</string>
     <string name="mandate_confirm">OK</string>
     <string name="mandate_cancel">Cancel</string>
-    <string name="mandate_preview_title">Preview mandate</string>
+    <string name="mandate_preview_title">Preview Mandate</string>
     <string name="mandate_preview_page">Page %d</string>
-    <string name="mandate_done">Cancel</string>
+    <string name="mandate_done">Done</string>
     <string name="mandate_error_generate_failed">Failed to generate PDF: %1$s</string>
-    <string name="mandate_select_agent">Select agent</string>
     <string name="mandate_no_agents_fifa">No agents with FIFA license found</string>
+    <string name="mandate_next">Next</string>
+    <string name="mandate_remove">Remove</string>
+
+    <!-- Mandate Wizard Steps -->
+    <string name="mandate_step_of">Step %1$d of 3</string>
+    <string name="mandate_step_agent">Agent</string>
+    <string name="mandate_step_validity">Validity</string>
+    <string name="mandate_step_review">Review</string>
+    <string name="mandate_step1_title">Select Agent</string>
+    <string name="mandate_step1_subtitle">Who will represent this player?</string>
+    <string name="mandate_step2_title">Validity Details</string>
+    <string name="mandate_step2_subtitle">Set the mandate duration and where it applies</string>
+    <string name="mandate_step3_title">Review &amp; Generate</string>
+    <string name="mandate_step3_subtitle">Confirm all details before generating the mandate</string>
+    <string name="mandate_fifa_license">FIFA License: %1$s</string>
+    <string name="mandate_tap_to_change">Tap to change</string>
+    <string name="mandate_add_country_league">Add Country / League</string>
+    <string name="mandate_no_leagues_hint">No leagues added yet.\nTap the button above to add countries or clubs.</string>
+    <string name="mandate_hint_select_agent">Select an agent to continue</string>
+    <string name="mandate_hint_date_and_leagues">Set an expiry date and add at least one league</string>
+    <string name="mandate_hint_select_date">Select an expiry date to continue</string>
+    <string name="mandate_hint_add_league">Add at least one league or country</string>
+
+    <!-- Mandate Review -->
+    <string name="mandate_review_player">Player</string>
+    <string name="mandate_review_agent">Agent</string>
+    <string name="mandate_review_validity">Validity</string>
+    <string name="mandate_review_fifa_id">FIFA License ID</string>
+
+    <!-- Mandate Bottom Sheet -->
+    <string name="mandate_sheet_search_country">Search for a country</string>
+    <string name="mandate_sheet_search_clubs">Search clubs in %1$s…</string>
+    <string name="mandate_selected_clubs">%d club(s) selected</string>
+    <string name="mandate_sheet_add_button">Add to Mandate</string>
     <string name="player_info_delete">Delete</string>
     <string name="player_info_delete_player_confirm">Are you sure you want to delete this player?</string>
     <string name="player_info_delete_note_confirm">Are you sure you want to delete this note?</string>
