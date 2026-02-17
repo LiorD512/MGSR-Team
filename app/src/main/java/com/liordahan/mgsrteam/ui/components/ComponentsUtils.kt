@@ -199,7 +199,9 @@ fun AppTextField(
     leadingIcon: ImageVector? = null,
     trailingIcon: ImageVector? = null,
     trailingIconAlwaysVisible: Boolean = false,
+    trailingIconContentDescription: String? = null,
     keyboardOptions: KeyboardOptions,
+    keyboardActions: androidx.compose.foundation.text.KeyboardActions = androidx.compose.foundation.text.KeyboardActions.Default,
     onTrailingIconClicked: (() -> Unit)? = null,
     onValueChange: (TextFieldValue) -> Unit,
     darkTheme: Boolean = false,
@@ -227,6 +229,7 @@ fun AppTextField(
         enabled = true,
         singleLine = true,
         keyboardOptions = keyboardOptions,
+        keyboardActions = keyboardActions,
         decorationBox = { innerTextField ->
             TextFieldDefaults.DecorationBox(
                 value = textInput.text,
@@ -271,14 +274,14 @@ fun AppTextField(
                                 ) {
                                     Icon(
                                         imageVector = icon,
-                                        contentDescription = null,
+                                        contentDescription = trailingIconContentDescription,
                                         tint = iconTint
                                     )
                                 }
                             } else {
                                 Icon(
                                     imageVector = icon,
-                                    contentDescription = null,
+                                    contentDescription = trailingIconContentDescription,
                                     tint = iconTint
                                 )
                             }

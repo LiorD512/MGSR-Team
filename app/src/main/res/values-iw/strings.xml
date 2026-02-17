@@ -12,11 +12,17 @@
     <string name="nav_item_requests">בקשות</string>
 
     <!-- Login -->
+    <string name="login_welcome_title">ברוך הבא</string>
+    <string name="login_welcome_subtitle">התחבר כדי להמשיך</string>
     <string name="login_button_title">התחברות</string>
     <string name="login_signing_in">מתחבר…</string>
     <string name="login_error_invalid_credentials">אימייל או סיסמה שגויים. אנא נסה שוב.</string>
+    <string name="login_error_invalid_email">אנא הזן כתובת מייל תקינה</string>
     <string name="login_button_email_hint">הקלד כתובת מייל</string>
     <string name="login_button_password_hint">הקלד סיסמא</string>
+    <string name="login_cd_app_logo">לוגו MGSR Team</string>
+    <string name="login_cd_toggle_password">הצג/הסתר סיסמא</string>
+    <string name="login_cd_language_toggle">החלף שפה</string>
 
     <!-- Search -->
     <string name="players_screen_hint">חפש שחקן לפי שם</string>
@@ -67,6 +73,10 @@
     <string name="players_expiring_badge">מסיים חוזה</string>
     <string name="players_contract_not_available">חוזה לא זמין</string>
     <string name="players_done">סיום</string>
+    <string name="players_cd_go_back">חזרה</string>
+    <string name="players_cd_search">חיפוש שחקנים</string>
+    <string name="players_cd_value_up">שווי שוק עלה</string>
+    <string name="players_cd_value_down">שווי שוק ירד</string>
 
     <!-- Shortlist Screen -->
     <string name="shortlist_title">רשימת מעקב</string>
@@ -427,6 +437,19 @@
     <string name="player_info_ai_generating_scout_report">מייצר דוח סקאוט…</string>
     <string name="player_info_ai_scout_report_error">לא ניתן ליצור דוח סקאוט. נסה שוב.</string>
     <string name="player_info_ai_no_similar_players">לא נמצאו שחקנים דומים</string>
+
+    <!-- Player Info Accessibility -->
+    <string name="player_info_cd_go_back">חזרה</string>
+    <string name="player_info_cd_value_up">שווי שוק במגמת עלייה</string>
+    <string name="player_info_cd_value_down">שווי שוק במגמת ירידה</string>
+    <string name="player_info_cd_edit_salary">עריכת שכר ודמי העברה</string>
+    <string name="player_info_cd_open_link">פתח קישור</string>
+    <string name="player_info_cd_delete_document">מחק מסמך</string>
+    <string name="player_info_cd_edit_phone">ערוך מספר טלפון</string>
+    <string name="player_info_cd_clear_phone">נקה מספר טלפון</string>
+    <string name="player_info_cd_delete_note">מחק הערה</string>
+    <string name="player_info_cd_expand">הרחב</string>
+    <string name="player_info_cd_collapse">כווץ</string>
 
     <string name="returnee_no_players_league">לא נמצאו שחקנים בליגה זו</string>
     <string name="empty_try_filters">נסה להתאים את המסננים או שאילתת החיפוש</string>

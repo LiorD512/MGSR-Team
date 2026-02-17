@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <style name="Theme.MGSRTeam" parent="Theme.AppCompat.Light.NoActionBar" />
+    <style name="Theme.MGSRTeam" parent="Theme.AppCompat.Light.NoActionBar">
+        <item name="android:windowBackground">#0F1923</item>
+    </style>
 
     <!-- Splash theme: uses the AndroidX SplashScreen API (Option B - logo + teal accent) -->
     <style name="Theme.MGSRTeam.Splash" parent="Theme.MGSRTeam">

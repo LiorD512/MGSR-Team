@@ -12,11 +12,17 @@
     <string name="nav_item_requests">Requests</string>
 
     <!-- Login -->
+    <string name="login_welcome_title">Welcome Back</string>
+    <string name="login_welcome_subtitle">Sign in to continue</string>
     <string name="login_button_title">Login</string>
     <string name="login_signing_in">Signing in…</string>
     <string name="login_error_invalid_credentials">Invalid email or password. Please try again.</string>
+    <string name="login_error_invalid_email">Please enter a valid email address</string>
     <string name="login_button_email_hint">Your email address</string>
     <string name="login_button_password_hint">Your password</string>
+    <string name="login_cd_app_logo">MGSR Team logo</string>
+    <string name="login_cd_toggle_password">Toggle password visibility</string>
+    <string name="login_cd_language_toggle">Switch language</string>
 
     <!-- Search -->
     <string name="players_screen_hint">Search players or note by keyword</string>
@@ -67,6 +73,10 @@
     <string name="players_expiring_badge">Contract Expiring</string>
     <string name="players_contract_not_available">Contract not available</string>
     <string name="players_done">Done</string>
+    <string name="players_cd_go_back">Go back</string>
+    <string name="players_cd_search">Search players</string>
+    <string name="players_cd_value_up">Market value increased</string>
+    <string name="players_cd_value_down">Market value decreased</string>
 
     <!-- Shortlist Screen -->
     <string name="shortlist_title">Shortlist</string>
@@ -437,6 +447,19 @@
     <string name="player_info_ai_generating_scout_report">Generating scout report…</string>
     <string name="player_info_ai_scout_report_error">Could not generate scout report. Please try again.</string>
     <string name="player_info_ai_no_similar_players">No similar players found</string>
+
+    <!-- Player Info Accessibility -->
+    <string name="player_info_cd_go_back">Go back</string>
+    <string name="player_info_cd_value_up">Market value trending up</string>
+    <string name="player_info_cd_value_down">Market value trending down</string>
+    <string name="player_info_cd_edit_salary">Edit salary and transfer fee</string>
+    <string name="player_info_cd_open_link">Open link</string>
+    <string name="player_info_cd_delete_document">Delete document</string>
+    <string name="player_info_cd_edit_phone">Edit phone number</string>
+    <string name="player_info_cd_clear_phone">Clear phone number</string>
+    <string name="player_info_cd_delete_note">Delete note</string>
+    <string name="player_info_cd_expand">Expand</string>
+    <string name="player_info_cd_collapse">Collapse</string>
 
     <!-- Returnee Players Bottom Sheet -->
     <string name="returnee_no_players_league">No players found in this league</string>

@@ -12,11 +12,17 @@
     <string name="nav_item_requests">בקשות</string>
 
     <!-- Login -->
+    <string name="login_welcome_title">ברוך הבא</string>
+    <string name="login_welcome_subtitle">התחבר כדי להמשיך</string>
     <string name="login_button_title">התחברות</string>
     <string name="login_signing_in">מתחבר…</string>
     <string name="login_error_invalid_credentials">אימייל או סיסמה שגויים. אנא נסה שוב.</string>
+    <string name="login_error_invalid_email">אנא הזן כתובת מייל תקינה</string>
     <string name="login_button_email_hint">הקלד כתובת מייל</string>
     <string name="login_button_password_hint">הקלד סיסמא</string>
+    <string name="login_cd_app_logo">לוגו MGSR Team</string>
+    <string name="login_cd_toggle_password">הצג/הסתר סיסמא</string>
+    <string name="login_cd_language_toggle">החלף שפה</string>
 
     <!-- Search -->
     <string name="players_screen_hint">חפש שחקן לפי שם</string>
