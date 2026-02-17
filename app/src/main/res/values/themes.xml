@@ -5,9 +5,10 @@
         <item name="android:windowBackground">#0F1923</item>
     </style>
 
-    <!-- Splash theme: uses the AndroidX SplashScreen API (Option B - logo + teal accent) -->
-    <style name="Theme.MGSRTeam.Splash" parent="Theme.MGSRTeam">
+    <!-- Splash theme: Logo only on pre-API 31 (no gradient — avoids square/circle inconsistency) -->
+    <style name="Theme.MGSRTeam.Splash" parent="Theme.SplashScreen">
         <item name="android:windowSplashScreenBackground">#0F1923</item>
-        <item name="android:windowSplashScreenAnimatedIcon">@drawable/splash_screen_icon</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/splash_icon_ocean</item>
+        <item name="postSplashScreenTheme">@style/Theme.MGSRTeam</item>
     </style>
 </resources>

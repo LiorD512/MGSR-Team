@@ -12,6 +12,8 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.runtime.LaunchedEffect
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.runtime.getValue
 import androidx.core.content.PermissionChecker
 import androidx.core.graphics.toColorInt
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
@@ -24,6 +26,10 @@ import org.koin.androidx.viewmodel.ext.android.viewModel
 class MainActivity : AppCompatActivity() {
 
     private val viewModel: IMainViewModel by viewModel()
+
+    /** Updated from Compose when isReady; avoids accessing viewModel before it's safe. */
+    @Volatile
+    private var isAppReady = false
 
     /**
      * Re-wrap with user locale on every creation (including after language-change recreation).
@@ -38,8 +44,8 @@ class MainActivity : AppCompatActivity() {
         val splashScreen = installSplashScreen()
         super.onCreate(savedInstanceState)
 
-        // Keep the splash screen visible until the auth state is resolved
-        splashScreen.setKeepOnScreenCondition { !viewModel.isReady.value }
+        // Keep native splash until app is ready — avoids empty screen; matches Compose overlay
+        splashScreen.setKeepOnScreenCondition { !isAppReady }
 
         val darkBg = "#0F1923".toColorInt()
         enableEdgeToEdge(
@@ -64,6 +70,11 @@ class MainActivity : AppCompatActivity() {
                 }
             }
             MGSRTeamTheme {
+                val isReady by viewModel.isReady.collectAsStateWithLifecycle(initialValue = false)
+                LaunchedEffect(isReady) {
+                    if (isReady) isAppReady = true
+                }
+                // Single splash: native splash only — no Compose overlay (avoids double splash)
                 NavGraph(viewModel = viewModel)
             }
         }

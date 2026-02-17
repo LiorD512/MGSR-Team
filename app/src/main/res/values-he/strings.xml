@@ -21,6 +21,7 @@
     <string name="login_button_email_hint">הקלד כתובת מייל</string>
     <string name="login_button_password_hint">הקלד סיסמא</string>
     <string name="login_cd_app_logo">לוגו MGSR Team</string>
+    <string name="splash_tagline">גיוס שחקנים בפשטות</string>
     <string name="login_cd_toggle_password">הצג/הסתר סיסמא</string>
     <string name="login_cd_language_toggle">החלף שפה</string>
 

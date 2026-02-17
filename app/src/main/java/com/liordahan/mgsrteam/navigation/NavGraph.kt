@@ -6,13 +6,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.liordahan.mgsrteam.IMainViewModel
 import com.liordahan.mgsrteam.features.home.HomeScreen
 import com.liordahan.mgsrteam.features.login.LoginScreen
+import com.liordahan.mgsrteam.ui.theme.HomeDarkBackground
 
 @Composable
 fun NavGraph(
@@ -30,7 +30,7 @@ fun NavGraph(
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
-        containerColor = Color.White
+        containerColor = HomeDarkBackground
     ) { paddingValues ->
 
         NavHost(navController = navController, startDestination = startDestination) {
