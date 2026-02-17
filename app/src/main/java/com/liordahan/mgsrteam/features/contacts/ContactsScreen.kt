@@ -37,6 +37,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -281,6 +282,29 @@ private fun buildContactsListGroupedByCountry(contacts: List<Contact>): List<Con
     }
 }
 
+private data class CountryGroup(val country: String, val flagUrl: String?, val contacts: List<Contact>)
+
+private fun buildContactsGroupedByCountry(contacts: List<Contact>): List<CountryGroup> {
+    val otherLabel = "Other"
+    val grouped = contacts
+        .groupBy { it.clubCountry?.takeIf { c -> c.isNotBlank() } ?: otherLabel }
+    val sortedCountries =
+        grouped.keys.sortedBy { if (it == otherLabel) "\uFFFF" else it.lowercase() }
+    return sortedCountries.map { country ->
+        val list = grouped[country]!!.sortedBy { it.clubName?.lowercase() ?: "" }
+        val flagUrl = list.firstOrNull()?.clubCountryFlag
+        CountryGroup(country, flagUrl, list)
+    }
+}
+
+private fun getCountryChipsFromContacts(contacts: List<Contact>): List<String> {
+    val otherLabel = "Other"
+    val byCountry = contacts
+        .groupBy { it.clubCountry?.takeIf { c -> c.isNotBlank() } ?: otherLabel }
+    return byCountry.keys
+        .sortedBy { if (it == otherLabel) "\uFFFF" else it.lowercase() }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ContactsScreen(
@@ -293,6 +317,7 @@ fun ContactsScreen(
     var editingContact by remember { mutableStateOf<Contact?>(null) }
     var contactToDelete by remember { mutableStateOf<Contact?>(null) }
     var searchContactInput by remember { mutableStateOf(TextFieldValue("")) }
+    var selectedCountryFilter by rememberSaveable { mutableStateOf<String?>(null) }
 
     val keyboardController = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current
@@ -305,6 +330,15 @@ fun ContactsScreen(
                     contact.clubName?.contains(searchQuery, ignoreCase = true) == true ||
                     contact.clubCountry?.contains(searchQuery, ignoreCase = true) == true
         }
+    }
+    val countryFilteredContacts = remember(filteredContacts, selectedCountryFilter) {
+        if (selectedCountryFilter == null) filteredContacts
+        else filteredContacts.filter {
+            (it.clubCountry?.takeIf { c -> c.isNotBlank() } ?: "Other") == selectedCountryFilter
+        }
+    }
+    val countryChips = remember(state.contacts) {
+        getCountryChipsFromContacts(state.contacts)
     }
 
     Scaffold(
@@ -405,13 +439,42 @@ fun ContactsScreen(
                         )
                     }
 
-                    else -> {
-                        val uniqueCountries = filteredContacts.map {
-                            it.clubCountry?.takeIf { c -> c.isNotBlank() } ?: "Other"
-                        }.toSet().size
-                        filteredContacts.count { !it.phoneNumber.isNullOrBlank() }
+                    countryFilteredContacts.isEmpty() -> {
                         ContactsStatsStrip(
                             total = filteredContacts.size,
+                            countries = filteredContacts.map {
+                                it.clubCountry?.takeIf { c -> c.isNotBlank() } ?: "Other"
+                            }.toSet().size
+                        )
+                        ContactsSearchBar(
+                            query = searchContactInput.text,
+                            onQueryChange = { searchContactInput = TextFieldValue(it) },
+                            onClear = {
+                                searchContactInput = TextFieldValue("")
+                                keyboardController?.hide()
+                                focusManager.clearFocus()
+                            }
+                        )
+                        ContactsFilterChips(
+                            countries = countryChips,
+                            selectedCountry = selectedCountryFilter,
+                            onCountrySelected = { selectedCountryFilter = it },
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                        )
+                        ContactsEmptyState(
+                            title = stringResource(R.string.contacts_no_contacts_found),
+                            subtitle = stringResource(R.string.contacts_try_different_search),
+                            buttonText = stringResource(R.string.contacts_filter_all),
+                            onButtonClick = { selectedCountryFilter = null }
+                        )
+                    }
+
+                    else -> {
+                        val uniqueCountries = countryFilteredContacts.map {
+                            it.clubCountry?.takeIf { c -> c.isNotBlank() } ?: "Other"
+                        }.toSet().size
+                        ContactsStatsStrip(
+                            total = countryFilteredContacts.size,
                             countries = uniqueCountries
                         )
                         ContactsSearchBar(
@@ -423,8 +486,21 @@ fun ContactsScreen(
                                 focusManager.clearFocus()
                             }
                         )
-                        val listItems = remember(filteredContacts) {
-                            buildContactsListGroupedByCountry(filteredContacts)
+                        ContactsFilterChips(
+                            countries = countryChips,
+                            selectedCountry = selectedCountryFilter,
+                            onCountrySelected = { selectedCountryFilter = it },
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                        )
+                        val showGroupedByCountry = selectedCountryFilter == null
+                        val grouped = remember(countryFilteredContacts, showGroupedByCountry) {
+                            if (showGroupedByCountry) buildContactsGroupedByCountry(countryFilteredContacts)
+                            else null
+                        }
+                        val flatContacts = remember(countryFilteredContacts, showGroupedByCountry) {
+                            if (!showGroupedByCountry) countryFilteredContacts.sortedBy {
+                                it.clubName?.lowercase() ?: ""
+                            } else null
                         }
                         LazyColumn(
                             contentPadding = PaddingValues(
@@ -435,28 +511,40 @@ fun ContactsScreen(
                             ),
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            items(
-                                items = listItems,
-                                key = { item ->
-                                    when (item) {
-                                        is ContactListItem.CountryHeader -> "header_${item.country}"
-                                        is ContactListItem.ContactRow -> "contact_${item.contact.id}"
+                            if (showGroupedByCountry && grouped != null) {
+                                grouped.forEach { group ->
+                                    item(key = "header_${group.country}") {
+                                        CountrySectionHeader(
+                                            country = group.country,
+                                            countryFlagUrl = group.flagUrl
+                                        )
+                                    }
+                                    items(
+                                        items = group.contacts,
+                                        key = { it.id ?: it.name ?: "" }
+                                    ) { contact ->
+                                        ContactCard(
+                                            contact = contact,
+                                            onEdit = {
+                                                editingContact = contact
+                                                showAddEditSheet = true
+                                            },
+                                            onDelete = { contactToDelete = contact }
+                                        )
                                     }
                                 }
-                            ) { item ->
-                                when (item) {
-                                    is ContactListItem.CountryHeader -> CountrySectionHeader(
-                                        country = item.country,
-                                        countryFlagUrl = item.countryFlagUrl
-                                    )
-
-                                    is ContactListItem.ContactRow -> ContactCard(
-                                        contact = item.contact,
+                            } else if (!showGroupedByCountry && flatContacts != null) {
+                                items(
+                                    items = flatContacts,
+                                    key = { it.id ?: it.name ?: "" }
+                                ) { contact ->
+                                    ContactCard(
+                                        contact = contact,
                                         onEdit = {
-                                            editingContact = item.contact
+                                            editingContact = contact
                                             showAddEditSheet = true
                                         },
-                                        onDelete = { contactToDelete = item.contact }
+                                        onDelete = { contactToDelete = contact }
                                     )
                                 }
                             }
@@ -680,6 +768,66 @@ private fun ContactsStatsStripDivider() {
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
+//  FILTER CHIPS
+// ═════════════════════════════════════════════════════════════════════════════
+
+@Composable
+private fun ContactsFilterChips(
+    countries: List<String>,
+    selectedCountry: String?,
+    onCountrySelected: (String?) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    if (countries.isEmpty()) return
+    LazyRow(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        contentPadding = PaddingValues(vertical = 4.dp)
+    ) {
+        item(key = "all") {
+            FilterChip(
+                label = stringResource(R.string.contacts_filter_all),
+                selected = selectedCountry == null,
+                onClick = { onCountrySelected(null) }
+            )
+        }
+        items(countries, key = { it }) { country ->
+            FilterChip(
+                label = country,
+                selected = selectedCountry == country,
+                onClick = { onCountrySelected(country) }
+            )
+        }
+    }
+}
+
+@Composable
+private fun FilterChip(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(20.dp),
+        color = if (selected) HomeTealAccent.copy(alpha = 0.2f) else Color.Transparent,
+        border = BorderStroke(
+            width = 1.dp,
+            color = if (selected) HomeTealAccent else HomeDarkCardBorder
+        )
+    ) {
+        Text(
+            text = label,
+            style = regularTextStyle(
+                color = if (selected) HomeTealAccent else HomeTextSecondary,
+                fontSize = 12.sp
+            ),
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
+        )
+    }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
 //  SEARCH BAR
 // ═════════════════════════════════════════════════════════════════════════════
 
@@ -824,10 +972,29 @@ private fun CountrySectionHeader(
     country: String,
     countryFlagUrl: String?
 ) {
+    val layoutDirection = LocalLayoutDirection.current
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 10.dp),
+            .background(HomeDarkBackground)
+            .drawBehind {
+                val barWidth = 4.dp.toPx()
+                val x = when (layoutDirection) {
+                    LayoutDirection.Rtl -> size.width - barWidth
+                    LayoutDirection.Ltr -> 0f
+                }
+                drawRect(
+                    color = HomeTealAccent,
+                    topLeft = Offset(x, 0f),
+                    size = Size(barWidth, size.height)
+                )
+            }
+            .padding(
+                start = if (layoutDirection == LayoutDirection.Ltr) 4.dp else 16.dp,
+                end = if (layoutDirection == LayoutDirection.Rtl) 4.dp else 16.dp,
+                top = 12.dp,
+                bottom = 12.dp
+            ),
         verticalAlignment = Alignment.CenterVertically
     ) {
         if (countryFlagUrl?.isNotEmpty() == true) {

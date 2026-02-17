@@ -102,6 +102,7 @@
     <string name="shortlist_added_months_ago">Added %d months ago</string>
 
     <string name="contacts_screen_search_hint">Search by name, club or country</string>
+    <string name="contacts_filter_all">All</string>
     <string name="add_player_screen_hint">Search</string>
 
     <!-- Account -->

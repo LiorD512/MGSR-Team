@@ -102,6 +102,7 @@
     <string name="shortlist_added_months_ago">נוסף לפני %d חודשים</string>
 
     <string name="contacts_screen_search_hint">חפש לפי שם, מועדון או מדינה</string>
+    <string name="contacts_filter_all">הכל</string>
     <string name="add_player_screen_hint">חיפוש</string>
 
     <!-- Account -->
