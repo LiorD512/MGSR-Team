@@ -437,6 +437,10 @@
     <string name="player_info_updating">מעדכן…</string>
     <string name="player_info_player_label">שחקן</string>
     <string name="player_info_agent_label">סוכן</string>
+    <string name="player_info_message_whatsapp">שלח הודעה בוואטסאפ</string>
+    <string name="player_info_edit_number">ערוך מספר</string>
+    <string name="player_info_remove_number">הסר מספר</string>
+    <string name="player_info_add_number">הוסף מספר</string>
     <string name="player_info_contract_expired">חוזה פג תוקף</string>
     <string name="player_info_expired">פג תוקף</string>
     <string name="player_info_expires_in_months">פג תוקף בעוד %d חודשים</string>

@@ -446,6 +446,10 @@
     <string name="player_info_updating">Updating…</string>
     <string name="player_info_player_label">Player</string>
     <string name="player_info_agent_label">Agent</string>
+    <string name="player_info_message_whatsapp">Message on WhatsApp</string>
+    <string name="player_info_edit_number">Edit Number</string>
+    <string name="player_info_remove_number">Remove Number</string>
+    <string name="player_info_add_number">Add Number</string>
     <string name="player_info_contract_expired">Contract Expired</string>
     <string name="player_info_expired">Expired</string>
     <string name="player_info_expires_in_months">Expires in %d mo</string>

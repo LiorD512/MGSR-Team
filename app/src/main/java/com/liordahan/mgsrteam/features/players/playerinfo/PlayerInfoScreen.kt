@@ -14,6 +14,8 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -43,12 +45,11 @@ import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkAdd
 import androidx.compose.material.icons.filled.CalendarMonth
-import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.PersonAddAlt
 import androidx.compose.material.icons.filled.Link
-import androidx.compose.material.icons.filled.PhoneIphone
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.VerifiedUser
 import androidx.compose.material.icons.filled.Whatsapp
@@ -57,6 +58,8 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -448,7 +451,26 @@ fun PlayerInfoScreen(
 
             // Quick Actions
             playerToPresent?.let { player ->
-                PlayerInfoQuickActions(player = player, context = context)
+                PlayerInfoQuickActions(
+                    player = player,
+                    context = context,
+                    onEditPlayerNumber = {
+                        launchPlayerContactPicker(
+                            context,
+                            playerNumberLauncher,
+                            playerNumberPermissionLauncher
+                        )
+                    },
+                    onRemovePlayerNumber = { viewModel.updatePlayerNumber("") },
+                    onEditAgentNumber = {
+                        launchPlayerContactPicker(
+                            context,
+                            agentNumberLauncher,
+                            agentNumberPermissionLauncher
+                        )
+                    },
+                    onRemoveAgentNumber = { viewModel.updateAgentNumber("") }
+                )
             }
 
             // Section: AI Helper
@@ -597,48 +619,7 @@ fun PlayerInfoScreen(
                     }
 
                 }
-            PlayerInfoSectionHeader(stringResource(R.string.player_info_contact_header))
-            PlayerInfoCard(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-                    PhoneInfoRow(
-                        stringResource(R.string.player_info_player_phone),
-                        playerToPresent?.getPlayerPhoneNumber(),
-                        darkTheme = true,
-                        onEditPhoneClicked = {
-                            launchPlayerContactPicker(
-                                context,
-                                playerNumberLauncher,
-                                playerNumberPermissionLauncher
-                            )
-                        },
-                        onClearClicked = {
-                            viewModel.updatePlayerNumber("")
-                        })
-                    HorizontalDivider(
-                        color = HomeDarkCardBorder,
-                        thickness = 0.5.dp,
-                        modifier = Modifier.padding(vertical = 8.dp)
-                    )
-                    PhoneInfoRow(
-                        stringResource(R.string.player_info_agent_phone),
-                        playerToPresent?.getAgentPhoneNumber(),
-                        darkTheme = true,
-                        onEditPhoneClicked = {
-                            launchPlayerContactPicker(
-                                context,
-                                agentNumberLauncher,
-                                agentNumberPermissionLauncher
-                            )
-                        },
-                        onClearClicked = {
-                            viewModel.updateAgentNumber("")
-                        })
-                    HorizontalDivider(
-                        color = HomeDarkCardBorder,
-                        thickness = 0.5.dp,
-                        modifier = Modifier.padding(vertical = 8.dp)
-                    )
-                    TransfermarketRow(context, stringResource(R.string.player_info_tm_profile), playerToPresent?.tmProfile, darkTheme = true)
-                }
+            // Contact Info section removed - edit/delete moved to Quick Actions long-press
 
             PlayerInfoSectionHeader(stringResource(R.string.player_info_documents))
             PlayerInfoCard(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
@@ -1221,13 +1202,15 @@ private fun PlayerInfoOnLoanPill(text: String) {
 @Composable
 private fun PlayerInfoQuickActions(
     player: Player,
-    context: Context
+    context: Context,
+    onEditPlayerNumber: () -> Unit,
+    onRemovePlayerNumber: () -> Unit,
+    onEditAgentNumber: () -> Unit,
+    onRemoveAgentNumber: () -> Unit
 ) {
     val playerPhone = player.getPlayerPhoneNumber()
     val agentPhone = player.getAgentPhoneNumber()
     val hasTmProfile = player.tmProfile != null
-    val hasAnyAction = playerPhone != null || agentPhone != null || hasTmProfile
-    if (!hasAnyAction) return
 
     Card(
         modifier = Modifier
@@ -1239,38 +1222,52 @@ private fun PlayerInfoQuickActions(
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceEvenly
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            if (playerPhone != null) {
-                PlayerInfoQuickActionWhatsApp(
-                    modifier = Modifier.weight(1f),
-                    label = stringResource(R.string.player_info_player_label),
-                    phone = playerPhone,
-                    context = context
-                )
-                if (agentPhone != null || hasTmProfile) {
-                    Box(modifier = Modifier.width(1.dp).height(32.dp).background(HomeDarkCardBorder))
-                }
-            }
-            if (agentPhone != null) {
-                PlayerInfoQuickActionWhatsApp(
-                    modifier = Modifier.weight(1f),
-                    label = stringResource(R.string.player_info_agent_label),
-                    phone = agentPhone,
-                    context = context
-                )
-                if (hasTmProfile) {
-                    Box(modifier = Modifier.width(1.dp).height(32.dp).background(HomeDarkCardBorder))
-                }
-            }
+            // Player phone action
+            PlayerInfoPhoneAction(
+                modifier = Modifier.weight(1f),
+                label = stringResource(R.string.player_info_player_label),
+                phone = playerPhone,
+                context = context,
+                onEditNumber = onEditPlayerNumber,
+                onRemoveNumber = onRemovePlayerNumber
+            )
+
+            Box(
+                modifier = Modifier
+                    .width(1.dp)
+                    .height(32.dp)
+                    .background(HomeDarkCardBorder)
+            )
+
+            // Agent phone action
+            PlayerInfoPhoneAction(
+                modifier = Modifier.weight(1f),
+                label = stringResource(R.string.player_info_agent_label),
+                phone = agentPhone,
+                context = context,
+                onEditNumber = onEditAgentNumber,
+                onRemoveNumber = onRemoveAgentNumber
+            )
+
             if (hasTmProfile) {
+                Box(
+                    modifier = Modifier
+                        .width(1.dp)
+                        .height(32.dp)
+                        .background(HomeDarkCardBorder)
+                )
                 Row(
                     modifier = Modifier
                         .weight(1f)
                         .padding(14.dp)
                         .clickWithNoRipple {
                             player.tmProfile.let { url ->
-                                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                                context.startActivity(
+                                    Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                                )
                             }
                         },
                     verticalAlignment = Alignment.CenterVertically,
@@ -1293,38 +1290,173 @@ private fun PlayerInfoQuickActions(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun PlayerInfoQuickActionWhatsApp(
+private fun PlayerInfoPhoneAction(
     modifier: Modifier = Modifier,
     label: String,
-    phone: String,
-    context: Context
+    phone: String?,
+    context: Context,
+    onEditNumber: () -> Unit,
+    onRemoveNumber: () -> Unit
 ) {
-    Row(
-        modifier = modifier
-            .padding(14.dp)
-            .clickWithNoRipple {
-                val clean = phone.filter { it.isDigit() }
-                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://wa.me/$clean")))
-            },
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.Center
-    ) {
-        Icon(
-            imageVector = Icons.Default.Whatsapp,
-            contentDescription = null,
-            modifier = Modifier.size(22.dp),
-            tint = HomeTealAccent
-        )
-        Spacer(Modifier.width(6.dp))
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(
-                text = stringResource(R.string.player_info_whatsapp),
-                style = boldTextStyle(HomeTextSecondary, 11.sp)
+    val hasPhone = !phone.isNullOrBlank()
+    var showMenu by remember { mutableStateOf(false) }
+
+    Box(modifier = modifier) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .then(
+                    if (hasPhone) {
+                        Modifier.combinedClickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = {
+                                val clean = phone.orEmpty().filter { it.isDigit() }
+                                context.startActivity(
+                                    Intent(
+                                        Intent.ACTION_VIEW,
+                                        Uri.parse("https://wa.me/$clean")
+                                    )
+                                )
+                            },
+                            onLongClick = { showMenu = true }
+                        )
+                    } else {
+                        Modifier.clickWithNoRipple { onEditNumber() }
+                    }
+                )
+                .padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
+        ) {
+            if (hasPhone) {
+                Icon(
+                    imageVector = Icons.Default.Whatsapp,
+                    contentDescription = null,
+                    modifier = Modifier.size(22.dp),
+                    tint = HomeTealAccent
+                )
+                Spacer(Modifier.width(6.dp))
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = stringResource(R.string.player_info_whatsapp),
+                        style = boldTextStyle(HomeTextSecondary, 11.sp)
+                    )
+                    Text(
+                        text = label,
+                        style = regularTextStyle(
+                            HomeTextSecondary.copy(alpha = 0.9f),
+                            10.sp
+                        )
+                    )
+                }
+            } else {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(
+                        imageVector = Icons.Default.PersonAddAlt,
+                        contentDescription = null,
+                        modifier = Modifier.size(22.dp),
+                        tint = HomeTealAccent
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = stringResource(R.string.player_info_add_number),
+                        style = boldTextStyle(HomeTextSecondary, 11.sp),
+                        textAlign = TextAlign.Center
+                    )
+                    Text(
+                        text = label,
+                        style = regularTextStyle(
+                            HomeTextSecondary.copy(alpha = 0.9f),
+                            10.sp
+                        ),
+                        textAlign = TextAlign.Center
+                    )
+                }
+            }
+        }
+
+        DropdownMenu(
+            expanded = showMenu,
+            onDismissRequest = { showMenu = false },
+            containerColor = HomeDarkCard,
+            shape = RoundedCornerShape(12.dp),
+            border = BorderStroke(1.dp, HomeDarkCardBorder)
+        ) {
+            DropdownMenuItem(
+                text = {
+                    Text(
+                        text = stringResource(R.string.player_info_message_whatsapp),
+                        style = regularTextStyle(HomeTextPrimary, 14.sp)
+                    )
+                },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.Whatsapp,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp),
+                        tint = HomeTealAccent
+                    )
+                },
+                onClick = {
+                    showMenu = false
+                    val clean = phone.orEmpty().filter { it.isDigit() }
+                    context.startActivity(
+                        Intent(Intent.ACTION_VIEW, Uri.parse("https://wa.me/$clean"))
+                    )
+                }
             )
-            Text(
-                text = label,
-                style = regularTextStyle(HomeTextSecondary.copy(alpha = 0.9f), 10.sp)
+            HorizontalDivider(
+                color = HomeDarkCardBorder,
+                thickness = 0.5.dp,
+                modifier = Modifier.padding(horizontal = 12.dp)
+            )
+            DropdownMenuItem(
+                text = {
+                    Text(
+                        text = stringResource(R.string.player_info_edit_number),
+                        style = regularTextStyle(HomeTextPrimary, 14.sp)
+                    )
+                },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.Edit,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp),
+                        tint = HomeTealAccent
+                    )
+                },
+                onClick = {
+                    showMenu = false
+                    onEditNumber()
+                }
+            )
+            HorizontalDivider(
+                color = HomeDarkCardBorder,
+                thickness = 0.5.dp,
+                modifier = Modifier.padding(horizontal = 12.dp)
+            )
+            DropdownMenuItem(
+                text = {
+                    Text(
+                        text = stringResource(R.string.player_info_remove_number),
+                        style = regularTextStyle(HomeRedAccent, 14.sp)
+                    )
+                },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp),
+                        tint = HomeRedAccent
+                    )
+                },
+                onClick = {
+                    showMenu = false
+                    onRemoveNumber()
+                }
             )
         }
     }
@@ -1994,104 +2126,7 @@ fun NationalityInfoRow(
     }
 }
 
-@Composable
-fun PhoneInfoRow(
-    title: String,
-    phoneNumber: String?,
-    darkTheme: Boolean = false,
-    onEditPhoneClicked: () -> Unit,
-    onClearClicked: () -> Unit
-) {
-    val labelColor = if (darkTheme) HomeTextSecondary else contentDefault
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Icon(
-            modifier = Modifier.size(24.dp),
-            imageVector = Icons.Default.PhoneIphone,
-            contentDescription = null,
-            tint = if (darkTheme) HomeTextSecondary else contentDefault
-        )
-        Spacer(Modifier.width(4.dp))
-        Text(
-            text = title,
-            style = regularTextStyle(labelColor, 14.sp),
-            modifier = Modifier.weight(1f)
-        )
-
-        if (phoneNumber.isNullOrEmpty()) {
-            Text(
-                text = "--",
-                style = boldTextStyle(if (darkTheme) HomeTextSecondary else contentDefault, 14.sp),
-                textAlign = TextAlign.End
-            )
-        } else {
-            WhatsAppIcon(phoneNumber)
-        }
-        Spacer(Modifier.width(24.dp))
-        Icon(
-            imageVector = Icons.Default.Edit,
-            contentDescription = null,
-            modifier = Modifier.clickWithNoRipple { onEditPhoneClicked() },
-            tint = if (darkTheme) HomeTealAccent else contentDefault
-        )
-        if (phoneNumber?.isNotEmpty() == true) {
-            Spacer(Modifier.width(24.dp))
-            Icon(
-                imageVector = Icons.Default.Clear,
-                contentDescription = null,
-                modifier = Modifier.clickWithNoRipple { onClearClicked() },
-                tint = if (darkTheme) HomeTextSecondary else contentDefault
-            )
-        }
-    }
-}
-
-@Composable
-fun TransfermarketRow(
-    context: Context,
-    title: String,
-    tmLink: String?,
-    darkTheme: Boolean = false
-) {
-    val labelColor = if (darkTheme) HomeTextSecondary else contentDefault
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Image(
-            modifier = Modifier.size(24.dp),
-            painter = painterResource(R.drawable.transfermarkt_logo),
-            contentDescription = null
-        )
-        Spacer(Modifier.width(4.dp))
-        Text(
-            text = title,
-            style = regularTextStyle(labelColor, 14.sp),
-            modifier = Modifier.weight(1f)
-        )
-        Icon(
-            imageVector = Icons.Default.Link,
-            contentDescription = null,
-            modifier = Modifier
-                .size(width = 40.dp, height = 30.dp)
-                .clickWithNoRipple {
-                    tmLink?.let { link ->
-                        val intent = Intent(Intent.ACTION_VIEW, link.toUri())
-                        context.startActivity(intent)
-                    }
-                },
-            tint = if (darkTheme) HomeTealAccent else contentDefault
-        )
-    }
-}
+// PhoneInfoRow and TransfermarketRow removed - functionality moved to Quick Actions
 
 @Composable
 fun UpdatePlayerUi(modifier: Modifier, message: String, useDarkTheme: Boolean = false) {
