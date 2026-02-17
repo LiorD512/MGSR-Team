@@ -1144,6 +1144,21 @@ private fun AddEditContactBottomSheet(
         shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
         containerColor = HomeDarkCard,
         tonalElevation = 8.dp,
+        dragHandle = {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 6.dp, bottom = 2.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(36.dp, 4.dp)
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(HomeDarkCardBorder)
+                )
+            }
+        },
         properties = ModalBottomSheetProperties(
             isAppearanceLightStatusBars = true,
             isAppearanceLightNavigationBars = true

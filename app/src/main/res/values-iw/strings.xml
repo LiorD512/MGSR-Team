@@ -299,6 +299,16 @@
     <string name="requests_save_request">שמור בקשה</string>
     <string name="requests_transfer_fee_free_loan">חופשי/השאלה בחינם</string>
     <string name="requests_transfer_fee_lt200">מתחת ל-200</string>
+
+    <!-- Add Request stepped flow -->
+    <string name="requests_step_of">שלב %1$d מתוך 4</string>
+    <string name="requests_step_club">מועדון</string>
+    <string name="requests_step_position">עמדה</string>
+    <string name="requests_step_requirements">דרישות</string>
+    <string name="requests_step_notes">הערות</string>
+    <string name="requests_next">הבא</string>
+    <string name="requests_search_for_club">חפש מועדון</string>
+
     <string name="contacts_title">אנשי קשר בעולם</string>
     <string name="contacts_subtitle">אנשי קשר במועדונים לגיוס שחקנים</string>
     <string name="contacts_stat_countries">מדינות</string>

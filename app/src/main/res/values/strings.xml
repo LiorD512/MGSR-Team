@@ -305,6 +305,15 @@
     <string name="requests_transfer_fee_free_loan">Free/Free loan</string>
     <string name="requests_transfer_fee_lt200">Lower than 200</string>
 
+    <!-- Add Request stepped flow -->
+    <string name="requests_step_of">Step %1$d of 4</string>
+    <string name="requests_step_club">Club</string>
+    <string name="requests_step_position">Position</string>
+    <string name="requests_step_requirements">Requirements</string>
+    <string name="requests_step_notes">Notes</string>
+    <string name="requests_next">Next</string>
+    <string name="requests_search_for_club">Search for club</string>
+
     <!-- Contacts Screen -->
     <string name="contacts_title">Worldwide Contacts</string>
     <string name="contacts_subtitle">Club contacts for player recruitment</string>

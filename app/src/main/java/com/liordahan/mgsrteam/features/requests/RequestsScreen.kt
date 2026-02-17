@@ -23,10 +23,12 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -78,16 +80,23 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.rememberNestedScrollInteropConnection
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.stringResource
@@ -1057,12 +1066,15 @@ private fun AddRequestBottomSheet(
         }
     }
 
+    val clubSearchFocusRequester = remember { FocusRequester() }
+    val keyboardController = LocalSoftwareKeyboardController.current
+
     LaunchedEffect(clubSearchQuery) {
         if (clubSearchQuery.length < 2) {
             clubSearchResults = emptyList()
             return@LaunchedEffect
         }
-        delay(350)
+        delay(250)
         isSearchingClubs = true
         clubSearchResults = when (val result = clubSearch.getClubSearchResults(clubSearchQuery)) {
             is TransfermarktResult.Success -> result.data
@@ -1075,12 +1087,40 @@ private fun AddRequestBottomSheet(
     val density = LocalDensity.current.density
     val screenHeight = containerSize.height.dp / density
 
+    var currentStep by rememberSaveable { mutableStateOf(0) }
+
+    val canProceedStep1 = selectedClub != null
+    val canProceedStep2 = selectedPosition != null
+    val canProceedStep3 = selectedSalaryRange != null && selectedTransferFee != null
+
+    val stepLabels = listOf(
+        stringResource(R.string.requests_step_club),
+        stringResource(R.string.requests_step_position),
+        stringResource(R.string.requests_step_requirements),
+        stringResource(R.string.requests_step_notes)
+    )
+
     ModalBottomSheet(
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-        modifier = modifier.height(screenHeight * 0.9f),
+        modifier = modifier.height(screenHeight * 0.65f),
         onDismissRequest = onDismiss,
         shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
         containerColor = HomeDarkCard,
+        dragHandle = {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 6.dp, bottom = 2.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(36.dp, 4.dp)
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(HomeDarkCardBorder)
+                )
+            }
+        },
         properties = ModalBottomSheetProperties(
             isAppearanceLightStatusBars = true,
             isAppearanceLightNavigationBars = true
@@ -1090,338 +1130,569 @@ private fun AddRequestBottomSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .verticalScroll(rememberScrollState())
+                .fillMaxHeight()
                 .padding(horizontal = 16.dp)
-                .padding(bottom = 32.dp)
+                .imePadding()
                 .navigationBarsPadding()
+                .nestedScroll(rememberNestedScrollInteropConnection())
+                .padding(bottom = 48.dp)
         ) {
-            Text(
-                stringResource(R.string.requests_add_title),
-                style = boldTextStyle(HomeTextPrimary, 20.sp),
-                modifier = Modifier.padding(vertical = 8.dp)
-            )
-            Text(
-                stringResource(R.string.requests_add_subtitle),
-                style = regularTextStyle(HomeTextSecondary, 12.sp),
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
-            HorizontalDivider(color = HomeDarkCardBorder, thickness = 1.dp)
-            Spacer(Modifier.height(16.dp))
-
-            Text(stringResource(R.string.requests_label_club), style = regularTextStyle(HomeTextSecondary, 11.sp), modifier = Modifier.padding(bottom = 10.dp))
-            OutlinedTextField(
-                value = clubSearchQuery,
-                onValueChange = {
-                    clubSearchQuery = it
-                    if (selectedClub != null && it != selectedClub?.clubName) selectedClub = null
-                },
-                placeholder = { Text(stringResource(R.string.requests_search_club), style = regularTextStyle(HomeTextSecondary, 14.sp)) },
+            Row(
                 modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(
-                    focusedTextColor = HomeTextPrimary,
-                    unfocusedTextColor = HomeTextPrimary,
-                    focusedBorderColor = HomeTealAccent,
-                    unfocusedBorderColor = HomeDarkCardBorder,
-                    cursorColor = HomeTealAccent
-                ),
-                trailingIcon = {
-                    if (isSearchingClubs) {
-                        Box(Modifier.size(32.dp), contentAlignment = Alignment.Center) {
-                            CircularProgressIndicator(
-                                color = HomeTealAccent,
-                                strokeWidth = 2.dp,
-                                modifier = Modifier.size(24.dp)
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    if (currentStep > 0) {
+                        IconButton(
+                            onClick = { currentStep = currentStep - 1 },
+                            modifier = Modifier.size(40.dp)
+                        ) {
+                            Icon(
+                                Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = null,
+                                tint = HomeTextSecondary
                             )
                         }
                     }
+                    Text(
+                        text = stringResource(R.string.requests_add_title),
+                        style = boldTextStyle(HomeTextPrimary, 20.sp)
+                    )
                 }
+                IconButton(onClick = onDismiss) {
+                    Icon(Icons.Default.Close, contentDescription = null, tint = HomeTextSecondary)
+                }
+            }
+
+            AddRequestStepIndicator(currentStep = currentStep, stepLabels = stepLabels)
+
+            Spacer(Modifier.height(16.dp))
+
+            AnimatedContent(
+                modifier = Modifier.weight(1f, fill = true),
+                targetState = currentStep,
+                transitionSpec = {
+                    if (targetState > initialState) {
+                        slideInHorizontally(animationSpec = tween(200)) { it } + fadeIn(tween(200)) togetherWith
+                            slideOutHorizontally(animationSpec = tween(200)) { -it } + fadeOut(tween(200))
+                    } else {
+                        slideInHorizontally(animationSpec = tween(200)) { -it } + fadeIn(tween(200)) togetherWith
+                            slideOutHorizontally(animationSpec = tween(200)) { it } + fadeOut(tween(200))
+                    }
+                },
+                label = "add_request_steps"
+            ) { step ->
+                when (step) {
+                    0 -> AddRequestStep1ClubContent(
+                        clubSearchQuery = clubSearchQuery,
+                        onClubSearchChange = {
+                            clubSearchQuery = it
+                            if (selectedClub != null && it != selectedClub?.clubName) selectedClub = null
+                        },
+                        clubSearchResults = clubSearchResults,
+                        isSearchingClubs = isSearchingClubs,
+                        selectedClub = selectedClub,
+                        filteredContacts = filteredContacts,
+                        selectedContact = selectedContact,
+                        onSelectClub = {
+                            selectedClub = it
+                            clubSearchQuery = ""
+                            clubSearchResults = emptyList()
+                        },
+                        onChangeClub = {
+                            selectedClub = null
+                            clubSearchQuery = ""
+                            clubSearchResults = emptyList()
+                            clubSearchFocusRequester.requestFocus()
+                            keyboardController?.show()
+                        },
+                        onSelectContact = { selectedContact = if (selectedContact?.id == it.id) null else it },
+                        clubSearchFocusRequester = clubSearchFocusRequester
+                    )
+                    1 -> AddRequestStep2PositionContent(
+                        positions = positions,
+                        selectedPosition = selectedPosition,
+                        onSelectPosition = { selectedPosition = it }
+                    )
+                    2 -> AddRequestStep3RequirementsContent(
+                        ageDoesntMatter = ageDoesntMatter,
+                        minAge = minAge,
+                        maxAge = maxAge,
+                        selectedSalaryRange = selectedSalaryRange,
+                        selectedTransferFee = selectedTransferFee,
+                        onAgeDoesntMatterChange = { ageDoesntMatter = it },
+                        onMinAgeChange = { minAge = it },
+                        onMaxAgeChange = { maxAge = it },
+                        onSalaryRangeSelect = { selectedSalaryRange = it },
+                        onTransferFeeSelect = { selectedTransferFee = it }
+                    )
+                    3 -> AddRequestStep4NotesContent(
+                        notes = notes,
+                        onNotesChange = { notes = it },
+                        onDismiss = onDismiss,
+                        onSave = {
+                            val club = selectedClub
+                            val pos = selectedPosition
+                            if (club != null && pos != null) {
+                                onSave(
+                                    club,
+                                    pos,
+                                    selectedContact?.id,
+                                    selectedContact?.name,
+                                    selectedContact?.phoneNumber,
+                                    minAge.toIntOrNull()?.takeIf { it > 0 },
+                                    maxAge.toIntOrNull()?.takeIf { it > 0 },
+                                    ageDoesntMatter,
+                                    selectedSalaryRange,
+                                    selectedTransferFee,
+                                    notes.takeIf { it.isNotBlank() }
+                                )
+                            }
+                        }
+                    )
+                }
+            }
+
+            if (currentStep < 3) {
+                Spacer(Modifier.height(24.dp))
+                Button(
+                    onClick = {
+                        when (currentStep) {
+                            0 -> if (canProceedStep1) currentStep = 1
+                            1 -> if (canProceedStep2) currentStep = 2
+                            2 -> if (canProceedStep3) currentStep = 3
+                        }
+                    },
+                    enabled = when (currentStep) {
+                        0 -> canProceedStep1
+                        1 -> canProceedStep2
+                        2 -> canProceedStep3
+                        else -> true
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = HomeTealAccent,
+                        disabledContainerColor = HomeTealAccent.copy(alpha = 0.4f)
+                    )
+                ) {
+                    Text(stringResource(R.string.requests_next), style = boldTextStyle(Color.White, 14.sp))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AddRequestStepIndicator(currentStep: Int, stepLabels: List<String>) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        stepLabels.forEachIndexed { index, _ ->
+            if (index > 0) Spacer(Modifier.width(6.dp))
+            Box(
+                modifier = Modifier
+                    .size(8.dp)
+                    .clip(CircleShape)
+                    .background(
+                        if (index <= currentStep) HomeTealAccent else HomeDarkCardBorder
+                    )
             )
-            if (clubSearchResults.isNotEmpty()) {
+        }
+        Spacer(Modifier.width(8.dp))
+        Text(
+            text = stringResource(R.string.requests_step_of, currentStep + 1) + " — " + stepLabels[currentStep],
+            style = regularTextStyle(HomeTextSecondary, 12.sp)
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun AddRequestStep1ClubContent(
+    clubSearchQuery: String,
+    onClubSearchChange: (String) -> Unit,
+    clubSearchResults: List<ClubSearchModel>,
+    isSearchingClubs: Boolean,
+    selectedClub: ClubSearchModel?,
+    filteredContacts: List<Contact>,
+    selectedContact: Contact?,
+    onSelectClub: (ClubSearchModel) -> Unit,
+    onChangeClub: () -> Unit,
+    onSelectContact: (Contact) -> Unit,
+    clubSearchFocusRequester: FocusRequester
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .verticalScroll(rememberScrollState())
+    ) {
+        Text(
+            text = stringResource(R.string.requests_search_for_club),
+            style = regularTextStyle(HomeTextSecondary, 11.sp),
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+        OutlinedTextField(
+            value = clubSearchQuery,
+            onValueChange = onClubSearchChange,
+            placeholder = { Text(stringResource(R.string.requests_search_club), style = regularTextStyle(HomeTextSecondary, 14.sp)) },
+            modifier = Modifier.fillMaxWidth().focusRequester(clubSearchFocusRequester),
+            singleLine = true,
+            colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(
+                focusedTextColor = HomeTextPrimary,
+                unfocusedTextColor = HomeTextPrimary,
+                focusedBorderColor = HomeTealAccent,
+                unfocusedBorderColor = HomeDarkCardBorder,
+                cursorColor = HomeTealAccent
+            ),
+            trailingIcon = {
+                if (isSearchingClubs) {
+                    Box(Modifier.size(32.dp), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(
+                            color = HomeTealAccent,
+                            strokeWidth = 2.dp,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                }
+            }
+        )
+        if (clubSearchResults.isNotEmpty()) {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 260.dp)
+                    .padding(vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                items(clubSearchResults) { clubItem ->
+                    ClubSearchResultRow(
+                        club = clubItem,
+                        onClick = { onSelectClub(clubItem) }
+                    )
+                }
+            }
+        }
+        selectedClub?.let { club ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(HomeDarkBackground)
+                    .border(1.dp, HomeTealAccent, RoundedCornerShape(10.dp))
+                    .padding(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                club.clubLogo?.let { logo ->
+                    AsyncImage(
+                        model = logo,
+                        contentDescription = null,
+                        modifier = Modifier.size(28.dp),
+                        contentScale = ContentScale.Fit
+                    )
+                    Spacer(Modifier.width(10.dp))
+                }
+                Column(Modifier.weight(1f)) {
+                    Text(club.clubName ?: "", style = boldTextStyle(HomeTextPrimary, 12.sp))
+                    club.clubCountry?.let { c ->
+                        Text(c, style = regularTextStyle(HomeTextSecondary, 11.sp))
+                    }
+                }
+                TextButton(onClick = onChangeClub) {
+                    Text(stringResource(R.string.requests_change_club), style = regularTextStyle(HomeTealAccent, 12.sp))
+                }
+            }
+        }
+        selectedClub?.let {
+            Spacer(Modifier.height(16.dp))
+            Text(
+                stringResource(R.string.requests_contact_optional),
+                style = regularTextStyle(HomeTextSecondary, 11.sp),
+                modifier = Modifier.padding(bottom = 10.dp)
+            )
+            if (filteredContacts.isNotEmpty()) {
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .heightIn(max = 180.dp)
-                        .padding(vertical = 8.dp),
+                        .heightIn(max = 140.dp),
                     verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    items(clubSearchResults) { clubItem ->
-                        ClubSearchResultRow(
-                            club = clubItem,
-                            onClick = {
-                                selectedClub = clubItem
-                                clubSearchQuery = ""
-                                clubSearchResults = emptyList()
-                            }
-                        )
-                    }
-                }
-            }
-            selectedClub?.let { club ->
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 8.dp)
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(HomeDarkBackground)
-                        .border(1.dp, HomeTealAccent, RoundedCornerShape(10.dp))
-                        .padding(12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    club.clubLogo?.let { logo ->
-                        AsyncImage(
-                            model = logo,
-                            contentDescription = null,
-                            modifier = Modifier.size(28.dp),
-                            contentScale = ContentScale.Fit
-                        )
-                        Spacer(Modifier.width(10.dp))
-                    }
-                    Column(Modifier.weight(1f)) {
-                        Text(club.clubName ?: "", style = boldTextStyle(HomeTextPrimary, 12.sp))
-                        club.clubCountry?.let { c ->
-                            Text(c, style = regularTextStyle(HomeTextSecondary, 11.sp))
-                        }
-                    }
-                    TextButton(onClick = { selectedClub = null; clubSearchQuery = "" }) {
-                        Text(stringResource(R.string.requests_change_club), style = regularTextStyle(HomeTealAccent, 12.sp))
-                    }
-                }
-            }
-
-            AnimatedVisibility(
-                visible = selectedClub != null,
-                enter = fadeIn(tween(200)) + slideInVertically(
-                    initialOffsetY = { -it / 4 },
-                    animationSpec = tween(250)
-                ),
-                exit = fadeOut(tween(150)) + slideOutVertically(
-                    targetOffsetY = { it / 4 },
-                    animationSpec = tween(150)
-                )
-            ) {
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    Spacer(Modifier.height(20.dp))
-
-                    Text(stringResource(R.string.requests_contact_optional), style = regularTextStyle(HomeTextSecondary, 11.sp), modifier = Modifier.padding(bottom = 10.dp))
-                    if (filteredContacts.isNotEmpty()) {
-                        LazyColumn(
-                            modifier = Modifier.fillMaxWidth().heightIn(max = 120.dp),
-                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                    items(filteredContacts) { contact ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(if (selectedContact?.id == contact.id) HomeTealAccent.copy(alpha = 0.2f) else HomeDarkBackground)
+                                .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(10.dp))
+                                .clickWithNoRipple { onSelectContact(contact) }
+                                .padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            items(filteredContacts) { contact ->
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clip(RoundedCornerShape(10.dp))
-                                        .background(if (selectedContact?.id == contact.id) HomeTealAccent.copy(alpha = 0.2f) else HomeDarkBackground)
-                                        .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(10.dp))
-                                        .clickWithNoRipple { selectedContact = if (selectedContact?.id == contact.id) null else contact }
-                                        .padding(12.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(contact.name ?: "", style = boldTextStyle(HomeTextPrimary, 13.sp))
-                                    Spacer(Modifier.weight(1f))
-                                    if (selectedContact?.id == contact.id) {
-                                        Icon(Icons.Default.Check, contentDescription = null, tint = HomeTealAccent, modifier = Modifier.size(18.dp))
-                                    }
-                                }
+                            Text(contact.name ?: "", style = boldTextStyle(HomeTextPrimary, 13.sp))
+                            Spacer(Modifier.weight(1f))
+                            if (selectedContact?.id == contact.id) {
+                                Icon(Icons.Default.Check, contentDescription = null, tint = HomeTealAccent, modifier = Modifier.size(18.dp))
                             }
                         }
-                    } else {
-                        Text(stringResource(R.string.requests_no_contacts_for_club), style = regularTextStyle(HomeTextSecondary, 12.sp), modifier = Modifier.padding(bottom = 8.dp))
                     }
-
-                    Spacer(Modifier.height(20.dp))
-
-                    Text(stringResource(R.string.requests_label_position), style = regularTextStyle(HomeTextSecondary, 11.sp), modifier = Modifier.padding(bottom = 10.dp))
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                positions.forEach { pos ->
-                    val posName = pos.name ?: ""
-                    val isSelected = selectedPosition == posName
-                    val bgColor = if (isSelected) HomeTealAccent.copy(alpha = 0.2f) else androidx.compose.ui.graphics.Color.Transparent
-                    val textColor = if (isSelected) HomeTealAccent else HomeTextSecondary
-                    Text(
-                        text = posName,
-                        style = regularTextStyle(textColor, 12.sp),
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(20.dp))
-                            .background(bgColor)
-                            .border(1.dp, if (isSelected) HomeTealAccent else HomeDarkCardBorder, RoundedCornerShape(20.dp))
-                            .clickWithNoRipple { selectedPosition = posName }
-                            .padding(horizontal = 14.dp, vertical = 8.dp)
-                    )
                 }
-            }
-
-            Spacer(Modifier.height(20.dp))
-
-            Text(stringResource(R.string.requests_label_age), style = regularTextStyle(HomeTextSecondary, 11.sp), modifier = Modifier.padding(bottom = 10.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Checkbox(
-                    checked = ageDoesntMatter,
-                    onCheckedChange = { ageDoesntMatter = it },
-                    colors = CheckboxDefaults.colors(checkedColor = HomeTealAccent)
+            } else {
+                Text(
+                    stringResource(R.string.requests_no_contacts_for_club),
+                    style = regularTextStyle(HomeTextSecondary, 12.sp),
+                    modifier = Modifier.padding(bottom = 8.dp)
                 )
-                Text(stringResource(R.string.requests_age_doesnt_matter), style = regularTextStyle(HomeTextPrimary, 14.sp), modifier = Modifier.clickWithNoRipple { ageDoesntMatter = !ageDoesntMatter })
             }
-            if (!ageDoesntMatter) {
+        }
+    }
+}
+
+@Composable
+private fun AddRequestStep2PositionContent(
+    positions: List<com.liordahan.mgsrteam.features.players.models.Position>,
+    selectedPosition: String?,
+    onSelectPosition: (String) -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .verticalScroll(rememberScrollState())
+    ) {
+        Text(
+            stringResource(R.string.requests_label_position),
+            style = regularTextStyle(HomeTextSecondary, 11.sp),
+            modifier = Modifier.padding(bottom = 12.dp)
+        )
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            positions.chunked(2).forEach { rowItems ->
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    OutlinedTextField(
-                        value = minAge,
-                        onValueChange = { minAge = it.filter { c -> c.isDigit() }.take(2) },
-                        placeholder = { Text(stringResource(R.string.requests_min), style = regularTextStyle(HomeTextSecondary, 14.sp)) },
-                        modifier = Modifier.weight(1f),
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(
-                            focusedTextColor = HomeTextPrimary,
-                            unfocusedTextColor = HomeTextPrimary,
-                            focusedBorderColor = HomeTealAccent,
-                            unfocusedBorderColor = HomeDarkCardBorder
+                    rowItems.forEach { pos ->
+                        val posName = pos.name ?: ""
+                        val displayName = PositionDisplayNames.toLongName(posName).lowercase()
+                            .split(" ").joinToString(" ") { it.replaceFirstChar { c -> c.uppercase() } }
+                        val isSelected = selectedPosition == posName
+                        Text(
+                            text = displayName,
+                            style = regularTextStyle(if (isSelected) HomeTealAccent else HomeTextSecondary, 12.sp),
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(if (isSelected) HomeTealAccent.copy(alpha = 0.2f) else Color.Transparent)
+                                .border(1.dp, if (isSelected) HomeTealAccent else HomeDarkCardBorder, RoundedCornerShape(12.dp))
+                                .clickWithNoRipple { onSelectPosition(posName) }
+                                .padding(horizontal = 12.dp, vertical = 12.dp)
                         )
-                    )
-                    OutlinedTextField(
-                        value = maxAge,
-                        onValueChange = { maxAge = it.filter { c -> c.isDigit() }.take(2) },
-                        placeholder = { Text(stringResource(R.string.requests_max), style = regularTextStyle(HomeTextSecondary, 14.sp)) },
-                        modifier = Modifier.weight(1f),
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(
-                            focusedTextColor = HomeTextPrimary,
-                            unfocusedTextColor = HomeTextPrimary,
-                            focusedBorderColor = HomeTealAccent,
-                            unfocusedBorderColor = HomeDarkCardBorder
-                        )
-                    )
-                }
-            }
-
-            Spacer(Modifier.height(20.dp))
-
-            Text(stringResource(R.string.requests_label_salary_range), style = regularTextStyle(HomeTextSecondary, 11.sp), modifier = Modifier.padding(bottom = 10.dp))
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                SalaryRangeOptions.all.forEach { range ->
-                    val isSelected = selectedSalaryRange == range
-                    Text(
-                        text = range,
-                        style = regularTextStyle(if (isSelected) HomeTealAccent else HomeTextSecondary, 12.sp),
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(20.dp))
-                            .background(if (isSelected) HomeTealAccent.copy(alpha = 0.2f) else androidx.compose.ui.graphics.Color.Transparent)
-                            .border(1.dp, if (isSelected) HomeTealAccent else HomeDarkCardBorder, RoundedCornerShape(20.dp))
-                            .clickWithNoRipple { selectedSalaryRange = if (isSelected) null else range }
-                            .padding(horizontal = 14.dp, vertical = 8.dp)
-                    )
-                }
-            }
-
-            Spacer(Modifier.height(20.dp))
-
-            Text(stringResource(R.string.requests_label_transfer_fee), style = regularTextStyle(HomeTextSecondary, 11.sp), modifier = Modifier.padding(bottom = 10.dp))
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                TransferFeeOptions.all.forEach { fee ->
-                    val isSelected = selectedTransferFee == fee
-                    val displayFee = when (fee) {
-                        "Free/Free loan" -> stringResource(R.string.requests_transfer_fee_free_loan)
-                        "<200" -> stringResource(R.string.requests_transfer_fee_lt200)
-                        else -> fee
                     }
-                    Text(
-                        text = displayFee,
-                        style = regularTextStyle(if (isSelected) HomeTealAccent else HomeTextSecondary, 12.sp),
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(20.dp))
-                            .background(if (isSelected) HomeTealAccent.copy(alpha = 0.2f) else androidx.compose.ui.graphics.Color.Transparent)
-                            .border(1.dp, if (isSelected) HomeTealAccent else HomeDarkCardBorder, RoundedCornerShape(20.dp))
-                            .clickWithNoRipple { selectedTransferFee = if (isSelected) null else fee }
-                            .padding(horizontal = 14.dp, vertical = 8.dp)
-                    )
+                    if (rowItems.size == 1) {
+                        Spacer(Modifier.weight(1f))
+                    }
                 }
             }
+        }
+    }
+}
 
-            Spacer(Modifier.height(20.dp))
-
-            Text(stringResource(R.string.requests_notes_optional), style = regularTextStyle(HomeTextSecondary, 11.sp), modifier = Modifier.padding(bottom = 10.dp))
-            OutlinedTextField(
-                value = notes,
-                onValueChange = { notes = it },
-                placeholder = { Text(stringResource(R.string.requests_notes_placeholder), style = regularTextStyle(HomeTextSecondary, 14.sp)) },
-                modifier = Modifier.fillMaxWidth(),
-                minLines = 2,
-                colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(
-                    focusedTextColor = HomeTextPrimary,
-                    unfocusedTextColor = HomeTextPrimary,
-                    focusedBorderColor = HomeTealAccent,
-                    unfocusedBorderColor = HomeDarkCardBorder
-                )
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun AddRequestStep3RequirementsContent(
+    ageDoesntMatter: Boolean,
+    minAge: String,
+    maxAge: String,
+    selectedSalaryRange: String?,
+    selectedTransferFee: String?,
+    onAgeDoesntMatterChange: (Boolean) -> Unit,
+    onMinAgeChange: (String) -> Unit,
+    onMaxAgeChange: (String) -> Unit,
+    onSalaryRangeSelect: (String?) -> Unit,
+    onTransferFeeSelect: (String?) -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .verticalScroll(rememberScrollState())
+    ) {
+        Text(
+            stringResource(R.string.requests_label_age),
+            style = regularTextStyle(HomeTextSecondary, 11.sp),
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Checkbox(
+                checked = ageDoesntMatter,
+                onCheckedChange = onAgeDoesntMatterChange,
+                colors = CheckboxDefaults.colors(checkedColor = HomeTealAccent)
             )
-
-            Spacer(Modifier.height(24.dp))
-
+            Text(
+                stringResource(R.string.requests_age_doesnt_matter),
+                style = regularTextStyle(HomeTextPrimary, 14.sp),
+                modifier = Modifier.clickWithNoRipple { onAgeDoesntMatterChange(!ageDoesntMatter) }
+            )
+        }
+        if (!ageDoesntMatter) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                TextButton(onClick = onDismiss, modifier = Modifier.weight(1f)) {
-                    Text(stringResource(R.string.cancel), style = regularTextStyle(HomeTextSecondary, 14.sp))
-                }
-                Button(
-                    onClick = {
-                        val club = selectedClub
-                        val pos = selectedPosition
-                        if (club != null && pos != null) {
-                            onSave(
-                                club,
-                                pos,
-                                selectedContact?.id,
-                                selectedContact?.name,
-                                selectedContact?.phoneNumber,
-                                minAge.toIntOrNull()?.takeIf { it > 0 },
-                                maxAge.toIntOrNull()?.takeIf { it > 0 },
-                                ageDoesntMatter,
-                                selectedSalaryRange,
-                                selectedTransferFee,
-                                notes.takeIf { it.isNotBlank() }
-                            )
-                        }
-                    },
-                    enabled = selectedClub != null && selectedPosition != null && selectedSalaryRange != null && selectedTransferFee != null,
+                OutlinedTextField(
+                    value = minAge,
+                    onValueChange = { onMinAgeChange(it.filter { c -> c.isDigit() }.take(2)) },
+                    placeholder = { Text(stringResource(R.string.requests_min), style = regularTextStyle(HomeTextSecondary, 14.sp)) },
                     modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = HomeTealAccent,
-                        contentColor = androidx.compose.ui.graphics.Color.White,
-                        disabledContainerColor = HomeTealAccent.copy(alpha = 0.4f),
-                        disabledContentColor = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.6f)
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(
+                        focusedTextColor = HomeTextPrimary,
+                        unfocusedTextColor = HomeTextPrimary,
+                        focusedBorderColor = HomeTealAccent,
+                        unfocusedBorderColor = HomeDarkCardBorder
                     )
+                )
+                OutlinedTextField(
+                    value = maxAge,
+                    onValueChange = { onMaxAgeChange(it.filter { c -> c.isDigit() }.take(2)) },
+                    placeholder = { Text(stringResource(R.string.requests_max), style = regularTextStyle(HomeTextSecondary, 14.sp)) },
+                    modifier = Modifier.weight(1f),
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(
+                        focusedTextColor = HomeTextPrimary,
+                        unfocusedTextColor = HomeTextPrimary,
+                        focusedBorderColor = HomeTealAccent,
+                        unfocusedBorderColor = HomeDarkCardBorder
+                    )
+                )
+            }
+        }
+        Spacer(Modifier.height(20.dp))
+        Text(
+            stringResource(R.string.requests_label_salary_range),
+            style = regularTextStyle(HomeTextSecondary, 11.sp),
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            SalaryRangeOptions.all.chunked(2).forEach { rowItems ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Text(stringResource(R.string.requests_save_request), style = boldTextStyle(androidx.compose.ui.graphics.Color.White, 14.sp))
+                    rowItems.forEach { range ->
+                        val isSelected = selectedSalaryRange == range
+                        Text(
+                            text = range,
+                            style = regularTextStyle(if (isSelected) HomeTealAccent else HomeTextSecondary, 12.sp),
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(if (isSelected) HomeTealAccent.copy(alpha = 0.2f) else Color.Transparent)
+                                .border(1.dp, if (isSelected) HomeTealAccent else HomeDarkCardBorder, RoundedCornerShape(12.dp))
+                                .clickWithNoRipple { onSalaryRangeSelect(if (isSelected) null else range) }
+                                .padding(horizontal = 12.dp, vertical = 12.dp)
+                        )
+                    }
+                    if (rowItems.size == 1) {
+                        Spacer(Modifier.weight(1f))
+                    }
                 }
             }
+        }
+        Spacer(Modifier.height(16.dp))
+        Text(
+            stringResource(R.string.requests_label_transfer_fee),
+            style = regularTextStyle(HomeTextSecondary, 11.sp),
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            TransferFeeOptions.all.chunked(2).forEach { rowItems ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    rowItems.forEach { fee ->
+                        val isSelected = selectedTransferFee == fee
+                        val displayFee = when (fee) {
+                            "Free/Free loan" -> stringResource(R.string.requests_transfer_fee_free_loan)
+                            "<200" -> stringResource(R.string.requests_transfer_fee_lt200)
+                            else -> fee
+                        }
+                        Text(
+                            text = displayFee,
+                            style = regularTextStyle(if (isSelected) HomeTealAccent else HomeTextSecondary, 12.sp),
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(if (isSelected) HomeTealAccent.copy(alpha = 0.2f) else Color.Transparent)
+                                .border(1.dp, if (isSelected) HomeTealAccent else HomeDarkCardBorder, RoundedCornerShape(12.dp))
+                                .clickWithNoRipple { onTransferFeeSelect(if (isSelected) null else fee) }
+                                .padding(horizontal = 12.dp, vertical = 12.dp)
+                        )
+                    }
+                    if (rowItems.size == 1) {
+                        Spacer(Modifier.weight(1f))
+                    }
                 }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun AddRequestStep4NotesContent(
+    notes: String,
+    onNotesChange: (String) -> Unit,
+    onDismiss: () -> Unit,
+    onSave: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .verticalScroll(rememberScrollState())
+    ) {
+        Text(
+            stringResource(R.string.requests_notes_optional),
+            style = regularTextStyle(HomeTextSecondary, 11.sp),
+            modifier = Modifier.padding(bottom = 12.dp)
+        )
+        OutlinedTextField(
+            value = notes,
+            onValueChange = onNotesChange,
+            placeholder = { Text(stringResource(R.string.requests_notes_placeholder), style = regularTextStyle(HomeTextSecondary, 14.sp)) },
+            modifier = Modifier.fillMaxWidth(),
+            minLines = 2,
+            colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(
+                focusedTextColor = HomeTextPrimary,
+                unfocusedTextColor = HomeTextPrimary,
+                focusedBorderColor = HomeTealAccent,
+                unfocusedBorderColor = HomeDarkCardBorder
+            )
+        )
+        Spacer(Modifier.height(24.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            TextButton(onClick = onDismiss, modifier = Modifier.weight(1f)) {
+                Text(stringResource(R.string.cancel), style = regularTextStyle(HomeTextSecondary, 14.sp))
+            }
+            Button(
+                onClick = onSave,
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = HomeTealAccent)
+            ) {
+                Text(stringResource(R.string.requests_save_request), style = boldTextStyle(Color.White, 14.sp))
             }
         }
     }
