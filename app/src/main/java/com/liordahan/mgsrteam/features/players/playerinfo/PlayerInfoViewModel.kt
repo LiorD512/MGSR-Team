@@ -60,6 +60,7 @@ abstract class IPlayerInfoViewModel : ViewModel() {
     abstract fun deleteDocument(documentId: String, isPassport: Boolean = false)
     abstract fun findSimilarPlayers(player: Player, languageCode: String = "en")
     abstract fun generateScoutReport(player: Player, languageCode: String = "en")
+    abstract fun consumeUpdateResult()
 }
 
 
@@ -443,6 +444,15 @@ class PlayerInfoViewModel(
                 clearPassportDetails()
             }
         }
+    }
+
+    /**
+     * Resets the update result to UnInitialized after the UI has consumed
+     * the Success/Failed state (shown toast). Prevents stale StateFlow
+     * replays from re-triggering toasts on recomposition or lifecycle restart.
+     */
+    override fun consumeUpdateResult() {
+        _updatePlayerFlow.update { UiResult.UnInitialized }
     }
 
     override fun findSimilarPlayers(player: Player, languageCode: String) {

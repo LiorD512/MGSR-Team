@@ -280,9 +280,11 @@ fun PlayerInfoScreen(
                     when (it) {
                         is UiResult.Failed -> {
                             ToastManager.showError(it.cause)
+                            viewModel.consumeUpdateResult()
                         }
                         is UiResult.Success -> {
                             ToastManager.showSuccess(it.data)
+                            viewModel.consumeUpdateResult()
                         }
                         UiResult.Loading, UiResult.UnInitialized -> {}
                     }
