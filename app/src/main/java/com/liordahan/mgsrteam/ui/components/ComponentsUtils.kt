@@ -3,9 +3,7 @@ package com.liordahan.mgsrteam.ui.components
 import android.app.Activity
 import android.app.Dialog
 import android.content.ContextWrapper
-import android.view.View
 import android.view.ViewParent
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.border
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -35,32 +33,28 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalView
-import androidx.compose.ui.window.DialogWindowProvider
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.DialogWindowProvider
+import androidx.core.view.WindowCompat
+import com.liordahan.mgsrteam.ui.theme.HomeDarkCard
+import com.liordahan.mgsrteam.ui.theme.HomeDarkCardBorder
+import com.liordahan.mgsrteam.ui.theme.HomeTextPrimary
+import com.liordahan.mgsrteam.ui.theme.HomeTextSecondary
 import com.liordahan.mgsrteam.ui.theme.buttonDisabledBg
 import com.liordahan.mgsrteam.ui.theme.buttonEnabledBg
 import com.liordahan.mgsrteam.ui.theme.buttonLoadingBg
 import com.liordahan.mgsrteam.ui.theme.contentDefault
-import com.liordahan.mgsrteam.ui.theme.contentDisabled
-import com.liordahan.mgsrteam.ui.theme.HomeDarkBackground
-import com.liordahan.mgsrteam.ui.theme.HomeDarkCard
-import com.liordahan.mgsrteam.ui.theme.HomeDarkCardBorder
-import com.liordahan.mgsrteam.ui.theme.HomeTealAccent
-import com.liordahan.mgsrteam.ui.theme.HomeTextPrimary
-import com.liordahan.mgsrteam.ui.theme.HomeTextSecondary
 import com.liordahan.mgsrteam.ui.theme.searchHeaderButtonBackground
 import com.liordahan.mgsrteam.ui.utils.boldTextStyle
-import com.liordahan.mgsrteam.ui.utils.clickWithNoRipple
 import com.liordahan.mgsrteam.ui.utils.regularTextStyle
-import androidx.core.view.WindowCompat
 
 private const val DARK_NAV_BAR_COLOR = 0xFF0F1923.toInt()
 

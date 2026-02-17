@@ -13,13 +13,13 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.runtime.LaunchedEffect
 import androidx.core.content.PermissionChecker
+import androidx.core.graphics.toColorInt
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.liordahan.mgsrteam.localization.LocaleManager
-import com.liordahan.mgsrteam.utils.extractTransfermarktPlayerUrl
 import com.liordahan.mgsrteam.navigation.NavGraph
 import com.liordahan.mgsrteam.ui.theme.MGSRTeamTheme
+import com.liordahan.mgsrteam.utils.extractTransfermarktPlayerUrl
 import org.koin.androidx.viewmodel.ext.android.viewModel
-import androidx.core.graphics.toColorInt
 
 class MainActivity : AppCompatActivity() {
 
@@ -69,7 +69,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    override fun onNewIntent(intent: android.content.Intent) {
+    override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         handleDeepLink(intent)
     }

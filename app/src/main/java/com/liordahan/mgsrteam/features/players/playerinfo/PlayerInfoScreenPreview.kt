@@ -8,7 +8,6 @@ import com.liordahan.mgsrteam.features.players.models.MarketValueEntry
 import com.liordahan.mgsrteam.features.players.models.NotesModel
 import com.liordahan.mgsrteam.features.players.models.Player
 import com.liordahan.mgsrteam.features.players.models.PlayerAdditionalInfoModel
-import com.liordahan.mgsrteam.features.players.playerinfo.documents.DocumentType
 import com.liordahan.mgsrteam.features.players.playerinfo.documents.PlayerDocument
 import com.liordahan.mgsrteam.helpers.UiResult
 import kotlinx.coroutines.flow.Flow

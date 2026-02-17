@@ -3,6 +3,7 @@ package com.liordahan.mgsrteam.features.players.playerinfo
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.google.firebase.firestore.FieldValue
 import com.liordahan.mgsrteam.features.login.models.Account
 import com.liordahan.mgsrteam.features.players.models.MarketValueEntry
 import com.liordahan.mgsrteam.features.players.models.NotesModel
@@ -13,12 +14,12 @@ import com.liordahan.mgsrteam.features.players.playerinfo.documents.DocumentDete
 import com.liordahan.mgsrteam.features.players.playerinfo.documents.DocumentType
 import com.liordahan.mgsrteam.features.players.playerinfo.documents.PlayerDocument
 import com.liordahan.mgsrteam.features.players.playerinfo.documents.PlayerDocumentsRepository
-import com.google.firebase.firestore.FieldValue
 import com.liordahan.mgsrteam.firebase.FirebaseHandler
 import com.liordahan.mgsrteam.helpers.UiResult
 import com.liordahan.mgsrteam.transfermarket.PlayersUpdate
 import com.liordahan.mgsrteam.transfermarket.TransfermarktResult
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -91,6 +92,7 @@ class PlayerInfoViewModel(
     private val _uploadErrorFlow = MutableSharedFlow<String>()
     override val uploadErrorFlow: SharedFlow<String> = _uploadErrorFlow
 
+    @OptIn(ExperimentalCoroutinesApi::class)
     override val documentsFlow: Flow<List<PlayerDocument>> =
         _playerInfoFlow.flatMapLatest { player ->
             if (player?.tmProfile != null) documentsRepository.getDocumentsFlow(player.tmProfile)
@@ -391,7 +393,7 @@ class PlayerInfoViewModel(
                 }
                 when {
                     detection.documentType == DocumentType.PASSPORT && detection.passportInfo != null -> {
-                        val info = detection.passportInfo!!
+                        val info = detection.passportInfo
                         Log.i(TAG, "Passport uploaded - First name: ${info.firstName}, Last name: ${info.lastName}, " +
                             "Date of birth: ${info.dateOfBirth ?: "N/A"}, Passport number: ${info.passportNumber ?: "N/A"}")
                         val passportDetails = PassportDetails(
@@ -479,7 +481,7 @@ class PlayerInfoViewModel(
                 doc?.reference?.update("passportDetails", FieldValue.delete())?.await()
                 _playerInfoFlow.update { it?.copy(passportDetails = null) }
             } catch (e: Exception) {
-                android.util.Log.e(TAG, "Failed to clear passport details", e)
+                Log.e(TAG, "Failed to clear passport details", e)
             }
         }
     }

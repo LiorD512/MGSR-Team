@@ -1,6 +1,7 @@
 package com.liordahan.mgsrteam.features.home
 
 import android.annotation.SuppressLint
+import android.net.Uri
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
@@ -10,32 +11,30 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import android.net.Uri
-import com.liordahan.mgsrteam.IMainViewModel
-import kotlinx.coroutines.flow.collectLatest
-import org.koin.androidx.compose.koinViewModel
 import androidx.compose.ui.graphics.Color
-import androidx.navigation.NavController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.liordahan.mgsrteam.IMainViewModel
 import com.liordahan.mgsrteam.features.add.AddPlayerScreen
+import com.liordahan.mgsrteam.features.contacts.ContactsScreen
+import com.liordahan.mgsrteam.features.contractfinisher.ContractFinisherScreen
 import com.liordahan.mgsrteam.features.home.dashboard.DashboardScreen
 import com.liordahan.mgsrteam.features.players.PlayersScreen
 import com.liordahan.mgsrteam.features.players.playerinfo.PlayerInfoScreen
 import com.liordahan.mgsrteam.features.players.playerinfo.mandate.GenerateMandateScreen
 import com.liordahan.mgsrteam.features.players.playerinfo.mandate.MandatePreviewScreen
 import com.liordahan.mgsrteam.features.releases.ReleasesScreen
-import com.liordahan.mgsrteam.features.contacts.ContactsScreen
-import com.liordahan.mgsrteam.features.returnee.ReturneeScreen
-import com.liordahan.mgsrteam.features.contractfinisher.ContractFinisherScreen
-import com.liordahan.mgsrteam.features.shortlist.ShortlistScreen
 import com.liordahan.mgsrteam.features.requests.RequestsScreen
+import com.liordahan.mgsrteam.features.returnee.ReturneeScreen
+import com.liordahan.mgsrteam.features.shortlist.ShortlistScreen
 import com.liordahan.mgsrteam.navigation.Screens
 import com.liordahan.mgsrteam.ui.theme.HomeDarkBackground
+import kotlinx.coroutines.flow.collectLatest
+import org.koin.androidx.compose.koinViewModel
 
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @Composable

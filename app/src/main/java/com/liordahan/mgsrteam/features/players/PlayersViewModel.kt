@@ -1,12 +1,9 @@
 package com.liordahan.mgsrteam.features.players
 
-import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.liordahan.mgsrteam.features.login.models.Account
 import com.liordahan.mgsrteam.features.players.filters.ContractFilterOption
-import com.liordahan.mgsrteam.features.players.filters.usecases.GetIsWithNotesCheckedUseCase
-import com.liordahan.mgsrteam.features.players.filters.usecases.GetPositionFilterFlowUseCase
 import com.liordahan.mgsrteam.features.players.filters.usecases.IGetAgentFilterFlowUseCase
 import com.liordahan.mgsrteam.features.players.filters.usecases.IGetContractFilterOptionUseCase
 import com.liordahan.mgsrteam.features.players.filters.usecases.IGetIsWithNotesCheckedUseCase
@@ -15,17 +12,15 @@ import com.liordahan.mgsrteam.features.players.filters.usecases.IGetSortOptionUs
 import com.liordahan.mgsrteam.features.players.filters.usecases.IQuickFilterUseCase
 import com.liordahan.mgsrteam.features.players.filters.usecases.IRemoveAllFiltersUseCase
 import com.liordahan.mgsrteam.features.players.filters.usecases.IResetSortOptionUseCase
-import com.liordahan.mgsrteam.features.players.filters.usecases.ISetSortOptionUseCase
 import com.liordahan.mgsrteam.features.players.filters.usecases.ISetPositionFiltersByNamesUseCase
+import com.liordahan.mgsrteam.features.players.filters.usecases.ISetSortOptionUseCase
 import com.liordahan.mgsrteam.features.players.models.Player
-import com.liordahan.mgsrteam.features.players.playerinfo.documents.PlayerDocument
 import com.liordahan.mgsrteam.features.players.models.Position
+import com.liordahan.mgsrteam.features.players.playerinfo.documents.PlayerDocument
 import com.liordahan.mgsrteam.features.players.sort.SortOption
 import com.liordahan.mgsrteam.firebase.FirebaseHandler
 import com.liordahan.mgsrteam.helpers.Result
 import com.liordahan.mgsrteam.transfermarket.PlayersUpdate
-import kotlinx.coroutines.async
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update

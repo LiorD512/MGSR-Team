@@ -1,9 +1,6 @@
 package com.liordahan.mgsrteam.features.players
 
-import android.app.Activity
-import android.content.Intent
 import android.net.Uri
-import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
@@ -15,10 +12,8 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
@@ -34,55 +29,56 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.CalendarMonth
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.EditNote
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Handshake
-import androidx.compose.material.icons.filled.People
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.PersonAdd
-import androidx.compose.material.icons.filled.PersonOff
-import androidx.compose.material.icons.filled.Phone
-import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.automirrored.filled.StickyNote2
 import androidx.compose.material.icons.automirrored.filled.TrendingDown
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
-import androidx.compose.material.icons.filled.VerifiedUser
-import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Handshake
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.PersonAdd
+import androidx.compose.material.icons.filled.PersonOff
+import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.VerifiedUser
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Snackbar
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.ModalBottomSheetProperties
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
-import androidx.compose.runtime.collectAsState
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -96,42 +92,41 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.app.ActivityCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
+import com.liordahan.mgsrteam.IMainViewModel
+import com.liordahan.mgsrteam.R
 import com.liordahan.mgsrteam.features.add.AddPlayerContactFormContent
 import com.liordahan.mgsrteam.features.add.IAddPlayerViewModel
 import com.liordahan.mgsrteam.features.add.SnakeBarMessage
 import com.liordahan.mgsrteam.features.add.showSnakeBarMessage
 import com.liordahan.mgsrteam.features.players.models.Player
-import com.liordahan.mgsrteam.features.players.PlayerWithMandateExpiry
-import com.liordahan.mgsrteam.features.players.models.getAgentPhoneNumber
 import com.liordahan.mgsrteam.features.players.sort.SortOption
-import com.liordahan.mgsrteam.features.players.models.getPlayerPhoneNumber
-import com.liordahan.mgsrteam.IMainViewModel
-import com.liordahan.mgsrteam.R
 import com.liordahan.mgsrteam.features.players.ui.RosterEmptyState
 import com.liordahan.mgsrteam.navigation.Screens
 import com.liordahan.mgsrteam.ui.components.DarkSystemBarsForBottomSheet
-import com.liordahan.mgsrteam.ui.theme.*
+import com.liordahan.mgsrteam.ui.theme.HomeBlueAccent
+import com.liordahan.mgsrteam.ui.theme.HomeDarkBackground
+import com.liordahan.mgsrteam.ui.theme.HomeDarkCard
+import com.liordahan.mgsrteam.ui.theme.HomeDarkCardBorder
+import com.liordahan.mgsrteam.ui.theme.HomeGreenAccent
+import com.liordahan.mgsrteam.ui.theme.HomeOrangeAccent
+import com.liordahan.mgsrteam.ui.theme.HomePurpleAccent
+import com.liordahan.mgsrteam.ui.theme.HomeRedAccent
+import com.liordahan.mgsrteam.ui.theme.HomeTealAccent
+import com.liordahan.mgsrteam.ui.theme.HomeTextPrimary
+import com.liordahan.mgsrteam.ui.theme.HomeTextSecondary
 import com.liordahan.mgsrteam.ui.utils.boldTextStyle
 import com.liordahan.mgsrteam.ui.utils.clickWithNoRipple
 import com.liordahan.mgsrteam.ui.utils.regularTextStyle
-import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.ModalBottomSheetProperties
-import androidx.compose.material3.rememberModalBottomSheetState
-import androidx.compose.runtime.rememberCoroutineScope
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  PLAYERS SCREEN — Variant A (Enhanced Roster View)
@@ -873,7 +868,7 @@ private fun ExpiringAlertBanner(
                         drawRect(
                             color = Color(0xFFFF9800),
                             topLeft = Offset.Zero,
-                            size = androidx.compose.ui.geometry.Size(
+                            size = Size(
                                 width = 3.dp.toPx(),
                                 height = size.height
                             )
@@ -974,7 +969,7 @@ private fun MandateAlertBanner(
                         drawRect(
                             color = HomeBlueAccent,
                             topLeft = Offset.Zero,
-                            size = androidx.compose.ui.geometry.Size(
+                            size = Size(
                                 width = 3.dp.toPx(),
                                 height = size.height
                             )
@@ -1220,7 +1215,7 @@ private fun PlayerCardVariantA(
                     drawRect(
                         color = borderColor,
                         topLeft = Offset.Zero,
-                        size = androidx.compose.ui.geometry.Size(
+                        size = Size(
                             width = 3.dp.toPx(),
                             height = size.height
                         )

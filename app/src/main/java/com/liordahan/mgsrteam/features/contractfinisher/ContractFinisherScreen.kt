@@ -1,6 +1,6 @@
 package com.liordahan.mgsrteam.features.contractfinisher
 
-import android.content.Context
+import android.net.Uri
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
@@ -31,14 +31,19 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.ModalBottomSheetProperties
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -58,12 +63,9 @@ import com.liordahan.mgsrteam.features.players.ui.EmptyState
 import com.liordahan.mgsrteam.features.releases.ReleaseListItem
 import com.liordahan.mgsrteam.features.releases.RosterTeammateMatch
 import com.liordahan.mgsrteam.features.shortlist.ShortlistRepository
-import com.liordahan.mgsrteam.transfermarket.LatestTransferModel
+import com.liordahan.mgsrteam.navigation.Screens
 import com.liordahan.mgsrteam.transfermarket.TeammatesFetcher
 import com.liordahan.mgsrteam.transfermarket.TransfermarktResult
-import com.liordahan.mgsrteam.navigation.Screens
-import com.liordahan.mgsrteam.utils.extractPlayerIdFromUrl
-import android.net.Uri
 import com.liordahan.mgsrteam.ui.components.DarkSystemBarsForBottomSheet
 import com.liordahan.mgsrteam.ui.theme.HomeDarkBackground
 import com.liordahan.mgsrteam.ui.theme.HomeDarkCard
@@ -76,14 +78,10 @@ import com.liordahan.mgsrteam.ui.theme.HomeTextSecondary
 import com.liordahan.mgsrteam.ui.utils.boldTextStyle
 import com.liordahan.mgsrteam.ui.utils.clickWithNoRipple
 import com.liordahan.mgsrteam.ui.utils.regularTextStyle
+import com.liordahan.mgsrteam.utils.extractPlayerIdFromUrl
 import kotlinx.coroutines.launch
-import org.koin.compose.koinInject
 import org.koin.androidx.compose.koinViewModel
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.ModalBottomSheetProperties
-import androidx.compose.material3.rememberModalBottomSheetState
-import androidx.compose.runtime.rememberCoroutineScope
+import org.koin.compose.koinInject
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

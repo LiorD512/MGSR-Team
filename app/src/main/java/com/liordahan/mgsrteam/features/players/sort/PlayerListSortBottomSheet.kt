@@ -22,13 +22,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.liordahan.mgsrteam.R
-import com.liordahan.mgsrteam.features.players.filters.ContractFilterOption
 import com.liordahan.mgsrteam.features.players.filters.FilterCheckBox
 import com.liordahan.mgsrteam.ui.theme.contentDefault
 import com.liordahan.mgsrteam.ui.theme.dividerColor

@@ -4,26 +4,29 @@ import android.content.Context
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.firestore.FirebaseFirestore
-import com.liordahan.mgsrteam.features.players.models.Club
-import com.liordahan.mgsrteam.features.players.models.MarketValueEntry
-import com.liordahan.mgsrteam.features.players.models.Player
-import com.liordahan.mgsrteam.firebase.FirebaseHandler
-import com.liordahan.mgsrteam.features.home.models.FeedEvent
-import com.liordahan.mgsrteam.transfermarket.PlayersUpdate
-import com.liordahan.mgsrteam.transfermarket.TransfermarktResult
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.tasks.await
-import kotlinx.coroutines.withContext
-import kotlinx.coroutines.Dispatchers
 import android.util.Log
 import androidx.work.CoroutineWorker
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
-import kotlin.random.Random
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
+import com.liordahan.mgsrteam.features.home.models.FeedEvent
+import com.liordahan.mgsrteam.features.players.models.Club
+import com.liordahan.mgsrteam.features.players.models.MarketValueEntry
+import com.liordahan.mgsrteam.features.players.models.Player
+import com.liordahan.mgsrteam.firebase.FirebaseHandler
+import com.liordahan.mgsrteam.transfermarket.PlayersUpdate
+import com.liordahan.mgsrteam.transfermarket.TransfermarktResult
+import com.liordahan.mgsrteam.work.PlayerRefreshWorker.Companion.AUTHORIZED_EMAIL
+import com.liordahan.mgsrteam.work.PlayerRefreshWorker.Companion.BATCH_SIZE
+import com.liordahan.mgsrteam.work.PlayerRefreshWorker.Companion.NETWORK_SWITCH_INTERVAL
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withContext
 import java.util.concurrent.TimeUnit
+import kotlin.random.Random
 
 /**
  * Background worker that refreshes players from Transfermarkt and appends market value history.
@@ -227,7 +230,13 @@ class PlayerRefreshWorker(
     /**
      * Returns the list of usable networks (WiFi and/or Cellular).
      * When both are available the worker alternates between them to change IP.
+     *
+     * Note: Uses [ConnectivityManager.allNetworks] which is deprecated; the suggested
+     * replacement [ConnectivityManager.activeNetwork] only returns the primary network.
+     * For IP rotation we need all networks, so we use the deprecated API until Android
+     * provides a replacement for multi-network queries.
      */
+    @Suppress("DEPRECATION")
     private fun getAvailableNetworks(): List<Network> {
         val cm = applicationContext.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
         return cm.allNetworks.filter { network ->

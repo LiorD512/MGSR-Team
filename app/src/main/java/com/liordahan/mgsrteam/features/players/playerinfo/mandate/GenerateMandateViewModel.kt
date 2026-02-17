@@ -1,7 +1,6 @@
 package com.liordahan.mgsrteam.features.players.playerinfo.mandate
 
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
 import com.liordahan.mgsrteam.features.login.models.Account
 import com.liordahan.mgsrteam.transfermarket.ClubSearchModel
 import kotlinx.coroutines.flow.MutableStateFlow

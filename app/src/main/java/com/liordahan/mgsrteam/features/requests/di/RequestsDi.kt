@@ -1,7 +1,7 @@
 package com.liordahan.mgsrteam.features.requests.di
 
-import com.liordahan.mgsrteam.features.requests.RequestsViewModel
 import com.liordahan.mgsrteam.features.requests.IRequestsViewModel
+import com.liordahan.mgsrteam.features.requests.RequestsViewModel
 import com.liordahan.mgsrteam.features.requests.repository.IRequestsRepository
 import com.liordahan.mgsrteam.features.requests.repository.RequestsRepository
 import org.koin.core.module.dsl.viewModel

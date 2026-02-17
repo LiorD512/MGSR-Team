@@ -1,25 +1,19 @@
 package com.liordahan.mgsrteam.features.players.filters
 
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
 import com.liordahan.mgsrteam.features.login.models.Account
 import com.liordahan.mgsrteam.features.players.filters.usecases.IAddAgentFilterUseCase
 import com.liordahan.mgsrteam.features.players.filters.usecases.IAddPositionFilterUseCase
-import com.liordahan.mgsrteam.features.players.filters.usecases.IGetAgentFilterFlowUseCase
-import com.liordahan.mgsrteam.features.players.filters.usecases.IGetPositionFilterFlowUseCase
 import com.liordahan.mgsrteam.features.players.filters.usecases.IRemoveAgentFilterUseCase
 import com.liordahan.mgsrteam.features.players.filters.usecases.IRemoveAllFiltersUseCase
 import com.liordahan.mgsrteam.features.players.filters.usecases.IRemovePositionFilterUseCase
 import com.liordahan.mgsrteam.features.players.filters.usecases.ISetContractFilterOptionUseCase
 import com.liordahan.mgsrteam.features.players.filters.usecases.ISetIsWithNotesCheckedUseCase
-import com.liordahan.mgsrteam.features.players.filters.usecases.RemoveAllFiltersUseCase
-import com.liordahan.mgsrteam.features.players.filters.usecases.SetContractFilterOptionUseCase
 import com.liordahan.mgsrteam.features.players.models.Position
 import com.liordahan.mgsrteam.firebase.FirebaseHandler
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
 
 abstract class IPlayerListFiltersViewModel : ViewModel() {
     abstract val positionList: StateFlow<List<Position>>

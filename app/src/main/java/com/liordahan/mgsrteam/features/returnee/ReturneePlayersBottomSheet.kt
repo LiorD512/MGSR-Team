@@ -23,7 +23,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.ModalBottomSheetProperties
-import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -40,10 +39,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.platform.rememberNestedScrollInteropConnection
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
@@ -58,12 +57,9 @@ import com.liordahan.mgsrteam.features.releases.ReleaseListItem
 import com.liordahan.mgsrteam.features.returnee.model.Leagues
 import com.liordahan.mgsrteam.transfermarket.LatestTransferModel
 import com.liordahan.mgsrteam.ui.components.DarkSystemBarsForBottomSheet
-import com.liordahan.mgsrteam.ui.theme.HomeDarkBackground
 import com.liordahan.mgsrteam.ui.theme.HomeDarkCard
 import com.liordahan.mgsrteam.ui.theme.HomeDarkCardBorder
-import com.liordahan.mgsrteam.ui.theme.HomeTealAccent
 import com.liordahan.mgsrteam.ui.theme.HomeTextPrimary
-import com.liordahan.mgsrteam.ui.theme.HomeTextSecondary
 import com.liordahan.mgsrteam.ui.utils.ProgressIndicator
 import com.liordahan.mgsrteam.ui.utils.boldTextStyle
 import kotlinx.coroutines.launch

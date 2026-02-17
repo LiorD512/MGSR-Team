@@ -6,15 +6,15 @@ import com.liordahan.mgsrteam.features.players.models.Position
 import com.liordahan.mgsrteam.firebase.FirebaseHandler
 import com.liordahan.mgsrteam.transfermarket.ContractFinisher
 import com.liordahan.mgsrteam.transfermarket.LatestTransferModel
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
 data class ContractFinisherUiState(

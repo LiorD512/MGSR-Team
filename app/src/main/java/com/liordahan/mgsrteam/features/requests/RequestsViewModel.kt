@@ -10,15 +10,12 @@ import com.liordahan.mgsrteam.features.requests.repository.IRequestsRepository
 import com.liordahan.mgsrteam.firebase.FirebaseHandler
 import com.liordahan.mgsrteam.transfermarket.ClubSearch
 import com.liordahan.mgsrteam.transfermarket.ClubSearchModel
-import com.liordahan.mgsrteam.transfermarket.TransfermarktResult
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /**

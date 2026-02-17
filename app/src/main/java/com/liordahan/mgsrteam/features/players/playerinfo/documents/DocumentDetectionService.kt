@@ -12,13 +12,13 @@ import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.Text
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
+import com.tom_roush.pdfbox.pdmodel.PDDocument
+import com.tom_roush.pdfbox.text.PDFTextStripper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import java.io.ByteArrayInputStream
 import java.io.File
-import com.tom_roush.pdfbox.pdmodel.PDDocument
-import com.tom_roush.pdfbox.text.PDFTextStripper
 import java.text.Normalizer
 import java.util.Calendar
 import java.util.regex.Pattern
@@ -107,7 +107,7 @@ class DocumentDetectionService(
                         runOcrFromUri(uri) ?: runOcrFromBytes(bytes, mimeType)
                     isPdfMimeType(mimeType) -> {
                         val bitmap = extractFirstPageAsBitmap(bytes)
-                        bitmap?.let { b -> runOcr(b, 0).also { b.recycle() } } ?: ""
+                        bitmap.let { b -> runOcr(b, 0).also { b.recycle() } }
                     }
                     else -> runOcrFromBytes(bytes, mimeType)
                 }
@@ -255,16 +255,16 @@ class DocumentDetectionService(
      * Runs Gemini passport OCR on document bytes.
      * Handles both images (JPEG, PNG, etc.) and PDFs (extracts first page as bitmap).
      */
-    private suspend fun runGeminiPassportOcr(bytes: ByteArray, mimeType: String?): DocumentDetectionService.PassportInfo? {
+    private suspend fun runGeminiPassportOcr(bytes: ByteArray, mimeType: String?): PassportInfo? {
         return when {
             isImageMimeType(mimeType) || mimeType.isNullOrBlank() ->
                 geminiPassportOcr?.extractPassportFromImage(bytes, mimeType)
             isPdfMimeType(mimeType) -> {
                 val bitmap = extractFirstPageAsBitmap(bytes)
                 try {
-                    bitmap?.let { geminiPassportOcr?.extractPassportFromBitmap(it) }
+                    bitmap.let { geminiPassportOcr?.extractPassportFromBitmap(it) }
                 } finally {
-                    bitmap?.recycle()
+                    bitmap.recycle()
                 }
             }
             else -> null
@@ -300,7 +300,7 @@ class DocumentDetectionService(
         return BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options)
     }
 
-    private fun extractFirstPageAsBitmap(bytes: ByteArray): Bitmap? {
+    private fun extractFirstPageAsBitmap(bytes: ByteArray): Bitmap {
         val tempFile = File.createTempFile("doc_", ".pdf")
         try {
             tempFile.writeBytes(bytes)
@@ -391,7 +391,7 @@ class DocumentDetectionService(
             val match = regex.find(text) ?: continue
             val (dd, mm, yy) = match.destructured
             return try {
-                java.util.Calendar.getInstance().apply {
+                Calendar.getInstance().apply {
                     set(Calendar.YEAR, yy.toInt())
                     set(Calendar.MONTH, mm.toInt() - 1)
                     set(Calendar.DAY_OF_MONTH, dd.toInt())
@@ -420,7 +420,7 @@ class DocumentDetectionService(
             if (targetDate != null) {
                 val (dd, mm, yy) = targetDate
                 return try {
-                    java.util.Calendar.getInstance().apply {
+                    Calendar.getInstance().apply {
                         set(Calendar.YEAR, yy.toInt())
                         set(Calendar.MONTH, mm.toInt() - 1)
                         set(Calendar.DAY_OF_MONTH, dd.toInt())
@@ -460,8 +460,8 @@ class DocumentDetectionService(
             val document = PDDocument.load(input)
             try {
                 val stripper = PDFTextStripper()
-                stripper.setStartPage(0)
-                stripper.setEndPage(minOf(2, document.numberOfPages)) // first 2 pages
+                stripper.startPage = 0
+                stripper.endPage = minOf(2, document.numberOfPages) // first 2 pages
                 stripper.getText(document)
             } finally {
                 document.close()

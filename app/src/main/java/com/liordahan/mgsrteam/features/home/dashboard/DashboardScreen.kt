@@ -29,6 +29,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.automirrored.filled.NoteAdd
 import androidx.compose.material.icons.automirrored.filled.TrendingDown
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
@@ -39,12 +40,12 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContactPhone
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Handshake
-import androidx.compose.material.icons.filled.RequestQuote
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.PersonOff
+import androidx.compose.material.icons.filled.RequestQuote
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.filled.Warning
@@ -100,10 +101,10 @@ import com.liordahan.mgsrteam.features.home.IHomeScreenViewModel
 import com.liordahan.mgsrteam.features.home.models.AgentSummary
 import com.liordahan.mgsrteam.features.home.models.AgentTask
 import com.liordahan.mgsrteam.features.home.models.FeedEvent
-import com.liordahan.mgsrteam.transfermarket.TransferWindow
 import com.liordahan.mgsrteam.features.login.models.Account
 import com.liordahan.mgsrteam.localization.LocaleManager
 import com.liordahan.mgsrteam.navigation.Screens
+import com.liordahan.mgsrteam.transfermarket.TransferWindow
 import com.liordahan.mgsrteam.ui.theme.HomeBlueAccent
 import com.liordahan.mgsrteam.ui.theme.HomeDarkBackground
 import com.liordahan.mgsrteam.ui.theme.HomeDarkCard
@@ -531,7 +532,7 @@ private fun QuickActionsRow(navController: NavController) {
         }
         item {
             QuickActionChip(
-                icon = Icons.Default.List,
+                icon = Icons.AutoMirrored.Filled.List,
                 label = stringResource(R.string.quick_action_shortlist),
                 color = HomeBlueAccent,
                 onClick = {
@@ -754,8 +755,8 @@ private fun FeedEventCard(event: FeedEvent, navController: NavController) {
                             event.newValue.isNullOrBlank() -> stringResource(R.string.feed_market_value_no_value)
                             event.newValue == "€0" -> stringResource(R.string.feed_market_value_no_value)
                             event.newValue == "-" -> stringResource(R.string.feed_market_value_no_value)
-                            (event.newValue ?: "").toMarketValueDouble() == 0.0 -> stringResource(R.string.feed_market_value_no_value)
-                            else -> event.newValue!!
+                            event.newValue.toMarketValueDouble() == 0.0 -> stringResource(R.string.feed_market_value_no_value)
+                            else -> event.newValue
                         }
                         Text(
                             text = stringResource(

@@ -7,12 +7,12 @@ import com.liordahan.mgsrteam.R
 import com.liordahan.mgsrteam.features.home.models.AgentSummary
 import com.liordahan.mgsrteam.features.home.models.AgentTask
 import com.liordahan.mgsrteam.features.home.models.FeedEvent
-import com.liordahan.mgsrteam.transfermarket.TransferWindow
-import com.liordahan.mgsrteam.transfermarket.TransferWindows
 import com.liordahan.mgsrteam.features.login.models.Account
 import com.liordahan.mgsrteam.features.players.models.Player
 import com.liordahan.mgsrteam.features.players.playerinfo.documents.PlayerDocument
 import com.liordahan.mgsrteam.firebase.FirebaseHandler
+import com.liordahan.mgsrteam.transfermarket.TransferWindow
+import com.liordahan.mgsrteam.transfermarket.TransferWindows
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
@@ -121,7 +121,7 @@ class HomeScreenViewModel(
             val currentAccount = try {
                 val snap = firebaseHandler.firebaseStore
                     .collection(firebaseHandler.accountsTable).get().await()
-                val accounts = snap.toObjects(com.liordahan.mgsrteam.features.login.models.Account::class.java)
+                val accounts = snap.toObjects(Account::class.java)
                 accounts.firstOrNull {
                     it.email.equals(firebaseHandler.firebaseAuth.currentUser?.email, true)
                 }

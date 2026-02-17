@@ -3,11 +3,9 @@ package com.liordahan.mgsrteam.firebase
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
-import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.Canvas
-import android.graphics.drawable.Drawable
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
@@ -75,7 +73,7 @@ class MgsrFirebaseMessagingService : FirebaseMessagingService() {
             else -> 0xFF39D164.toInt()               // MGSR green (market value, default)
         }
 
-        val largeIcon = drawableToBitmap(R.drawable.for_app_logo, 256)
+        drawableToBitmap(R.drawable.for_app_logo, 256)
 
         val builder = NotificationCompat.Builder(this, channelId)
             .setSmallIcon(R.drawable.ic_stat_mgsr)
@@ -91,7 +89,7 @@ class MgsrFirebaseMessagingService : FirebaseMessagingService() {
             .build()
 
         val notificationId = NOTIFICATION_ID + (data[KEY_PLAYER_ID]?.hashCode()?.and(0x7FFF) ?: 0)
-        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.notify(notificationId, notification)
     }
 
@@ -113,7 +111,7 @@ class MgsrFirebaseMessagingService : FirebaseMessagingService() {
             ).apply {
                 description = getString(R.string.notification_channel_description)
             }
-            val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            val manager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
             manager.createNotificationChannel(channel)
         }
     }

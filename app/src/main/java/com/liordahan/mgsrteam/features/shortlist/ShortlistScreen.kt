@@ -23,55 +23,53 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PersonAdd
-import androidx.compose.material.icons.filled.ExpandMore
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.ModalBottomSheetProperties
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.ModalBottomSheetProperties
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Snackbar
-import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
-import androidx.compose.ui.window.Dialog
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import androidx.core.net.toUri
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
@@ -80,9 +78,13 @@ import com.liordahan.mgsrteam.features.add.AddPlayerContactFormContent
 import com.liordahan.mgsrteam.features.add.IAddPlayerViewModel
 import com.liordahan.mgsrteam.features.add.SnakeBarMessage
 import com.liordahan.mgsrteam.features.add.showSnakeBarMessage
-import kotlinx.coroutines.launch
-import com.liordahan.mgsrteam.ui.components.DarkSystemBarsForBottomSheet
+import com.liordahan.mgsrteam.features.players.models.Player
+import com.liordahan.mgsrteam.features.players.repository.IPlayersRepository
+import com.liordahan.mgsrteam.features.releases.RosterTeammateMatch
 import com.liordahan.mgsrteam.navigation.Screens
+import com.liordahan.mgsrteam.transfermarket.TeammatesFetcher
+import com.liordahan.mgsrteam.transfermarket.TransfermarktResult
+import com.liordahan.mgsrteam.ui.components.DarkSystemBarsForBottomSheet
 import com.liordahan.mgsrteam.ui.theme.HomeDarkBackground
 import com.liordahan.mgsrteam.ui.theme.HomeDarkCard
 import com.liordahan.mgsrteam.ui.theme.HomeDarkCardBorder
@@ -95,11 +97,6 @@ import com.liordahan.mgsrteam.ui.utils.boldTextStyle
 import com.liordahan.mgsrteam.ui.utils.clickWithNoRipple
 import com.liordahan.mgsrteam.ui.utils.regularTextStyle
 import com.liordahan.mgsrteam.utils.extractPlayerIdFromUrl
-import com.liordahan.mgsrteam.features.players.models.Player
-import com.liordahan.mgsrteam.features.players.repository.IPlayersRepository
-import com.liordahan.mgsrteam.features.releases.RosterTeammateMatch
-import com.liordahan.mgsrteam.transfermarket.TeammatesFetcher
-import com.liordahan.mgsrteam.transfermarket.TransfermarktResult
 import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.koinInject
 
@@ -935,13 +932,13 @@ private fun ShortlistEmptyState(
         Text(
             text = stringResource(R.string.shortlist_no_players),
             style = boldTextStyle(HomeTextPrimary, 18.sp),
-            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+            textAlign = TextAlign.Center
         )
         Spacer(Modifier.height(10.dp))
         Text(
             text = stringResource(R.string.shortlist_empty_hint),
             style = regularTextStyle(HomeTextSecondary, 13.sp),
-            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+            textAlign = TextAlign.Center
         )
         Spacer(Modifier.height(28.dp))
         Row(

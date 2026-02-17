@@ -9,16 +9,15 @@ import androidx.activity.compose.ManagedActivityResultLauncher
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -30,9 +29,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -40,68 +37,65 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.filled.TrendingDown
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkAdd
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.PhoneIphone
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.VerifiedUser
 import androidx.compose.material.icons.filled.Whatsapp
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.automirrored.filled.TrendingDown
-import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.ModalBottomSheetProperties
-import androidx.compose.material3.rememberModalBottomSheetState
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.ModalBottomSheetProperties
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
@@ -109,7 +103,6 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -124,23 +117,22 @@ import coil.compose.AsyncImage
 import com.liordahan.mgsrteam.R
 import com.liordahan.mgsrteam.features.add.getPhoneNumberFromContactUri
 import com.liordahan.mgsrteam.features.players.models.NotesModel
-import com.liordahan.mgsrteam.features.players.playerinfo.ai.AiHelperService
-import com.liordahan.mgsrteam.localization.LocaleManager
 import com.liordahan.mgsrteam.features.players.models.Player
-import com.liordahan.mgsrteam.features.requests.models.SalaryRangeOptions
-import com.liordahan.mgsrteam.features.requests.models.TransferFeeOptions
-import com.liordahan.mgsrteam.features.players.playerinfo.documents.DocumentType
-import com.liordahan.mgsrteam.features.shortlist.ShortlistRepository
-import com.liordahan.mgsrteam.navigation.Screens
-import com.liordahan.mgsrteam.transfermarket.LatestTransferModel
-import com.liordahan.mgsrteam.features.players.playerinfo.documents.PlayerDocument
 import com.liordahan.mgsrteam.features.players.models.getAgentPhoneNumber
 import com.liordahan.mgsrteam.features.players.models.getPlayerPhoneNumber
+import com.liordahan.mgsrteam.features.players.playerinfo.ai.AiHelperService
+import com.liordahan.mgsrteam.features.players.playerinfo.documents.DocumentType
+import com.liordahan.mgsrteam.features.players.playerinfo.documents.PlayerDocument
+import com.liordahan.mgsrteam.features.requests.models.SalaryRangeOptions
+import com.liordahan.mgsrteam.features.requests.models.TransferFeeOptions
+import com.liordahan.mgsrteam.features.shortlist.ShortlistRepository
 import com.liordahan.mgsrteam.helpers.UiResult
+import com.liordahan.mgsrteam.localization.LocaleManager
+import com.liordahan.mgsrteam.navigation.Screens
+import com.liordahan.mgsrteam.transfermarket.LatestTransferModel
 import com.liordahan.mgsrteam.ui.components.DarkSystemBarsForBottomSheet
-import com.liordahan.mgsrteam.ui.components.setSearchViewTextFieldColors
-import com.liordahan.mgsrteam.ui.components.setSearchViewTextFieldColorsDarkTheme
 import com.liordahan.mgsrteam.ui.components.ToastManager
+import com.liordahan.mgsrteam.ui.components.setSearchViewTextFieldColorsDarkTheme
 import com.liordahan.mgsrteam.ui.theme.HomeBlueAccent
 import com.liordahan.mgsrteam.ui.theme.HomeDarkBackground
 import com.liordahan.mgsrteam.ui.theme.HomeDarkCard
@@ -155,11 +147,9 @@ import com.liordahan.mgsrteam.ui.theme.HomeTextSecondary
 import com.liordahan.mgsrteam.ui.theme.contentDefault
 import com.liordahan.mgsrteam.ui.theme.dividerColor
 import com.liordahan.mgsrteam.ui.theme.redErrorColor
-import com.liordahan.mgsrteam.ui.utils.ProgressIndicator
 import com.liordahan.mgsrteam.ui.utils.boldTextStyle
 import com.liordahan.mgsrteam.ui.utils.clickWithNoRipple
 import com.liordahan.mgsrteam.ui.utils.regularTextStyle
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.koinInject
@@ -697,7 +687,7 @@ fun PlayerInfoScreen(
                                         .size(20.dp)
                                         .clickWithNoRipple {
                                             doc.storageUrl?.let { url ->
-                                                val intent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url))
+                                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
                                                 context.startActivity(intent)
                                             }
                                         },
@@ -1139,7 +1129,9 @@ private fun PlayerInfoHeroCard(
                             )
                         )
                         if (isMandateOn && mandateExpiryAt != null) {
-                            val mandateExpiryStr = java.text.SimpleDateFormat("dd/MM/yyyy", java.util.Locale.US).format(java.util.Date(mandateExpiryAt))
+                            val mandateExpiryStr = SimpleDateFormat("dd/MM/yyyy", Locale.US).format(
+                                Date(mandateExpiryAt)
+                            )
                             Text(
                                 text = mandateExpiryStr,
                                 style = regularTextStyle(

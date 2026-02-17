@@ -2,18 +2,16 @@ package com.liordahan.mgsrteam.application
 
 import android.app.Application
 import android.content.Context
-import androidx.appcompat.app.AppCompatDelegate
-import androidx.core.os.LocaleListCompat
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import com.google.firebase.messaging.FirebaseMessaging
-import com.tom_roush.pdfbox.android.PDFBoxResourceLoader
 import com.liordahan.mgsrteam.application.di.applicationModules
 import com.liordahan.mgsrteam.firebase.FcmTokenManager
 import com.liordahan.mgsrteam.localization.LocaleManager
 import com.liordahan.mgsrteam.work.ContractExpiryWorker
 import com.liordahan.mgsrteam.work.PlayerRefreshWorker
+import com.tom_roush.pdfbox.android.PDFBoxResourceLoader
 import org.koin.android.ext.koin.androidContext
 import org.koin.android.ext.koin.androidLogger
 import org.koin.core.component.KoinComponent

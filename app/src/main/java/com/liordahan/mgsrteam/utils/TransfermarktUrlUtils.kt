@@ -30,7 +30,7 @@ fun extractPlayerIdFromUrl(url: String?): String? {
 fun buildGemeinsameSpieleUrl(playerProfileUrl: String?): String? {
     val url = playerProfileUrl?.trim()?.substringBefore("?") ?: return null
     if (url.isBlank()) return null
-    val playerId = extractPlayerIdFromUrl(url) ?: return null
+    extractPlayerIdFromUrl(url) ?: return null
     val base = url
         .replace("/profil/spieler/", "/gemeinsameSpiele/spieler/", ignoreCase = true)
         .replace("/profile/player/", "/gemeinsameSpiele/spieler/", ignoreCase = true)
