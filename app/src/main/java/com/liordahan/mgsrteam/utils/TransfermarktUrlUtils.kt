@@ -23,25 +23,6 @@ fun extractPlayerIdFromUrl(url: String?): String? {
 }
 
 /**
- * Builds the "Games played together" (gemeinsameSpiele) URL for a player profile.
- * Input: https://www.transfermarkt.com/erling-haaland/profil/spieler/418560
- * Output: https://www.transfermarkt.com/erling-haaland/gemeinsameSpiele/spieler/418560/...
- */
-fun buildGemeinsameSpieleUrl(playerProfileUrl: String?): String? {
-    val url = playerProfileUrl?.trim()?.substringBefore("?") ?: return null
-    if (url.isBlank()) return null
-    extractPlayerIdFromUrl(url) ?: return null
-    val base = url
-        .replace("/profil/spieler/", "/gemeinsameSpiele/spieler/", ignoreCase = true)
-        .replace("/profile/player/", "/gemeinsameSpiele/spieler/", ignoreCase = true)
-    return if (base != url) {
-        "$base/plus/0/galerie/0?gegner=0&kriterium=0&wettbewerb=&liga=&verein=&pos=&status=1"
-    } else {
-        null
-    }
-}
-
-/**
  * Extracts and normalizes a Transfermarkt player profile URL from shared text.
  * Supports URLs like:
  * - https://www.transfermarkt.com/player-name/profil/spieler/12345

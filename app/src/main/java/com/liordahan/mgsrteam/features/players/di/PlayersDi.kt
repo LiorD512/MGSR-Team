@@ -4,8 +4,6 @@ import android.content.Context
 import com.liordahan.mgsrteam.BuildConfig
 import com.liordahan.mgsrteam.features.players.IPlayersViewModel
 import com.liordahan.mgsrteam.features.players.PlayersViewModel
-import com.liordahan.mgsrteam.features.players.filters.IPlayerListFiltersViewModel
-import com.liordahan.mgsrteam.features.players.filters.PlayerListFiltersViewModel
 import com.liordahan.mgsrteam.features.players.filters.repository.FilterRepository
 import com.liordahan.mgsrteam.features.players.filters.repository.IFilterRepository
 import com.liordahan.mgsrteam.features.players.filters.repository.ISortRepository
@@ -52,8 +50,6 @@ import com.liordahan.mgsrteam.features.players.playerinfo.documents.PlayerDocume
 import com.liordahan.mgsrteam.features.players.playerinfo.mandate.GenerateMandateViewModel
 import com.liordahan.mgsrteam.features.players.repository.IPlayersRepository
 import com.liordahan.mgsrteam.features.players.repository.PlayersRepository
-import com.liordahan.mgsrteam.features.players.sort.IPlayerListSortBottomSheetViewModel
-import com.liordahan.mgsrteam.features.players.sort.PlayerListSortBottomSheetViewModel
 import com.liordahan.mgsrteam.transfermarket.PlayerSearch
 import com.liordahan.mgsrteam.transfermarket.PlayersUpdate
 import org.koin.core.module.dsl.viewModel
@@ -85,22 +81,6 @@ val playersModule = module {
     single { DocumentDetectionService(get<Context>(), get<CloudVisionOcrProvider>(), get<GeminiPassportOcrProvider>()) }
     viewModel<IPlayerInfoViewModel> { PlayerInfoViewModel(get(), get(), get(), get(), get()) }
     viewModel { GenerateMandateViewModel() }
-    viewModel<IPlayerListFiltersViewModel> {
-        PlayerListFiltersViewModel(
-            get(),
-            get(),
-            get(),
-            get(),
-            get(),
-            get(),
-            get(),
-            get()
-        )
-    }
-
-    viewModel<IPlayerListSortBottomSheetViewModel> {
-        PlayerListSortBottomSheetViewModel(get(), get())
-    }
 
     factory<IAddPositionFilterUseCase> {
         AddPositionFilterUseCase(
