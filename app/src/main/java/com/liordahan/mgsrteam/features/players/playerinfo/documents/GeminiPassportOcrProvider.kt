@@ -95,28 +95,85 @@ class GeminiPassportOcrProvider {
     }
 
     private fun buildPrompt(): String = """
-        You are an expert at extracting data from passport and travel document images.
+        You are a world-class ICAO 9303 passport document analyst. Your job is to extract identity fields with 100% accuracy from passport images of ANY country.
 
-        TASK: Determine if this image shows a passport/travel document and extract key fields.
+        ════════════════════════════════════════
+        STEP 1: IS THIS A PASSPORT?
+        ════════════════════════════════════════
+        Passport indicators (ANY of these):
+        • Words on the document: PASSPORT, PASSEPORT, REISEPASS, PASAPORTE, PASSAPORTO, PASSAPORTE, ПАСПОРТ, جواز سفر, 护照, パスポート, 여권
+        • MRZ: 2 lines of ~44 characters with <<< filler at the bottom
+        • Photo on left, labeled fields on right, national emblem/coat of arms
+        • Labeled fields: Surname, Given names, Date of birth, Passport No, Nationality
 
-        IF THIS IS A PASSPORT (from ANY country, ANY language, ANY layout):
-        - Set "isPassport" to true
-        - Extract ALL readable fields:
-          * firstName: given names (first/middle names)
-          * lastName: surname/family name (required - use "Unknown" only if truly unreadable)
-          * dateOfBirth: YYYY-MM-DD format (e.g. 15.03.1990 -> 1990-03-15)
-          * passportNumber: document number (alphanumeric, often 9 chars)
-          * nationality: country name in English
-        - SOURCES: Prefer Machine Readable Zone (MRZ) - the 2 lines of <<< characters at bottom. If MRZ is unclear, use the visual/printed zone (labels like Surname, Given names, Passport no, Date of birth, Nationality)
-        - LAYOUTS: Handle ICAO 9303, EU passports, US, UK, African, Asian, Middle Eastern - all use similar fields
-        - SCRIPTS: For Arabic, Hebrew, Cyrillic, etc. - transliterate to Latin characters
-        - QUALITY: Work with photos (may be blurry, angled, partial). Extract what you can see. If only some fields are readable, fill those.
-        - DATES: Normalize DD.MM.YYYY, DD/MM/YYYY, YYYY-MM-DD all to YYYY-MM-DD
+        If NOT a passport → {"isPassport": false}
 
-        IF THIS IS NOT A PASSPORT (mandate, contract, ID card, other):
-        - Set "isPassport" to false, leave other fields null
+        ════════════════════════════════════════
+        STEP 2: READ THE MRZ CAREFULLY
+        ════════════════════════════════════════
+        The MRZ is 2 lines at the BOTTOM of the data page in OCR-B monospace font.
+        TD3 format (standard passport, 44 characters per line):
 
-        Return ONLY valid JSON. Use null for unreadable fields. Never invent data.
+        LINE 1: P<CCCSURNAME<<GIVENNAMES<<<<<<<<<<<<<<
+          Pos 0:     "P" (document type = passport)
+          Pos 1:     "<" or subtype letter
+          Pos 2-4:   Issuing country ISO 3166-1 alpha-3 (e.g. LBR, GIN, GBR, FRA, USA, NGA, GHA, CIV, SEN, CMR, BRA, DEU, ITA, ESP, MAR, TUN, EGY, CHN, IND, RUS)
+          Pos 5-43:  SURNAME<<GIVENNAMES (surname and given names separated by "<<", each multi-word name separated by "<", remaining positions filled with "<")
+
+        LINE 2: NNNNNNNNNXCCCYYMMDDXSYYMMDDX...
+          Pos 0-8:   Document number (9 chars, CAN contain letters: PP0226862, AB1234567, O00761338)
+          Pos 9:     Check digit for document number
+          Pos 10-12: Nationality ISO 3166-1 alpha-3 code
+          Pos 13-18: Date of birth YYMMDD (YY>=50 → 19YY, YY<50 → 20YY)
+          Pos 19:    Check digit for DOB
+          Pos 20:    Sex (M/F/<)
+          Pos 21-26: Expiry date YYMMDD
+          Pos 27:    Check digit for expiry
+
+        ════════════════════════════════════════
+        STEP 3: READ THE VISUAL ZONE
+        ════════════════════════════════════════
+        The printed/visual zone has labeled fields. Labels appear in the issuing country's language(s) plus often English and/or French. Common label variants by language:
+
+        SURNAME labels: Surname, Nom, Nom de famille, Family Name, Last Name, Familienname, Nachname, Cognome, Apellido(s), Apelido, Soyadı, Фамилия, اللقب, 姓
+        GIVEN NAME labels: Given Names, Prénoms, Prenoms, First Name(s), Vornamen, Vorname, Nome, Nombre(s), Nombres, Nome(s), Adı, Имя, الاسم, 名
+        PASSPORT NO labels: Passport No, Passport No., Passport Number, N° de passeport, N° du document, Passnummer, Reisepassnr, Numero di passaporto, Número de pasaporte, Pasaport No, Номер паспорта, رقم جواز السفر
+        NATIONALITY labels: Nationality, Nationalité, Nationaliteit, Nacionalidad, Nazionalità, Nationalität, Staatsangehörigkeit, Uyruk, Гражданство, الجنسية, 国籍
+        DOB labels: Date of Birth, Date de naissance, Geburtsdatum, Data di nascita, Fecha de nacimiento, Doğum tarihi, Дата рождения, تاريخ الميلاد
+        PLACE OF BIRTH labels: Place of Birth, Lieu de naissance, Geburtsort, Luogo di nascita, Lugar de nacimiento
+
+        IMPORTANT: Many passports use BILINGUAL labels separated by "/" or on two lines:
+        • "Surname / Nom" with value "ERNEST" below
+        • "Given Names / Prénoms" with value "EMMANUEL" below
+        • "Nationality / Nationalité" with value "LIBERIAN" below
+
+        DATE FORMATS found on passports worldwide:
+        • DD MMM YY: "30 DEC 00" → 2000-12-30 (UK, Commonwealth, ECOWAS/African passports)
+        • DD MMM YYYY: "30 DEC 2000" → 2000-12-30
+        • DD/MM/YYYY: "30/12/2000" → 2000-12-30 (French, Italian, Spanish passports)
+        • DD.MM.YYYY: "30.12.2000" → 2000-12-30 (German, Swiss, Turkish passports)
+        • YYYY-MM-DD: "2000-12-30" (Chinese, Korean passports)
+        • MMM DD, YYYY: "DEC 30, 2000" (some US-style)
+
+        ════════════════════════════════════════
+        STEP 4: CROSS-VALIDATE AND OUTPUT
+        ════════════════════════════════════════
+        Compare MRZ with visual zone. They MUST match for the same person.
+        • firstName: The GIVEN NAMES (not surname). From visual zone if readable, otherwise from MRZ (after <<). Example: "EMMANUEL" or "JEAN PIERRE"
+        • lastName: The SURNAME / FAMILY NAME only. From visual zone if readable, otherwise from MRZ (before <<). Example: "ERNEST" or "BANGOURA"
+        • dateOfBirth: ALWAYS output as YYYY-MM-DD. Cross-check MRZ YYMMDD with visual zone date.
+        • passportNumber: Full document number with any letter prefixes. From MRZ positions 0-8 (stripped of < padding). Example: "PP0226862"
+        • nationality: Convert to ENGLISH demonym/adjective. LBR→"Liberian", GIN→"Guinean", GBR→"British", FRA→"French", USA→"American", NGA→"Nigerian", GHA→"Ghanaian", CIV→"Ivorian", SEN→"Senegalese", CMR→"Cameroonian", BRA→"Brazilian", DEU→"German", ITA→"Italian", ESP→"Spanish", MAR→"Moroccan", EGY→"Egyptian", CHN→"Chinese", IND→"Indian", RUS→"Russian", TUR→"Turkish", JPN→"Japanese", KOR→"Korean", COL→"Colombian", ARG→"Argentine", PER→"Peruvian", CHL→"Chilean", MEX→"Mexican", PRT→"Portuguese", BEL→"Belgian", NLD→"Dutch", POL→"Polish", UKR→"Ukrainian", ROU→"Romanian", SRB→"Serbian", HRV→"Croatian", COD→"Congolese", MLI→"Malian", BFA→"Burkinabe", TGO→"Togolese", BEN→"Beninese", NER→"Nigerien", GAB→"Gabonese", COG→"Congolese", TCD→"Chadian", ZAF→"South African". If the visual zone already shows the nationality as a word (e.g. "LIBERIAN"), use that directly.
+
+        CRITICAL RULES:
+        • firstName = GIVEN NAMES ONLY (not surname). lastName = SURNAME ONLY (not given names). Do NOT swap them.
+        • NEVER return the country name as a person's name. "REPUBLIC OF LIBERIA" is NOT a name.
+        • NEVER return a label as a value. "Surname" is a label, not a name.
+        • Passport images may show BOTH pages - focus on the DATA PAGE (the one with photo and MRZ).
+        • Handle rotated, skewed, blurry, or partially obscured passport photos.
+        • For non-Latin scripts: transliterate to Latin characters.
+        • Use null for truly unreadable fields. NEVER invent data.
+        • Return ONLY valid JSON. No markdown, no explanation, no code blocks.
     """.trimIndent()
 
     private fun parseAndMapToPassportInfo(jsonText: String): DocumentDetectionService.PassportInfo? {

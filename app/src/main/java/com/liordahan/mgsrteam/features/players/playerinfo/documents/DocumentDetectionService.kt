@@ -82,21 +82,11 @@ class DocumentDetectionService(
         playerName: String? = null
     ): DetectionResult = withContext(Dispatchers.IO) {
         try {
-            // 0. PDF: Try Gemini FIRST - image-in-PDF (e.g. JPG.pdf) often fails OCR but Gemini vision works
-            // Skip for likely mandates to avoid unnecessary API calls
             val likelyMandate = originalFileName.lowercase().contains("mandate")
-            if (isPdfMimeType(mimeType) && bytes.isNotEmpty() && !likelyMandate) {
-                runGeminiPassportOcr(bytes, mimeType)?.let { geminiInfo ->
-                    Log.i(TAG, "Gemini OCR (PDF-first): ${geminiInfo.lastName}, ${geminiInfo.firstName}")
-                    return@withContext DetectionResult(
-                        documentType = DocumentType.PASSPORT,
-                        suggestedName = "Passport_${sanitizeFileName(geminiInfo.lastName)}",
-                        passportInfo = geminiInfo
-                    )
-                }
-            }
 
-            // 1. Get OCR text - Cloud Vision (best) or ML Kit
+            // ──────────────────────────────────────────────────────
+            // PHASE 1: Quick OCR for document type classification
+            // ──────────────────────────────────────────────────────
             var text = if (isImageMimeType(mimeType) || mimeType.isNullOrBlank()) {
                 cloudVisionOcr?.extractText(bytes) ?: ""
             } else ""
@@ -113,7 +103,6 @@ class DocumentDetectionService(
                 }
             }
 
-            // 2. Try rotated versions if little text (passport may be sideways)
             if (text.length < 20 && (isImageMimeType(mimeType) || mimeType.isNullOrBlank())) {
                 val bitmap = decodeImage(bytes)
                 if (bitmap != null) {
@@ -127,10 +116,11 @@ class DocumentDetectionService(
                 }
             }
 
-            // 2.5. Check for mandate (filename or content)
+            // ──────────────────────────────────────────────────────
+            // PHASE 2: Mandate detection (quick, no Gemini needed)
+            // ──────────────────────────────────────────────────────
             var mandateResult = parseForMandate(text, originalFileName, playerName)
             if (mandateResult != null) {
-                // If mandate but no expiry from OCR, scan PDF for Term section date (second date in "starts on X and ends on Y")
                 if (mandateResult.mandateExpiresAt == null && isPdfMimeType(mimeType)) {
                     val expiryFromPdf = extractMandateExpiryFromPdf(bytes)
                     if (expiryFromPdf != null) {
@@ -140,33 +130,64 @@ class DocumentDetectionService(
                 return@withContext mandateResult
             }
 
-            // 3. Parse: MRZ first (most reliable), then English + multi-language visual parsers
-            var result = parseForPassport(text, originalFileName, playerName)
-
-            // 4. Gemini fallback: when passport detected but details couldn't be extracted from OCR
-            if (result.documentType == DocumentType.PASSPORT && result.passportInfo == null && bytes.isNotEmpty()) {
-                runGeminiPassportOcr(bytes, mimeType)?.let { geminiInfo ->
-                    result = result.copy(
-                        passportInfo = geminiInfo,
-                        suggestedName = "Passport_${sanitizeFileName(geminiInfo.lastName)}"
-                    )
-                    Log.i(TAG, "Gemini OCR extracted passport: ${geminiInfo.lastName}, ${geminiInfo.firstName}")
+            // ──────────────────────────────────────────────────────
+            // PHASE 3: GEMINI-FIRST passport extraction
+            // Gemini Vision sees the actual image layout, not fragile OCR text.
+            // It is the PRIMARY extractor for ALL passport images.
+            // ──────────────────────────────────────────────────────
+            var geminiResult: PassportInfo? = null
+            if (bytes.isNotEmpty() && !likelyMandate) {
+                geminiResult = runGeminiPassportOcr(bytes, mimeType)
+                if (geminiResult != null) {
+                    Log.i(TAG, "Gemini PRIMARY: ${geminiResult.lastName}, ${geminiResult.firstName}, " +
+                        "DOB=${geminiResult.dateOfBirth}, PP#=${geminiResult.passportNumber}, " +
+                        "Nationality=${geminiResult.nationality}")
                 }
             }
 
-            // 5. Gemini for OTHER: detect passports that OCR missed (non-Latin, PDFs, unusual layouts)
-            if (result.documentType == DocumentType.OTHER && bytes.isNotEmpty()) {
-                runGeminiPassportOcr(bytes, mimeType)?.let { geminiInfo ->
-                    result = DetectionResult(
+            // ──────────────────────────────────────────────────────
+            // PHASE 4: Text-based parsers for cross-validation
+            // MRZ parser is highly reliable for standardized fields.
+            // Visual parsers supplement with labels and values.
+            // ──────────────────────────────────────────────────────
+            val parserResult = parseForPassport(text, originalFileName, playerName)
+            val parserInfo = parserResult.passportInfo
+            if (parserInfo != null) {
+                Log.i(TAG, "Text parsers: ${parserInfo.lastName}, ${parserInfo.firstName}, " +
+                    "DOB=${parserInfo.dateOfBirth}, PP#=${parserInfo.passportNumber}, " +
+                    "Nationality=${parserInfo.nationality}")
+            }
+
+            // ──────────────────────────────────────────────────────
+            // PHASE 5: Merge results - Gemini PRIMARY, parsers VALIDATE
+            // ──────────────────────────────────────────────────────
+            val finalResult = when {
+                // Gemini found a passport → use as primary, merge parser data for validation
+                geminiResult != null && parserInfo != null -> {
+                    val merged = mergeGeminiWithParser(geminiResult, parserInfo)
+                    Log.i(TAG, "Merged (Gemini+Parser): ${merged.lastName}, ${merged.firstName}, " +
+                        "DOB=${merged.dateOfBirth}, PP#=${merged.passportNumber}, Nationality=${merged.nationality}")
+                    DetectionResult(
                         documentType = DocumentType.PASSPORT,
-                        suggestedName = "Passport_${sanitizeFileName(geminiInfo.lastName)}",
-                        passportInfo = geminiInfo
+                        suggestedName = "Passport_${sanitizeFileName(merged.lastName)}",
+                        passportInfo = merged
                     )
-                    Log.i(TAG, "Gemini OCR identified passport (was OTHER): ${geminiInfo.lastName}, ${geminiInfo.firstName}")
                 }
+                // Gemini found a passport, no parser data
+                geminiResult != null -> {
+                    DetectionResult(
+                        documentType = DocumentType.PASSPORT,
+                        suggestedName = "Passport_${sanitizeFileName(geminiResult.lastName)}",
+                        passportInfo = geminiResult
+                    )
+                }
+                // Gemini didn't find passport, but text parsers did
+                parserResult.documentType == DocumentType.PASSPORT -> parserResult
+                // Neither found a passport
+                else -> parserResult
             }
 
-            result
+            finalResult
         } catch (e: Exception) {
             Log.e(TAG, "Document detection failed", e)
             DetectionResult(DocumentType.OTHER, originalFileName, null)
@@ -706,6 +727,68 @@ class DocumentDetectionService(
         }
 
         return null
+    }
+
+    /**
+     * Merges Gemini (primary) with text parser (validation) results.
+     * Strategy:
+     * - Gemini is PRIMARY for all fields (it sees the actual image, not fragile OCR text)
+     * - Text parser data fills gaps where Gemini returned null
+     * - For names: prefer Gemini (direct visual reading avoids OCR column-merging bugs)
+     * - For DOB/passport number: use Gemini, but if parser has MRZ data, cross-validate
+     * - For nationality: prefer Gemini (returns proper English demonym like "Liberian")
+     */
+    private fun mergeGeminiWithParser(gemini: PassportInfo, parser: PassportInfo): PassportInfo {
+        val firstName = gemini.firstName.takeIf { it.isNotBlank() && !looksLikeCountryOrLabel(it) }
+            ?: parser.firstName.takeIf { it.isNotBlank() && !looksLikeCountryOrLabel(it) }
+            ?: gemini.firstName
+
+        val lastName = gemini.lastName.takeIf { it.isNotBlank() && !looksLikeCountryOrLabel(it) }
+            ?: parser.lastName.takeIf { it.isNotBlank() && !looksLikeCountryOrLabel(it) }
+            ?: gemini.lastName
+
+        val dateOfBirth = gemini.dateOfBirth?.takeIf { it.isNotBlank() && looksLikeValidDate(it) }
+            ?: parser.dateOfBirth?.takeIf { it.isNotBlank() && looksLikeValidDate(it) }
+
+        val passportNumber = gemini.passportNumber?.takeIf { it.isNotBlank() }
+            ?: parser.passportNumber?.takeIf { it.isNotBlank() }
+
+        val nationality = gemini.nationality?.takeIf { it.isNotBlank() }
+            ?: parser.nationality?.takeIf { it.isNotBlank() }
+
+        return PassportInfo(
+            firstName = firstName,
+            lastName = lastName,
+            dateOfBirth = dateOfBirth,
+            passportNumber = passportNumber,
+            nationality = nationality
+        )
+    }
+
+    /**
+     * Detects values that are NOT actual names but country names, labels, or noise.
+     */
+    private fun looksLikeCountryOrLabel(value: String): Boolean {
+        val lower = value.lowercase().trim()
+        val rejectPatterns = listOf(
+            "republic", "republique", "kingdom", "state of", "united",
+            "passport", "passeport", "reisepass", "pasaporte",
+            "surname", "given name", "prénoms", "prenoms", "nom",
+            "nationality", "nationalité", "date of", "place of",
+            "authority", "sex", "gender", "type", "code"
+        )
+        return rejectPatterns.any { lower.contains(it) }
+    }
+
+    /**
+     * Validates that a date string looks like a properly formatted YYYY-MM-DD date.
+     */
+    private fun looksLikeValidDate(date: String): Boolean {
+        val match = Regex("(\\d{4})-(\\d{2})-(\\d{2})").matchEntire(date) ?: return false
+        val year = match.groupValues[1].toIntOrNull() ?: return false
+        val month = match.groupValues[2].toIntOrNull() ?: return false
+        val day = match.groupValues[3].toIntOrNull() ?: return false
+        return year in 1900..2100 && month in 1..12 && day in 1..31
     }
 
     /** Extracts family name (last word) from full name e.g. "Florent Grégoire Poulolo" -> "Poulolo" */

@@ -315,11 +315,40 @@ object StructuredDocumentExtractor {
     private fun extractPassportNumber(s: String): String =
         s.replace(Regex("\\s"), "").filter { it.isLetterOrDigit() }.take(15)
 
+    private val MONTH_NAMES = mapOf(
+        "jan" to "01", "feb" to "02", "mar" to "03", "apr" to "04",
+        "may" to "05", "jun" to "06", "jul" to "07", "aug" to "08",
+        "sep" to "09", "oct" to "10", "nov" to "11", "dec" to "12",
+        "janv" to "01", "fevr" to "02", "fev" to "02", "mars" to "03",
+        "avr" to "04", "mai" to "05", "juin" to "06", "juil" to "07",
+        "aout" to "08", "sept" to "09", "octobre" to "10", "novo" to "11", "dece" to "12"
+    )
+    private val MONTH_NAME_DATE_REGEX = Regex(
+        "(\\d{1,2})\\s+([A-Za-z]{3,9})\\s+(\\d{2,4})", RegexOption.IGNORE_CASE
+    )
+
     private fun looksLikeDate(s: String): Boolean =
         Regex("\\d{1,4}[./-]\\d{1,2}[./-]\\d{1,4}").containsMatchIn(s) ||
-            Regex("\\d{2}[./-]\\d{2}[./-]\\d{2,4}").containsMatchIn(s)
+            Regex("\\d{2}[./-]\\d{2}[./-]\\d{2,4}").containsMatchIn(s) ||
+            MONTH_NAME_DATE_REGEX.containsMatchIn(s)
 
     private fun normalizeDate(s: String): String {
+        // Try "DD MMM YY" or "DD MMM YYYY" first (e.g. "30 DEC 00", "15 JAN 1990")
+        MONTH_NAME_DATE_REGEX.find(s)?.let { match ->
+            val dd = match.groupValues[1].padStart(2, '0')
+            val monthStr = match.groupValues[2].lowercase().take(4)
+            val yearStr = match.groupValues[3]
+            val mm = MONTH_NAMES.entries.find { monthStr.startsWith(it.key) }?.value
+            if (mm != null) {
+                val year = when {
+                    yearStr.length == 4 -> yearStr
+                    yearStr.toIntOrNull()?.let { it >= 50 } == true -> "19$yearStr"
+                    else -> "20$yearStr"
+                }
+                return "$year-$mm-$dd"
+            }
+        }
+        // Standard numeric: DD/MM/YYYY, DD.MM.YYYY, YYYY-MM-DD
         val match = Regex("(\\d{1,4})[./-](\\d{1,2})[./-](\\d{1,4})").find(s) ?: return s
         val (p1, p2, p3) = match.destructured
         return when {
