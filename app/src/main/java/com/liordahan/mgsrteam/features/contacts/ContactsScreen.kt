@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -79,6 +80,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -1111,7 +1113,7 @@ private fun AddEditContactBottomSheet(
             clubSearchResults = emptyList()
             return@LaunchedEffect
         }
-        delay(350)
+        delay(250)
         isSearchingClubs = true
 
         clubSearchResults = when (val result = clubSearch.getClubSearchResults(clubSearchQuery)) {
@@ -1130,9 +1132,14 @@ private fun AddEditContactBottomSheet(
     val screenHeight = containerSize.height.dp / density
     val keyboardController = LocalSoftwareKeyboardController.current
 
+    var currentStep by rememberSaveable(initialContact?.id ?: "add") { mutableStateOf(0) }
+
+    val canProceedStep1 = selectedClub != null || clubSearchQuery.trim().isNotBlank()
+    val canProceedStep2 = pickedName.isNotBlank() && pickedPhone.isNotBlank()
+
     ModalBottomSheet(
         sheetState = sheetState,
-        modifier = modifier.height(screenHeight * 0.95f),
+        modifier = modifier.height(screenHeight * 0.65f),
         onDismissRequest = onDismiss,
         shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
         containerColor = HomeDarkCard,
@@ -1146,250 +1153,404 @@ private fun AddEditContactBottomSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .fillMaxHeight()
                 .padding(horizontal = 16.dp)
-                .verticalScroll(rememberScrollState())
-                .nestedScroll(rememberNestedScrollInteropConnection())
                 .imePadding()
-                .padding(bottom = 32.dp)
                 .navigationBarsPadding()
+                .nestedScroll(rememberNestedScrollInteropConnection())
+                .padding(bottom = 48.dp)
         ) {
-            Text(
-                text = if (initialContact != null) stringResource(R.string.contacts_edit_contact) else stringResource(R.string.contacts_add_contact),
-                style = boldTextStyle(HomeTextPrimary, 20.sp),
-                modifier = Modifier.padding(vertical = 8.dp)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    if (currentStep > 0) {
+                        IconButton(
+                            onClick = { currentStep = currentStep - 1 },
+                            modifier = Modifier.size(40.dp)
+                        ) {
+                            Icon(
+                                Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = stringResource(R.string.contacts_close),
+                                tint = HomeTextSecondary
+                            )
+                        }
+                    }
+                    Text(
+                        text = if (initialContact != null) stringResource(R.string.contacts_edit_contact) else stringResource(R.string.contacts_add_contact),
+                        style = boldTextStyle(HomeTextPrimary, 20.sp)
+                    )
+                }
+                IconButton(onClick = onDismiss) {
+                    Icon(Icons.Default.Close, contentDescription = stringResource(R.string.contacts_close), tint = HomeTextSecondary)
+                }
+            }
+
+            StepIndicator(
+                currentStep = currentStep,
+                stepLabels = listOf(
+                    stringResource(R.string.contacts_step_club),
+                    stringResource(R.string.contacts_step_contact),
+                    stringResource(R.string.contacts_step_role)
+                )
             )
-            HorizontalDivider(color = HomeDarkCardBorder, thickness = 1.dp)
 
             Spacer(Modifier.height(16.dp))
 
-            // ── CLUB section (at top so it's visible when keyboard opens) ──
-            Text(
-                text = stringResource(R.string.contacts_label_club),
-                style = regularTextStyle(HomeTextSecondary, 11.sp),
-                modifier = Modifier.padding(bottom = 10.dp)
-            )
-            OutlinedTextField(
-                value = clubSearchQuery,
-                onValueChange = {
-                    clubSearchQuery = it
-                    if (selectedClub != null && it != selectedClub?.clubName) selectedClub = null
+            AnimatedContent(
+                modifier = Modifier.weight(1f, fill = true),
+                targetState = currentStep,
+                transitionSpec = {
+                    if (targetState > initialState) {
+                        slideInHorizontally(animationSpec = tween(200)) { it } + fadeIn(tween(200)) togetherWith
+                            slideOutHorizontally(animationSpec = tween(200)) { -it } + fadeOut(tween(200))
+                    } else {
+                        slideInHorizontally(animationSpec = tween(200)) { -it } + fadeIn(tween(200)) togetherWith
+                            slideOutHorizontally(animationSpec = tween(200)) { it } + fadeOut(tween(200))
+                    }
                 },
-                placeholder = {
-                    Text(
-                        stringResource(R.string.requests_search_club),
-                        style = regularTextStyle(HomeTextSecondary, 14.sp)
-                    )
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .focusRequester(clubSearchFocusRequester),
-                singleLine = true,
-                colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(
-                    focusedTextColor = HomeTextPrimary,
-                    unfocusedTextColor = HomeTextPrimary,
-                    focusedBorderColor = HomeTealAccent,
-                    unfocusedBorderColor = HomeDarkCardBorder,
-                    cursorColor = HomeTealAccent
-                ),
-                trailingIcon = {
-                    if (isSearchingClubs) {
-                        Box(Modifier.size(32.dp), contentAlignment = Alignment.Center) {
-                            CircularProgressIndicator(
-                                color = HomeTealAccent,
-                                strokeWidth = 2.dp,
-                                modifier = Modifier.size(24.dp)
-                            )
+                label = "contact_add_steps"
+            ) { step ->
+                when (step) {
+                    0 -> Step1ClubContent(
+                        clubSearchQuery = clubSearchQuery,
+                        onClubSearchChange = {
+                            clubSearchQuery = it
+                            if (selectedClub != null && it != selectedClub?.clubName) selectedClub = null
+                        },
+                        clubSearchResults = clubSearchResults,
+                        isSearchingClubs = isSearchingClubs,
+                        selectedClub = selectedClub,
+                        clubSearchFocusRequester = clubSearchFocusRequester,
+                        keyboardController = keyboardController,
+                        onSelectClub = {
+                            selectedClub = it
+                            clubSearchQuery = ""
+                            clubSearchResults = emptyList()
+                        },
+                        onChangeClub = {
+                            selectedClub = null
+                            clubSearchQuery = ""
+                            clubSearchResults = emptyList()
+                            clubSearchFocusRequester.requestFocus()
+                            keyboardController?.show()
                         }
-                    }
-                }
-            )
-            if (clubSearchResults.isNotEmpty()) {
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(max = 180.dp)
-                        .padding(vertical = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    items(clubSearchResults) { clubItem ->
-                        ClubSearchResultRow(
-                            club = clubItem,
-                            onClick = {
-                                selectedClub = clubItem
-                                clubSearchQuery = ""
-                                clubSearchResults = emptyList()
-                            }
-                        )
-                    }
-                }
-            }
-            selectedClub?.let { club ->
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 8.dp)
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(HomeDarkBackground)
-                        .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(10.dp))
-                        .padding(12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    club.clubLogo?.let { logo ->
-                        AsyncImage(
-                            model = logo,
-                            contentDescription = null,
-                            modifier = Modifier.size(28.dp),
-                            contentScale = ContentScale.Fit
-                        )
-                        Spacer(Modifier.width(10.dp))
-                    }
-                    Column(Modifier.weight(1f)) {
-                        Text(club.clubName ?: "", style = boldTextStyle(HomeTextPrimary, 12.sp))
-                        club.clubCountry?.let { c ->
-                            Text(
-                                c,
-                                style = regularTextStyle(HomeTextSecondary, 11.sp)
-                            )
-                        }
-                    }
-                    TextButton(onClick = {
-                        selectedClub = null
-                        clubSearchQuery = ""
-                        clubSearchResults = emptyList()
-                        clubSearchFocusRequester.requestFocus()
-                        keyboardController?.show()
-                    }) {
-                        Text("Change", style = regularTextStyle(HomeTealAccent, 12.sp))
-                    }
-                }
-            }
-
-            Spacer(Modifier.height(20.dp))
-
-            // ── WHO section ──
-            Text(
-                text = stringResource(R.string.contacts_label_who),
-                style = regularTextStyle(HomeTextSecondary, 11.sp),
-                modifier = Modifier.padding(bottom = 10.dp)
-            )
-            OutlinedCard(
-                onClick = onPickContact,
-                shape = RoundedCornerShape(12.dp),
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.outlinedCardColors(containerColor = HomeTealAccent.copy(alpha = 0.15f)),
-                border = BorderStroke(1.dp, HomeTealAccent)
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(14.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Person,
-                        contentDescription = null,
-                        tint = HomeTealAccent,
-                        modifier = Modifier.size(22.dp)
                     )
-                    Spacer(Modifier.width(12.dp))
-                    Text(
-                        text = stringResource(R.string.contacts_import),
-                        style = boldTextStyle(HomeTealAccent, 14.sp)
+                    1 -> Step2ContactContent(
+                        pickedName = pickedName,
+                        pickedPhone = pickedPhone,
+                        onNameChange = onNameChange,
+                        onPhoneChange = onPhoneChange,
+                        onPickContact = onPickContact
                     )
-                }
-            }
-            Spacer(Modifier.height(8.dp))
-            Text(
-                text = stringResource(R.string.contacts_enter_manually),
-                style = regularTextStyle(HomeTextSecondary, 12.sp),
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
-            AddContactTextField(
-                label = stringResource(R.string.contacts_label_name),
-                value = pickedName,
-                onValueChange = onNameChange,
-                placeholder = stringResource(R.string.contacts_placeholder_name),
-                modifier = Modifier.fillMaxWidth()
-            )
-            Spacer(Modifier.height(8.dp))
-            AddContactTextField(
-                label = stringResource(R.string.contacts_label_phone),
-                value = pickedPhone,
-                onValueChange = onPhoneChange,
-                placeholder = stringResource(R.string.contacts_placeholder_phone),
-                keyboardType = KeyboardType.Phone,
-                contentTextDirection = TextDirection.Ltr,
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            Spacer(Modifier.height(20.dp))
-
-            // ── ROLE section ──
-            Text(
-                text = stringResource(R.string.contacts_label_role),
-                style = regularTextStyle(HomeTextSecondary, 11.sp),
-                modifier = Modifier.padding(bottom = 10.dp)
-            )
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                ContactRole.entries.forEach { role ->
-                    RoleChip(
-                        label = getRoleDisplayLabel(role),
-                        isSelected = selectedRole == role,
-                        onClick = { selectedRole = role }
-                    )
-                }
-            }
-
-            Spacer(Modifier.height(24.dp))
-
-            // ── Actions ──
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                TextButton(
-                    onClick = onDismiss,
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text(stringResource(R.string.cancel), style = regularTextStyle(HomeTextSecondary, 14.sp))
-                }
-                val canSave = pickedName.isNotBlank() && pickedPhone.isNotBlank()
-                Button(
-                    onClick = {
-                        if (pickedName.isNotBlank() && pickedPhone.isNotBlank()) {
+                    2 -> Step3RoleContent(
+                        selectedRole = selectedRole,
+                        onRoleSelect = { selectedRole = it },
+                        initialContact = initialContact,
+                        onDismiss = onDismiss,
+                        onSave = {
                             onSave(
                                 Contact(
                                     id = initialContact?.id,
                                     name = pickedName.trim(),
                                     phoneNumber = pickedPhone.trim(),
                                     role = selectedRole.name,
-                                    clubName = selectedClub?.clubName ?: clubSearchQuery.trim()
-                                        .takeIf { it.isNotBlank() },
+                                    clubName = selectedClub?.clubName ?: clubSearchQuery.trim().takeIf { it.isNotBlank() },
                                     clubCountry = selectedClub?.clubCountry,
                                     clubLogo = selectedClub?.clubLogo,
                                     clubCountryFlag = selectedClub?.clubCountryFlag
                                 )
                             )
                         }
+                    )
+                }
+            }
+
+            if (currentStep < 2) {
+                Spacer(Modifier.height(24.dp))
+                Button(
+                    onClick = {
+                        when (currentStep) {
+                            0 -> if (canProceedStep1) currentStep = 1
+                            1 -> if (canProceedStep2) currentStep = 2
+                        }
                     },
-                    enabled = canSave,
-                    modifier = Modifier.weight(1f),
+                    enabled = when (currentStep) {
+                        0 -> canProceedStep1
+                        1 -> canProceedStep2
+                        else -> true
+                    },
+                    modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = HomeTealAccent,
                         disabledContainerColor = HomeTealAccent.copy(alpha = 0.4f)
                     )
                 ) {
-                    Text(
-                        if (initialContact != null) stringResource(R.string.contacts_button_save) else stringResource(R.string.contacts_button_add),
-                        style = boldTextStyle(Color.White, 14.sp)
+                    Text(stringResource(R.string.contacts_next), style = boldTextStyle(Color.White, 14.sp))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun StepIndicator(
+    currentStep: Int,
+    stepLabels: List<String>
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        stepLabels.forEachIndexed { index, label ->
+            if (index > 0) Spacer(Modifier.width(6.dp))
+            Box(
+                modifier = Modifier
+                    .size(8.dp)
+                    .clip(CircleShape)
+                    .background(
+                        if (index <= currentStep) HomeTealAccent else HomeDarkCardBorder
+                    )
+            )
+        }
+        Spacer(Modifier.width(8.dp))
+        Text(
+            text = stringResource(R.string.contacts_step_of, currentStep + 1) + " — " + stepLabels[currentStep],
+            style = regularTextStyle(HomeTextSecondary, 12.sp)
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun Step1ClubContent(
+    clubSearchQuery: String,
+    onClubSearchChange: (String) -> Unit,
+    clubSearchResults: List<ClubSearchModel>,
+    isSearchingClubs: Boolean,
+    selectedClub: ClubSearchModel?,
+    clubSearchFocusRequester: FocusRequester,
+    keyboardController: androidx.compose.ui.platform.SoftwareKeyboardController?,
+    onSelectClub: (ClubSearchModel) -> Unit,
+    onChangeClub: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .verticalScroll(rememberScrollState())
+    ) {
+        Text(
+            text = stringResource(R.string.contacts_search_for_club),
+            style = regularTextStyle(HomeTextSecondary, 11.sp),
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+        OutlinedTextField(
+            value = clubSearchQuery,
+            onValueChange = onClubSearchChange,
+            placeholder = {
+                Text(
+                    stringResource(R.string.requests_search_club),
+                    style = regularTextStyle(HomeTextSecondary, 14.sp)
+                )
+            },
+            modifier = Modifier.fillMaxWidth().focusRequester(clubSearchFocusRequester),
+            singleLine = true,
+            colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(
+                focusedTextColor = HomeTextPrimary,
+                unfocusedTextColor = HomeTextPrimary,
+                focusedBorderColor = HomeTealAccent,
+                unfocusedBorderColor = HomeDarkCardBorder,
+                cursorColor = HomeTealAccent
+            ),
+            trailingIcon = {
+                if (isSearchingClubs) {
+                    Box(Modifier.size(32.dp), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(
+                            color = HomeTealAccent,
+                            strokeWidth = 2.dp,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                }
+            }
+        )
+        if (clubSearchResults.isNotEmpty()) {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 260.dp)
+                    .padding(vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                items(clubSearchResults) { clubItem ->
+                    ClubSearchResultRow(
+                        club = clubItem,
+                        onClick = { onSelectClub(clubItem) }
                     )
                 }
+            }
+        }
+        selectedClub?.let { club ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(HomeDarkBackground)
+                    .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(10.dp))
+                    .padding(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                club.clubLogo?.let { logo ->
+                    AsyncImage(
+                        model = logo,
+                        contentDescription = null,
+                        modifier = Modifier.size(28.dp),
+                        contentScale = ContentScale.Fit
+                    )
+                    Spacer(Modifier.width(10.dp))
+                }
+                Column(Modifier.weight(1f)) {
+                    Text(club.clubName ?: "", style = boldTextStyle(HomeTextPrimary, 12.sp))
+                    club.clubCountry?.let { c ->
+                        Text(c, style = regularTextStyle(HomeTextSecondary, 11.sp))
+                    }
+                }
+                TextButton(onClick = onChangeClub) {
+                    Text(stringResource(R.string.contacts_change), style = regularTextStyle(HomeTealAccent, 12.sp))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun Step2ContactContent(
+    pickedName: String,
+    pickedPhone: String,
+    onNameChange: (String) -> Unit,
+    onPhoneChange: (String) -> Unit,
+    onPickContact: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .verticalScroll(rememberScrollState())
+    ) {
+        Text(
+            text = stringResource(R.string.contacts_how_add_contact),
+            style = regularTextStyle(HomeTextSecondary, 11.sp),
+            modifier = Modifier.padding(bottom = 12.dp)
+        )
+        OutlinedCard(
+            onClick = onPickContact,
+            shape = RoundedCornerShape(12.dp),
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.outlinedCardColors(containerColor = HomeTealAccent.copy(alpha = 0.15f)),
+            border = BorderStroke(1.dp, HomeTealAccent)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(14.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Person,
+                    contentDescription = null,
+                    tint = HomeTealAccent,
+                    modifier = Modifier.size(22.dp)
+                )
+                Spacer(Modifier.width(12.dp))
+                Text(
+                    text = stringResource(R.string.contacts_import),
+                    style = boldTextStyle(HomeTealAccent, 14.sp)
+                )
+            }
+        }
+        Spacer(Modifier.height(16.dp))
+        Text(
+            text = stringResource(R.string.contacts_or_enter_manually),
+            style = regularTextStyle(HomeTextSecondary, 12.sp),
+            modifier = Modifier.padding(bottom = 12.dp)
+        )
+        AddContactTextField(
+            label = stringResource(R.string.contacts_label_name),
+            value = pickedName,
+            onValueChange = onNameChange,
+            placeholder = stringResource(R.string.contacts_placeholder_name),
+            modifier = Modifier.fillMaxWidth()
+        )
+        Spacer(Modifier.height(8.dp))
+        AddContactTextField(
+            label = stringResource(R.string.contacts_label_phone),
+            value = pickedPhone,
+            onValueChange = onPhoneChange,
+            placeholder = stringResource(R.string.contacts_placeholder_phone),
+            keyboardType = KeyboardType.Phone,
+            contentTextDirection = TextDirection.Ltr,
+            modifier = Modifier.fillMaxWidth()
+        )
+    }
+}
+
+@Composable
+private fun Step3RoleContent(
+    selectedRole: ContactRole,
+    onRoleSelect: (ContactRole) -> Unit,
+    initialContact: Contact?,
+    onDismiss: () -> Unit,
+    onSave: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .verticalScroll(rememberScrollState())
+    ) {
+        Text(
+            text = stringResource(R.string.contacts_role_optional),
+            style = regularTextStyle(HomeTextSecondary, 11.sp),
+            modifier = Modifier.padding(bottom = 12.dp)
+        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            ContactRole.entries.forEach { role ->
+                RoleChip(
+                    label = getRoleDisplayLabel(role),
+                    isSelected = selectedRole == role,
+                    onClick = { onRoleSelect(role) }
+                )
+            }
+        }
+        Spacer(Modifier.height(24.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            TextButton(
+                onClick = onDismiss,
+                modifier = Modifier.weight(1f)
+            ) {
+                Text(stringResource(R.string.cancel), style = regularTextStyle(HomeTextSecondary, 14.sp))
+            }
+            Button(
+                onClick = onSave,
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = HomeTealAccent)
+            ) {
+                Text(
+                    if (initialContact != null) stringResource(R.string.contacts_button_save) else stringResource(R.string.contacts_button_add),
+                    style = boldTextStyle(Color.White, 14.sp)
+                )
             }
         }
     }

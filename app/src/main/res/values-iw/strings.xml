@@ -327,6 +327,18 @@
     <string name="contacts_no_contacts_found">לא נמצאו אנשי קשר</string>
     <string name="contacts_try_different_search">נסה חיפוש אחר או הוסף איש קשר חדש</string>
 
+    <!-- Contact add stepped flow -->
+    <string name="contacts_step_of">שלב %1$d מתוך 3</string>
+    <string name="contacts_step_club">מועדון</string>
+    <string name="contacts_step_contact">איש קשר</string>
+    <string name="contacts_step_role">תפקיד</string>
+    <string name="contacts_next">הבא</string>
+    <string name="contacts_how_add_contact">איך תרצה להוסיף את איש הקשר?</string>
+    <string name="contacts_role_optional">מה התפקיד שלו? (אופציונלי)</string>
+    <string name="contacts_search_for_club">חפש מועדון</string>
+    <string name="contacts_or_enter_manually">— או הזן ידנית —</string>
+    <string name="contacts_change">החלף</string>
+
     <!-- Contact roles (add/edit contact screen) -->
     <string name="contact_role_other">אחר</string>
     <string name="contact_role_coach">מאמן</string>

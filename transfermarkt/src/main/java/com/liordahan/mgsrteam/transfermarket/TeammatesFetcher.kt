@@ -117,7 +117,7 @@ class TeammatesFetcher {
 
     /** Parse a link like .../gegner/284730/... - link text is matches, URL has teammate ID. Skip gegner/0 (filter). */
     private fun parseGegnerLink(link: Element): TeammateInfo? {
-        val href = link.attr("href") ?: return null
+        val href = link.attr("href")
         val gegnerMatch = Regex("""/gegner/(\d+)""").find(href) ?: return null
         val teammateId = gegnerMatch.groupValues[1]
         if (teammateId == "0") return null // Filter link, not a teammate
@@ -140,7 +140,7 @@ class TeammatesFetcher {
                 ?: row.selectFirst("td a[href*='/profil/spieler/'], td a[href*='/profile/player/']")
                 ?: return null
 
-            val href = playerLink.attr("href") ?: return null
+            val href = playerLink.attr("href")
             val tmProfileUrl = makeAbsoluteUrl(href)
             val playerName = playerLink.attr("title").takeIf { it.isNotBlank() }
                 ?: playerLink.text().trim().takeIf { it.isNotBlank() }
@@ -148,7 +148,7 @@ class TeammatesFetcher {
             val hauptlinkText = row.selectFirst("td.hauptlink")?.text()?.trim().orEmpty()
             val position = playerName?.let { name ->
                 hauptlinkText.substringAfter(name).trim().takeIf { it.length in 2..30 }
-            } ?: null
+            }
 
             val cells = row.select("td")
             val matchesPlayedTogether = (1..minOf(3, cells.size - 1)).mapNotNull { i ->
