@@ -18,6 +18,7 @@ import com.liordahan.mgsrteam.R
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 
@@ -46,6 +47,11 @@ class MgsrFirebaseMessagingService : FirebaseMessagingService() {
         }
     }
 
+    override fun onDestroy() {
+        super.onDestroy()
+        serviceScope.cancel()
+    }
+
     private fun showNotification(
         title: String,
         body: String,
@@ -54,6 +60,9 @@ class MgsrFirebaseMessagingService : FirebaseMessagingService() {
         val channelId = NOTIFICATION_CHANNEL_ID
         createNotificationChannel(channelId)
 
+        val notificationId = NOTIFICATION_ID +
+            (data[KEY_PLAYER_ID]?.hashCode()?.and(0x7FFF) ?: 0)
+
         val intent = Intent(this, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
             data[KEY_PLAYER_ID]?.let { putExtra(EXTRA_PLAYER_ID, it) }
@@ -61,7 +70,7 @@ class MgsrFirebaseMessagingService : FirebaseMessagingService() {
         }
         val pendingIntent = PendingIntent.getActivity(
             this,
-            0,
+            notificationId,
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
@@ -70,10 +79,10 @@ class MgsrFirebaseMessagingService : FirebaseMessagingService() {
         val accentColor = when (type) {
             "CLUB_CHANGE" -> 0xFF2196F3.toInt()      // Blue
             "BECAME_FREE_AGENT" -> 0xFFFF9800.toInt() // Orange
-            else -> 0xFF39D164.toInt()               // MGSR green (market value, default)
+            else -> 0xFF39D164.toInt()                // MGSR green (default)
         }
 
-        drawableToBitmap(R.drawable.for_app_logo, 256)
+        val largeIcon = drawableToBitmap(R.drawable.for_app_logo, 256)
 
         val builder = NotificationCompat.Builder(this, channelId)
             .setSmallIcon(R.drawable.ic_stat_mgsr)
@@ -85,10 +94,12 @@ class MgsrFirebaseMessagingService : FirebaseMessagingService() {
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)
 
-        val notification = builder
-            .build()
+        if (largeIcon != null) {
+            builder.setLargeIcon(largeIcon)
+        }
 
-        val notificationId = NOTIFICATION_ID + (data[KEY_PLAYER_ID]?.hashCode()?.and(0x7FFF) ?: 0)
+        val notification = builder.build()
+
         val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.notify(notificationId, notification)
     }
