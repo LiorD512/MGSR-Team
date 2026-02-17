@@ -9,10 +9,12 @@ import com.liordahan.mgsrteam.features.home.models.AgentTask
 import com.liordahan.mgsrteam.features.home.models.FeedEvent
 import com.liordahan.mgsrteam.features.login.models.Account
 import com.liordahan.mgsrteam.features.players.models.Player
+import com.google.firebase.firestore.ListenerRegistration
 import com.liordahan.mgsrteam.features.players.playerinfo.documents.PlayerDocument
 import com.liordahan.mgsrteam.firebase.FirebaseHandler
 import com.liordahan.mgsrteam.transfermarket.TransferWindow
 import com.liordahan.mgsrteam.transfermarket.TransferWindows
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
@@ -98,6 +100,8 @@ class HomeScreenViewModel(
     /** Must be declared before init{} so the JVM field is initialised before any coroutine reads it. */
     private var _currentPlayers: List<Player> = emptyList()
 
+    private val listenerRegistrations = mutableListOf<ListenerRegistration>()
+
     init {
         loadGreeting()
         loadAllAccounts()
@@ -109,10 +113,16 @@ class HomeScreenViewModel(
         loadTransferWindows()
     }
 
+    override fun onCleared() {
+        super.onCleared()
+        listenerRegistrations.forEach { it.remove() }
+        listenerRegistrations.clear()
+    }
+
     // ── Greeting ─────────────────────────────────────────────────────────────
 
     private fun loadGreeting() {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             val greetingRes = when (Calendar.getInstance().get(Calendar.HOUR_OF_DAY)) {
                 in 5..11 -> R.string.greeting_good_morning
                 in 12..17 -> R.string.greeting_good_afternoon
@@ -134,64 +144,64 @@ class HomeScreenViewModel(
     // ── All Accounts ─────────────────────────────────────────────────────────
 
     private fun loadAllAccounts() {
-        firebaseHandler.firebaseStore.collection(firebaseHandler.accountsTable)
+        val reg = firebaseHandler.firebaseStore.collection(firebaseHandler.accountsTable)
             .addSnapshotListener { snapshot, _ ->
                 if (snapshot == null) return@addSnapshotListener
                 val accounts = snapshot.toObjects(Account::class.java)
                 _state.update { it.copy(allAccounts = accounts) }
             }
+        listenerRegistrations.add(reg)
     }
 
     // ── Players snapshot listener ────────────────────────────────────────────
 
     private fun listenToPlayers() {
-        firebaseHandler.firebaseStore.collection(firebaseHandler.playersTable)
+        val reg = firebaseHandler.firebaseStore.collection(firebaseHandler.playersTable)
             .addSnapshotListener { snapshot, error ->
                 if (error != null || snapshot == null) return@addSnapshotListener
                 val players = snapshot.toObjects(Player::class.java)
+                viewModelScope.launch(Dispatchers.Default) {
+                    val total = players.size
+                    val freeAgents = players.count {
+                        it.currentClub?.clubName.equals("Without Club", true) ||
+                            it.currentClub?.clubName.equals("Without club", true)
+                    }
+                    val expiring = players.count { isContractExpiringWithinMonths(it.contractExpired, 5) }
 
-                val total = players.size
-                val freeAgents = players.count {
-                    it.currentClub?.clubName.equals("Without Club", true) ||
-                        it.currentClub?.clubName.equals("Without club", true)
-                }
-                val expiring = players.count { isContractExpiringWithinMonths(it.contractExpired, 5) }
+                    val agentGroups = players.groupBy { it.agentInChargeName ?: "Unassigned" }
+                    val summaries = agentGroups
+                        .filter { it.key != "Unassigned" }
+                        .map { (name, list) ->
+                            AgentSummary(
+                                agentId = list.firstOrNull()?.agentInChargeId,
+                                agentName = name,
+                                totalPlayers = list.size,
+                                withMandate = 0,
+                                expiringContracts = list.count { isContractExpiringWithinMonths(it.contractExpired, 5) },
+                                withNotes = list.count { !it.noteList.isNullOrEmpty() }
+                            )
+                        }
 
-                // Agent summaries
-                val agentGroups = players.groupBy { it.agentInChargeName ?: "Unassigned" }
-                val summaries = agentGroups
-                    .filter { it.key != "Unassigned" }
-                    .map { (name, list) ->
-                        AgentSummary(
-                            agentId = list.firstOrNull()?.agentInChargeId,
-                            agentName = name,
-                            totalPlayers = list.size,
-                            withMandate = 0, // filled below once docs loaded
-                            expiringContracts = list.count { isContractExpiringWithinMonths(it.contractExpired, 5) },
-                            withNotes = list.count { !it.noteList.isNullOrEmpty() }
+                    _currentPlayers = players
+
+                    _state.update {
+                        it.copy(
+                            totalPlayers = total,
+                            freeAgents = freeAgents,
+                            expiringSoon = expiring,
+                            agentSummaries = summaries,
+                            isLoading = false
                         )
                     }
 
-                // store players for live-match matching
-                _currentPlayers = players
-
-                _state.update {
-                    it.copy(
-                        totalPlayers = total,
-                        freeAgents = freeAgents,
-                        expiringSoon = expiring,
-                        agentSummaries = summaries,
-                        isLoading = false
-                    )
+                    countMandates(players)
                 }
-
-                // Count mandates asynchronously
-                countMandates(players)
             }
+        listenerRegistrations.add(reg)
     }
 
     private fun countMandates(players: List<Player>) {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             try {
                 val docsSnap = firebaseHandler.firebaseStore
                     .collection(firebaseHandler.playerDocumentsTable)
@@ -226,18 +236,19 @@ class HomeScreenViewModel(
     // ── Requests count ───────────────────────────────────────────────────────
 
     private fun listenToRequests() {
-        firebaseHandler.firebaseStore.collection(firebaseHandler.clubRequestsTable)
+        val reg = firebaseHandler.firebaseStore.collection(firebaseHandler.clubRequestsTable)
             .addSnapshotListener { snapshot, _ ->
                 if (snapshot == null) return@addSnapshotListener
                 val count = snapshot.size()
                 _state.update { it.copy(requestsCount = count) }
             }
+        listenerRegistrations.add(reg)
     }
 
     // ── Feed events ──────────────────────────────────────────────────────────
 
     private fun loadFeedEvents() {
-        firebaseHandler.firebaseStore.collection(firebaseHandler.feedEventsTable)
+        val reg = firebaseHandler.firebaseStore.collection(firebaseHandler.feedEventsTable)
             .orderBy("timestamp", com.google.firebase.firestore.Query.Direction.DESCENDING)
             .limit(50)
             .addSnapshotListener { snapshot, _ ->
@@ -245,6 +256,7 @@ class HomeScreenViewModel(
                 val events = snapshot.toObjects(FeedEvent::class.java)
                 _state.update { it.copy(feedEvents = events) }
             }
+        listenerRegistrations.add(reg)
     }
 
     override fun selectFeedFilter(filter: FeedFilter) {
@@ -254,7 +266,7 @@ class HomeScreenViewModel(
     // ── Document reminders ───────────────────────────────────────────────────
 
     private fun loadDocumentReminders() {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             try {
                 val snap = firebaseHandler.firebaseStore
                     .collection(firebaseHandler.playerDocumentsTable)
@@ -292,7 +304,7 @@ class HomeScreenViewModel(
     // ── Agent Tasks ──────────────────────────────────────────────────────────
 
     private fun listenToAgentTasks() {
-        firebaseHandler.firebaseStore.collection(firebaseHandler.agentTasksTable)
+        val reg = firebaseHandler.firebaseStore.collection(firebaseHandler.agentTasksTable)
             .orderBy("createdAt", com.google.firebase.firestore.Query.Direction.ASCENDING)
             .addSnapshotListener { snapshot, _ ->
                 if (snapshot == null) return@addSnapshotListener
@@ -302,6 +314,7 @@ class HomeScreenViewModel(
                 val grouped = tasks.groupBy { it.agentId }
                 _state.update { it.copy(agentTasks = grouped) }
             }
+        listenerRegistrations.add(reg)
     }
 
     override fun toggleAgentExpanded(agentId: String) {
@@ -359,7 +372,7 @@ class HomeScreenViewModel(
     // ── Transfer Windows ───────────────────────────────────────────────────────
 
     private fun loadTransferWindows() {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             _state.update { it.copy(transferWindowsLoading = true) }
             when (val result = transferWindows.fetchOpenTransferWindows()) {
                 is com.liordahan.mgsrteam.transfermarket.TransfermarktResult.Success ->

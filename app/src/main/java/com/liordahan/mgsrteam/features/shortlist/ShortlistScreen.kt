@@ -257,7 +257,7 @@ fun ShortlistScreen(
                     contentPadding = PaddingValues(16.dp, 4.dp, 16.dp, 100.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    items(state.entries) { entry ->
+                    items(state.entries, key = { it.tmProfileUrl }) { entry ->
                         val playerUrl = entry.tmProfileUrl
                         val isExpanded = playerUrl == expandedPlayerUrl
                         ShortlistCard(

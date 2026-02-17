@@ -19,6 +19,7 @@ import com.liordahan.mgsrteam.helpers.UiResult
 import com.liordahan.mgsrteam.transfermarket.PlayersUpdate
 import com.liordahan.mgsrteam.transfermarket.TransfermarktResult
 import kotlinx.coroutines.Dispatchers
+import com.google.firebase.firestore.ListenerRegistration
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -111,6 +112,8 @@ class PlayerInfoViewModel(
     private val _isScoutReportLoading = MutableStateFlow(false)
     override val isScoutReportLoading: StateFlow<Boolean> = _isScoutReportLoading
 
+    private var playerListenerRegistration: ListenerRegistration? = null
+
     init {
         viewModelScope.launch {
             var prevMandateCount: Int? = null
@@ -136,7 +139,7 @@ class PlayerInfoViewModel(
     }
 
     init {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             val snapshot =
                 firebaseHandler.firebaseStore.collection(firebaseHandler.accountsTable).get()
                     .await()
@@ -153,9 +156,15 @@ class PlayerInfoViewModel(
         }
     }
 
+    override fun onCleared() {
+        super.onCleared()
+        playerListenerRegistration?.remove()
+    }
+
     override fun getPlayerInfo(playerId: String) {
         _scoutReportFlow.update { null }
-        firebaseHandler.firebaseStore.collection(firebaseHandler.playersTable)
+        playerListenerRegistration?.remove()
+        playerListenerRegistration = firebaseHandler.firebaseStore.collection(firebaseHandler.playersTable)
             .whereEqualTo("tmProfile", playerId).addSnapshotListener { value, error ->
                 if (error != null) {
                     //

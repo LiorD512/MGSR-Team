@@ -32,32 +32,29 @@ fun ToastHost(
     }
     val messageToShow = toast ?: lastMessage
 
-    Box(
-        modifier = modifier.then(
-            if (toast == null) Modifier.size(0.dp) else Modifier.fillMaxSize()
-        )
-    ) {
-        AnimatedVisibility(
-            visible = toast != null,
-            enter = slideInVertically(initialOffsetY = { it }),
-            exit = slideOutVertically(targetOffsetY = { it }),
-            modifier = Modifier.fillMaxSize()
-        ) {
-        messageToShow?.let { msg ->
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(16.dp)
-                    .windowInsetsPadding(WindowInsets.navigationBars)
-                    .padding(bottom = 16.dp),
-                contentAlignment = Alignment.BottomCenter
+    if (toast != null || lastMessage != null) {
+        Box(modifier = modifier.fillMaxSize()) {
+            AnimatedVisibility(
+                visible = toast != null,
+                enter = slideInVertically(initialOffsetY = { it }),
+                exit = slideOutVertically(targetOffsetY = { it })
             ) {
-                AppToast(
-                    message = msg.message,
-                    type = msg.type
-                )
+                messageToShow?.let { msg ->
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(16.dp)
+                            .windowInsetsPadding(WindowInsets.navigationBars)
+                            .padding(bottom = 16.dp),
+                        contentAlignment = Alignment.BottomCenter
+                    ) {
+                        AppToast(
+                            message = msg.message,
+                            type = msg.type
+                        )
+                    }
+                }
             }
-        }
         }
     }
 }

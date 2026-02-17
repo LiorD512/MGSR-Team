@@ -341,7 +341,7 @@ fun ReleasesScreen(
                 ),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                items(releaseList) { release ->
+                items(releaseList, key = { it.playerUrl ?: it.hashCode() }) { release ->
                     val playerUrl = release.playerUrl
                     val isExpanded = playerUrl != null && expandedPlayerUrl == playerUrl
                     val rosterTeammates = playerUrl?.let { teammatesCache[it] }

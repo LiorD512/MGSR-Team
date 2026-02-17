@@ -18,9 +18,11 @@ import com.liordahan.mgsrteam.features.players.models.Player
 import com.liordahan.mgsrteam.features.players.models.Position
 import com.liordahan.mgsrteam.features.players.playerinfo.documents.PlayerDocument
 import com.liordahan.mgsrteam.features.players.sort.SortOption
+import com.google.firebase.firestore.ListenerRegistration
 import com.liordahan.mgsrteam.firebase.FirebaseHandler
 import com.liordahan.mgsrteam.helpers.Result
 import com.liordahan.mgsrteam.transfermarket.PlayersUpdate
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
@@ -98,17 +100,19 @@ class PlayersViewModel(
 
     private val _mandateExpiryByPlayer = MutableStateFlow<Map<String, Long>>(emptyMap())
 
+    private val listenerRegistrations = mutableListOf<ListenerRegistration>()
+
     init {
         getAllPlayers()
         loadAllAccounts()
         loadMandateDocuments()
 
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             val name = getCurrentUserName()
             _playersFlow.update { it.copy(currentUserName = name) }
         }
 
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.Default) {
             _playersFlow.collect {
                 _playersFlow.update {
                     val visible = it.playersList
@@ -224,6 +228,12 @@ class PlayersViewModel(
         }
     }
 
+
+    override fun onCleared() {
+        super.onCleared()
+        listenerRegistrations.forEach { it.remove() }
+        listenerRegistrations.clear()
+    }
 
     override suspend fun getCurrentUserName(): String? {
         return try {
@@ -480,48 +490,51 @@ class PlayersViewModel(
     }
 
     private fun loadMandateDocuments() {
-        firebaseHandler.firebaseStore.collection(firebaseHandler.playerDocumentsTable)
+        val reg = firebaseHandler.firebaseStore.collection(firebaseHandler.playerDocumentsTable)
             .whereEqualTo("type", "MANDATE")
             .addSnapshotListener { snapshot, _ ->
                 if (snapshot == null) return@addSnapshotListener
                 val docs = snapshot.toObjects(PlayerDocument::class.java)
-                val map = docs
-                    .filter { it.playerTmProfile != null && it.expiresAt != null }
-                    .groupBy { it.playerTmProfile!! }
-                    .mapValues { (_, list) -> list.maxOf { it.expiresAt!! } }
-                _mandateExpiryByPlayer.value = map
-                _playersFlow.update { state ->
-                    val allPlayers = state.playersList
-                    val playersWithMandate = allPlayers
-                        .filter { player ->
-                            player.haveMandate || (player.tmProfile != null && player.tmProfile in map)
-                        }
-                        .map { player ->
-                            PlayerWithMandateExpiry(
-                                player = player,
-                                mandateExpiryAt = player.tmProfile?.let { map[it] }
-                            )
-                        }
-                        .sortedBy { it.mandateExpiryAt ?: Long.MAX_VALUE }
-                    state.copy(playersWithMandate = playersWithMandate)
+                viewModelScope.launch(Dispatchers.Default) {
+                    val map = docs
+                        .filter { it.playerTmProfile != null && it.expiresAt != null }
+                        .groupBy { it.playerTmProfile!! }
+                        .mapValues { (_, list) -> list.maxOf { it.expiresAt!! } }
+                    _mandateExpiryByPlayer.value = map
+                    _playersFlow.update { state ->
+                        val allPlayers = state.playersList
+                        val playersWithMandate = allPlayers
+                            .filter { player ->
+                                player.haveMandate || (player.tmProfile != null && player.tmProfile in map)
+                            }
+                            .map { player ->
+                                PlayerWithMandateExpiry(
+                                    player = player,
+                                    mandateExpiryAt = player.tmProfile?.let { map[it] }
+                                )
+                            }
+                            .sortedBy { it.mandateExpiryAt ?: Long.MAX_VALUE }
+                        state.copy(playersWithMandate = playersWithMandate)
+                    }
                 }
             }
+        listenerRegistrations.add(reg)
     }
 
     private fun loadAllAccounts() {
-        firebaseHandler.firebaseStore.collection(firebaseHandler.accountsTable)
+        val reg = firebaseHandler.firebaseStore.collection(firebaseHandler.accountsTable)
             .addSnapshotListener { snapshot, _ ->
                 if (snapshot == null) return@addSnapshotListener
                 val accounts = snapshot.toObjects(Account::class.java)
                 _playersFlow.update { it.copy(allAccounts = accounts) }
             }
+        listenerRegistrations.add(reg)
     }
 
     private fun getAllPlayers() {
-
         _playersFlow.update { it.copy(showPageLoader = true) }
 
-        firebaseHandler.firebaseStore.collection(firebaseHandler.playersTable)
+        val reg = firebaseHandler.firebaseStore.collection(firebaseHandler.playersTable)
             .addSnapshotListener { value, error ->
                 if (error != null) {
                     _playersFlow.update {
@@ -533,15 +546,19 @@ class PlayersViewModel(
                     }
                 } else {
                     val playersList = value?.toObjects(Player::class.java) ?: emptyList()
-                    _playersFlow.update {
-                        it.copy(
-                            playersList = playersList.sortedByDescending { it.createdAt },
-                            visibleList = playersList.sortedByDescending { it.createdAt },
-                            showPageLoader = false
-                        )
+                    viewModelScope.launch(Dispatchers.Default) {
+                        val sorted = playersList.sortedByDescending { it.createdAt }
+                        _playersFlow.update {
+                            it.copy(
+                                playersList = sorted,
+                                visibleList = sorted,
+                                showPageLoader = false
+                            )
+                        }
                     }
                 }
             }
+        listenerRegistrations.add(reg)
     }
 
 }

@@ -34,11 +34,18 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+        }
+        create("benchmark") {
+            initWith(getByName("release"))
+            isDebuggable = false
+            signingConfig = signingConfigs.getByName("debug")
+            matchingFallbacks += listOf("release")
         }
     }
     compileOptions {
@@ -50,6 +57,10 @@ android {
         compose = true
         buildConfig = true
     }
+}
+
+composeCompiler {
+    stabilityConfigurationFile = rootProject.layout.projectDirectory.file("compose-stability.conf")
 }
 
 kotlin {

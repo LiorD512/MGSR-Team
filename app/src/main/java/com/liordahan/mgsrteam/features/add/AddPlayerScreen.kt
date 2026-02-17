@@ -242,7 +242,7 @@ fun AddPlayerScreen(
                             end = 16.dp
                         )
                     ) {
-                        items(playerOptionsList) { playerSearchModel ->
+                        items(playerOptionsList, key = { it.tmProfile ?: it.hashCode() }) { playerSearchModel ->
                             SearchListItem(
                                 playerSearchModel = playerSearchModel,
                                 onCardClicked = {

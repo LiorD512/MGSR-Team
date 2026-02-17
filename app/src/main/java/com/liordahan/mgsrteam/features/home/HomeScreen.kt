@@ -2,20 +2,14 @@ package com.liordahan.mgsrteam.features.home
 
 import android.annotation.SuppressLint
 import android.net.Uri
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.liordahan.mgsrteam.IMainViewModel
@@ -31,6 +25,7 @@ import com.liordahan.mgsrteam.features.releases.ReleasesScreen
 import com.liordahan.mgsrteam.features.requests.RequestsScreen
 import com.liordahan.mgsrteam.features.returnee.ReturneeScreen
 import com.liordahan.mgsrteam.features.shortlist.ShortlistScreen
+import com.liordahan.mgsrteam.navigation.NavigationTransitions
 import com.liordahan.mgsrteam.navigation.Screens
 import com.liordahan.mgsrteam.ui.theme.HomeDarkBackground
 import kotlinx.coroutines.flow.collectLatest
@@ -43,21 +38,6 @@ fun HomeScreen(
 ) {
 
     val navController = rememberNavController()
-    val navBackStackEntry by navController.currentBackStackEntryAsState()
-    val currentRoute = navBackStackEntry?.destination?.route
-
-    val isDarkScreen = currentRoute == Screens.DashboardScreen.route ||
-            currentRoute == Screens.PlayersScreen.route ||
-            currentRoute == Screens.ReleasesScreen.route ||
-            currentRoute == Screens.ReturneeScreen.route ||
-            currentRoute == Screens.ContractFinisherScreen.route ||
-            currentRoute == Screens.ShortlistScreen.route ||
-            currentRoute == Screens.RequestsScreen.route ||
-            currentRoute == Screens.AddToShortlistScreen.route ||
-            currentRoute?.startsWith("${Screens.AddToShortlistScreen.route}/") == true ||
-            currentRoute?.startsWith(Screens.PlayerInfoScreen.route) == true ||
-            currentRoute?.startsWith(Screens.GenerateMandateScreen.route) == true ||
-            currentRoute?.startsWith(Screens.MandatePreviewScreen.route) == true
 
     LaunchedEffect(Unit) {
         mainViewModel.pendingDeepLinkPlayerId.collectLatest { playerId ->
@@ -79,45 +59,19 @@ fun HomeScreen(
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
-        containerColor = if (isDarkScreen) HomeDarkBackground else Color.White,
-        topBar = {
-
-        },
-        bottomBar = { }
+        containerColor = HomeDarkBackground
     ) {
 
         NavHost(
             navController = navController,
             startDestination = Screens.DashboardScreen.route,
-            enterTransition = {
-                slideInHorizontally(initialOffsetX = { it }, animationSpec = tween(250))
-            },
-            exitTransition = {
-                slideOutHorizontally(targetOffsetX = { -it }, animationSpec = tween(250))
-            },
-            popEnterTransition = {
-                slideInHorizontally(initialOffsetX = { -it }, animationSpec = tween(250))
-            },
-            popExitTransition = {
-                slideOutHorizontally(targetOffsetX = { it }, animationSpec = tween(250))
-            }
+            enterTransition = NavigationTransitions.enterTransition,
+            exitTransition = NavigationTransitions.exitTransition,
+            popEnterTransition = NavigationTransitions.popEnterTransition,
+            popExitTransition = NavigationTransitions.popExitTransition
         ) {
 
-            composable(
-                route = Screens.DashboardScreen.route,
-                enterTransition = {
-                    slideInHorizontally(initialOffsetX = { -it }, animationSpec = tween(250))
-                },
-                exitTransition = {
-                    slideOutHorizontally(targetOffsetX = { it }, animationSpec = tween(250))
-                },
-                popEnterTransition = {
-                    slideInHorizontally(initialOffsetX = { it }, animationSpec = tween(250))
-                },
-                popExitTransition = {
-                    slideOutHorizontally(targetOffsetX = { -it }, animationSpec = tween(250))
-                }
-            ) {
+            composable(route = Screens.DashboardScreen.route) {
                 DashboardScreen(navController = navController)
             }
 

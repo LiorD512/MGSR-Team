@@ -165,6 +165,11 @@ fun DashboardScreen(
         StatsRow(state)
         QuickActionsRow(navController = navController)
 
+        // ── Pre-compute filtered data (cached across recompositions) ─────
+        val filteredEvents = remember(state.feedEvents, state.selectedFeedFilter) {
+            state.feedEvents.filterByType(state.selectedFeedFilter)
+        }
+
         // ── Scrollable section (from Recent Updates downward) ────────────
         LazyColumn(
             modifier = Modifier
@@ -180,7 +185,6 @@ fun DashboardScreen(
                 )
             }
 
-            val filteredEvents = state.feedEvents.filterByType(state.selectedFeedFilter)
             if (filteredEvents.isEmpty()) {
                 item {
                     Text(
@@ -192,7 +196,7 @@ fun DashboardScreen(
                     )
                 }
             } else {
-                items(filteredEvents.take(15)) { event ->
+                items(filteredEvents.take(15), key = { it.id ?: it.hashCode() }) { event ->
                     FeedEventCard(event = event, navController = navController)
                 }
             }
@@ -910,7 +914,7 @@ private fun AgentOverviewSection(agents: List<AgentSummary>, allAccounts: List<A
             contentPadding = PaddingValues(horizontal = 16.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            items(agents) { agent ->
+            items(agents, key = { it.agentId ?: it.agentName }) { agent ->
                 AgentCard(agent = agent, allAccounts = allAccounts, context = context)
             }
         }

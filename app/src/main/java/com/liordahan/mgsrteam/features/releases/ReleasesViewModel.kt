@@ -7,6 +7,7 @@ import com.liordahan.mgsrteam.firebase.FirebaseHandler
 import com.liordahan.mgsrteam.transfermarket.LatestReleases
 import com.liordahan.mgsrteam.transfermarket.LatestTransferModel
 import com.liordahan.mgsrteam.transfermarket.TransfermarktResult
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -100,7 +101,7 @@ class ReleasesViewModel(
 
     private fun fetchAllReleases() {
         releaseRanges.forEach { range ->
-            viewModelScope.launch {
+            viewModelScope.launch(Dispatchers.IO) {
                 when (val result = latestReleases.getLatestReleases(range.first, range.last)) {
                     is TransfermarktResult.Success -> releaseFlowsMap[range]?.value = result.data.filterNotNull()
                     is TransfermarktResult.Failed -> fetchFailedErrorFlow.update { it }

@@ -264,7 +264,7 @@ fun ReturneeScreen(
                     }
                 }
 
-                items(visibleReturneeList) { release ->
+                items(visibleReturneeList, key = { it.playerUrl ?: it.hashCode() }) { release ->
                     val playerUrl = release.playerUrl
                     val isExpanded = playerUrl != null && expandedPlayerUrl == playerUrl
                     val rosterTeammates = playerUrl?.let { teammatesCache[it] }
