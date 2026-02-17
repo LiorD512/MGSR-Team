@@ -6,7 +6,7 @@ import java.util.Locale
 object Countries {
     val all: List<String> by lazy {
         Locale.getISOCountries()
-            .map { Locale("", it).getDisplayCountry(Locale.ENGLISH) }
+            .map { Locale.Builder().setRegion(it).build().getDisplayCountry(Locale.ENGLISH) }
             .filter { it.isNotBlank() }
             .distinct()
             .sorted()

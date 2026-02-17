@@ -56,7 +56,7 @@ object LocaleManager {
 
     private fun updateResources(context: Context, language: String): Context {
         android.util.Log.d("LocaleManager", "updateResources: $language, context resources locale: ${context.resources.configuration.locales[0]}")
-        val locale = Locale(language)
+        val locale = Locale.forLanguageTag(language)
         Locale.setDefault(locale)
         val config = Configuration(context.resources.configuration)
         config.setLocale(locale)

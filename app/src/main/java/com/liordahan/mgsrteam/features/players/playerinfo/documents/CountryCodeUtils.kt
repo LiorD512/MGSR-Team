@@ -11,7 +11,7 @@ object CountryCodeUtils {
         buildMap {
             for (code in Locale.getISOCountries()) {
                 try {
-                    val locale = Locale("", code)
+                    val locale = Locale.Builder().setRegion(code).build()
                     val alpha3 = locale.isO3Country
                     val name = locale.getDisplayCountry(Locale.ENGLISH)
                     if (alpha3.isNotBlank() && name.isNotBlank()) {

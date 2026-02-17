@@ -1,6 +1,7 @@
 package com.liordahan.mgsrteam.features.shortlist
 
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
 import com.liordahan.mgsrteam.firebase.FirebaseHandler
 import com.liordahan.mgsrteam.transfermarket.LatestTransferModel
@@ -53,10 +54,14 @@ class ShortlistRepository(
             FirebaseAuth.getInstance().currentUser?.uid ?: "anonymous"
         )
 
+    @Suppress("UNCHECKED_CAST")
+    private fun DocumentSnapshot?.getEntriesList(): List<Map<String, Any>> =
+        (this?.get("entries") as? List<Map<String, Any>>) ?: emptyList()
+
     fun getShortlistFlow(): Flow<List<ShortlistEntry>> = callbackFlow {
         val docRef = shortlistDocRef()
         val listener = docRef.addSnapshotListener { snapshot, _ ->
-            val list = snapshot?.get("entries") as? List<Map<String, Any>> ?: emptyList()
+            val list = snapshot.getEntriesList()
             val entries = list.mapNotNull { map ->
                 parseEntryFromMap(map)
             }.sortedByDescending { it.addedAt }
@@ -92,8 +97,7 @@ class ShortlistRepository(
         val url = release.playerUrl ?: return false
         val docRef = shortlistDocRef()
         val snapshot = docRef.get().await()
-        @Suppress("UNCHECKED_CAST")
-        val current = (snapshot.get("entries") as? List<Map<String, Any>>)?.toMutableList() ?: mutableListOf()
+        val current = snapshot.getEntriesList().toMutableList()
         if (current.any { (it["tmProfileUrl"] as? String) == url }) return false
         val entryMap = mutableMapOf<String, Any>(
             "tmProfileUrl" to url,
@@ -123,8 +127,7 @@ class ShortlistRepository(
         if (!url.contains("transfermarkt", ignoreCase = true)) return
         val docRef = shortlistDocRef()
         val snapshot = docRef.get().await()
-        @Suppress("UNCHECKED_CAST")
-        val current = (snapshot.get("entries") as? List<Map<String, Any>>)?.toMutableList() ?: mutableListOf()
+        val current = snapshot.getEntriesList().toMutableList()
         if (current.any { (it["tmProfileUrl"] as? String) == url }) return
         current.add(mapOf(
             "tmProfileUrl" to url,
@@ -136,16 +139,14 @@ class ShortlistRepository(
     suspend fun removeFromShortlist(tmProfileUrl: String) {
         val docRef = shortlistDocRef()
         val snapshot = docRef.get().await()
-        @Suppress("UNCHECKED_CAST")
-        val current = (snapshot.get("entries") as? List<Map<String, Any>>)?.toMutableList() ?: return
+        val current = snapshot.getEntriesList().toMutableList()
+        if (current.isEmpty()) return
         current.removeAll { (it["tmProfileUrl"] as? String) == tmProfileUrl }
         docRef.set(mapOf("entries" to current)).await()
     }
 
     suspend fun isInShortlist(tmProfileUrl: String): Boolean {
         val snapshot = shortlistDocRef().get().await()
-        @Suppress("UNCHECKED_CAST")
-        val list = snapshot.get("entries") as? List<Map<String, Any>> ?: return false
-        return list.any { (it["tmProfileUrl"] as? String) == tmProfileUrl }
+        return snapshot.getEntriesList().any { (it["tmProfileUrl"] as? String) == tmProfileUrl }
     }
 }
