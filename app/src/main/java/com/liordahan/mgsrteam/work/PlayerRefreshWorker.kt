@@ -86,6 +86,7 @@ class PlayerRefreshWorker(
 
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
         Log.i(TAG, "=== PlayerRefreshWorker triggered (runAttemptCount=$runAttemptCount) ===")
+        Log.i("MGSR_Worker", "PlayerRefreshWorker doWork() started")
 
         // ── 0. Only run on the authorised device ──
         val currentEmail = FirebaseAuth.getInstance().currentUser?.email
@@ -437,9 +438,9 @@ class PlayerRefreshWorker(
      */
     private fun showNotification(text: String, current: Int = 0, total: Int = 0) {
         ensureNotificationChannel()
-        val builder = buildNotification(text, current, total)
+        val notification = buildNotification(text, current, total).build()
         val nm = applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        nm.notify(FOREGROUND_NOTIFICATION_ID, builder.build())
+        nm.notify(FOREGROUND_NOTIFICATION_ID, notification)
     }
 
     private fun createForegroundInfo(
@@ -465,10 +466,10 @@ class PlayerRefreshWorker(
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 NOTIFICATION_CHANNEL_ID,
-                "Player Data Refresh",
+                applicationContext.getString(R.string.notification_channel_name),
                 NotificationManager.IMPORTANCE_LOW
             ).apply {
-                description = "Shown while player data is being refreshed from Transfermarkt"
+                description = applicationContext.getString(R.string.notification_channel_description)
             }
             val manager = applicationContext
                 .getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
@@ -481,10 +482,11 @@ class PlayerRefreshWorker(
         current: Int,
         total: Int
     ): NotificationCompat.Builder {
+        val body = if (total > 0) "$text $current / $total" else text
         val builder = NotificationCompat.Builder(applicationContext, NOTIFICATION_CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_stat_mgsr)
             .setContentTitle("MGSR Player Refresh")
-            .setContentText(text)
+            .setContentText(body)
             .setOngoing(true)
             .setSilent(true)
 
@@ -514,6 +516,7 @@ class PlayerRefreshWorker(
          * or from [enqueueIfStale] on app open (conditional).
          */
         fun enqueueImmediateRefresh(context: Context) {
+            Log.i(TAG, "Enqueuing immediate one-time run")
             val constraints = Constraints.Builder()
                 .setRequiredNetworkType(NetworkType.CONNECTED)
                 .build()
@@ -538,9 +541,12 @@ class PlayerRefreshWorker(
             val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             val lastSuccess = prefs.getLong(KEY_LAST_SUCCESSFUL_REFRESH, 0L)
             val elapsed = System.currentTimeMillis() - lastSuccess
+            val hoursSince = elapsed / 3_600_000
             if (elapsed > STALE_DATA_THRESHOLD_MS) {
-                Log.i(TAG, "Data is stale (${elapsed / 3_600_000}h since last refresh) — enqueuing immediate refresh")
+                Log.i(TAG, "Data is stale (${hoursSince}h since last refresh) — enqueuing immediate refresh")
                 enqueueImmediateRefresh(context)
+            } else {
+                Log.i(TAG, "Data is fresh (${hoursSince}h since last refresh) — skipping immediate run")
             }
         }
 
@@ -588,7 +594,7 @@ class PlayerRefreshWorker(
         /** Per-player retry limit when rate-limited. */
         private const val MAX_RETRIES = 3
 
-        private const val NOTIFICATION_CHANNEL_ID = "mgsr_player_refresh"
+        private const val NOTIFICATION_CHANNEL_ID = "mgsr_team_notifications"
         private const val FOREGROUND_NOTIFICATION_ID = 1003
     }
 }

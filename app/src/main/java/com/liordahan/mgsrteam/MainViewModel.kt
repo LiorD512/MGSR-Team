@@ -16,6 +16,10 @@ abstract class IMainViewModel : ViewModel() {
     abstract val pendingAddPlayerTmUrl: StateFlow<String?>
     abstract fun setPendingAddPlayerTmUrl(url: String?)
     abstract fun clearPendingAddPlayerTmUrl()
+    /** Transfermarkt URL for Add to Shortlist — when set, navigate to Shortlist and show add sheet. */
+    abstract val pendingShortlistAddTmUrl: StateFlow<String?>
+    abstract fun setPendingShortlistAddTmUrl(url: String?)
+    abstract fun clearPendingShortlistAddTmUrl()
 }
 
 class MainViewModel(
@@ -48,6 +52,17 @@ class MainViewModel(
 
     override fun clearPendingAddPlayerTmUrl() {
         _pendingAddPlayerTmUrl.value = null
+    }
+
+    private val _pendingShortlistAddTmUrl = MutableStateFlow<String?>(null)
+    override val pendingShortlistAddTmUrl: StateFlow<String?> = _pendingShortlistAddTmUrl
+
+    override fun setPendingShortlistAddTmUrl(url: String?) {
+        _pendingShortlistAddTmUrl.value = url
+    }
+
+    override fun clearPendingShortlistAddTmUrl() {
+        _pendingShortlistAddTmUrl.value = null
     }
 
     init {

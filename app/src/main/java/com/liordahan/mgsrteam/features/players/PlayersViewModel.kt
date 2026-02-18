@@ -4,14 +4,17 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.liordahan.mgsrteam.features.login.models.Account
 import com.liordahan.mgsrteam.features.players.filters.ContractFilterOption
+import com.liordahan.mgsrteam.features.players.filters.FootFilterOption
 import com.liordahan.mgsrteam.features.players.filters.usecases.IGetAgentFilterFlowUseCase
 import com.liordahan.mgsrteam.features.players.filters.usecases.IGetContractFilterOptionUseCase
+import com.liordahan.mgsrteam.features.players.filters.usecases.IGetFootFilterOptionUseCase
 import com.liordahan.mgsrteam.features.players.filters.usecases.IGetIsWithNotesCheckedUseCase
 import com.liordahan.mgsrteam.features.players.filters.usecases.IGetPositionFilterFlowUseCase
 import com.liordahan.mgsrteam.features.players.filters.usecases.IGetSortOptionUseCase
 import com.liordahan.mgsrteam.features.players.filters.usecases.IQuickFilterUseCase
 import com.liordahan.mgsrteam.features.players.filters.usecases.IRemoveAllFiltersUseCase
 import com.liordahan.mgsrteam.features.players.filters.usecases.IResetSortOptionUseCase
+import com.liordahan.mgsrteam.features.players.filters.usecases.ISetFootFilterOptionUseCase
 import com.liordahan.mgsrteam.features.players.filters.usecases.ISetPositionFiltersByNamesUseCase
 import com.liordahan.mgsrteam.features.players.filters.usecases.ISetSortOptionUseCase
 import com.liordahan.mgsrteam.features.players.models.Player
@@ -65,6 +68,7 @@ data class PlayersUiState(
     val quickFilterWithMandate: Boolean = false,
     val quickFilterMyPlayersOnly: Boolean = false,
     val quickFilterLoanPlayersOnly: Boolean = false,
+    val footFilterOption: FootFilterOption = FootFilterOption.NONE,
     val currentUserName: String? = null
 )
 
@@ -80,6 +84,7 @@ abstract class IPlayersViewModel : ViewModel() {
     abstract fun toggleQuickFilterMyPlayersOnly()
     abstract fun toggleQuickFilterLoanPlayersOnly()
     abstract fun toggleQuickFilterWithNotesOnly()
+    abstract fun setFootFilterOption(option: FootFilterOption)
     abstract fun setSortOption(option: SortOption)
     abstract fun resetSortOption()
     abstract suspend fun exportRosterCsv(): Result<ByteArray>
@@ -91,6 +96,8 @@ class PlayersViewModel(
     private val getPositionFilterFlowUseCase: IGetPositionFilterFlowUseCase,
     private val getAgentFilterFlowUseCase: IGetAgentFilterFlowUseCase,
     private val getContractFilterOptionUseCase: IGetContractFilterOptionUseCase,
+    private val getFootFilterOptionUseCase: IGetFootFilterOptionUseCase,
+    private val setFootFilterOptionUseCase: ISetFootFilterOptionUseCase,
     private val getIsWithNotesCheckedUseCase: IGetIsWithNotesCheckedUseCase,
     private val removeAllFiltersUseCase: IRemoveAllFiltersUseCase,
     private val getSortOptionUseCase: IGetSortOptionUseCase,
@@ -113,7 +120,7 @@ class PlayersViewModel(
         computeUiState(state, debouncedQuery, mandateMap)
     }
         .flowOn(Dispatchers.Default)
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), PlayersUiState(showPageLoader = true))
+        .stateIn(viewModelScope, SharingStarted.Eagerly, PlayersUiState(showPageLoader = true))
 
     private val listenerRegistrations = mutableListOf<ListenerRegistration>()
 
@@ -143,6 +150,12 @@ class PlayersViewModel(
             launch {
                 getContractFilterOptionUseCase().collect { contractFilterOption ->
                     _inputState.update { it.copy(contractFilterOption = contractFilterOption) }
+                }
+            }
+
+            launch {
+                getFootFilterOptionUseCase().collect { footFilterOption ->
+                    _inputState.update { it.copy(footFilterOption = footFilterOption) }
                 }
             }
 
@@ -206,6 +219,7 @@ class PlayersViewModel(
             ?.filterPlayersByWithMandate(state.quickFilterWithMandate, mandateMap)
             ?.filterPlayersByMyPlayersOnly(state.quickFilterMyPlayersOnly, state.currentUserName)
             ?.filterPlayersByLoanPlayers(state.quickFilterLoanPlayersOnly)
+            ?.filterPlayersByFoot(state.footFilterOption)
             ?.filterByNotes(state.isWithNotesChecked)
             ?.filterPlayersByNameOrByNote(query)
             ?.sortPlayers(state.isWithNotesChecked, state.sortOption) ?: emptyList()
@@ -300,7 +314,15 @@ class PlayersViewModel(
     override fun setPositionFilterByChip(positionName: String) {
         when (positionName) {
             "All" -> setPositionFiltersByNamesUseCase(emptyList())
-            else -> setPositionFiltersByNamesUseCase(listOf(positionName))
+            else -> {
+                val current = _inputState.value.selectedPositions.mapNotNull { it.name }
+                val isAlreadySelected = current.size == 1 && current.any { it.equals(positionName, ignoreCase = true) }
+                if (isAlreadySelected) {
+                    setPositionFiltersByNamesUseCase(emptyList())
+                } else {
+                    setPositionFiltersByNamesUseCase(listOf(positionName))
+                }
+            }
         }
     }
 
@@ -310,6 +332,7 @@ class PlayersViewModel(
     override fun toggleQuickFilterMyPlayersOnly() = quickFilterUseCase.toggleMyPlayersOnly()
     override fun toggleQuickFilterLoanPlayersOnly() = quickFilterUseCase.toggleLoanPlayersOnly()
     override fun toggleQuickFilterWithNotesOnly() = quickFilterUseCase.toggleWithNotesOnly()
+    override fun setFootFilterOption(option: FootFilterOption) = setFootFilterOptionUseCase(option)
     override fun setSortOption(option: SortOption) = setSortOptionUseCase(option)
     override fun resetSortOption() = resetSortOptionUseCase()
 
@@ -430,6 +453,15 @@ class PlayersViewModel(
         return if (!enabled) this else this?.filter { it.isOnLoan }
     }
 
+    private fun List<Player>?.filterPlayersByFoot(footFilterOption: FootFilterOption): List<Player>? {
+        return when (footFilterOption) {
+            FootFilterOption.NONE -> this
+            FootFilterOption.LEFT -> this?.filter { it.foot?.lowercase() == "left" }
+            FootFilterOption.RIGHT -> this?.filter { it.foot?.lowercase() == "right" }
+            FootFilterOption.BOTH -> this?.filter { it.foot?.lowercase() == "both" }
+        }
+    }
+
     /** Newest first by default. When withNotesOnly is on, players with most recent note date come first. */
     private fun List<Player>?.sortPlayers(withNotesOnly: Boolean, sortOption: SortOption): List<Player>? {
         return if (withNotesOnly) {
@@ -514,7 +546,8 @@ class PlayersViewModel(
                 val docs = snapshot.toObjects(PlayerDocument::class.java)
                 viewModelScope.launch(Dispatchers.Default) {
                     val map = docs
-                        .filter { it.playerTmProfile != null && it.expiresAt != null }
+                        .filter { it.playerTmProfile != null && it.expiresAt != null && !it.expired }
+                        .filter { it.expiresAt!! >= System.currentTimeMillis() }
                         .groupBy { it.playerTmProfile!! }
                         .mapValues { (_, list) -> list.maxOf { it.expiresAt!! } }
                     _mandateExpiryByPlayer.value = map

@@ -45,6 +45,7 @@ abstract class IRequestsViewModel : ViewModel() {
         minAge: Int?,
         maxAge: Int?,
         ageDoesntMatter: Boolean,
+        dominateFoot: String?,
         salaryRange: String?,
         transferFee: String?,
         notes: String?
@@ -128,6 +129,7 @@ class RequestsViewModel(
         minAge: Int?,
         maxAge: Int?,
         ageDoesntMatter: Boolean,
+        dominateFoot: String?,
         salaryRange: String?,
         transferFee: String?,
         notes: String?
@@ -148,6 +150,7 @@ class RequestsViewModel(
                 minAge = minAge?.takeIf { it > 0 },
                 maxAge = maxAge?.takeIf { it > 0 },
                 ageDoesntMatter = ageDoesntMatter,
+                dominateFoot = dominateFoot?.takeIf { it.isNotBlank() },
                 salaryRange = salaryRange?.takeIf { it.isNotBlank() },
                 transferFee = transferFee?.takeIf { it.isNotBlank() },
                 createdAt = System.currentTimeMillis(),

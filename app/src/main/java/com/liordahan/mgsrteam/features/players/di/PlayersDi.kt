@@ -12,6 +12,7 @@ import com.liordahan.mgsrteam.features.players.filters.usecases.AddAgentFilterUs
 import com.liordahan.mgsrteam.features.players.filters.usecases.AddPositionFilterUseCase
 import com.liordahan.mgsrteam.features.players.filters.usecases.GetAgentFilterFlowUseCase
 import com.liordahan.mgsrteam.features.players.filters.usecases.GetContractFilterOptionUseCase
+import com.liordahan.mgsrteam.features.players.filters.usecases.GetFootFilterOptionUseCase
 import com.liordahan.mgsrteam.features.players.filters.usecases.GetIsWithNotesCheckedUseCase
 import com.liordahan.mgsrteam.features.players.filters.usecases.GetPositionFilterFlowUseCase
 import com.liordahan.mgsrteam.features.players.filters.usecases.GetSortOptionUseCase
@@ -19,6 +20,7 @@ import com.liordahan.mgsrteam.features.players.filters.usecases.IAddAgentFilterU
 import com.liordahan.mgsrteam.features.players.filters.usecases.IAddPositionFilterUseCase
 import com.liordahan.mgsrteam.features.players.filters.usecases.IGetAgentFilterFlowUseCase
 import com.liordahan.mgsrteam.features.players.filters.usecases.IGetContractFilterOptionUseCase
+import com.liordahan.mgsrteam.features.players.filters.usecases.IGetFootFilterOptionUseCase
 import com.liordahan.mgsrteam.features.players.filters.usecases.IGetIsWithNotesCheckedUseCase
 import com.liordahan.mgsrteam.features.players.filters.usecases.IGetPositionFilterFlowUseCase
 import com.liordahan.mgsrteam.features.players.filters.usecases.IGetSortOptionUseCase
@@ -28,6 +30,7 @@ import com.liordahan.mgsrteam.features.players.filters.usecases.IRemoveAllFilter
 import com.liordahan.mgsrteam.features.players.filters.usecases.IRemovePositionFilterUseCase
 import com.liordahan.mgsrteam.features.players.filters.usecases.IResetSortOptionUseCase
 import com.liordahan.mgsrteam.features.players.filters.usecases.ISetContractFilterOptionUseCase
+import com.liordahan.mgsrteam.features.players.filters.usecases.ISetFootFilterOptionUseCase
 import com.liordahan.mgsrteam.features.players.filters.usecases.ISetIsWithNotesCheckedUseCase
 import com.liordahan.mgsrteam.features.players.filters.usecases.ISetPositionFiltersByNamesUseCase
 import com.liordahan.mgsrteam.features.players.filters.usecases.ISetSortOptionUseCase
@@ -37,6 +40,7 @@ import com.liordahan.mgsrteam.features.players.filters.usecases.RemoveAllFilters
 import com.liordahan.mgsrteam.features.players.filters.usecases.RemovePositionFilterUseCase
 import com.liordahan.mgsrteam.features.players.filters.usecases.ResetSortOptionUseCase
 import com.liordahan.mgsrteam.features.players.filters.usecases.SetContractFilterOptionUseCase
+import com.liordahan.mgsrteam.features.players.filters.usecases.SetFootFilterOptionUseCase
 import com.liordahan.mgsrteam.features.players.filters.usecases.SetIsWithNotesCheckedUseCase
 import com.liordahan.mgsrteam.features.players.filters.usecases.SetPositionFiltersByNamesUseCase
 import com.liordahan.mgsrteam.features.players.filters.usecases.SetSortOptionUseCase
@@ -70,7 +74,7 @@ val playersModule = module {
         SortRepository()
     } bind ISortRepository::class
 
-    viewModel<IPlayersViewModel> { PlayersViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
+    viewModel<IPlayersViewModel> { PlayersViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
     single { PlayerDocumentsRepository(get()) }
     single { AiHelperService(get<PlayerSearch>()) }
     single {
@@ -132,6 +136,18 @@ val playersModule = module {
 
     factory<IGetContractFilterOptionUseCase> {
         GetContractFilterOptionUseCase(
+            get()
+        )
+    }
+
+    factory<IGetFootFilterOptionUseCase> {
+        GetFootFilterOptionUseCase(
+            get()
+        )
+    }
+
+    factory<ISetFootFilterOptionUseCase> {
+        SetFootFilterOptionUseCase(
             get()
         )
     }

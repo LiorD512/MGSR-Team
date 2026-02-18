@@ -38,7 +38,11 @@ class AiHelperService(
         val similarityReason: String?
     )
 
-    suspend fun findSimilarPlayers(player: Player, languageCode: String = "en"): Result<List<SimilarPlayerSuggestion>> =
+    suspend fun findSimilarPlayers(
+        player: Player,
+        languageCode: String = "en",
+        options: SimilarPlayersOptions = SimilarPlayersOptions()
+    ): Result<List<SimilarPlayerSuggestion>> =
         withContext(Dispatchers.IO) {
             try {
                 val model = FirebaseAI.getInstance(backend = GenerativeBackend.googleAI()).generativeModel(
@@ -69,17 +73,27 @@ class AiHelperService(
 
                 val playerContext = buildPlayerContext(player)
                 val outputLanguage = if (languageCode == "he" || languageCode == "iw") "Hebrew" else "English"
+                val constraints = buildSimilarPlayersConstraints(player, options)
+                val similarityFocus = buildSimilarityFocus(options.similarityMode)
+                val exclusions = buildExclusions(player, options)
+                val countRange = "${options.count.coerceIn(5, 15)}"
+
                 val prompt = """
-                    You are one of the best football scouts in the world with 20 years of experience behind you. You have the most updated data and analysis tools to assess players.
+                    You are a senior football scout with 20+ years of experience at top clubs. You have access to the latest data and analysis tools. Your recommendations are trusted by sporting directors.
                     
-                    Find me similar players to the player in the player info below. Consider his playing style, his physicality, his position, his market value and age. Only offer players that fit and can help. Do not suggest players that are already in my roster (e.g. teammates from the same club).
+                    TASK: Find similar players to the profile below. ${similarityFocus}
+                    
+                    CRITICAL CONSTRAINTS (must follow):
+                    $constraints
+                    
+                    $exclusions
                     
                     Player profile:
                     $playerContext
                     
-                    Suggest 8-12 players who have a profile on Transfermarkt.com. For each player, provide the full name EXACTLY as it appears on Transfermarkt (e.g. "Lionel Messi" not "Messi"). Do NOT provide URLs. Focus on current active players (2024-2025 season).
+                    Suggest exactly $countRange players who have a profile on Transfermarkt.com. For each player, provide the full name EXACTLY as it appears on Transfermarkt (e.g. "Lionel Messi" not "Messi"). Do NOT provide URLs. Focus on current active players (2024-2025 season).
                     
-                    Write the similarityReason field in $outputLanguage. The app language is $outputLanguage.
+                    For similarityReason: write a concise, scout-grade explanation in $outputLanguage (1-2 sentences). Be specific: mention playing style, role, or profile traits that match.
                 """.trimIndent()
 
                 val response = model.generateContent(prompt)
@@ -88,7 +102,7 @@ class AiHelperService(
                 )
 
                 val rawSuggestions = parseSimilarPlayersResponse(text)
-                val suggestions = verifyAndEnrichWithTransfermarkt(rawSuggestions, player, languageCode)
+                val suggestions = verifyAndEnrichWithTransfermarkt(rawSuggestions, player, languageCode, options)
                 Log.d(TAG, "findSimilarPlayers result: $suggestions")
                 Result.success(suggestions)
             } catch (e: Exception) {
@@ -98,9 +112,14 @@ class AiHelperService(
         }
 
     /**
-     * Generates a short, strong, targeted scout report for the player.
+     * Generates a professional scout report for the player.
+     * Report structure and focus depend on [options.reportType].
      */
-    suspend fun generateScoutReport(player: Player, languageCode: String = "en"): Result<String> =
+    suspend fun generateScoutReport(
+        player: Player,
+        languageCode: String = "en",
+        options: ScoutReportOptions = ScoutReportOptions()
+    ): Result<String> =
         withContext(Dispatchers.IO) {
             try {
                 val model = FirebaseAI.getInstance(backend = GenerativeBackend.googleAI()).generativeModel(
@@ -108,15 +127,19 @@ class AiHelperService(
                 )
                 val playerContext = buildPlayerContext(player)
                 val outputLanguage = if (languageCode == "he" || languageCode == "iw") "Hebrew" else "English"
+                val reportInstructions = buildScoutReportInstructions(options.reportType)
+
                 val prompt = """
-                    You are one of the best football scouts in the world with 20 years of experience behind you. You have the most updated data and analysis tools to assess players.
+                    You are a senior football scout with 20+ years of experience at top European clubs. Your reports are used by sporting directors and recruitment teams for transfer decisions. Write with authority, precision, and tactical insight.
                     
-                    Generate a short, strong and aim-to-target scout report on the following player. Include everything clubs need to know about him.
+                    TASK: Generate a professional scout report for the following player.
+                    
+                    $reportInstructions
                     
                     Player profile:
                     $playerContext
                     
-                    Write the report in $outputLanguage. Keep it concise but impactful (2-4 paragraphs). Focus on strengths, playing style, market value context, and transfer suitability.
+                    Write the report in $outputLanguage. Use clear section headers where appropriate. Be specific: cite positions, tendencies, and concrete strengths/weaknesses. Avoid generic fluff. Your verdict should be actionable.
                 """.trimIndent()
                 val response = model.generateContent(prompt)
                 val text = response.text?.trim()
@@ -137,13 +160,113 @@ class AiHelperService(
         player.age?.let { parts.add("Age: $it") }
         player.positions?.filterNotNull()?.joinToString(", ")?.let { parts.add("Positions: $it") }
         player.height?.let { parts.add("Height: $it") }
+        player.foot?.let { parts.add("Preferred foot: $it") }
         player.marketValue?.let { parts.add("Market value: $it") }
+        player.marketValueHistory?.takeIf { it.isNotEmpty() }?.let { history ->
+            val recent = history.takeLast(3).joinToString(" → ") { it.value ?: "?" }
+            parts.add("Market value trend: $recent")
+        }
         player.nationality?.let { parts.add("Nationality: $it") }
         player.currentClub?.clubName?.let { parts.add("Current club: $it") }
+        player.currentClub?.clubCountry?.let { parts.add("Club country/league: $it") }
+        player.contractExpired?.let { parts.add("Contract: $it") }
+        player.isOnLoan?.takeIf { it }?.let { parts.add("On loan: yes") }
+        player.agency?.let { parts.add("Agency: $it") }
         player.description?.takeIf { it.isNotBlank() }?.let { parts.add("Description: $it") }
         player.tmProfile?.let { parts.add("Transfermarkt: $it") }
         return parts.joinToString("\n")
     }
+
+    private fun buildSimilarityFocus(mode: SimilarPlayersOptions.SimilarityMode): String =
+        when (mode) {
+            SimilarPlayersOptions.SimilarityMode.PLAYING_STYLE ->
+                "PRIORITY: Playing style, movement patterns, technical profile, and on-ball tendencies. Value and age are secondary."
+            SimilarPlayersOptions.SimilarityMode.MARKET_VALUE ->
+                "PRIORITY: Market value bracket and transfer context. Suggest players in a similar price range who could be alternatives in negotiations."
+            SimilarPlayersOptions.SimilarityMode.POSITION_PROFILE ->
+                "PRIORITY: Position and tactical role. Same or adjacent positions, similar defensive/attacking contribution."
+            SimilarPlayersOptions.SimilarityMode.ALL_ROUND ->
+                "PRIORITY: Balanced similarity across playing style, physicality, position, market value, and age."
+        }
+
+    private fun buildSimilarPlayersConstraints(player: Player, options: SimilarPlayersOptions): String {
+        val lines = mutableListOf<String>()
+        when (options.ageRange) {
+            SimilarPlayersOptions.AgeRangePreference.STRICT -> buildAgeRangeConstraint(player)?.let { lines.add(it) }
+            SimilarPlayersOptions.AgeRangePreference.RELAXED -> {
+                val age = player.age?.toIntOrNull()
+                if (age != null) {
+                    val min = (age - 5).coerceAtLeast(16)
+                    val max = age + 5
+                    lines.add("Age range: $min–$max years (relaxed ±5 from player age $age)")
+                }
+            }
+            SimilarPlayersOptions.AgeRangePreference.ANY -> lines.add("Age: no restriction")
+        }
+        buildMarketValueRangeConstraint(player)?.let { lines.add(it) }
+        buildPositionConstraint(player)?.let { lines.add(it) }
+        return lines.joinToString("\n").ifBlank { "None specified." }
+    }
+
+    private fun buildExclusions(player: Player, options: SimilarPlayersOptions): String {
+        val lines = mutableListOf<String>()
+        if (options.excludeSameClub) {
+            player.currentClub?.clubName?.let { club ->
+                lines.add("EXCLUDE: Players from $club (same club).")
+            }
+        }
+        if (options.excludeSameLeague) {
+            player.currentClub?.clubCountry?.let { country ->
+                lines.add("EXCLUDE: Players from the same league/country ($country) when possible.")
+            }
+        }
+        return lines.joinToString("\n").ifBlank { "" }
+    }
+
+    private fun buildScoutReportInstructions(type: ScoutReportOptions.ScoutReportType): String =
+        when (type) {
+            ScoutReportOptions.ScoutReportType.EXECUTIVE_SUMMARY ->
+                """
+                FORMAT: Executive summary (1–2 paragraphs).
+                - Key strengths (2–3 bullet points)
+                - Main weakness or area to improve
+                - Verdict: recommend / monitor / pass, with one-line rationale
+                Keep it punchy. Decision-makers read this in 30 seconds.
+                """.trimIndent()
+            ScoutReportOptions.ScoutReportType.FULL_TACTICAL ->
+                """
+                FORMAT: Full tactical scout report.
+                - Executive summary (2–3 sentences)
+                - Strengths: technical, physical, tactical (be specific)
+                - Weaknesses: areas of concern, consistency, limitations
+                - Tactical fit: best system, role, instructions
+                - Tendencies: movement, decision-making, set pieces
+                - Market value assessment: fair value, upside, risk
+                - Transfer suitability: ideal buyer profile, contract context
+                - Final recommendation with clear action
+                Use section headers. 4–6 paragraphs total. Pro-grade detail.
+                """.trimIndent()
+            ScoutReportOptions.ScoutReportType.TRANSFER_RECOMMENDATION ->
+                """
+                FORMAT: Transfer-focused report.
+                - Current value and contract context
+                - Transfer market positioning (comparable deals)
+                - Suitability: who should buy, why, at what price
+                - Risk factors (injury, form, contract length)
+                - Recommendation: buy / negotiate / pass, with price range if relevant
+                Focus on what sporting directors need for transfer decisions.
+                """.trimIndent()
+            ScoutReportOptions.ScoutReportType.YOUTH_POTENTIAL ->
+                """
+                FORMAT: Youth development / potential report.
+                - Current level and ceiling
+                - Development trajectory and key growth areas
+                - Comparison to similar profiles at same age
+                - Best environment for development (club type, league, minutes)
+                - Timeline to first-team readiness
+                Focus on potential, not just current output. Relevant for U21/U23 scouting.
+                """.trimIndent()
+        }
 
     /** Age range: ±2 years. E.g. 28 → 26–30. */
     private fun buildAgeRangeConstraint(player: Player): String? {
@@ -202,18 +325,24 @@ class AiHelperService(
 
     /**
      * For each AI suggestion: search Transfermarkt directly (TM-first, no web research).
-     * Uses TM data for market value, age, positions. Filters by constraints.
+     * Uses TM data for market value, age, positions. Filters by constraints from options.
      * Progressive relaxation: if strict filter yields 0 results, retry with relaxed filters.
      */
     private suspend fun verifyAndEnrichWithTransfermarkt(
         rawSuggestions: List<SimilarPlayerSuggestion>,
         sourcePlayer: Player,
-        languageCode: String
+        languageCode: String,
+        options: SimilarPlayersOptions = SimilarPlayersOptions()
     ): List<SimilarPlayerSuggestion> {
         val sourceAge = sourcePlayer.age?.toIntOrNull()
         val sourceValueDouble = sourcePlayer.marketValue?.toMarketValueDouble() ?: 0.0
         val (minValue, maxValue) = computeMarketValueRange(sourceValueDouble)
         val sourcePositionGroups = getSourcePositionGroups(sourcePlayer)
+        val ageDelta = when (options.ageRange) {
+            SimilarPlayersOptions.AgeRangePreference.STRICT -> 2
+            SimilarPlayersOptions.AgeRangePreference.RELAXED -> 5
+            SimilarPlayersOptions.AgeRangePreference.ANY -> Int.MAX_VALUE
+        }
         val enriched = rawSuggestions.mapNotNull { suggestion ->
             val tmProfile = findBestMatchingProfile(suggestion.name)
             if (tmProfile != null) {
@@ -229,11 +358,17 @@ class AiHelperService(
                 null
             }
         }
-        var result = enriched.filter { meetsConstraints(it, sourceAge, minValue, maxValue, sourcePositionGroups) }
+        var result = enriched.filter {
+            meetsConstraints(it, sourceAge, minValue, maxValue, sourcePositionGroups, ageDelta)
+        }
         if (result.isEmpty() && enriched.isNotEmpty()) {
             Log.d(TAG, "Strict filter yielded 0 results; retrying with relaxed constraints")
-            result = enriched.filter { meetsConstraintsRelaxed(it, sourceAge, minValue, maxValue, sourcePositionGroups) }
+            result = enriched.filter {
+                meetsConstraintsRelaxed(it, sourceAge, minValue, maxValue, sourcePositionGroups)
+            }
         }
+        val count = options.count.coerceIn(5, 15)
+        result = result.take(count)
         result.forEach { Log.d(TAG, "Similar player: ${it.name} age=${it.age} value=${it.marketValue} pos=${it.position}") }
         return result
     }
@@ -243,11 +378,14 @@ class AiHelperService(
         sourceAge: Int?,
         minValue: Double,
         maxValue: Double,
-        sourcePositionGroups: Set<String>
+        sourcePositionGroups: Set<String>,
+        ageDelta: Int = 2
     ): Boolean {
-        sourceAge?.let { age ->
-            val suggestionAge = suggestion.age?.toIntOrNull() ?: return@meetsConstraints false
-            if (suggestionAge < (age - 2) || suggestionAge > (age + 2)) return false
+        if (ageDelta < Int.MAX_VALUE) {
+            sourceAge?.let { age ->
+                val suggestionAge = suggestion.age?.toIntOrNull() ?: return@meetsConstraints false
+                if (suggestionAge < (age - ageDelta) || suggestionAge > (age + ageDelta)) return false
+            }
         }
         val suggestionValue = suggestion.marketValue?.toMarketValueDouble() ?: 0.0
         if (minValue > 0 && maxValue > 0 && (suggestionValue < minValue || suggestionValue > maxValue)) return false

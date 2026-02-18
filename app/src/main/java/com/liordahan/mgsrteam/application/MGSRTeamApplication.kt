@@ -13,7 +13,10 @@ import com.google.firebase.messaging.FirebaseMessaging
 import com.liordahan.mgsrteam.application.di.applicationModules
 import com.liordahan.mgsrteam.firebase.FcmTokenManager
 import com.liordahan.mgsrteam.localization.LocaleManager
+import com.liordahan.mgsrteam.BuildConfig
+import com.liordahan.mgsrteam.work.MandateExpiryWorker
 import com.liordahan.mgsrteam.work.PlayerRefreshWorker
+import com.liordahan.mgsrteam.work.ReleasesRefreshWorker
 import com.tom_roush.pdfbox.android.PDFBoxResourceLoader
 import org.koin.android.ext.koin.androidContext
 import org.koin.android.ext.koin.androidLogger
@@ -65,14 +68,34 @@ class MGSRTeamApplication : Application(), KoinComponent {
 
         // Schedule nightly player data refresh from Transfermarkt at 02:00 Israel time
         schedulePlayerRefresh()
+        Log.i("MGSR_Worker", "PlayerRefreshWorker: periodic schedule enqueued (02:00 Israel)")
+        // Schedule nightly releases fetch at 03:00 Israel time (new free agents → push notifications)
+        ReleasesRefreshWorker.schedule(this)
+        Log.i("MGSR_Worker", "ReleasesRefreshWorker: periodic schedule enqueued (03:00 Israel)")
+        // Schedule nightly mandate expiry check at 04:00 Israel time
+        MandateExpiryWorker.schedule(this)
+        Log.i("MGSR_Worker", "MandateExpiryWorker: periodic schedule enqueued (04:00 Israel)")
 
         // If the user is already logged in, check whether the last successful
         // refresh was more than 24 h ago. If so, enqueue an immediate catch-up
         // run (e.g. when the nightly 02:00 run was missed). On fresh install
         // currentUser is null so this is a no-op; the login screen triggers
         // the first refresh after authentication instead.
-        if (FirebaseAuth.getInstance().currentUser != null) {
-            PlayerRefreshWorker.enqueueIfStale(this)
+        val currentUser = FirebaseAuth.getInstance().currentUser
+        if (currentUser != null) {
+            Log.i("MGSR_Worker", "User logged in (${currentUser.email}) — checking if workers need immediate run")
+            if (BuildConfig.DEBUG) {
+                Log.i("MGSR_Worker", "DEBUG build — forcing immediate run of all workers for testing")
+                PlayerRefreshWorker.enqueueImmediateRefresh(this)
+                ReleasesRefreshWorker.enqueueImmediateRefresh(this)
+                MandateExpiryWorker.enqueueImmediateRefresh(this)
+            } else {
+                PlayerRefreshWorker.enqueueIfStale(this)
+                ReleasesRefreshWorker.enqueueIfStale(this)
+                MandateExpiryWorker.enqueueIfStale(this)
+            }
+        } else {
+            Log.i("MGSR_Worker", "User not logged in — workers will run after login")
         }
     }
 

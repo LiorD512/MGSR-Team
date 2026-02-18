@@ -59,6 +59,15 @@ fun HomeScreen(
         }
     }
 
+    LaunchedEffect(Unit) {
+        mainViewModel.pendingShortlistAddTmUrl.collectLatest { tmUrl ->
+            if (!tmUrl.isNullOrBlank()) {
+                navController.navigate(Screens.ShortlistScreen.route)
+                // URL is consumed by ShortlistScreen when it shows the add sheet
+            }
+        }
+    }
+
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         containerColor = HomeDarkBackground
@@ -206,7 +215,7 @@ fun HomeScreen(
             composable(
                 route = Screens.ShortlistScreen.route
             ) {
-                ShortlistScreen(navController = navController)
+                ShortlistScreen(navController = navController, mainViewModel = mainViewModel)
             }
 
             composable(

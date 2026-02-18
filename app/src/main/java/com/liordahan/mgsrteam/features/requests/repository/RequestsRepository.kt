@@ -50,6 +50,7 @@ class RequestsRepository(
             "ageDoesntMatter" to (request.ageDoesntMatter ?: true),
             "salaryRange" to (request.salaryRange ?: ""),
             "transferFee" to (request.transferFee ?: ""),
+            "dominateFoot" to (request.dominateFoot ?: ""),
             "createdAt" to (request.createdAt ?: System.currentTimeMillis()),
             "status" to (request.status ?: "pending")
         )

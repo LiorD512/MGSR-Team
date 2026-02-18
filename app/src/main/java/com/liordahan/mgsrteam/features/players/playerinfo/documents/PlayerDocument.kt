@@ -10,7 +10,8 @@ data class PlayerDocument(
     val name: String? = null,
     val storageUrl: String? = null,
     val uploadedAt: Long? = null,
-    val expiresAt: Long? = null
+    val expiresAt: Long? = null,
+    val expired: Boolean = false
 ) {
     val documentType: DocumentType
         get() = DocumentType.fromString(type)

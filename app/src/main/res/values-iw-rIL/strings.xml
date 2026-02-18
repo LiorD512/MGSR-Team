@@ -85,6 +85,8 @@
     <string name="feed_market_value_update">עדכון שווי שוק</string>
     <string name="feed_club_change">זוהה שינוי מועדון</string>
     <string name="feed_became_free_agent">הפך לשחקן חופשי</string>
+    <string name="feed_new_release">שחקן חופשי חדש (שחרורים)</string>
+    <string name="feed_new_release_not_in_db">לא במאגר שלנו</string>
     <string name="feed_contract_expiring">חוזה מסתיים</string>
     <string name="feed_new_note">הערה חדשה</string>
     <string name="feed_player_added">שחקן נוסף</string>

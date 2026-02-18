@@ -71,6 +71,9 @@
     <string name="players_filter_without_club">ללא מועדון</string>
     <string name="players_filter_contract_finishing">חוזה מסתיים בקרוב</string>
     <string name="players_filter_with_notes">עם הערות</string>
+    <string name="players_filter_foot_left">רגל שמאל</string>
+    <string name="players_filter_foot_right">רגל ימין</string>
+    <string name="players_filter_foot_both">שתי רגליים</string>
     <string name="players_expiring_badge">מסיים חוזה</string>
     <string name="players_contract_not_available">חוזה לא זמין</string>
     <string name="players_done">סיום</string>
@@ -125,6 +128,13 @@
     <string name="notification_free_agent_body">%1$s כעת ללא מועדון (היה ב-%2$s)</string>
     <string name="notification_market_value_title">שינוי שווי שוק</string>
     <string name="notification_market_value_body">%1$s: %2$s → %3$s</string>
+    <string name="notification_new_release_title">שחקן חופשי חדש</string>
+    <string name="notification_new_release_body">%1$s שוחרר מהמועדון שלו — אולי תרצה לפנות אליו.</string>
+    <string name="notification_new_release_body_not_in_db">%1$s שוחרר מהמועדון שלו — אולי תרצה לפנות אליו. לא במאגר שלנו.</string>
+    <string name="notification_mandate_expired_title">מנדט פג תוקף</string>
+    <string name="notification_mandate_expired_body">המנדט של %1$s פג תוקף.</string>
+    <string name="notification_action_open_tm">פתח Transfermarkt</string>
+    <string name="notification_action_add_shortlist">הוסף לרשימת מעקב</string>
 
     <!-- Greeting -->
     <string name="greeting_good_morning">בוקר טוב</string>
@@ -169,6 +179,9 @@
     <string name="feed_market_value_update">עדכון שווי שוק</string>
     <string name="feed_club_change">זוהה שינוי מועדון</string>
     <string name="feed_became_free_agent">הפך לשחקן חופשי</string>
+    <string name="feed_new_release">שחקן חופשי חדש (שחרורים)</string>
+    <string name="feed_new_release_not_in_db">לא במאגר שלנו</string>
+    <string name="feed_mandate_expired">מנדט פג תוקף</string>
     <string name="feed_contract_expiring">חוזה מסתיים</string>
     <string name="feed_new_note">הערה חדשה</string>
     <string name="feed_player_added">שחקן נוסף</string>
@@ -372,6 +385,7 @@
     <string name="requests_notes_placeholder">הערות נוספות…</string>
     <string name="requests_notes_label">הערות</string>
     <string name="requests_whatsapp">WhatsApp</string>
+    <string name="requests_edit">ערוך</string>
     <string name="requests_delete">מחק</string>
     <string name="requests_change_club">החלף</string>
     <string name="requests_contact_optional">איש קשר (אופציונלי)</string>
@@ -383,6 +397,11 @@
     <string name="requests_save_request">שמור בקשה</string>
     <string name="requests_transfer_fee_free_loan">חופשי/השאלה בחינם</string>
     <string name="requests_transfer_fee_lt200">מתחת ל-200</string>
+    <string name="requests_label_dominate_foot">רגל דומיננטית</string>
+    <string name="requests_foot_left">שמאל</string>
+    <string name="requests_foot_right">ימין</string>
+    <string name="requests_foot_any">לא משנה</string>
+    <string name="requests_foot_label">רגל: %s</string>
 
     <!-- Add Request stepped flow -->
     <string name="requests_step_of">שלב %1$d מתוך 4</string>
@@ -401,6 +420,9 @@
     <string name="contacts_clear">נקה</string>
     <string name="contacts_edit">ערוך</string>
     <string name="contacts_delete">מחק</string>
+    <string name="contacts_delete_title">מחק איש קשר</string>
+    <string name="contacts_delete_confirm">למחוק את %s?</string>
+    <string name="contacts_this_contact">איש קשר זה</string>
     <string name="contacts_close">סגור</string>
     <string name="contacts_menu">אפשרויות נוספות</string>
     <string name="contacts_no_contacts">אין אנשי קשר עדיין</string>
@@ -529,6 +551,7 @@
     <string name="player_info_documents">מסמכים</string>
     <string name="player_info_uploading">מעלה מסמך…</string>
     <string name="player_info_no_documents">אין מסמכים עדיין</string>
+    <string name="player_info_documents_empty_subtitle">הוסף דרכון, ייפוי כוח, רפואי או מסמכים אחרים</string>
     <string name="player_info_add_document">הוסף מסמך</string>
     <string name="player_info_notes">הערות</string>
     <string name="player_info_add_note">הוסף הערה</string>
@@ -592,6 +615,21 @@
     <string name="player_info_ai_generating_scout_report">מייצר דוח סקאוט…</string>
     <string name="player_info_ai_scout_report_error">לא ניתן ליצור דוח סקאוט. נסה שוב.</string>
     <string name="player_info_ai_no_similar_players">לא נמצאו שחקנים דומים</string>
+    <string name="player_info_ai_options">הגדרות</string>
+    <string name="player_info_ai_refresh">רענן</string>
+    <string name="player_info_ai_similarity_style">סגנון משחק</string>
+    <string name="player_info_ai_similarity_value">שווי שוק</string>
+    <string name="player_info_ai_similarity_position">עמדה</string>
+    <string name="player_info_ai_similarity_all">מאוזן</string>
+    <string name="player_info_ai_age_strict">גיל ±2 שנים</string>
+    <string name="player_info_ai_age_relaxed">גיל ±5 שנים</string>
+    <string name="player_info_ai_age_any">כל גיל</string>
+    <string name="player_info_ai_exclude_same_club">לא מאותו מועדון</string>
+    <string name="player_info_ai_exclude_same_league">לא מאותה ליגה</string>
+    <string name="player_info_ai_report_executive">סיכום מנהלים</string>
+    <string name="player_info_ai_report_full">טקטי מלא</string>
+    <string name="player_info_ai_report_transfer">התמקדות העברה</string>
+    <string name="player_info_ai_report_youth">פוטנציאל צעירים</string>
 
     <!-- Player Info Accessibility -->
     <string name="player_info_cd_go_back">חזרה</string>

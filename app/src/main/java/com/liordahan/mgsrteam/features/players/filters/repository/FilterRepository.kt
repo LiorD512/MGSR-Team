@@ -2,6 +2,7 @@ package com.liordahan.mgsrteam.features.players.filters.repository
 
 import com.liordahan.mgsrteam.features.login.models.Account
 import com.liordahan.mgsrteam.features.players.filters.ContractFilterOption
+import com.liordahan.mgsrteam.features.players.filters.FootFilterOption
 import com.liordahan.mgsrteam.features.players.models.Position
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -18,6 +19,7 @@ interface IFilterRepository {
     val quickFilterWithMandate: StateFlow<Boolean>
     val quickFilterMyPlayersOnly: StateFlow<Boolean>
     val quickFilterLoanPlayersOnly: StateFlow<Boolean>
+    val footFilterOption: StateFlow<FootFilterOption>
 
     fun addPositionFilter(position: Position)
     fun removePositionFilter(position: Position)
@@ -33,6 +35,7 @@ interface IFilterRepository {
     fun toggleQuickFilterMyPlayersOnly()
     fun toggleQuickFilterLoanPlayersOnly()
     fun toggleQuickFilterWithNotesOnly()
+    fun setFootFilterOption(option: FootFilterOption)
 }
 
 class FilterRepository : IFilterRepository {
@@ -63,6 +66,9 @@ class FilterRepository : IFilterRepository {
 
     private val _quickFilterLoanPlayersOnly = MutableStateFlow(false)
     override val quickFilterLoanPlayersOnly: StateFlow<Boolean> = _quickFilterLoanPlayersOnly
+
+    private val _footFilterOption = MutableStateFlow(FootFilterOption.NONE)
+    override val footFilterOption: StateFlow<FootFilterOption> = _footFilterOption
 
     override fun addPositionFilter(position: Position) {
         val filters = positionFilterList.value.toMutableList()
@@ -96,8 +102,9 @@ class FilterRepository : IFilterRepository {
     }
 
     override fun setContractFilterOption(option: ContractFilterOption) {
-        if (contractFilterOption.value == option) return
-        _contractFilterOption.update { option }
+        _contractFilterOption.update { current ->
+            if (current == option) ContractFilterOption.NONE else option
+        }
     }
 
     override fun setIsWithNotesChecked(isChecked: Boolean) {
@@ -114,6 +121,13 @@ class FilterRepository : IFilterRepository {
         _quickFilterWithMandate.update { false }
         _quickFilterMyPlayersOnly.update { false }
         _quickFilterLoanPlayersOnly.update { false }
+        _footFilterOption.update { FootFilterOption.NONE }
+    }
+
+    override fun setFootFilterOption(option: FootFilterOption) {
+        _footFilterOption.update {
+            if (it == option) FootFilterOption.NONE else option
+        }
     }
 
     override fun toggleQuickFilterFreeAgents() {

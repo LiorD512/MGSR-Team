@@ -13,7 +13,9 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -48,8 +50,11 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.ChevronLeft
+import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Handshake
-import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.AlertDialog
@@ -57,6 +62,8 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -111,6 +118,7 @@ import com.liordahan.mgsrteam.features.contacts.models.Contact
 import com.liordahan.mgsrteam.features.contacts.repository.IContactsRepository
 import com.liordahan.mgsrteam.features.players.models.Player
 import com.liordahan.mgsrteam.features.players.playerinfo.WhatsAppIcon
+import com.liordahan.mgsrteam.features.requests.models.DominateFootOptions
 import com.liordahan.mgsrteam.features.requests.models.PositionDisplayNames
 import com.liordahan.mgsrteam.features.requests.models.Request
 import com.liordahan.mgsrteam.features.requests.models.SalaryRangeOptions
@@ -128,6 +136,7 @@ import com.liordahan.mgsrteam.ui.theme.HomeRedAccent
 import com.liordahan.mgsrteam.ui.theme.HomeTealAccent
 import com.liordahan.mgsrteam.ui.theme.HomeTextPrimary
 import com.liordahan.mgsrteam.ui.theme.HomeTextSecondary
+import com.liordahan.mgsrteam.ui.components.SkeletonRequestList
 import com.liordahan.mgsrteam.ui.utils.boldTextStyle
 import com.liordahan.mgsrteam.ui.utils.clickWithNoRipple
 import com.liordahan.mgsrteam.ui.utils.regularTextStyle
@@ -210,16 +219,7 @@ fun RequestsScreen(
 
                 when {
                     state.isLoading -> {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            CircularProgressIndicator(
-                                color = HomeTealAccent,
-                                strokeWidth = 3.dp,
-                                modifier = Modifier.size(44.dp)
-                            )
-                        }
+                        SkeletonRequestList(modifier = Modifier.fillMaxSize())
                     }
                     state.requestsByPositionCountry.isEmpty() -> {
                         RequestsStatsStrip(
@@ -297,6 +297,7 @@ fun RequestsScreen(
                                                             navController.navigate("${Screens.PlayerInfoScreen.route}/${Uri.encode(profile)}")
                                                         }
                                                     },
+                                                    onEdit = { /* Edit flow - can be implemented later */ },
                                                     onDelete = { requestToDelete = request }
                                                 )
                                             }
@@ -317,7 +318,7 @@ fun RequestsScreen(
                     modifier = Modifier.align(Alignment.BottomCenter),
                     positions = positions,
                     onDismiss = { showAddSheet = false },
-                    onSave = { club, position, contactId, contactName, contactPhone, minAge, maxAge, ageDoesntMatter, salaryRange, transferFee, notes ->
+                    onSave = { club, position, contactId, contactName, contactPhone, minAge, maxAge, ageDoesntMatter, dominateFoot, salaryRange, transferFee, notes ->
                         viewModel.addRequest(
                             club = club,
                             position = position,
@@ -327,6 +328,7 @@ fun RequestsScreen(
                             minAge = minAge,
                             maxAge = maxAge,
                             ageDoesntMatter = ageDoesntMatter,
+                            dominateFoot = dominateFoot,
                             salaryRange = salaryRange,
                             transferFee = transferFee,
                             notes = notes
@@ -573,6 +575,7 @@ private fun CountryExpandableRow(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun RequestCard(
     request: Request,
@@ -581,8 +584,10 @@ private fun RequestCard(
     modifier: Modifier = Modifier,
     onToggleExpand: () -> Unit,
     onPlayerClick: (Player) -> Unit,
+    onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
+    var showMenu by remember { mutableStateOf(false) }
     val viaShort = formatViaShort(
         request.contactName,
         request.createdAt,
@@ -606,13 +611,20 @@ private fun RequestCard(
         }
         stringResource(R.string.requests_fee, displayFee)
     }
+    val footLabel = request.dominateFoot?.takeIf { it.isNotBlank() }?.let { foot ->
+        val displayFoot = when (foot.lowercase()) {
+            "left" -> stringResource(R.string.requests_foot_left)
+            "right" -> stringResource(R.string.requests_foot_right)
+            else -> foot
+        }
+        stringResource(R.string.requests_foot_label, displayFoot)
+    }
     val notesText = request.notes?.takeIf { it.isNotBlank() }
 
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .padding(bottom = 8.dp)
-            .clickWithNoRipple { },
+            .padding(bottom = 8.dp),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = HomeDarkCard),
         border = BorderStroke(1.dp, HomeDarkCardBorder)
@@ -629,12 +641,19 @@ private fun RequestCard(
                 }
                 .padding(start = 3.dp)
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(10.dp, 10.dp, 12.dp, 10.dp),
-                verticalAlignment = Alignment.CenterVertically
+            Box(
+                modifier = Modifier.fillMaxWidth()
             ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .combinedClickable(
+                            onClick = { },
+                            onLongClick = { showMenu = true }
+                        )
+                        .padding(10.dp, 10.dp, 12.dp, 10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                 request.clubLogo?.let { logo ->
                     AsyncImage(
                         model = logo,
@@ -670,7 +689,7 @@ private fun RequestCard(
                         viaShort,
                         style = regularTextStyle(HomeTextSecondary, 10.sp)
                     )
-                    if (ageLabel != null || salaryLabel != null || feeLabel != null || notesText != null) {
+                    if (ageLabel != null || salaryLabel != null || feeLabel != null || footLabel != null || notesText != null) {
                         FlowRow(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -679,6 +698,7 @@ private fun RequestCard(
                             ageLabel?.let { RequestChip(text = it) }
                             salaryLabel?.let { RequestChip(text = it) }
                             feeLabel?.let { RequestChip(text = it) }
+                            footLabel?.let { RequestChip(text = it) }
                             notesText?.let { notes ->
                                 val displayNotes = if (notes.length > 80) "${notes.take(80)}…" else notes
                                 RequestChip(
@@ -689,70 +709,63 @@ private fun RequestCard(
                     }
                 }
                 Spacer(Modifier.width(8.dp))
-                var actionsExpanded by remember { mutableStateOf(false) }
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                if (!request.contactPhoneNumber.isNullOrBlank()) {
+                    Box(
+                        modifier = Modifier.size(28.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        WhatsAppIcon(request.contactPhoneNumber)
+                    }
+                }
+            }
+
+                DropdownMenu(
+                    expanded = showMenu,
+                    onDismissRequest = { showMenu = false },
+                    containerColor = HomeDarkCard
                 ) {
-                    if (!request.contactPhoneNumber.isNullOrBlank()) {
-                        AnimatedVisibility(
-                            visible = !actionsExpanded,
-                            enter = fadeIn(tween(200)),
-                            exit = fadeOut(tween(200))
-                        ) {
-                            Box(
-                                modifier = Modifier.size(28.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                WhatsAppIcon(request.contactPhoneNumber)
+                    DropdownMenuItem(
+                        text = {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    Icons.Default.Edit,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp),
+                                    tint = HomeTextPrimary
+                                )
+                                Spacer(Modifier.width(12.dp))
+                                Text(
+                                    stringResource(R.string.requests_edit),
+                                    style = regularTextStyle(HomeTextPrimary, 14.sp)
+                                )
                             }
+                        },
+                        onClick = {
+                            showMenu = false
+                            onEdit()
                         }
-                    }
-                    AnimatedVisibility(
-                        visible = actionsExpanded,
-                        enter = fadeIn(tween(200)) + slideInHorizontally(
-                            initialOffsetX = { it },
-                            animationSpec = tween(200)
-                        ),
-                        exit = fadeOut(tween(200)) + slideOutHorizontally(
-                            targetOffsetX = { it },
-                            animationSpec = tween(200)
-                        )
-                    ) {
-                        IconButton(
-                            onClick = {
-                                onDelete()
-                                actionsExpanded = false
-                            },
-                            modifier = Modifier.size(28.dp)
-                        ) {
-                            Icon(
-                                Icons.Default.Delete,
-                                contentDescription = stringResource(R.string.requests_delete),
-                                tint = HomeRedAccent,
-                                modifier = Modifier.size(18.dp)
-                            )
+                    )
+                    DropdownMenuItem(
+                        text = {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    Icons.Default.Delete,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp),
+                                    tint = HomeRedAccent
+                                )
+                                Spacer(Modifier.width(12.dp))
+                                Text(
+                                    stringResource(R.string.requests_delete),
+                                    style = regularTextStyle(HomeRedAccent, 14.sp)
+                                )
+                            }
+                        },
+                        onClick = {
+                            showMenu = false
+                            onDelete()
                         }
-                    }
-                    IconButton(
-                        onClick = { actionsExpanded = !actionsExpanded },
-                        modifier = Modifier.size(28.dp)
-                    ) {
-                        AnimatedContent(
-                            targetState = actionsExpanded,
-                            transitionSpec = {
-                                fadeIn(tween(150)) togetherWith fadeOut(tween(150))
-                            },
-                            label = "request_menu_icon"
-                        ) { expanded ->
-                            Icon(
-                                imageVector = if (expanded) Icons.Default.Close else Icons.Default.MoreVert,
-                                contentDescription = if (expanded) "Close" else "More",
-                                tint = HomeTextSecondary,
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
-                    }
+                    )
                 }
             }
             Spacer(Modifier.height(8.dp))
@@ -1007,10 +1020,18 @@ private fun formatRequestsForShare(requestsByPositionCountry: Map<String, Map<St
                 }
                 val salaryInfo = req.salaryRange?.takeIf { it.isNotBlank() }?.let { "Salary: $it" } ?: ""
                 val feeInfo = req.transferFee?.takeIf { it.isNotBlank() }?.let { "Fee: $it" } ?: ""
+                val footInfo = req.dominateFoot?.takeIf { it.isNotBlank() }?.let { foot ->
+                    when (foot.lowercase()) {
+                        "left" -> "Foot: Left"
+                        "right" -> "Foot: Right"
+                        else -> "Foot: $foot"
+                    }
+                } ?: ""
                 val details = listOfNotNull(
                     ageInfo.takeIf { it.isNotBlank() },
                     salaryInfo,
-                    feeInfo
+                    feeInfo,
+                    footInfo.takeIf { it.isNotBlank() }
                 ).joinToString(" • ")
                 if (details.isNotBlank()) {
                     sb.appendLine("    $details")
@@ -1037,6 +1058,7 @@ private fun AddRequestBottomSheet(
         minAge: Int?,
         maxAge: Int?,
         ageDoesntMatter: Boolean,
+        dominateFoot: String?,
         salaryRange: String?,
         transferFee: String?,
         notes: String?
@@ -1055,6 +1077,7 @@ private fun AddRequestBottomSheet(
     var ageDoesntMatter by remember { mutableStateOf(true) }
     var minAge by remember { mutableStateOf("") }
     var maxAge by remember { mutableStateOf("") }
+    var selectedDominateFoot by remember { mutableStateOf<String?>(DominateFootOptions.ANY) }
     var selectedSalaryRange by remember { mutableStateOf<String?>(null) }
     var selectedTransferFee by remember { mutableStateOf<String?>(null) }
     var notes by remember { mutableStateOf("") }
@@ -1222,11 +1245,13 @@ private fun AddRequestBottomSheet(
                         ageDoesntMatter = ageDoesntMatter,
                         minAge = minAge,
                         maxAge = maxAge,
+                        selectedDominateFoot = selectedDominateFoot,
                         selectedSalaryRange = selectedSalaryRange,
                         selectedTransferFee = selectedTransferFee,
                         onAgeDoesntMatterChange = { ageDoesntMatter = it },
                         onMinAgeChange = { minAge = it },
                         onMaxAgeChange = { maxAge = it },
+                        onDominateFootSelect = { selectedDominateFoot = it },
                         onSalaryRangeSelect = { selectedSalaryRange = it },
                         onTransferFeeSelect = { selectedTransferFee = it }
                     )
@@ -1247,6 +1272,7 @@ private fun AddRequestBottomSheet(
                                     minAge.toIntOrNull()?.takeIf { it > 0 },
                                     maxAge.toIntOrNull()?.takeIf { it > 0 },
                                     ageDoesntMatter,
+                                    selectedDominateFoot?.takeIf { it != DominateFootOptions.ANY },
                                     selectedSalaryRange,
                                     selectedTransferFee,
                                     notes.takeIf { it.isNotBlank() }
@@ -1507,11 +1533,13 @@ private fun AddRequestStep3RequirementsContent(
     ageDoesntMatter: Boolean,
     minAge: String,
     maxAge: String,
+    selectedDominateFoot: String?,
     selectedSalaryRange: String?,
     selectedTransferFee: String?,
     onAgeDoesntMatterChange: (Boolean) -> Unit,
     onMinAgeChange: (String) -> Unit,
     onMaxAgeChange: (String) -> Unit,
+    onDominateFootSelect: (String?) -> Unit,
     onSalaryRangeSelect: (String?) -> Unit,
     onTransferFeeSelect: (String?) -> Unit
 ) {
@@ -1573,6 +1601,48 @@ private fun AddRequestStep3RequirementsContent(
                         unfocusedBorderColor = HomeDarkCardBorder
                     )
                 )
+            }
+        }
+        Spacer(Modifier.height(20.dp))
+        Text(
+            stringResource(R.string.requests_label_dominate_foot),
+            style = regularTextStyle(HomeTextSecondary, 11.sp),
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            DominateFootOptions.all.forEach { foot ->
+                val isSelected = selectedDominateFoot == foot
+                val (icon, label) = when (foot) {
+                    DominateFootOptions.LEFT -> Icons.Default.ChevronLeft to stringResource(R.string.requests_foot_left)
+                    DominateFootOptions.RIGHT -> Icons.Default.ChevronRight to stringResource(R.string.requests_foot_right)
+                    else -> Icons.Default.SwapHoriz to stringResource(R.string.requests_foot_any)
+                }
+                Row(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(if (isSelected) HomeTealAccent.copy(alpha = 0.2f) else Color.Transparent)
+                        .border(1.dp, if (isSelected) HomeTealAccent else HomeDarkCardBorder, RoundedCornerShape(12.dp))
+                        .clickWithNoRipple { onDominateFootSelect(foot) }
+                        .padding(horizontal = 12.dp, vertical = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = if (isSelected) HomeTealAccent else HomeTextSecondary,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        text = label,
+                        style = regularTextStyle(if (isSelected) HomeTealAccent else HomeTextSecondary, 12.sp)
+                    )
+                }
             }
         }
         Spacer(Modifier.height(20.dp))

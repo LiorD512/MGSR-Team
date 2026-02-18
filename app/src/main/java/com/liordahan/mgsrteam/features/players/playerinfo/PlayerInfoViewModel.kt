@@ -10,6 +10,8 @@ import com.liordahan.mgsrteam.features.players.models.NotesModel
 import com.liordahan.mgsrteam.features.players.models.PassportDetails
 import com.liordahan.mgsrteam.features.players.models.Player
 import com.liordahan.mgsrteam.features.players.playerinfo.ai.AiHelperService
+import com.liordahan.mgsrteam.features.players.playerinfo.ai.ScoutReportOptions
+import com.liordahan.mgsrteam.features.players.playerinfo.ai.SimilarPlayersOptions
 import com.liordahan.mgsrteam.features.players.playerinfo.documents.DocumentDetectionService
 import com.liordahan.mgsrteam.features.players.playerinfo.documents.DocumentType
 import com.liordahan.mgsrteam.features.players.playerinfo.documents.PlayerDocument
@@ -58,8 +60,8 @@ abstract class IPlayerInfoViewModel : ViewModel() {
     abstract fun onDeleteNoteClicked(note: NotesModel)
     abstract fun uploadDocument(uri: android.net.Uri?, bytes: ByteArray, name: String, mimeType: String?, expiresAt: Long?)
     abstract fun deleteDocument(documentId: String, isPassport: Boolean = false)
-    abstract fun findSimilarPlayers(player: Player, languageCode: String = "en")
-    abstract fun generateScoutReport(player: Player, languageCode: String = "en")
+    abstract fun findSimilarPlayers(player: Player, languageCode: String = "en", options: SimilarPlayersOptions = SimilarPlayersOptions())
+    abstract fun generateScoutReport(player: Player, languageCode: String = "en", options: ScoutReportOptions = ScoutReportOptions())
     abstract fun consumeUpdateResult()
 }
 
@@ -126,15 +128,15 @@ class PlayerInfoViewModel(
                 val now = System.currentTimeMillis()
                 for (mandate in mandateDocs) {
                     val expiresAt = mandate.expiresAt ?: continue
-                    if (expiresAt < now) {
-                        mandate.id?.let { documentsRepository.deleteDocument(it) }
+                    if (expiresAt < now && !mandate.expired) {
+                        mandate.id?.let { documentsRepository.markDocumentExpired(it) }
                     }
                 }
-                // Auto-sync mandate switch: ON when mandate docs exist, OFF when none. Manual toggle preserved until docs change.
-                val count = mandateDocs.size
-                if (prevMandateCount == null || count != prevMandateCount) {
-                    prevMandateCount = count
-                    updateHaveMandate(count > 0)
+                // Auto-sync mandate switch: ON when valid mandate docs exist, OFF when none.
+                val validMandateCount = mandateDocs.count { !it.expired && (it.expiresAt == null || it.expiresAt >= now) }
+                if (prevMandateCount == null || validMandateCount != prevMandateCount) {
+                    prevMandateCount = validMandateCount
+                    updateHaveMandate(validMandateCount > 0)
                 }
             }
         }
@@ -459,11 +461,11 @@ class PlayerInfoViewModel(
         _updatePlayerFlow.update { UiResult.UnInitialized }
     }
 
-    override fun findSimilarPlayers(player: Player, languageCode: String) {
+    override fun findSimilarPlayers(player: Player, languageCode: String, options: SimilarPlayersOptions) {
         viewModelScope.launch {
             _isSimilarPlayersLoading.update { true }
             _similarPlayersFlow.update { emptyList() }
-            aiHelperService.findSimilarPlayers(player, languageCode)
+            aiHelperService.findSimilarPlayers(player, languageCode, options)
                 .onSuccess { suggestions ->
                     _similarPlayersFlow.update { suggestions }
                     Log.d(TAG, "findSimilarPlayers: found ${suggestions.size} similar players for ${player.fullName}")
@@ -476,11 +478,11 @@ class PlayerInfoViewModel(
         }
     }
 
-    override fun generateScoutReport(player: Player, languageCode: String) {
+    override fun generateScoutReport(player: Player, languageCode: String, options: ScoutReportOptions) {
         viewModelScope.launch {
             _isScoutReportLoading.update { true }
             _scoutReportFlow.update { null }
-            aiHelperService.generateScoutReport(player, languageCode)
+            aiHelperService.generateScoutReport(player, languageCode, options)
                 .onSuccess { report ->
                     _scoutReportFlow.update { report }
                     Log.d(TAG, "generateScoutReport: success for ${player.fullName}")

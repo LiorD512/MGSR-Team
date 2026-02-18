@@ -71,7 +71,8 @@ class LatestReleases {
     suspend fun getLatestReleases(
         minValue: Int,
         maxValue: Int,
-        maxRetries: Int = 3
+        maxRetries: Int = 3,
+        forceEnrichAll: Boolean = false
     ): TransfermarktResult<List<LatestTransferModel?>> = withContext(Dispatchers.IO) {
         var attempt = 0
         var lastError: String? = null
@@ -88,12 +89,12 @@ class LatestReleases {
 
                     // Parse first page and launch enrichments immediately
                     for (model in parseTransferList(firstDoc)) {
-                        enrichJobs += launchEnrich(model, sem)
+                        enrichJobs += launchEnrich(model, sem, forceEnrichAll)
                     }
 
                     if (pageCount == 1 && enrichJobs.size >= 20) {
                         // Unknown page count – fetch ahead in batches and pipeline enrichments
-                        fetchUntilEmptyPipelined(minValue, maxValue, sem, enrichJobs)
+                        fetchUntilEmptyPipelined(minValue, maxValue, sem, enrichJobs, forceEnrichAll)
                     } else if (pageCount > 1) {
                         // Known page count – fetch all remaining in parallel, pipeline enrichments
                         val pageFetches = (2..pageCount).map { page ->
@@ -105,7 +106,7 @@ class LatestReleases {
                         }
                         for (pf in pageFetches) {
                             for (model in pf.await()) {
-                                enrichJobs += launchEnrich(model, sem)
+                                enrichJobs += launchEnrich(model, sem, forceEnrichAll)
                             }
                         }
                     }
@@ -160,7 +161,8 @@ class LatestReleases {
         minValue: Int,
         maxValue: Int,
         sem: Semaphore,
-        enrichJobs: MutableList<Deferred<LatestTransferModel?>>
+        enrichJobs: MutableList<Deferred<LatestTransferModel?>>,
+        forceEnrichAll: Boolean = false
     ) {
         var page = 2
         val lookahead = 3
@@ -180,7 +182,7 @@ class LatestReleases {
                 val items = parseTransferList(doc)
                 if (items.isEmpty()) { shouldStop = true; break }
                 for (model in items) {
-                    enrichJobs += launchEnrich(model, sem)
+                    enrichJobs += launchEnrich(model, sem, forceEnrichAll)
                 }
                 if (items.size < 20) { shouldStop = true; break }
             }
@@ -245,11 +247,13 @@ class LatestReleases {
 
     private fun CoroutineScope.launchEnrich(
         model: LatestTransferModel,
-        sem: Semaphore
+        sem: Semaphore,
+        forceEnrichAll: Boolean = false
     ): Deferred<LatestTransferModel?> = async {
-        if (model.playerUrl != null &&
-            (model.marketValue.isNullOrBlank() || model.playerNationality.isNullOrBlank())
-        ) {
+        val needsEnrich = forceEnrichAll ||
+            (model.playerUrl != null &&
+                (model.marketValue.isNullOrBlank() || model.playerNationality.isNullOrBlank()))
+        if (needsEnrich && model.playerUrl != null) {
             sem.withPermit { enrichFromProfile(model) }
         } else {
             model

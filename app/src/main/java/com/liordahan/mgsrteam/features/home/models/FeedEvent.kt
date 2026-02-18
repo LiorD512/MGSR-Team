@@ -26,5 +26,9 @@ data class FeedEvent(
         const val TYPE_NOTE_ADDED = "NOTE_ADDED"
         const val TYPE_PLAYER_ADDED = "PLAYER_ADDED"
         const val TYPE_BECAME_FREE_AGENT = "BECAME_FREE_AGENT"
+        /** New player in releases list (not seen before). extraInfo: IN_DATABASE or NOT_IN_DATABASE */
+        const val TYPE_NEW_RELEASE_FROM_CLUB = "NEW_RELEASE_FROM_CLUB"
+        /** Player mandate has expired (expiry date passed). */
+        const val TYPE_MANDATE_EXPIRED = "MANDATE_EXPIRED"
     }
 }

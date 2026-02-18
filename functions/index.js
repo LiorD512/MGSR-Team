@@ -17,6 +17,8 @@ const NOTIFIABLE_TYPES = [
   "BECAME_FREE_AGENT",
   "CLUB_CHANGE",
   "MARKET_VALUE_CHANGE",
+  "NEW_RELEASE_FROM_CLUB",
+  "MANDATE_EXPIRED",
 ];
 
 /**
@@ -37,6 +39,7 @@ exports.onNewFeedEvent = onDocumentCreated("FeedEvents/{eventId}", async (event)
   const playerName = data.playerName || "Unknown";
   const oldValue = data.oldValue || "";
   const newValue = data.newValue || "";
+  const extraInfo = data.extraInfo || "";
 
   let title;
   let body;
@@ -54,6 +57,17 @@ exports.onNewFeedEvent = onDocumentCreated("FeedEvents/{eventId}", async (event)
       title = "Free Agent Alert";
       body = `${playerName} is now without a club (was at ${oldValue})`;
       break;
+    case "NEW_RELEASE_FROM_CLUB":
+      title = "New Free Agent";
+      body =
+        extraInfo === "NOT_IN_DATABASE"
+          ? `${playerName} released from his club — maybe you want to approach him. Not in our database.`
+          : `${playerName} released from his club — maybe you want to approach him.`;
+      break;
+    case "MANDATE_EXPIRED":
+      title = "Mandate Expired";
+      body = `${playerName}'s mandate has expired.`;
+      break;
     default:
       title = "MGSR Team Update";
       body = `New update for ${playerName}`;
@@ -67,6 +81,7 @@ exports.onNewFeedEvent = onDocumentCreated("FeedEvents/{eventId}", async (event)
       playerName,
       oldValue,
       newValue,
+      extraInfo: extraInfo || "",
       playerTmProfile: data.playerTmProfile || "",
     },
     android: {

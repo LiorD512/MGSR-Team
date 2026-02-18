@@ -71,6 +71,9 @@
     <string name="players_filter_without_club">Without club</string>
     <string name="players_filter_contract_finishing">Contract finishing soon</string>
     <string name="players_filter_with_notes">With notes</string>
+    <string name="players_filter_foot_left">Left foot</string>
+    <string name="players_filter_foot_right">Right foot</string>
+    <string name="players_filter_foot_both">Both feet</string>
     <string name="players_expiring_badge">Contract Expiring</string>
     <string name="players_contract_not_available">Contract not available</string>
     <string name="players_done">Done</string>
@@ -126,6 +129,13 @@
     <string name="notification_free_agent_body">%1$s is now without a club (was at %2$s)</string>
     <string name="notification_market_value_title">Market Value Change</string>
     <string name="notification_market_value_body">%1$s: %2$s → %3$s</string>
+    <string name="notification_new_release_title">New Free Agent</string>
+    <string name="notification_new_release_body">%1$s released from his club — maybe you want to approach him.</string>
+    <string name="notification_new_release_body_not_in_db">%1$s released from his club — maybe you want to approach him. Not in our database.</string>
+    <string name="notification_mandate_expired_title">Mandate Expired</string>
+    <string name="notification_mandate_expired_body">%1$s\'s mandate has expired.</string>
+    <string name="notification_action_open_tm">Open Transfermarkt</string>
+    <string name="notification_action_add_shortlist">Add to Shortlist</string>
 
     <!-- Greeting -->
     <string name="greeting_good_morning">Good Morning</string>
@@ -170,6 +180,9 @@
     <string name="feed_market_value_update">Market Value Update</string>
     <string name="feed_club_change">Club Change Detected</string>
     <string name="feed_became_free_agent">Became Free Agent</string>
+    <string name="feed_new_release">New Free Agent (Releases)</string>
+    <string name="feed_new_release_not_in_db">Not in our database</string>
+    <string name="feed_mandate_expired">Mandate Expired</string>
     <string name="feed_contract_expiring">Contract Expiring</string>
     <string name="feed_new_note">New Note</string>
     <string name="feed_player_added">Player Added</string>
@@ -377,6 +390,7 @@
     <string name="requests_notes_placeholder">Additional notes…</string>
     <string name="requests_notes_label">Notes</string>
     <string name="requests_whatsapp">WhatsApp</string>
+    <string name="requests_edit">Edit</string>
     <string name="requests_delete">Delete</string>
     <string name="requests_change_club">Change</string>
     <string name="requests_contact_optional">CONTACT (optional)</string>
@@ -388,6 +402,11 @@
     <string name="requests_save_request">Save Request</string>
     <string name="requests_transfer_fee_free_loan">Free/Free loan</string>
     <string name="requests_transfer_fee_lt200">Lower than 200</string>
+    <string name="requests_label_dominate_foot">DOMINANT FOOT</string>
+    <string name="requests_foot_left">Left</string>
+    <string name="requests_foot_right">Right</string>
+    <string name="requests_foot_any">Doesn\'t matter</string>
+    <string name="requests_foot_label">Foot: %s</string>
 
     <!-- Add Request stepped flow -->
     <string name="requests_step_of">Step %1$d of 4</string>
@@ -407,6 +426,9 @@
     <string name="contacts_clear">Clear</string>
     <string name="contacts_edit">Edit</string>
     <string name="contacts_delete">Delete</string>
+    <string name="contacts_delete_title">Delete contact</string>
+    <string name="contacts_delete_confirm">Delete %s?</string>
+    <string name="contacts_this_contact">this contact</string>
     <string name="contacts_close">Close</string>
     <string name="contacts_menu">More options</string>
     <string name="contacts_no_contacts">No contacts yet</string>
@@ -538,6 +560,7 @@
     <string name="player_info_documents">Documents</string>
     <string name="player_info_uploading">Uploading document…</string>
     <string name="player_info_no_documents">No documents yet</string>
+    <string name="player_info_documents_empty_subtitle">Add passport, mandate, medical or other docs</string>
     <string name="player_info_add_document">Add document</string>
     <string name="player_info_notes">Notes</string>
     <string name="player_info_add_note">Add note</string>
@@ -596,11 +619,28 @@
 
     <!-- AI Helper -->
     <string name="player_info_ai_helper">AI Helper</string>
-    <string name="player_info_ai_find_similar_players">Find me similar players</string>
+    <string name="player_info_ai_find_similar_players">Find similar players</string>
     <string name="player_info_ai_create_scout_report">Create scout report for %s</string>
     <string name="player_info_ai_generating_scout_report">Generating scout report…</string>
     <string name="player_info_ai_scout_report_error">Could not generate scout report. Please try again.</string>
     <string name="player_info_ai_no_similar_players">No similar players found</string>
+    <string name="player_info_ai_options">Options</string>
+    <string name="player_info_ai_refresh">Refresh</string>
+    <!-- Similar players options -->
+    <string name="player_info_ai_similarity_style">Playing style</string>
+    <string name="player_info_ai_similarity_value">Market value</string>
+    <string name="player_info_ai_similarity_position">Position</string>
+    <string name="player_info_ai_similarity_all">All-round</string>
+    <string name="player_info_ai_age_strict">Age ±2 yrs</string>
+    <string name="player_info_ai_age_relaxed">Age ±5 yrs</string>
+    <string name="player_info_ai_age_any">Any age</string>
+    <string name="player_info_ai_exclude_same_club">Exclude same club</string>
+    <string name="player_info_ai_exclude_same_league">Exclude same league</string>
+    <!-- Scout report options -->
+    <string name="player_info_ai_report_executive">Executive summary</string>
+    <string name="player_info_ai_report_full">Full tactical</string>
+    <string name="player_info_ai_report_transfer">Transfer focus</string>
+    <string name="player_info_ai_report_youth">Youth potential</string>
 
     <!-- Player Info Accessibility -->
     <string name="player_info_cd_go_back">Go back</string>

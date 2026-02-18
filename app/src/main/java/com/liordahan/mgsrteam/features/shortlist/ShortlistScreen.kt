@@ -93,6 +93,7 @@ import com.liordahan.mgsrteam.ui.theme.HomeRedAccent
 import com.liordahan.mgsrteam.ui.theme.HomeTealAccent
 import com.liordahan.mgsrteam.ui.theme.HomeTextPrimary
 import com.liordahan.mgsrteam.ui.theme.HomeTextSecondary
+import com.liordahan.mgsrteam.ui.components.SkeletonPlayerCardList
 import com.liordahan.mgsrteam.ui.utils.boldTextStyle
 import com.liordahan.mgsrteam.ui.utils.clickWithNoRipple
 import com.liordahan.mgsrteam.ui.utils.regularTextStyle
@@ -134,7 +135,8 @@ fun ShortlistScreen(
     viewModel: IShortlistViewModel = koinViewModel<ShortlistViewModel>(),
     addPlayerViewModel: IAddPlayerViewModel = koinViewModel(),
     playersRepository: IPlayersRepository = koinInject(),
-    teammatesFetcher: TeammatesFetcher = koinInject()
+    teammatesFetcher: TeammatesFetcher = koinInject(),
+    mainViewModel: com.liordahan.mgsrteam.IMainViewModel? = null
 ) {
     val state by viewModel.shortlistFlow.collectAsState()
     val context = LocalContext.current
@@ -156,6 +158,17 @@ fun ShortlistScreen(
     val isPlayerAdded by addPlayerViewModel.isPlayerAddedFlow.collectAsState()
     val snackBarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+
+    LaunchedEffect(mainViewModel) {
+        mainViewModel ?: return@LaunchedEffect
+        mainViewModel.pendingShortlistAddTmUrl.collect { url ->
+            if (!url.isNullOrBlank()) {
+                mainViewModel.clearPendingShortlistAddTmUrl()
+                addPlayerTmUrl = url
+                showAddPlayerBottomSheet = true
+            }
+        }
+    }
 
     LaunchedEffect(Unit) {
         addPlayerViewModel.errorMessageFlow.collect { message ->
@@ -209,18 +222,6 @@ fun ShortlistScreen(
         loadingPlayerUrl = null
     }
 
-    if (state.isLoading) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(HomeDarkBackground),
-            contentAlignment = Alignment.Center
-        ) {
-            CircularProgressIndicator(color = HomeTealAccent, strokeWidth = 3.dp)
-        }
-        return
-    }
-
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         containerColor = HomeDarkBackground,
@@ -246,47 +247,53 @@ fun ShortlistScreen(
                 thisWeek = thisWeekCount
             )
 
-            if (state.entries.isEmpty()) {
-                ShortlistEmptyState(
-                    onBrowseReleases = { navController.navigate(Screens.ReleasesScreen.route) },
-                    onBrowseReturnees = { navController.navigate(Screens.ReturneeScreen.route) }
-                )
-            } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(16.dp, 4.dp, 16.dp, 100.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(state.entries, key = { it.tmProfileUrl }) { entry ->
-                        val playerUrl = entry.tmProfileUrl
-                        val isExpanded = playerUrl == expandedPlayerUrl
-                        ShortlistCard(
-                            entry = entry,
-                            rosterTeammates = teammatesCache[playerUrl],
-                            isLoadingTeammates = loadingPlayerUrl == playerUrl,
-                            isTeammatesExpanded = isExpanded,
-                            onToggleTeammatesExpand = {
-                                expandedPlayerUrl = if (isExpanded) null else playerUrl
-                            },
-                            onRosterTeammateClick = { player ->
-                                player.tmProfile?.let { profile ->
-                                    navController.navigate("${Screens.PlayerInfoScreen.route}/${Uri.encode(profile)}")
-                                }
-                            },
-                            onAddToAgency = {
-                                addPlayerTmUrl = entry.tmProfileUrl
-                                showAddPlayerBottomSheet = true
-                            },
-                            onOpenTm = {
-                                context.startActivity(
-                                    Intent(
-                                        Intent.ACTION_VIEW,
-                                        entry.tmProfileUrl.toUri()
+            when {
+                state.isLoading -> {
+                    SkeletonPlayerCardList(modifier = Modifier.fillMaxSize())
+                }
+                state.entries.isEmpty() -> {
+                    ShortlistEmptyState(
+                        onBrowseReleases = { navController.navigate(Screens.ReleasesScreen.route) },
+                        onBrowseReturnees = { navController.navigate(Screens.ReturneeScreen.route) }
+                    )
+                }
+                else -> {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(16.dp, 4.dp, 16.dp, 100.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(state.entries, key = { it.tmProfileUrl }) { entry ->
+                            val playerUrl = entry.tmProfileUrl
+                            val isExpanded = playerUrl == expandedPlayerUrl
+                            ShortlistCard(
+                                entry = entry,
+                                rosterTeammates = teammatesCache[playerUrl],
+                                isLoadingTeammates = loadingPlayerUrl == playerUrl,
+                                isTeammatesExpanded = isExpanded,
+                                onToggleTeammatesExpand = {
+                                    expandedPlayerUrl = if (isExpanded) null else playerUrl
+                                },
+                                onRosterTeammateClick = { player ->
+                                    player.tmProfile?.let { profile ->
+                                        navController.navigate("${Screens.PlayerInfoScreen.route}/${Uri.encode(profile)}")
+                                    }
+                                },
+                                onAddToAgency = {
+                                    addPlayerTmUrl = entry.tmProfileUrl
+                                    showAddPlayerBottomSheet = true
+                                },
+                                onOpenTm = {
+                                    context.startActivity(
+                                        Intent(
+                                            Intent.ACTION_VIEW,
+                                            entry.tmProfileUrl.toUri()
+                                        )
                                     )
-                                )
-                            },
-                            onRemove = { entryToDelete = entry }
-                        )
+                                },
+                                onRemove = { entryToDelete = entry }
+                            )
+                        }
                     }
                 }
             }

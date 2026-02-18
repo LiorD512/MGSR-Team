@@ -1,6 +1,8 @@
 package com.liordahan.mgsrteam.features.home.dashboard
 
+import android.content.Intent
 import android.net.Uri
+import androidx.core.net.toUri
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -123,6 +125,7 @@ import com.liordahan.mgsrteam.ui.theme.HomeRedAccent
 import com.liordahan.mgsrteam.ui.theme.HomeTealAccent
 import com.liordahan.mgsrteam.ui.theme.HomeTextPrimary
 import com.liordahan.mgsrteam.ui.theme.HomeTextSecondary
+import com.liordahan.mgsrteam.ui.components.SkeletonDashboardLayout
 import com.liordahan.mgsrteam.ui.utils.boldTextStyle
 import com.liordahan.mgsrteam.ui.utils.clickWithNoRipple
 import com.liordahan.mgsrteam.ui.utils.regularTextStyle
@@ -148,14 +151,11 @@ fun DashboardScreen(
     var showAddTaskSheet by remember { mutableStateOf(false) }
 
     if (state.isLoading) {
-        Box(
+        SkeletonDashboardLayout(
             modifier = Modifier
                 .fillMaxSize()
-                .background(HomeDarkBackground),
-            contentAlignment = Alignment.Center
-        ) {
-            CircularProgressIndicator(color = HomeTealAccent, strokeWidth = 3.dp)
-        }
+                .background(HomeDarkBackground)
+        )
         return
     }
 
@@ -762,20 +762,29 @@ private fun FeedEventCard(event: FeedEvent, navController: NavController) {
         }
         FeedEvent.TYPE_CLUB_CHANGE -> Triple(Icons.Default.SwapHoriz, HomeBlueAccent, stringResource(R.string.feed_club_change))
         FeedEvent.TYPE_BECAME_FREE_AGENT -> Triple(Icons.Default.PersonOff, HomeRedAccent, stringResource(R.string.feed_became_free_agent))
+        FeedEvent.TYPE_NEW_RELEASE_FROM_CLUB -> Triple(Icons.Default.PersonOff, HomeOrangeAccent, stringResource(R.string.feed_new_release))
+        FeedEvent.TYPE_MANDATE_EXPIRED -> Triple(Icons.Default.Warning, HomeRedAccent, stringResource(R.string.feed_mandate_expired))
         FeedEvent.TYPE_CONTRACT_EXPIRING -> Triple(Icons.Default.Warning, HomeOrangeAccent, stringResource(R.string.feed_contract_expiring))
         FeedEvent.TYPE_NOTE_ADDED -> Triple(Icons.AutoMirrored.Filled.NoteAdd, HomePurpleAccent, stringResource(R.string.feed_new_note))
         FeedEvent.TYPE_PLAYER_ADDED -> Triple(Icons.Default.Add, HomeTealAccent, stringResource(R.string.feed_player_added))
         else -> Triple(Icons.Default.Notifications, HomeTextSecondary, stringResource(R.string.feed_update))
     }
 
+    val context = LocalContext.current
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 4.dp)
             .clickWithNoRipple {
                 event.playerTmProfile?.let { tm ->
-                    val encoded = Uri.encode(tm)
-                    navController.navigate("${Screens.PlayerInfoScreen.route}/$encoded")
+                    when {
+                        event.type == FeedEvent.TYPE_NEW_RELEASE_FROM_CLUB && event.extraInfo == "NOT_IN_DATABASE" ->
+                            context.startActivity(Intent(Intent.ACTION_VIEW, tm.toUri()))
+                        event.type == FeedEvent.TYPE_NEW_RELEASE_FROM_CLUB ->
+                            navController.navigate("${Screens.AddPlayerScreen.route}/${Uri.encode(tm)}")
+                        else ->
+                            navController.navigate("${Screens.PlayerInfoScreen.route}/${Uri.encode(tm)}")
+                    }
                 }
             },
         shape = RoundedCornerShape(14.dp),
@@ -862,6 +871,28 @@ private fun FeedEventCard(event: FeedEvent, navController: NavController) {
                             style = regularTextStyle(HomeTextSecondary, 12.sp)
                         )
                     }
+                    FeedEvent.TYPE_NEW_RELEASE_FROM_CLUB -> {
+                        Text(
+                            text = event.playerName ?: "",
+                            style = boldTextStyle(HomeTextPrimary, 14.sp)
+                        )
+                        if (event.extraInfo == "NOT_IN_DATABASE") {
+                            Text(
+                                text = stringResource(R.string.feed_new_release_not_in_db),
+                                style = regularTextStyle(HomeTextSecondary, 12.sp)
+                            )
+                        }
+                    }
+                    FeedEvent.TYPE_MANDATE_EXPIRED -> {
+                        Text(
+                            text = event.playerName ?: "",
+                            style = boldTextStyle(HomeTextPrimary, 14.sp)
+                        )
+                        Text(
+                            text = stringResource(R.string.feed_mandate_expired),
+                            style = regularTextStyle(HomeTextSecondary, 12.sp)
+                        )
+                    }
                     FeedEvent.TYPE_NOTE_ADDED -> {
                         Text(
                             text = stringResource(
@@ -943,7 +974,10 @@ private fun List<FeedEvent>.filterByType(filter: FeedFilter): List<FeedEvent> {
         FeedFilter.ALL -> this
         FeedFilter.VALUE_CHANGES -> filter { it.type == FeedEvent.TYPE_MARKET_VALUE_CHANGE }
         FeedFilter.TRANSFERS -> filter {
-            it.type == FeedEvent.TYPE_CLUB_CHANGE || it.type == FeedEvent.TYPE_BECAME_FREE_AGENT
+            it.type == FeedEvent.TYPE_CLUB_CHANGE ||
+                it.type == FeedEvent.TYPE_BECAME_FREE_AGENT ||
+                it.type == FeedEvent.TYPE_NEW_RELEASE_FROM_CLUB ||
+                it.type == FeedEvent.TYPE_MANDATE_EXPIRED
         }
         FeedFilter.NOTES -> filter { it.type == FeedEvent.TYPE_NOTE_ADDED }
     }

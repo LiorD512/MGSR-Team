@@ -88,4 +88,14 @@ class PlayerDocumentsRepository(
             Result.failure(e)
         }
     }
+
+    suspend fun markDocumentExpired(documentId: String): Result<Unit> {
+        return try {
+            store.collection(firebaseHandler.playerDocumentsTable).document(documentId)
+                .update("expired", true).await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
 }

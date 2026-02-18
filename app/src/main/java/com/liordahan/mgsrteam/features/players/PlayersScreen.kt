@@ -123,6 +123,8 @@ import com.liordahan.mgsrteam.ui.theme.HomeRedAccent
 import com.liordahan.mgsrteam.ui.theme.HomeTealAccent
 import com.liordahan.mgsrteam.ui.theme.HomeTextPrimary
 import com.liordahan.mgsrteam.ui.theme.HomeTextSecondary
+import com.liordahan.mgsrteam.features.players.filters.FootFilterOption
+import com.liordahan.mgsrteam.ui.components.SkeletonPlayerCardList
 import com.liordahan.mgsrteam.ui.utils.boldTextStyle
 import com.liordahan.mgsrteam.ui.utils.clickWithNoRipple
 import com.liordahan.mgsrteam.ui.utils.regularTextStyle
@@ -252,27 +254,20 @@ fun PlayersScreen(
                 myPlayersOnlySelected = playersState.quickFilterMyPlayersOnly,
                 loanPlayersOnlySelected = playersState.quickFilterLoanPlayersOnly,
                 withNotesOnlySelected = playersState.isWithNotesChecked,
+                footFilterOption = playersState.footFilterOption,
                 onFreeAgentsClick = { viewModel.toggleQuickFilterFreeAgents() },
                 onContractExpiringClick = { viewModel.toggleQuickFilterContractExpiring() },
                 onWithMandateClick = { viewModel.toggleQuickFilterWithMandate() },
                 onMyPlayersOnlyClick = { viewModel.toggleQuickFilterMyPlayersOnly() },
                 onLoanPlayersOnlyClick = { viewModel.toggleQuickFilterLoanPlayersOnly() },
-                onWithNotesOnlyClick = { viewModel.toggleQuickFilterWithNotesOnly() }
+                onWithNotesOnlyClick = { viewModel.toggleQuickFilterWithNotesOnly() },
+                onFootFilterClick = { viewModel.setFootFilterOption(it) }
             )
 
             // ── Content ──────────────────────────────────────────────────
             when {
                 playersState.showPageLoader -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator(
-                            color = HomeTealAccent,
-                            strokeWidth = 3.dp,
-                            modifier = Modifier.size(44.dp)
-                        )
-                    }
+                    SkeletonPlayerCardList(modifier = Modifier.fillMaxSize())
                 }
 
                 showEmptyState -> {
@@ -761,12 +756,14 @@ private fun QuickFilterChips(
     myPlayersOnlySelected: Boolean,
     loanPlayersOnlySelected: Boolean,
     withNotesOnlySelected: Boolean,
+    footFilterOption: FootFilterOption,
     onFreeAgentsClick: () -> Unit,
     onContractExpiringClick: () -> Unit,
     onWithMandateClick: () -> Unit,
     onMyPlayersOnlyClick: () -> Unit,
     onLoanPlayersOnlyClick: () -> Unit,
-    onWithNotesOnlyClick: () -> Unit
+    onWithNotesOnlyClick: () -> Unit,
+    onFootFilterClick: (FootFilterOption) -> Unit
 ) {
     LazyRow(
         contentPadding = PaddingValues(horizontal = 16.dp),
@@ -813,6 +810,27 @@ private fun QuickFilterChips(
                 label = stringResource(R.string.players_filter_with_notes),
                 isSelected = withNotesOnlySelected,
                 onClick = onWithNotesOnlyClick
+            )
+        }
+        item(key = "foot_left") {
+            QuickFilterChip(
+                label = stringResource(R.string.players_filter_foot_left),
+                isSelected = footFilterOption == FootFilterOption.LEFT,
+                onClick = { onFootFilterClick(FootFilterOption.LEFT) }
+            )
+        }
+        item(key = "foot_right") {
+            QuickFilterChip(
+                label = stringResource(R.string.players_filter_foot_right),
+                isSelected = footFilterOption == FootFilterOption.RIGHT,
+                onClick = { onFootFilterClick(FootFilterOption.RIGHT) }
+            )
+        }
+        item(key = "foot_both") {
+            QuickFilterChip(
+                label = stringResource(R.string.players_filter_foot_both),
+                isSelected = footFilterOption == FootFilterOption.BOTH,
+                onClick = { onFootFilterClick(FootFilterOption.BOTH) }
             )
         }
     }

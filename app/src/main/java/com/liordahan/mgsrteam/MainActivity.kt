@@ -3,6 +3,7 @@ package com.liordahan.mgsrteam
 import android.Manifest
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.SystemBarStyle
@@ -87,6 +88,25 @@ class MainActivity : AppCompatActivity() {
 
     private fun handleDeepLink(intent: Intent?) {
         if (intent == null) return
+
+        // Handle notification tap — action or type determines destination
+        val notificationAction = intent.getStringExtra(com.liordahan.mgsrteam.firebase.MgsrFirebaseMessagingService.EXTRA_NOTIFICATION_ACTION)
+        val dataType = intent.getStringExtra("type")
+        val playerTmProfile = intent.getStringExtra(com.liordahan.mgsrteam.firebase.MgsrFirebaseMessagingService.EXTRA_PLAYER_TM_PROFILE)?.takeIf { it.isNotBlank() }
+        playerTmProfile?.let { url ->
+            when {
+                notificationAction == com.liordahan.mgsrteam.firebase.MgsrFirebaseMessagingService.ACTION_ADD_TO_SHORTLIST ->
+                    viewModel.setPendingShortlistAddTmUrl(url)
+                dataType == com.liordahan.mgsrteam.firebase.MgsrFirebaseMessagingService.TYPE_NEW_RELEASE_FROM_CLUB -> {
+                    startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                    finish()
+                }
+                dataType == com.liordahan.mgsrteam.firebase.MgsrFirebaseMessagingService.TYPE_MANDATE_EXPIRED ->
+                    viewModel.setPendingDeepLinkPlayerId(url)
+                else ->
+                    viewModel.setPendingAddPlayerTmUrl(url)
+            }
+        }
 
         // Handle Share intent (WhatsApp, Gmail, etc.) — extract Transfermarkt URL from shared text
         if (intent.action == Intent.ACTION_SEND && intent.type == "text/plain") {

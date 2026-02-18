@@ -1,12 +1,14 @@
 package com.liordahan.mgsrteam.features.requests
 
 import com.liordahan.mgsrteam.features.players.models.Player
+import com.liordahan.mgsrteam.features.requests.models.DominateFootOptions
 import com.liordahan.mgsrteam.features.requests.models.Request
 
 /**
- * Matches roster players to a request based on position, age, salary range, and transfer fee.
+ * Matches roster players to a request based on position, age, dominate foot, salary range, and transfer fee.
  * - Position: player must have the requested position (or equivalent)
  * - Age: if request has an age range, player age must fall within it
+ * - Dominate foot: if request specifies left/right, player must match; players without foot info are shown anyway
  * - Salary: if request has salaryRange, player's salaryRange must match exactly
  * - Transfer fee: if request has transferFee, player's transferFee must match exactly
  */
@@ -20,9 +22,19 @@ object RequestMatcher {
     private fun matchesRequest(player: Player, request: Request, position: String): Boolean {
         if (!matchesPosition(player, position)) return false
         if (!matchesAge(player, request)) return false
+        if (!matchesDominateFoot(player, request)) return false
         if (!matchesSalaryRange(player, request)) return false
         if (!matchesTransferFee(player, request)) return false
         return true
+    }
+
+    private fun matchesDominateFoot(player: Player, request: Request): Boolean {
+        val reqFoot = request.dominateFoot?.trim()?.lowercase()?.takeIf { it.isNotBlank() } ?: return true
+        if (reqFoot == DominateFootOptions.ANY) return true
+        val playerFoot = player.foot?.trim()?.lowercase()?.takeIf { it.isNotBlank() }
+        // Show players without foot info anyway; only exclude when player has different foot
+        if (playerFoot == null) return true
+        return playerFoot == reqFoot
     }
 
     private fun matchesPosition(player: Player, requestPosition: String): Boolean {

@@ -60,7 +60,7 @@ import com.liordahan.mgsrteam.ui.components.DarkSystemBarsForBottomSheet
 import com.liordahan.mgsrteam.ui.theme.HomeDarkCard
 import com.liordahan.mgsrteam.ui.theme.HomeDarkCardBorder
 import com.liordahan.mgsrteam.ui.theme.HomeTextPrimary
-import com.liordahan.mgsrteam.ui.utils.ProgressIndicator
+import com.liordahan.mgsrteam.ui.components.SkeletonPlayerCardList
 import com.liordahan.mgsrteam.ui.utils.boldTextStyle
 import kotlinx.coroutines.launch
 
@@ -185,14 +185,10 @@ fun ReturneePlayersBottomSheet(
             )
 
             if (showLoader) {
-                Box(
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    ProgressIndicator(
-                        modifier = Modifier.align(Alignment.Center)
-                    )
-                }
-
+                SkeletonPlayerCardList(
+                    modifier = Modifier.fillMaxSize(),
+                    itemCount = 5
+                )
                 return@Column
             }
 

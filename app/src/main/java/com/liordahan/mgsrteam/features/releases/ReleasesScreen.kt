@@ -103,6 +103,7 @@ import com.liordahan.mgsrteam.ui.theme.HomePurpleAccent
 import com.liordahan.mgsrteam.ui.theme.HomeTealAccent
 import com.liordahan.mgsrteam.ui.theme.HomeTextPrimary
 import com.liordahan.mgsrteam.ui.theme.HomeTextSecondary
+import com.liordahan.mgsrteam.ui.components.SkeletonPlayerCardList
 import com.liordahan.mgsrteam.ui.utils.boldTextStyle
 import com.liordahan.mgsrteam.ui.utils.clickWithNoRipple
 import com.liordahan.mgsrteam.ui.utils.regularTextStyle
@@ -286,17 +287,11 @@ fun ReleasesScreen(
             ReleasesHeader(onBackClicked = { navController.popBackStack() })
 
             if (showLoader) {
-                Box(
+                SkeletonPlayerCardList(
                     modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator(
-                        color = HomeTealAccent,
-                        strokeWidth = 3.dp,
-                        modifier = Modifier.size(44.dp)
-                    )
-                    return@Column
-                }
+                    itemCount = 6
+                )
+                return@Column
             }
 
             if (showError) {

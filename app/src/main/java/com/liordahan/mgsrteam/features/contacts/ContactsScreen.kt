@@ -17,7 +17,9 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -51,7 +53,6 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
@@ -60,6 +61,8 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FloatingActionButton
@@ -132,6 +135,7 @@ import com.liordahan.mgsrteam.ui.theme.HomeRedAccent
 import com.liordahan.mgsrteam.ui.theme.HomeTealAccent
 import com.liordahan.mgsrteam.ui.theme.HomeTextPrimary
 import com.liordahan.mgsrteam.ui.theme.HomeTextSecondary
+import com.liordahan.mgsrteam.ui.components.SkeletonContactList
 import com.liordahan.mgsrteam.ui.utils.boldTextStyle
 import com.liordahan.mgsrteam.ui.utils.clickWithNoRipple
 import com.liordahan.mgsrteam.ui.utils.regularTextStyle
@@ -381,16 +385,7 @@ fun ContactsScreen(
 
                 when {
                     state.isLoading -> {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            CircularProgressIndicator(
-                                color = HomeTealAccent,
-                                strokeWidth = 3.dp,
-                                modifier = Modifier.size(44.dp)
-                            )
-                        }
+                        SkeletonContactList(modifier = Modifier.fillMaxSize())
                     }
 
                     state.contacts.isEmpty() -> {
@@ -614,13 +609,13 @@ fun ContactsScreen(
                     onDismissRequest = { contactToDelete = null },
                     title = {
                         Text(
-                            "Delete contact",
+                            stringResource(R.string.contacts_delete_title),
                             style = boldTextStyle(HomeTextPrimary, 18.sp)
                         )
                     },
                     text = {
                         Text(
-                            "Delete ${contact.name ?: "this contact"}?",
+                            stringResource(R.string.contacts_delete_confirm, contact.name?.takeIf { it.isNotBlank() } ?: stringResource(R.string.contacts_this_contact)),
                             style = regularTextStyle(HomeTextSecondary, 14.sp)
                         )
                     },
@@ -632,12 +627,12 @@ fun ContactsScreen(
                             },
                             colors = ButtonDefaults.buttonColors(containerColor = HomeRedAccent)
                         ) {
-                            Text("Delete", style = boldTextStyle(Color.White, 14.sp))
+                            Text(stringResource(R.string.contacts_delete), style = boldTextStyle(Color.White, 14.sp))
                         }
                     },
                     dismissButton = {
                         TextButton(onClick = { contactToDelete = null }) {
-                            Text("Cancel", style = regularTextStyle(HomeTextSecondary, 14.sp))
+                            Text(stringResource(R.string.cancel), style = regularTextStyle(HomeTextSecondary, 14.sp))
                         }
                     },
                     containerColor = HomeDarkCard
@@ -1020,24 +1015,29 @@ private fun CountrySectionHeader(
 //  CONTACT CARD
 // ═════════════════════════════════════════════════════════════════════════════
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun ContactCard(
     contact: Contact,
     onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
+    var showMenu by remember { mutableStateOf(false) }
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickWithNoRipple { },
+        modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = HomeDarkCard),
         border = BorderStroke(1.dp, HomeDarkCardBorder)
     ) {
         val layoutDirection = LocalLayoutDirection.current
-        Row(
+        Box(modifier = Modifier.fillMaxWidth()) {
+            Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .combinedClickable(
+                    onClick = { },
+                    onLongClick = { showMenu = true }
+                )
                 .drawBehind {
                     val barWidth = 3.dp.toPx()
                     val x = when (layoutDirection) {
@@ -1126,94 +1126,61 @@ private fun ContactCard(
                 )
             }
 
-            var actionsExpanded by remember { mutableStateOf(false) }
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            Box(
+                modifier = Modifier.size(20.dp),
+                contentAlignment = Alignment.Center
             ) {
-                AnimatedVisibility(
-                    visible = !actionsExpanded,
-                    enter = fadeIn(tween(200)),
-                    exit = fadeOut(tween(200))
-                ) {
-                    Box(
-                        modifier = Modifier.size(20.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        WhatsAppIcon(contact.phoneNumber ?: "")
-                    }
-                }
+                WhatsAppIcon(contact.phoneNumber ?: "")
+            }
+        }
 
-                AnimatedVisibility(
-                    visible = actionsExpanded,
-                    enter = fadeIn(tween(200)) + slideInHorizontally(
-                        initialOffsetX = { it },
-                        animationSpec = tween(200)
-                    ),
-                    exit = fadeOut(tween(200)) + slideOutHorizontally(
-                        targetOffsetX = { it },
-                        animationSpec = tween(200)
-                    )
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        IconButton(
-                            onClick = {
-                                onEdit()
-                                actionsExpanded = false
-                            },
-                            modifier = Modifier.size(32.dp)
-                        ) {
+            DropdownMenu(
+                expanded = showMenu,
+                onDismissRequest = { showMenu = false },
+                containerColor = HomeDarkCard
+            ) {
+                DropdownMenuItem(
+                    text = {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
                                 Icons.Default.Edit,
-                                contentDescription = stringResource(R.string.contacts_edit),
-                                tint = HomeTextSecondary,
-                                modifier = Modifier.size(18.dp)
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp),
+                                tint = HomeTextPrimary
+                            )
+                            Spacer(Modifier.width(12.dp))
+                            Text(
+                                stringResource(R.string.contacts_edit),
+                                style = regularTextStyle(HomeTextPrimary, 14.sp)
                             )
                         }
-
-                        IconButton(
-                            onClick = {
-                                onDelete()
-                                actionsExpanded = false
-                            },
-                            modifier = Modifier.size(32.dp)
-                        ) {
+                    },
+                    onClick = {
+                        showMenu = false
+                        onEdit()
+                    }
+                )
+                DropdownMenuItem(
+                    text = {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
                                 Icons.Default.Delete,
-                                contentDescription = stringResource(R.string.contacts_delete),
-                                tint = HomeRedAccent,
-                                modifier = Modifier.size(18.dp)
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp),
+                                tint = HomeRedAccent
+                            )
+                            Spacer(Modifier.width(12.dp))
+                            Text(
+                                stringResource(R.string.contacts_delete),
+                                style = regularTextStyle(HomeRedAccent, 14.sp)
                             )
                         }
+                    },
+                    onClick = {
+                        showMenu = false
+                        onDelete()
                     }
-                }
-
-                IconButton(
-                    onClick = { actionsExpanded = !actionsExpanded },
-                    modifier = Modifier.size(32.dp)
-                ) {
-                    AnimatedContent(
-                        targetState = actionsExpanded,
-                        transitionSpec = {
-                            fadeIn(tween(150)) togetherWith fadeOut(tween(150))
-                        },
-                        label = "menu_icon"
-                    ) { expanded ->
-                        Icon(
-                            imageVector = if (expanded) Icons.Filled.Close else Icons.Filled.MoreVert,
-                            contentDescription = if (expanded) {
-                                stringResource(R.string.contacts_close)
-                            } else {
-                                stringResource(R.string.contacts_menu)
-                            },
-                            tint = HomeTextSecondary,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
-                }
+                )
             }
         }
     }

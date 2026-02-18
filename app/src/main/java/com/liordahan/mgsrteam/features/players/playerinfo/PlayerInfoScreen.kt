@@ -13,9 +13,9 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -55,6 +55,8 @@ import androidx.compose.material.icons.filled.VerifiedUser
 import androidx.compose.material.icons.filled.Whatsapp
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -66,6 +68,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.ModalBottomSheetProperties
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
@@ -124,7 +127,10 @@ import com.liordahan.mgsrteam.features.players.models.Player
 import com.liordahan.mgsrteam.features.players.models.getAgentPhoneNumber
 import com.liordahan.mgsrteam.features.players.models.getPlayerPhoneNumber
 import com.liordahan.mgsrteam.features.players.playerinfo.ai.AiHelperService
+import com.liordahan.mgsrteam.features.players.playerinfo.ai.ScoutReportOptions
+import com.liordahan.mgsrteam.features.players.playerinfo.ai.SimilarPlayersOptions
 import com.liordahan.mgsrteam.features.players.playerinfo.documents.DocumentType
+import com.liordahan.mgsrteam.features.players.playerinfo.documents.DocumentsSection
 import com.liordahan.mgsrteam.features.players.playerinfo.documents.PlayerDocument
 import com.liordahan.mgsrteam.features.requests.models.SalaryRangeOptions
 import com.liordahan.mgsrteam.features.requests.models.TransferFeeOptions
@@ -149,9 +155,11 @@ import com.liordahan.mgsrteam.ui.theme.HomeTextSecondary
 import com.liordahan.mgsrteam.ui.theme.contentDefault
 import com.liordahan.mgsrteam.ui.theme.dividerColor
 import com.liordahan.mgsrteam.ui.theme.redErrorColor
+import com.liordahan.mgsrteam.ui.components.SkeletonPlayerInfoLayout
 import com.liordahan.mgsrteam.ui.utils.boldTextStyle
 import com.liordahan.mgsrteam.ui.utils.clickWithNoRipple
 import com.liordahan.mgsrteam.ui.utils.regularTextStyle
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.koinInject
@@ -182,9 +190,18 @@ fun PlayerInfoScreen(
 
 
     var showLoader by remember {
-        mutableStateOf(false)
+        mutableStateOf(true)
     }
 
+    // Minimum time to show skeleton so it's visible (avoids flash when data loads fast)
+    LaunchedEffect(playerToPresent) {
+        if (playerToPresent != null) {
+            delay(400)
+            showLoader = false
+        } else {
+            showLoader = true
+        }
+    }
 
     val playerNumberLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickContact()
@@ -321,15 +338,11 @@ fun PlayerInfoScreen(
     ) { paddingValues ->
 
         if (showLoader) {
-            Box(
+            SkeletonPlayerInfoLayout(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(HomeDarkBackground),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator(color = HomeTealAccent, strokeWidth = 3.dp)
-            }
-
+                    .background(HomeDarkBackground)
+            )
             return@Scaffold
         }
 
@@ -673,81 +686,12 @@ fun PlayerInfoScreen(
             // Contact Info section removed - edit/delete moved to Quick Actions long-press
 
             PlayerInfoSectionHeader(stringResource(R.string.player_info_documents))
-            PlayerInfoCard(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
-                    if (isUploadingDocument) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 4.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(20.dp),
-                                color = HomeTealAccent,
-                                strokeWidth = 2.dp
-                            )
-                            Spacer(Modifier.width(12.dp))
-                            Text(
-                                text = stringResource(R.string.player_info_uploading),
-                                style = regularTextStyle(HomeTextSecondary, 14.sp),
-                                modifier = Modifier.weight(1f)
-                            )
-                        }
-                    }
-                    if (documentsList.isEmpty() && !isUploadingDocument) {
-                        Text(
-                            text = stringResource(R.string.player_info_no_documents),
-                            style = regularTextStyle(HomeTextSecondary, 14.sp),
-                        )
-                    } else {
-                        documentsList.forEach { doc ->
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .heightIn(min = 48.dp)
-                                    .padding(vertical = 8.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = doc.name ?: doc.documentType.displayName,
-                                    style = regularTextStyle(HomeTextPrimary, 14.sp),
-                                    modifier = Modifier.weight(1f)
-                                )
-                                Spacer(Modifier.width(16.dp))
-                                Icon(
-                                    imageVector = Icons.Default.Link,
-                                    contentDescription = null,
-                                    modifier = Modifier
-                                        .size(20.dp)
-                                        .clickWithNoRipple {
-                                            doc.storageUrl?.let { url ->
-                                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-                                                context.startActivity(intent)
-                                            }
-                                        },
-                                    tint = HomeTealAccent
-                                )
-                                Spacer(Modifier.width(16.dp))
-                                Icon(
-                                    imageVector = Icons.Default.Delete,
-                                    contentDescription = null,
-                                    modifier = Modifier
-                                        .size(20.dp)
-                                        .clickWithNoRipple { docToDelete = doc },
-                                    tint = HomeTextSecondary
-                                )
-                            }
-                        }
-                    }
-                    Spacer(Modifier.height(8.dp))
-                    Text(
-                        text = stringResource(R.string.player_info_add_document),
-                        style = boldTextStyle(HomeTealAccent, 14.sp),
-                        modifier = Modifier.clickWithNoRipple {
-                            documentPickerLauncher.launch("*/*")
-                        }
-                    )
-                }
+            DocumentsSection(
+                documents = documentsList,
+                isUploading = isUploadingDocument,
+                onAddDocument = { documentPickerLauncher.launch("*/*") },
+                onDeleteDocument = { docToDelete = it }
+            )
 
             PlayerInfoSectionHeader(stringResource(R.string.player_info_notes))
             NotesSection(
@@ -777,6 +721,7 @@ fun PlayerInfoScreen(
 
             val hasValidMandate = documentsList.any {
                 it.documentType == DocumentType.MANDATE &&
+                    !it.expired &&
                     (it.expiresAt == null || it.expiresAt >= System.currentTimeMillis())
             }
             PlayerInfoBottomBar(
@@ -1137,7 +1082,7 @@ private fun PlayerInfoHeroCard(
                     }
                     Text(
                         text = "$salaryStr • $feeDisplay",
-                        style = regularTextStyle(HomeTextSecondary, 11.sp),
+                        style = regularTextStyle(HomeTealAccent, 11.sp),
                         modifier = Modifier.padding(top = 2.dp)
                     )
                 }
@@ -1448,9 +1393,11 @@ private fun PlayerInfoAiHelperSection(
     var justAddedUrls by remember { mutableStateOf<Set<String>>(emptySet()) }
     var isFindSimilarExpanded by remember { mutableStateOf(false) }
     var expandedSimilarIndex by remember { mutableStateOf<Int?>(null) }
+    var similarPlayersOptions by remember { mutableStateOf(SimilarPlayersOptions()) }
     val similarPlayers by viewModel.similarPlayersFlow.collectAsState()
     val isSimilarLoading by viewModel.isSimilarPlayersLoading.collectAsState()
     var isScoutReportExpanded by remember { mutableStateOf(false) }
+    var scoutReportOptions by remember { mutableStateOf(ScoutReportOptions()) }
     val scoutReport by viewModel.scoutReportFlow.collectAsState()
     val isScoutReportLoading by viewModel.isScoutReportLoading.collectAsState()
 
@@ -1468,7 +1415,7 @@ private fun PlayerInfoAiHelperSection(
                 .clickWithNoRipple {
                     isFindSimilarExpanded = !isFindSimilarExpanded
                     if (isFindSimilarExpanded && similarPlayers.isEmpty() && !isSimilarLoading) {
-                        viewModel.findSimilarPlayers(player, LocaleManager.getSavedLanguage(context))
+                        viewModel.findSimilarPlayers(player, LocaleManager.getSavedLanguage(context), similarPlayersOptions)
                     }
                 },
             shape = RoundedCornerShape(16.dp),
@@ -1518,6 +1465,90 @@ private fun PlayerInfoAiHelperSection(
                             .padding(start = 17.dp, end = 12.dp, bottom = 12.dp),
                         verticalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
+                        // Similar players options
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text(
+                                stringResource(R.string.player_info_ai_options),
+                                style = regularTextStyle(HomeTextSecondary, 11.sp)
+                            )
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .horizontalScroll(rememberScrollState()),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                listOf(
+                                    SimilarPlayersOptions.SimilarityMode.PLAYING_STYLE to R.string.player_info_ai_similarity_style,
+                                    SimilarPlayersOptions.SimilarityMode.MARKET_VALUE to R.string.player_info_ai_similarity_value,
+                                    SimilarPlayersOptions.SimilarityMode.POSITION_PROFILE to R.string.player_info_ai_similarity_position,
+                                    SimilarPlayersOptions.SimilarityMode.ALL_ROUND to R.string.player_info_ai_similarity_all
+                                ).forEach { (mode, resId) ->
+                                    FilterChip(
+                                        selected = similarPlayersOptions.similarityMode == mode,
+                                        onClick = { similarPlayersOptions = similarPlayersOptions.copy(similarityMode = mode) },
+                                        label = { Text(stringResource(resId), style = regularTextStyle(HomeTextPrimary, 11.sp)) },
+                                        colors = FilterChipDefaults.filterChipColors(
+                                            selectedContainerColor = HomeTealAccent.copy(alpha = 0.2f),
+                                            selectedLabelColor = HomeTealAccent
+                                        )
+                                    )
+                                }
+                            }
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .horizontalScroll(rememberScrollState()),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                listOf(
+                                    SimilarPlayersOptions.AgeRangePreference.STRICT to R.string.player_info_ai_age_strict,
+                                    SimilarPlayersOptions.AgeRangePreference.RELAXED to R.string.player_info_ai_age_relaxed,
+                                    SimilarPlayersOptions.AgeRangePreference.ANY to R.string.player_info_ai_age_any
+                                ).forEach { (pref, resId) ->
+                                    FilterChip(
+                                        selected = similarPlayersOptions.ageRange == pref,
+                                        onClick = { similarPlayersOptions = similarPlayersOptions.copy(ageRange = pref) },
+                                        label = { Text(stringResource(resId), style = regularTextStyle(HomeTextPrimary, 11.sp)) },
+                                        colors = FilterChipDefaults.filterChipColors(
+                                            selectedContainerColor = HomeTealAccent.copy(alpha = 0.2f),
+                                            selectedLabelColor = HomeTealAccent
+                                        )
+                                    )
+                                }
+                            }
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .horizontalScroll(rememberScrollState()),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                FilterChip(
+                                    selected = similarPlayersOptions.excludeSameClub,
+                                    onClick = { similarPlayersOptions = similarPlayersOptions.copy(excludeSameClub = !similarPlayersOptions.excludeSameClub) },
+                                    label = { Text(stringResource(R.string.player_info_ai_exclude_same_club), style = regularTextStyle(HomeTextPrimary, 11.sp)) },
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = HomeTealAccent.copy(alpha = 0.2f),
+                                        selectedLabelColor = HomeTealAccent
+                                    )
+                                )
+                                FilterChip(
+                                    selected = similarPlayersOptions.excludeSameLeague,
+                                    onClick = { similarPlayersOptions = similarPlayersOptions.copy(excludeSameLeague = !similarPlayersOptions.excludeSameLeague) },
+                                    label = { Text(stringResource(R.string.player_info_ai_exclude_same_league), style = regularTextStyle(HomeTextPrimary, 11.sp)) },
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = HomeTealAccent.copy(alpha = 0.2f),
+                                        selectedLabelColor = HomeTealAccent
+                                    )
+                                )
+                            }
+                            if (similarPlayers.isNotEmpty()) {
+                                TextButton(
+                                    onClick = { viewModel.findSimilarPlayers(player, LocaleManager.getSavedLanguage(context), similarPlayersOptions) }
+                                ) {
+                                    Text(stringResource(R.string.player_info_ai_refresh), color = HomeTealAccent)
+                                }
+                            }
+                        }
                         if (isSimilarLoading) {
                             Row(
                                 modifier = Modifier
@@ -1537,11 +1568,20 @@ private fun PlayerInfoAiHelperSection(
                                 )
                             }
                         } else if (similarPlayers.isEmpty()) {
-                            Text(
-                                stringResource(R.string.player_info_ai_no_similar_players),
-                                style = regularTextStyle(HomeTextSecondary, 12.sp),
-                                modifier = Modifier.padding(12.dp)
-                            )
+                            Column(
+                                modifier = Modifier.padding(12.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Text(
+                                    stringResource(R.string.player_info_ai_no_similar_players),
+                                    style = regularTextStyle(HomeTextSecondary, 12.sp)
+                                )
+                                TextButton(
+                                    onClick = { viewModel.findSimilarPlayers(player, LocaleManager.getSavedLanguage(context), similarPlayersOptions) }
+                                ) {
+                                    Text(stringResource(R.string.player_info_ai_refresh), color = HomeTealAccent)
+                                }
+                            }
                         } else {
                             similarPlayers.forEachIndexed { index, suggestion ->
                                 SimilarPlayerSuggestionRow(
@@ -1595,7 +1635,7 @@ private fun PlayerInfoAiHelperSection(
                 .clickWithNoRipple {
                     isScoutReportExpanded = !isScoutReportExpanded
                     if (isScoutReportExpanded && scoutReport == null && !isScoutReportLoading) {
-                        viewModel.generateScoutReport(player, LocaleManager.getSavedLanguage(context))
+                        viewModel.generateScoutReport(player, LocaleManager.getSavedLanguage(context), scoutReportOptions)
                     }
                 },
             shape = RoundedCornerShape(16.dp),
@@ -1660,6 +1700,43 @@ private fun PlayerInfoAiHelperSection(
                             .padding(start = 17.dp, end = 12.dp, bottom = 12.dp),
                         verticalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
+                        // Scout report type options
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text(
+                                stringResource(R.string.player_info_ai_options),
+                                style = regularTextStyle(HomeTextSecondary, 11.sp)
+                            )
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .horizontalScroll(rememberScrollState()),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                listOf(
+                                    ScoutReportOptions.ScoutReportType.EXECUTIVE_SUMMARY to R.string.player_info_ai_report_executive,
+                                    ScoutReportOptions.ScoutReportType.FULL_TACTICAL to R.string.player_info_ai_report_full,
+                                    ScoutReportOptions.ScoutReportType.TRANSFER_RECOMMENDATION to R.string.player_info_ai_report_transfer,
+                                    ScoutReportOptions.ScoutReportType.YOUTH_POTENTIAL to R.string.player_info_ai_report_youth
+                                ).forEach { (type, resId) ->
+                                    FilterChip(
+                                        selected = scoutReportOptions.reportType == type,
+                                        onClick = { scoutReportOptions = scoutReportOptions.copy(reportType = type) },
+                                        label = { Text(stringResource(resId), style = regularTextStyle(HomeTextPrimary, 11.sp)) },
+                                        colors = FilterChipDefaults.filterChipColors(
+                                            selectedContainerColor = HomeTealAccent.copy(alpha = 0.2f),
+                                            selectedLabelColor = HomeTealAccent
+                                        )
+                                    )
+                                }
+                            }
+                            if (scoutReport != null) {
+                                TextButton(
+                                    onClick = { viewModel.generateScoutReport(player, LocaleManager.getSavedLanguage(context), scoutReportOptions) }
+                                ) {
+                                    Text(stringResource(R.string.player_info_ai_refresh), color = HomeTealAccent)
+                                }
+                            }
+                        }
                         if (isScoutReportLoading) {
                             Row(
                                 modifier = Modifier
@@ -1992,15 +2069,15 @@ fun AgencyInfoRow(
     agencyUrl: String?
 ) {
     val context = LocalContext.current
-    val hasUrl = !agencyUrl.isNullOrBlank()
+    val url = agencyUrl?.takeIf { it.isNotBlank() }
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 6.dp)
             .then(
-                if (hasUrl) Modifier.clickWithNoRipple {
-                    val intent = Intent(Intent.ACTION_VIEW, agencyUrl!!.toUri())
+                if (url != null) Modifier.clickWithNoRipple {
+                    val intent = Intent(Intent.ACTION_VIEW, url.toUri())
                     context.startActivity(intent)
                 } else Modifier
             ),
@@ -2026,14 +2103,14 @@ fun AgencyInfoRow(
             Text(
                 text = agencyName ?: "--",
                 style = boldTextStyle(
-                    if (hasUrl) HomeTealAccent else HomeTextPrimary,
+                    if (url != null) HomeTealAccent else HomeTextPrimary,
                     14.sp
                 ),
                 textAlign = TextAlign.End,
                 overflow = TextOverflow.Ellipsis,
                 maxLines = 1
             )
-            if (hasUrl) {
+            if (url != null) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.OpenInNew,
                     contentDescription = stringResource(R.string.player_info_cd_open_link),
