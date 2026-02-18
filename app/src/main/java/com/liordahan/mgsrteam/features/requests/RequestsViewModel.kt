@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.liordahan.mgsrteam.features.players.models.Player
 import com.liordahan.mgsrteam.features.players.models.Position
+import com.liordahan.mgsrteam.features.players.playerinfo.ai.AiHelperService
 import com.liordahan.mgsrteam.features.players.repository.IPlayersRepository
 import com.liordahan.mgsrteam.features.requests.models.Request
 import com.liordahan.mgsrteam.features.requests.repository.IRequestsRepository
@@ -15,6 +16,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -36,6 +38,10 @@ data class RequestsUiState(
 abstract class IRequestsViewModel : ViewModel() {
     abstract val requestsState: StateFlow<RequestsUiState>
     abstract val positions: StateFlow<List<Position>>
+    abstract val onlinePlayersLoading: StateFlow<Boolean>
+    abstract val onlinePlayersResult: StateFlow<List<AiHelperService.SimilarPlayerSuggestion>>
+    abstract fun findPlayersOnlineForRequest(request: Request, languageCode: String)
+    abstract fun clearOnlinePlayersResult()
     abstract fun addRequest(
         club: ClubSearchModel,
         position: String,
@@ -58,10 +64,15 @@ class RequestsViewModel(
     private val requestsRepository: IRequestsRepository,
     private val playersRepository: IPlayersRepository,
     private val firebaseHandler: FirebaseHandler,
-    private val clubSearch: ClubSearch
+    private val clubSearch: ClubSearch,
+    private val aiHelperService: AiHelperService
 ) : IRequestsViewModel() {
 
     private val _positions = MutableStateFlow<List<Position>>(emptyList())
+    private val _onlinePlayersLoading = MutableStateFlow(false)
+    override val onlinePlayersLoading: StateFlow<Boolean> = _onlinePlayersLoading.asStateFlow()
+    private val _onlinePlayersResult = MutableStateFlow<List<AiHelperService.SimilarPlayerSuggestion>>(emptyList())
+    override val onlinePlayersResult: StateFlow<List<AiHelperService.SimilarPlayerSuggestion>> = _onlinePlayersResult.asStateFlow()
     override val positions: StateFlow<List<Position>> = _positions.asStateFlow()
 
     private val _addRequestMessage = MutableStateFlow<String?>(null)
@@ -172,5 +183,22 @@ class RequestsViewModel(
     override fun clearAddRequestMessage() {
         _addRequestMessage.value = null
         _addRequestError.value = null
+    }
+
+    override fun findPlayersOnlineForRequest(request: Request, languageCode: String) {
+        viewModelScope.launch {
+            _onlinePlayersLoading.value = true
+            _onlinePlayersResult.value = emptyList()
+            val rosterUrls = playersRepository.playersFlow().first()
+                .mapNotNull { it.tmProfile?.takeIf { url -> url.isNotBlank() } }.toSet()
+            aiHelperService.findPlayersForRequest(request, rosterUrls, languageCode)
+                .onSuccess { _onlinePlayersResult.value = it }
+                .onFailure { _onlinePlayersResult.value = emptyList() }
+            _onlinePlayersLoading.value = false
+        }
+    }
+
+    override fun clearOnlinePlayersResult() {
+        _onlinePlayersResult.value = emptyList()
     }
 }

@@ -88,6 +88,8 @@
     <string name="feed_new_release">שחקן חופשי חדש (שחרורים)</string>
     <string name="feed_new_release_not_in_db">לא במאגר שלנו</string>
     <string name="feed_contract_expiring">חוזה מסתיים</string>
+    <string name="feed_mandate_uploaded">מנדט הועלה</string>
+    <string name="feed_mandate_uploaded_by">%1$s העלה מנדט עבור %2$s</string>
     <string name="feed_new_note">הערה חדשה</string>
     <string name="feed_player_added">שחקן נוסף</string>
     <string name="feed_update">עדכון</string>
@@ -114,6 +116,8 @@
     <string name="my_hub_upcoming_tasks">משימות קרובות</string>
     <string name="my_hub_view_all_tasks">הצג הכל</string>
     <string name="my_hub_view_my_players">השחקנים שלי</string>
+    <string name="widget_agent_dashboard_description">הלוח שלך במבט אחד: שחקנים, משימות, התראות</string>
+    <string name="widget_tap_to_open">לחץ לפתיחה</string>
     <string name="my_hub_no_tasks">אין משימות קרובות</string>
     <string name="my_hub_pending_tasks">%d ממתינות</string>
     <string name="my_hub_overdue_tasks">%d באיחור</string>

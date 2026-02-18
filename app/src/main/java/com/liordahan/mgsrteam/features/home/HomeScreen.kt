@@ -16,6 +16,7 @@ import com.liordahan.mgsrteam.IMainViewModel
 import com.liordahan.mgsrteam.features.add.AddPlayerScreen
 import com.liordahan.mgsrteam.features.contacts.ContactsScreen
 import com.liordahan.mgsrteam.features.contractfinisher.ContractFinisherScreen
+import com.liordahan.mgsrteam.features.home.IHomeScreenViewModel
 import com.liordahan.mgsrteam.features.home.dashboard.DashboardScreen
 import com.liordahan.mgsrteam.features.home.tasks.TaskDetailScreen
 import com.liordahan.mgsrteam.features.home.tasks.TasksScreen
@@ -36,7 +37,8 @@ import org.koin.androidx.compose.koinViewModel
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @Composable
 fun HomeScreen(
-    mainViewModel: IMainViewModel = koinViewModel()
+    mainViewModel: IMainViewModel = koinViewModel(),
+    homeViewModel: IHomeScreenViewModel = koinViewModel()
 ) {
 
     val navController = rememberNavController()
@@ -83,11 +85,11 @@ fun HomeScreen(
         ) {
 
             composable(route = Screens.DashboardScreen.route) {
-                DashboardScreen(navController = navController)
+                DashboardScreen(navController = navController, viewModel = homeViewModel)
             }
 
             composable(route = Screens.TasksScreen.route) {
-                TasksScreen(navController = navController)
+                TasksScreen(navController = navController, viewModel = homeViewModel)
             }
 
             composable(
@@ -95,7 +97,7 @@ fun HomeScreen(
                 arguments = listOf(navArgument("taskId") { type = NavType.StringType })
             ) { backStackEntry ->
                 val taskId = backStackEntry.arguments?.getString("taskId") ?: return@composable
-                TaskDetailScreen(taskId = taskId, navController = navController)
+                TaskDetailScreen(taskId = taskId, navController = navController, viewModel = homeViewModel)
             }
 
             composable(

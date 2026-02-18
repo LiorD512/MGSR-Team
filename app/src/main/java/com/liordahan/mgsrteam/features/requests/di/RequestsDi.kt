@@ -10,5 +10,5 @@ import org.koin.dsl.module
 
 val requestsModule = module {
     single { RequestsRepository(get()) } bind IRequestsRepository::class
-    viewModel<IRequestsViewModel> { RequestsViewModel(get(), get(), get(), get()) }
+    viewModel<IRequestsViewModel> { RequestsViewModel(get(), get(), get(), get(), get()) }
 }

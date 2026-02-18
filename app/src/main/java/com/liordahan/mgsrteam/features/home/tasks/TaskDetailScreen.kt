@@ -92,7 +92,7 @@ private val agentAccentColors = listOf(
 fun TaskDetailScreen(
     taskId: String,
     navController: NavController,
-    viewModel: IHomeScreenViewModel = koinViewModel()
+    viewModel: IHomeScreenViewModel
 ) {
     val state by viewModel.dashboardState.collectAsStateWithLifecycle()
     val allTasks = remember(state.agentTasks) { state.agentTasks.values.flatten() }

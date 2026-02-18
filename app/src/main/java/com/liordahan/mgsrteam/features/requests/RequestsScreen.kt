@@ -55,6 +55,9 @@ import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Handshake
 import androidx.compose.material.icons.filled.SwapHoriz
+import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.filled.BookmarkAdd
+import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.AlertDialog
@@ -87,6 +90,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -117,30 +121,37 @@ import com.liordahan.mgsrteam.R
 import com.liordahan.mgsrteam.features.contacts.models.Contact
 import com.liordahan.mgsrteam.features.contacts.repository.IContactsRepository
 import com.liordahan.mgsrteam.features.players.models.Player
+import com.liordahan.mgsrteam.features.players.playerinfo.ai.AiHelperService
 import com.liordahan.mgsrteam.features.players.playerinfo.WhatsAppIcon
 import com.liordahan.mgsrteam.features.requests.models.DominateFootOptions
 import com.liordahan.mgsrteam.features.requests.models.PositionDisplayNames
 import com.liordahan.mgsrteam.features.requests.models.Request
 import com.liordahan.mgsrteam.features.requests.models.SalaryRangeOptions
 import com.liordahan.mgsrteam.features.requests.models.TransferFeeOptions
+import com.liordahan.mgsrteam.localization.LocaleManager
 import com.liordahan.mgsrteam.navigation.Screens
 import com.liordahan.mgsrteam.transfermarket.ClubSearch
 import com.liordahan.mgsrteam.transfermarket.ClubSearchModel
+import com.liordahan.mgsrteam.transfermarket.LatestTransferModel
 import com.liordahan.mgsrteam.transfermarket.TransfermarktResult
 import com.liordahan.mgsrteam.ui.components.DarkSystemBarsForBottomSheet
 import com.liordahan.mgsrteam.ui.theme.HomeDarkBackground
 import com.liordahan.mgsrteam.ui.theme.HomeDarkCard
 import com.liordahan.mgsrteam.ui.theme.HomeDarkCardBorder
+import com.liordahan.mgsrteam.ui.theme.HomeGreenAccent
 import com.liordahan.mgsrteam.ui.theme.HomeOrangeAccent
 import com.liordahan.mgsrteam.ui.theme.HomeRedAccent
 import com.liordahan.mgsrteam.ui.theme.HomeTealAccent
 import com.liordahan.mgsrteam.ui.theme.HomeTextPrimary
 import com.liordahan.mgsrteam.ui.theme.HomeTextSecondary
+import com.liordahan.mgsrteam.features.shortlist.ShortlistRepository
 import com.liordahan.mgsrteam.ui.components.SkeletonRequestList
+import com.liordahan.mgsrteam.ui.components.ToastManager
 import com.liordahan.mgsrteam.ui.utils.boldTextStyle
 import com.liordahan.mgsrteam.ui.utils.clickWithNoRipple
 import com.liordahan.mgsrteam.ui.utils.regularTextStyle
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.koinInject
 import java.text.SimpleDateFormat
@@ -157,6 +168,7 @@ fun RequestsScreen(
     val positions by viewModel.positions.collectAsStateWithLifecycle()
     var showAddSheet by remember { mutableStateOf(false) }
     var requestToDelete by remember { mutableStateOf<Request?>(null) }
+    var onlineExpandedRequestId by remember { mutableStateOf<String?>(null) }
     var expandedRequestIds by remember { mutableStateOf(setOf<String>()) }
     var expandedPositions by remember { mutableStateOf(setOf<String>()) }
     var expandedCountryKeys by remember { mutableStateOf(setOf<String>()) }
@@ -230,6 +242,13 @@ fun RequestsScreen(
                         RequestsEmptyState(onAddClick = { showAddSheet = true })
                     }
                     else -> {
+                        val scope = rememberCoroutineScope()
+                        val shortlistRepository: ShortlistRepository = koinInject()
+                        val shortlistEntries by shortlistRepository.getShortlistFlow().collectAsStateWithLifecycle(initialValue = emptyList())
+                        val shortlistUrls = remember(shortlistEntries) { shortlistEntries.map { it.tmProfileUrl }.toSet() }
+                        var justAddedUrls by remember { mutableStateOf(setOf<String>()) }
+                        val onlineLoading by viewModel.onlinePlayersLoading.collectAsStateWithLifecycle()
+                        val onlinePlayers by viewModel.onlinePlayersResult.collectAsStateWithLifecycle()
                         RequestsStatsStrip(
                             total = state.totalCount,
                             positions = state.positionsCount,
@@ -283,18 +302,71 @@ fun RequestsScreen(
                                             ) { request ->
                                                 val matchingPlayers = state.matchingPlayersByRequestId[request.id ?: ""] ?: emptyList()
                                                 val isRequestExpanded = (request.id ?: "") in expandedRequestIds
+                                                val requestId = request.id ?: ""
+                                                val isOnlineExpanded = onlineExpandedRequestId == requestId
+                                                val onlinePlayersForThis = if (isOnlineExpanded) onlinePlayers else emptyList()
                                                 RequestCard(
                                                     request = request,
                                                     matchingPlayers = matchingPlayers,
                                                     isExpanded = isRequestExpanded,
-                                                    modifier = Modifier.padding(start = 24.dp, top = 6.dp),
+                                                    isOnlineExpanded = isOnlineExpanded,
+                                                    onlineLoading = isOnlineExpanded && onlineLoading,
+                                                    onlinePlayers = onlinePlayersForThis,
+                                                    shortlistUrls = shortlistUrls,
+                                                    justAddedUrls = justAddedUrls,
+                                                    modifier = Modifier.padding(start = 12.dp, top = 6.dp),
                                                     onToggleExpand = {
                                                         val id = request.id ?: return@RequestCard
                                                         expandedRequestIds = if (isRequestExpanded) expandedRequestIds - id else expandedRequestIds + id
                                                     },
+                                                    onToggleOnlineExpand = {
+                                                        if (onlineExpandedRequestId == requestId) {
+                                                            onlineExpandedRequestId = null
+                                                            viewModel.clearOnlinePlayersResult()
+                                                        } else {
+                                                            onlineExpandedRequestId = requestId
+                                                            viewModel.findPlayersOnlineForRequest(request, LocaleManager.getSavedLanguage(context))
+                                                        }
+                                                    },
                                                     onPlayerClick = { player ->
                                                         player.tmProfile?.let { profile ->
                                                             navController.navigate("${Screens.PlayerInfoScreen.route}/${Uri.encode(profile)}")
+                                                        }
+                                                    },
+                                                    onOnlinePlayerClick = { suggestion ->
+                                                        suggestion.transfermarktUrl?.let { url ->
+                                                            navController.navigate(Screens.addPlayerWithTmProfileRoute(Uri.encode(url)))
+                                                        }
+                                                    },
+                                                    onOpenTransfermarkt = { url ->
+                                                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                                                    },
+                                                    onToggleShortlist = { suggestion ->
+                                                        suggestion.transfermarktUrl?.let { url ->
+                                                            scope.launch {
+                                                                val isInShortlist = url in shortlistUrls || url in justAddedUrls
+                                                                if (isInShortlist) {
+                                                                    shortlistRepository.removeFromShortlist(url)
+                                                                    justAddedUrls = justAddedUrls - url
+                                                                    ToastManager.showInfo(context.getString(R.string.shortlist_remove))
+                                                                } else {
+                                                                    val added = shortlistRepository.addToShortlist(
+                                                                        LatestTransferModel(
+                                                                            playerName = suggestion.name,
+                                                                            playerUrl = url,
+                                                                            playerPosition = suggestion.position,
+                                                                            playerAge = suggestion.age,
+                                                                            marketValue = suggestion.marketValue
+                                                                        )
+                                                                    )
+                                                                    if (added) {
+                                                                        justAddedUrls = justAddedUrls + url
+                                                                        ToastManager.showSuccess(context.getString(R.string.shortlist_added))
+                                                                    } else {
+                                                                        ToastManager.showInfo(context.getString(R.string.add_player_already_in_shortlist))
+                                                                    }
+                                                                }
+                                                            }
                                                         }
                                                     },
                                                     onEdit = { /* Edit flow - can be implemented later */ },
@@ -581,9 +653,18 @@ private fun RequestCard(
     request: Request,
     matchingPlayers: List<Player>,
     isExpanded: Boolean,
+    isOnlineExpanded: Boolean,
+    onlineLoading: Boolean,
+    onlinePlayers: List<AiHelperService.SimilarPlayerSuggestion>,
+    shortlistUrls: Set<String>,
+    justAddedUrls: Set<String>,
     modifier: Modifier = Modifier,
     onToggleExpand: () -> Unit,
+    onToggleOnlineExpand: () -> Unit,
     onPlayerClick: (Player) -> Unit,
+    onOnlinePlayerClick: (AiHelperService.SimilarPlayerSuggestion) -> Unit,
+    onOpenTransfermarkt: (String) -> Unit,
+    onToggleShortlist: (AiHelperService.SimilarPlayerSuggestion) -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
@@ -651,8 +732,8 @@ private fun RequestCard(
                             onClick = { },
                             onLongClick = { showMenu = true }
                         )
-                        .padding(10.dp, 10.dp, 12.dp, 10.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                        .padding(horizontal = 10.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.Top
                 ) {
                 request.clubLogo?.let { logo ->
                     AsyncImage(
@@ -769,31 +850,32 @@ private fun RequestCard(
                 }
             }
             Spacer(Modifier.height(8.dp))
+            // Row 1: From database — matching players (expandable, like releases)
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(start = 12.dp, end = 12.dp, bottom = 10.dp)
-                    .clip(RoundedCornerShape(10.dp))
+                    .padding(horizontal = 10.dp)
+                    .clip(RoundedCornerShape(12.dp))
                     .background(HomeDarkBackground)
-                    .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(10.dp))
+                    .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(12.dp))
                     .clickWithNoRipple { onToggleExpand() }
-                    .padding(12.dp, 10.dp),
+                    .padding(8.dp, 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(
                     Icons.Default.People,
                     contentDescription = null,
                     tint = HomeTealAccent,
-                    modifier = Modifier.size(16.dp)
+                    modifier = Modifier.size(18.dp)
                 )
-                Spacer(Modifier.width(10.dp))
+                Spacer(Modifier.width(8.dp))
                 Text(
                     text = if (matchingPlayers.size == 1) {
                         stringResource(R.string.requests_matching_players_one, matchingPlayers.size)
                     } else {
                         stringResource(R.string.requests_matching_players, matchingPlayers.size)
                     },
-                    style = regularTextStyle(HomeTextPrimary, 12.sp)
+                    style = regularTextStyle(HomeTextPrimary, 13.sp)
                 )
                 Spacer(Modifier.weight(1f))
                 Icon(
@@ -805,6 +887,7 @@ private fun RequestCard(
                         .graphicsLayer { rotationZ = if (isExpanded) 180f else 0f }
                 )
             }
+            // DB expandable: directly below the row above
             if (isExpanded) {
                 var isContentReady by remember(isExpanded) { mutableStateOf(false) }
                 LaunchedEffect(isExpanded) {
@@ -820,7 +903,7 @@ private fun RequestCard(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(start = 12.dp, end = 12.dp, bottom = 10.dp)
+                            .padding(start = 10.dp, end = 10.dp, bottom = 8.dp)
                             .padding(24.dp),
                         contentAlignment = Alignment.Center
                     ) {
@@ -836,17 +919,17 @@ private fun RequestCard(
                         style = regularTextStyle(HomeTextSecondary, 11.sp),
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(start = 12.dp, end = 12.dp, bottom = 10.dp)
-                            .clip(RoundedCornerShape(8.dp))
+                            .padding(start = 10.dp, end = 10.dp, bottom = 8.dp)
+                            .clip(RoundedCornerShape(12.dp))
                             .background(HomeDarkBackground)
-                            .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(8.dp))
-                            .padding(10.dp)
+                            .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(12.dp))
+                            .padding(12.dp)
                     )
                 } else {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(start = 12.dp, end = 12.dp, bottom = 10.dp),
+                            .padding(start = 10.dp, end = 10.dp, bottom = 8.dp),
                         verticalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         matchingPlayers.forEach { player ->
@@ -854,6 +937,90 @@ private fun RequestCard(
                                 player = player,
                                 onClick = { onPlayerClick(player) }
                             )
+                        }
+                    }
+                }
+            }
+            // Row 2: Find players from TM (expandable, loader + list inside)
+            Spacer(Modifier.height(6.dp))
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 10.dp, end = 10.dp, bottom = 10.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(HomeDarkBackground)
+                    .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(12.dp))
+                    .clickWithNoRipple { onToggleOnlineExpand() }
+                    .padding(8.dp, 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    Icons.Default.Link,
+                    contentDescription = null,
+                    tint = HomeOrangeAccent,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(Modifier.width(6.dp))
+                Text(
+                    stringResource(R.string.requests_find_players_online),
+                    style = regularTextStyle(HomeTextPrimary, 12.sp),
+                    modifier = Modifier.weight(1f)
+                )
+                Icon(
+                    Icons.Default.ExpandMore,
+                    contentDescription = if (isOnlineExpanded) "Collapse" else "Expand",
+                    tint = HomeTextSecondary,
+                    modifier = Modifier
+                        .size(24.dp)
+                        .graphicsLayer { rotationZ = if (isOnlineExpanded) 180f else 0f }
+                )
+            }
+            if (isOnlineExpanded) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 10.dp, end = 10.dp, bottom = 10.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(HomeDarkBackground)
+                        .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(10.dp))
+                        .padding(10.dp)
+                ) {
+                    if (onlineLoading) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            CircularProgressIndicator(
+                                color = HomeTealAccent,
+                                strokeWidth = 2.dp,
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Spacer(Modifier.width(12.dp))
+                            Text(
+                                stringResource(R.string.requests_online_players_loading),
+                                style = regularTextStyle(HomeTextSecondary, 12.sp)
+                            )
+                        }
+                        Spacer(Modifier.height(16.dp))
+                    } else if (onlinePlayers.isEmpty()) {
+                        Text(
+                            stringResource(R.string.requests_online_players_empty),
+                            style = regularTextStyle(HomeTextSecondary, 12.sp)
+                        )
+                    } else {
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            onlinePlayers.forEach { suggestion ->
+                                val url = suggestion.transfermarktUrl
+                                val isInShortlist = url != null && (url in shortlistUrls || url in justAddedUrls)
+                                OnlinePlayerSuggestionRow(
+                                    suggestion = suggestion,
+                                    isInShortlist = isInShortlist,
+                                    onClick = { onOnlinePlayerClick(suggestion) },
+                                    onOpenTransfermarkt = { url?.let { onOpenTransfermarkt(it) } },
+                                    onToggleShortlist = { onToggleShortlist(suggestion) }
+                                )
+                            }
                         }
                     }
                 }
@@ -956,6 +1123,303 @@ private fun MatchingPlayerRow(
             tint = HomeTextSecondary,
             modifier = Modifier.size(20.dp)
         )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun RequestOnlinePlayersBottomSheet(
+    request: Request,
+    matchingPlayers: List<AiHelperService.SimilarPlayerSuggestion>,
+    shortlistUrls: Set<String>,
+    justAddedUrls: Set<String>,
+    isLoading: Boolean,
+    onDismiss: () -> Unit,
+    onPlayerClick: (AiHelperService.SimilarPlayerSuggestion) -> Unit,
+    onOpenTransfermarkt: (String) -> Unit,
+    onToggleShortlist: (AiHelperService.SimilarPlayerSuggestion) -> Unit
+) {
+    val positionName = PositionDisplayNames.toLongName(request.position ?: "")
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
+        containerColor = HomeDarkCard,
+        dragHandle = {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 12.dp, bottom = 8.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(36.dp, 4.dp)
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(HomeDarkCardBorder)
+                )
+            }
+        },
+        properties = ModalBottomSheetProperties(
+            isAppearanceLightStatusBars = true,
+            isAppearanceLightNavigationBars = true
+        )
+    ) {
+        DarkSystemBarsForBottomSheet()
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp)
+                .navigationBarsPadding()
+                .padding(bottom = 32.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                request.clubLogo?.let { logo ->
+                    AsyncImage(
+                        model = logo,
+                        contentDescription = null,
+                        modifier = Modifier.size(40.dp),
+                        contentScale = ContentScale.Fit
+                    )
+                    Spacer(Modifier.width(12.dp))
+                }
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        stringResource(R.string.requests_online_players_sheet_title),
+                        style = boldTextStyle(HomeTextPrimary, 18.sp)
+                    )
+                    Text(
+                        "${request.clubName ?: ""} • $positionName",
+                        style = regularTextStyle(HomeTextSecondary, 13.sp),
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
+                }
+            }
+            Spacer(Modifier.height(20.dp))
+            if (isLoading) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 32.dp),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    CircularProgressIndicator(
+                        color = HomeTealAccent,
+                        strokeWidth = 2.dp,
+                        modifier = Modifier.size(28.dp)
+                    )
+                    Spacer(Modifier.width(12.dp))
+                    Text(
+                        stringResource(R.string.requests_online_players_loading),
+                        style = regularTextStyle(HomeTextSecondary, 14.sp)
+                    )
+                }
+            } else if (matchingPlayers.isEmpty()) {
+                Text(
+                    stringResource(R.string.requests_online_players_empty),
+                    style = regularTextStyle(HomeTextSecondary, 14.sp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 24.dp)
+                )
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 400.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(matchingPlayers, key = { it.transfermarktUrl ?: it.name }) { suggestion ->
+                        val url = suggestion.transfermarktUrl
+                        val isInShortlist = url != null && (url in shortlistUrls || url in justAddedUrls)
+                        OnlinePlayerSuggestionRow(
+                            suggestion = suggestion,
+                            isInShortlist = isInShortlist,
+                            onClick = { onPlayerClick(suggestion) },
+                            onOpenTransfermarkt = { url?.let { onOpenTransfermarkt(it) } },
+                            onToggleShortlist = { onToggleShortlist(suggestion) }
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun OnlinePlayerSuggestionRow(
+    suggestion: AiHelperService.SimilarPlayerSuggestion,
+    isInShortlist: Boolean,
+    onClick: () -> Unit,
+    onOpenTransfermarkt: () -> Unit,
+    onToggleShortlist: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(10.dp))
+            .background(HomeDarkBackground)
+            .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(10.dp))
+            .clickWithNoRipple { onClick() }
+            .padding(horizontal = 10.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.Top
+    ) {
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .clip(CircleShape)
+                .background(HomeDarkCardBorder),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                (suggestion.name.take(2)).uppercase(),
+                style = boldTextStyle(HomeTextSecondary, 12.sp)
+            )
+        }
+        Spacer(Modifier.width(12.dp))
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .align(Alignment.Top),
+            verticalArrangement = Arrangement.spacedBy(2.dp)
+        ) {
+            Text(
+                suggestion.name,
+                style = boldTextStyle(HomeTextPrimary, 14.sp)
+            )
+            Text(
+                "${suggestion.age ?: "-"} • ${suggestion.position ?: "-"} • ${suggestion.marketValue ?: "-"}",
+                style = regularTextStyle(HomeTextSecondary, 11.sp)
+            )
+            suggestion.similarityReason?.takeIf { it.isNotBlank() }?.let { reason ->
+                Text(
+                    reason,
+                    style = regularTextStyle(HomeTextSecondary, 10.sp),
+                    modifier = Modifier.padding(top = 2.dp),
+                    maxLines = 2
+                )
+            }
+        }
+        Spacer(Modifier.width(8.dp))
+        IconButton(
+            onClick = onOpenTransfermarkt,
+            modifier = Modifier.size(40.dp)
+        ) {
+            Icon(
+                Icons.Default.Link,
+                contentDescription = stringResource(R.string.shortlist_open_tm),
+                tint = HomeTealAccent,
+                modifier = Modifier.size(20.dp)
+            )
+        }
+        IconButton(
+            onClick = onToggleShortlist,
+            modifier = Modifier.size(40.dp)
+        ) {
+            Icon(
+                imageVector = if (isInShortlist) Icons.Default.Bookmark else Icons.Default.BookmarkAdd,
+                contentDescription = if (isInShortlist) stringResource(R.string.shortlist_in_shortlist) else stringResource(R.string.shortlist_add_to_shortlist),
+                tint = if (isInShortlist) HomeGreenAccent else HomeTextSecondary,
+                modifier = Modifier.size(20.dp)
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun RequestMatchingPlayersBottomSheet(
+    request: Request,
+    matchingPlayers: List<Player>,
+    onDismiss: () -> Unit,
+    onPlayerClick: (Player) -> Unit
+) {
+    val positionName = PositionDisplayNames.toLongName(request.position ?: "")
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
+        containerColor = HomeDarkCard,
+        dragHandle = {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 12.dp, bottom = 8.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(36.dp, 4.dp)
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(HomeDarkCardBorder)
+                )
+            }
+        },
+        properties = ModalBottomSheetProperties(
+            isAppearanceLightStatusBars = true,
+            isAppearanceLightNavigationBars = true
+        )
+    ) {
+        DarkSystemBarsForBottomSheet()
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp)
+                .navigationBarsPadding()
+                .padding(bottom = 32.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                request.clubLogo?.let { logo ->
+                    AsyncImage(
+                        model = logo,
+                        contentDescription = null,
+                        modifier = Modifier.size(40.dp),
+                        contentScale = ContentScale.Fit
+                    )
+                    Spacer(Modifier.width(12.dp))
+                }
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        stringResource(R.string.requests_find_players_sheet_title),
+                        style = boldTextStyle(HomeTextPrimary, 18.sp)
+                    )
+                    Text(
+                        "${request.clubName ?: ""} • $positionName",
+                        style = regularTextStyle(HomeTextSecondary, 13.sp),
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
+                }
+            }
+            Spacer(Modifier.height(20.dp))
+            if (matchingPlayers.isEmpty()) {
+                Text(
+                    stringResource(R.string.requests_no_match),
+                    style = regularTextStyle(HomeTextSecondary, 14.sp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 24.dp)
+                )
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 400.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(matchingPlayers, key = { it.tmProfile ?: it.fullName ?: it.hashCode().toString() }) { player ->
+                        MatchingPlayerRow(
+                            player = player,
+                            onClick = { onPlayerClick(player) }
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 

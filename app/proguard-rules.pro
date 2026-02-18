@@ -47,3 +47,6 @@
 
 # ── Transfermarkt models (used in Firestore and network) ──────────────────
 -keep class com.liordahan.mgsrteam.transfermarket.** { *; }
+
+# ── App widget (required for launcher to discover and display) ──────────────
+-keep class com.liordahan.mgsrteam.widget.** { *; }

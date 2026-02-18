@@ -473,7 +473,11 @@ fun PlayerInfoScreen(
                     player = player,
                     mandateExpiryAt = mandateExpiry,
                     onMandateChanged = { viewModel.updateHaveMandate(it) },
-                    onSalaryTransferFeeClicked = { showSalaryTransferFeeSheet = true }
+                    onSalaryTransferFeeClicked = { showSalaryTransferFeeSheet = true },
+                    onClearSalaryAndTransferFee = {
+                        viewModel.updateSalaryRange(null)
+                        viewModel.updateTransferFee(null)
+                    }
                 )
             }
 
@@ -865,12 +869,14 @@ private fun SalaryTransferFeeBottomSheet(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun PlayerInfoHeroCard(
     player: Player,
     mandateExpiryAt: Long? = null,
     onMandateChanged: (Boolean) -> Unit,
-    onSalaryTransferFeeClicked: () -> Unit = {}
+    onSalaryTransferFeeClicked: () -> Unit = {},
+    onClearSalaryAndTransferFee: () -> Unit = {}
 ) {
     val resources = LocalContext.current.resources
     val valueTrend = remember(player.marketValueHistory) {
@@ -1058,40 +1064,74 @@ private fun PlayerInfoHeroCard(
                 )
             }
             Spacer(Modifier.height(8.dp))
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(HomeDarkBackground)
-                    .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(12.dp))
-                    .padding(horizontal = 14.dp, vertical = 10.dp)
-                    .clickWithNoRipple(onSalaryTransferFeeClicked),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Column {
-                    Text(
-                        text = stringResource(R.string.player_info_salary_transfer_fee),
-                        style = boldTextStyle(HomeTextPrimary, 14.sp)
-                    )
-                    val salaryStr = player.salaryRange?.takeIf { it.isNotBlank() } ?: "—"
-                    val feeDisplay = when (player.transferFee) {
-                        "Free/Free loan" -> stringResource(R.string.requests_transfer_fee_free_loan)
-                        "<200" -> stringResource(R.string.requests_transfer_fee_lt200)
-                        else -> player.transferFee?.takeIf { it.isNotBlank() } ?: "—"
+            val hasSalaryOrFee = player.salaryRange?.isNotBlank() == true || player.transferFee?.isNotBlank() == true
+            var showClearSalaryMenu by remember { mutableStateOf(false) }
+            Box {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(HomeDarkBackground)
+                        .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(12.dp))
+                        .padding(horizontal = 14.dp, vertical = 10.dp)
+                        .combinedClickable(
+                            onClick = onSalaryTransferFeeClicked,
+                            onLongClick = { if (hasSalaryOrFee) showClearSalaryMenu = true }
+                        ),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column {
+                        Text(
+                            text = stringResource(R.string.player_info_salary_transfer_fee),
+                            style = boldTextStyle(HomeTextPrimary, 14.sp)
+                        )
+                        val salaryStr = player.salaryRange?.takeIf { it.isNotBlank() } ?: "—"
+                        val feeDisplay = when (player.transferFee) {
+                            "Free/Free loan" -> stringResource(R.string.requests_transfer_fee_free_loan)
+                            "<200" -> stringResource(R.string.requests_transfer_fee_lt200)
+                            else -> player.transferFee?.takeIf { it.isNotBlank() } ?: "—"
+                        }
+                        Text(
+                            text = "$salaryStr • $feeDisplay",
+                            style = regularTextStyle(HomeTealAccent, 11.sp),
+                            modifier = Modifier.padding(top = 2.dp)
+                        )
                     }
-                    Text(
-                        text = "$salaryStr • $feeDisplay",
-                        style = regularTextStyle(HomeTealAccent, 11.sp),
-                        modifier = Modifier.padding(top = 2.dp)
+                    Icon(
+                        imageVector = Icons.Default.Edit,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                        tint = HomeTealAccent
                     )
                 }
-                Icon(
-                    imageVector = Icons.Default.Edit,
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp),
-                    tint = HomeTealAccent
-                )
+                DropdownMenu(
+                    expanded = showClearSalaryMenu,
+                    onDismissRequest = { showClearSalaryMenu = false },
+                    containerColor = HomeDarkCard
+                ) {
+                    DropdownMenuItem(
+                        text = {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    Icons.Default.Delete,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp),
+                                    tint = HomeRedAccent
+                                )
+                                Spacer(Modifier.width(12.dp))
+                                Text(
+                                    stringResource(R.string.player_info_remove_salary_transfer_fee),
+                                    style = regularTextStyle(HomeRedAccent, 14.sp)
+                                )
+                            }
+                        },
+                        onClick = {
+                            showClearSalaryMenu = false
+                            onClearSalaryAndTransferFee()
+                        }
+                    )
+                }
             }
         }
     }
@@ -1488,9 +1528,12 @@ private fun PlayerInfoAiHelperSection(
                                         onClick = { similarPlayersOptions = similarPlayersOptions.copy(similarityMode = mode) },
                                         label = { Text(stringResource(resId), style = regularTextStyle(HomeTextPrimary, 11.sp)) },
                                         colors = FilterChipDefaults.filterChipColors(
-                                            selectedContainerColor = HomeTealAccent.copy(alpha = 0.2f),
+                                            containerColor = Color.Transparent,
+                                            labelColor = HomeTextPrimary,
+                                            selectedContainerColor = HomeTealAccent.copy(alpha = 0.4f),
                                             selectedLabelColor = HomeTealAccent
-                                        )
+                                        ),
+                                        border = BorderStroke(1.dp, if (similarPlayersOptions.similarityMode == mode) HomeTealAccent else HomeDarkCardBorder)
                                     )
                                 }
                             }
@@ -1510,9 +1553,12 @@ private fun PlayerInfoAiHelperSection(
                                         onClick = { similarPlayersOptions = similarPlayersOptions.copy(ageRange = pref) },
                                         label = { Text(stringResource(resId), style = regularTextStyle(HomeTextPrimary, 11.sp)) },
                                         colors = FilterChipDefaults.filterChipColors(
-                                            selectedContainerColor = HomeTealAccent.copy(alpha = 0.2f),
+                                            containerColor = Color.Transparent,
+                                            labelColor = HomeTextPrimary,
+                                            selectedContainerColor = HomeTealAccent.copy(alpha = 0.4f),
                                             selectedLabelColor = HomeTealAccent
-                                        )
+                                        ),
+                                        border = BorderStroke(1.dp, if (similarPlayersOptions.ageRange == pref) HomeTealAccent else HomeDarkCardBorder)
                                     )
                                 }
                             }
@@ -1527,18 +1573,24 @@ private fun PlayerInfoAiHelperSection(
                                     onClick = { similarPlayersOptions = similarPlayersOptions.copy(excludeSameClub = !similarPlayersOptions.excludeSameClub) },
                                     label = { Text(stringResource(R.string.player_info_ai_exclude_same_club), style = regularTextStyle(HomeTextPrimary, 11.sp)) },
                                     colors = FilterChipDefaults.filterChipColors(
-                                        selectedContainerColor = HomeTealAccent.copy(alpha = 0.2f),
+                                        containerColor = Color.Transparent,
+                                        labelColor = HomeTextPrimary,
+                                        selectedContainerColor = HomeTealAccent.copy(alpha = 0.4f),
                                         selectedLabelColor = HomeTealAccent
-                                    )
+                                    ),
+                                    border = BorderStroke(1.dp, if (similarPlayersOptions.excludeSameClub) HomeTealAccent else HomeDarkCardBorder)
                                 )
                                 FilterChip(
                                     selected = similarPlayersOptions.excludeSameLeague,
                                     onClick = { similarPlayersOptions = similarPlayersOptions.copy(excludeSameLeague = !similarPlayersOptions.excludeSameLeague) },
                                     label = { Text(stringResource(R.string.player_info_ai_exclude_same_league), style = regularTextStyle(HomeTextPrimary, 11.sp)) },
                                     colors = FilterChipDefaults.filterChipColors(
-                                        selectedContainerColor = HomeTealAccent.copy(alpha = 0.2f),
+                                        containerColor = Color.Transparent,
+                                        labelColor = HomeTextPrimary,
+                                        selectedContainerColor = HomeTealAccent.copy(alpha = 0.4f),
                                         selectedLabelColor = HomeTealAccent
-                                    )
+                                    ),
+                                    border = BorderStroke(1.dp, if (similarPlayersOptions.excludeSameLeague) HomeTealAccent else HomeDarkCardBorder)
                                 )
                             }
                             if (similarPlayers.isNotEmpty()) {
@@ -1723,9 +1775,12 @@ private fun PlayerInfoAiHelperSection(
                                         onClick = { scoutReportOptions = scoutReportOptions.copy(reportType = type) },
                                         label = { Text(stringResource(resId), style = regularTextStyle(HomeTextPrimary, 11.sp)) },
                                         colors = FilterChipDefaults.filterChipColors(
-                                            selectedContainerColor = HomeTealAccent.copy(alpha = 0.2f),
+                                            containerColor = Color.Transparent,
+                                            labelColor = HomeTextPrimary,
+                                            selectedContainerColor = HomeTealAccent.copy(alpha = 0.4f),
                                             selectedLabelColor = HomeTealAccent
-                                        )
+                                        ),
+                                        border = BorderStroke(1.dp, if (scoutReportOptions.reportType == type) HomeTealAccent else HomeDarkCardBorder)
                                     )
                                 }
                             }
@@ -1767,11 +1822,20 @@ private fun PlayerInfoAiHelperSection(
                                     .padding(12.dp)
                             )
                         } else {
-                            Text(
-                                stringResource(R.string.player_info_ai_scout_report_error),
-                                style = regularTextStyle(HomeTextSecondary, 12.sp),
-                                modifier = Modifier.padding(12.dp)
-                            )
+                            Column(
+                                modifier = Modifier.padding(12.dp),
+                                verticalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Text(
+                                    stringResource(R.string.player_info_ai_scout_report_error),
+                                    style = regularTextStyle(HomeTextSecondary, 12.sp)
+                                )
+                                TextButton(
+                                    onClick = { viewModel.generateScoutReport(player, LocaleManager.getSavedLanguage(context), scoutReportOptions) }
+                                ) {
+                                    Text(stringResource(R.string.contract_finisher_retry), color = HomeTealAccent)
+                                }
+                            }
                         }
                     }
                 }

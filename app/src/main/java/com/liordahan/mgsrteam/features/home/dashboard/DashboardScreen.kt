@@ -111,6 +111,7 @@ import com.liordahan.mgsrteam.features.home.models.FeedEvent
 import com.liordahan.mgsrteam.features.home.models.MyAgentOverview
 import com.liordahan.mgsrteam.features.login.models.Account
 import com.liordahan.mgsrteam.localization.LocaleManager
+import com.liordahan.mgsrteam.widget.WidgetUpdateHelper
 import com.liordahan.mgsrteam.navigation.Screens
 import com.liordahan.mgsrteam.transfermarket.Confederation
 import com.liordahan.mgsrteam.transfermarket.TransferWindow
@@ -141,8 +142,8 @@ import java.util.concurrent.TimeUnit
 
 @Composable
 fun DashboardScreen(
-    viewModel: IHomeScreenViewModel = koinViewModel(),
-    navController: NavController
+    navController: NavController,
+    viewModel: IHomeScreenViewModel = koinViewModel()
 ) {
     val state by viewModel.dashboardState.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -179,6 +180,11 @@ fun DashboardScreen(
         }
 
         val lazyListState = rememberLazyListState()
+        LaunchedEffect(state.myAgentOverview) {
+            state.myAgentOverview?.let { overview ->
+                WidgetUpdateHelper.syncToWidget(context, overview)
+            }
+        }
         LaunchedEffect(Unit) {
             lazyListState.scrollToItem(0)
         }
@@ -764,6 +770,7 @@ private fun FeedEventCard(event: FeedEvent, navController: NavController) {
         FeedEvent.TYPE_BECAME_FREE_AGENT -> Triple(Icons.Default.PersonOff, HomeRedAccent, stringResource(R.string.feed_became_free_agent))
         FeedEvent.TYPE_NEW_RELEASE_FROM_CLUB -> Triple(Icons.Default.PersonOff, HomeOrangeAccent, stringResource(R.string.feed_new_release))
         FeedEvent.TYPE_MANDATE_EXPIRED -> Triple(Icons.Default.Warning, HomeRedAccent, stringResource(R.string.feed_mandate_expired))
+        FeedEvent.TYPE_MANDATE_UPLOADED -> Triple(Icons.Default.Description, HomeTealAccent, stringResource(R.string.feed_mandate_uploaded))
         FeedEvent.TYPE_CONTRACT_EXPIRING -> Triple(Icons.Default.Warning, HomeOrangeAccent, stringResource(R.string.feed_contract_expiring))
         FeedEvent.TYPE_NOTE_ADDED -> Triple(Icons.AutoMirrored.Filled.NoteAdd, HomePurpleAccent, stringResource(R.string.feed_new_note))
         FeedEvent.TYPE_PLAYER_ADDED -> Triple(Icons.Default.Add, HomeTealAccent, stringResource(R.string.feed_player_added))
@@ -893,6 +900,16 @@ private fun FeedEventCard(event: FeedEvent, navController: NavController) {
                             style = regularTextStyle(HomeTextSecondary, 12.sp)
                         )
                     }
+                    FeedEvent.TYPE_MANDATE_UPLOADED -> {
+                        Text(
+                            text = stringResource(
+                                R.string.feed_mandate_uploaded_by,
+                                event.agentName ?: stringResource(R.string.greeting_agent_default),
+                                event.playerName ?: ""
+                            ),
+                            style = boldTextStyle(HomeTextPrimary, 14.sp)
+                        )
+                    }
                     FeedEvent.TYPE_NOTE_ADDED -> {
                         Text(
                             text = stringResource(
@@ -977,7 +994,8 @@ private fun List<FeedEvent>.filterByType(filter: FeedFilter): List<FeedEvent> {
             it.type == FeedEvent.TYPE_CLUB_CHANGE ||
                 it.type == FeedEvent.TYPE_BECAME_FREE_AGENT ||
                 it.type == FeedEvent.TYPE_NEW_RELEASE_FROM_CLUB ||
-                it.type == FeedEvent.TYPE_MANDATE_EXPIRED
+                it.type == FeedEvent.TYPE_MANDATE_EXPIRED ||
+                it.type == FeedEvent.TYPE_MANDATE_UPLOADED
         }
         FeedFilter.NOTES -> filter { it.type == FeedEvent.TYPE_NOTE_ADDED }
     }

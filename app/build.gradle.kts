@@ -128,4 +128,8 @@ dependencies {
 
     // PdfBox-Android for extracting text from mandate PDFs (Term section date)
     implementation(libs.pdfbox.android)
+
+    // Glance for home screen widget
+    implementation(libs.glance.appwidget)
+    implementation(libs.glance.material3)
 }

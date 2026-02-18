@@ -13,7 +13,7 @@ data class SimilarPlayersOptions(
     val count: Int = 10,
     /** Exclude players from the same club as the source player. */
     val excludeSameClub: Boolean = true,
-    /** Exclude players from the same league (when detectable). */
+    /** Exclude players from the same league/country — surface hidden gems from other markets. Off by default. */
     val excludeSameLeague: Boolean = false
 ) {
     enum class SimilarityMode {

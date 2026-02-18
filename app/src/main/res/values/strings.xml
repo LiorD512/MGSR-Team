@@ -98,6 +98,7 @@
     <string name="shortlist_empty_hint">Add players from Releases or Returnees to save them for later. When ready, add them to your agency.</string>
     <string name="shortlist_browse_releases">Browse Releases</string>
     <string name="shortlist_browse_returnees">Browse Returnees</string>
+    <string name="shortlist_added">Added to shortlist</string>
     <string name="shortlist_added_today">Added today</string>
     <string name="shortlist_added_yesterday">Added yesterday</string>
     <string name="shortlist_added_days_ago">Added %d days ago</string>
@@ -183,6 +184,8 @@
     <string name="feed_new_release">New Free Agent (Releases)</string>
     <string name="feed_new_release_not_in_db">Not in our database</string>
     <string name="feed_mandate_expired">Mandate Expired</string>
+    <string name="feed_mandate_uploaded">Mandate Uploaded</string>
+    <string name="feed_mandate_uploaded_by">%1$s uploaded mandate for %2$s</string>
     <string name="feed_contract_expiring">Contract Expiring</string>
     <string name="feed_new_note">New Note</string>
     <string name="feed_player_added">Player Added</string>
@@ -210,6 +213,8 @@
     <string name="my_hub_upcoming_tasks">Upcoming Tasks</string>
     <string name="my_hub_view_all_tasks">View All</string>
     <string name="my_hub_view_my_players">My Players</string>
+    <string name="widget_agent_dashboard_description">Your dashboard at a glance: players, tasks, alerts</string>
+    <string name="widget_tap_to_open">Tap to open</string>
     <string name="my_hub_no_tasks">No upcoming tasks</string>
     <string name="my_hub_pending_tasks">%d pending</string>
     <string name="my_hub_overdue_tasks">%d overdue</string>
@@ -365,6 +370,12 @@
     <string name="requests_country_clubs">%d clubs</string>
     <string name="requests_matching_players_one">%d matching player</string>
     <string name="requests_matching_players">%d matching players</string>
+    <string name="requests_find_players">Find players</string>
+    <string name="requests_find_players_sheet_title">Players for this request</string>
+    <string name="requests_find_players_online">Find players online</string>
+    <string name="requests_online_players_sheet_title">Players from the market</string>
+    <string name="requests_online_players_loading">Searching Transfermarkt…</string>
+    <string name="requests_online_players_empty">No matching players found online</string>
     <string name="requests_no_match">No roster players match this request</string>
     <string name="requests_no_requests">No requests yet</string>
     <string name="requests_empty_hint">Add requests from clubs when they ask for players. Tap + to add your first request.</string>
@@ -439,6 +450,9 @@
     <string name="contacts_button_save">Save</string>
     <string name="contacts_label_who">WHO</string>
     <string name="contacts_import">Import from phone contacts</string>
+    <string name="contacts_import_error">Could not read contact. Try granting contacts permission.</string>
+    <string name="contacts_import_no_phone">This contact has no phone number. Select one with a number.</string>
+    <string name="contacts_permission_denied">Contacts permission needed to import</string>
     <string name="contacts_enter_manually">or enter manually</string>
     <string name="contacts_label_role">ROLE</string>
     <string name="contacts_label_club">CLUB</string>
@@ -450,7 +464,7 @@
     <string name="contacts_try_different_search">Try a different search or add a new contact</string>
 
     <!-- Contact add stepped flow -->
-    <string name="contacts_step_of">Step %1$d of 3</string>
+    <string name="contacts_step_of">Step %1$d of %2$d</string>
     <string name="contacts_step_club">Club</string>
     <string name="contacts_step_contact">Contact</string>
     <string name="contacts_step_role">Role</string>
@@ -470,6 +484,42 @@
     <string name="contact_role_ceo">CEO</string>
     <string name="contact_role_president">President</string>
     <string name="contact_role_scout">Scout</string>
+    <string name="contact_role_agent">Agent</string>
+    <string name="contact_role_intermediary">Intermediary</string>
+    <string name="contact_role_agency_dir">Agency Dir</string>
+
+    <!-- Contacts Club vs Agency -->
+    <string name="contacts_tab_club">Club</string>
+    <string name="contacts_tab_agency">Agency</string>
+    <string name="contacts_add_type_title">What type of contact?</string>
+    <string name="contacts_add_type_club">Club contact</string>
+    <string name="contacts_add_type_club_hint">Coaches, scouts, sport directors at clubs</string>
+    <string name="contacts_add_type_agency">Agency contact</string>
+    <string name="contacts_add_type_agency_hint">Agents, intermediaries at agencies</string>
+    <string name="contacts_step_type">Type</string>
+    <string name="contacts_step_agency">Agency</string>
+    <string name="contacts_agency_search_hint">Enter agency name</string>
+    <string name="contacts_agency_import_only_hint">Import from your phone contacts. We\'ll search the web to find their agency and link it to Transfermarkt.</string>
+    <string name="contacts_agency_discovering">Contact info</string>
+    <string name="contacts_agency_searching_web">Searching web for agency…</string>
+    <string name="contacts_agency_found_on_tm">Found on Transfermarkt</string>
+    <string name="contacts_agency_manual_fallback">Or enter manually if not found</string>
+    <string name="contacts_label_agency">Agency</string>
+    <string name="contacts_placeholder_agency">Agency name</string>
+    <string name="contacts_label_agency_country">Country (optional)</string>
+    <string name="contacts_placeholder_agency_country">e.g. USA, Germany</string>
+    <string name="contacts_empty_club">No club contacts yet</string>
+    <string name="contacts_empty_club_hint">Add coaches, scouts and club staff for player recruitment.</string>
+    <string name="contacts_empty_agency">No agency contacts yet</string>
+    <string name="contacts_empty_agency_hint">Add agents and intermediaries from player agencies.</string>
+    <string name="contacts_add_club_contact">Add club contact</string>
+    <string name="contacts_add_agency_contact">Add agency contact</string>
+    <string name="contacts_without_agency">Without agency</string>
+    <string name="contacts_without_club">Without club</string>
+    <string name="contacts_search_name_hint">Search by name</string>
+    <string name="contacts_open_transfermarkt">Open Transfermarkt</string>
+    <string name="contacts_agency_players_count">%d players</string>
+    <string name="contacts_agency_no_players">No players under this agency</string>
 
     <!-- Add Player Screen -->
     <string name="add_player_contact_title">Add Player Contact</string>
@@ -571,6 +621,11 @@
     <string name="player_info_view_all_notes">View all %1$d notes</string>
     <string name="player_info_all_notes">All Notes</string>
     <string name="player_info_note_copy">Copy</string>
+    <string name="player_info_record_note">Record note</string>
+    <string name="player_info_recording">Listening…</string>
+    <string name="player_info_record_permission_denied">Microphone permission needed to record notes</string>
+    <string name="player_info_record_not_available">Voice input not available on this device</string>
+    <string name="player_info_stop_recording">Stop recording</string>
     <string name="player_info_note_deleted">Note deleted</string>
     <string name="player_info_note_undo">Undo</string>
     <string name="back">Back</string>
@@ -616,6 +671,7 @@
     <string name="player_info_salary_transfer_fee">Salary &amp; Transfer Fee</string>
     <string name="player_info_salary_transfer_fee_hint">Tap to set for request matching</string>
     <string name="player_info_salary_transfer_fee_sheet_title">Set match criteria</string>
+    <string name="player_info_remove_salary_transfer_fee">Remove salary &amp; transfer fee</string>
 
     <!-- AI Helper -->
     <string name="player_info_ai_helper">AI Scout</string>

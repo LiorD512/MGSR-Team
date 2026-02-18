@@ -30,5 +30,7 @@ data class FeedEvent(
         const val TYPE_NEW_RELEASE_FROM_CLUB = "NEW_RELEASE_FROM_CLUB"
         /** Player mandate has expired (expiry date passed). */
         const val TYPE_MANDATE_EXPIRED = "MANDATE_EXPIRED"
+        /** Mandate document was uploaded for a player. */
+        const val TYPE_MANDATE_UPLOADED = "MANDATE_UPLOADED"
     }
 }

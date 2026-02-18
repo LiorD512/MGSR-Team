@@ -109,7 +109,7 @@ private val agentAccentColors = listOf(
 @Composable
 fun TasksScreen(
     navController: NavController,
-    viewModel: IHomeScreenViewModel = koinViewModel()
+    viewModel: IHomeScreenViewModel
 ) {
     val state by viewModel.dashboardState.collectAsStateWithLifecycle()
     val allTasks = remember(state.agentTasks) { state.agentTasks.values.flatten() }
@@ -331,8 +331,11 @@ fun TasksScreen(
     }
 
     if (showAddSheet) {
+        val currentUser = state.currentUserAccount
+        val preselectedIndex = accounts.indexOfFirst { it.id == currentUser?.id }.takeIf { it >= 0 } ?: 0
         AddTaskBottomSheet(
             accounts = accounts,
+            preselectedAgentIndex = preselectedIndex,
             onDismiss = { showAddSheet = false },
             onConfirm = { agentId, agentName, title, dueDate, priority, notes ->
                 viewModel.addTask(agentId, agentName, title, dueDate, priority, notes)

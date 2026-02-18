@@ -213,6 +213,8 @@ class PlayersViewModel(
         super.onCleared()
         listenerRegistrations.forEach { it.remove() }
         listenerRegistrations.clear()
+        // User left player list (back to dashboard). Reset filters so next visit is fresh.
+        removeAllFiltersUseCase()
     }
 
     override suspend fun getCurrentUserName(): String? {

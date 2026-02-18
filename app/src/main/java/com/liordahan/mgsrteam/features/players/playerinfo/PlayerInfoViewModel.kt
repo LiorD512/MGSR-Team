@@ -16,6 +16,8 @@ import com.liordahan.mgsrteam.features.players.playerinfo.documents.DocumentDete
 import com.liordahan.mgsrteam.features.players.playerinfo.documents.DocumentType
 import com.liordahan.mgsrteam.features.players.playerinfo.documents.PlayerDocument
 import com.liordahan.mgsrteam.features.players.playerinfo.documents.PlayerDocumentsRepository
+import com.liordahan.mgsrteam.features.players.playerinfo.notes.NoteParser
+import com.liordahan.mgsrteam.features.home.models.FeedEvent
 import com.liordahan.mgsrteam.firebase.FirebaseHandler
 import com.liordahan.mgsrteam.helpers.UiResult
 import com.liordahan.mgsrteam.transfermarket.PlayersUpdate
@@ -277,23 +279,72 @@ class PlayerInfoViewModel(
 
     override fun updateNotes(notes: NotesModel) {
         viewModelScope.launch {
+            var updatedPlayer: Player? = null
+            var createdBy: String? = null
             _playerInfoFlow.update { player ->
                 val currentNotes = player?.noteList?.toMutableList() ?: mutableListOf()
-                val createdBy = getCurrentUserName()
+                createdBy = getCurrentUserName()
                 val note = notes.copy(createBy = createdBy)
                 currentNotes.add(note)
-                player?.copy(noteList = currentNotes)
+                val newNoteList = currentNotes
+                val salaryRange = NoteParser.extractSalaryRange(newNoteList)
+                val isFree = NoteParser.extractFreeTransfer(newNoteList)
+                updatedPlayer = player?.copy(
+                    noteList = newNoteList,
+                    salaryRange = salaryRange ?: player.salaryRange,
+                    transferFee = if (isFree) "Free/Free loan" else player.transferFee
+                )
+                updatedPlayer
             }
 
-            _playerInfoFlow.value?.let { player ->
-                viewModelScope.launch {
-                    val doc = firebaseHandler.firebaseStore
-                        .collection(firebaseHandler.playersTable)
-                        .whereEqualTo("tmProfile", player.tmProfile)
-                        .get().await().documents.firstOrNull()
+            updatedPlayer?.let { player ->
+                val doc = firebaseHandler.firebaseStore
+                    .collection(firebaseHandler.playersTable)
+                    .whereEqualTo("tmProfile", player.tmProfile)
+                    .get().await().documents.firstOrNull()
+                doc?.reference?.set(player)?.await()
 
-                    doc?.reference?.set(player)?.await()
-                }
+                // Write FeedEvent so dashboard updates immediately
+                val feedRef = firebaseHandler.firebaseStore.collection(firebaseHandler.feedEventsTable)
+                val notePreview = notes.notes?.take(120)?.let { if (it.length == 120) "$it…" else it }
+                val feedEvent = FeedEvent(
+                    type = FeedEvent.TYPE_NOTE_ADDED,
+                    playerName = player.fullName,
+                    playerImage = player.profileImage,
+                    playerTmProfile = player.tmProfile,
+                    agentName = createdBy,
+                    extraInfo = notePreview,
+                    timestamp = System.currentTimeMillis()
+                )
+                feedRef.add(feedEvent).await()
+            }
+        }
+    }
+
+    override fun onDeleteNoteClicked(note: NotesModel) {
+        viewModelScope.launch {
+            var updatedPlayer: Player? = null
+            _playerInfoFlow.update { player ->
+                val currentNotes = player?.noteList?.toMutableList() ?: mutableListOf()
+                currentNotes.remove(note)
+                val newNoteList = currentNotes
+                val salaryRange = NoteParser.extractSalaryRange(newNoteList)
+                val isFree = NoteParser.extractFreeTransfer(newNoteList)
+                updatedPlayer = player?.copy(
+                    noteList = newNoteList,
+                    salaryRange = salaryRange ?: player.salaryRange,
+                    transferFee = if (isFree) "Free/Free loan" else player.transferFee
+                )
+                updatedPlayer
+            }
+
+            updatedPlayer?.let { player ->
+                val doc = firebaseHandler.firebaseStore
+                    .collection(firebaseHandler.playersTable)
+                    .whereEqualTo("tmProfile", player.tmProfile)
+                    .get().await().documents.firstOrNull()
+
+                doc?.reference?.set(player)?.await()
             }
         }
     }
@@ -369,27 +420,6 @@ class PlayerInfoViewModel(
         }
     }
 
-    override fun onDeleteNoteClicked(note: NotesModel) {
-        viewModelScope.launch {
-            _playerInfoFlow.update { player ->
-                val currentNotes = player?.noteList?.toMutableList() ?: mutableListOf()
-                currentNotes.remove(note)
-                player?.copy(noteList = currentNotes)
-            }
-
-            _playerInfoFlow.value?.let { player ->
-                viewModelScope.launch {
-                    val doc = firebaseHandler.firebaseStore
-                        .collection(firebaseHandler.playersTable)
-                        .whereEqualTo("tmProfile", player.tmProfile)
-                        .get().await().documents.firstOrNull()
-
-                    doc?.reference?.set(player)?.await()
-                }
-            }
-        }
-    }
-
     override fun uploadDocument(uri: android.net.Uri?, bytes: ByteArray, name: String, mimeType: String?, expiresAt: Long?) {
         viewModelScope.launch {
             val player = _playerInfoFlow.value ?: return@launch
@@ -430,13 +460,26 @@ class PlayerInfoViewModel(
                     }
                 }
                 val docExpiresAt = detection.mandateExpiresAt ?: expiresAt
-                documentsRepository.uploadDocument(
+                val result = documentsRepository.uploadDocument(
                     tmProfile,
                     detection.documentType,
                     detection.suggestedName,
                     bytes,
                     docExpiresAt
                 )
+                if (result.isSuccess && detection.documentType == DocumentType.MANDATE) {
+                    val createdBy = getCurrentUserName()
+                    val feedRef = firebaseHandler.firebaseStore.collection(firebaseHandler.feedEventsTable)
+                    val feedEvent = FeedEvent(
+                        type = FeedEvent.TYPE_MANDATE_UPLOADED,
+                        playerName = player.fullName,
+                        playerImage = player.profileImage,
+                        playerTmProfile = tmProfile,
+                        agentName = createdBy,
+                        timestamp = System.currentTimeMillis()
+                    )
+                    feedRef.add(feedEvent).await()
+                }
             } finally {
                 _isUploadingDocumentFlow.value = false
             }

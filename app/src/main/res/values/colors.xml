@@ -2,4 +2,13 @@
 <resources>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+    <!-- Widget colors - must use resources for RemoteViews compatibility -->
+    <color name="widget_background">#FF0F1923</color>
+    <color name="widget_card">#FF1A2736</color>
+    <color name="widget_text_primary">#FFE8EAED</color>
+    <color name="widget_text_secondary">#FF8C999B</color>
+    <color name="widget_accent_teal">#FF4DB6AC</color>
+    <color name="widget_accent_orange">#FFFF9800</color>
+    <color name="widget_accent_red">#FFE53935</color>
+    <color name="widget_accent_yellow">#FFFDD835</color>
 </resources>

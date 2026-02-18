@@ -110,7 +110,8 @@ abstract class IHomeScreenViewModel : ViewModel() {
 
 class HomeScreenViewModel(
     private val firebaseHandler: FirebaseHandler,
-    private val transferWindows: TransferWindows
+    private val transferWindows: TransferWindows,
+    private val appContext: android.content.Context
 ) : IHomeScreenViewModel() {
 
     private val _state = MutableStateFlow(HomeDashboardState())
@@ -353,6 +354,13 @@ class HomeScreenViewModel(
     override fun toggleTaskCompleted(task: AgentTask) {
         if (task.id.isBlank()) return
         val nowCompleted = !task.isCompleted
+        // Optimistic update: flip state and sync widget immediately
+        _state.update { state ->
+            val list = state.agentTasks[task.agentId].orEmpty()
+            val updated = list.map { if (it.id == task.id) it.copy(isCompleted = nowCompleted) else it }
+            state.copy(agentTasks = state.agentTasks + (task.agentId to updated))
+        }
+        recomputeMyOverview()
         viewModelScope.launch {
             try {
                 val data = mapOf(
@@ -372,17 +380,23 @@ class HomeScreenViewModel(
 
     override fun addTask(agentId: String, agentName: String, title: String, dueDate: Long, priority: Int, notes: String) {
         viewModelScope.launch {
+            val newTask = AgentTask(
+                agentId = agentId,
+                agentName = agentName,
+                title = title,
+                isCompleted = false,
+                dueDate = dueDate,
+                createdAt = System.currentTimeMillis(),
+                priority = priority,
+                notes = notes
+            )
+            // Optimistic update: add to state and sync widget immediately (before Firestore)
+            _state.update { state ->
+                val existing = state.agentTasks[agentId].orEmpty()
+                state.copy(agentTasks = state.agentTasks + (agentId to (existing + newTask)))
+            }
+            recomputeMyOverview()
             try {
-                val newTask = AgentTask(
-                    agentId = agentId,
-                    agentName = agentName,
-                    title = title,
-                    isCompleted = false,
-                    dueDate = dueDate,
-                    createdAt = System.currentTimeMillis(),
-                    priority = priority,
-                    notes = notes
-                )
                 firebaseHandler.firebaseStore
                     .collection(firebaseHandler.agentTasksTable)
                     .add(newTask)
@@ -393,6 +407,13 @@ class HomeScreenViewModel(
 
     override fun updateTask(task: AgentTask) {
         if (task.id.isBlank()) return
+        // Optimistic update: apply changes and sync widget immediately
+        _state.update { state ->
+            val list = state.agentTasks[task.agentId].orEmpty()
+            val updated = list.map { if (it.id == task.id) task else it }
+            state.copy(agentTasks = state.agentTasks + (task.agentId to updated))
+        }
+        recomputeMyOverview()
         viewModelScope.launch {
             try {
                 val data = mapOf(
@@ -415,6 +436,12 @@ class HomeScreenViewModel(
     }
 
     override fun deleteTask(task: AgentTask) {
+        // Optimistic update: remove from state and sync widget immediately
+        _state.update { state ->
+            val list = state.agentTasks[task.agentId].orEmpty().filter { it.id != task.id }
+            state.copy(agentTasks = state.agentTasks + (task.agentId to list))
+        }
+        recomputeMyOverview()
         viewModelScope.launch {
             try {
                 firebaseHandler.firebaseStore
@@ -526,9 +553,8 @@ class HomeScreenViewModel(
         }.timeInMillis
         val overdue = pending.count { it.dueDate in 1..<startOfToday }
         val upcoming = pending
-            .filter { it.dueDate > 0 }
-            .sortedBy { it.dueDate }
-            .take(3)
+            .sortedBy { if (it.dueDate > 0) it.dueDate else Long.MAX_VALUE }
+            .take(5)
 
         val contractAlerts = myPlayers
             .filter { isContractExpiringWithinMonths(it.contractExpired, 3) }
@@ -569,6 +595,16 @@ class HomeScreenViewModel(
         )
 
         _state.update { it.copy(myAgentOverview = overview) }
+
+        // Sync to home screen widget whenever overview changes (tasks, players, etc.)
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                com.liordahan.mgsrteam.widget.WidgetUpdateHelper.syncToWidget(
+                    appContext.applicationContext,
+                    overview
+                )
+            } catch (_: Exception) { }
+        }
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────

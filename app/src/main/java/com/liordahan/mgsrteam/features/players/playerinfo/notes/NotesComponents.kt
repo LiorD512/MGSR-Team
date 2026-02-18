@@ -1,5 +1,12 @@
 package com.liordahan.mgsrteam.features.players.playerinfo.notes
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.speech.RecognitionListener
+import android.speech.RecognizerIntent
+import android.speech.SpeechRecognizer
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -29,6 +36,8 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.NoteAdd
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -56,6 +65,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -67,6 +77,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
@@ -86,14 +97,47 @@ import com.liordahan.mgsrteam.ui.theme.HomeRedAccent
 import com.liordahan.mgsrteam.ui.theme.HomeTealAccent
 import com.liordahan.mgsrteam.ui.theme.HomeTextPrimary
 import com.liordahan.mgsrteam.ui.theme.HomeTextSecondary
+import com.liordahan.mgsrteam.ui.components.ToastManager
 import com.liordahan.mgsrteam.ui.utils.boldTextStyle
 import com.liordahan.mgsrteam.ui.utils.regularTextStyle
+import androidx.core.content.ContextCompat
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Locale
 
 private const val MAX_NOTE_LENGTH = 500
 private const val PREVIEW_NOTE_COUNT = 3
+
+private fun appendToNote(current: String, addition: String): String {
+    val trimmed = addition.trim()
+    if (trimmed.isBlank()) return current
+    val separator = if (current.isBlank()) "" else " "
+    return (current + separator + trimmed).take(MAX_NOTE_LENGTH)
+}
+
+private fun startVoiceRecording(
+    speechRecognizer: SpeechRecognizer?,
+    onTranscription: (String) -> Unit,
+    onRecordingEnd: () -> Unit
+) {
+    val recognizer = speechRecognizer ?: return
+    recognizer.setRecognitionListener(object : RecognitionListener {
+        override fun onReadyForSpeech(params: android.os.Bundle?) {}
+        override fun onBeginningOfSpeech() {}
+        override fun onRmsChanged(rmsdB: Float) {}
+        override fun onBufferReceived(buffer: ByteArray?) {}
+        override fun onEndOfSpeech() { onRecordingEnd() }
+        override fun onError(error: Int) { onRecordingEnd() }
+        override fun onResults(results: android.os.Bundle?) {
+            val matches = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+            matches?.firstOrNull()?.takeIf { it.isNotBlank() }?.let { onTranscription(it) }
+            onRecordingEnd()
+        }
+        override fun onPartialResults(partialResults: android.os.Bundle?) {}
+        override fun onEvent(eventType: Int, params: android.os.Bundle?) {}
+    })
+    recognizer.startListening(VoiceNoteRecorder.createRecognizerIntent())
+}
 
 // ─── Notes Section (inline in PlayerInfoScreen) ─────────────────────────────
 
@@ -368,14 +412,60 @@ fun AddNoteBottomSheet(
     onSaveNote: (String) -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val context = LocalContext.current
     var noteText by remember { mutableStateOf("") }
+    var isRecording by remember { mutableStateOf(false) }
     val keyboardController = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current
     val isValid = noteText.isNotBlank()
     var hasEnteredText by remember { mutableStateOf(false) }
+    val speechRecognizer = remember { VoiceNoteRecorder.createSpeechRecognizer(context) }
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            startVoiceRecording(
+                speechRecognizer = speechRecognizer,
+                onTranscription = { transcribed -> noteText = appendToNote(noteText, transcribed) },
+                onRecordingEnd = { isRecording = false }
+            )
+            isRecording = true
+        } else {
+            ToastManager.showError(context.getString(R.string.player_info_record_permission_denied))
+        }
+    }
+
+    DisposableEffect(speechRecognizer) {
+        onDispose {
+            speechRecognizer?.destroy()
+        }
+    }
 
     LaunchedEffect(noteText) {
         if (noteText.isNotBlank()) hasEnteredText = true
+    }
+
+    fun onRecordClick() {
+        if (!VoiceNoteRecorder.isAvailable(context)) {
+            ToastManager.showError(context.getString(R.string.player_info_record_not_available))
+            return
+        }
+        if (!VoiceNoteRecorder.hasRecordAudioPermission(context)) {
+            permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+            return
+        }
+        if (isRecording) {
+            speechRecognizer?.stopListening()
+            isRecording = false
+        } else {
+            startVoiceRecording(
+                speechRecognizer = speechRecognizer,
+                onTranscription = { transcribed -> noteText = appendToNote(noteText, transcribed) },
+                onRecordingEnd = { isRecording = false }
+            )
+            isRecording = true
+        }
     }
 
     ModalBottomSheet(
@@ -428,6 +518,18 @@ fun AddNoteBottomSheet(
                         )
                     )
                 },
+                trailingIcon = {
+                    IconButton(
+                        onClick = { onRecordClick() },
+                        modifier = Modifier.size(48.dp)
+                    ) {
+                        Icon(
+                            imageVector = if (isRecording) Icons.Default.Stop else Icons.Default.Mic,
+                            contentDescription = if (isRecording) stringResource(R.string.player_info_stop_recording) else stringResource(R.string.player_info_record_note),
+                            tint = if (isRecording) HomeRedAccent else HomeTextSecondary
+                        )
+                    }
+                },
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = HomeTealAccent,
                     unfocusedBorderColor = HomeDarkCardBorder,
@@ -441,6 +543,15 @@ fun AddNoteBottomSheet(
                     imeAction = ImeAction.Default
                 )
             )
+
+            if (isRecording) {
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = stringResource(R.string.player_info_recording),
+                    style = regularTextStyle(HomeTealAccent, 12.sp),
+                    modifier = Modifier.align(Alignment.CenterHorizontally)
+                )
+            }
 
             Spacer(Modifier.height(8.dp))
 

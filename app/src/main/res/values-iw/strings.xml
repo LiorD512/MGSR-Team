@@ -87,7 +87,7 @@
     <string name="shortlist_subtitle">פרופילים שמורים משחרורים וחזרו מהשאלה — הוסף לסוכנות כשמוכן</string>
     <string name="shortlist_add_player">הוסף שחקן</string>
     <string name="shortlist_stat_this_week">השבוע</string>
-    <string name="shortlist_could_not_load">לא ניתן לטעון את השחקן. ייתכן שהוא כבר בסגל שלך.</string>
+    <string name="shortlist_could_not_load">לא ניתן לטעון את השחקן. ייתכן שהוא כבר במאגר שלך.</string>
     <string name="shortlist_years_suffix"> שנים</string>
     <string name="shortlist_badge">ברשימת מעקב</string>
     <string name="shortlist_add_to_agency">הוסף לסוכנות</string>
@@ -98,6 +98,7 @@
     <string name="shortlist_empty_hint">הוסף שחקנים משחרורים או חזרו מהשאלה כדי לשמור אותם להמשך. כשמוכן, הוסף אותם לסוכנות שלך.</string>
     <string name="shortlist_browse_releases">עיין בשחרורים</string>
     <string name="shortlist_browse_returnees">עיין בחזרו מהשאלה</string>
+    <string name="shortlist_added">נוסף לרשימת מעקב</string>
     <string name="shortlist_added_today">נוסף היום</string>
     <string name="shortlist_added_yesterday">נוסף אתמול</string>
     <string name="shortlist_added_days_ago">נוסף לפני %d ימים</string>
@@ -182,6 +183,8 @@
     <string name="feed_new_release">שחקן חופשי חדש (שחרורים)</string>
     <string name="feed_new_release_not_in_db">לא במאגר שלנו</string>
     <string name="feed_mandate_expired">מנדט פג תוקף</string>
+    <string name="feed_mandate_uploaded">מנדט הועלה</string>
+    <string name="feed_mandate_uploaded_by">%1$s העלה מנדט עבור %2$s</string>
     <string name="feed_contract_expiring">חוזה מסתיים</string>
     <string name="feed_new_note">הערה חדשה</string>
     <string name="feed_player_added">שחקן נוסף</string>
@@ -209,6 +212,8 @@
     <string name="my_hub_upcoming_tasks">משימות קרובות</string>
     <string name="my_hub_view_all_tasks">הצג הכל</string>
     <string name="my_hub_view_my_players">השחקנים שלי</string>
+    <string name="widget_agent_dashboard_description">הלוח שלך במבט אחד: שחקנים, משימות, התראות</string>
+    <string name="widget_tap_to_open">לחץ לפתיחה</string>
     <string name="my_hub_no_tasks">אין משימות קרובות</string>
     <string name="my_hub_pending_tasks">%d ממתינות</string>
     <string name="my_hub_overdue_tasks">%d באיחור</string>
@@ -359,8 +364,14 @@
     <string name="requests_country_club_one">מועדון 1</string>
     <string name="requests_country_clubs">%d מועדונים</string>
     <string name="requests_matching_players_one">%d שחקן תואם</string>
-    <string name="requests_matching_players">%d שחקנים תואמים</string>
-    <string name="requests_no_match">אין שחקנים בסגל התואמים לבקשה זו</string>
+    <string name="requests_matching_players">%d שחקנים תואמים במאגר</string>
+    <string name="requests_find_players">מצא שחקנים</string>
+    <string name="requests_find_players_sheet_title">שחקנים לבקשה זו</string>
+    <string name="requests_find_players_online">מצא שחקנים באינטרנט</string>
+    <string name="requests_online_players_sheet_title">שחקנים מהשוק</string>
+    <string name="requests_online_players_loading">מחפש ב-Transfermarkt…</string>
+    <string name="requests_online_players_empty">לא נמצאו שחקנים תואמים באינטרנט</string>
+    <string name="requests_no_match">אין שחקנים במאגר התואמים לבקשה זו</string>
     <string name="requests_no_requests">אין בקשות עדיין</string>
     <string name="requests_empty_hint">הוסף בקשות ממועדונים כשהם מבקשים שחקנים. לחץ + להוספת הבקשה הראשונה.</string>
     <string name="requests_delete_title">מחק בקשה</string>
@@ -433,6 +444,9 @@
     <string name="contacts_button_save">שמור</string>
     <string name="contacts_label_who">מי</string>
     <string name="contacts_import">ייבא מאנשי קשר בטלפון</string>
+    <string name="contacts_import_error">לא ניתן לקרוא את איש הקשר. נסה לאשר הרשאת אנשי קשר.</string>
+    <string name="contacts_import_no_phone">לאיש קשר זה אין מספר טלפון. בחר אחד עם מספר.</string>
+    <string name="contacts_permission_denied">נדרשת הרשאת אנשי קשר לייבוא</string>
     <string name="contacts_enter_manually">או הזן ידנית</string>
     <string name="contacts_label_role">תפקיד</string>
     <string name="contacts_label_club">מועדון</string>
@@ -444,7 +458,7 @@
     <string name="contacts_try_different_search">נסה חיפוש אחר או הוסף איש קשר חדש</string>
 
     <!-- Contact add stepped flow -->
-    <string name="contacts_step_of">שלב %1$d מתוך 3</string>
+    <string name="contacts_step_of">שלב %1$d מתוך %2$d</string>
     <string name="contacts_step_club">מועדון</string>
     <string name="contacts_step_contact">איש קשר</string>
     <string name="contacts_step_role">תפקיד</string>
@@ -464,6 +478,42 @@
     <string name="contact_role_ceo">מנכ״ל</string>
     <string name="contact_role_president">נשיא</string>
     <string name="contact_role_scout">סקאוט</string>
+    <string name="contact_role_agent">סוכן</string>
+    <string name="contact_role_intermediary">מתווך</string>
+    <string name="contact_role_agency_dir">מנהל סוכנות</string>
+
+    <!-- Contacts Club vs Agency -->
+    <string name="contacts_tab_club">מועדון</string>
+    <string name="contacts_tab_agency">סוכנות</string>
+    <string name="contacts_add_type_title">איזה סוג אנשי קשר?</string>
+    <string name="contacts_add_type_club">אנשי קשר במועדון</string>
+    <string name="contacts_add_type_club_hint">מאמנים, סקאוטים, מנהלי ספורט במועדונים</string>
+    <string name="contacts_add_type_agency">אנשי קשר בסוכנות</string>
+    <string name="contacts_add_type_agency_hint">סוכנים, מתווכים בסוכנויות</string>
+    <string name="contacts_step_type">סוג</string>
+    <string name="contacts_step_agency">סוכנות</string>
+    <string name="contacts_agency_search_hint">הזן שם סוכנות</string>
+    <string name="contacts_agency_import_only_hint">ייבא מאנשי הקשר בטלפון. נחפש ברשת את הסוכנות ונקשר לטרנספרמרקט.</string>
+    <string name="contacts_agency_discovering">פרטי קשר</string>
+    <string name="contacts_agency_searching_web">מחפש סוכנות ברשת…</string>
+    <string name="contacts_agency_found_on_tm">נמצא בטרנספרמרקט</string>
+    <string name="contacts_agency_manual_fallback">או הזן ידנית אם לא נמצא</string>
+    <string name="contacts_label_agency">סוכנות</string>
+    <string name="contacts_placeholder_agency">שם סוכנות</string>
+    <string name="contacts_label_agency_country">מדינה (אופציונלי)</string>
+    <string name="contacts_placeholder_agency_country">למשל ארה״ב, גרמניה</string>
+    <string name="contacts_empty_club">אין אנשי קשר במועדונים</string>
+    <string name="contacts_empty_club_hint">הוסף מאמנים, סקאוטים ואנשי צוות במועדונים לגיוס שחקנים.</string>
+    <string name="contacts_empty_agency">אין אנשי קשר בסוכנויות</string>
+    <string name="contacts_empty_agency_hint">הוסף סוכנים ומתווכים מסוכנויות שחקנים.</string>
+    <string name="contacts_add_club_contact">הוסף איש קשר במועדון</string>
+    <string name="contacts_add_agency_contact">הוסף איש קשר בסוכנות</string>
+    <string name="contacts_without_agency">ללא סוכנות</string>
+    <string name="contacts_without_club">ללא מועדון</string>
+    <string name="contacts_search_name_hint">חפש לפי שם</string>
+    <string name="contacts_open_transfermarkt">פתח בטרנספרמרקט</string>
+    <string name="contacts_agency_players_count">%d שחקנים</string>
+    <string name="contacts_agency_no_players">אין שחקנים תחת סוכנות זו</string>
 
     <string name="add_player_contact_title">הוסף פרטי קשר לשחקן</string>
     <string name="add_player_save">שמור שחקן</string>
@@ -562,6 +612,11 @@
     <string name="player_info_view_all_notes">צפה בכל %1$d ההערות</string>
     <string name="player_info_all_notes">כל ההערות</string>
     <string name="player_info_note_copy">העתק</string>
+    <string name="player_info_record_note">הקלט הערה</string>
+    <string name="player_info_recording">מאזין…</string>
+    <string name="player_info_record_permission_denied">נדרשת הרשאת מיקרופון להקלטת הערות</string>
+    <string name="player_info_record_not_available">קלט קולי לא זמין במכשיר זה</string>
+    <string name="player_info_stop_recording">הפסק הקלטה</string>
     <string name="player_info_note_deleted">ההערה נמחקה</string>
     <string name="player_info_note_undo">בטל</string>
     <string name="back">חזור</string>
@@ -607,6 +662,7 @@
     <string name="player_info_salary_transfer_fee">שכר ודמי העברה</string>
     <string name="player_info_salary_transfer_fee_hint">לחץ להגדרה להתאמת בקשות</string>
     <string name="player_info_salary_transfer_fee_sheet_title">הגדר קריטריוני התאמה</string>
+    <string name="player_info_remove_salary_transfer_fee">הסר שכר ודמי העברה</string>
 
     <!-- AI Helper -->
     <string name="player_info_ai_helper">סקאוט AI</string>
