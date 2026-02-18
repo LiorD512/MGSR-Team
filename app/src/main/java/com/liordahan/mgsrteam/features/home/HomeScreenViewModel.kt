@@ -4,9 +4,12 @@ import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.liordahan.mgsrteam.R
+import com.liordahan.mgsrteam.features.home.models.AgentAlert
 import com.liordahan.mgsrteam.features.home.models.AgentSummary
 import com.liordahan.mgsrteam.features.home.models.AgentTask
+import com.liordahan.mgsrteam.features.home.models.AlertSeverity
 import com.liordahan.mgsrteam.features.home.models.FeedEvent
+import com.liordahan.mgsrteam.features.home.models.MyAgentOverview
 import com.liordahan.mgsrteam.features.login.models.Account
 import com.liordahan.mgsrteam.features.players.models.Player
 import com.google.firebase.firestore.ListenerRegistration
@@ -45,6 +48,9 @@ data class HomeDashboardState(
     val feedEvents: List<FeedEvent> = emptyList(),
     val selectedFeedFilter: FeedFilter = FeedFilter.ALL,
 
+    // my personal overview (current logged-in agent)
+    val myAgentOverview: MyAgentOverview? = null,
+
     // agent summaries
     val agentSummaries: List<AgentSummary> = emptyList(),
 
@@ -55,8 +61,14 @@ data class HomeDashboardState(
     val agentTasks: Map<String, List<AgentTask>> = emptyMap(),   // agentId -> tasks
     val expandedAgentId: String? = null,
 
+    // mandate document profiles (tmProfiles that have a mandate doc uploaded)
+    val mandateDocProfiles: Set<String> = emptySet(),
+
     // document reminders
     val documentReminders: List<DocumentReminder> = emptyList(),
+
+    // team overview
+    val isTeamOverviewExpanded: Boolean = false,
 
     // transfer windows (open worldwide)
     val transferWindows: List<TransferWindow> = emptyList(),
@@ -93,6 +105,7 @@ abstract class IHomeScreenViewModel : ViewModel() {
     abstract fun updateTask(task: AgentTask)
     abstract fun deleteTask(task: AgentTask)
     abstract fun toggleTransferWindowGroup(confederation: Confederation)
+    abstract fun toggleTeamOverview()
 }
 
 class HomeScreenViewModel(
@@ -144,6 +157,7 @@ class HomeScreenViewModel(
             } catch (_: Exception) { null }
 
             _state.update { it.copy(greetingRes = greetingRes, currentUserAccount = currentAccount) }
+            recomputeMyOverview()
         }
     }
 
@@ -199,6 +213,7 @@ class HomeScreenViewModel(
                             isLoading = false
                         )
                     }
+                    recomputeMyOverview()
 
                     countMandates(players)
                 }
@@ -218,7 +233,7 @@ class HomeScreenViewModel(
                 // Count: player.haveMandate (from switch) OR has mandate document
                 val mandateCount = players.count { it.haveMandate || it.tmProfile in profilesWithMandateDoc }
 
-                _state.update { it.copy(withMandate = mandateCount) }
+                _state.update { it.copy(withMandate = mandateCount, mandateDocProfiles = profilesWithMandateDoc) }
 
                 // Update agent summaries with mandate info
                 val agentGroups = players.groupBy { it.agentInChargeName ?: "Unassigned" }
@@ -235,6 +250,7 @@ class HomeScreenViewModel(
                         )
                     }
                 _state.update { it.copy(agentSummaries = updatedSummaries) }
+                recomputeMyOverview()
             } catch (_: Exception) { }
         }
     }
@@ -302,6 +318,7 @@ class HomeScreenViewModel(
                     .take(5)
 
                 _state.update { it.copy(documentReminders = reminders) }
+                recomputeMyOverview()
             } catch (_: Exception) { }
         }
     }
@@ -322,6 +339,7 @@ class HomeScreenViewModel(
                 }
                 val grouped = tasks.groupBy { it.agentId }
                 _state.update { it.copy(agentTasks = grouped) }
+                recomputeMyOverview()
             }
         listenerRegistrations.add(reg)
     }
@@ -410,6 +428,10 @@ class HomeScreenViewModel(
 
     // ── Transfer Windows ───────────────────────────────────────────────────────
 
+    override fun toggleTeamOverview() {
+        _state.update { it.copy(isTeamOverviewExpanded = !it.isTeamOverviewExpanded) }
+    }
+
     override fun toggleTransferWindowGroup(confederation: Confederation) {
         _state.update { current ->
             val expanded = current.expandedConfederations.toMutableSet()
@@ -463,6 +485,90 @@ class HomeScreenViewModel(
                 put(conf, list.sortedBy { it.daysLeft })
             }
         }
+    }
+
+    // ── My Agent Overview (recomputed whenever underlying data changes) ─────
+
+    private fun recomputeMyOverview() {
+        val current = _state.value
+        val me = current.currentUserAccount ?: return
+        val myEnglishName = me.name?.takeIf { it.isNotBlank() } ?: return
+
+        // Players are matched by English name stored in agentInChargeName
+        val myPlayers = _currentPlayers.filter { p ->
+            p.agentInChargeName.equals(myEnglishName, ignoreCase = true)
+        }
+
+        val totalPlayers = myPlayers.size
+        val mandateDocProfiles = current.mandateDocProfiles
+        val withMandate = myPlayers.count { p ->
+            p.haveMandate || p.tmProfile in mandateDocProfiles
+        }
+        val freeAgents = myPlayers.count { p ->
+            p.currentClub?.clubName.equals("Without Club", true) ||
+                p.currentClub?.clubName.equals("Without club", true)
+        }
+        val expiringContracts = myPlayers.count { isContractExpiringWithinMonths(it.contractExpired, 5) }
+
+        // Tasks are stored with Account.id OR agentInChargeId from Player
+        val myAccountId = me.id
+        val myPlayerAgentId = myPlayers.firstOrNull()?.agentInChargeId
+        val possibleTaskIds = listOfNotNull(myAccountId, myPlayerAgentId).distinct()
+        val myTasks = possibleTaskIds.flatMap { id -> current.agentTasks[id].orEmpty() }.distinctBy { it.id }
+        val totalTaskCount = myTasks.size
+        val completedTaskCount = myTasks.count { it.isCompleted }
+        val taskCompletionPercent = if (totalTaskCount > 0) completedTaskCount.toFloat() / totalTaskCount else 0f
+
+        val pending = myTasks.filter { !it.isCompleted }
+        val startOfToday = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+        }.timeInMillis
+        val overdue = pending.count { it.dueDate in 1..<startOfToday }
+        val upcoming = pending
+            .filter { it.dueDate > 0 }
+            .sortedBy { it.dueDate }
+            .take(3)
+
+        val contractAlerts = myPlayers
+            .filter { isContractExpiringWithinMonths(it.contractExpired, 3) }
+            .mapNotNull { player ->
+                val expiry = parseDateFlexible(player.contractExpired ?: return@mapNotNull null) ?: return@mapNotNull null
+                val daysLeft = java.time.temporal.ChronoUnit.DAYS.between(LocalDate.now(), expiry).toInt()
+                AgentAlert(
+                    playerName = player.fullName ?: "Unknown",
+                    detail = "Contract in $daysLeft days",
+                    daysLeft = daysLeft,
+                    severity = if (daysLeft < 30) AlertSeverity.URGENT else AlertSeverity.WARNING
+                )
+            }
+
+        val docAlerts = current.documentReminders
+            .filter { reminder -> myPlayers.any { it.fullName == reminder.playerName } }
+            .map { reminder ->
+                AgentAlert(
+                    playerName = reminder.playerName,
+                    detail = "${reminder.documentType} in ${reminder.daysUntilExpiry ?: 0}d",
+                    daysLeft = reminder.daysUntilExpiry ?: 0,
+                    severity = if ((reminder.daysUntilExpiry ?: 0) < 7) AlertSeverity.URGENT else AlertSeverity.WARNING
+                )
+            }
+
+        val overview = MyAgentOverview(
+            totalPlayers = totalPlayers,
+            withMandate = withMandate,
+            freeAgents = freeAgents,
+            expiringContracts = expiringContracts,
+            taskCompletionPercent = taskCompletionPercent,
+            completedTaskCount = completedTaskCount,
+            totalTaskCount = totalTaskCount,
+            upcomingTasks = upcoming,
+            pendingTaskCount = pending.size,
+            overdueTaskCount = overdue,
+            alerts = (contractAlerts + docAlerts).sortedBy { it.daysLeft }.take(5)
+        )
+
+        _state.update { it.copy(myAgentOverview = overview) }
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────

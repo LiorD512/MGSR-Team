@@ -138,11 +138,18 @@ fun PlayersScreen(
     viewModel: IPlayersViewModel = koinViewModel(),
     navController: NavController,
     mainViewModel: IMainViewModel? = null,
-    addPlayerViewModel: IAddPlayerViewModel = koinViewModel()
+    addPlayerViewModel: IAddPlayerViewModel = koinViewModel(),
+    initialMyPlayersOnly: Boolean = false
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val playersState by viewModel.playersFlow.collectAsStateWithLifecycle()
+
+    LaunchedEffect(initialMyPlayersOnly) {
+        if (initialMyPlayersOnly && !viewModel.playersFlow.value.quickFilterMyPlayersOnly) {
+            viewModel.toggleQuickFilterMyPlayersOnly()
+        }
+    }
 
     var searchQuery by remember { mutableStateOf(viewModel.playersFlow.value.searchQuery) }
     var showAddPlayerBottomSheet by remember { mutableStateOf(false) }

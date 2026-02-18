@@ -90,11 +90,19 @@ fun HomeScreen(
             }
 
             composable(
-                route = Screens.PlayersScreen.route
-            ) {
+                route = "${Screens.PlayersScreen.route}?myPlayersOnly={myPlayersOnly}",
+                arguments = listOf(
+                    navArgument("myPlayersOnly") {
+                        type = NavType.BoolType
+                        defaultValue = false
+                    }
+                )
+            ) { backStackEntry ->
+                val myPlayersOnly = backStackEntry.arguments?.getBoolean("myPlayersOnly") ?: false
                 PlayersScreen(
                     navController = navController,
-                    mainViewModel = mainViewModel
+                    mainViewModel = mainViewModel,
+                    initialMyPlayersOnly = myPlayersOnly
                 )
             }
 

@@ -12,7 +12,6 @@ const FCM_TOPIC = "mgsr_all";
 
 /**
  * Only these FeedEvent types trigger a push notification.
- * Market-value changes are frequent and shown in the dashboard instead.
  */
 const NOTIFIABLE_TYPES = [
   "BECAME_FREE_AGENT",
@@ -24,7 +23,9 @@ const NOTIFIABLE_TYPES = [
  * Triggered every time a new document is created in the FeedEvents collection
  * (written by PlayerRefreshWorker on the admin device).
  *
- * Sends a push notification to every device subscribed to the `mgsr_all` topic.
+ * Sends BOTH a `notification` payload (English fallback for reliable background
+ * delivery on Xiaomi/Huawei/OPPO that block data-only messages) AND a `data`
+ * payload (so the Android side can build localised text when in the foreground).
  */
 exports.onNewFeedEvent = onDocumentCreated("FeedEvents/{eventId}", async (event) => {
   const data = event.data?.data();
@@ -64,6 +65,8 @@ exports.onNewFeedEvent = onDocumentCreated("FeedEvents/{eventId}", async (event)
     data: {
       type,
       playerName,
+      oldValue,
+      newValue,
       playerTmProfile: data.playerTmProfile || "",
     },
     android: {

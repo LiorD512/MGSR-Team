@@ -27,6 +27,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -66,6 +67,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -99,9 +101,12 @@ import com.liordahan.mgsrteam.features.home.DocumentReminder
 import com.liordahan.mgsrteam.features.home.FeedFilter
 import com.liordahan.mgsrteam.features.home.HomeDashboardState
 import com.liordahan.mgsrteam.features.home.IHomeScreenViewModel
+import com.liordahan.mgsrteam.features.home.models.AgentAlert
 import com.liordahan.mgsrteam.features.home.models.AgentSummary
 import com.liordahan.mgsrteam.features.home.models.AgentTask
+import com.liordahan.mgsrteam.features.home.models.AlertSeverity
 import com.liordahan.mgsrteam.features.home.models.FeedEvent
+import com.liordahan.mgsrteam.features.home.models.MyAgentOverview
 import com.liordahan.mgsrteam.features.login.models.Account
 import com.liordahan.mgsrteam.localization.LocaleManager
 import com.liordahan.mgsrteam.navigation.Screens
@@ -173,13 +178,40 @@ fun DashboardScreen(
             state.feedEvents.filterByType(state.selectedFeedFilter)
         }
 
-        // ── Scrollable section (from Recent Updates downward) ────────────
+        val lazyListState = rememberLazyListState()
+        LaunchedEffect(Unit) {
+            lazyListState.scrollToItem(0)
+        }
+        LaunchedEffect(state.myAgentOverview) {
+            if (state.myAgentOverview != null) {
+                lazyListState.scrollToItem(0)
+            }
+        }
+
+        // ── Scrollable section ────────────────────────────────────────
         LazyColumn(
+            state = lazyListState,
             modifier = Modifier
                 .fillMaxSize()
                 .weight(1f),
             contentPadding = PaddingValues(bottom = 64.dp)
         ) {
+            // ── My Agent Hub (personal dashboard) ─────────────────────
+            item {
+                val overview = state.myAgentOverview
+                when {
+                    overview != null && overview.totalPlayers > 0 -> {
+                        MyAgentHubSection(
+                            overview = overview,
+                            navController = navController,
+                            onTaskToggle = { viewModel.toggleTaskCompleted(it) }
+                        )
+                    }
+                    overview != null -> MyAgentEmptyState()
+                    else -> MyBoardLoadingPlaceholder()
+                }
+            }
+
             // ── Activity Feed ────────────────────────────────────────────
             item {
                 FeedSectionHeader(
@@ -204,9 +236,16 @@ fun DashboardScreen(
                 }
             }
 
-            // ── Agent Overview ────────────────────────────────────────────
+            // ── Team Overview (collapsible) ───────────────────────────
             if (state.agentSummaries.isNotEmpty()) {
-                item { AgentOverviewSection(state.agentSummaries, state.allAccounts) }
+                item {
+                    TeamOverviewSection(
+                        agents = state.agentSummaries,
+                        allAccounts = state.allAccounts,
+                        isExpanded = state.isTeamOverviewExpanded,
+                        onToggle = { viewModel.toggleTeamOverview() }
+                    )
+                }
             }
 
             // ── Agent Tasks Summary Widget ──────────────────────────────
@@ -911,21 +950,40 @@ private fun List<FeedEvent>.filterByType(filter: FeedFilter): List<FeedEvent> {
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
-//  AGENT OVERVIEW  (original horizontal cards)
+//  MY AGENT HUB  (personalised dashboard for the logged-in agent)
 // ═════════════════════════════════════════════════════════════════════════════
 
 @Composable
-private fun AgentOverviewSection(agents: List<AgentSummary>, allAccounts: List<Account>) {
-    val context = LocalContext.current
-    Column(modifier = Modifier.padding(top = 16.dp)) {
-        Text(
-            text = stringResource(R.string.agent_overview_title),
-            style = boldTextStyle(HomeTextPrimary, 18.sp),
-            modifier = Modifier.padding(horizontal = 20.dp)
-        )
+private fun MyAgentHubSection(
+    overview: MyAgentOverview,
+    navController: NavController,
+    onTaskToggle: (AgentTask) -> Unit
+) {
+    Column(modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)) {
+
+        // ── Header ─────────────────────────────────────────────────────
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = stringResource(R.string.my_hub_title),
+                style = boldTextStyle(HomeTextPrimary, 18.sp),
+                modifier = Modifier.weight(1f)
+            )
+            Text(
+                text = stringResource(R.string.my_hub_view_my_players),
+                style = boldTextStyle(HomeTealAccent, 12.sp),
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .clickable { navController.navigate(Screens.playersRoute(myPlayersOnly = true)) }
+                    .padding(horizontal = 8.dp, vertical = 4.dp)
+            )
+        }
 
         Spacer(Modifier.height(4.dp))
-
         Box(
             modifier = Modifier
                 .padding(horizontal = 20.dp)
@@ -934,20 +992,448 @@ private fun AgentOverviewSection(agents: List<AgentSummary>, allAccounts: List<A
                 .clip(RoundedCornerShape(2.dp))
                 .background(HomeTealAccent)
         )
-        Spacer(Modifier.height(10.dp))
-        LazyRow(
-            contentPadding = PaddingValues(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        Spacer(Modifier.height(14.dp))
+
+        // ── Stats Card with Task Ring ───────────────────────────────────
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = HomeDarkCard)
         ) {
-            items(agents, key = { it.agentId ?: it.agentName }) { agent ->
-                AgentCard(agent = agent, allAccounts = allAccounts, context = context)
+            Row(
+                modifier = Modifier.padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier.size(72.dp)
+                ) {
+                    MandateRingChart(
+                        percentage = overview.taskCompletionPercent,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(12.dp)
+                    ) {
+                        Text(
+                            text = "${overview.completedTaskCount}/${overview.totalTaskCount}",
+                            style = boldTextStyle(HomeTealAccent, 11.sp),
+                            textAlign = TextAlign.Center,
+                            maxLines = 1
+                        )
+                        Text(
+                            text = stringResource(R.string.my_hub_tasks_done),
+                            style = regularTextStyle(HomeTextSecondary, 8.sp),
+                            textAlign = TextAlign.Center,
+                            maxLines = 1
+                        )
+                    }
+                }
+
+                Spacer(Modifier.width(16.dp))
+
+                Column(modifier = Modifier.weight(1f)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly
+                    ) {
+                        HubStatItem(overview.totalPlayers.toString(), stringResource(R.string.my_hub_players), HomeBlueAccent)
+                        HubStatItem(overview.withMandate.toString(), stringResource(R.string.my_hub_mandate), HomeGreenAccent)
+                    }
+                    Spacer(Modifier.height(12.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly
+                    ) {
+                        HubStatItem(overview.freeAgents.toString(), stringResource(R.string.my_hub_free), HomeOrangeAccent)
+                        HubStatItem(overview.expiringContracts.toString(), stringResource(R.string.my_hub_expiring), HomeRedAccent)
+                    }
+                }
+            }
+        }
+
+        Spacer(Modifier.height(12.dp))
+
+        // ── Upcoming Tasks ─────────────────────────────────────────────
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = HomeDarkCard)
+        ) {
+            Column(modifier = Modifier.padding(14.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            Icons.Filled.CalendarToday,
+                            contentDescription = null,
+                            tint = HomeBlueAccent,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            text = stringResource(R.string.my_hub_upcoming_tasks),
+                            style = boldTextStyle(HomeTextPrimary, 14.sp)
+                        )
+                    }
+
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (overview.overdueTaskCount > 0) {
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(HomeRedAccent.copy(alpha = 0.15f))
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                Text(
+                                    text = stringResource(R.string.my_hub_overdue_tasks, overview.overdueTaskCount),
+                                    style = boldTextStyle(HomeRedAccent, 10.sp)
+                                )
+                            }
+                            Spacer(Modifier.width(6.dp))
+                        }
+                        Text(
+                            text = stringResource(R.string.my_hub_view_all_tasks),
+                            style = boldTextStyle(HomeTealAccent, 12.sp),
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .clickable { navController.navigate(Screens.TasksScreen.route) }
+                                .padding(horizontal = 4.dp, vertical = 2.dp)
+                        )
+                    }
+                }
+
+                Spacer(Modifier.height(10.dp))
+
+                if (overview.upcomingTasks.isEmpty()) {
+                    Text(
+                        text = stringResource(R.string.my_hub_no_tasks),
+                        style = regularTextStyle(HomeTextSecondary, 12.sp),
+                        modifier = Modifier.padding(vertical = 8.dp)
+                    )
+                } else {
+                    overview.upcomingTasks.forEach { task ->
+                        HubTaskRow(
+                            task = task,
+                            onToggle = { onTaskToggle(task) },
+                            onClick = { navController.navigate(Screens.taskDetailRoute(task.id)) }
+                        )
+                    }
+                    if (overview.pendingTaskCount > overview.upcomingTasks.size) {
+                        Text(
+                            text = stringResource(R.string.my_hub_pending_tasks, overview.pendingTaskCount),
+                            style = regularTextStyle(HomeTextSecondary, 11.sp),
+                            modifier = Modifier.padding(top = 6.dp)
+                        )
+                    }
+                }
+            }
+        }
+
+        // ── Alerts ─────────────────────────────────────────────────────
+        if (overview.alerts.isNotEmpty()) {
+            Spacer(Modifier.height(12.dp))
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = HomeDarkCard)
+            ) {
+                Column(modifier = Modifier.padding(14.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            Icons.Filled.Warning,
+                            contentDescription = null,
+                            tint = HomeOrangeAccent,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            text = stringResource(R.string.my_hub_attention),
+                            style = boldTextStyle(HomeTextPrimary, 14.sp)
+                        )
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    overview.alerts.forEach { alert ->
+                        HubAlertRow(alert)
+                    }
+                }
             }
         }
     }
 }
 
 @Composable
-private fun AgentCard(
+private fun MyBoardLoadingPlaceholder() {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 16.dp),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = HomeDarkCard)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(32.dp),
+                color = HomeTealAccent,
+                strokeWidth = 2.dp
+            )
+            Spacer(Modifier.height(12.dp))
+            Text(
+                text = stringResource(R.string.my_hub_title),
+                style = boldTextStyle(HomeTextSecondary, 14.sp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun MyAgentEmptyState() {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 16.dp),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = HomeDarkCard)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Icon(
+                Icons.Filled.People,
+                contentDescription = null,
+                tint = HomeTextSecondary,
+                modifier = Modifier.size(40.dp)
+            )
+            Spacer(Modifier.height(12.dp))
+            Text(
+                text = stringResource(R.string.my_hub_no_players),
+                style = boldTextStyle(HomeTextPrimary, 16.sp)
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = stringResource(R.string.my_hub_no_players_hint),
+                style = regularTextStyle(HomeTextSecondary, 13.sp),
+                textAlign = TextAlign.Center
+            )
+        }
+    }
+}
+
+// ── Hub Sub-components ──────────────────────────────────────────────────────
+
+@Composable
+private fun MandateRingChart(percentage: Float, modifier: Modifier = Modifier) {
+    val tealColor = HomeTealAccent
+    val trackColor = HomeDarkCardBorder
+    Canvas(modifier = modifier) {
+        val strokeWidth = 8.dp.toPx()
+        val arcSize = Size(size.width - strokeWidth, size.height - strokeWidth)
+        val topLeft = Offset(strokeWidth / 2, strokeWidth / 2)
+
+        drawArc(
+            color = trackColor,
+            startAngle = -90f,
+            sweepAngle = 360f,
+            useCenter = false,
+            topLeft = topLeft,
+            size = arcSize,
+            style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
+        )
+        drawArc(
+            color = tealColor,
+            startAngle = -90f,
+            sweepAngle = 360f * percentage.coerceIn(0f, 1f),
+            useCenter = false,
+            topLeft = topLeft,
+            size = arcSize,
+            style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
+        )
+    }
+}
+
+@Composable
+private fun HubStatItem(value: String, label: String, color: Color) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(64.dp)) {
+        Text(text = value, style = boldTextStyle(color, 18.sp))
+        Text(text = label, style = regularTextStyle(HomeTextSecondary, 10.sp))
+    }
+}
+
+@Composable
+private fun HubTaskRow(task: AgentTask, onToggle: () -> Unit, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .clickable { onClick() }
+            .padding(vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Checkbox(
+            checked = task.isCompleted,
+            onCheckedChange = { onToggle() },
+            colors = CheckboxDefaults.colors(
+                checkedColor = HomeTealAccent,
+                uncheckedColor = HomeTextSecondary
+            ),
+            modifier = Modifier.size(20.dp)
+        )
+        Spacer(Modifier.width(10.dp))
+        Text(
+            text = task.title,
+            style = regularTextStyle(HomeTextPrimary, 13.sp),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f),
+            textDecoration = if (task.isCompleted) TextDecoration.LineThrough else TextDecoration.None
+        )
+        if (task.dueDate > 0) {
+            Spacer(Modifier.width(8.dp))
+            val dueDateText = formatDueDate(task.dueDate)
+            val dueColor = dueDateColor(task.dueDate, task.isCompleted)
+            Text(text = dueDateText, style = regularTextStyle(dueColor, 11.sp))
+        }
+    }
+}
+
+@Composable
+private fun HubAlertRow(alert: AgentAlert) {
+    val alertColor = when (alert.severity) {
+        AlertSeverity.URGENT -> HomeRedAccent
+        AlertSeverity.WARNING -> HomeOrangeAccent
+    }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(6.dp)
+                .clip(CircleShape)
+                .background(alertColor)
+        )
+        Spacer(Modifier.width(8.dp))
+        Text(
+            text = alert.playerName,
+            style = boldTextStyle(HomeTextPrimary, 12.sp),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f)
+        )
+        Spacer(Modifier.width(8.dp))
+        Text(
+            text = alert.detail,
+            style = regularTextStyle(alertColor, 11.sp)
+        )
+    }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+//  TEAM OVERVIEW  (collapsible section showing all agents)
+// ═════════════════════════════════════════════════════════════════════════════
+
+@Composable
+private fun TeamOverviewSection(
+    agents: List<AgentSummary>,
+    allAccounts: List<Account>,
+    isExpanded: Boolean,
+    onToggle: () -> Unit
+) {
+    val context = LocalContext.current
+    val chevronRotation by animateFloatAsState(
+        targetValue = if (isExpanded) 180f else 0f,
+        animationSpec = tween(250),
+        label = "teamChevron"
+    )
+
+    Column(modifier = Modifier.padding(top = 16.dp)) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(HomeTealAccent.copy(alpha = 0.08f))
+                .clickable { onToggle() }
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                Icons.Filled.People,
+                contentDescription = null,
+                tint = HomeTealAccent,
+                modifier = Modifier.size(18.dp)
+            )
+            Spacer(Modifier.width(8.dp))
+            Text(
+                text = stringResource(R.string.team_overview_title),
+                style = boldTextStyle(HomeTextPrimary, 15.sp),
+                modifier = Modifier.weight(1f)
+            )
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(HomeTealAccent.copy(alpha = 0.15f))
+                    .padding(horizontal = 8.dp, vertical = 3.dp)
+            ) {
+                Text(
+                    text = stringResource(R.string.team_overview_agents_count, agents.size),
+                    style = boldTextStyle(HomeTealAccent, 11.sp)
+                )
+            }
+            Spacer(Modifier.width(6.dp))
+            Icon(
+                Icons.Filled.KeyboardArrowDown,
+                contentDescription = if (isExpanded) stringResource(R.string.collapse) else stringResource(R.string.expand),
+                tint = HomeTextSecondary,
+                modifier = Modifier
+                    .size(20.dp)
+                    .rotate(chevronRotation)
+            )
+        }
+
+        AnimatedVisibility(
+            visible = isExpanded,
+            enter = expandVertically(),
+            exit = shrinkVertically()
+        ) {
+            LazyRow(
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                items(agents, key = { it.agentId ?: it.agentName }) { agent ->
+                    TeamAgentCard(agent = agent, allAccounts = allAccounts, context = context)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TeamAgentCard(
     agent: AgentSummary,
     allAccounts: List<Account>,
     context: android.content.Context
@@ -956,13 +1442,13 @@ private fun AgentCard(
         .find { it.name.equals(agent.agentName, ignoreCase = true) || it.hebrewName?.equals(agent.agentName, ignoreCase = true) == true }
         ?.getDisplayName(context)
         ?: agent.agentName
+
     Card(
         modifier = Modifier.width(220.dp),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = HomeDarkCard)
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
-            // Name
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
                     modifier = Modifier
@@ -987,14 +1473,12 @@ private fun AgentCard(
 
             Spacer(Modifier.height(12.dp))
 
-            // Stats
             Text(
                 text = stringResource(R.string.agent_players_managed, agent.totalPlayers),
                 style = regularTextStyle(HomeTextSecondary, 12.sp)
             )
             Spacer(Modifier.height(8.dp))
 
-            // Mini stats row
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween

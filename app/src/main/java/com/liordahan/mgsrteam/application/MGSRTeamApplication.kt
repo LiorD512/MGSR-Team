@@ -7,6 +7,7 @@ import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.NetworkType
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
+import android.util.Log
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.messaging.FirebaseMessaging
 import com.liordahan.mgsrteam.application.di.applicationModules
@@ -53,7 +54,14 @@ class MGSRTeamApplication : Application(), KoinComponent {
 
         // Subscribe every device to the shared FCM topic so push notifications
         // from the Cloud Function reach all users.
+        Log.i("MGSR_DEBUG", "=== Subscribing to FCM topic '${FcmTokenManager.FCM_TOPIC}' ===")
         FirebaseMessaging.getInstance().subscribeToTopic(FcmTokenManager.FCM_TOPIC)
+            .addOnSuccessListener { Log.i("MGSR_DEBUG", "Topic subscription SUCCESS") }
+            .addOnFailureListener { Log.e("MGSR_DEBUG", "Topic subscription FAILED", it) }
+
+        FirebaseMessaging.getInstance().token
+            .addOnSuccessListener { token -> Log.i("MGSR_DEBUG", "FCM token: ${token.take(30)}…") }
+            .addOnFailureListener { Log.e("MGSR_DEBUG", "FCM token retrieval FAILED", it) }
 
         // Schedule nightly player data refresh from Transfermarkt at 02:00 Israel time
         schedulePlayerRefresh()

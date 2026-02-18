@@ -119,6 +119,14 @@
     <string name="notification_without_club_title">Player(s) without club</string>
     <string name="notification_without_club_body">%d player(s) became without club</string>
 
+    <!-- Push notification content (from Cloud Function via FCM) -->
+    <string name="notification_club_change_title">Club Transfer</string>
+    <string name="notification_club_change_body">%1$s moved from %2$s to %3$s</string>
+    <string name="notification_free_agent_title">Free Agent Alert</string>
+    <string name="notification_free_agent_body">%1$s is now without a club (was at %2$s)</string>
+    <string name="notification_market_value_title">Market Value Change</string>
+    <string name="notification_market_value_body">%1$s: %2$s → %3$s</string>
+
     <!-- Greeting -->
     <string name="greeting_good_morning">Good Morning</string>
     <string name="greeting_good_afternoon">Good Afternoon</string>
@@ -178,7 +186,32 @@
     <string name="time_hours_ago">%1$dh ago</string>
     <string name="time_days_ago">%1$dd ago</string>
 
-    <!-- Agent Overview -->
+    <!-- My Agent Hub -->
+    <string name="my_hub_title">My Dashboard</string>
+    <string name="my_hub_players">Players</string>
+    <string name="my_hub_mandate">Mandate</string>
+    <string name="my_hub_free">Free</string>
+    <string name="my_hub_expiring">Expiring</string>
+    <string name="my_hub_coverage">Coverage</string>
+    <string name="my_hub_tasks_done">Tasks Done</string>
+    <string name="my_hub_upcoming_tasks">Upcoming Tasks</string>
+    <string name="my_hub_view_all_tasks">View All</string>
+    <string name="my_hub_view_my_players">My Players</string>
+    <string name="my_hub_no_tasks">No upcoming tasks</string>
+    <string name="my_hub_pending_tasks">%d pending</string>
+    <string name="my_hub_overdue_tasks">%d overdue</string>
+    <string name="my_hub_attention">Attention Needed</string>
+    <string name="my_hub_no_alerts">No alerts — all good</string>
+    <string name="my_hub_recent_activity">Recent Activity</string>
+    <string name="my_hub_no_activity">No recent activity for your players</string>
+    <string name="my_hub_no_players">No players assigned yet</string>
+    <string name="my_hub_no_players_hint">Players assigned to you will appear here</string>
+
+    <!-- Team Overview -->
+    <string name="team_overview_title">Team Overview</string>
+    <string name="team_overview_agents_count">%d agents</string>
+
+    <!-- Agent Overview (kept for team cards) -->
     <string name="agent_overview_title">Agent Overview</string>
     <string name="agent_players_managed">%d players managed</string>
     <string name="agent_stat_mandate">Mandate</string>

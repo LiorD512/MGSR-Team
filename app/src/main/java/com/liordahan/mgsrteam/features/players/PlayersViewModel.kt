@@ -24,7 +24,12 @@ import com.liordahan.mgsrteam.helpers.Result
 import com.liordahan.mgsrteam.transfermarket.PlayersUpdate
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
@@ -95,10 +100,20 @@ class PlayersViewModel(
     private val resetSortOptionUseCase: IResetSortOptionUseCase
 ) : IPlayersViewModel() {
 
-    private val _playersFlow = MutableStateFlow(PlayersUiState())
-    override val playersFlow: StateFlow<PlayersUiState> = _playersFlow
-
+    private val _inputState = MutableStateFlow(PlayersUiState())
+    private val _searchQuery = MutableStateFlow("")
     private val _mandateExpiryByPlayer = MutableStateFlow<Map<String, Long>>(emptyMap())
+
+    @OptIn(kotlinx.coroutines.FlowPreview::class)
+    override val playersFlow: StateFlow<PlayersUiState> = combine(
+        _inputState,
+        _searchQuery.debounce(300L),
+        _mandateExpiryByPlayer
+    ) { state, debouncedQuery, mandateMap ->
+        computeUiState(state, debouncedQuery, mandateMap)
+    }
+        .flowOn(Dispatchers.Default)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), PlayersUiState(showPageLoader = true))
 
     private val listenerRegistrations = mutableListOf<ListenerRegistration>()
 
@@ -109,124 +124,126 @@ class PlayersViewModel(
 
         viewModelScope.launch(Dispatchers.IO) {
             val name = getCurrentUserName()
-            _playersFlow.update { it.copy(currentUserName = name) }
-        }
-
-        viewModelScope.launch(Dispatchers.Default) {
-            _playersFlow.collect {
-                _playersFlow.update {
-                    val visible = it.playersList
-                        .filterPlayersByPosition(it.selectedPositions)
-                        ?.filterPlayersByAgent(it.selectedAccounts)
-                        ?.filterPlayersByQuickFilterAndContract(
-                            quickFilterFreeAgents = it.quickFilterFreeAgents,
-                            quickFilterContractExpiring = it.quickFilterContractExpiring,
-                            contractFilterOption = it.contractFilterOption
-                        )
-                        ?.filterPlayersByWithMandate(it.quickFilterWithMandate, _mandateExpiryByPlayer.value)
-                        ?.filterPlayersByMyPlayersOnly(it.quickFilterMyPlayersOnly, it.currentUserName)
-                        ?.filterPlayersByLoanPlayers(it.quickFilterLoanPlayersOnly)
-                        ?.filterByNotes(it.isWithNotesChecked)
-                        ?.filterPlayersByNameOrByNote(it.searchQuery)
-                        ?.sortPlayers(it.isWithNotesChecked, it.sortOption) ?: emptyList()
-                    val allPlayers = it.playersList
-                    val expiringSoon = allPlayers.filter { player ->
-                        isContractExpiringWithinMonths(player.contractExpired, 5)
-                    }
-                    val mandateExpiryMap = _mandateExpiryByPlayer.value
-                    val playersWithMandate = allPlayers
-                        .filter { player ->
-                            player.haveMandate || (player.tmProfile != null && player.tmProfile in mandateExpiryMap)
-                        }
-                        .map { player ->
-                            PlayerWithMandateExpiry(
-                                player = player,
-                                mandateExpiryAt = player.tmProfile?.let { mandateExpiryMap[it] }
-                            )
-                        }
-                        .sortedBy { it.mandateExpiryAt ?: Long.MAX_VALUE }
-                    val mandateCount = allPlayers.count { player ->
-                        player.haveMandate || (player.tmProfile != null && player.tmProfile in mandateExpiryMap)
-                    }
-                    val freeAgentCount = allPlayers.count { player ->
-                        player.currentClub?.clubName.equals("Without Club", ignoreCase = true) ||
-                                player.currentClub?.clubName.equals("Without club", ignoreCase = true)
-                    }
-                    it.copy(
-                        visibleList = visible,
-                        expiringSoonPlayers = expiringSoon,
-                        playersWithMandate = playersWithMandate,
-                        totalPlayers = allPlayers.size,
-                        mandateCount = mandateCount,
-                        freeAgentCount = freeAgentCount,
-                        expiringCount = expiringSoon.size
-                    )
-                }
-            }
+            _inputState.update { it.copy(currentUserName = name) }
         }
 
         viewModelScope.launch {
             launch {
                 getAgentFilterFlowUseCase().collect { accountFilter ->
-                    _playersFlow.update { it.copy(selectedAccounts = accountFilter) }
+                    _inputState.update { it.copy(selectedAccounts = accountFilter) }
                 }
             }
 
             launch {
                 getPositionFilterFlowUseCase().collect { positionFilter ->
-                    _playersFlow.update { it.copy(selectedPositions = positionFilter) }
+                    _inputState.update { it.copy(selectedPositions = positionFilter) }
                 }
             }
 
             launch {
                 getContractFilterOptionUseCase().collect { contractFilterOption ->
-                    _playersFlow.update { it.copy(contractFilterOption = contractFilterOption) }
+                    _inputState.update { it.copy(contractFilterOption = contractFilterOption) }
                 }
             }
 
             launch {
                 getIsWithNotesCheckedUseCase().collect { isChecked ->
-                    _playersFlow.update { it.copy(isWithNotesChecked = isChecked) }
+                    _inputState.update { it.copy(isWithNotesChecked = isChecked) }
                 }
             }
 
             launch {
                 getSortOptionUseCase().collect { sortOption ->
-                    _playersFlow.update { it.copy(sortOption = sortOption) }
+                    _inputState.update { it.copy(sortOption = sortOption) }
                 }
             }
 
             launch {
                 quickFilterUseCase.quickFilterFreeAgents.collect { enabled ->
-                    _playersFlow.update { it.copy(quickFilterFreeAgents = enabled) }
+                    _inputState.update { it.copy(quickFilterFreeAgents = enabled) }
                 }
             }
 
             launch {
                 quickFilterUseCase.quickFilterContractExpiring.collect { enabled ->
-                    _playersFlow.update { it.copy(quickFilterContractExpiring = enabled) }
+                    _inputState.update { it.copy(quickFilterContractExpiring = enabled) }
                 }
             }
 
             launch {
                 quickFilterUseCase.quickFilterWithMandate.collect { enabled ->
-                    _playersFlow.update { it.copy(quickFilterWithMandate = enabled) }
+                    _inputState.update { it.copy(quickFilterWithMandate = enabled) }
                 }
             }
 
             launch {
                 quickFilterUseCase.quickFilterMyPlayersOnly.collect { enabled ->
-                    _playersFlow.update { it.copy(quickFilterMyPlayersOnly = enabled) }
+                    _inputState.update { it.copy(quickFilterMyPlayersOnly = enabled) }
                 }
             }
 
             launch {
                 quickFilterUseCase.quickFilterLoanPlayersOnly.collect { enabled ->
-                    _playersFlow.update { it.copy(quickFilterLoanPlayersOnly = enabled) }
+                    _inputState.update { it.copy(quickFilterLoanPlayersOnly = enabled) }
                 }
             }
         }
     }
+
+    private fun computeUiState(
+        state: PlayersUiState,
+        query: String,
+        mandateMap: Map<String, Long>
+    ): PlayersUiState {
+        val visible = state.playersList
+            .filterPlayersByPosition(state.selectedPositions)
+            ?.filterPlayersByAgent(state.selectedAccounts)
+            ?.filterPlayersByQuickFilterAndContract(
+                quickFilterFreeAgents = state.quickFilterFreeAgents,
+                quickFilterContractExpiring = state.quickFilterContractExpiring,
+                contractFilterOption = state.contractFilterOption
+            )
+            ?.filterPlayersByWithMandate(state.quickFilterWithMandate, mandateMap)
+            ?.filterPlayersByMyPlayersOnly(state.quickFilterMyPlayersOnly, state.currentUserName)
+            ?.filterPlayersByLoanPlayers(state.quickFilterLoanPlayersOnly)
+            ?.filterByNotes(state.isWithNotesChecked)
+            ?.filterPlayersByNameOrByNote(query)
+            ?.sortPlayers(state.isWithNotesChecked, state.sortOption) ?: emptyList()
+
+        val allPlayers = state.playersList
+        val expiringSoon = allPlayers.filter { player ->
+            isContractExpiringWithinMonths(player.contractExpired, 5)
+        }
+        val playersWithMandate = allPlayers
+            .filter { player ->
+                player.haveMandate || (player.tmProfile != null && player.tmProfile in mandateMap)
+            }
+            .map { player ->
+                PlayerWithMandateExpiry(
+                    player = player,
+                    mandateExpiryAt = player.tmProfile?.let { mandateMap[it] }
+                )
+            }
+            .sortedBy { it.mandateExpiryAt ?: Long.MAX_VALUE }
+        val mandateCount = playersWithMandate.size
+        val freeAgentCount = allPlayers.count { player ->
+            player.currentClub?.clubName.equals("Without Club", ignoreCase = true) ||
+                    player.currentClub?.clubName.equals("Without club", ignoreCase = true)
+        }
+
+        return state.copy(
+            visibleList = visible,
+            searchQuery = query,
+            expiringSoonPlayers = expiringSoon,
+            playersWithMandate = playersWithMandate,
+            totalPlayers = allPlayers.size,
+            mandateCount = mandateCount,
+            freeAgentCount = freeAgentCount,
+            expiringCount = expiringSoon.size
+        )
+    }
+
+
 
 
     override fun onCleared() {
@@ -248,7 +265,7 @@ class PlayersViewModel(
                 ) == true
             }
             if (account?.email.equals("dahanliordahan@gmail.com", ignoreCase = true)) {
-                _playersFlow.update { it.copy(showRefreshButton = true) }
+                _inputState.update { it.copy(showRefreshButton = true) }
             }
 
             account?.name
@@ -272,7 +289,7 @@ class PlayersViewModel(
 
 
     override fun updateSearchQuery(query: String) {
-        _playersFlow.update { it.copy(searchQuery = query) }
+        _searchQuery.value = query
     }
 
     override fun removeAllFilters() {
@@ -298,7 +315,7 @@ class PlayersViewModel(
 
     override suspend fun exportRosterCsv(): Result<ByteArray> {
         return try {
-            val list = _playersFlow.value.playersList
+            val list = _inputState.value.playersList
             val header = "Name,Age,Position,Club,Market Value,Contract,Nationality,Agent"
             val rows = list.map { p ->
                 listOf(
@@ -501,21 +518,6 @@ class PlayersViewModel(
                         .groupBy { it.playerTmProfile!! }
                         .mapValues { (_, list) -> list.maxOf { it.expiresAt!! } }
                     _mandateExpiryByPlayer.value = map
-                    _playersFlow.update { state ->
-                        val allPlayers = state.playersList
-                        val playersWithMandate = allPlayers
-                            .filter { player ->
-                                player.haveMandate || (player.tmProfile != null && player.tmProfile in map)
-                            }
-                            .map { player ->
-                                PlayerWithMandateExpiry(
-                                    player = player,
-                                    mandateExpiryAt = player.tmProfile?.let { map[it] }
-                                )
-                            }
-                            .sortedBy { it.mandateExpiryAt ?: Long.MAX_VALUE }
-                        state.copy(playersWithMandate = playersWithMandate)
-                    }
                 }
             }
         listenerRegistrations.add(reg)
@@ -526,21 +528,20 @@ class PlayersViewModel(
             .addSnapshotListener { snapshot, _ ->
                 if (snapshot == null) return@addSnapshotListener
                 val accounts = snapshot.toObjects(Account::class.java)
-                _playersFlow.update { it.copy(allAccounts = accounts) }
+                _inputState.update { it.copy(allAccounts = accounts) }
             }
         listenerRegistrations.add(reg)
     }
 
     private fun getAllPlayers() {
-        _playersFlow.update { it.copy(showPageLoader = true) }
+        _inputState.update { it.copy(showPageLoader = true) }
 
         val reg = firebaseHandler.firebaseStore.collection(firebaseHandler.playersTable)
             .addSnapshotListener { value, error ->
                 if (error != null) {
-                    _playersFlow.update {
+                    _inputState.update {
                         it.copy(
                             playersList = emptyList(),
-                            visibleList = emptyList(),
                             showPageLoader = false
                         )
                     }
@@ -548,10 +549,9 @@ class PlayersViewModel(
                     val playersList = value?.toObjects(Player::class.java) ?: emptyList()
                     viewModelScope.launch(Dispatchers.Default) {
                         val sorted = playersList.sortedByDescending { it.createdAt }
-                        _playersFlow.update {
+                        _inputState.update {
                             it.copy(
                                 playersList = sorted,
-                                visibleList = sorted,
                                 showPageLoader = false
                             )
                         }

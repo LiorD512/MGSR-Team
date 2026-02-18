@@ -487,7 +487,6 @@ class PlayerRefreshWorker(
             .setContentText(text)
             .setOngoing(true)
             .setSilent(true)
-            .setColor(0xFF39D164.toInt())
 
         if (total > 0) {
             builder.setProgress(total, current, false)

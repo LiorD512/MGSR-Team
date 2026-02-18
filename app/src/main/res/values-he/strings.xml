@@ -178,6 +178,31 @@
     <string name="time_hours_ago">לפני %1$d שע׳</string>
     <string name="time_days_ago">לפני %1$d ימים</string>
 
+    <!-- My Agent Hub -->
+    <string name="my_hub_title">הלוח שלי</string>
+    <string name="my_hub_players">שחקנים</string>
+    <string name="my_hub_mandate">מנדט</string>
+    <string name="my_hub_free">חופשיים</string>
+    <string name="my_hub_expiring">מסיימי חוזה</string>
+    <string name="my_hub_coverage">כיסוי</string>
+    <string name="my_hub_tasks_done">משימות הושלמו</string>
+    <string name="my_hub_upcoming_tasks">משימות קרובות</string>
+    <string name="my_hub_view_all_tasks">הצג הכל</string>
+    <string name="my_hub_view_my_players">השחקנים שלי</string>
+    <string name="my_hub_no_tasks">אין משימות קרובות</string>
+    <string name="my_hub_pending_tasks">%d ממתינות</string>
+    <string name="my_hub_overdue_tasks">%d באיחור</string>
+    <string name="my_hub_attention">דורש טיפול</string>
+    <string name="my_hub_no_alerts">אין התראות — הכל תקין</string>
+    <string name="my_hub_recent_activity">פעילות אחרונה</string>
+    <string name="my_hub_no_activity">אין פעילות אחרונה לשחקנים שלך</string>
+    <string name="my_hub_no_players">אין שחקנים משויכים</string>
+    <string name="my_hub_no_players_hint">שחקנים שמשויכים אליך יופיעו כאן</string>
+
+    <!-- Team Overview -->
+    <string name="team_overview_title">סקירת הצוות</string>
+    <string name="team_overview_agents_count">%d סוכנים</string>
+
     <!-- Agent Overview -->
     <string name="agent_overview_title">סקירת סוכנים</string>
     <string name="agent_players_managed">%d שחקנים מנוהלים</string>

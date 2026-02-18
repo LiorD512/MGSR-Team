@@ -25,6 +25,8 @@ sealed class Screens(val route: String) {
         fun addToShortlistRoute(tmProfileUrl: String = "") =
             if (tmProfileUrl.isBlank()) ScreenName.ADD_TO_SHORTLIST else "${ScreenName.ADD_TO_SHORTLIST}/$tmProfileUrl"
         fun taskDetailRoute(taskId: String) = "${ScreenName.TASK_DETAIL}/$taskId"
+        fun playersRoute(myPlayersOnly: Boolean = false) =
+            if (myPlayersOnly) "${ScreenName.PLAYERS}?myPlayersOnly=true" else ScreenName.PLAYERS
     }
 }
 
