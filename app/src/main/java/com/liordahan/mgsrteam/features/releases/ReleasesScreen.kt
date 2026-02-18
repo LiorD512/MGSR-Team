@@ -183,6 +183,8 @@ fun ReleasesScreen(
         shortlistEntries.map { it.tmProfileUrl }.toSet()
     }
     var justAddedUrls by remember { mutableStateOf(setOf<String>()) }
+    val shortlistPendingUrls by shortlistRepository.getShortlistPendingUrlsFlow()
+        .collectAsState(initial = emptySet())
 
     LaunchedEffect(showAddPlayerBottomSheet, addPlayerTmUrl) {
         if (showAddPlayerBottomSheet && !addPlayerTmUrl.isNullOrBlank()) {
@@ -375,7 +377,8 @@ fun ReleasesScreen(
                         },
                         isInShortlist = { url ->
                             url in shortlistUrls || url in justAddedUrls
-                        }
+                        },
+                        isShortlistPending = (playerUrl != null && playerUrl in shortlistPendingUrls)
                     )
                 }
             }
@@ -678,15 +681,17 @@ fun ReleaseListItem(
     onRosterTeammateClick: (Player) -> Unit = {},
     onAddToAgencyClicked: ((String) -> Unit)? = null,
     onAddToShortlistClicked: ((LatestTransferModel) -> Unit)? = null,
-    isInShortlist: ((String) -> Boolean)? = null
+    isInShortlist: ((String) -> Boolean)? = null,
+    isShortlistPending: Boolean = false
 ) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickWithNoRipple { openPlayerProfile(context, release.playerUrl) },
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = HomeDarkCard)
-    ) {
+    Box(modifier = Modifier.fillMaxWidth()) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickWithNoRipple { openPlayerProfile(context, release.playerUrl) },
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = HomeDarkCard)
+        ) {
         val accentColor = if (isFromReturnee) HomePurpleAccent else HomeTealAccent
         Column(
             modifier = Modifier
@@ -986,6 +991,22 @@ fun ReleaseListItem(
                     }
                     }
                 }
+            }
+        }
+        }
+        if (isShortlistPending) {
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(Color.Black.copy(alpha = 0.5f)),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator(
+                    color = HomeTealAccent,
+                    modifier = Modifier.size(32.dp),
+                    strokeWidth = 2.dp
+                )
             }
         }
     }

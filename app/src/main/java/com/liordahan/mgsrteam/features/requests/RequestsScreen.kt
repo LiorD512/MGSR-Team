@@ -247,6 +247,8 @@ fun RequestsScreen(
                         val shortlistEntries by shortlistRepository.getShortlistFlow().collectAsStateWithLifecycle(initialValue = emptyList())
                         val shortlistUrls = remember(shortlistEntries) { shortlistEntries.map { it.tmProfileUrl }.toSet() }
                         var justAddedUrls by remember { mutableStateOf(setOf<String>()) }
+                        val shortlistPendingUrls by shortlistRepository.getShortlistPendingUrlsFlow()
+                            .collectAsStateWithLifecycle(initialValue = emptySet())
                         val onlineLoading by viewModel.onlinePlayersLoading.collectAsStateWithLifecycle()
                         val onlinePlayers by viewModel.onlinePlayersResult.collectAsStateWithLifecycle()
                         RequestsStatsStrip(
@@ -314,6 +316,7 @@ fun RequestsScreen(
                                                     onlinePlayers = onlinePlayersForThis,
                                                     shortlistUrls = shortlistUrls,
                                                     justAddedUrls = justAddedUrls,
+                                                    shortlistPendingUrls = shortlistPendingUrls,
                                                     modifier = Modifier.padding(start = 12.dp, top = 6.dp),
                                                     onToggleExpand = {
                                                         val id = request.id ?: return@RequestCard
@@ -658,6 +661,7 @@ private fun RequestCard(
     onlinePlayers: List<AiHelperService.SimilarPlayerSuggestion>,
     shortlistUrls: Set<String>,
     justAddedUrls: Set<String>,
+    shortlistPendingUrls: Set<String> = emptySet(),
     modifier: Modifier = Modifier,
     onToggleExpand: () -> Unit,
     onToggleOnlineExpand: () -> Unit,
@@ -1013,9 +1017,11 @@ private fun RequestCard(
                             onlinePlayers.forEach { suggestion ->
                                 val url = suggestion.transfermarktUrl
                                 val isInShortlist = url != null && (url in shortlistUrls || url in justAddedUrls)
+                                val isShortlistPending = url != null && url in shortlistPendingUrls
                                 OnlinePlayerSuggestionRow(
                                     suggestion = suggestion,
                                     isInShortlist = isInShortlist,
+                                    isShortlistPending = isShortlistPending,
                                     onClick = { onOnlinePlayerClick(suggestion) },
                                     onOpenTransfermarkt = { url?.let { onOpenTransfermarkt(it) } },
                                     onToggleShortlist = { onToggleShortlist(suggestion) }
@@ -1253,20 +1259,22 @@ private fun RequestOnlinePlayersBottomSheet(
 private fun OnlinePlayerSuggestionRow(
     suggestion: AiHelperService.SimilarPlayerSuggestion,
     isInShortlist: Boolean,
+    isShortlistPending: Boolean = false,
     onClick: () -> Unit,
     onOpenTransfermarkt: () -> Unit,
     onToggleShortlist: () -> Unit
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(10.dp))
-            .background(HomeDarkBackground)
-            .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(10.dp))
-            .clickWithNoRipple { onClick() }
-            .padding(horizontal = 10.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.Top
-    ) {
+    Box(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(10.dp))
+                .background(HomeDarkBackground)
+                .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(10.dp))
+                .clickWithNoRipple { onClick() }
+                .padding(horizontal = 10.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.Top
+        ) {
         Box(
             modifier = Modifier
                 .size(40.dp)
@@ -1325,6 +1333,22 @@ private fun OnlinePlayerSuggestionRow(
                 tint = if (isInShortlist) HomeGreenAccent else HomeTextSecondary,
                 modifier = Modifier.size(20.dp)
             )
+        }
+    }
+        if (isShortlistPending) {
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.5f)),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator(
+                    color = HomeTealAccent,
+                    modifier = Modifier.size(28.dp),
+                    strokeWidth = 2.dp
+                )
+            }
         }
     }
 }

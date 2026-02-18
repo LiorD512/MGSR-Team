@@ -132,6 +132,8 @@ fun ReturneeScreen(
         shortlistEntries.map { it.tmProfileUrl }.toSet()
     }
     var justAddedUrls by remember { mutableStateOf(setOf<String>()) }
+    val shortlistPendingUrls by shortlistRepository.getShortlistPendingUrlsFlow()
+        .collectAsState(initial = emptySet())
 
     val shortlistedCount = remember(originalReturneeList, shortlistUrls, justAddedUrls) {
         originalReturneeList.count { it.playerUrl in shortlistUrls || it.playerUrl in justAddedUrls }
@@ -303,7 +305,8 @@ fun ReturneeScreen(
                         },
                         isInShortlist = { url ->
                             url in shortlistUrls || url in justAddedUrls
-                        }
+                        },
+                        isShortlistPending = (playerUrl != null && playerUrl in shortlistPendingUrls)
                     )
                 }
             }

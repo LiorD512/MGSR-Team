@@ -7,6 +7,8 @@ import com.liordahan.mgsrteam.firebase.FirebaseHandler
 import com.liordahan.mgsrteam.transfermarket.LatestTransferModel
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
 
@@ -48,6 +50,10 @@ class ShortlistRepository(
 ) {
 
     private val store = FirebaseFirestore.getInstance()
+
+    private val _shortlistPendingUrls = MutableStateFlow<Set<String>>(emptySet())
+    /** URLs currently being added or removed. Use for loading overlay on list items. */
+    fun getShortlistPendingUrlsFlow(): Flow<Set<String>> = _shortlistPendingUrls.asStateFlow()
 
     private fun shortlistDocRef() =
         store.collection(firebaseHandler.shortlistsTable).document(
@@ -95,27 +101,32 @@ class ShortlistRepository(
      */
     suspend fun addToShortlist(release: LatestTransferModel): Boolean {
         val url = release.playerUrl ?: return false
-        val docRef = shortlistDocRef()
-        val snapshot = docRef.get().await()
-        val current = snapshot.getEntriesList().toMutableList()
-        if (current.any { (it["tmProfileUrl"] as? String) == url }) return false
-        val entryMap = mutableMapOf<String, Any>(
-            "tmProfileUrl" to url,
-            "addedAt" to System.currentTimeMillis()
-        )
-        release.playerImage?.takeIf { it.isNotBlank() }?.let { entryMap["playerImage"] = it }
-        release.playerName?.takeIf { it.isNotBlank() }?.let { entryMap["playerName"] = it }
-        release.playerPosition?.takeIf { it.isNotBlank() }?.let { entryMap["playerPosition"] = it }
-        release.playerAge?.takeIf { it.isNotBlank() }?.let { entryMap["playerAge"] = it }
-        release.playerNationality?.takeIf { it.isNotBlank() }?.let { entryMap["playerNationality"] = it }
-        release.playerNationalityFlag?.takeIf { it.isNotBlank() }?.let { entryMap["playerNationalityFlag"] = it }
-        release.clubJoinedLogo?.takeIf { it.isNotBlank() }?.let { entryMap["clubJoinedLogo"] = it }
-        release.clubJoinedName?.takeIf { it.isNotBlank() }?.let { entryMap["clubJoinedName"] = it }
-        release.transferDate?.takeIf { it.isNotBlank() }?.let { entryMap["transferDate"] = it }
-        release.marketValue?.takeIf { it.isNotBlank() }?.let { entryMap["marketValue"] = it }
-        current.add(entryMap)
-        docRef.set(mapOf("entries" to current)).await()
-        return true
+        _shortlistPendingUrls.value = _shortlistPendingUrls.value + url
+        return try {
+            val docRef = shortlistDocRef()
+            val snapshot = docRef.get().await()
+            val current = snapshot.getEntriesList().toMutableList()
+            if (current.any { (it["tmProfileUrl"] as? String) == url }) return false
+            val entryMap = mutableMapOf<String, Any>(
+                "tmProfileUrl" to url,
+                "addedAt" to System.currentTimeMillis()
+            )
+            release.playerImage?.takeIf { it.isNotBlank() }?.let { entryMap["playerImage"] = it }
+            release.playerName?.takeIf { it.isNotBlank() }?.let { entryMap["playerName"] = it }
+            release.playerPosition?.takeIf { it.isNotBlank() }?.let { entryMap["playerPosition"] = it }
+            release.playerAge?.takeIf { it.isNotBlank() }?.let { entryMap["playerAge"] = it }
+            release.playerNationality?.takeIf { it.isNotBlank() }?.let { entryMap["playerNationality"] = it }
+            release.playerNationalityFlag?.takeIf { it.isNotBlank() }?.let { entryMap["playerNationalityFlag"] = it }
+            release.clubJoinedLogo?.takeIf { it.isNotBlank() }?.let { entryMap["clubJoinedLogo"] = it }
+            release.clubJoinedName?.takeIf { it.isNotBlank() }?.let { entryMap["clubJoinedName"] = it }
+            release.transferDate?.takeIf { it.isNotBlank() }?.let { entryMap["transferDate"] = it }
+            release.marketValue?.takeIf { it.isNotBlank() }?.let { entryMap["marketValue"] = it }
+            current.add(entryMap)
+            docRef.set(mapOf("entries" to current)).await()
+            true
+        } finally {
+            _shortlistPendingUrls.value = _shortlistPendingUrls.value - url
+        }
     }
 
     /**
@@ -125,24 +136,35 @@ class ShortlistRepository(
     suspend fun addToShortlist(tmProfileUrl: String) {
         val url = tmProfileUrl.trim().takeIf { it.isNotBlank() } ?: return
         if (!url.contains("transfermarkt", ignoreCase = true)) return
-        val docRef = shortlistDocRef()
-        val snapshot = docRef.get().await()
-        val current = snapshot.getEntriesList().toMutableList()
-        if (current.any { (it["tmProfileUrl"] as? String) == url }) return
-        current.add(mapOf(
-            "tmProfileUrl" to url,
-            "addedAt" to System.currentTimeMillis()
-        ))
-        docRef.set(mapOf("entries" to current)).await()
+        _shortlistPendingUrls.value = _shortlistPendingUrls.value + url
+        try {
+            val docRef = shortlistDocRef()
+            val snapshot = docRef.get().await()
+            val current = snapshot.getEntriesList().toMutableList()
+            if (current.any { (it["tmProfileUrl"] as? String) == url }) return
+            current.add(mapOf(
+                "tmProfileUrl" to url,
+                "addedAt" to System.currentTimeMillis()
+            ))
+            docRef.set(mapOf("entries" to current)).await()
+        } finally {
+            _shortlistPendingUrls.value = _shortlistPendingUrls.value - url
+        }
     }
 
     suspend fun removeFromShortlist(tmProfileUrl: String) {
-        val docRef = shortlistDocRef()
-        val snapshot = docRef.get().await()
-        val current = snapshot.getEntriesList().toMutableList()
-        if (current.isEmpty()) return
-        current.removeAll { (it["tmProfileUrl"] as? String) == tmProfileUrl }
-        docRef.set(mapOf("entries" to current)).await()
+        val url = tmProfileUrl.trim().takeIf { it.isNotBlank() } ?: return
+        _shortlistPendingUrls.value = _shortlistPendingUrls.value + url
+        try {
+            val docRef = shortlistDocRef()
+            val snapshot = docRef.get().await()
+            val current = snapshot.getEntriesList().toMutableList()
+            if (current.isEmpty()) return
+            current.removeAll { (it["tmProfileUrl"] as? String) == url }
+            docRef.set(mapOf("entries" to current)).await()
+        } finally {
+            _shortlistPendingUrls.value = _shortlistPendingUrls.value - url
+        }
     }
 
     suspend fun isInShortlist(tmProfileUrl: String): Boolean {

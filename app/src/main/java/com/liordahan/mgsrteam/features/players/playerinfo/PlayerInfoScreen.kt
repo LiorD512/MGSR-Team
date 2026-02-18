@@ -1431,6 +1431,8 @@ private fun PlayerInfoAiHelperSection(
     val shortlistEntries by shortlistRepository.getShortlistFlow().collectAsState(initial = emptyList())
     val shortlistUrls = remember(shortlistEntries) { shortlistEntries.map { it.tmProfileUrl }.toSet() }
     var justAddedUrls by remember { mutableStateOf<Set<String>>(emptySet()) }
+    val shortlistPendingUrls by shortlistRepository.getShortlistPendingUrlsFlow()
+        .collectAsState(initial = emptySet())
     var isFindSimilarExpanded by remember { mutableStateOf(false) }
     var expandedSimilarIndex by remember { mutableStateOf<Int?>(null) }
     var similarPlayersOptions by remember { mutableStateOf(SimilarPlayersOptions()) }
@@ -1636,32 +1638,33 @@ private fun PlayerInfoAiHelperSection(
                             }
                         } else {
                             similarPlayers.forEachIndexed { index, suggestion ->
+                                val url = suggestion.transfermarktUrl
                                 SimilarPlayerSuggestionRow(
                                     suggestion = suggestion,
                                     isExpanded = expandedSimilarIndex == index,
                                     onToggleExpand = { expandedSimilarIndex = if (expandedSimilarIndex == index) null else index },
                                     onTmLinkClick = {
-                                        suggestion.transfermarktUrl?.let { url ->
-                                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                                        url?.let { urlVal ->
+                                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(urlVal)))
                                         }
                                     },
-                                    onAddToShortlistClick = suggestion.transfermarktUrl?.let { url ->
+                                    onAddToShortlistClick = url?.let { urlVal ->
                                         {
                                             scope.launch {
-                                                val isInShortlist = url in shortlistUrls || url in justAddedUrls
+                                                val isInShortlist = urlVal in shortlistUrls || urlVal in justAddedUrls
                                                 if (isInShortlist) {
-                                                    shortlistRepository.removeFromShortlist(url)
-                                                    justAddedUrls = justAddedUrls - url
+                                                    shortlistRepository.removeFromShortlist(urlVal)
+                                                    justAddedUrls = justAddedUrls - urlVal
                                                 } else {
                                                     val model = LatestTransferModel(
                                                         playerName = suggestion.name,
-                                                        playerUrl = url,
+                                                        playerUrl = urlVal,
                                                         playerPosition = suggestion.position,
                                                         playerAge = suggestion.age,
                                                         marketValue = suggestion.marketValue
                                                     )
                                                     if (shortlistRepository.addToShortlist(model)) {
-                                                        justAddedUrls = justAddedUrls + url
+                                                        justAddedUrls = justAddedUrls + urlVal
                                                     } else {
                                                         ToastManager.showSuccess(context.getString(R.string.add_player_already_in_shortlist))
                                                     }
@@ -1669,9 +1672,10 @@ private fun PlayerInfoAiHelperSection(
                                             }
                                         }
                                     },
-                                    isInShortlist = suggestion.transfermarktUrl?.let { url ->
-                                        url in shortlistUrls || url in justAddedUrls
-                                    } ?: false
+                                    isInShortlist = url?.let { urlVal ->
+                                        urlVal in shortlistUrls || urlVal in justAddedUrls
+                                    } ?: false,
+                                    isShortlistPending = url != null && url in shortlistPendingUrls
                                 )
                             }
                         }
@@ -1851,15 +1855,17 @@ private fun SimilarPlayerSuggestionRow(
     onToggleExpand: () -> Unit,
     onTmLinkClick: () -> Unit,
     onAddToShortlistClick: (() -> Unit)? = null,
-    isInShortlist: Boolean = false
+    isInShortlist: Boolean = false,
+    isShortlistPending: Boolean = false
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(10.dp))
-            .background(HomeDarkBackground)
-            .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(10.dp))
-    ) {
+    Box(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(10.dp))
+                .background(HomeDarkBackground)
+                .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(10.dp))
+        ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -1935,6 +1941,22 @@ private fun SimilarPlayerSuggestionRow(
                 Text(
                     text = suggestion.similarityReason ?: "",
                     style = regularTextStyle(HomeTextSecondary, 12.sp)
+                )
+            }
+        }
+    }
+        if (isShortlistPending) {
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.5f)),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator(
+                    color = HomeTealAccent,
+                    modifier = Modifier.size(28.dp),
+                    strokeWidth = 2.dp
                 )
             }
         }

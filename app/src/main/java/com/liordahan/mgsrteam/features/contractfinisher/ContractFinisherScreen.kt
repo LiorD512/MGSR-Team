@@ -114,6 +114,8 @@ fun ContractFinisherScreen(
     var selectedPosition by rememberSaveable { mutableStateOf<Position?>(null) }
 
     val shortlistEntries by shortlistRepository.getShortlistFlow().collectAsState(initial = emptyList())
+    val shortlistPendingUrls by shortlistRepository.getShortlistPendingUrlsFlow()
+        .collectAsState(initial = emptySet())
     val shortlistUrls = remember(shortlistEntries) { shortlistEntries.map { it.tmProfileUrl }.toSet() }
     var justAddedUrls by remember { mutableStateOf(setOf<String>()) }
 
@@ -282,7 +284,8 @@ fun ContractFinisherScreen(
                                 }
                             }
                         },
-                        isInShortlist = { url -> url in shortlistUrls || url in justAddedUrls }
+                        isInShortlist = { url -> url in shortlistUrls || url in justAddedUrls },
+                        isShortlistPending = (playerUrl != null && playerUrl in shortlistPendingUrls)
                     )
                 }
             }

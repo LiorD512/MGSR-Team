@@ -73,6 +73,7 @@ fun ReturneePlayersBottomSheet(
     onAddToAgencyClicked: (String) -> Unit,
     onAddToShortlistClicked: ((LatestTransferModel) -> Unit)? = null,
     isInShortlist: ((String) -> Boolean)? = null,
+    isShortlistPending: ((String) -> Boolean)? = null,
     onDismiss: () -> Unit
 ) {
 
@@ -241,7 +242,8 @@ fun ReturneePlayersBottomSheet(
                         isFromReturnee = true,
                         onAddToAgencyClicked = onAddToAgencyClicked,
                         onAddToShortlistClicked = onAddToShortlistClicked,
-                        isInShortlist = isInShortlist
+                        isInShortlist = isInShortlist,
+                        isShortlistPending = it.playerUrl?.let { url -> isShortlistPending?.invoke(url) == true } ?: false
                     )
                 }
             }
