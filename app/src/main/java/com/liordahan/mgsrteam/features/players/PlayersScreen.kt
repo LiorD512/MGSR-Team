@@ -137,20 +137,18 @@ import org.koin.androidx.compose.koinViewModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PlayersScreen(
-    viewModel: IPlayersViewModel = koinViewModel(),
     navController: NavController,
     mainViewModel: IMainViewModel? = null,
-    addPlayerViewModel: IAddPlayerViewModel = koinViewModel(),
-    initialMyPlayersOnly: Boolean = false
+    initialMyPlayersOnly: Boolean = false,
+    viewModel: IPlayersViewModel = koinViewModel(),
+    addPlayerViewModel: IAddPlayerViewModel = koinViewModel()
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val playersState by viewModel.playersFlow.collectAsStateWithLifecycle()
 
     LaunchedEffect(initialMyPlayersOnly) {
-        if (initialMyPlayersOnly && !viewModel.playersFlow.value.quickFilterMyPlayersOnly) {
-            viewModel.toggleQuickFilterMyPlayersOnly()
-        }
+        viewModel.applyInitialMyPlayersOnlyIfNeeded(initialMyPlayersOnly)
     }
 
     var searchQuery by remember { mutableStateOf(viewModel.playersFlow.value.searchQuery) }
@@ -824,13 +822,6 @@ private fun QuickFilterChips(
                 label = stringResource(R.string.players_filter_foot_right),
                 isSelected = footFilterOption == FootFilterOption.RIGHT,
                 onClick = { onFootFilterClick(FootFilterOption.RIGHT) }
-            )
-        }
-        item(key = "foot_both") {
-            QuickFilterChip(
-                label = stringResource(R.string.players_filter_foot_both),
-                isSelected = footFilterOption == FootFilterOption.BOTH,
-                onClick = { onFootFilterClick(FootFilterOption.BOTH) }
             )
         }
     }

@@ -48,6 +48,7 @@ class AiHelperService(
                 val model = FirebaseAI.getInstance(backend = GenerativeBackend.googleAI()).generativeModel(
                     modelName = "gemini-2.5-flash",
                     generationConfig = generationConfig {
+                        temperature = 0.4f  // Slightly lower to reduce invented facts in similarityReason
                         responseMimeType = "application/json"
                         responseSchema = Schema.obj(
                             mapOf(
@@ -76,24 +77,33 @@ class AiHelperService(
                 val constraints = buildSimilarPlayersConstraints(player, options)
                 val similarityFocus = buildSimilarityFocus(options.similarityMode)
                 val exclusions = buildExclusions(player, options)
-                val countRange = "${options.count.coerceIn(5, 15)}"
+                val targetCount = options.count.coerceIn(5, 15)
+                val requestCount = (targetCount + 3).coerceAtMost(15)  // Request extra; filter may drop some
 
+                val transferValueRules = buildTransferValueRules(player)
                 val prompt = """
-                    You are a senior football scout with 20+ years of experience at top clubs. You have access to the latest data and analysis tools. Your recommendations are trusted by sporting directors.
+                    You are the sporting director of a professional club. Your job: find REAL transfer opportunities — players you would actually sign.
                     
-                    TASK: Find similar players to the profile below. ${similarityFocus}
+                    TASK: Suggest the top $requestCount similar players to the profile below. These must be players YOU would sign for your club. ${similarityFocus}
                     
-                    CRITICAL CONSTRAINTS (must follow):
+                    TRANSFER VALUE RULES (non-negotiable):
+                    $transferValueRules
+                    
+                    CRITICAL CONSTRAINTS:
                     $constraints
                     
                     $exclusions
                     
+                    QUALITY BAR: Every suggestion must have REAL transfer potential. Consider: market value (must have resale/transfer value), age (younger = more upside; 33+ with no value = useless), playing style fit. No filler. No players past their prime with zero market value. Prioritize: similar position + similar value bracket + age-appropriate + style fit.
+                    
+                    FACTUAL ACCURACY: Base suggestions on profile data only. Do NOT invent facts. For similarityReason: reference position, style, value, age — never speculate about injuries or playing time.
+                    
                     Player profile:
                     $playerContext
                     
-                    Suggest exactly $countRange players who have a profile on Transfermarkt.com. For each player, provide the full name EXACTLY as it appears on Transfermarkt (e.g. "Lionel Messi" not "Messi"). Do NOT provide URLs. Focus on current active players (2024-2025 season).
+                    Suggest exactly $requestCount players with a Transfermarkt profile. Full name EXACTLY as on Transfermarkt (e.g. "Lionel Messi" not "Messi"). No URLs. Active players 2024-2025.
                     
-                    For similarityReason: write a concise, scout-grade explanation in $outputLanguage (1-2 sentences). Be specific: mention playing style, role, or profile traits that match.
+                    similarityReason: 1-2 sentences in $outputLanguage. Why this player is a real opportunity — position, value, age, style fit.
                 """.trimIndent()
 
                 val response = model.generateContent(prompt)
@@ -123,7 +133,11 @@ class AiHelperService(
         withContext(Dispatchers.IO) {
             try {
                 val model = FirebaseAI.getInstance(backend = GenerativeBackend.googleAI()).generativeModel(
-                    modelName = "gemini-2.5-flash"
+                    modelName = "gemini-2.5-flash",
+                    generationConfig = generationConfig {
+                        temperature = 0.3f  // Lower = less creative, fewer factual errors
+                        topP = 0.85f
+                    }
                 )
                 val playerContext = buildPlayerContext(player)
                 val outputLanguage = if (languageCode == "he" || languageCode == "iw") "Hebrew" else "English"
@@ -136,10 +150,19 @@ class AiHelperService(
                     
                     $reportInstructions
                     
-                    Player profile:
+                    FACTUAL ACCURACY (non-negotiable — a pro scout never gets this wrong):
+                    - Base the report ONLY on the data provided in the player profile below. You have NO other data.
+                    - NEVER invent, assume, or infer: playing time, minutes played, injuries, career gaps, "hasn't played for X months/years", recent form, last season stats, or any fact not explicitly in the profile.
+                    - If the profile does not mention playing time, injuries, or recent activity — do NOT write about them. Omit those sections entirely.
+                    - When discussing strengths/weaknesses, base them on: position, age, height, foot, market value, club, contract, nationality. Use tactical reasoning, not invented facts.
+                    - If uncertain about any fact, omit it. A wrong claim destroys credibility. "Data not available" is better than a false claim.
+                    
+                    Player profile (this is your ONLY data source — no other fields exist):
                     $playerContext
                     
-                    Write the report in $outputLanguage. Use clear section headers where appropriate. Be specific: cite positions, tendencies, and concrete strengths/weaknesses. Avoid generic fluff. Your verdict should be actionable.
+                    Note: If a field is missing above (e.g. no contract, no description), do not invent it. Work with what is provided.
+                    
+                    Write the report in $outputLanguage. Use clear section headers where appropriate. Be specific about what the data shows. Avoid generic fluff. Your verdict should be actionable. Never fabricate facts.
                 """.trimIndent()
                 val response = model.generateContent(prompt)
                 val text = response.text?.trim()
@@ -180,13 +203,13 @@ class AiHelperService(
     private fun buildSimilarityFocus(mode: SimilarPlayersOptions.SimilarityMode): String =
         when (mode) {
             SimilarPlayersOptions.SimilarityMode.PLAYING_STYLE ->
-                "PRIORITY: Playing style, movement patterns, technical profile, and on-ball tendencies. Value and age are secondary."
+                "PRIORITY: Playing style and technical profile. But every suggestion must still have transfer value and be age-appropriate."
             SimilarPlayersOptions.SimilarityMode.MARKET_VALUE ->
-                "PRIORITY: Market value bracket and transfer context. Suggest players in a similar price range who could be alternatives in negotiations."
+                "PRIORITY: Similar market value bracket — real alternatives in negotiations. Same position, similar age."
             SimilarPlayersOptions.SimilarityMode.POSITION_PROFILE ->
-                "PRIORITY: Position and tactical role. Same or adjacent positions, similar defensive/attacking contribution."
+                "PRIORITY: Same position and tactical role. Must have transfer value and be age-appropriate."
             SimilarPlayersOptions.SimilarityMode.ALL_ROUND ->
-                "PRIORITY: Balanced similarity across playing style, physicality, position, market value, and age."
+                "PRIORITY: Balanced — position, market value, age, and style. Real opportunities only."
         }
 
     private fun buildSimilarPlayersConstraints(player: Player, options: SimilarPlayersOptions): String {
@@ -206,6 +229,19 @@ class AiHelperService(
         buildMarketValueRangeConstraint(player)?.let { lines.add(it) }
         buildPositionConstraint(player)?.let { lines.add(it) }
         return lines.joinToString("\n").ifBlank { "None specified." }
+    }
+
+    /** Rules to avoid suggesting players with no transfer value (33+ with €0, etc.). */
+    private fun buildTransferValueRules(player: Player): String {
+        val valueStr = player.marketValue
+        val valueDouble = valueStr?.toMarketValueDouble() ?: 0.0
+        return """
+            - NEVER suggest players aged 33 or older with zero or negligible market value (under €200k). They have no transfer value.
+            - NEVER suggest players with zero market value — they are not real transfer opportunities.
+            - Every player must have meaningful market value (minimum €100k unless the source player is in that range).
+            - Players 30+ must have at least €200k value to be worth considering.
+            - Prioritize players with resale potential: younger, or established value in a similar bracket to the source (${valueStr ?: "see profile"}).
+        """.trimIndent()
     }
 
     private fun buildExclusions(player: Player, options: SimilarPlayersOptions): String {
@@ -237,34 +273,34 @@ class AiHelperService(
                 """
                 FORMAT: Full tactical scout report.
                 - Executive summary (2–3 sentences)
-                - Strengths: technical, physical, tactical (be specific)
-                - Weaknesses: areas of concern, consistency, limitations
+                - Strengths: technical, physical, tactical — infer from position, height, foot, style; do NOT invent match stats or playing time
+                - Weaknesses: areas of concern based on profile (e.g. age, contract) — never assume injuries or form
                 - Tactical fit: best system, role, instructions
-                - Tendencies: movement, decision-making, set pieces
-                - Market value assessment: fair value, upside, risk
+                - Tendencies: movement, decision-making — based on position and role only
+                - Market value assessment: from profile data
                 - Transfer suitability: ideal buyer profile, contract context
                 - Final recommendation with clear action
-                Use section headers. 4–6 paragraphs total. Pro-grade detail.
+                Use section headers. 4–6 paragraphs total. Pro-grade detail. Every claim must be traceable to the profile.
                 """.trimIndent()
             ScoutReportOptions.ScoutReportType.TRANSFER_RECOMMENDATION ->
                 """
                 FORMAT: Transfer-focused report.
-                - Current value and contract context
+                - Current value and contract context (from profile only)
                 - Transfer market positioning (comparable deals)
                 - Suitability: who should buy, why, at what price
-                - Risk factors (injury, form, contract length)
+                - Risk factors: ONLY mention contract length, loan status, or value trend if in the profile. Do NOT mention injury or form unless explicitly in the data.
                 - Recommendation: buy / negotiate / pass, with price range if relevant
-                Focus on what sporting directors need for transfer decisions.
+                Focus on what sporting directors need. Base everything on profile data only.
                 """.trimIndent()
             ScoutReportOptions.ScoutReportType.YOUTH_POTENTIAL ->
                 """
                 FORMAT: Youth development / potential report.
-                - Current level and ceiling
-                - Development trajectory and key growth areas
+                - Current level and ceiling (from age, position, value, club)
+                - Development trajectory and key growth areas (tactical reasoning, not invented stats)
                 - Comparison to similar profiles at same age
-                - Best environment for development (club type, league, minutes)
-                - Timeline to first-team readiness
-                Focus on potential, not just current output. Relevant for U21/U23 scouting.
+                - Best environment for development (club type, league)
+                - Timeline to first-team readiness (age-based reasoning only)
+                Focus on potential from profile data. Do NOT invent minutes, appearances, or form.
                 """.trimIndent()
         }
 
@@ -358,19 +394,33 @@ class AiHelperService(
                 null
             }
         }
+        // Filter: constraints + transfer value (no 33+ with €0, no zero-value players)
         var result = enriched.filter {
-            meetsConstraints(it, sourceAge, minValue, maxValue, sourcePositionGroups, ageDelta)
+            hasTransferValue(it) && meetsConstraints(it, sourceAge, minValue, maxValue, sourcePositionGroups, ageDelta)
         }
         if (result.isEmpty() && enriched.isNotEmpty()) {
             Log.d(TAG, "Strict filter yielded 0 results; retrying with relaxed constraints")
             result = enriched.filter {
-                meetsConstraintsRelaxed(it, sourceAge, minValue, maxValue, sourcePositionGroups)
+                hasTransferValue(it) && meetsConstraintsRelaxed(it, sourceAge, minValue, maxValue, sourcePositionGroups)
             }
         }
-        val count = options.count.coerceIn(5, 15)
-        result = result.take(count)
+        // If still empty, allow low-value but never 33+ with €0
+        if (result.isEmpty() && enriched.isNotEmpty()) {
+            result = enriched.filter { hasTransferValue(it) }
+        }
+        val targetCount = options.count.coerceIn(5, 15)
+        result = result.take(targetCount)
         result.forEach { Log.d(TAG, "Similar player: ${it.name} age=${it.age} value=${it.marketValue} pos=${it.position}") }
         return result
+    }
+
+    /** Exclude players with no transfer value: 33+ with €0/low value, or zero value. */
+    private fun hasTransferValue(suggestion: SimilarPlayerSuggestion): Boolean {
+        val value = suggestion.marketValue?.toMarketValueDouble() ?: 0.0
+        val age = suggestion.age?.toIntOrNull()
+        if (value <= 0) return false  // No market value = not a real opportunity
+        if (age != null && age >= 33 && value < 200_000) return false  // 33+ with <€200k = useless on TM
+        return true
     }
 
     private fun meetsConstraints(

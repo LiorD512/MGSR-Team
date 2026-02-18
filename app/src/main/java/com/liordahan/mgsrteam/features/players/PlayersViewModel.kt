@@ -83,6 +83,8 @@ abstract class IPlayersViewModel : ViewModel() {
     abstract fun toggleQuickFilterWithMandate()
     abstract fun toggleQuickFilterMyPlayersOnly()
     abstract fun toggleQuickFilterLoanPlayersOnly()
+    /** Apply "My Players Only" filter only when first landing from dashboard. Never re-apply on back. */
+    abstract fun applyInitialMyPlayersOnlyIfNeeded(initialMyPlayersOnly: Boolean)
     abstract fun toggleQuickFilterWithNotesOnly()
     abstract fun setFootFilterOption(option: FootFilterOption)
     abstract fun setSortOption(option: SortOption)
@@ -123,6 +125,7 @@ class PlayersViewModel(
         .stateIn(viewModelScope, SharingStarted.Eagerly, PlayersUiState(showPageLoader = true))
 
     private val listenerRegistrations = mutableListOf<ListenerRegistration>()
+    private var hasAppliedInitialMyPlayersOnly = false
 
     init {
         getAllPlayers()
@@ -135,71 +138,17 @@ class PlayersViewModel(
         }
 
         viewModelScope.launch {
-            launch {
-                getAgentFilterFlowUseCase().collect { accountFilter ->
-                    _inputState.update { it.copy(selectedAccounts = accountFilter) }
-                }
-            }
-
-            launch {
-                getPositionFilterFlowUseCase().collect { positionFilter ->
-                    _inputState.update { it.copy(selectedPositions = positionFilter) }
-                }
-            }
-
-            launch {
-                getContractFilterOptionUseCase().collect { contractFilterOption ->
-                    _inputState.update { it.copy(contractFilterOption = contractFilterOption) }
-                }
-            }
-
-            launch {
-                getFootFilterOptionUseCase().collect { footFilterOption ->
-                    _inputState.update { it.copy(footFilterOption = footFilterOption) }
-                }
-            }
-
-            launch {
-                getIsWithNotesCheckedUseCase().collect { isChecked ->
-                    _inputState.update { it.copy(isWithNotesChecked = isChecked) }
-                }
-            }
-
-            launch {
-                getSortOptionUseCase().collect { sortOption ->
-                    _inputState.update { it.copy(sortOption = sortOption) }
-                }
-            }
-
-            launch {
-                quickFilterUseCase.quickFilterFreeAgents.collect { enabled ->
-                    _inputState.update { it.copy(quickFilterFreeAgents = enabled) }
-                }
-            }
-
-            launch {
-                quickFilterUseCase.quickFilterContractExpiring.collect { enabled ->
-                    _inputState.update { it.copy(quickFilterContractExpiring = enabled) }
-                }
-            }
-
-            launch {
-                quickFilterUseCase.quickFilterWithMandate.collect { enabled ->
-                    _inputState.update { it.copy(quickFilterWithMandate = enabled) }
-                }
-            }
-
-            launch {
-                quickFilterUseCase.quickFilterMyPlayersOnly.collect { enabled ->
-                    _inputState.update { it.copy(quickFilterMyPlayersOnly = enabled) }
-                }
-            }
-
-            launch {
-                quickFilterUseCase.quickFilterLoanPlayersOnly.collect { enabled ->
-                    _inputState.update { it.copy(quickFilterLoanPlayersOnly = enabled) }
-                }
-            }
+            launch { getAgentFilterFlowUseCase().collect { v -> _inputState.update { it.copy(selectedAccounts = v) } } }
+            launch { getPositionFilterFlowUseCase().collect { v -> _inputState.update { it.copy(selectedPositions = v) } } }
+            launch { getContractFilterOptionUseCase().collect { v -> _inputState.update { it.copy(contractFilterOption = v) } } }
+            launch { getFootFilterOptionUseCase().collect { v -> _inputState.update { it.copy(footFilterOption = v) } } }
+            launch { getIsWithNotesCheckedUseCase().collect { v -> _inputState.update { it.copy(isWithNotesChecked = v) } } }
+            launch { getSortOptionUseCase().collect { v -> _inputState.update { it.copy(sortOption = v) } } }
+            launch { quickFilterUseCase.quickFilterFreeAgents.collect { v -> _inputState.update { it.copy(quickFilterFreeAgents = v) } } }
+            launch { quickFilterUseCase.quickFilterContractExpiring.collect { v -> _inputState.update { it.copy(quickFilterContractExpiring = v) } } }
+            launch { quickFilterUseCase.quickFilterWithMandate.collect { v -> _inputState.update { it.copy(quickFilterWithMandate = v) } } }
+            launch { quickFilterUseCase.quickFilterMyPlayersOnly.collect { v -> _inputState.update { it.copy(quickFilterMyPlayersOnly = v) } } }
+            launch { quickFilterUseCase.quickFilterLoanPlayersOnly.collect { v -> _inputState.update { it.copy(quickFilterLoanPlayersOnly = v) } } }
         }
     }
 
@@ -317,11 +266,8 @@ class PlayersViewModel(
             else -> {
                 val current = _inputState.value.selectedPositions.mapNotNull { it.name }
                 val isAlreadySelected = current.size == 1 && current.any { it.equals(positionName, ignoreCase = true) }
-                if (isAlreadySelected) {
-                    setPositionFiltersByNamesUseCase(emptyList())
-                } else {
-                    setPositionFiltersByNamesUseCase(listOf(positionName))
-                }
+                if (isAlreadySelected) setPositionFiltersByNamesUseCase(emptyList())
+                else setPositionFiltersByNamesUseCase(listOf(positionName))
             }
         }
     }
@@ -333,6 +279,14 @@ class PlayersViewModel(
     override fun toggleQuickFilterLoanPlayersOnly() = quickFilterUseCase.toggleLoanPlayersOnly()
     override fun toggleQuickFilterWithNotesOnly() = quickFilterUseCase.toggleWithNotesOnly()
     override fun setFootFilterOption(option: FootFilterOption) = setFootFilterOptionUseCase(option)
+
+    override fun applyInitialMyPlayersOnlyIfNeeded(initialMyPlayersOnly: Boolean) {
+        if (!initialMyPlayersOnly || hasAppliedInitialMyPlayersOnly) return
+        if (!_inputState.value.quickFilterMyPlayersOnly) {
+            quickFilterUseCase.toggleMyPlayersOnly()
+        }
+        hasAppliedInitialMyPlayersOnly = true
+    }
     override fun setSortOption(option: SortOption) = setSortOptionUseCase(option)
     override fun resetSortOption() = resetSortOptionUseCase()
 
@@ -458,7 +412,6 @@ class PlayersViewModel(
             FootFilterOption.NONE -> this
             FootFilterOption.LEFT -> this?.filter { it.foot?.lowercase() == "left" }
             FootFilterOption.RIGHT -> this?.filter { it.foot?.lowercase() == "right" }
-            FootFilterOption.BOTH -> this?.filter { it.foot?.lowercase() == "both" }
         }
     }
 

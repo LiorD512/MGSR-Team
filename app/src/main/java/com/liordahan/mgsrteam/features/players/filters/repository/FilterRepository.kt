@@ -153,5 +153,4 @@ class FilterRepository : IFilterRepository {
     override fun toggleQuickFilterWithNotesOnly() {
         _withNotesCheckedFlow.update { !it }
     }
-
 }
