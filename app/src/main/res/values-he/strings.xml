@@ -248,6 +248,14 @@
     <string name="transfer_windows_days_left">%d ימים נותרו</string>
     <string name="transfer_windows_open">פתוח</string>
     <string name="transfer_windows_empty">אין חלונות העברה פתוחים כרגע.</string>
+    <string name="transfer_windows_closing_soon">%d נסגרים בקרוב</string>
+    <string name="transfer_windows_group_priority">שווקים עיקריים</string>
+    <string name="transfer_windows_group_uefa">אירופה (UEFA)</string>
+    <string name="transfer_windows_group_conmebol">דרום אמריקה (CONMEBOL)</string>
+    <string name="transfer_windows_group_concacaf">צפון ומרכז אמריקה (CONCACAF)</string>
+    <string name="transfer_windows_group_afc">אסיה (AFC)</string>
+    <string name="transfer_windows_group_caf">אפריקה (CAF)</string>
+    <string name="transfer_windows_group_ofc">אוקיאניה (OFC)</string>
 
     <!-- Document Reminders -->
     <string name="document_reminders_title">תזכורות מסמכים</string>

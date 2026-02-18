@@ -14,15 +14,63 @@ import java.time.LocalDate
  * so Jsoup cannot parse it. We use a static fallback list of known winter 2025 transfer windows
  * with closing dates, and compute days left from today.
  */
+
+enum class Confederation(val displayName: String, val order: Int) {
+    PRIORITY("Priority Markets", 0),
+    UEFA("UEFA", 1),
+    CONMEBOL("CONMEBOL", 2),
+    CONCACAF("CONCACAF", 3),
+    AFC("AFC", 4),
+    CAF("CAF", 5),
+    OFC("OFC", 6);
+}
+
 data class TransferWindow(
     val countryName: String,
     val flagUrl: String?,
+    val countryCode: String = "",
+    val confederation: Confederation = Confederation.UEFA,
     val daysLeft: Int? // null if unknown
 )
 
 /** Country code for flag URL. Uses flagcdn.com (free, no API key). */
 private fun flagUrlForCountry(code: String): String =
     "https://flagcdn.com/w40/$code.png"
+
+private val COUNTRY_CODE_TO_CONFEDERATION: Map<String, Confederation> = buildMap {
+    // UEFA
+    listOf(
+        "gb-eng", "de", "es", "it", "fr", "nl", "pt", "be", "tr", "ru", "il", "gb-sct",
+        "gr", "at", "ch", "pl", "ua", "cz", "dk", "se", "no", "ro", "bg", "hr", "rs",
+        "hu", "sk", "si", "cy", "fi", "is", "ba", "mk", "al", "me", "lu", "mt", "ie",
+        "gb-wls", "gb-nir", "by", "ge", "am", "az", "kz", "md", "lt", "ee", "lv", "xk",
+        "ad", "fo", "li", "sm", "gi"
+    ).forEach { put(it, Confederation.UEFA) }
+    // AFC
+    listOf(
+        "sa", "ae", "qa", "cn", "jp", "kr", "ir", "in", "au", "th", "my", "vn", "id",
+        "uz", "iq", "kw", "om", "bh", "jo", "sy", "lb", "ph", "sg", "hk", "tw", "bd",
+        "np", "lk", "ps", "ye", "tj", "tm", "kg", "mm", "mv", "af"
+    ).forEach { put(it, Confederation.AFC) }
+    // CONMEBOL
+    listOf("br", "ar", "co", "cl", "pe", "ec", "uy", "py", "bo", "ve")
+        .forEach { put(it, Confederation.CONMEBOL) }
+    // CONCACAF
+    listOf(
+        "mx", "us", "ca", "cr", "hn", "pa", "jm", "tt", "gt", "sv", "ni", "cu", "do",
+        "ht", "cw", "sr"
+    ).forEach { put(it, Confederation.CONCACAF) }
+    // CAF
+    listOf(
+        "eg", "ma", "tn", "za", "ng", "dz", "gh", "sn", "ci", "cm", "ke", "zw", "zm",
+        "ao", "cd", "ml", "tz", "et", "ly", "sd", "ug", "tg", "bj", "bf", "ne", "gn",
+        "mg", "mu", "bw", "na", "mz", "rw"
+    ).forEach { put(it, Confederation.CAF) }
+    // OFC
+    listOf("nz", "fj", "pg", "sb").forEach { put(it, Confederation.OFC) }
+}
+
+val PRIORITY_COUNTRY_CODES = setOf("il", "gb-eng", "de", "es", "it", "fr")
 
 private val DAYS_LEFT_REGEX = Regex("""(\d+)\s*(?:days?|Tage|días|jours|giorni)""", RegexOption.IGNORE_CASE)
 private val PLAIN_NUMBER_REGEX = Regex("""^(\d+)$""")
@@ -401,16 +449,18 @@ class TransferWindows {
         }
 
         return list
-            .map { (name, code, closing) ->
+            .mapNotNull { (name, code, closing) ->
                 val daysLeft = java.time.temporal.ChronoUnit.DAYS.between(today, closing).toInt()
-                if (daysLeft < 0) return@map null
+                if (daysLeft < 0) return@mapNotNull null
+                val confederation = COUNTRY_CODE_TO_CONFEDERATION[code] ?: Confederation.UEFA
                 TransferWindow(
                     countryName = name,
                     flagUrl = flagUrlForCountry(code),
+                    countryCode = code,
+                    confederation = confederation,
                     daysLeft = daysLeft
                 )
             }
-            .filterNotNull()
             .sortedBy { it.daysLeft }
     }
 

@@ -12,6 +12,8 @@ import com.liordahan.mgsrteam.features.players.models.Player
 import com.google.firebase.firestore.ListenerRegistration
 import com.liordahan.mgsrteam.features.players.playerinfo.documents.PlayerDocument
 import com.liordahan.mgsrteam.firebase.FirebaseHandler
+import com.liordahan.mgsrteam.transfermarket.Confederation
+import com.liordahan.mgsrteam.transfermarket.PRIORITY_COUNTRY_CODES
 import com.liordahan.mgsrteam.transfermarket.TransferWindow
 import com.liordahan.mgsrteam.transfermarket.TransferWindows
 import kotlinx.coroutines.Dispatchers
@@ -58,6 +60,8 @@ data class HomeDashboardState(
 
     // transfer windows (open worldwide)
     val transferWindows: List<TransferWindow> = emptyList(),
+    val transferWindowGroups: Map<Confederation, List<TransferWindow>> = emptyMap(),
+    val expandedConfederations: Set<Confederation> = setOf(Confederation.PRIORITY),
     val transferWindowsLoading: Boolean = false,
 
     // loading
@@ -88,6 +92,7 @@ abstract class IHomeScreenViewModel : ViewModel() {
     abstract fun addTask(agentId: String, agentName: String, title: String, dueDate: Long, priority: Int = 0, notes: String = "")
     abstract fun updateTask(task: AgentTask)
     abstract fun deleteTask(task: AgentTask)
+    abstract fun toggleTransferWindowGroup(confederation: Confederation)
 }
 
 class HomeScreenViewModel(
@@ -405,24 +410,57 @@ class HomeScreenViewModel(
 
     // ── Transfer Windows ───────────────────────────────────────────────────────
 
+    override fun toggleTransferWindowGroup(confederation: Confederation) {
+        _state.update { current ->
+            val expanded = current.expandedConfederations.toMutableSet()
+            if (confederation in expanded) expanded.remove(confederation) else expanded.add(confederation)
+            current.copy(expandedConfederations = expanded)
+        }
+    }
+
     private fun loadTransferWindows() {
         viewModelScope.launch(Dispatchers.IO) {
             _state.update { it.copy(transferWindowsLoading = true) }
             when (val result = transferWindows.fetchOpenTransferWindows()) {
-                is com.liordahan.mgsrteam.transfermarket.TransfermarktResult.Success ->
+                is com.liordahan.mgsrteam.transfermarket.TransfermarktResult.Success -> {
+                    val allWindows = result.data
+                    val groups = buildTransferWindowGroups(allWindows)
                     _state.update {
                         it.copy(
-                            transferWindows = result.data,
+                            transferWindows = allWindows,
+                            transferWindowGroups = groups,
                             transferWindowsLoading = false
                         )
                     }
+                }
                 is com.liordahan.mgsrteam.transfermarket.TransfermarktResult.Failed ->
                     _state.update {
                         it.copy(
                             transferWindows = emptyList(),
+                            transferWindowGroups = emptyMap(),
                             transferWindowsLoading = false
                         )
                     }
+            }
+        }
+    }
+
+    private fun buildTransferWindowGroups(
+        windows: List<TransferWindow>
+    ): Map<Confederation, List<TransferWindow>> {
+        val priority = windows
+            .filter { it.countryCode in PRIORITY_COUNTRY_CODES }
+            .sortedBy { it.daysLeft }
+
+        val remaining = windows
+            .filter { it.countryCode !in PRIORITY_COUNTRY_CODES }
+            .groupBy { it.confederation }
+            .toSortedMap(compareBy { it.order })
+
+        return buildMap {
+            if (priority.isNotEmpty()) put(Confederation.PRIORITY, priority)
+            remaining.forEach { (conf, list) ->
+                put(conf, list.sortedBy { it.daysLeft })
             }
         }
     }

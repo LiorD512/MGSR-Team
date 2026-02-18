@@ -105,6 +105,7 @@ import com.liordahan.mgsrteam.features.home.models.FeedEvent
 import com.liordahan.mgsrteam.features.login.models.Account
 import com.liordahan.mgsrteam.localization.LocaleManager
 import com.liordahan.mgsrteam.navigation.Screens
+import com.liordahan.mgsrteam.transfermarket.Confederation
 import com.liordahan.mgsrteam.transfermarket.TransferWindow
 import com.liordahan.mgsrteam.ui.theme.HomeBlueAccent
 import com.liordahan.mgsrteam.ui.theme.HomeDarkBackground
@@ -222,9 +223,9 @@ fun DashboardScreen(
                 )
             }
 
-            // ── Transfer Windows ───────────────────────────────────────────
+            // ── Transfer Windows (Grouped & Collapsible) ────────────────────
             item {
-                TransferWindowsSectionHeader()
+                TransferWindowsSectionHeader(totalCount = state.transferWindows.size)
             }
             when {
                 state.transferWindowsLoading -> {
@@ -243,7 +244,7 @@ fun DashboardScreen(
                         }
                     }
                 }
-                state.transferWindows.isEmpty() -> {
+                state.transferWindowGroups.isEmpty() -> {
                     item {
                         Text(
                             text = stringResource(R.string.transfer_windows_empty),
@@ -255,14 +256,28 @@ fun DashboardScreen(
                     }
                 }
                 else -> {
-                    items(
-                        items = state.transferWindows,
-                        key = { it.countryName }
-                    ) { window ->
-                        TransferWindowRow(
-                            window = window,
-                            modifier = Modifier.padding(horizontal = 20.dp)
-                        )
+                    state.transferWindowGroups.forEach { (confederation, windows) ->
+                        val isExpanded = confederation in state.expandedConfederations
+                        item(key = "tw_header_${confederation.name}") {
+                            TransferWindowGroupHeader(
+                                confederation = confederation,
+                                count = windows.size,
+                                isExpanded = isExpanded,
+                                closingSoonCount = windows.count { (it.daysLeft ?: Int.MAX_VALUE) <= 7 },
+                                onToggle = { viewModel.toggleTransferWindowGroup(confederation) }
+                            )
+                        }
+                        if (isExpanded) {
+                            items(
+                                items = windows,
+                                key = { "tw_${confederation.name}_${it.countryName}" }
+                            ) { window ->
+                                TransferWindowRow(
+                                    window = window,
+                                    modifier = Modifier.padding(horizontal = 20.dp)
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -1005,7 +1020,7 @@ private fun MiniStat(value: String, label: String, color: Color) {
 // ═════════════════════════════════════════════════════════════════════════════
 
 @Composable
-private fun TransferWindowsSectionHeader() {
+private fun TransferWindowsSectionHeader(totalCount: Int) {
     Column(modifier = Modifier.padding(top = 20.dp)) {
         Row(
             modifier = Modifier
@@ -1018,6 +1033,19 @@ private fun TransferWindowsSectionHeader() {
                 style = boldTextStyle(HomeTextPrimary, 18.sp),
                 modifier = Modifier.weight(1f)
             )
+            if (totalCount > 0) {
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(HomeTealAccent.copy(alpha = 0.15f))
+                        .padding(horizontal = 8.dp, vertical = 3.dp)
+                ) {
+                    Text(
+                        text = totalCount.toString(),
+                        style = boldTextStyle(HomeTealAccent, 12.sp)
+                    )
+                }
+            }
         }
 
         Spacer(Modifier.height(4.dp))
@@ -1031,7 +1059,101 @@ private fun TransferWindowsSectionHeader() {
                 .background(HomeTealAccent)
         )
 
-        Spacer(Modifier.height(14.dp))
+        Spacer(Modifier.height(10.dp))
+    }
+}
+
+@Composable
+private fun TransferWindowGroupHeader(
+    confederation: Confederation,
+    count: Int,
+    isExpanded: Boolean,
+    closingSoonCount: Int,
+    onToggle: () -> Unit
+) {
+    val chevronRotation by animateFloatAsState(
+        targetValue = if (isExpanded) 180f else 0f,
+        animationSpec = tween(250),
+        label = "twChevron"
+    )
+
+    val accentColor = when (confederation) {
+        Confederation.PRIORITY -> HomeTealAccent
+        Confederation.UEFA -> HomeBlueAccent
+        Confederation.CONMEBOL -> HomeGreenAccent
+        Confederation.CONCACAF -> HomeOrangeAccent
+        Confederation.AFC -> HomePurpleAccent
+        Confederation.CAF -> Color(0xFFFDD835)
+        Confederation.OFC -> HomeTextSecondary
+    }
+
+    val displayName = when (confederation) {
+        Confederation.PRIORITY -> stringResource(R.string.transfer_windows_group_priority)
+        Confederation.UEFA -> stringResource(R.string.transfer_windows_group_uefa)
+        Confederation.CONMEBOL -> stringResource(R.string.transfer_windows_group_conmebol)
+        Confederation.CONCACAF -> stringResource(R.string.transfer_windows_group_concacaf)
+        Confederation.AFC -> stringResource(R.string.transfer_windows_group_afc)
+        Confederation.CAF -> stringResource(R.string.transfer_windows_group_caf)
+        Confederation.OFC -> stringResource(R.string.transfer_windows_group_ofc)
+    }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 4.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(accentColor.copy(alpha = 0.08f))
+            .clickable { onToggle() }
+            .padding(horizontal = 14.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        if (confederation == Confederation.PRIORITY) {
+            Text(text = "★ ", style = boldTextStyle(accentColor, 14.sp))
+        }
+
+        Text(
+            text = displayName,
+            style = boldTextStyle(HomeTextPrimary, 14.sp),
+            modifier = Modifier.weight(1f)
+        )
+
+        if (closingSoonCount > 0 && !isExpanded) {
+            Box(
+                modifier = Modifier
+                    .padding(end = 8.dp)
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(HomeRedAccent.copy(alpha = 0.15f))
+                    .padding(horizontal = 6.dp, vertical = 2.dp)
+            ) {
+                Text(
+                    text = stringResource(R.string.transfer_windows_closing_soon, closingSoonCount),
+                    style = boldTextStyle(HomeRedAccent, 10.sp)
+                )
+            }
+        }
+
+        Box(
+            modifier = Modifier
+                .clip(RoundedCornerShape(8.dp))
+                .background(accentColor.copy(alpha = 0.15f))
+                .padding(horizontal = 6.dp, vertical = 2.dp)
+        ) {
+            Text(
+                text = count.toString(),
+                style = boldTextStyle(accentColor, 11.sp)
+            )
+        }
+
+        Spacer(Modifier.width(6.dp))
+
+        Icon(
+            imageVector = Icons.Default.KeyboardArrowDown,
+            contentDescription = if (isExpanded) stringResource(R.string.collapse) else stringResource(R.string.expand),
+            tint = HomeTextSecondary,
+            modifier = Modifier
+                .size(20.dp)
+                .rotate(chevronRotation)
+        )
     }
 }
 
@@ -1040,17 +1162,27 @@ private fun TransferWindowRow(
     window: TransferWindow,
     modifier: Modifier = Modifier
 ) {
+    val isClosingSoon = (window.daysLeft ?: Int.MAX_VALUE) <= 7
+    val daysColor = when {
+        isClosingSoon -> HomeRedAccent
+        (window.daysLeft ?: Int.MAX_VALUE) <= 14 -> HomeOrangeAccent
+        else -> HomeTealAccent
+    }
+
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(bottom = 8.dp)
+            .padding(bottom = 6.dp)
             .clip(RoundedCornerShape(8.dp))
             .background(HomeDarkCard)
-            .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(8.dp))
+            .border(
+                1.dp,
+                if (isClosingSoon) HomeRedAccent.copy(alpha = 0.3f) else HomeDarkCardBorder,
+                RoundedCornerShape(8.dp)
+            )
             .padding(horizontal = 14.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Flag (circular with elevation) + country name grouped together
         Row(
             modifier = Modifier.weight(1f),
             verticalAlignment = Alignment.CenterVertically
@@ -1076,12 +1208,25 @@ private fun TransferWindowRow(
                 style = boldTextStyle(HomeTextPrimary, 14.sp)
             )
         }
-        // Days left on the right
         window.daysLeft?.let { days ->
-            Text(
-                text = stringResource(R.string.transfer_windows_days_left, days),
-                style = regularTextStyle(HomeTealAccent, 13.sp)
-            )
+            if (isClosingSoon) {
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(HomeRedAccent.copy(alpha = 0.15f))
+                        .padding(horizontal = 8.dp, vertical = 3.dp)
+                ) {
+                    Text(
+                        text = stringResource(R.string.transfer_windows_days_left, days),
+                        style = boldTextStyle(HomeRedAccent, 12.sp)
+                    )
+                }
+            } else {
+                Text(
+                    text = stringResource(R.string.transfer_windows_days_left, days),
+                    style = regularTextStyle(daysColor, 13.sp)
+                )
+            }
         } ?: run {
             Text(
                 text = stringResource(R.string.transfer_windows_open),
