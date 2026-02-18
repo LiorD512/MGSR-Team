@@ -65,14 +65,20 @@ class AgencyDiscoveryService(
                     )
                 }
 
-                // Strategy 2: Gemini with Google Search (plain text - NO responseSchema, incompatible with grounding)
+                // Strategy 2: Google "{name} agent", get Transfermarkt URL, fetch page, verify 90% name match
+                val fromTmUrl = findAgencyViaGoogleAndTransfermarkt(sanitizedName)
+                if (fromTmUrl != null) {
+                    Log.d(TAG, "discoverAgencyForPerson: found via TM URL: ${fromTmUrl.agencyName}")
+                    return@withContext Result.success(fromTmUrl)
+                }
+
+                // Strategy 3: Fallback - Gemini web search for agency name, then verify on Transfermarkt
                 val agencyNameFromWeb = findAgencyNameViaWebSearch(sanitizedName)
                 if (agencyNameFromWeb.isNullOrBlank()) {
                     Log.w(TAG, "discoverAgencyForPerson: web search returned nothing")
                     return@withContext Result.success(null)
                 }
 
-                // Strategy 3: Verify on Transfermarkt and get URL
                 val tmResult = agencySearch.getAgencySearchResults(agencyNameFromWeb)
                 when (tmResult) {
                     is TransfermarktResult.Success -> {
@@ -115,6 +121,92 @@ class AgencyDiscoveryService(
                 Result.failure(e)
             }
         }
+
+    /**
+     * Strategy: Google "{personName} agent", get Transfermarkt URL, fetch page, extract agency.
+     * Validates that the agent name on the page matches personName at least 90%.
+     */
+    private suspend fun findAgencyViaGoogleAndTransfermarkt(personName: String): DiscoveredAgency? =
+        withContext(Dispatchers.IO) {
+            try {
+                val model = FirebaseAI.getInstance(backend = GenerativeBackend.googleAI()).generativeModel(
+                    modelName = "gemini-2.5-flash",
+                    generationConfig = generationConfig { temperature = 0.1f },
+                    safetySettings = null,
+                    tools = listOf(Tool.googleSearch())
+                )
+                val prompt = """
+                    Search the web for "$personName agent" (football/soccer agent).
+                    Find their Transfermarkt profile page. Reply with ONLY the full Transfermarkt URL.
+                    Example: https://www.transfermarkt.com/jorge-mendes/profil/berater/141
+                    Or the agency page if that's what appears: https://www.transfermarkt.com/gestifute/beraterfirma/berater/123
+                    One line only. No explanation. If not found: UNKNOWN
+                """.trimIndent()
+                val response = model.generateContent(prompt)
+                val text = response.text?.trim() ?: return@withContext null
+                if (text.equals("UNKNOWN", ignoreCase = true) || text.isBlank()) return@withContext null
+
+                val url = text.lines().firstOrNull()?.trim()?.takeIf { it.isNotBlank() }
+                    ?.takeIf { it.contains("transfermarkt", ignoreCase = true) }
+                    ?: return@withContext null
+
+                val extracted = agencySearch.fetchAgentPageAndExtractAgency(url) ?: return@withContext null
+                val (agentNameOnPage, agencyName, agencyUrl) = extracted
+
+                if (agencyName.isNullOrBlank() || agencyUrl.isNullOrBlank()) {
+                    Log.w(TAG, "findAgencyViaGoogleAndTransfermarkt: no agency on page")
+                    return@withContext null
+                }
+
+                val isAgentProfile = !url.contains("beraterfirma", ignoreCase = true)
+                if (isAgentProfile && agentNameOnPage != null && agentNameOnPage.isNotBlank()) {
+                    if (!nameSimilarityAtLeast(personName, agentNameOnPage, 0.9f)) {
+                        Log.w(TAG, "findAgencyViaGoogleAndTransfermarkt: name match <90%: '$personName' vs '$agentNameOnPage'")
+                        return@withContext null
+                    }
+                }
+
+                Log.d(TAG, "findAgencyViaGoogleAndTransfermarkt: $personName -> $agencyName (${agencyUrl})")
+                DiscoveredAgency(
+                    agencyName = agencyName,
+                    agencyUrl = agencyUrl,
+                    personNameOnTransfermarkt = agentNameOnPage
+                )
+            } catch (e: Exception) {
+                Log.e(TAG, "findAgencyViaGoogleAndTransfermarkt failed", e)
+                null
+            }
+        }
+
+    private fun nameSimilarityAtLeast(a: String, b: String, minSimilarity: Float): Boolean {
+        val sa = a.trim().lowercase().replace(Regex("\\s+"), " ")
+        val sb = b.trim().lowercase().replace(Regex("\\s+"), " ")
+        if (sa == sb) return true
+        if (sa.isEmpty() || sb.isEmpty()) return false
+        val distance = levenshteinDistance(sa, sb)
+        val maxLen = maxOf(sa.length, sb.length)
+        val similarity = 1f - (distance.toFloat() / maxLen)
+        return similarity >= minSimilarity
+    }
+
+    private fun levenshteinDistance(s1: String, s2: String): Int {
+        val len1 = s1.length
+        val len2 = s2.length
+        val dp = Array(len1 + 1) { IntArray(len2 + 1) }
+        for (i in 0..len1) dp[i][0] = i
+        for (j in 0..len2) dp[0][j] = j
+        for (i in 1..len1) {
+            for (j in 1..len2) {
+                val cost = if (s1[i - 1] == s2[j - 1]) 0 else 1
+                dp[i][j] = minOf(
+                    dp[i - 1][j] + 1,
+                    dp[i][j - 1] + 1,
+                    dp[i - 1][j - 1] + cost
+                )
+            }
+        }
+        return dp[len1][len2]
+    }
 
     /**
      * Uses Gemini with Google Search grounding. Plain text only - responseSchema conflicts with grounding.

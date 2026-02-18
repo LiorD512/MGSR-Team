@@ -133,6 +133,8 @@ import com.liordahan.mgsrteam.features.contacts.playersForAgencyContact
 import com.liordahan.mgsrteam.features.players.models.Player
 import com.liordahan.mgsrteam.features.players.playerinfo.WhatsAppIcon
 import com.liordahan.mgsrteam.features.contacts.agency.AgencyDiscoveryService
+import com.liordahan.mgsrteam.transfermarket.AgencySearch
+import com.liordahan.mgsrteam.transfermarket.AgencySearchModel
 import com.liordahan.mgsrteam.transfermarket.ClubSearch
 import com.liordahan.mgsrteam.transfermarket.ClubSearchModel
 import com.liordahan.mgsrteam.transfermarket.TransfermarktResult
@@ -559,7 +561,7 @@ fun ContactsScreen(
                             )
                         }
                         val isAgencyTab = selectedTab == ContactType.AGENCY
-                        val agencyContacts = if (isAgencyTab) countryFilteredContacts.sortedBy { it.name?.lowercase() ?: "" } else null
+                        val agencyContacts = if (isAgencyTab) countryFilteredContacts.sortedBy { it.displayOrganization?.lowercase() ?: "" } else null
                         val showGroupedByCountry = !isAgencyTab && selectedCountryFilter == null
                         val grouped = remember(countryFilteredContacts, showGroupedByCountry) {
                             if (showGroupedByCountry) buildContactsGroupedByCountry(countryFilteredContacts)
@@ -686,6 +688,7 @@ fun ContactsScreen(
                 AddEditContactBottomSheet(
                     modifier = Modifier.align(Alignment.BottomCenter),
                     initialContact = editingContact,
+                    initialContactType = selectedTab,
                     pickedName = pickedName,
                     pickedPhone = pickedPhone,
                     onNameChange = { pickedName = it },
@@ -1424,7 +1427,13 @@ private fun AgencyContactCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .combinedClickable(
-                        onClick = { expanded = !expanded },
+                        onClick = {
+                            if (contact.agencyUrl?.isNotBlank() == true) {
+                                onOpenTransfermarkt()
+                            } else {
+                                expanded = !expanded
+                            }
+                        },
                         onLongClick = { showMenu = true }
                     )
                     .padding(horizontal = 12.dp, vertical = 8.dp),
@@ -1466,26 +1475,18 @@ private fun AgencyContactCard(
                         )
                     }
                 }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    if (contact.agencyUrl?.isNotBlank() == true) {
-                        IconButton(
-                            onClick = { onOpenTransfermarkt() },
-                            modifier = Modifier.size(36.dp)
-                        ) {
-                            Icon(
-                                Icons.AutoMirrored.Filled.OpenInNew,
-                                contentDescription = stringResource(R.string.contacts_open_transfermarkt),
-                                tint = HomeBlueAccent,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-                    }
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
                     WhatsAppIcon(contact.phoneNumber ?: "")
                     Icon(
                         imageVector = if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
                         contentDescription = null,
                         tint = HomeTextSecondary,
-                        modifier = Modifier.size(24.dp)
+                        modifier = Modifier
+                            .size(24.dp)
+                            .clickWithNoRipple { expanded = !expanded }
                     )
                 }
             }
@@ -1625,6 +1626,7 @@ private val agencyRoles = listOf(
 private fun AddEditContactBottomSheet(
     modifier: Modifier,
     initialContact: Contact?,
+    initialContactType: ContactType? = null,
     pickedName: String,
     pickedPhone: String,
     onNameChange: (String) -> Unit,
@@ -1635,11 +1637,12 @@ private fun AddEditContactBottomSheet(
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val clubSearch: ClubSearch = koinInject()
+    val agencySearch: AgencySearch = koinInject()
     val agencyDiscovery: AgencyDiscoveryService = koinInject()
     val isEdit = initialContact != null
 
-    var selectedContactType by remember(initialContact) {
-        mutableStateOf<ContactType?>(initialContact?.contactTypeEnum)
+    var selectedContactType by remember(initialContact, initialContactType) {
+        mutableStateOf<ContactType?>(initialContact?.contactTypeEnum ?: initialContactType)
     }
 
     var clubSearchQuery by remember(initialContact) {
@@ -1652,11 +1655,20 @@ private fun AddEditContactBottomSheet(
     var agencyName by remember(initialContact) {
         mutableStateOf(initialContact?.agencyName ?: "")
     }
-    var agencyCountry by remember(initialContact) {
-        mutableStateOf(initialContact?.agencyCountry ?: "")
-    }
     var agencyUrl by remember(initialContact) {
         mutableStateOf(initialContact?.agencyUrl ?: "")
+    }
+    var agencySearchQuery by remember(initialContact) {
+        mutableStateOf(initialContact?.agencyName ?: "")
+    }
+    var agencySearchResults by remember { mutableStateOf<List<AgencySearchModel>>(emptyList()) }
+    var isSearchingAgencies by remember { mutableStateOf(false) }
+    var selectedAgency by remember(initialContact) {
+        mutableStateOf<AgencySearchModel?>(
+            if (initialContact != null && !initialContact.agencyName.isNullOrBlank() && !initialContact.agencyUrl.isNullOrBlank())
+                AgencySearchModel(agencyName = initialContact.agencyName, agencyUrl = initialContact.agencyUrl)
+            else null
+        )
     }
     var isDiscoveringAgency by remember { mutableStateOf(false) }
     var discoveryError by remember { mutableStateOf<String?>(null) }
@@ -1709,7 +1721,8 @@ private fun AddEditContactBottomSheet(
                     discovered?.let {
                         agencyName = it.agencyName
                         agencyUrl = it.agencyUrl
-                        agencyCountry = it.agencyCountry ?: agencyCountry
+                        agencySearchQuery = it.agencyName
+                        selectedAgency = null
                         it.personNameOnTransfermarkt?.takeIf { n -> n.isNotBlank() && n != pickedName.trim() }
                             ?.let { tmName -> onNameChange(tmName) }
                     }
@@ -1720,6 +1733,24 @@ private fun AddEditContactBottomSheet(
         } finally {
             isDiscoveringAgency = false
         }
+    }
+
+    androidx.compose.runtime.LaunchedEffect(agencySearchQuery, selectedAgency) {
+        if (selectedAgency != null) {
+            agencySearchResults = emptyList()
+            return@LaunchedEffect
+        }
+        if (agencySearchQuery.length < 2) {
+            agencySearchResults = emptyList()
+            return@LaunchedEffect
+        }
+        delay(250)
+        isSearchingAgencies = true
+        agencySearchResults = when (val result = agencySearch.getAgencySearchResults(agencySearchQuery)) {
+            is TransfermarktResult.Success -> result.data.sortedBy { it.agencyName?.lowercase() ?: "" }
+            is TransfermarktResult.Failed -> emptyList()
+        }
+        isSearchingAgencies = false
     }
 
     val rolesForType = when (selectedContactType) {
@@ -1879,18 +1910,36 @@ private fun AddEditContactBottomSheet(
                             }
                         )
                         ContactType.AGENCY -> Step1AgencyContent(
+                            isEdit = isEdit,
                             pickedName = pickedName,
                             pickedPhone = pickedPhone,
                             agencyName = agencyName,
-                            agencyCountry = agencyCountry,
                             agencyUrl = agencyUrl,
+                            agencySearchQuery = agencySearchQuery,
+                            agencySearchResults = agencySearchResults,
+                            isSearchingAgencies = isSearchingAgencies,
+                            selectedAgency = selectedAgency,
                             isDiscovering = isDiscoveringAgency,
                             discoveryError = discoveryError,
                             onPickContact = onPickContact,
                             onNameChange = onNameChange,
                             onPhoneChange = onPhoneChange,
-                            onAgencyNameChange = { agencyName = it },
-                            onAgencyCountryChange = { agencyCountry = it }
+                            onAgencySearchChange = {
+                                agencySearchQuery = it
+                                agencyName = it
+                                selectedAgency = null
+                            },
+                            onSelectAgency = {
+                                selectedAgency = it
+                                agencyName = it.agencyName ?: agencySearchQuery
+                                agencyUrl = it.agencyUrl ?: ""
+                            },
+                            onChangeAgency = {
+                                selectedAgency = null
+                                agencySearchQuery = ""
+                                agencyName = ""
+                                agencyUrl = ""
+                            }
                         )
                         null -> Step1ClubContent(
                             clubSearchQuery = clubSearchQuery,
@@ -1918,6 +1967,7 @@ private fun AddEditContactBottomSheet(
                         )
                     }
                     step == contactStep && selectedContactType != ContactType.AGENCY -> Step2ContactContent(
+                        isEdit = isEdit,
                         pickedName = pickedName,
                         pickedPhone = pickedPhone,
                         onNameChange = onNameChange,
@@ -1944,7 +1994,7 @@ private fun AddEditContactBottomSheet(
                                     clubCountryFlag = if (type == ContactType.CLUB) selectedClub?.clubCountryFlag else null,
                                     contactType = type.name,
                                     agencyName = if (type == ContactType.AGENCY) agencyName.trim().takeIf { it.isNotBlank() } else null,
-                                    agencyCountry = if (type == ContactType.AGENCY) agencyCountry.trim().takeIf { it.isNotBlank() } else null,
+                                    agencyCountry = null,
                                     agencyUrl = if (type == ContactType.AGENCY) agencyUrl.trim().takeIf { it.isNotBlank() } else null
                                 )
                             )
@@ -1982,7 +2032,7 @@ private fun AddEditContactBottomSheet(
                                     clubCountryFlag = null,
                                     contactType = ContactType.AGENCY.name,
                                     agencyName = agencyName.trim().takeIf { it.isNotBlank() },
-                                    agencyCountry = agencyCountry.trim().takeIf { it.isNotBlank() },
+                                    agencyCountry = null,
                                     agencyUrl = agencyUrl.trim().takeIf { it.isNotBlank() }
                                 )
                             )
@@ -2265,20 +2315,26 @@ private fun Step1ClubContent(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun Step1AgencyContent(
+    isEdit: Boolean,
     pickedName: String,
     pickedPhone: String,
     agencyName: String,
-    agencyCountry: String,
     agencyUrl: String,
+    agencySearchQuery: String,
+    agencySearchResults: List<AgencySearchModel>,
+    isSearchingAgencies: Boolean,
+    selectedAgency: AgencySearchModel?,
     isDiscovering: Boolean,
     discoveryError: String?,
     onPickContact: () -> Unit,
     onNameChange: (String) -> Unit,
     onPhoneChange: (String) -> Unit,
-    onAgencyNameChange: (String) -> Unit,
-    onAgencyCountryChange: (String) -> Unit
+    onAgencySearchChange: (String) -> Unit,
+    onSelectAgency: (AgencySearchModel) -> Unit,
+    onChangeAgency: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -2322,16 +2378,18 @@ private fun Step1AgencyContent(
             placeholder = stringResource(R.string.contacts_placeholder_name),
             modifier = Modifier.fillMaxWidth()
         )
-        Spacer(Modifier.height(8.dp))
-        AddContactTextField(
-            label = stringResource(R.string.contacts_label_phone),
-            value = pickedPhone,
-            onValueChange = onPhoneChange,
-            placeholder = stringResource(R.string.contacts_placeholder_phone),
-            keyboardType = KeyboardType.Phone,
-            contentTextDirection = TextDirection.Ltr,
-            modifier = Modifier.fillMaxWidth()
-        )
+        if (isEdit) {
+            Spacer(Modifier.height(8.dp))
+            AddContactTextField(
+                label = stringResource(R.string.contacts_label_phone),
+                value = pickedPhone,
+                onValueChange = onPhoneChange,
+                placeholder = stringResource(R.string.contacts_placeholder_phone),
+                keyboardType = KeyboardType.Phone,
+                contentTextDirection = TextDirection.Ltr,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
         Spacer(Modifier.height(12.dp))
         Text(
             text = stringResource(R.string.contacts_agency_discovering),
@@ -2395,26 +2453,124 @@ private fun Step1AgencyContent(
             style = regularTextStyle(HomeTextSecondary, 11.sp),
             modifier = Modifier.padding(bottom = 8.dp)
         )
-        AddContactTextField(
-            label = stringResource(R.string.contacts_label_agency),
-            value = agencyName,
-            onValueChange = onAgencyNameChange,
-            placeholder = stringResource(R.string.contacts_placeholder_agency),
-            modifier = Modifier.fillMaxWidth()
+        OutlinedTextField(
+            value = agencySearchQuery,
+            onValueChange = onAgencySearchChange,
+            placeholder = {
+                Text(
+                    stringResource(R.string.contacts_agency_search_hint),
+                    style = regularTextStyle(HomeTextSecondary, 14.sp)
+                )
+            },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(
+                focusedTextColor = HomeTextPrimary,
+                unfocusedTextColor = HomeTextPrimary,
+                focusedBorderColor = HomeBlueAccent,
+                unfocusedBorderColor = HomeDarkCardBorder,
+                cursorColor = HomeBlueAccent
+            ),
+            trailingIcon = {
+                if (isSearchingAgencies) {
+                    Box(Modifier.size(32.dp), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(
+                            color = HomeBlueAccent,
+                            strokeWidth = 2.dp,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                }
+            }
         )
-        Spacer(Modifier.height(12.dp))
-        AddContactTextField(
-            label = stringResource(R.string.contacts_label_agency_country),
-            value = agencyCountry,
-            onValueChange = onAgencyCountryChange,
-            placeholder = stringResource(R.string.contacts_placeholder_agency_country),
-            modifier = Modifier.fillMaxWidth()
-        )
+        if (agencySearchResults.isNotEmpty()) {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 260.dp)
+                    .padding(vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                items(agencySearchResults) { agencyItem ->
+                    AgencySearchResultRow(
+                        agency = agencyItem,
+                        onClick = { onSelectAgency(agencyItem) }
+                    )
+                }
+            }
+        }
+        selectedAgency?.let { agency ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(HomeDarkBackground)
+                    .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(10.dp))
+                    .padding(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Business,
+                    contentDescription = null,
+                    tint = HomeBlueAccent,
+                    modifier = Modifier.size(28.dp)
+                )
+                Spacer(Modifier.width(10.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(agency.agencyName ?: "", style = boldTextStyle(HomeTextPrimary, 12.sp))
+                    Text(
+                        text = stringResource(R.string.contacts_agency_found_on_tm),
+                        style = regularTextStyle(HomeTextSecondary, 11.sp)
+                    )
+                }
+                TextButton(onClick = onChangeAgency) {
+                    Text(stringResource(R.string.contacts_change), style = regularTextStyle(HomeTealAccent, 12.sp))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AgencySearchResultRow(
+    agency: AgencySearchModel,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickWithNoRipple(onClick),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = HomeDarkCard),
+        border = BorderStroke(1.dp, HomeDarkCardBorder)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.Default.Business,
+                contentDescription = null,
+                tint = HomeBlueAccent,
+                modifier = Modifier.size(36.dp)
+            )
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    text = agency.agencyName ?: "",
+                    style = boldTextStyle(HomeTextPrimary, 14.sp)
+                )
+            }
+        }
     }
 }
 
 @Composable
 private fun Step2ContactContent(
+    isEdit: Boolean,
     pickedName: String,
     pickedPhone: String,
     onNameChange: (String) -> Unit,
@@ -2476,6 +2632,7 @@ private fun Step2ContactContent(
             placeholder = stringResource(R.string.contacts_placeholder_phone),
             keyboardType = KeyboardType.Phone,
             contentTextDirection = TextDirection.Ltr,
+            readOnly = !isEdit,
             modifier = Modifier.fillMaxWidth()
         )
     }
@@ -2571,6 +2728,7 @@ private fun AddContactTextField(
     placeholder: String,
     keyboardType: KeyboardType = KeyboardType.Text,
     contentTextDirection: TextDirection? = null,
+    readOnly: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     val textStyle = if (contentTextDirection != null) {
@@ -2590,6 +2748,7 @@ private fun AddContactTextField(
         OutlinedTextField(
             value = value,
             onValueChange = onValueChange,
+            readOnly = readOnly,
             textStyle = textStyle ?: TextStyle(),
             keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
             placeholder = {

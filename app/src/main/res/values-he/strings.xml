@@ -361,7 +361,7 @@
     <string name="requests_find_players_sheet_title">שחקנים לבקשה זו</string>
     <string name="requests_find_players_online">מצא שחקנים באינטרנט</string>
     <string name="requests_online_players_sheet_title">שחקנים מהשוק</string>
-    <string name="requests_online_players_loading">מחפש ב-Transfermarkt…</string>
+    <string name="requests_online_players_loading">הAI סקאוט מחפש שחקנים…</string>
     <string name="requests_online_players_empty">לא נמצאו שחקנים תואמים באינטרנט</string>
     <string name="requests_no_match">אין שחקנים במאגר התואמים לבקשה זו</string>
     <string name="requests_no_requests">אין בקשות עדיין</string>
@@ -515,6 +515,9 @@
     <string name="add_player_title">הוסף שחקן</string>
     <string name="add_player_search_roster">חפש ב-Transfermarkt להוספה לסגל</string>
     <string name="add_player_search_shortlist">חפש ב-Transfermarkt להוספה לרשימת מעקב</string>
+    <string name="add_player_from_link_title">הוסף שחקן מקישור</string>
+    <string name="add_player_from_link_roster">הוסף לסגל (עם פרטי קשר)</string>
+    <string name="add_player_from_link_shortlist">הוסף לרשימת מעקב</string>
     <string name="add_player_search_hint_title">חפש שחקן להוספה</string>
     <string name="add_player_search_desc">הקלד שם למציאת שחקנים ב-Transfermarkt</string>
     <string name="add_player_label_player_number">מספר שחקן</string>

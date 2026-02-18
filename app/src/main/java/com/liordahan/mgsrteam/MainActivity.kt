@@ -83,6 +83,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        setIntent(intent)
         handleDeepLink(intent)
     }
 
@@ -109,8 +110,10 @@ class MainActivity : AppCompatActivity() {
         }
 
         // Handle Share intent (WhatsApp, Gmail, etc.) — extract Transfermarkt URL from shared text
-        if (intent.action == Intent.ACTION_SEND && intent.type == "text/plain") {
+        if (intent.action == Intent.ACTION_SEND) {
             val sharedText = intent.getStringExtra(Intent.EXTRA_TEXT)
+                ?: intent.getCharSequenceExtra(Intent.EXTRA_TEXT)?.toString()
+                ?: intent.data?.toString()
             extractTransfermarktPlayerUrl(sharedText)?.let { url ->
                 viewModel.setPendingAddPlayerTmUrl(url)
             }

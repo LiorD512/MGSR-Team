@@ -356,7 +356,7 @@
     <string name="returnee_title">Returnees</string>
     <string name="returnee_subtitle">Players returning from loan across European leagues</string>
     <string name="returnee_no_found">No returnees found</string>
-    <string name="returnee_loading">Loading (%1$d/%2$d leagues)…</string>
+    <string name="returnee_loading">Loading (%1$d/%2$d leagues)…</string>+
     <string name="returnee_stat_leagues">Leagues</string>
     <string name="returnee_all_count">All %d</string>
 
@@ -374,7 +374,7 @@
     <string name="requests_find_players_sheet_title">Players for this request</string>
     <string name="requests_find_players_online">Find players online</string>
     <string name="requests_online_players_sheet_title">Players from the market</string>
-    <string name="requests_online_players_loading">Searching Transfermarkt…</string>
+    <string name="requests_online_players_loading">AI Scout searching…</string>
     <string name="requests_online_players_empty">No matching players found online</string>
     <string name="requests_no_match">No roster players match this request</string>
     <string name="requests_no_requests">No requests yet</string>
@@ -528,6 +528,9 @@
     <string name="add_player_title">Add Player</string>
     <string name="add_player_search_roster">Search Transfermarkt to add to roster</string>
     <string name="add_player_search_shortlist">Search Transfermarkt to add to shortlist</string>
+    <string name="add_player_from_link_title">Add player from link</string>
+    <string name="add_player_from_link_roster">Add to roster (with contact info)</string>
+    <string name="add_player_from_link_shortlist">Add to shortlist</string>
     <string name="add_player_search_hint_title">Search for a player to add</string>
     <string name="add_player_search_desc">Type a name to find players on Transfermarkt</string>
     <string name="add_player_label_player_number">Player Number</string>

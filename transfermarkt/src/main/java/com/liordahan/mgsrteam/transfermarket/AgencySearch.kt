@@ -87,4 +87,62 @@ class AgencySearch {
             null
         }
     }
+
+    /**
+     * Fetches an agent or agency page and extracts agent name + agency info.
+     * Used when we have a Transfermarkt URL from web search.
+     * @return Triple(agentNameOnPage, agencyName, agencyUrl) or null if parsing fails
+     */
+    suspend fun fetchAgentPageAndExtractAgency(pageUrl: String): Triple<String?, String?, String?>? =
+        withContext(Dispatchers.IO) {
+            try {
+                val doc = TransfermarktHttp.fetchDocument(pageUrl)
+                val agentName = doc.select("h1.data-header__headline-wrapper").text().trim()
+                    .takeIf { it.isNotBlank() }
+                    ?: doc.select("div.data-header__headline-container h1").text().trim().takeIf { it.isNotBlank() }
+                    ?: doc.select("h1").firstOrNull()?.text()?.trim()?.takeIf { it.isNotBlank() }
+
+                var agencyName: String? = null
+                var agencyUrl: String? = null
+
+                val infoLabels = doc.select("span.info-table__content--bold, dt.info-table__content--bold")
+                for (label in infoLabels) {
+                    val labelText = label.text().trim().lowercase()
+                    val parent = label.parent() ?: continue
+                    val valueSpan = parent.select("dd.info-table__content, span.info-table__content").firstOrNull()
+                        ?: label.nextElementSibling() ?: continue
+
+                    if (labelText.contains("agent") || labelText.contains("agency") ||
+                        labelText.contains("berater") || labelText.contains("beraterfirma")
+                    ) {
+                        val link = valueSpan.select("a[href*='beraterfirma'], a[href*='berater']").firstOrNull()
+                        agencyName = link?.text()?.trim()?.takeIf { it.isNotBlank() }
+                            ?: valueSpan.text().trim().takeIf { it.isNotBlank() }
+                        val href = link?.attr("href")
+                        if (!href.isNullOrBlank() && href.contains("beraterfirma")) {
+                            agencyUrl = if (href.startsWith("http")) href else "$TRANSFERMARKT_BASE_URL$href"
+                        }
+                        break
+                    }
+                }
+
+                if (agencyName == null && agencyUrl == null) {
+                    val beraterfirmaLink = doc.select("a[href*='beraterfirma']").firstOrNull()
+                    if (beraterfirmaLink != null) {
+                        agencyName = beraterfirmaLink.text().trim().takeIf { it.isNotBlank() }
+                        val href = beraterfirmaLink.attr("href")
+                        agencyUrl = if (href.startsWith("http")) href else "$TRANSFERMARKT_BASE_URL$href"
+                    }
+                }
+
+                if (pageUrl.contains("beraterfirma") && agencyName == null) {
+                    agencyName = agentName ?: doc.select("h1").firstOrNull()?.text()?.trim()
+                    agencyUrl = pageUrl
+                }
+
+                Triple(agentName, agencyName, agencyUrl)
+            } catch (e: Exception) {
+                null
+            }
+        }
 }
