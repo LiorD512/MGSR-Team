@@ -4,8 +4,6 @@ import android.os.Parcelable
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.parcelize.Parcelize
-import org.jsoup.Jsoup
-import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
 import java.io.IOException
 import java.net.URLEncoder
@@ -63,7 +61,7 @@ class PlayerSearch {
                 val encodedQuery = URLEncoder.encode(sanitizedQuery, StandardCharsets.UTF_8.toString())
                 val searchUrl =
                     "$TRANSFERMARKT_BASE_URL/schnellsuche/ergebnis/schnellsuche?query=$encodedQuery"
-                val doc = fetchDocument(searchUrl)
+                val doc = TransfermarktHttp.fetchDocument(searchUrl)
 
                 val playerSection = doc.select("div.box").firstOrNull {
                     it.select("h2.content-box-headline")
@@ -85,13 +83,6 @@ class PlayerSearch {
                 TransfermarktResult.Failed(ex.localizedMessage)
             }
         }
-
-    private fun fetchDocument(url: String): Document {
-        return Jsoup.connect(url)
-            .userAgent(TRANSFERMARKT_USER_AGENT)
-            .timeout(TRANSFERMARKT_TIMEOUT_MS)
-            .get()
-    }
 
     private fun parsePlayerRow(element: Element): PlayerSearchModel? {
         val tdZentriert = element.select("td.zentriert")
@@ -132,7 +123,7 @@ class PlayerSearch {
         withContext(Dispatchers.IO) {
             try {
                 val profileUrl = playerSearchModel.tmProfile.orEmpty()
-                val doc = fetchDocument(profileUrl)
+                val doc = TransfermarktHttp.fetchDocument(profileUrl)
 
                 val nationalityElement = doc.select("[itemprop=nationality] img").firstOrNull()
                 val nationality =
@@ -172,7 +163,6 @@ class PlayerSearch {
                     doc.select("div.data-header__club-info").select("span.data-header__label")
                         .select("img").attr("title")
 
-                // When loading by URL only (e.g. from Releases), search model has no name/image/age — parse from profile page
                 val fullName = playerSearchModel.playerName?.takeIf { it.isNotBlank() }
                     ?: doc.select("h1.data-header__headline").text().trim().takeIf { it.isNotBlank() }
                     ?: doc.select("div.data-header__headline-wrapper h1").text().trim().takeIf { it.isNotBlank() }
@@ -189,40 +179,7 @@ class PlayerSearch {
                 val nationalityFlag = playerSearchModel.nationalityFlag?.takeIf { it.isNotBlank() }
                     ?: nationalityFlagFromDoc
 
-                // Same ribbon location as returnee badge - ribbon has <a title="On loan from X until Y">
-                val ribbon = doc.select("div.data-header_ribbon, div.data-header__ribbon").firstOrNull()
-                    ?: doc.select("div[class*='ribbon']").firstOrNull()
-                val ribbonLinkTitleRaw = ribbon?.select("a")?.firstOrNull()?.attr("title")
-                    ?: doc.select("a[title*='on loan from']").firstOrNull()?.attr("title")
-                    ?: ""
-                val ribbonLinkTitle = ribbonLinkTitleRaw.lowercase()
-                val ribbonText = ribbon?.text()?.trim()?.lowercase() ?: ""
-                val clubSectionText = doc.select("span.data-header__club, div.data-header__club-info").text().lowercase()
-                val infoBoxText = doc.select("div.data-header__info-box").text().lowercase()
-                val headerText = doc.select("div.data-header").text().lowercase()
-                val combined = "$ribbonLinkTitle $ribbonText $clubSectionText $infoBoxText $headerText"
-                val hasLoanIndicator = ribbonLinkTitle.contains("on loan from") ||
-                    combined.contains("on loan") || combined.contains("leihe") ||
-                    combined.contains("ausgeliehen") || combined.contains("on loan from") ||
-                    combined.contains("leihe von") || combined.contains("ausgeliehen von") ||
-                    combined.contains("prêt") || combined.contains("en préstamo") || combined.contains("in prestito") ||
-                    (combined.contains("loan") && !combined.contains("end of loan") && !combined.contains("loan return") && !combined.contains("loan spell"))
-                val isReturnee = combined.contains("returnee") || combined.contains("returned after loan")
-                val isOnLoan = hasLoanIndicator && !isReturnee
-                val onLoanFromClub = if (isOnLoan) {
-                    val headerTextRaw = doc.select("div.data-header").text()
-                    val infoBoxTextRaw = doc.select("div.data-header__info-box").text()
-                    val searchText = ribbonLinkTitleRaw.ifEmpty { headerTextRaw.ifEmpty { infoBoxTextRaw } }
-                    listOf(
-                        Regex("""(?:on loan from|leihe von|ausgeliehen von)\s*:?\s*(.+?)\s+(?:contract|until|bis)""", RegexOption.IGNORE_CASE),
-                        Regex("""(?:on loan from|leihe von|ausgeliehen von)\s*:?\s*(.+?)(?:\s*$|\s*;)""", RegexOption.IGNORE_CASE)
-                    ).firstNotNullOfOrNull { regex ->
-                        regex.find(searchText)?.groupValues?.getOrNull(1)?.trim()?.takeIf { it.isNotBlank() }
-                    }
-                        ?: doc.select("div.data-header a[href*='/verein/']")
-                            .mapNotNull { it.attr("title").takeIf { t -> t.isNotBlank() } ?: it.text().trim().takeIf { t -> t.isNotBlank() } }
-                            .firstOrNull { it != clubName }
-                } else null
+                val loanInfo = detectLoanStatus(doc, clubName)
 
                 return@withContext TransfermarktPlayerDetails(
                     tmProfile = playerSearchModel.tmProfile,
@@ -241,8 +198,8 @@ class PlayerSearch {
                         clubTmProfile = clubTmProfile,
                         clubCountry = clubCountry
                     ),
-                    isOnLoan = isOnLoan,
-                    onLoanFromClub = onLoanFromClub
+                    isOnLoan = loanInfo.isOnLoan,
+                    onLoanFromClub = loanInfo.onLoanFromClub
                 )
 
             } catch (ex: IOException) {
@@ -255,4 +212,3 @@ class PlayerSearch {
         }
 
 }
-

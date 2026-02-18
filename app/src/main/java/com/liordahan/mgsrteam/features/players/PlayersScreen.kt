@@ -1527,6 +1527,7 @@ private fun MarketValueSparkline(
     }
 
     if (sorted.size < 2) return
+    if (sorted.distinct().size < 2) return
 
     val lineColor = when {
         valueTrend > 0 -> HomeGreenAccent

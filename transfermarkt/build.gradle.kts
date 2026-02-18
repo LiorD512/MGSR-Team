@@ -27,5 +27,6 @@ kotlin {
 dependencies {
     implementation(libs.jsoup)
     implementation(libs.coroutines)
+    implementation(libs.okhttp)
 }
 

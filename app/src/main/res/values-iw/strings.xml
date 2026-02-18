@@ -194,6 +194,47 @@
     <string name="agent_task_description_hint">תיאור המשימה…</string>
     <string name="agent_select_due_date">בחר תאריך יעד</string>
 
+    <!-- Tasks Screen -->
+    <string name="tasks_title">משימות</string>
+    <string name="tasks_overview">סקירת משימות</string>
+    <string name="tasks_due_today">להיום</string>
+    <string name="tasks_overdue">באיחור</string>
+    <string name="tasks_total">סה״כ</string>
+    <string name="tasks_view_all">כל המשימות</string>
+    <string name="tasks_filter_all">הכל</string>
+    <string name="tasks_filter_today">היום</string>
+    <string name="tasks_filter_week">השבוע</string>
+    <string name="tasks_filter_overdue">באיחור</string>
+    <string name="tasks_filter_by_agent">לפי סוכן</string>
+    <string name="tasks_filter_timeline">ציר זמן</string>
+    <string name="tasks_section_today">היום</string>
+    <string name="tasks_section_tomorrow">מחר</string>
+    <string name="tasks_section_this_week">השבוע</string>
+    <string name="tasks_section_later">מאוחר יותר</string>
+    <string name="tasks_section_no_date">ללא תאריך</string>
+    <string name="tasks_section_completed">הושלמו</string>
+    <string name="tasks_empty">אין משימות עדיין</string>
+    <string name="tasks_empty_hint">לחץ + ליצירת המשימה הראשונה</string>
+    <string name="tasks_completed_count">%1$d/%2$d הושלמו</string>
+    <string name="tasks_new_task">משימה חדשה</string>
+    <string name="tasks_what_needs_done">מה צריך לעשות?</string>
+    <string name="tasks_assign_to">הקצה ל</string>
+    <string name="tasks_priority">עדיפות</string>
+    <string name="tasks_priority_low">נמוכה</string>
+    <string name="tasks_priority_medium">בינונית</string>
+    <string name="tasks_priority_high">גבוהה</string>
+    <string name="tasks_notes_hint">הוסף הערות (אופציונלי)</string>
+    <string name="tasks_create">צור משימה</string>
+    <string name="tasks_detail_title">פרטי משימה</string>
+    <string name="tasks_mark_complete">סמן כהושלם</string>
+    <string name="tasks_mark_incomplete">סמן כלא הושלם</string>
+    <string name="tasks_delete_confirm_title">מחק משימה</string>
+    <string name="tasks_delete_confirm_message">האם אתה בטוח שברצונך למחוק משימה זו?</string>
+    <string name="tasks_deleted">המשימה נמחקה</string>
+    <string name="tasks_undo">בטל</string>
+    <string name="tasks_completed_toast">המשימה הושלמה</string>
+    <string name="tasks_save">שמור</string>
+
     <!-- Due Dates -->
     <string name="due_overdue">איחור של %d ימים</string>
     <string name="due_yesterday">אתמול</string>
@@ -451,6 +492,15 @@
     <string name="player_info_notes">הערות</string>
     <string name="player_info_add_note">הוסף הערה</string>
     <string name="player_info_note_placeholder">הוסף הערה חדשה…</string>
+    <string name="player_info_save_note">שמור הערה</string>
+    <string name="player_info_no_notes_title">אין הערות עדיין</string>
+    <string name="player_info_no_notes_subtitle">הוסף את ההערה הראשונה על השחקן</string>
+    <string name="player_info_view_all_notes">צפה בכל %1$d ההערות</string>
+    <string name="player_info_all_notes">כל ההערות</string>
+    <string name="player_info_note_copy">העתק</string>
+    <string name="player_info_note_deleted">ההערה נמחקה</string>
+    <string name="player_info_note_undo">בטל</string>
+    <string name="back">חזור</string>
     <string name="player_info_previously">קודם: %1$s (%2$s)</string>
     <string name="player_info_added_by">נוסף על ידי — %s</string>
     <string name="player_info_contract">חוזה %s</string>
@@ -462,6 +512,11 @@
     <string name="player_info_age">גיל</string>
     <string name="player_info_positions">עמדות</string>
     <string name="player_info_nationality">לאום</string>
+    <string name="player_info_foot">רגל</string>
+    <string name="player_info_foot_right">ימין</string>
+    <string name="player_info_foot_left">שמאל</string>
+    <string name="player_info_foot_both">שתיהן</string>
+    <string name="player_info_agency">סוכנות</string>
     <string name="player_info_contract_expiry_date">תאריך סיום חוזה</string>
     <string name="player_info_current_club">מועדון נוכחי</string>
     <string name="player_info_market_value">שווי שוק</string>

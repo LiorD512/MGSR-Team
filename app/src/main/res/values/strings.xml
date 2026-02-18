@@ -195,6 +195,47 @@
     <string name="agent_task_description_hint">Task description…</string>
     <string name="agent_select_due_date">Select due date</string>
 
+    <!-- Tasks Screen -->
+    <string name="tasks_title">Tasks</string>
+    <string name="tasks_overview">Tasks Overview</string>
+    <string name="tasks_due_today">Due Today</string>
+    <string name="tasks_overdue">Overdue</string>
+    <string name="tasks_total">Total</string>
+    <string name="tasks_view_all">View All Tasks</string>
+    <string name="tasks_filter_all">All</string>
+    <string name="tasks_filter_today">Today</string>
+    <string name="tasks_filter_week">This Week</string>
+    <string name="tasks_filter_overdue">Overdue</string>
+    <string name="tasks_filter_by_agent">By Agent</string>
+    <string name="tasks_filter_timeline">Timeline</string>
+    <string name="tasks_section_today">Today</string>
+    <string name="tasks_section_tomorrow">Tomorrow</string>
+    <string name="tasks_section_this_week">This Week</string>
+    <string name="tasks_section_later">Later</string>
+    <string name="tasks_section_no_date">No Due Date</string>
+    <string name="tasks_section_completed">Completed</string>
+    <string name="tasks_empty">No tasks yet</string>
+    <string name="tasks_empty_hint">Tap + to create your first task</string>
+    <string name="tasks_completed_count">%1$d/%2$d completed</string>
+    <string name="tasks_new_task">New Task</string>
+    <string name="tasks_what_needs_done">What needs to be done?</string>
+    <string name="tasks_assign_to">Assign to</string>
+    <string name="tasks_priority">Priority</string>
+    <string name="tasks_priority_low">Low</string>
+    <string name="tasks_priority_medium">Medium</string>
+    <string name="tasks_priority_high">High</string>
+    <string name="tasks_notes_hint">Add notes (optional)</string>
+    <string name="tasks_create">Create Task</string>
+    <string name="tasks_detail_title">Task Details</string>
+    <string name="tasks_mark_complete">Mark Complete</string>
+    <string name="tasks_mark_incomplete">Mark Incomplete</string>
+    <string name="tasks_delete_confirm_title">Delete Task</string>
+    <string name="tasks_delete_confirm_message">Are you sure you want to delete this task?</string>
+    <string name="tasks_deleted">Task deleted</string>
+    <string name="tasks_undo">Undo</string>
+    <string name="tasks_completed_toast">Task completed</string>
+    <string name="tasks_save">Save</string>
+
     <!-- Due Dates -->
     <string name="due_overdue">%dd overdue</string>
     <string name="due_yesterday">Yesterday</string>
@@ -460,6 +501,15 @@
     <string name="player_info_notes">Notes</string>
     <string name="player_info_add_note">Add note</string>
     <string name="player_info_note_placeholder">Add a new note…</string>
+    <string name="player_info_save_note">Save Note</string>
+    <string name="player_info_no_notes_title">No notes yet</string>
+    <string name="player_info_no_notes_subtitle">Add your first note about this player</string>
+    <string name="player_info_view_all_notes">View all %1$d notes</string>
+    <string name="player_info_all_notes">All Notes</string>
+    <string name="player_info_note_copy">Copy</string>
+    <string name="player_info_note_deleted">Note deleted</string>
+    <string name="player_info_note_undo">Undo</string>
+    <string name="back">Back</string>
     <string name="player_info_previously">Previously: %1$s (%2$s)</string>
     <string name="player_info_added_by">Added by — %s</string>
     <string name="player_info_contract">Contract %s</string>
@@ -471,6 +521,11 @@
     <string name="player_info_age">Age</string>
     <string name="player_info_positions">Positions</string>
     <string name="player_info_nationality">Nationality</string>
+    <string name="player_info_foot">Foot</string>
+    <string name="player_info_foot_right">Right</string>
+    <string name="player_info_foot_left">Left</string>
+    <string name="player_info_foot_both">Both</string>
+    <string name="player_info_agency">Agency</string>
     <string name="player_info_contract_expiry_date">Contract Expiry Date</string>
     <string name="player_info_current_club">Current Club</string>
     <string name="player_info_market_value">Market Value</string>

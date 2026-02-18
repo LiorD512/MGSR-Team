@@ -17,6 +17,8 @@ import com.liordahan.mgsrteam.features.add.AddPlayerScreen
 import com.liordahan.mgsrteam.features.contacts.ContactsScreen
 import com.liordahan.mgsrteam.features.contractfinisher.ContractFinisherScreen
 import com.liordahan.mgsrteam.features.home.dashboard.DashboardScreen
+import com.liordahan.mgsrteam.features.home.tasks.TaskDetailScreen
+import com.liordahan.mgsrteam.features.home.tasks.TasksScreen
 import com.liordahan.mgsrteam.features.players.PlayersScreen
 import com.liordahan.mgsrteam.features.players.playerinfo.PlayerInfoScreen
 import com.liordahan.mgsrteam.features.players.playerinfo.mandate.GenerateMandateScreen
@@ -73,6 +75,18 @@ fun HomeScreen(
 
             composable(route = Screens.DashboardScreen.route) {
                 DashboardScreen(navController = navController)
+            }
+
+            composable(route = Screens.TasksScreen.route) {
+                TasksScreen(navController = navController)
+            }
+
+            composable(
+                route = "${Screens.TaskDetailScreen.route}/{taskId}",
+                arguments = listOf(navArgument("taskId") { type = NavType.StringType })
+            ) { backStackEntry ->
+                val taskId = backStackEntry.arguments?.getString("taskId") ?: return@composable
+                TaskDetailScreen(taskId = taskId, navController = navController)
             }
 
             composable(

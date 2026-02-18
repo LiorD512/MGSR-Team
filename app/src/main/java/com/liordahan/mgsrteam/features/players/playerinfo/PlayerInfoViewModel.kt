@@ -67,6 +67,7 @@ abstract class IPlayerInfoViewModel : ViewModel() {
 private const val TAG = "PassportUpload"
 
 class PlayerInfoViewModel(
+    private val appContext: android.content.Context,
     private val firebaseHandler: FirebaseHandler,
     private val playersUpdate: PlayersUpdate,
     private val documentsRepository: PlayerDocumentsRepository,
@@ -331,6 +332,9 @@ class PlayerInfoViewModel(
                         marketValueHistory = marketValueHistory,
                         lastRefreshedAt = System.currentTimeMillis(),
                         isOnLoan = response.data?.isOnLoan ?: player.isOnLoan,
+                        foot = response.data?.foot ?: player.foot,
+                        agency = response.data?.agency ?: player.agency,
+                        agencyUrl = response.data?.agencyUrl ?: player.agencyUrl,
                         noteList = if (player.notes?.isNotEmpty() == true) {
                             val currentNotes = player.noteList?.toMutableList() ?: mutableListOf()
                             currentNotes.add(
@@ -532,7 +536,7 @@ class PlayerInfoViewModel(
                     ignoreCase = true
                 ) == true
             }
-            account?.name
+            account?.getDisplayName(appContext)
         } catch (e: Exception) {
             null
         }

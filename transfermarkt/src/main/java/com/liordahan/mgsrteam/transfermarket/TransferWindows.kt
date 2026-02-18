@@ -2,7 +2,6 @@ package com.liordahan.mgsrteam.transfermarket
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
 import java.time.LocalDate
@@ -24,6 +23,9 @@ data class TransferWindow(
 /** Country code for flag URL. Uses flagcdn.com (free, no API key). */
 private fun flagUrlForCountry(code: String): String =
     "https://flagcdn.com/w40/$code.png"
+
+private val DAYS_LEFT_REGEX = Regex("""(\d+)\s*(?:days?|Tage|días|jours|giorni)""", RegexOption.IGNORE_CASE)
+private val PLAIN_NUMBER_REGEX = Regex("""^(\d+)$""")
 
 /**
  * Transfer window closing dates. Month-day is typical; year is computed at runtime.
@@ -366,7 +368,7 @@ class TransferWindows {
     suspend fun fetchOpenTransferWindows(): TransfermarktResult<List<TransferWindow>> =
         withContext(Dispatchers.IO) {
             val scraped = try {
-                val doc = fetchDocument(TRANSFER_WINDOW_URL)
+                val doc = TransfermarktHttp.fetchDocument(TRANSFER_WINDOW_URL)
                 parseTransferWindowTable(doc)
             } catch (_: Exception) {
                 emptyList()
@@ -375,7 +377,6 @@ class TransferWindows {
             val result = if (scraped.isNotEmpty()) {
                 scraped
             } else {
-                // Fallback: use static list and compute days left from closing dates
                 buildStaticOpenWindows()
             }
 
@@ -387,10 +388,6 @@ class TransferWindows {
         val year = today.year
         val month = today.monthValue
 
-        // Winter window: Jan–Apr (use current year)
-        // Summer window: Jun–Sep (use current year)
-        // May: use summer (some leagues open early)
-        // Oct–Dec: use winter *next* year (closing Feb/Mar)
         val list = when (month) {
             in 1..4 -> WINTER_CLOSING_MD.map { (name, code, md) ->
                 Triple(name, code, LocalDate.of(year, md.first, md.second))
@@ -415,13 +412,6 @@ class TransferWindows {
             }
             .filterNotNull()
             .sortedBy { it.daysLeft }
-    }
-
-    private fun fetchDocument(url: String): Document {
-        return Jsoup.connect(url)
-            .userAgent(getRandomUserAgent())
-            .timeout(TRANSFERMARKT_TIMEOUT_MS)
-            .get()
     }
 
     private fun parseTransferWindowTable(doc: Document): List<TransferWindow> {
@@ -475,26 +465,16 @@ class TransferWindows {
 
     private fun extractDaysLeft(row: Element, cells: List<Element>): Int? {
         val rowText = row.text()
-        val daysRegex = Regex("""(\d+)\s*(?:days?|Tage|días|jours|giorni)""", RegexOption.IGNORE_CASE)
-        daysRegex.find(rowText)?.groupValues?.getOrNull(1)?.toIntOrNull()?.let { return it }
+        DAYS_LEFT_REGEX.find(rowText)?.groupValues?.getOrNull(1)?.toIntOrNull()?.let { return it }
 
         for (cell in cells) {
             val text = cell.text().trim()
-            val match = Regex("""^(\d+)$""").matchEntire(text)
+            val match = PLAIN_NUMBER_REGEX.matchEntire(text)
             if (match != null) {
                 val num = match.groupValues[1].toIntOrNull()
                 if (num != null && num in 1..365) return num
             }
         }
         return null
-    }
-
-    private fun makeAbsoluteUrl(url: String): String {
-        return when {
-            url.startsWith("//") -> "https:$url"
-            url.startsWith("/") -> "$TRANSFERMARKT_BASE_URL$url"
-            url.startsWith("http") -> url
-            else -> url
-        }
     }
 }

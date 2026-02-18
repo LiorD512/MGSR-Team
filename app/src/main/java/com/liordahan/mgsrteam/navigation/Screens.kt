@@ -17,11 +17,14 @@ sealed class Screens(val route: String) {
     data object RequestsScreen : Screens(ScreenName.REQUESTS)
     data object MandatePreviewScreen : Screens(ScreenName.MANDATE_PREVIEW)
     data object GenerateMandateScreen : Screens(ScreenName.GENERATE_MANDATE)
+    data object TasksScreen : Screens(ScreenName.TASKS)
+    data object TaskDetailScreen : Screens(ScreenName.TASK_DETAIL)
 
     companion object {
         fun addPlayerWithTmProfileRoute(tmProfileUrl: String) = "${ScreenName.ADD_PLAYER}/$tmProfileUrl"
         fun addToShortlistRoute(tmProfileUrl: String = "") =
             if (tmProfileUrl.isBlank()) ScreenName.ADD_TO_SHORTLIST else "${ScreenName.ADD_TO_SHORTLIST}/$tmProfileUrl"
+        fun taskDetailRoute(taskId: String) = "${ScreenName.TASK_DETAIL}/$taskId"
     }
 }
 
@@ -41,4 +44,6 @@ object ScreenName {
     const val REQUESTS = "requests"
     const val MANDATE_PREVIEW = "mandate_preview"
     const val GENERATE_MANDATE = "generate_mandate"
+    const val TASKS = "tasks"
+    const val TASK_DETAIL = "task_detail"
 }

@@ -85,7 +85,8 @@ abstract class IHomeScreenViewModel : ViewModel() {
     abstract fun selectFeedFilter(filter: FeedFilter)
     abstract fun toggleAgentExpanded(agentId: String)
     abstract fun toggleTaskCompleted(task: AgentTask)
-    abstract fun addTask(agentId: String, agentName: String, title: String, dueDate: Long)
+    abstract fun addTask(agentId: String, agentName: String, title: String, dueDate: Long, priority: Int = 0, notes: String = "")
+    abstract fun updateTask(task: AgentTask)
     abstract fun deleteTask(task: AgentTask)
 }
 
@@ -254,7 +255,10 @@ class HomeScreenViewModel(
             .addSnapshotListener { snapshot, _ ->
                 if (snapshot == null) return@addSnapshotListener
                 val events = snapshot.toObjects(FeedEvent::class.java)
-                _state.update { it.copy(feedEvents = events) }
+                val deduped = events.distinctBy {
+                    "${it.type}_${it.playerTmProfile}_${it.oldValue}_${it.newValue}"
+                }
+                _state.update { it.copy(feedEvents = deduped) }
             }
         listenerRegistrations.add(reg)
     }
@@ -325,12 +329,17 @@ class HomeScreenViewModel(
 
     override fun toggleTaskCompleted(task: AgentTask) {
         if (task.id.isBlank()) return
+        val nowCompleted = !task.isCompleted
         viewModelScope.launch {
             try {
+                val data = mapOf(
+                    "isCompleted" to nowCompleted,
+                    "completedAt" to if (nowCompleted) System.currentTimeMillis() else 0L
+                )
                 firebaseHandler.firebaseStore
                     .collection(firebaseHandler.agentTasksTable)
                     .document(task.id)
-                    .update("isCompleted", !task.isCompleted)
+                    .update(data)
                     .await()
             } catch (e: Exception) {
                 android.util.Log.e("HomeVM", "toggleTaskCompleted failed for id=${task.id}", e)
@@ -338,7 +347,7 @@ class HomeScreenViewModel(
         }
     }
 
-    override fun addTask(agentId: String, agentName: String, title: String, dueDate: Long) {
+    override fun addTask(agentId: String, agentName: String, title: String, dueDate: Long, priority: Int, notes: String) {
         viewModelScope.launch {
             try {
                 val newTask = AgentTask(
@@ -347,11 +356,36 @@ class HomeScreenViewModel(
                     title = title,
                     isCompleted = false,
                     dueDate = dueDate,
-                    createdAt = System.currentTimeMillis()
+                    createdAt = System.currentTimeMillis(),
+                    priority = priority,
+                    notes = notes
                 )
                 firebaseHandler.firebaseStore
                     .collection(firebaseHandler.agentTasksTable)
                     .add(newTask)
+                    .await()
+            } catch (_: Exception) { }
+        }
+    }
+
+    override fun updateTask(task: AgentTask) {
+        if (task.id.isBlank()) return
+        viewModelScope.launch {
+            try {
+                val data = mapOf(
+                    "title" to task.title,
+                    "agentId" to task.agentId,
+                    "agentName" to task.agentName,
+                    "dueDate" to task.dueDate,
+                    "priority" to task.priority,
+                    "notes" to task.notes,
+                    "isCompleted" to task.isCompleted,
+                    "completedAt" to task.completedAt
+                )
+                firebaseHandler.firebaseStore
+                    .collection(firebaseHandler.agentTasksTable)
+                    .document(task.id)
+                    .update(data)
                     .await()
             } catch (_: Exception) { }
         }

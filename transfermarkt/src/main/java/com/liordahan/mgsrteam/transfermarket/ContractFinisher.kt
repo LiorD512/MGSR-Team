@@ -3,11 +3,13 @@ package com.liordahan.mgsrteam.transfermarket
 import android.util.Log
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
-import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
 import java.util.Calendar
@@ -23,12 +25,12 @@ class ContractFinisher {
 
     private companion object {
         private const val TAG = "ContractFinisher"
-        private const val TIMEOUT_MS = 30_000
         private const val MIN_VALUE = 150_000
         private const val MAX_VALUE = 3_000_000
         private const val MAX_AGE = 31
         private const val MAX_PAGES = 80
-        private const val DELAY_MS = 600
+        private const val BATCH_SIZE = 3
+        private const val DELAY_BETWEEN_BATCHES_MS = 150L
     }
 
     enum class TransferWindow { SUMMER, WINTER }
@@ -40,8 +42,9 @@ class ContractFinisher {
     )
 
     fun getCurrentWindowConfig(): WindowConfig {
-        val month = Calendar.getInstance().get(Calendar.MONTH) + 1
-        val year = Calendar.getInstance().get(Calendar.YEAR)
+        val cal = Calendar.getInstance()
+        val month = cal.get(Calendar.MONTH) + 1
+        val year = cal.get(Calendar.YEAR)
         val minYear = 2026
         val safeYear = maxOf(year, minYear)
         return if (month in 2..9) {
@@ -52,7 +55,8 @@ class ContractFinisher {
     }
 
     /**
-     * Emits accumulated results after each page – UI can show results while loading continues.
+     * Emits accumulated results after each batch – UI can show results while loading continues.
+     * Pages are fetched in parallel batches of [BATCH_SIZE] for significantly faster throughput.
      */
     fun fetchContractFinishersAsFlow(
         config: WindowConfig,
@@ -66,30 +70,20 @@ class ContractFinisher {
         try {
             for (jahr in config.yearsToQuery) {
                 var page = 1
-                var consecutiveEmpty = 0
 
                 while (page <= MAX_PAGES) {
-                    var attempt = 0
-                    var doc: Document? = null
+                    val batchEnd = minOf(page + BATCH_SIZE - 1, MAX_PAGES)
+                    val batchPages = (page..batchEnd).toList()
 
-                    while (attempt < maxRetries) {
-                        try {
-                            val url = buildEndendevertraegeUrl(jahr, page)
-                            doc = Jsoup.connect(url)
-                                .userAgent(getRandomUserAgent())
-                                .timeout(TIMEOUT_MS)
-                                .header("Accept-Language", "en-US,en;q=0.9")
-                                .get()
-                            break
-                        } catch (e: Exception) {
-                            Log.w(TAG, "Endendevertraege jahr=$jahr page=$page attempt ${attempt + 1}: ${e.message}")
-                            attempt++
-                            if (attempt < maxRetries) delay(500L * (attempt + 1))
-                        }
+                    val docs: List<Document?> = coroutineScope {
+                        batchPages.map { p ->
+                            async { fetchPageWithRetry(jahr, p, maxRetries) }
+                        }.awaitAll()
                     }
 
-                    var shouldBreak = false
-                    if (doc != null) {
+                    var batchShouldBreak = false
+                    for (doc in docs) {
+                        if (doc == null) continue
                         try {
                             val raw = parseEndendevertraegeResults(doc)
                             val contractExpiryDate = formatContractExpiryDate(config, jahr)
@@ -104,38 +98,54 @@ class ContractFinisher {
                             all.addAll(newOnes)
 
                             if (raw.isEmpty()) {
-                                consecutiveEmpty++
-                                shouldBreak = true
-                            } else {
-                                consecutiveEmpty = 0
-                                val maxValueOnPage = raw.maxOfOrNull { it.getRealMarketValue() } ?: 0
-                                if (maxValueOnPage < MIN_VALUE) shouldBreak = true
+                                batchShouldBreak = true
+                                break
+                            }
+                            val maxValueOnPage = raw.maxOfOrNull { it.getRealMarketValue() } ?: 0
+                            if (maxValueOnPage < MIN_VALUE) {
+                                batchShouldBreak = true
+                                break
                             }
                             totalPagesFetched++
                         } catch (e: Exception) {
-                            Log.w(TAG, "Parse failed page $page: ${e.message}")
+                            Log.w(TAG, "Parse failed: ${e.message}")
                         }
                     }
-                    val distinct = all.distinctBy { it.playerUrl }.sortedByDescending { it.getRealMarketValue() }
-                    emit(ContractFinisherProgress(players = distinct, pagesLoaded = totalPagesFetched, isLoading = true))
 
-                    if (shouldBreak) break
-                    page++
-                    delay(DELAY_MS.toLong())
+                    val sorted = all.sortedByDescending { it.getRealMarketValue() }
+                    emit(ContractFinisherProgress(players = sorted, pagesLoaded = totalPagesFetched, isLoading = true))
+
+                    if (batchShouldBreak) break
+                    page += batchPages.size
+                    delay(DELAY_BETWEEN_BATCHES_MS)
                 }
             }
 
-            val distinct = all.distinctBy { it.playerUrl }.sortedByDescending { it.getRealMarketValue() }
-            emit(ContractFinisherProgress(players = distinct, pagesLoaded = totalPagesFetched, isLoading = false))
-            Log.d(TAG, "ContractFinisher flow done: ${distinct.size} players")
+            val sorted = all.sortedByDescending { it.getRealMarketValue() }
+            emit(ContractFinisherProgress(players = sorted, pagesLoaded = totalPagesFetched, isLoading = false))
+            Log.d(TAG, "ContractFinisher flow done: ${sorted.size} players")
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
             Log.w(TAG, "ContractFinisher flow failed: ${e.message}")
-            val distinct = all.distinctBy { it.playerUrl }.sortedByDescending { it.getRealMarketValue() }
-            emit(ContractFinisherProgress(players = distinct, pagesLoaded = totalPagesFetched, isLoading = false, error = e.localizedMessage))
+            val sorted = all.sortedByDescending { it.getRealMarketValue() }
+            emit(ContractFinisherProgress(players = sorted, pagesLoaded = totalPagesFetched, isLoading = false, error = e.localizedMessage))
         }
     }.flowOn(Dispatchers.IO)
+
+    private suspend fun fetchPageWithRetry(jahr: Int, page: Int, maxRetries: Int): Document? {
+        var attempt = 0
+        while (attempt < maxRetries) {
+            try {
+                return TransfermarktHttp.fetchDocument(buildEndendevertraegeUrl(jahr, page))
+            } catch (e: Exception) {
+                Log.w(TAG, "Endendevertraege jahr=$jahr page=$page attempt ${attempt + 1}: ${e.message}")
+                attempt++
+                if (attempt < maxRetries) delay(400L * attempt)
+            }
+        }
+        return null
+    }
 
     data class ContractFinisherProgress(
         val players: List<LatestTransferModel>,
@@ -155,6 +165,8 @@ class ContractFinisher {
         return rows.mapNotNull { parseEndendevertraegeRow(it) }
     }
 
+    private val AGE_REGEX = Regex("""\((\d+)\)""")
+
     private fun parseEndendevertraegeRow(row: Element): LatestTransferModel? {
         return try {
             val playerLink = row.select("a[href*='/profil/spieler/']").firstOrNull() ?: return null
@@ -170,7 +182,7 @@ class ContractFinisher {
                 ?.convertLongPositionNameToShort()
 
             val ageText = row.select("td.zentriert").firstOrNull()?.text()?.let { txt ->
-                Regex("""\((\d+)\)""").find(txt)?.groupValues?.getOrNull(1)
+                AGE_REGEX.find(txt)?.groupValues?.getOrNull(1)
                     ?: txt.trim().toIntOrNull()?.toString()
             }
             val marketValue = row.select("td").firstOrNull { it.text().contains("€") }?.text()?.trim()
@@ -206,19 +218,6 @@ class ContractFinisher {
         }
     }
 
-    private fun extractNationalityAndFlag(row: Element): Pair<String?, String?> {
-        val img = row.select("td.zentriert img[title]").firstOrNull()
-            ?: row.select("img[alt]").firstOrNull { it.attr("alt").length in 2..50 }
-        val nationality = img?.attr("title")?.takeIf { it.isNotBlank() }
-            ?: img?.attr("alt")?.takeIf { it.isNotBlank() }
-        val flagSrc = img?.attr("data-src")?.takeIf { it.isNotBlank() }
-            ?: img?.attr("src")?.takeIf { it.isNotBlank() }
-        val flag = flagSrc?.let { makeAbsoluteUrl(it) }
-            ?.replace("verysmall", "head")
-            ?.replace("tiny", "head")
-        return nationality to flag
-    }
-
     private fun formatContractExpiryDate(config: WindowConfig, jahr: Int): String {
         return when (config.window) {
             TransferWindow.SUMMER -> "30.06.$jahr"
@@ -227,12 +226,5 @@ class ContractFinisher {
                 if (isFirstYear) "31.12.$jahr" else "31.01.$jahr"
             }
         }
-    }
-
-    private fun makeAbsoluteUrl(url: String): String = when {
-        url.startsWith("//") -> "https:$url"
-        url.startsWith("/") -> "$TRANSFERMARKT_BASE_URL$url"
-        url.startsWith("http") -> url
-        else -> url
     }
 }

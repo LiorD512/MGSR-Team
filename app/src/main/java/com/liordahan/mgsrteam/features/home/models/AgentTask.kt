@@ -15,6 +15,9 @@ data class AgentTask(
     val title: String = "",
     @get:PropertyName("isCompleted") @set:PropertyName("isCompleted")
     var isCompleted: Boolean = false,
-    val dueDate: Long = 0L,          // epoch millis
-    val createdAt: Long = System.currentTimeMillis()
+    val dueDate: Long = 0L,
+    val createdAt: Long = System.currentTimeMillis(),
+    val priority: Int = 0,        // 0 = low, 1 = medium, 2 = high
+    val notes: String = "",
+    val completedAt: Long = 0L
 )

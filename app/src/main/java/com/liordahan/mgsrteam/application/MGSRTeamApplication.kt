@@ -7,6 +7,7 @@ import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.NetworkType
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.messaging.FirebaseMessaging
 import com.liordahan.mgsrteam.application.di.applicationModules
 import com.liordahan.mgsrteam.firebase.FcmTokenManager
@@ -56,15 +57,24 @@ class MGSRTeamApplication : Application(), KoinComponent {
 
         // Schedule nightly player data refresh from Transfermarkt at 02:00 Israel time
         schedulePlayerRefresh()
+
+        // If the user is already logged in, check whether the last successful
+        // refresh was more than 24 h ago. If so, enqueue an immediate catch-up
+        // run (e.g. when the nightly 02:00 run was missed). On fresh install
+        // currentUser is null so this is a no-op; the login screen triggers
+        // the first refresh after authentication instead.
+        if (FirebaseAuth.getInstance().currentUser != null) {
+            PlayerRefreshWorker.enqueueIfStale(this)
+        }
     }
 
     /**
      * Schedules [PlayerRefreshWorker] to run every 24 hours, starting at the
      * next 02:00 AM Israel time (Asia/Jerusalem). Requires network connectivity.
      *
-     * Uses [ExistingPeriodicWorkPolicy.UPDATE] so the schedule is replaced once
-     * (important for the migration from the old "anytime" schedule). After that
-     * it repeats every 24 hours from whenever the first run executed (~02:00).
+     * Uses [ExistingPeriodicWorkPolicy.KEEP] so the schedule is created once
+     * and never reset by subsequent app launches. This prevents re-opening the
+     * app from pushing the pending run into the future (the old `UPDATE` bug).
      */
     private fun schedulePlayerRefresh() {
         val israelZone = ZoneId.of("Asia/Jerusalem")
@@ -75,7 +85,6 @@ class MGSRTeamApplication : Application(), KoinComponent {
             .withSecond(0)
             .withNano(0)
 
-        // If 02:00 today has already passed, schedule for tomorrow
         if (!now.isBefore(nextRun)) {
             nextRun = nextRun.plusDays(1)
         }
@@ -92,14 +101,14 @@ class MGSRTeamApplication : Application(), KoinComponent {
             .build()
 
         WorkManager.getInstance(this).enqueueUniquePeriodicWork(
-            PlayerRefreshWorker::class.java.simpleName,
-            ExistingPeriodicWorkPolicy.UPDATE,
+            PERIODIC_WORK_NAME,
+            ExistingPeriodicWorkPolicy.KEEP,
             request
         )
     }
 
     companion object {
-        /** Target hour in Israel time (Asia/Jerusalem) for the nightly refresh. */
         private const val TARGET_HOUR = 2
+        private const val PERIODIC_WORK_NAME = "PlayerRefreshWorker"
     }
 }

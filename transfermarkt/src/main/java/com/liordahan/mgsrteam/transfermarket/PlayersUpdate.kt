@@ -3,11 +3,6 @@ package com.liordahan.mgsrteam.transfermarket
 import android.net.Network
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import org.jsoup.Jsoup
-import org.jsoup.nodes.Document
-import java.io.IOException
-import java.net.HttpURLConnection
-import java.net.URL
 
 data class PlayerToUpdateValues(
     val marketValue: String?,
@@ -19,7 +14,10 @@ data class PlayerToUpdateValues(
     val positions: List<String?>?,
     val currentClub: TransfermarktClub?,
     val isOnLoan: Boolean = false,
-    val onLoanFromClub: String? = null
+    val onLoanFromClub: String? = null,
+    val foot: String? = null,
+    val agency: String? = null,
+    val agencyUrl: String? = null
 )
 
 class PlayersUpdate {
@@ -38,7 +36,11 @@ class PlayersUpdate {
                 ?: return@withContext TransfermarktResult.Failed("Profile URL is null or blank")
 
             return@withContext try {
-                val doc = fetchDocument(profileUrl, network)
+                val doc = if (network != null) {
+                    TransfermarktHttp.fetchDocument(profileUrl, network)
+                } else {
+                    TransfermarktHttp.fetchDocument(profileUrl)
+                }
 
                 val nationalityElement = doc.select("[itemprop=nationality] img").firstOrNull()
                 val citizenship = nationalityElement?.attr("title").orEmpty()
@@ -115,41 +117,33 @@ class PlayersUpdate {
                     clubCountry = clubCountry
                 )
 
-                // Detect "On loan" badge - ribbon has <a title="On loan from X until Y"> (same location as returnee badge)
-                val ribbon = doc.select("div.data-header_ribbon, div.data-header__ribbon").firstOrNull()
-                    ?: doc.select("div[class*='ribbon']").firstOrNull()
-                val ribbonLinkTitleRaw = ribbon?.select("a")?.firstOrNull()?.attr("title")
-                    ?: doc.select("a[title*='on loan from']").firstOrNull()?.attr("title")
-                    ?: ""
-                val ribbonLinkTitle = ribbonLinkTitleRaw.lowercase()
-                val ribbonText = ribbon?.text()?.trim()?.lowercase() ?: ""
-                val clubSectionText = doc.select("span.data-header__club, div.data-header__club-info").text().lowercase()
-                val infoBoxText = doc.select("div.data-header__info-box").text().lowercase()
-                val headerText = doc.select("div.data-header").text().lowercase()
-                val combined = "$ribbonLinkTitle $ribbonText $clubSectionText $infoBoxText $headerText"
-                val hasLoanIndicator = ribbonLinkTitle.contains("on loan from") ||
-                    combined.contains("on loan") || combined.contains("leihe") ||
-                    combined.contains("ausgeliehen") || combined.contains("on loan from") ||
-                    combined.contains("leihe von") || combined.contains("ausgeliehen von") ||
-                    combined.contains("prêt") || combined.contains("en préstamo") || combined.contains("in prestito") ||
-                    (combined.contains("loan") && !combined.contains("end of loan") && !combined.contains("loan return") && !combined.contains("loan spell"))
-                val isReturnee = combined.contains("returnee") || combined.contains("returned after loan")
-                val isOnLoan = hasLoanIndicator && !isReturnee
-                val onLoanFromClub = if (isOnLoan) {
-                    val headerTextRaw = doc.select("div.data-header").text()
-                    val infoBoxTextRaw = doc.select("div.data-header__info-box").text()
-                    val searchText = ribbonLinkTitleRaw.ifEmpty { headerTextRaw.ifEmpty { infoBoxTextRaw } }
-                    // Match "On loan from: Hapoel Beer Sheva Contract" or "On loan from X until Y"
-                    listOf(
-                        Regex("""(?:on loan from|leihe von|ausgeliehen von)\s*:?\s*(.+?)\s+(?:contract|until|bis)""", RegexOption.IGNORE_CASE),
-                        Regex("""(?:on loan from|leihe von|ausgeliehen von)\s*:?\s*(.+?)(?:\s*$|\s*;)""", RegexOption.IGNORE_CASE)
-                    ).firstNotNullOfOrNull { regex ->
-                        regex.find(searchText)?.groupValues?.getOrNull(1)?.trim()?.takeIf { it.isNotBlank() }
+                val loanInfo = detectLoanStatus(doc, clubName)
+
+                val infoLabels = doc.select("span.info-table__content--regular")
+                var foot: String? = null
+                var agency: String? = null
+                var agencyUrl: String? = null
+
+                for (label in infoLabels) {
+                    val labelText = label.text().trim().lowercase()
+                    val valueSpan = label.nextElementSibling() ?: continue
+
+                    when {
+                        labelText.contains("foot") -> {
+                            foot = valueSpan.text().trim().takeIf { it.isNotBlank() }
+                        }
+                        labelText.contains("player agent") || labelText.contains("agent") -> {
+                            val link = valueSpan.selectFirst("a")
+                            agency = link?.text()?.trim()?.takeIf { it.isNotBlank() }
+                                ?: valueSpan.text().trim().takeIf { it.isNotBlank() }
+                            val href = link?.attr("href")
+                            if (!href.isNullOrBlank()) {
+                                agencyUrl = if (href.startsWith("http")) href
+                                else TRANSFERMARKT_BASE_URL + href
+                            }
+                        }
                     }
-                        ?: doc.select("div.data-header a[href*='/verein/']")
-                            .mapNotNull { it.attr("title").takeIf { t -> t.isNotBlank() } ?: it.text().trim().takeIf { t -> t.isNotBlank() } }
-                            .firstOrNull { it != clubName }
-                } else null
+                }
 
                 TransfermarktResult.Success(
                     PlayerToUpdateValues(
@@ -161,44 +155,15 @@ class PlayersUpdate {
                         contract = contract,
                         positions = positionsList,
                         currentClub = club,
-                        isOnLoan = isOnLoan,
-                        onLoanFromClub = onLoanFromClub
+                        isOnLoan = loanInfo.isOnLoan,
+                        onLoanFromClub = loanInfo.onLoanFromClub,
+                        foot = foot,
+                        agency = agency,
+                        agencyUrl = agencyUrl
                     )
                 )
             } catch (ex: Exception) {
                 TransfermarktResult.Failed(ex.localizedMessage ?: "Unknown error")
             }
         }
-
-    /**
-     * Fetches and parses an HTML document. When [network] is provided the request is sent
-     * through that specific Android [Network] interface, effectively changing the outgoing IP.
-     * A random user-agent is picked for every call.
-     */
-    private fun fetchDocument(url: String, network: Network? = null): Document {
-        val userAgent = getRandomUserAgent()
-
-        if (network != null) {
-            val connection = network.openConnection(URL(url)) as HttpURLConnection
-            connection.setRequestProperty("User-Agent", userAgent)
-            connection.setRequestProperty("Accept-Language", "en-US,en;q=0.9")
-            connection.connectTimeout = TRANSFERMARKT_TIMEOUT_MS
-            connection.readTimeout = TRANSFERMARKT_TIMEOUT_MS
-            connection.instanceFollowRedirects = true
-            val responseCode = connection.responseCode
-            if (responseCode != HttpURLConnection.HTTP_OK) {
-                connection.disconnect()
-                throw IOException("HTTP $responseCode for $url")
-            }
-            val html = connection.inputStream.bufferedReader().use { it.readText() }
-            connection.disconnect()
-            return Jsoup.parse(html, url)
-        }
-
-        return Jsoup.connect(url)
-            .userAgent(userAgent)
-            .timeout(TRANSFERMARKT_TIMEOUT_MS)
-            .get()
-    }
 }
-

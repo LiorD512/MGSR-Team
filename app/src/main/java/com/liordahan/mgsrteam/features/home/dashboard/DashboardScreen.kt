@@ -11,6 +11,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -138,6 +139,7 @@ fun DashboardScreen(
     val context = LocalContext.current
     val isHebrew = LocaleManager.isHebrew(context)
     var showLanguageDialog by remember { mutableStateOf(false) }
+    var showAddTaskSheet by remember { mutableStateOf(false) }
 
     if (state.isLoading) {
         Box(
@@ -206,21 +208,18 @@ fun DashboardScreen(
                 item { AgentOverviewSection(state.agentSummaries, state.allAccounts) }
             }
 
-            // ── Agent Tasks ──────────────────────────────────────────────
-            if (state.allAccounts.isNotEmpty()) {
-                item {
-                    AgentTasksSection(
-                        accounts = state.allAccounts,
-                        agentTasks = state.agentTasks,
-                        expandedAgentId = state.expandedAgentId,
-                        onToggleExpanded = { viewModel.toggleAgentExpanded(it) },
-                        onToggleTask = { viewModel.toggleTaskCompleted(it) },
-                        onAddTask = { agentId, agentName, title, dueDate ->
-                            viewModel.addTask(agentId, agentName, title, dueDate)
-                        },
-                        onDeleteTask = { viewModel.deleteTask(it) }
-                    )
-                }
+            // ── Agent Tasks Summary Widget ──────────────────────────────
+            item {
+                TasksSummaryWidget(
+                    agentTasks = state.agentTasks,
+                    accounts = state.allAccounts,
+                    onViewAllClick = { navController.navigate(Screens.TasksScreen.route) },
+                    onAddTaskClick = { showAddTaskSheet = true },
+                    onTaskClick = { task ->
+                        navController.navigate(Screens.taskDetailRoute(task.id))
+                    },
+                    onToggleTask = { viewModel.toggleTaskCompleted(it) }
+                )
             }
 
             // ── Transfer Windows ───────────────────────────────────────────
@@ -292,6 +291,17 @@ fun DashboardScreen(
                 LocaleManager.applyLocale(context)
             },
             onDismiss = { showLanguageDialog = false }
+        )
+    }
+
+    if (showAddTaskSheet) {
+        com.liordahan.mgsrteam.features.home.tasks.AddTaskBottomSheet(
+            accounts = state.allAccounts,
+            onDismiss = { showAddTaskSheet = false },
+            onConfirm = { agentId, agentName, title, dueDate, priority, notes ->
+                viewModel.addTask(agentId, agentName, title, dueDate, priority, notes)
+                showAddTaskSheet = false
+            }
         )
     }
 }
@@ -1082,7 +1092,234 @@ private fun TransferWindowRow(
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
-//  AGENT TASKS  (Expandable Vertical Cards)
+//  TASKS SUMMARY WIDGET (Dashboard compact card)
+// ═════════════════════════════════════════════════════════════════════════════
+
+@Composable
+private fun TasksSummaryWidget(
+    agentTasks: Map<String, List<AgentTask>>,
+    accounts: List<Account>,
+    onViewAllClick: () -> Unit,
+    onAddTaskClick: () -> Unit,
+    onTaskClick: (AgentTask) -> Unit,
+    onToggleTask: (AgentTask) -> Unit
+) {
+    val allTasks = remember(agentTasks) { agentTasks.values.flatten() }
+    val now = System.currentTimeMillis()
+    val dayMs = 24 * 60 * 60 * 1000L
+
+    val incompleteTasks = allTasks.filter { !it.isCompleted }
+    val dueToday = incompleteTasks.count { it.dueDate > 0L && ((it.dueDate - now) / dayMs).toInt() == 0 }
+    val overdue = incompleteTasks.count { it.dueDate > 0L && it.dueDate < now }
+    val total = allTasks.size
+
+    val urgentTasks = remember(incompleteTasks) {
+        incompleteTasks
+            .filter { it.dueDate > 0L }
+            .sortedBy { it.dueDate }
+            .take(3)
+    }
+
+    Column(modifier = Modifier.padding(top = 20.dp)) {
+        // Section header
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = stringResource(R.string.tasks_overview),
+                style = boldTextStyle(HomeTextPrimary, 18.sp),
+                modifier = Modifier.weight(1f)
+            )
+        }
+
+        Spacer(Modifier.height(4.dp))
+        Box(
+            modifier = Modifier
+                .padding(horizontal = 20.dp)
+                .width(40.dp)
+                .height(3.dp)
+                .clip(RoundedCornerShape(2.dp))
+                .background(HomeTealAccent)
+        )
+
+        Spacer(Modifier.height(14.dp))
+
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = HomeDarkCard)
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                // Stat pills row
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    StatPill(
+                        value = dueToday.toString(),
+                        label = stringResource(R.string.tasks_due_today),
+                        color = HomeOrangeAccent,
+                        modifier = Modifier.weight(1f)
+                    )
+                    StatPill(
+                        value = overdue.toString(),
+                        label = stringResource(R.string.tasks_overdue),
+                        color = HomeRedAccent,
+                        modifier = Modifier.weight(1f)
+                    )
+                    StatPill(
+                        value = total.toString(),
+                        label = stringResource(R.string.tasks_total),
+                        color = HomeTextSecondary,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+
+                if (urgentTasks.isNotEmpty()) {
+                    Spacer(Modifier.height(14.dp))
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(1.dp)
+                            .background(HomeDarkCardBorder)
+                    )
+                    Spacer(Modifier.height(10.dp))
+
+                    urgentTasks.forEach { task ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(10.dp))
+                                .clickable { onTaskClick(task) }
+                                .padding(vertical = 6.dp, horizontal = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            // Priority dot
+                            Box(
+                                modifier = Modifier
+                                    .size(8.dp)
+                                    .clip(CircleShape)
+                                    .background(
+                                        when (task.priority) {
+                                            2 -> HomeRedAccent
+                                            1 -> HomeOrangeAccent
+                                            else -> HomeGreenAccent
+                                        }
+                                    )
+                            )
+                            Spacer(Modifier.width(10.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = task.title,
+                                    style = regularTextStyle(HomeTextPrimary, 13.sp),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                if (task.agentName.isNotBlank()) {
+                                    Text(
+                                        text = task.agentName,
+                                        style = regularTextStyle(HomeTextSecondary, 10.sp),
+                                        maxLines = 1
+                                    )
+                                }
+                            }
+                            if (task.dueDate > 0L) {
+                                val dueDateStr = formatDueDate(task.dueDate)
+                                val dueDateClr = dueDateColor(task.dueDate, task.isCompleted)
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(6.dp))
+                                        .background(dueDateClr.copy(alpha = 0.15f))
+                                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                                ) {
+                                    Text(
+                                        text = dueDateStr,
+                                        style = boldTextStyle(dueDateClr, 10.sp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                } else if (total == 0) {
+                    Spacer(Modifier.height(14.dp))
+                    Text(
+                        text = stringResource(R.string.tasks_empty_hint),
+                        style = regularTextStyle(HomeTextSecondary, 12.sp),
+                        modifier = Modifier.padding(vertical = 8.dp)
+                    )
+                }
+
+                Spacer(Modifier.height(14.dp))
+
+                // Action row
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // View All button
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(HomeTealAccent.copy(alpha = 0.12f))
+                            .clickable { onViewAllClick() }
+                            .padding(horizontal = 14.dp, vertical = 8.dp)
+                    ) {
+                        Text(
+                            text = stringResource(R.string.tasks_view_all),
+                            style = boldTextStyle(HomeTealAccent, 13.sp)
+                        )
+                    }
+
+                    // Add task button
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(CircleShape)
+                            .background(HomeTealAccent)
+                            .clickable { onAddTaskClick() },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            Icons.Default.Add,
+                            contentDescription = stringResource(R.string.agent_add_task),
+                            tint = HomeDarkBackground,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun StatPill(
+    value: String,
+    label: String,
+    color: Color,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(10.dp))
+            .background(color.copy(alpha = 0.1f))
+            .padding(vertical = 10.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(text = value, style = boldTextStyle(color, 18.sp))
+        Spacer(Modifier.height(2.dp))
+        Text(text = label, style = regularTextStyle(color, 10.sp))
+    }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+//  OLD AGENT TASKS  (keeping as reference, can be removed later)
 // ═════════════════════════════════════════════════════════════════════════════
 
 private val agentColors = listOf(

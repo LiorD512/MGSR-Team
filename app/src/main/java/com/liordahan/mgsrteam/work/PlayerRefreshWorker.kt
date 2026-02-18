@@ -10,8 +10,14 @@ import android.net.NetworkCapabilities
 import android.os.Build
 import android.util.Log
 import androidx.core.app.NotificationCompat
+import androidx.work.Constraints
 import androidx.work.CoroutineWorker
+import androidx.work.ExistingWorkPolicy
 import androidx.work.ForegroundInfo
+import androidx.work.NetworkType
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.OutOfQuotaPolicy
+import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
@@ -68,15 +74,30 @@ class PlayerRefreshWorker(
     params: WorkerParameters
 ) : CoroutineWorker(context, params) {
 
+    /**
+     * `true` while [setForeground] is available. Flipped to `false` on Android 12+
+     * when the OS blocks foreground-service promotion from the background; the
+     * worker then falls back to a plain notification via [NotificationManager].
+     */
+    private var canUseForeground = true
+
+    override suspend fun getForegroundInfo(): ForegroundInfo =
+        createForegroundInfo("Starting player refresh…")
+
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
+        Log.i(TAG, "=== PlayerRefreshWorker triggered (runAttemptCount=$runAttemptCount) ===")
+
         // ── 0. Only run on the authorised device ──
         val currentEmail = FirebaseAuth.getInstance().currentUser?.email
         if (!currentEmail.equals(AUTHORIZED_EMAIL, ignoreCase = true)) {
+            Log.i(TAG, "Not the authorized device (email=${currentEmail ?: "null"}) — skipping")
             return@withContext Result.success()
         }
+        Log.i(TAG, "Authorized device confirmed — starting refresh")
 
-        // Promote to foreground service — prevents the OS from killing this work
-        setForeground(createForegroundInfo("Starting player refresh…"))
+        // Try to promote to foreground service — prevents the OS from killing this work.
+        // On Android 12+ this can fail when launched from background (periodic / expedited).
+        updateProgress("Starting player refresh…")
 
         val firebaseHandler = FirebaseHandler()
         val playersUpdate = PlayersUpdate()
@@ -101,8 +122,20 @@ class PlayerRefreshWorker(
                 return@withContext Result.success()
             }
 
+            val recentThreshold = System.currentTimeMillis() - RECENT_REFRESH_THRESHOLD_MS
+            val stale = playersWithDocs.filter { (player, _) ->
+                (player.lastRefreshedAt ?: 0L) < recentThreshold
+            }
+
             val totalPlayers = playersWithDocs.size
-            Log.i(TAG, "Starting refresh for $totalPlayers players")
+            val skipped = totalPlayers - stale.size
+            Log.i(TAG, "Starting refresh: $totalPlayers total, $skipped recently refreshed (skipped), ${stale.size} to update")
+
+            if (stale.isEmpty()) {
+                Log.i(TAG, "All players already refreshed within the last ${RECENT_REFRESH_THRESHOLD_MS / 3_600_000}h — nothing to do")
+                markRefreshSuccess()
+                return@withContext Result.success()
+            }
 
             // ── 2. Detect available networks for IP rotation ──
             val networks = getAvailableNetworks()
@@ -113,8 +146,10 @@ class PlayerRefreshWorker(
             var successCount = 0
             var failCount = 0
 
-            // ── 3. Process every player with steady, human-like pacing ──
-            for ((index, pair) in playersWithDocs.withIndex()) {
+            val total = stale.size
+
+            // ── 3. Process stale players with steady, human-like pacing ──
+            for ((index, pair) in stale.withIndex()) {
                 val (player, docRef) = pair
                 val tmProfile = player.tmProfile ?: continue
 
@@ -125,8 +160,10 @@ class PlayerRefreshWorker(
                     null // single network — use default route
                 }
 
-                setForeground(
-                    createForegroundInfo("Refreshing ${index + 1}/$totalPlayers: ${player.fullName ?: "Unknown"}")
+                updateProgress(
+                    player.fullName ?: "Unknown",
+                    current = index + 1,
+                    total = total
                 )
 
                 // ── Attempt with retry on rate-limit ──
@@ -147,7 +184,7 @@ class PlayerRefreshWorker(
                                 processSuccessfulUpdate(player, data, docRef, feedRef, tmProfile)
                                 successCount++
                                 consecutiveBlocks = 0
-                                Log.i(TAG, "Updated ${index + 1}/$totalPlayers: ${player.fullName}")
+                                Log.i(TAG, "Updated ${index + 1}/$total: ${player.fullName}")
                             }
                             succeeded = true
                         }
@@ -162,17 +199,19 @@ class PlayerRefreshWorker(
                                 val backoff = calculateBlockBackoff(consecutiveBlocks)
                                 Log.w(
                                     TAG,
-                                    "BLOCKED ${index + 1}/$totalPlayers: ${player.fullName} " +
+                                    "BLOCKED ${index + 1}/$total: ${player.fullName} " +
                                         "(retry $retries/$MAX_RETRIES, blocks: $consecutiveBlocks) " +
                                         "— backing off ${backoff / 1000}s — $cause"
                                 )
-                                setForeground(
-                                    createForegroundInfo("Rate limited — waiting ${backoff / 1000}s before retry…")
+                                updateProgress(
+                                    "Rate limited — retrying…",
+                                    current = index + 1,
+                                    total = total
                                 )
                                 delay(backoff)
                             } else {
                                 failCount++
-                                Log.w(TAG, "Failed ${index + 1}/$totalPlayers: ${player.fullName} — $cause")
+                                Log.w(TAG, "Failed ${index + 1}/$total: ${player.fullName} — $cause")
                                 break
                             }
                         }
@@ -181,7 +220,7 @@ class PlayerRefreshWorker(
 
                 if (!succeeded && retries > MAX_RETRIES) {
                     failCount++
-                    Log.w(TAG, "Giving up on ${index + 1}/$totalPlayers: ${player.fullName} after $MAX_RETRIES retries")
+                    Log.w(TAG, "Giving up on ${index + 1}/$total: ${player.fullName} after $MAX_RETRIES retries")
                 }
 
                 // ── Steady inter-request delay (the core anti-blocking mechanism) ──
@@ -194,11 +233,12 @@ class PlayerRefreshWorker(
 
                 // Progress log every 50 players
                 if ((index + 1) % 50 == 0) {
-                    Log.i(TAG, "Progress: ${index + 1}/$totalPlayers — $successCount ok, $failCount failed")
+                    Log.i(TAG, "Progress: ${index + 1}/$total — $successCount ok, $failCount failed")
                 }
             }
 
-            Log.i(TAG, "Roster refresh complete — $successCount succeeded, $failCount failed out of $totalPlayers")
+            Log.i(TAG, "Roster refresh complete — $successCount succeeded, $failCount failed out of ${stale.size} (skipped $skipped already fresh)")
+            markRefreshSuccess()
             Result.success()
         } catch (e: Exception) {
             Log.e(TAG, "Worker failed with exception", e)
@@ -307,7 +347,10 @@ class PlayerRefreshWorker(
             marketValueHistory = history,
             lastRefreshedAt = System.currentTimeMillis(),
             isOnLoan = data.isOnLoan,
-            onLoanFromClub = data.onLoanFromClub
+            onLoanFromClub = data.onLoanFromClub,
+            foot = data.foot ?: player.foot,
+            agency = data.agency ?: player.agency,
+            agencyUrl = data.agencyUrl ?: player.agencyUrl
         )
         docRef.set(updated).await()
     }
@@ -332,7 +375,11 @@ class PlayerRefreshWorker(
         event: FeedEvent
     ) {
         try {
-            feedRef.add(event).await()
+            val dayMs = 24 * 60 * 60 * 1000L
+            val dayBucket = (event.timestamp ?: System.currentTimeMillis()) / dayMs
+            val profileHash = (event.playerTmProfile ?: "").hashCode().toUInt()
+            val docId = "${event.type}_${profileHash}_$dayBucket"
+            feedRef.document(docId).set(event).await()
         } catch (e: Exception) {
             Log.w(TAG, "Failed to write feed event: ${event.type} for ${event.playerName}", e)
         }
@@ -350,31 +397,58 @@ class PlayerRefreshWorker(
         }
     }
 
-    // ── Foreground notification ──────────────────────────────────────────────
+    // ── Staleness tracking ─────────────────────────────────────────────────
 
-    private fun createForegroundInfo(progress: String): ForegroundInfo {
-        val channelId = NOTIFICATION_CHANNEL_ID
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                channelId,
-                "Player Data Refresh",
-                NotificationManager.IMPORTANCE_LOW
-            ).apply {
-                description = "Shown while player data is being refreshed from Transfermarkt"
+    private fun markRefreshSuccess() {
+        applicationContext
+            .getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .putLong(KEY_LAST_SUCCESSFUL_REFRESH, System.currentTimeMillis())
+            .apply()
+    }
+
+    // ── Progress / notification helpers ─────────────────────────────────────
+
+    /**
+     * Updates the visible notification. Tries [setForeground] first (keeps the
+     * process alive); falls back to a plain [NotificationManager] post when
+     * Android 12+ blocks foreground-service promotion from the background.
+     */
+    private suspend fun updateProgress(
+        text: String,
+        current: Int = 0,
+        total: Int = 0
+    ) {
+        if (canUseForeground) {
+            try {
+                setForeground(createForegroundInfo(text, current, total))
+                return
+            } catch (e: IllegalStateException) {
+                Log.w(TAG, "Foreground promotion blocked — falling back to plain notification: ${e.message}")
+                canUseForeground = false
             }
-            val manager = applicationContext
-                .getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            manager.createNotificationChannel(channel)
         }
+        showNotification(text, current, total)
+    }
 
-        val notification = NotificationCompat.Builder(applicationContext, channelId)
-            .setSmallIcon(R.drawable.ic_stat_mgsr)
-            .setContentTitle("MGSR Player Refresh")
-            .setContentText(progress)
-            .setOngoing(true)
-            .setSilent(true)
-            .setColor(0xFF39D164.toInt())
-            .build()
+    /**
+     * Posts a plain notification (no foreground service). Used as fallback when
+     * [setForeground] is not allowed.
+     */
+    private fun showNotification(text: String, current: Int = 0, total: Int = 0) {
+        ensureNotificationChannel()
+        val builder = buildNotification(text, current, total)
+        val nm = applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        nm.notify(FOREGROUND_NOTIFICATION_ID, builder.build())
+    }
+
+    private fun createForegroundInfo(
+        text: String,
+        current: Int = 0,
+        total: Int = 0
+    ): ForegroundInfo {
+        ensureNotificationChannel()
+        val notification = buildNotification(text, current, total).build()
 
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             ForegroundInfo(
@@ -387,11 +461,96 @@ class PlayerRefreshWorker(
         }
     }
 
+    private fun ensureNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                NOTIFICATION_CHANNEL_ID,
+                "Player Data Refresh",
+                NotificationManager.IMPORTANCE_LOW
+            ).apply {
+                description = "Shown while player data is being refreshed from Transfermarkt"
+            }
+            val manager = applicationContext
+                .getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            manager.createNotificationChannel(channel)
+        }
+    }
+
+    private fun buildNotification(
+        text: String,
+        current: Int,
+        total: Int
+    ): NotificationCompat.Builder {
+        val builder = NotificationCompat.Builder(applicationContext, NOTIFICATION_CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_stat_mgsr)
+            .setContentTitle("MGSR Player Refresh")
+            .setContentText(text)
+            .setOngoing(true)
+            .setSilent(true)
+            .setColor(0xFF39D164.toInt())
+
+        if (total > 0) {
+            builder.setProgress(total, current, false)
+                .setSubText("$current / $total")
+        } else {
+            builder.setProgress(0, 0, true)
+        }
+
+        return builder
+    }
+
     companion object {
         private const val TAG = "PlayerRefreshWorker"
+        private const val INITIAL_WORK_NAME = "PlayerRefreshWorker_initial"
 
         private const val AUTHORIZED_EMAIL = "dahanliordahan@gmail.com"
         private const val MAX_HISTORY_ENTRIES = 24
+
+        private const val PREFS_NAME = "player_refresh_prefs"
+        private const val KEY_LAST_SUCCESSFUL_REFRESH = "last_successful_refresh"
+        private const val STALE_DATA_THRESHOLD_MS = 24 * 3_600_000L  // 24 hours
+
+        /**
+         * Enqueues a one-time immediate run. Use after login (unconditional)
+         * or from [enqueueIfStale] on app open (conditional).
+         */
+        fun enqueueImmediateRefresh(context: Context) {
+            val constraints = Constraints.Builder()
+                .setRequiredNetworkType(NetworkType.CONNECTED)
+                .build()
+            val request = OneTimeWorkRequestBuilder<PlayerRefreshWorker>()
+                .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
+                .setConstraints(constraints)
+                .build()
+            WorkManager.getInstance(context).enqueueUniqueWork(
+                INITIAL_WORK_NAME,
+                ExistingWorkPolicy.REPLACE,
+                request
+            )
+        }
+
+        /**
+         * Only enqueues an immediate refresh if the last successful run was
+         * more than [STALE_DATA_THRESHOLD_MS] ago (or never). Called from
+         * [MGSRTeamApplication.onCreate] so returning users don't trigger
+         * a Firestore read on every app open.
+         */
+        fun enqueueIfStale(context: Context) {
+            val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            val lastSuccess = prefs.getLong(KEY_LAST_SUCCESSFUL_REFRESH, 0L)
+            val elapsed = System.currentTimeMillis() - lastSuccess
+            if (elapsed > STALE_DATA_THRESHOLD_MS) {
+                Log.i(TAG, "Data is stale (${elapsed / 3_600_000}h since last refresh) — enqueuing immediate refresh")
+                enqueueImmediateRefresh(context)
+            }
+        }
+
+        /**
+         * Players refreshed within this window are skipped. Prevents re-doing
+         * work after a reinstall or restart while a previous run's Firestore
+         * updates are still fresh.
+         */
+        private const val RECENT_REFRESH_THRESHOLD_MS = 20 * 3_600_000L  // 20 hours
 
         // ── Steady pacing (core anti-blocking mechanism) ────────────────────
         //

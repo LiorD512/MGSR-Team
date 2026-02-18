@@ -79,7 +79,7 @@ val playersModule = module {
     }
     single { GeminiPassportOcrProvider() }
     single { DocumentDetectionService(get<Context>(), get<CloudVisionOcrProvider>(), get<GeminiPassportOcrProvider>()) }
-    viewModel<IPlayerInfoViewModel> { PlayerInfoViewModel(get(), get(), get(), get(), get()) }
+    viewModel<IPlayerInfoViewModel> { PlayerInfoViewModel(get<Context>(), get(), get(), get(), get(), get()) }
     viewModel { GenerateMandateViewModel() }
 
     factory<IAddPositionFilterUseCase> {

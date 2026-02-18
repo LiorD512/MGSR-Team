@@ -36,7 +36,10 @@ data class Player(
     val transferFee: String? = null, // Same as Request: "Free/Free loan", "<200", "300-600", "700-900", "1m+"
     @PropertyName("onLoan") val isOnLoan: Boolean = false,
     @PropertyName("onLoanFromClub") val onLoanFromClub: String? = null,
-    val passportDetails: PassportDetails? = null
+    val passportDetails: PassportDetails? = null,
+    val foot: String? = null,
+    val agency: String? = null,
+    val agencyUrl: String? = null
 ) : Parcelable
 
 @Parcelize

@@ -1,20 +1,24 @@
 package com.liordahan.mgsrteam.transfermarket
 
 import android.os.Parcelable
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import kotlinx.parcelize.Parcelize
-import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
 
 internal const val TRANSFERMARKT_BASE_URL: String = "https://www.transfermarkt.com"
 internal const val TRANSFERMARKT_USER_AGENT: String =
     "Mozilla/5.0 (Windows NT 6.3; Trident/7.0; rv:11.0) like Gecko"
-internal const val TRANSFERMARKT_TIMEOUT_MS: Int = 30_000
+internal const val TRANSFERMARKT_TIMEOUT_MS: Int = 12_000
 internal const val QUERY_PARAM_TD_ZENTRIERT: String = "td.zentriert"
 
 /** Pool of modern user-agents rotated per request to reduce Transfermarkt blocking. */
@@ -30,6 +34,8 @@ internal val TRANSFERMARKT_USER_AGENTS: List<String> = listOf(
 )
 
 internal fun getRandomUserAgent(): String = TRANSFERMARKT_USER_AGENTS.random()
+
+private val PAGE_NUMBER_REGEX = Regex("""page=(\d+)""")
 
 @Parcelize
 data class LatestTransferModel(
@@ -49,11 +55,11 @@ data class LatestTransferModel(
         if (marketValue?.contains("-") == false && marketValue.isNotEmpty()) {
             if (marketValue.contains("k", true)) {
                 return (marketValue.substringAfter("€").substringBefore("k")
-                    .toInt()) * 1000
+                    .trim().toIntOrNull() ?: 0) * 1000
             } else if (marketValue.contains("m", true)) {
-                return (marketValue.substringAfter("€")
+                return ((marketValue.substringAfter("€")
                     .substringBefore("m")
-                    .toDouble() * 1000000).toInt()
+                    .trim().toDoubleOrNull() ?: 0.0) * 1000000).toInt()
             }
         }
         return 0
@@ -73,37 +79,45 @@ class LatestReleases {
         while (attempt < maxRetries) {
             try {
                 val firstPageUrl = buildUrl(minValue, maxValue, page = 1)
-                val firstDoc = fetchDocument(firstPageUrl)
-                var pageCount = getTotalPages(firstDoc)
+                val firstDoc = TransfermarktHttp.fetchDocument(firstPageUrl)
+                val pageCount = getTotalPages(firstDoc)
 
-                val allTransfers = mutableListOf<LatestTransferModel>()
+                val enriched = coroutineScope {
+                    val sem = Semaphore(10)
+                    val enrichJobs = mutableListOf<Deferred<LatestTransferModel?>>()
 
-                // Parse first page synchronously to validate structure early
-                allTransfers += parseTransferList(firstDoc)
-
-                // Fallback: if pagination says 1 page but we got a full page (25 items typical), fetch more
-                if (pageCount == 1 && allTransfers.size >= 20) {
-                    fetchUntilEmpty(minValue, maxValue, allTransfers)
-                } else if (pageCount > 1) {
-                    // Fetch remaining pages in parallel for better throughput
-                    val otherTransfers = coroutineScope {
-                        (2..pageCount).map { page ->
-                            async {
-                                val pageUrl = buildUrl(minValue, maxValue, page)
-                                val doc = fetchDocument(pageUrl)
-                                parseTransferList(doc)
-                            }
-                        }.map { it.await() }.flatten()
+                    // Parse first page and launch enrichments immediately
+                    for (model in parseTransferList(firstDoc)) {
+                        enrichJobs += launchEnrich(model, sem)
                     }
-                    allTransfers += otherTransfers
+
+                    if (pageCount == 1 && enrichJobs.size >= 20) {
+                        // Unknown page count – fetch ahead in batches and pipeline enrichments
+                        fetchUntilEmptyPipelined(minValue, maxValue, sem, enrichJobs)
+                    } else if (pageCount > 1) {
+                        // Known page count – fetch all remaining in parallel, pipeline enrichments
+                        val pageFetches = (2..pageCount).map { page ->
+                            async {
+                                sem.withPermit {
+                                    TransfermarktHttp.fetchDocument(buildUrl(minValue, maxValue, page))
+                                }.let { parseTransferList(it) }
+                            }
+                        }
+                        for (pf in pageFetches) {
+                            for (model in pf.await()) {
+                                enrichJobs += launchEnrich(model, sem)
+                            }
+                        }
+                    }
+
+                    enrichJobs.awaitAll().filterNotNull()
                 }
 
-                return@withContext TransfermarktResult.Success(allTransfers)
+                return@withContext TransfermarktResult.Success(enriched)
             } catch (ex: Exception) {
                 lastError = ex.localizedMessage
                 attempt++
                 if (attempt < maxRetries) {
-                    // Simple linear backoff between retries
                     delay(1_000L * attempt)
                 }
             }
@@ -115,13 +129,6 @@ class LatestReleases {
     private fun buildUrl(min: Int, max: Int, page: Int): String {
         return "$TRANSFERMARKT_BASE_URL/transfers/neuestetransfers/statistik" +
                 "?land_id=0&wettbewerb_id=alle&minMarktwert=$min&maxMarktwert=$max&plus=1&page=$page"
-    }
-
-    private fun fetchDocument(url: String): Document {
-        return Jsoup.connect(url)
-            .userAgent(getRandomUserAgent())
-            .timeout(TRANSFERMARKT_TIMEOUT_MS)
-            .get()
     }
 
     private fun getTotalPages(doc: Document): Int {
@@ -137,24 +144,48 @@ class LatestReleases {
                 .maxOrNull()
             if (fromPager != null && fromPager >= 1) return fromPager
         }
-        // Fallback: check for page numbers in any links
         val pageLinks = doc.select("a[href*='page=']")
         val maxPage = pageLinks.mapNotNull { link ->
-            Regex("""page=(\d+)""").find(link.attr("href"))?.groupValues?.getOrNull(1)?.toIntOrNull()
+            PAGE_NUMBER_REGEX.find(link.attr("href"))?.groupValues?.getOrNull(1)?.toIntOrNull()
         }.maxOrNull()
         return (maxPage ?: 1).coerceAtLeast(1)
     }
 
-    /** When pagination is not detected, fetch pages sequentially until we get fewer than 20 items. */
-    private fun fetchUntilEmpty(minValue: Int, maxValue: Int, into: MutableList<LatestTransferModel>) {
+    /**
+     * Fetches pages in batches of 3 until a page returns fewer than 20 items.
+     * Immediately launches enrichment for each parsed model so enrichments
+     * overlap with subsequent page fetches.
+     */
+    private suspend fun CoroutineScope.fetchUntilEmptyPipelined(
+        minValue: Int,
+        maxValue: Int,
+        sem: Semaphore,
+        enrichJobs: MutableList<Deferred<LatestTransferModel?>>
+    ) {
         var page = 2
+        val lookahead = 3
         while (true) {
-            val doc = fetchDocument(buildUrl(minValue, maxValue, page))
-            val items = parseTransferList(doc)
-            if (items.isEmpty()) break
-            into += items
-            if (items.size < 20) break
-            page++
+            val batchPages = (page until page + lookahead)
+            val docs = batchPages.map { p ->
+                async {
+                    runCatching {
+                        sem.withPermit { TransfermarktHttp.fetchDocument(buildUrl(minValue, maxValue, p)) }
+                    }.getOrNull()
+                }
+            }.awaitAll()
+
+            var shouldStop = false
+            for (doc in docs) {
+                if (doc == null) { shouldStop = true; break }
+                val items = parseTransferList(doc)
+                if (items.isEmpty()) { shouldStop = true; break }
+                for (model in items) {
+                    enrichJobs += launchEnrich(model, sem)
+                }
+                if (items.size < 20) { shouldStop = true; break }
+            }
+            if (shouldStop) break
+            page += lookahead
         }
     }
 
@@ -193,7 +224,7 @@ class LatestReleases {
 
                 val (playerNationality, playerNationalityFlag) = extractNationalityAndFlag(element)
 
-                var model = LatestTransferModel(
+                LatestTransferModel(
                     playerImage,
                     playerName,
                     playerUrl,
@@ -206,40 +237,28 @@ class LatestReleases {
                     transferDate,
                     marketValue
                 )
-
-                // Enrich missing data from profile; when we fetch profile, verify still without club
-                if (model.playerUrl != null &&
-                    (model.marketValue.isNullOrBlank() || model.playerNationality.isNullOrBlank())
-                ) {
-                    val enriched = enrichFromProfile(model)
-                    if (enriched == null) return@mapNotNull null // Player has found a club - exclude
-                    model = enriched
-                }
-
-                model
             } catch (e: Exception) {
                 null
             }
         }
     }
 
-    private fun extractNationalityAndFlag(element: Element): Pair<String?, String?> {
-        val nationalityImg = element.select("td.zentriert img[title]").firstOrNull()
-            ?: element.select("td img[alt]").firstOrNull { it.attr("alt").length in 2..50 }
-        val playerNationality = nationalityImg?.attr("title")?.takeIf { it.isNotBlank() }
-            ?: nationalityImg?.attr("alt")?.takeIf { it.isNotBlank() }
-        val flagSrc = nationalityImg?.attr("data-src")?.takeIf { it.isNotBlank() }
-            ?: nationalityImg?.attr("src")?.takeIf { it.isNotBlank() }
-        val playerNationalityFlag = flagSrc?.let { makeAbsoluteUrl(it) }
-            ?.replace("verysmall", "head")
-            ?.replace("tiny", "head")
-        return playerNationality to playerNationalityFlag
+    private fun CoroutineScope.launchEnrich(
+        model: LatestTransferModel,
+        sem: Semaphore
+    ): Deferred<LatestTransferModel?> = async {
+        if (model.playerUrl != null &&
+            (model.marketValue.isNullOrBlank() || model.playerNationality.isNullOrBlank())
+        ) {
+            sem.withPermit { enrichFromProfile(model) }
+        } else {
+            model
+        }
     }
 
-    private fun enrichFromProfile(model: LatestTransferModel): LatestTransferModel? {
+    private suspend fun enrichFromProfile(model: LatestTransferModel): LatestTransferModel? {
         return try {
-            val doc = fetchDocument(model.playerUrl!!)
-            // Verify player is still without club (may have joined since list was updated)
+            val doc = TransfermarktHttp.fetchDocument(model.playerUrl!!)
             val clubSelectors = listOf(
                 "span.data-header__club a",
                 "span.data-header__club",
@@ -258,7 +277,6 @@ class LatestReleases {
                 }
                 if (clubName.isNotBlank()) break
             }
-            // Fallback: find "Current club" / "Verein" row and get linked club
             if (clubName.isBlank()) {
                 for (el in doc.select("dt, span.info-table__content--bold, td")) {
                     val label = el.text().trim().lowercase()
@@ -271,7 +289,7 @@ class LatestReleases {
                 }
             }
             if (clubName.isNotBlank() && !WITHOUT_CLUB_VARIANTS.any { clubName.contains(it) }) {
-                return null // Player has found a club - exclude from list
+                return null
             }
             val marketValue = model.marketValue?.takeIf { it.isNotBlank() }
                 ?: doc.select("div.data-header__box--small").text()
@@ -295,15 +313,6 @@ class LatestReleases {
             model
         }
     }
-
-    private fun makeAbsoluteUrl(url: String): String {
-        return when {
-            url.startsWith("//") -> "https:$url"
-            url.startsWith("/") -> "$TRANSFERMARKT_BASE_URL$url"
-            url.startsWith("http") -> url
-            else -> url
-        }
-    }
 }
 
 fun String?.convertLongPositionNameToShort(): String {
@@ -324,4 +333,3 @@ fun String?.convertLongPositionNameToShort(): String {
         else -> this ?: ""
     }
 }
-

@@ -34,11 +34,11 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.TrendingDown
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
@@ -86,7 +86,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
@@ -101,8 +100,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.TextFieldValue
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.text.style.TextOverflow
@@ -120,6 +117,9 @@ import coil.compose.AsyncImage
 import com.liordahan.mgsrteam.R
 import com.liordahan.mgsrteam.features.add.getPhoneNumberFromContactUri
 import com.liordahan.mgsrteam.features.players.models.NotesModel
+import com.liordahan.mgsrteam.features.players.playerinfo.notes.AddNoteBottomSheet
+import com.liordahan.mgsrteam.features.players.playerinfo.notes.AllNotesScreen
+import com.liordahan.mgsrteam.features.players.playerinfo.notes.NotesSection
 import com.liordahan.mgsrteam.features.players.models.Player
 import com.liordahan.mgsrteam.features.players.models.getAgentPhoneNumber
 import com.liordahan.mgsrteam.features.players.models.getPlayerPhoneNumber
@@ -135,7 +135,6 @@ import com.liordahan.mgsrteam.navigation.Screens
 import com.liordahan.mgsrteam.transfermarket.LatestTransferModel
 import com.liordahan.mgsrteam.ui.components.DarkSystemBarsForBottomSheet
 import com.liordahan.mgsrteam.ui.components.ToastManager
-import com.liordahan.mgsrteam.ui.components.setSearchViewTextFieldColorsDarkTheme
 import com.liordahan.mgsrteam.ui.theme.HomeBlueAccent
 import com.liordahan.mgsrteam.ui.theme.HomeDarkBackground
 import com.liordahan.mgsrteam.ui.theme.HomeDarkCard
@@ -249,17 +248,10 @@ fun PlayerInfoScreen(
 
     var showDeletePlayerIcon by remember { mutableStateOf(false) }
 
-    var notesInputText by remember(playerToPresent) {
-        mutableStateOf(
-            TextFieldValue(
-                text = playerToPresent?.notes ?: ""
-            )
-        )
-    }
-
     var showDeleteDialog by remember { mutableStateOf(false) }
     var showSalaryTransferFeeSheet by remember { mutableStateOf(false) }
-    var noteToDelete by remember { mutableStateOf<NotesModel?>(null) }
+    var showAddNoteSheet by remember { mutableStateOf(false) }
+    var showAllNotes by remember { mutableStateOf(false) }
     var documentsList by remember { mutableStateOf<List<PlayerDocument>>(emptyList()) }
     var docToDelete by remember { mutableStateOf<PlayerDocument?>(null) }
     var isUploadingDocument by remember { mutableStateOf(false) }
@@ -352,14 +344,37 @@ fun PlayerInfoScreen(
                 }
             )
         }
-        if (noteToDelete != null) {
-            DeleteNoteDialog(
-                onDismissRequest = { noteToDelete = null },
-                onDeleteClicked = {
-                    noteToDelete?.let { viewModel.onDeleteNoteClicked(it) }
-                    noteToDelete = null
+        if (showAddNoteSheet) {
+            AddNoteBottomSheet(
+                onDismiss = { showAddNoteSheet = false },
+                onSaveNote = { text ->
+                    viewModel.updateNotes(
+                        NotesModel(
+                            notes = text,
+                            createBy = "",
+                            createdAt = Date().time
+                        )
+                    )
+                    showAddNoteSheet = false
                 }
             )
+        }
+        if (showAllNotes) {
+            AllNotesScreen(
+                noteList = playerToPresent?.noteList.orEmpty(),
+                onBackClick = { showAllNotes = false },
+                onAddNote = { text ->
+                    viewModel.updateNotes(
+                        NotesModel(
+                            notes = text,
+                            createBy = "",
+                            createdAt = Date().time
+                        )
+                    )
+                },
+                onDeleteNote = { viewModel.onDeleteNoteClicked(it) }
+            )
+            return@Scaffold
         }
         if (docToDelete != null) {
             DeleteDocumentDialog(
@@ -539,6 +554,30 @@ fun PlayerInfoScreen(
                         thickness = 0.5.dp,
                         modifier = Modifier.padding(vertical = 8.dp)
                     )
+                    val localizedFoot = when (playerToPresent?.foot?.lowercase()) {
+                        "right" -> stringResource(R.string.player_info_foot_right)
+                        "left" -> stringResource(R.string.player_info_foot_left)
+                        "both" -> stringResource(R.string.player_info_foot_both)
+                        else -> playerToPresent?.foot
+                    }
+                    InfoRow(
+                        stringResource(R.string.player_info_foot),
+                        localizedFoot,
+                        darkTheme = true,
+                        icon = {
+                            Icon(
+                                modifier = Modifier.size(24.dp),
+                                painter = painterResource(R.drawable.ic_foot),
+                                contentDescription = null,
+                                tint = HomeTextSecondary
+                            )
+                        }
+                    )
+                    HorizontalDivider(
+                        color = HomeDarkCardBorder,
+                        thickness = 0.5.dp,
+                        modifier = Modifier.padding(vertical = 8.dp)
+                    )
                     NationalityInfoRow(
                         stringResource(R.string.player_info_nationality),
                         playerToPresent?.nationality,
@@ -577,6 +616,18 @@ fun PlayerInfoScreen(
                         playerToPresent?.currentClub?.clubName,
                         playerToPresent?.currentClub?.clubLogo,
                         darkTheme = true
+                    )
+
+                    HorizontalDivider(
+                        color = dividerColor,
+                        thickness = 0.5.dp,
+                        modifier = Modifier.padding(vertical = 8.dp)
+                    )
+
+                    AgencyInfoRow(
+                        title = stringResource(R.string.player_info_agency),
+                        agencyName = playerToPresent?.agency,
+                        agencyUrl = playerToPresent?.agencyUrl
                     )
 
                     HorizontalDivider(
@@ -699,90 +750,12 @@ fun PlayerInfoScreen(
                 }
 
             PlayerInfoSectionHeader(stringResource(R.string.player_info_notes))
-            PlayerInfoCard(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = stringResource(R.string.player_info_notes),
-                            style = boldTextStyle(HomeTextPrimary, 16.sp),
-                            modifier = Modifier.weight(1f)
-                        )
-                        Box(
-                            modifier = Modifier
-                                .background(
-                                    HomeTealAccent,
-                                    shape = RoundedCornerShape(32.dp)
-                                )
-                                .padding(horizontal = 14.dp, vertical = 4.dp)
-                                .clickWithNoRipple {
-                                    keyboardController?.hide()
-                                    focusManager.clearFocus()
-                                    viewModel.updateNotes(
-                                        NotesModel(
-                                            notes = notesInputText.text,
-                                            createBy = "",
-                                            createdAt = Date().time
-                                        )
-                                    )
-                                    notesInputText = TextFieldValue(text = "")
-                                },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = stringResource(R.string.player_info_add_note),
-                                style = boldTextStyle(HomeDarkBackground, 12.sp),
-                            )
-                        }
-                    }
-                    Spacer(Modifier.height(24.dp))
-                    BasicTextField(
-                        value = notesInputText,
-                        onValueChange = {
-                            notesInputText = it
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(80.dp),
-                        textStyle = regularTextStyle(HomeTextPrimary, 14.sp, direction = TextDirection.ContentOrRtl),
-                        enabled = true,
-                        keyboardOptions = KeyboardOptions(
-                            imeAction = ImeAction.Done,
-                            keyboardType = KeyboardType.Text
-                        ),
-                        decorationBox = { innerTextField ->
-                            TextFieldDefaults.DecorationBox(
-                                value = notesInputText.text,
-                                innerTextField = innerTextField,
-                                visualTransformation = VisualTransformation.None,
-                                singleLine = false,
-                                enabled = false,
-                                isError = false,
-                                contentPadding = PaddingValues(16.dp),
-                                shape = RoundedCornerShape(16.dp),
-                                colors = setSearchViewTextFieldColorsDarkTheme(),
-                                interactionSource = remember { MutableInteractionSource() },
-                                placeholder = {
-                                    Text(
-                                        stringResource(R.string.player_info_note_placeholder),
-                                        style = regularTextStyle(HomeTextSecondary.copy(alpha = 0.5f), 14.sp),
-                                        maxLines = 1
-                                    )
-                                }
-                            )
-                        }
-                    )
-
-                    Spacer(Modifier.height(16.dp))
-
-                    val notesList = playerToPresent?.noteList?.sortedByDescending { it.createdAt }
-
-                    notesList?.forEach {
-                        NoteItemUi(it, onDeleteNoteClicked = { noteToDelete = it }, darkTheme = true)
-                        Spacer(Modifier.height(4.dp))
-                    }
-                }
+            NotesSection(
+                noteList = playerToPresent?.noteList,
+                onAddNoteClicked = { showAddNoteSheet = true },
+                onDeleteNote = { viewModel.onDeleteNoteClicked(it) },
+                onViewAllClicked = { showAllNotes = true }
+            )
             }
                     }
                 if (isRefreshing) {
@@ -1910,70 +1883,6 @@ private fun PlayerInfoCard(
 }
 
 @Composable
-fun NoteItemUi(
-    notesModel: NotesModel,
-    onDeleteNoteClicked: (NotesModel) -> Unit,
-    darkTheme: Boolean = false
-) {
-    var isInEditMode by remember { mutableStateOf(false) }
-    val cardColor = if (darkTheme) HomeDarkCard else Color.White
-    val textColor = if (darkTheme) HomeTextPrimary else contentDefault
-
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp)
-            .shadow(2.dp, RoundedCornerShape(4.dp))
-            .clickWithNoRipple { isInEditMode = !isInEditMode },
-        shape = RoundedCornerShape(4.dp),
-        colors = CardDefaults.cardColors(containerColor = cardColor),
-        elevation = CardDefaults.cardElevation(4.dp)
-    ) {
-        val sdf = SimpleDateFormat("dd.MM.yyyy", Locale.getDefault())
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 8.dp),
-            horizontalAlignment = Alignment.End
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-
-                AnimatedVisibility(isInEditMode, modifier = Modifier.padding(end = 8.dp)) {
-                    Icon(
-                        imageVector = Icons.Default.Delete,
-                        contentDescription = null,
-                        modifier = Modifier.clickWithNoRipple {
-                            onDeleteNoteClicked(notesModel)
-                            isInEditMode = false
-                        },
-                        tint = HomeTealAccent
-                    )
-                }
-                Text(
-                    text = sdf.format(notesModel.createdAt),
-                    style = boldTextStyle(textColor, 12.sp),
-                    modifier = Modifier.weight(1f)
-                )
-                Text(
-                    text = notesModel.createBy ?: "",
-                    style = boldTextStyle(textColor, 12.sp)
-                )
-            }
-            Spacer(Modifier.height(8.dp))
-            Text(
-                text = notesModel.notes ?: "",
-                style = regularTextStyle(textColor, 14.sp, direction = TextDirection.ContentOrRtl),
-                textAlign = TextAlign.Start,
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
-    }
-}
-
-@Composable
 fun WhatsAppIcon(phoneNumber: String) {
     val context = LocalContext.current
     val uri = "https://wa.me/${phoneNumber.filter { it.isDigit() }}".toUri()
@@ -2072,6 +1981,66 @@ fun ClubInfoRow(
                 contentDescription = null,
                 modifier = Modifier.size(24.dp)
             )
+        }
+    }
+}
+
+@Composable
+fun AgencyInfoRow(
+    title: String,
+    agencyName: String?,
+    agencyUrl: String?
+) {
+    val context = LocalContext.current
+    val hasUrl = !agencyUrl.isNullOrBlank()
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 6.dp)
+            .then(
+                if (hasUrl) Modifier.clickWithNoRipple {
+                    val intent = Intent(Intent.ACTION_VIEW, agencyUrl!!.toUri())
+                    context.startActivity(intent)
+                } else Modifier
+            ),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            modifier = Modifier.size(24.dp),
+            painter = painterResource(R.drawable.ic_agency),
+            contentDescription = null,
+            tint = HomeTextSecondary
+        )
+        Spacer(Modifier.width(4.dp))
+        Text(
+            text = title,
+            style = regularTextStyle(HomeTextSecondary, 14.sp),
+            modifier = Modifier.weight(1f)
+        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Text(
+                text = agencyName ?: "--",
+                style = boldTextStyle(
+                    if (hasUrl) HomeTealAccent else HomeTextPrimary,
+                    14.sp
+                ),
+                textAlign = TextAlign.End,
+                overflow = TextOverflow.Ellipsis,
+                maxLines = 1
+            )
+            if (hasUrl) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.OpenInNew,
+                    contentDescription = stringResource(R.string.player_info_cd_open_link),
+                    modifier = Modifier.size(16.dp),
+                    tint = HomeTealAccent
+                )
+            }
         }
     }
 }
@@ -2350,76 +2319,6 @@ fun DeletePlayerDialog(onDismissRequest: () -> Unit, onDeletePlayerClicked: () -
                             text = stringResource(R.string.player_info_delete),
                             style = boldTextStyle(Color.White, 12.sp),
                             modifier = Modifier.clickWithNoRipple { onDeletePlayerClicked() }
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun DeleteNoteDialog(
-    onDismissRequest: () -> Unit,
-    onDeleteClicked: () -> Unit
-) {
-    Dialog(onDismissRequest = onDismissRequest) {
-        Card(
-            shape = RoundedCornerShape(16.dp),
-            elevation = CardDefaults.cardElevation(8.dp),
-            colors = CardDefaults.cardColors(containerColor = HomeDarkCard),
-            border = BorderStroke(1.dp, HomeDarkCardBorder)
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp)
-            ) {
-                Text(
-                    text = stringResource(R.string.player_info_delete_note_confirm),
-                    style = boldTextStyle(HomeTextPrimary, 16.sp),
-                    textAlign = TextAlign.Center
-                )
-                Spacer(Modifier.height(24.dp))
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .align(Alignment.End),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.End
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .background(
-                                HomeDarkCard,
-                                shape = RoundedCornerShape(100.dp)
-                            )
-                            .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(100.dp))
-                            .size(width = 80.dp, height = 30.dp)
-                            .clickWithNoRipple { },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = stringResource(R.string.cancel),
-                            style = boldTextStyle(HomeTextPrimary, 12.sp),
-                            modifier = Modifier.clickWithNoRipple { onDismissRequest() }
-                        )
-                    }
-                    Spacer(Modifier.width(8.dp))
-                    Box(
-                        modifier = Modifier
-                            .background(
-                                HomeRedAccent,
-                                shape = RoundedCornerShape(100.dp)
-                            )
-                            .size(width = 80.dp, height = 30.dp)
-                            .clickWithNoRipple { },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = stringResource(R.string.player_info_delete),
-                            style = boldTextStyle(Color.White, 12.sp),
-                            modifier = Modifier.clickWithNoRipple { onDeleteClicked() }
                         )
                     }
                 }

@@ -1,23 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Notification small icon: white-only, based on for_app_logo (circle + 3 bars).
-     Android uses only alpha and tints with accent color. -->
+<!-- Notification small icon — MGSR ascending-bars brand mark.
+     White-on-transparent: Android uses the alpha channel only and
+     tints with the accent colour set via setColor(). -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
     android:viewportWidth="24"
     android:viewportHeight="24">
-  <!-- Circle (from for_app_logo) -->
-  <path
-      android:pathData="M12,2A10,10 0,0 1,22 12A10,10 0,0 1,12 22A10,10 0,0 1,2 12A10,10 0,0 1,12 2Z"
-      android:fillColor="#FFFFFF"/>
-  <!-- Three bars - thicker for visibility at small size (from for_app_logo right side) -->
-  <path
-      android:pathData="M13,8h2v8h-2z"
-      android:fillColor="#FFFFFF"/>
-  <path
-      android:pathData="M16,6h2v10h-2z"
-      android:fillColor="#FFFFFF"/>
-  <path
-      android:pathData="M19,5h2v11h-2z"
-      android:fillColor="#FFFFFF"/>
+
+    <!-- Small bar (left) -->
+    <path
+        android:pathData="M2,20 L4,14 L6,14 L6,20 Z"
+        android:fillColor="#FFFFFF"/>
+
+    <!-- Medium bar (centre) -->
+    <path
+        android:pathData="M8,20 L11,9 L13,9 L13,20 Z"
+        android:fillColor="#FFFFFF"/>
+
+    <!-- Tall bar (right) -->
+    <path
+        android:pathData="M15,20 L20,3 L22,3 L22,20 Z"
+        android:fillColor="#FFFFFF"/>
 </vector>
