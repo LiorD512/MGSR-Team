@@ -323,13 +323,13 @@
     <string name="releases_badge_loan_return">חזר מהשאלה</string>
     <string name="releases_badge_returned_on">חזר ב-%1$s</string>
     <string name="releases_returned_to">חזר ל-%1$s</string>
-    <string name="releases_roster_teammates_one">%d שחקן מהסגל שיחק איתו</string>
-    <string name="releases_roster_teammates">%d שחקנים מהסגל שיחקו איתו</string>
-    <string name="releases_no_roster_teammates">אין שחקנים מהסגל ששיחקו עם שחקן זה</string>
+    <string name="releases_roster_teammates_one">%d שחקן מהמאגר שיחק איתו</string>
+    <string name="releases_roster_teammates">%d שחקנים מהמאגר שיחקו איתו</string>
+    <string name="releases_no_roster_teammates">אין שחקנים מהמאגר ששיחקו עם שחקן זה</string>
     <string name="releases_roster_teammates_loading">טוען שחקנים…</string>
     <string name="releases_games_together">%d משחקים ביחד</string>
     <string name="releases_games_together_label">משחקים ביחד</string>
-    <string name="releases_roster_teammates_tap">שחקנים מהסגל ששיחקו איתו</string>
+    <string name="releases_roster_teammates_tap">שחקנים מהמאגר ששיחקו איתו</string>
     <string name="shortlist_in_shortlist">ברשימת מעקב</string>
     <string name="shortlist_add_to_shortlist">הוסף לרשימת מעקב</string>
     <string name="returnee_title">חזרו מהשאלה</string>
