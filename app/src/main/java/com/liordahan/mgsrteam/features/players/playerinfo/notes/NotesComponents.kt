@@ -116,6 +116,7 @@ private fun appendToNote(current: String, addition: String): String {
 }
 
 private fun startVoiceRecording(
+    context: android.content.Context,
     speechRecognizer: SpeechRecognizer?,
     onTranscription: (String) -> Unit,
     onRecordingEnd: () -> Unit
@@ -136,7 +137,7 @@ private fun startVoiceRecording(
         override fun onPartialResults(partialResults: android.os.Bundle?) {}
         override fun onEvent(eventType: Int, params: android.os.Bundle?) {}
     })
-    recognizer.startListening(VoiceNoteRecorder.createRecognizerIntent())
+    recognizer.startListening(VoiceNoteRecorder.createRecognizerIntent(context))
 }
 
 // ─── Notes Section (inline in PlayerInfoScreen) ─────────────────────────────
@@ -426,6 +427,7 @@ fun AddNoteBottomSheet(
     ) { isGranted ->
         if (isGranted) {
             startVoiceRecording(
+                context = context,
                 speechRecognizer = speechRecognizer,
                 onTranscription = { transcribed -> noteText = appendToNote(noteText, transcribed) },
                 onRecordingEnd = { isRecording = false }
@@ -460,6 +462,7 @@ fun AddNoteBottomSheet(
             isRecording = false
         } else {
             startVoiceRecording(
+                context = context,
                 speechRecognizer = speechRecognizer,
                 onTranscription = { transcribed -> noteText = appendToNote(noteText, transcribed) },
                 onRecordingEnd = { isRecording = false }
