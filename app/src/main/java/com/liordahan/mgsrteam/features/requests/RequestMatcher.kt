@@ -14,6 +14,14 @@ import com.liordahan.mgsrteam.features.requests.models.Request
  */
 object RequestMatcher {
 
+    /**
+     * Returns requests that match the given player (reverse of match).
+     * Used on Player Info screen to show "Matching Requests" for a player.
+     */
+    fun matchingRequestsForPlayer(player: Player, requests: List<Request>): List<Request> {
+        return requests.filter { match(it, listOf(player)).isNotEmpty() }
+    }
+
     fun match(request: Request, players: List<Player>): List<Player> {
         val position = request.position?.takeIf { it.isNotBlank() } ?: return emptyList()
         return players.filter { player -> matchesRequest(player, request, position) }

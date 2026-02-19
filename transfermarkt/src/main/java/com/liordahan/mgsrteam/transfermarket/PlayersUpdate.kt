@@ -17,7 +17,8 @@ data class PlayerToUpdateValues(
     val onLoanFromClub: String? = null,
     val foot: String? = null,
     val agency: String? = null,
-    val agencyUrl: String? = null
+    val agencyUrl: String? = null,
+    val instagramProfile: String? = null
 )
 
 class PlayersUpdate {
@@ -119,6 +120,15 @@ class PlayersUpdate {
 
                 val loanInfo = detectLoanStatus(doc, clubName)
 
+                val instagramLink = doc.select("a[href*=\"instagram.com\"]").firstOrNull()
+                    ?.attr("href")
+                    ?.takeIf { it.isNotBlank() }
+                    ?.let { href ->
+                        href.trim().removeSuffix("/")
+                            .replace("http://", "https://")
+                            .let { n -> if (n.startsWith("http")) n else "https://$n" }
+                    }
+
                 val infoLabels = doc.select("span.info-table__content--regular")
                 var foot: String? = null
                 var agency: String? = null
@@ -159,7 +169,8 @@ class PlayersUpdate {
                         onLoanFromClub = loanInfo.onLoanFromClub,
                         foot = foot,
                         agency = agency,
-                        agencyUrl = agencyUrl
+                        agencyUrl = agencyUrl,
+                        instagramProfile = instagramLink
                     )
                 )
             } catch (ex: Exception) {

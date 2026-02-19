@@ -34,10 +34,9 @@ import kotlinx.coroutines.withContext
 import java.util.concurrent.TimeUnit
 
 /**
- * Background worker that re-validates club contacts monthly. For each club contact, re-runs the
- * club discovery search. If there is a 100% positive result that the contact is no longer at
- * their stored club (moved to a new club or is without club), updates the database and writes
- * a feed event.
+ * Background worker that re-validates club contacts monthly.
+ *
+ * ## Philosophy: Verify first, search only when needed, never update unless 150% sure
  *
  * ## Access control
  * Only the device signed in as [AUTHORIZED_EMAIL] executes the work.
@@ -49,11 +48,15 @@ import java.util.concurrent.TimeUnit
  *
  * ## Logic
  * 1. Fetches all club contacts (contactType == CLUB) from Firestore.
- * 2. For each contact with a name, calls [ClubDiscoveryService.discoverClubForPerson].
- * 3. If result is null (not 100% sure) → skip.
- * 4. If result indicates "Without club" → clear club fields, update DB, write feed event.
- * 5. If result indicates a different club → update contact with new club data, write feed event.
- * 6. If result indicates same club → no change.
+ * 2. For each contact WITH a stored club:
+ *    a. FIRST verify: is the contact still at their current club? (verifyPersonStillAtClub)
+ *    b. If YES → do nothing, skip (no search needed).
+ *    c. If NO or uncertain → run full discovery.
+ * 3. After discovery, only update if 150% certain:
+ *    a. For "without club" → confirm with confirmPersonWithoutClub before updating.
+ *    b. For "different club" → confirm with confirmPersonAtNewClub before updating.
+ *    c. If confirmation fails or is uncertain → do NOT change.
+ * 4. Contacts without a stored club are skipped (nothing to verify).
  *
  * ## Push notifications
  * When a club contact is detected as having left, the worker writes a [FeedEvent] to Firestore.
@@ -107,31 +110,67 @@ class ClubContactsRefreshWorker(
             for ((index, contact) in clubContacts.withIndex()) {
                 updateProgress("Checking club contacts…", index + 1, clubContacts.size)
 
-                val result = clubDiscoveryService.discoverClubForPerson(contact.name ?: "")
-                val discovered = result.getOrNull() ?: run {
-                    Log.d(TAG, "Skipping ${contact.name}: no definitive result")
+                val currentClub = contact.clubName?.trim()?.takeIf { it.isNotBlank() }
+                val personName = contact.name ?: ""
+
+                // Step 1: If contact has a stored club, verify first — skip search if still there
+                if (currentClub != null) {
+                    val verifyResult = clubDiscoveryService.verifyPersonStillAtClub(personName, currentClub)
+                    val stillAtClub = verifyResult.getOrNull() ?: run {
+                        Log.d(TAG, "Skipping ${contact.name}: verification failed")
+                        delay(DELAY_BETWEEN_CONTACTS_MS)
+                        continue
+                    }
+                    if (stillAtClub) {
+                        Log.d(TAG, "Contact ${contact.name} still at $currentClub — verified, no change")
+                        delay(DELAY_BETWEEN_CONTACTS_MS)
+                        continue
+                    }
+                    Log.d(TAG, "Contact ${contact.name} may have left $currentClub — running full discovery")
+                } else {
+                    // No stored club — nothing to verify, skip
+                    Log.d(TAG, "Skipping ${contact.name}: no stored club to verify")
                     delay(DELAY_BETWEEN_CONTACTS_MS)
                     continue
                 }
 
-                val currentClub = contact.clubName?.trim()?.takeIf { it.isNotBlank() }
+                // Step 2: Full discovery (only when verification suggested they may have left)
+                val result = clubDiscoveryService.discoverClubForPerson(personName)
+                val discovered = result.getOrNull() ?: run {
+                    Log.d(TAG, "Skipping ${contact.name}: no definitive discovery result")
+                    delay(DELAY_BETWEEN_CONTACTS_MS)
+                    continue
+                }
+
                 val discoveredClubName = discovered.clubName.trim()
 
                 when {
                     isWithoutClub(discoveredClubName) -> {
-                        if (currentClub != null) {
-                            updateContactToWithoutClub(contactsRef, contact)
-                            writeFeedEvent(
-                                feedRef,
-                                contact,
-                                oldClub = currentClub,
-                                newValue = "Without club"
-                            )
-                            updatedCount++
-                            Log.i(TAG, "Contact ${contact.name} left club: now without club")
+                        // Step 3a: Confirm 150% before updating to "without club"
+                        val confirmed = clubDiscoveryService.confirmPersonWithoutClub(personName).getOrNull() == true
+                        if (!confirmed) {
+                            Log.d(TAG, "Skipping ${contact.name}: not 150% sure they're without club — no change")
+                            delay(DELAY_BETWEEN_CONTACTS_MS)
+                            continue
                         }
+                        updateContactToWithoutClub(contactsRef, contact)
+                        writeFeedEvent(
+                            feedRef,
+                            contact,
+                            oldClub = currentClub,
+                            newValue = "Without club"
+                        )
+                        updatedCount++
+                        Log.i(TAG, "Contact ${contact.name} left club: now without club (confirmed)")
                     }
                     !isSameClub(currentClub, discoveredClubName) -> {
+                        // Step 3b: Confirm 150% before updating to new club
+                        val confirmed = clubDiscoveryService.confirmPersonAtNewClub(personName, discoveredClubName).getOrNull() == true
+                        if (!confirmed) {
+                            Log.d(TAG, "Skipping ${contact.name}: not 150% sure they're at $discoveredClubName — no change")
+                            delay(DELAY_BETWEEN_CONTACTS_MS)
+                            continue
+                        }
                         val newClubModel = discovered.clubModel
                         updateContactWithNewClub(
                             contactsRef,
@@ -143,14 +182,14 @@ class ClubContactsRefreshWorker(
                         writeFeedEvent(
                             feedRef,
                             contact,
-                            oldClub = currentClub ?: "Unknown",
+                            oldClub = currentClub,
                             newValue = discoveredClubName
                         )
                         updatedCount++
-                        Log.i(TAG, "Contact ${contact.name} left club: now at $discoveredClubName")
+                        Log.i(TAG, "Contact ${contact.name} left club: now at $discoveredClubName (confirmed)")
                     }
                     else -> {
-                        Log.d(TAG, "Contact ${contact.name} still at $currentClub — no change")
+                        Log.d(TAG, "Contact ${contact.name} discovery matched $currentClub — no change")
                     }
                 }
 
@@ -176,11 +215,25 @@ class ClubContactsRefreshWorker(
             lower == "no club"
     }
 
+    /**
+     * Returns true if current and discovered refer to the same club.
+     * Uses normalization (FC, CF, etc.) and substring matching to avoid false "different club"
+     * when names differ only by spelling (e.g. "FC Barcelona" vs "Barcelona").
+     */
     private fun isSameClub(current: String?, discovered: String): Boolean {
         if (current.isNullOrBlank()) return false
-        val c = current.lowercase().trim()
-        val d = discovered.lowercase().trim()
+        val c = normalizeClubForComparison(current)
+        val d = normalizeClubForComparison(discovered)
         return c == d || c.contains(d) || d.contains(c)
+    }
+
+    private fun normalizeClubForComparison(name: String): String {
+        return name.lowercase().trim()
+            .replace(Regex("\\bfc\\b\\.?\\s*"), "")
+            .replace(Regex("\\s*cf\\b\\.?"), "")
+            .replace(Regex("\\bclub\\b\\.?\\s*"), "")
+            .replace(Regex("\\s+"), " ")
+            .trim()
     }
 
     private suspend fun updateContactToWithoutClub(

@@ -94,14 +94,16 @@ class MandateExpiryWorker(
                     val playerTmProfile = data["playerTmProfile"] as? String ?: return@mapNotNull null
                     val expiresAt = (data["expiresAt"] as? Number)?.toLong() ?: return@mapNotNull null
                     val expired = (data["expired"] as? Boolean) == true
+                    val uploadedBy = data["uploadedBy"] as? String
                     if (expiresAt < now && !expired) {
-                        doc.reference to playerTmProfile
+                        Triple(doc.reference, playerTmProfile, uploadedBy to expiresAt)
                     } else null
                 }
 
             Log.i(TAG, "Found ${expiredMandates.size} mandate(s) past expiry date")
 
-            for ((docRef, playerTmProfile) in expiredMandates) {
+            for ((docRef, playerTmProfile, uploadedByAndExpiry) in expiredMandates) {
+                val (uploadedBy, expiresAt) = uploadedByAndExpiry
                 updateProgress("Processing expired mandates…")
 
                 // Mark document as expired
@@ -148,6 +150,8 @@ class MandateExpiryWorker(
                         playerName = playerName,
                         playerImage = playerImage,
                         playerTmProfile = playerTmProfile,
+                        agentName = uploadedBy,
+                        mandateExpiryAt = expiresAt,
                         oldValue = null,
                         newValue = "Mandate expired",
                         timestamp = now

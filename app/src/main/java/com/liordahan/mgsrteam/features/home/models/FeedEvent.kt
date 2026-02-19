@@ -17,7 +17,8 @@ data class FeedEvent(
     val newValue: String? = null,       // e.g. new market value or new club name
     val extraInfo: String? = null,      // e.g. agent name who wrote a note, count of expiring players
     val timestamp: Long? = null,
-    val agentName: String? = null
+    val agentName: String? = null,     // who marked/uploaded (e.g. mandate uploader)
+    val mandateExpiryAt: Long? = null  // mandate expiry timestamp; shown on mandate feed events
 ) {
     companion object {
         const val TYPE_MARKET_VALUE_CHANGE = "MARKET_VALUE_CHANGE"
@@ -36,6 +37,10 @@ data class FeedEvent(
         const val TYPE_MANDATE_EXPIRED = "MANDATE_EXPIRED"
         /** Mandate document was uploaded for a player. */
         const val TYPE_MANDATE_UPLOADED = "MANDATE_UPLOADED"
+        /** Mandate switch was manually turned on by user. */
+        const val TYPE_MANDATE_SWITCHED_ON = "MANDATE_SWITCHED_ON"
+        /** Mandate switch was manually turned off by user. */
+        const val TYPE_MANDATE_SWITCHED_OFF = "MANDATE_SWITCHED_OFF"
         /** Player was added to shortlist. No push notification. */
         const val TYPE_SHORTLIST_ADDED = "SHORTLIST_ADDED"
         /** Player was removed from shortlist. No push notification. */
@@ -46,5 +51,7 @@ data class FeedEvent(
         const val TYPE_REQUEST_DELETED = "REQUEST_DELETED"
         /** Club contact left their club (moved to new club or is without club). */
         const val TYPE_CLUB_CONTACT_LEFT = "CLUB_CONTACT_LEFT"
+        /** Player was offered to a club (from Matching Requests). No push notification. */
+        const val TYPE_PLAYER_OFFERED_TO_CLUB = "PLAYER_OFFERED_TO_CLUB"
     }
 }

@@ -48,6 +48,7 @@ data class HomeDashboardState(
     // activity feed
     val feedEvents: List<FeedEvent> = emptyList(),
     val selectedFeedFilter: FeedFilter = FeedFilter.ALL,
+    val isFeedExpanded: Boolean = false,
 
     // my personal overview (current logged-in agent)
     val myAgentOverview: MyAgentOverview? = null,
@@ -64,6 +65,9 @@ data class HomeDashboardState(
 
     // mandate document profiles (tmProfiles that have a mandate doc uploaded)
     val mandateDocProfiles: Set<String> = emptySet(),
+
+    // mandate switch state by tmProfile (for feed event cards)
+    val mandateStatusByTmProfile: Map<String, Boolean> = emptyMap(),
 
     // document reminders
     val documentReminders: List<DocumentReminder> = emptyList(),
@@ -101,7 +105,10 @@ abstract class IHomeScreenViewModel : ViewModel() {
     abstract val dashboardState: StateFlow<HomeDashboardState>
     /** Checks if player exists in DB; calls onResult(true) if exists, onResult(false) if deleted. */
     abstract fun checkPlayerExists(tmProfile: String, onResult: (Boolean) -> Unit)
+    /** Updates player's mandate switch (haveMandate) by tmProfile. */
+    abstract fun updatePlayerMandate(tmProfile: String, hasMandate: Boolean)
     abstract fun selectFeedFilter(filter: FeedFilter)
+    abstract fun toggleFeedExpanded()
     abstract fun toggleAgentExpanded(agentId: String)
     abstract fun toggleTaskCompleted(task: AgentTask)
     abstract fun addTask(agentId: String, agentName: String, title: String, dueDate: Long, priority: Int = 0, notes: String = "")
@@ -149,6 +156,21 @@ class HomeScreenViewModel(
                     .whereEqualTo("tmProfile", tmProfile).get().await().documents.isNotEmpty()
             } catch (_: Exception) { false }
             withContext(Dispatchers.Main) { onResult(exists) }
+        }
+    }
+
+    override fun updatePlayerMandate(tmProfile: String, hasMandate: Boolean) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val snap = firebaseHandler.firebaseStore
+                    .collection(firebaseHandler.playersTable)
+                    .whereEqualTo("tmProfile", tmProfile)
+                    .get()
+                    .await()
+                val doc = snap.documents.firstOrNull() ?: return@launch
+                val player = doc.toObject(Player::class.java) ?: return@launch
+                doc.reference.set(player.copy(haveMandate = hasMandate)).await()
+            } catch (_: Exception) { }
         }
     }
 
@@ -218,12 +240,16 @@ class HomeScreenViewModel(
 
                     _currentPlayers = players
 
+                    val mandateStatusByTmProfile = players
+                        .filter { it.tmProfile != null }
+                        .associate { it.tmProfile!! to it.haveMandate }
                     _state.update {
                         it.copy(
                             totalPlayers = total,
                             freeAgents = freeAgents,
                             expiringSoon = expiring,
                             agentSummaries = summaries,
+                            mandateStatusByTmProfile = mandateStatusByTmProfile,
                             isLoading = false
                         )
                     }
@@ -300,6 +326,10 @@ class HomeScreenViewModel(
 
     override fun selectFeedFilter(filter: FeedFilter) {
         _state.update { it.copy(selectedFeedFilter = filter) }
+    }
+
+    override fun toggleFeedExpanded() {
+        _state.update { it.copy(isFeedExpanded = !it.isFeedExpanded) }
     }
 
     // ── Document reminders ───────────────────────────────────────────────────

@@ -14,9 +14,14 @@ import com.liordahan.mgsrteam.features.players.playerinfo.ai.ScoutReportOptions
 import com.liordahan.mgsrteam.features.players.playerinfo.ai.SimilarPlayersOptions
 import com.liordahan.mgsrteam.features.players.playerinfo.documents.DocumentDetectionService
 import com.liordahan.mgsrteam.features.players.playerinfo.documents.DocumentType
+import com.liordahan.mgsrteam.features.players.playerinfo.matchingrequests.MatchingRequestUiState
+import com.liordahan.mgsrteam.features.players.playerinfo.matchingrequests.PlayerOffer
+import com.liordahan.mgsrteam.features.players.playerinfo.matchingrequests.IPlayerOffersRepository
 import com.liordahan.mgsrteam.features.players.playerinfo.documents.PlayerDocument
 import com.liordahan.mgsrteam.features.players.playerinfo.documents.PlayerDocumentsRepository
 import com.liordahan.mgsrteam.features.players.playerinfo.notes.NoteParser
+import com.liordahan.mgsrteam.features.requests.RequestMatcher
+import com.liordahan.mgsrteam.features.requests.repository.IRequestsRepository
 import com.liordahan.mgsrteam.features.home.models.FeedEvent
 import com.liordahan.mgsrteam.firebase.FirebaseHandler
 import com.liordahan.mgsrteam.helpers.UiResult
@@ -31,9 +36,14 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 
@@ -54,8 +64,9 @@ abstract class IPlayerInfoViewModel : ViewModel() {
     abstract fun deletePlayer(playerTmProfile: String, onDeleteSuccessfully: () -> Unit)
     abstract fun updatePlayerNumber(number: String)
     abstract fun updateAgentNumber(number: String)
+    abstract fun updateInstagramProfile(instagramUrl: String?)
     abstract fun clearAgency()
-    abstract fun updateHaveMandate(hasMandate: Boolean)
+    abstract fun updateHaveMandate(hasMandate: Boolean, isManual: Boolean = true)
     abstract fun updateSalaryRange(salaryRange: String?)
     abstract fun updateTransferFee(transferFee: String?)
     abstract fun updateNotes(notes: NotesModel)
@@ -66,6 +77,10 @@ abstract class IPlayerInfoViewModel : ViewModel() {
     abstract fun findSimilarPlayers(player: Player, languageCode: String = "en", options: SimilarPlayersOptions = SimilarPlayersOptions())
     abstract fun generateScoutReport(player: Player, languageCode: String = "en", options: ScoutReportOptions = ScoutReportOptions())
     abstract fun consumeUpdateResult()
+    abstract val matchingRequestsFlow: StateFlow<List<MatchingRequestUiState>>
+    abstract val allAccountsFlow: StateFlow<List<Account>>
+    abstract fun markPlayerAsOffered(player: Player, request: com.liordahan.mgsrteam.features.requests.models.Request, clubFeedback: String?)
+    abstract fun updateClubFeedback(offerId: String, clubFeedback: String?)
 }
 
 
@@ -77,7 +92,9 @@ class PlayerInfoViewModel(
     private val playersUpdate: PlayersUpdate,
     private val documentsRepository: PlayerDocumentsRepository,
     private val documentDetectionService: DocumentDetectionService,
-    private val aiHelperService: AiHelperService
+    private val aiHelperService: AiHelperService,
+    private val requestsRepository: IRequestsRepository,
+    private val offersRepository: IPlayerOffersRepository
 ) : IPlayerInfoViewModel() {
 
     private val _playerInfoFlow = MutableStateFlow<Player?>(null)
@@ -119,6 +136,35 @@ class PlayerInfoViewModel(
     private val _isScoutReportLoading = MutableStateFlow(false)
     override val isScoutReportLoading: StateFlow<Boolean> = _isScoutReportLoading
 
+    @OptIn(ExperimentalCoroutinesApi::class)
+    override val matchingRequestsFlow: StateFlow<List<MatchingRequestUiState>> = combine(
+        requestsRepository.requestsFlow(),
+        _playerInfoFlow.flatMapLatest { player ->
+            player?.tmProfile?.let { offersRepository.offersForPlayerFlow(it) } ?: flowOf(emptyList())
+        },
+        _playerInfoFlow
+    ) { requests, offers, player ->
+        if (player == null) emptyList()
+        else {
+            val pendingRequests = requests.filter { (it.status ?: "pending") == "pending" }
+            val matching = RequestMatcher.matchingRequestsForPlayer(player, pendingRequests)
+            val offerByRequestId = offers.associateBy { it.requestId }
+            matching.map { req ->
+                MatchingRequestUiState(request = req, offer = offerByRequestId[req.id])
+            }
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    override val allAccountsFlow: StateFlow<List<Account>> = callbackFlow {
+        val listener = firebaseHandler.firebaseStore.collection(firebaseHandler.accountsTable)
+            .addSnapshotListener { snapshot, _ ->
+                if (snapshot != null) {
+                    trySend(snapshot.toObjects(Account::class.java))
+                }
+            }
+        awaitClose { listener.remove() }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
     private var playerListenerRegistration: ListenerRegistration? = null
 
     init {
@@ -136,11 +182,13 @@ class PlayerInfoViewModel(
                     }
                 }
                 // Auto-sync mandate switch: ON when valid mandate docs exist, OFF when none.
+                // Only overwrite when count CHANGES (prevMandateCount != null) — never on first load,
+                // so we don't overwrite a manual switch (player.haveMandate) when user navigates back.
                 val validMandateCount = mandateDocs.count { !it.expired && (it.expiresAt == null || it.expiresAt >= now) }
-                if (prevMandateCount == null || validMandateCount != prevMandateCount) {
-                    prevMandateCount = validMandateCount
-                    updateHaveMandate(validMandateCount > 0)
+                if (prevMandateCount != null && validMandateCount != prevMandateCount) {
+                    updateHaveMandate(validMandateCount > 0, isManual = false)
                 }
+                prevMandateCount = validMandateCount
             }
         }
     }
@@ -245,6 +293,23 @@ class PlayerInfoViewModel(
         }
     }
 
+    override fun updateInstagramProfile(instagramUrl: String?) {
+        _playerInfoFlow.update {
+            it?.copy(instagramProfile = instagramUrl?.takeIf { url -> url.isNotBlank() })
+        }
+
+        _playerInfoFlow.value?.let { player ->
+            viewModelScope.launch {
+                val doc = firebaseHandler.firebaseStore
+                    .collection(firebaseHandler.playersTable)
+                    .whereEqualTo("tmProfile", player.tmProfile)
+                    .get().await().documents.firstOrNull()
+
+                doc?.reference?.set(player)?.await()
+            }
+        }
+    }
+
     override fun clearAgency() {
         _playerInfoFlow.update {
             it?.copy(agency = null, agencyUrl = null)
@@ -262,17 +327,38 @@ class PlayerInfoViewModel(
         }
     }
 
-    override fun updateHaveMandate(hasMandate: Boolean) {
+    override fun updateHaveMandate(hasMandate: Boolean, isManual: Boolean) {
         _playerInfoFlow.update {
             it?.copy(haveMandate = hasMandate)
         }
         viewModelScope.launch {
-            _playerInfoFlow.value?.let { player ->
-                val doc = firebaseHandler.firebaseStore
-                    .collection(firebaseHandler.playersTable)
-                    .whereEqualTo("tmProfile", player.tmProfile)
-                    .get().await().documents.firstOrNull()
-                doc?.reference?.set(player)?.await()
+            val player = _playerInfoFlow.value ?: return@launch
+            val tmProfile = player.tmProfile ?: return@launch
+            val doc = firebaseHandler.firebaseStore
+                .collection(firebaseHandler.playersTable)
+                .whereEqualTo("tmProfile", tmProfile)
+                .get().await().documents.firstOrNull()
+            doc?.reference?.set(player.copy(haveMandate = hasMandate))?.await()
+
+            if (isManual) {
+                val createdBy = getCurrentUserName()
+                val mandateExpiryAt = if (hasMandate) {
+                    documentsRepository.getDocuments(tmProfile)
+                        .filter { it.documentType == DocumentType.MANDATE && !it.expired }
+                        .maxOfOrNull { it.expiresAt ?: 0L }
+                        ?.takeIf { it > 0 }
+                } else null
+                val feedRef = firebaseHandler.firebaseStore.collection(firebaseHandler.feedEventsTable)
+                val feedEvent = FeedEvent(
+                    type = if (hasMandate) FeedEvent.TYPE_MANDATE_SWITCHED_ON else FeedEvent.TYPE_MANDATE_SWITCHED_OFF,
+                    playerName = player.fullName,
+                    playerImage = player.profileImage,
+                    playerTmProfile = tmProfile,
+                    agentName = createdBy,
+                    mandateExpiryAt = mandateExpiryAt,
+                    timestamp = System.currentTimeMillis()
+                )
+                feedRef.add(feedEvent).await()
             }
         }
     }
@@ -433,6 +519,7 @@ class PlayerInfoViewModel(
                         foot = response.data?.foot ?: player.foot,
                         agency = response.data?.agency ?: player.agency,
                         agencyUrl = response.data?.agencyUrl ?: player.agencyUrl,
+                        instagramProfile = response.data?.instagramProfile ?: player.instagramProfile,
                         noteList = if (player.notes?.isNotEmpty() == true) {
                             val currentNotes = player.noteList?.toMutableList() ?: mutableListOf()
                             currentNotes.add(
@@ -505,15 +592,17 @@ class PlayerInfoViewModel(
                     }
                 }
                 val docExpiresAt = detection.mandateExpiresAt ?: expiresAt
+                val createdBy = getCurrentUserName()
+                val uploadedBy = if (detection.documentType == DocumentType.MANDATE) createdBy else null
                 val result = documentsRepository.uploadDocument(
                     tmProfile,
                     detection.documentType,
                     detection.suggestedName,
                     bytes,
-                    docExpiresAt
+                    docExpiresAt,
+                    uploadedBy = uploadedBy
                 )
                 if (result.isSuccess && detection.documentType == DocumentType.MANDATE) {
-                    val createdBy = getCurrentUserName()
                     val feedRef = firebaseHandler.firebaseStore.collection(firebaseHandler.feedEventsTable)
                     val feedEvent = FeedEvent(
                         type = FeedEvent.TYPE_MANDATE_UPLOADED,
@@ -521,6 +610,7 @@ class PlayerInfoViewModel(
                         playerImage = player.profileImage,
                         playerTmProfile = tmProfile,
                         agentName = createdBy,
+                        mandateExpiryAt = docExpiresAt,
                         timestamp = System.currentTimeMillis()
                     )
                     feedRef.add(feedEvent).await()
@@ -547,6 +637,30 @@ class PlayerInfoViewModel(
      */
     override fun consumeUpdateResult() {
         _updatePlayerFlow.update { UiResult.UnInitialized }
+    }
+
+    override fun markPlayerAsOffered(player: Player, request: com.liordahan.mgsrteam.features.requests.models.Request, clubFeedback: String?) {
+        viewModelScope.launch {
+            val offer = PlayerOffer(
+                playerTmProfile = player.tmProfile,
+                playerName = player.fullName,
+                playerImage = player.profileImage,
+                requestId = request.id,
+                clubTmProfile = request.clubTmProfile,
+                clubName = request.clubName,
+                clubLogo = request.clubLogo,
+                position = request.position,
+                offeredAt = System.currentTimeMillis(),
+                clubFeedback = clubFeedback?.takeIf { it.isNotBlank() }
+            )
+            offersRepository.addOffer(offer)
+        }
+    }
+
+    override fun updateClubFeedback(offerId: String, clubFeedback: String?) {
+        viewModelScope.launch {
+            offersRepository.updateClubFeedback(offerId, clubFeedback)
+        }
     }
 
     override fun findSimilarPlayers(player: Player, languageCode: String, options: SimilarPlayersOptions) {

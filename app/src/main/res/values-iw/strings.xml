@@ -176,6 +176,8 @@
     <string name="feed_filter_value">שווי</string>
     <string name="feed_filter_transfers">העברות</string>
     <string name="feed_filter_notes">הערות</string>
+    <string name="feed_show_all">הצג הכל</string>
+    <string name="feed_show_less">הצג פחות</string>
     <string name="feed_empty">אין עדכונים אחרונים עדיין.\nעדכונים יופיעו כאן לאחר הסנכרון היומי.</string>
     <string name="feed_market_value_update">עדכון שווי שוק</string>
     <string name="feed_club_change">זוהה שינוי מועדון</string>
@@ -185,6 +187,11 @@
     <string name="feed_mandate_expired">מנדט פג תוקף</string>
     <string name="feed_mandate_uploaded">מנדט הועלה</string>
     <string name="feed_mandate_uploaded_by">%1$s העלה מנדט עבור %2$s</string>
+    <string name="feed_mandate_marked_by">סומן על ידי %1$s</string>
+    <string name="feed_mandate_expires">תוקף עד %1$s</string>
+    <string name="feed_mandate_switched_on">מנדט הופעל</string>
+    <string name="feed_mandate_switched_off">מנדט כובה</string>
+    <string name="feed_mandate_switched_by">%1$s שינה מנדט עבור %2$s</string>
     <string name="feed_contract_expiring">חוזה מסתיים</string>
     <string name="feed_new_note">הערה חדשה</string>
     <string name="feed_note_deleted">הערה נמחקה</string>
@@ -197,6 +204,9 @@
     <string name="feed_removed_by">הוסר על ידי %1$s</string>
     <string name="feed_request_added">בקשה חדשה</string>
     <string name="feed_request_deleted">בקשה נמחקה</string>
+    <string name="feed_player_offered_to_club">שחקן הוצע</string>
+    <string name="feed_offered_to">הוצע ל-%1$s</string>
+    <string name="feed_offered_by">הוצע על ידי %1$s</string>
     <string name="feed_deleted_by">נמחק על ידי %1$s</string>
     <string name="feed_added_by">נוסף על ידי %1$s</string>
     <string name="feed_update">עדכון</string>
@@ -617,6 +627,9 @@
     <string name="player_info_player_phone">טלפון שחקן</string>
     <string name="player_info_agent_phone">טלפון סוכן</string>
     <string name="player_info_tm_profile">פרופיל TM</string>
+    <string name="player_info_tm_short">TM</string>
+    <string name="player_info_wa_short">WA</string>
+    <string name="player_info_ig_short">IG</string>
     <string name="player_info_passport_details">פרטי דרכון</string>
     <string name="player_info_passport_already_exists">כבר קיים דרכון לשחקן זה</string>
     <string name="player_info_passport_first_name">שם פרטי</string>
@@ -672,6 +685,13 @@
     <string name="player_info_remove_number">הסר מספר</string>
     <string name="player_info_remove_agency">הסר סוכנות</string>
     <string name="player_info_add_number">הוסף מספר</string>
+    <string name="player_info_instagram">אינסטגרם</string>
+    <string name="player_info_add_instagram">הוסף אינסטגרם</string>
+    <string name="player_info_add">הוסף</string>
+    <string name="player_info_instagram_hint">כתובת אינסטגרם או שם משתמש</string>
+    <string name="player_info_open_instagram">פתח אינסטגרם</string>
+    <string name="player_info_edit_instagram">ערוך אינסטגרם</string>
+    <string name="player_info_remove_instagram">הסר אינסטגרם</string>
     <string name="player_info_contract_expired">חוזה פג תוקף</string>
     <string name="player_info_expired">פג תוקף</string>
     <string name="player_info_expires_in_months">פג תוקף בעוד %d חודשים</string>
@@ -712,6 +732,24 @@
     <string name="player_info_ai_report_full">טקטי מלא</string>
     <string name="player_info_ai_report_transfer">התמקדות העברה</string>
     <string name="player_info_ai_report_youth">פוטנציאל צעירים</string>
+
+    <!-- Matching Requests -->
+    <string name="player_info_matching_requests">בקשות תואמות</string>
+    <string name="player_info_matching_requests_empty">אין בקשות תואמות</string>
+    <string name="player_info_matching_requests_empty_subtitle">מועדונים עם בקשות התואמות לשחקן זה יופיעו כאן</string>
+    <string name="player_info_matching_requests_mark_offered">סמן כהוצע</string>
+    <string name="player_info_matching_requests_offered">הוצע</string>
+    <string name="player_info_matching_requests_offered_date">הוצע: %1$s</string>
+    <string name="player_info_matching_requests_by_agent">על ידי %1$s</string>
+    <string name="player_info_matching_requests_club_feedback">משוב מועדון</string>
+    <string name="player_info_matching_requests_add_feedback">הוסף משוב</string>
+    <string name="player_info_matching_requests_edit_feedback">ערוך משוב</string>
+    <string name="player_info_matching_requests_add_feedback_title">הוסף משוב מועדון</string>
+    <string name="player_info_matching_requests_edit_feedback_title">עריכת משוב מועדון</string>
+    <string name="player_info_matching_requests_offer_date">תאריך הצעה</string>
+    <string name="player_info_matching_requests_feedback_hint">משוב מועדון (אופציונלי)</string>
+    <string name="player_info_matching_requests_feedback_placeholder">למשל: מעוניינים, ידונו עם המאמן…</string>
+    <string name="player_info_matching_requests_cancel">ביטול</string>
 
     <!-- Player Info Accessibility -->
     <string name="player_info_cd_go_back">חזרה</string>

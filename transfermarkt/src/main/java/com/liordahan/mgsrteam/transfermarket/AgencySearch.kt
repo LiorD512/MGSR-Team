@@ -16,6 +16,12 @@ data class AgencySearchModel(
     val agencyUrl: String? = null
 )
 
+/** Internal: agency + agent names from the same search result row (when available). */
+private data class AgencyRow(
+    val agency: AgencySearchModel,
+    val agentNamesFromRow: List<String>
+)
+
 /**
  * Searches Transfermarkt for player agencies (berater/agent firms).
  * Uses the same quick-search endpoint as ClubSearch; results include an "agents" section.
@@ -24,35 +30,47 @@ class AgencySearch {
 
     /**
      * Search by person name - Transfermarkt may return their agency in the agents section.
-     * When multiple agencies match, fetches each page and returns the one where the person
-     * is actually listed in Staff. E.g. "Boris Laval" matches 2SAgency (not Gold Players S.A.).
+     * When multiple agencies match: 1) prefer row where agent names contain person,
+     * 2) else fetch each page and pick where person is in Staff.
      */
     suspend fun searchAgencyByPersonName(personName: String): AgencySearchModel? =
         withContext(Dispatchers.IO) {
-            when (val results = getAgencySearchResults(personName)) {
-                is TransfermarktResult.Success -> {
-                    val agencies = results.data
-                    if (agencies.isEmpty()) return@withContext null
-                    if (agencies.size == 1) return@withContext agencies.first()
+            when (val rows = getAgencyRowsByPersonName(personName)) {
+                null -> null
+                else -> {
+                    if (rows.isEmpty()) return@withContext null
+                    if (rows.size == 1) return@withContext rows.first().agency
 
-                    // Multiple agencies: pick the one where person is in staff
-                    agencies.firstOrNull { agency ->
-                        agency.agencyUrl?.let { url ->
-                            isPersonInAgencyStaff(personName, url)
-                        } ?: false
-                    } ?: agencies.firstOrNull()
+                    // 1) Prefer row where agent names from search result contain the person
+                    rows.firstOrNull { row ->
+                        row.agentNamesFromRow.any { namesMatch(personName, it) }
+                    }?.agency
+                        ?: rows.firstOrNull { row ->
+                            row.agency.agencyUrl?.let { isPersonInAgencyStaff(personName, it) } == true
+                        }?.agency
+                        ?: rows.first().agency
                 }
-                is TransfermarktResult.Failed -> null
             }
         }
 
     /**
      * Fetches an agency page and checks if the person name appears in the Staff section.
+     * Falls back to raw HTML contains check if structured parsing finds nothing.
      */
     suspend fun isPersonInAgencyStaff(personName: String, agencyUrl: String): Boolean =
         withContext(Dispatchers.IO) {
-            fetchAgencyPageStaffNames(agencyUrl).any { staffName ->
-                namesMatch(personName, staffName)
+            val staffNames = fetchAgencyPageStaffNames(agencyUrl)
+            if (staffNames.any { namesMatch(personName, it) }) return@withContext true
+            try {
+                val (_, html) = TransfermarktHttp.fetchDocumentWithHtml(agencyUrl)
+                val words = personName.trim().split(Regex("\\s+")).filter { it.length > 1 }
+                if (words.size >= 2) {
+                    html.contains(words.last(), ignoreCase = true) && html.contains(words.first(), ignoreCase = true)
+                } else {
+                    html.contains(personName.trim(), ignoreCase = true)
+                }
+            } catch (e: Exception) {
+                false
             }
         }
 
@@ -117,19 +135,47 @@ class AgencySearch {
                     }
                 }
 
-                // Fallback: agent/berater profile links anywhere on agency page
+                // Fallback: agent profile links (profil/berater) - excludes agency self-links
                 if (staffNames.isEmpty()) {
-                    doc.select("a[href*='/profil/berater/'], a[href*='beraterfirma']").forEach { link ->
-                        val name = link.text().trim().takeIf { it.isNotBlank() && it.length > 2 }
-                        if (name != null && !link.attr("href").contains("/beraterfirma/berater/")) {
-                            staffNames.add(name)
-                        }
+                    doc.select("a[href*='/profil/berater/']").forEach { link ->
+                        val name = link.text().trim().takeIf { it.isNotBlank() && it.length in 4..50 }
+                        if (name != null && name.contains(" ")) staffNames.add(name)
                     }
                 }
 
                 staffNames.distinct()
             } catch (e: Exception) {
                 emptyList()
+            }
+        }
+
+    /**
+     * Returns agency rows (agency + agent names from same row) for person name search.
+     * Used to pick the correct agency when multiple match (e.g. Boris Laval -> 2SAgency).
+     */
+    private suspend fun getAgencyRowsByPersonName(personName: String): List<AgencyRow>? =
+        withContext(Dispatchers.IO) {
+            when (val results = getAgencySearchResults(personName)) {
+                is TransfermarktResult.Success -> {
+                    if (results.data.isEmpty()) return@withContext emptyList()
+                    try {
+                        val encodedQuery = URLEncoder.encode(personName.trim(), StandardCharsets.UTF_8.toString())
+                        val searchUrl = "$TRANSFERMARKT_BASE_URL/schnellsuche/ergebnis/schnellsuche?query=$encodedQuery"
+                        val doc = TransfermarktHttp.fetchDocument(searchUrl)
+                        val agentSection = doc.select("div.box").firstOrNull {
+                            val h = it.select("h2.content-box-headline").text()
+                            h.contains("agent", ignoreCase = true) || h.contains("berater", ignoreCase = true)
+                        } ?: return@withContext results.data.map { AgencyRow(it, emptyList()) }
+
+                        agentSection.select("table.items tr.odd, table.items tr.even")
+                            .mapNotNull { row -> parseAgencyRowWithAgents(row) }
+                            .takeIf { it.isNotEmpty() }
+                            ?: results.data.map { AgencyRow(it, emptyList()) }
+                    } catch (e: Exception) {
+                        results.data.map { AgencyRow(it, emptyList()) }
+                    }
+                }
+                is TransfermarktResult.Failed -> null
             }
         }
 
@@ -168,6 +214,35 @@ class AgencySearch {
                 TransfermarktResult.Failed(ex.localizedMessage)
             }
         }
+
+    private fun parseAgencyRowWithAgents(element: Element): AgencyRow? {
+        val agency = parseAgencyRow(element) ?: return null
+        val agentNames = mutableSetOf<String>()
+        val agencyNameLower = agency.agencyName?.lowercase() ?: ""
+
+        element.select("td").forEach { td ->
+            td.select("a").forEach { link ->
+                val text = link.text().trim()
+                val href = link.attr("href")
+                if (text.length in 4..50 &&
+                    !text.equals(agency.agencyName, ignoreCase = true) &&
+                    !agencyNameLower.contains(text.lowercase()) &&
+                    (href.contains("profil/berater") || (href.contains("berater") && !href.contains("beraterfirma/berater/")))
+                ) {
+                    agentNames.add(text)
+                }
+            }
+            val plainText = td.text().trim()
+            if (plainText.length in 4..40 && plainText.contains(" ") &&
+                !plainText.equals(agency.agencyName, ignoreCase = true) &&
+                plainText.matches(Regex("^[\\p{L}\\s.-]+$")) &&
+                plainText.lowercase() !in listOf("premium service", "company", "licence", "agents")
+            ) {
+                agentNames.add(plainText)
+            }
+        }
+        return AgencyRow(agency, agentNames.toList())
+    }
 
     private fun parseAgencyRow(element: Element): AgencySearchModel? {
         return try {

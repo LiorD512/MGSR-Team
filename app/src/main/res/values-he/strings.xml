@@ -164,6 +164,8 @@
     <string name="feed_filter_value">שווי</string>
     <string name="feed_filter_transfers">העברות</string>
     <string name="feed_filter_notes">הערות</string>
+    <string name="feed_show_all">הצג הכל</string>
+    <string name="feed_show_less">הצג פחות</string>
     <string name="feed_empty">אין עדכונים אחרונים עדיין.\nעדכונים יופיעו כאן לאחר הסנכרון היומי.</string>
     <string name="feed_market_value_update">עדכון שווי שוק</string>
     <string name="feed_club_change">זוהה שינוי מועדון</string>
@@ -613,6 +615,9 @@
     <string name="player_info_player_phone">טלפון שחקן</string>
     <string name="player_info_agent_phone">טלפון סוכן</string>
     <string name="player_info_tm_profile">פרופיל TM</string>
+    <string name="player_info_tm_short">TM</string>
+    <string name="player_info_wa_short">WA</string>
+    <string name="player_info_ig_short">IG</string>
     <string name="player_info_passport_details">פרטי דרכון</string>
     <string name="player_info_passport_already_exists">כבר קיים דרכון לשחקן זה</string>
     <string name="player_info_passport_first_name">שם פרטי</string>
@@ -654,6 +659,13 @@
     <string name="player_info_remove_number">הסר מספר</string>
     <string name="player_info_remove_agency">הסר סוכנות</string>
     <string name="player_info_add_number">הוסף מספר</string>
+    <string name="player_info_instagram">אינסטגרם</string>
+    <string name="player_info_add_instagram">הוסף אינסטגרם</string>
+    <string name="player_info_add">הוסף</string>
+    <string name="player_info_instagram_hint">כתובת אינסטגרם או שם משתמש</string>
+    <string name="player_info_open_instagram">פתח אינסטגרם</string>
+    <string name="player_info_edit_instagram">ערוך אינסטגרם</string>
+    <string name="player_info_remove_instagram">הסר אינסטגרם</string>
     <string name="player_info_contract_expired">חוזה פג תוקף</string>
     <string name="player_info_expired">פג תוקף</string>
     <string name="player_info_expires_in_months">פג תוקף בעוד %d חודשים</string>

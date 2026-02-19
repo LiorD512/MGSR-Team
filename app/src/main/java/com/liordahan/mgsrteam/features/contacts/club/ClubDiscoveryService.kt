@@ -31,6 +31,125 @@ class ClubDiscoveryService(
     )
 
     /**
+     * Verifies whether a person is still at their expected club.
+     * Use this BEFORE running a full discovery to avoid unnecessary searches and false updates.
+     *
+     * @return true if we're confident they're still at the club, false if they've left or we're uncertain
+     */
+    suspend fun verifyPersonStillAtClub(personName: String, expectedClubName: String): Result<Boolean> =
+        withContext(Dispatchers.IO) {
+            try {
+                val sanitizedName = personName.trim()
+                val sanitizedClub = expectedClubName.trim()
+                if (sanitizedName.length < 2 || sanitizedClub.length < 2) {
+                    Log.w(TAG, "verifyPersonStillAtClub: name or club too short")
+                    return@withContext Result.success(false)
+                }
+
+                val model = FirebaseAI.getInstance(backend = GenerativeBackend.googleAI()).generativeModel(
+                    modelName = "gemini-2.5-flash",
+                    generationConfig = generationConfig { temperature = 0.0f },
+                    safetySettings = null,
+                    tools = listOf(Tool.googleSearch())
+                )
+                val prompt = """
+                    Search the web for current employment of "$sanitizedName" in football.
+                    Is "$sanitizedName" still at "$sanitizedClub" (as coach, director, scout, CEO, or any role)?
+                    Reply with exactly one word:
+                    YES - if they are definitely still at $sanitizedClub
+                    NO - if they have left or moved to a different club
+                    UNKNOWN - if you cannot confirm with certainty
+                """.trimIndent()
+                val response = model.generateContent(prompt)
+                val text = response.text?.trim()?.uppercase() ?: return@withContext Result.success(false)
+
+                val stillAtClub = text == "YES"
+                Log.d(TAG, "verifyPersonStillAtClub: $personName @ $expectedClubName -> $text (stillAtClub=$stillAtClub)")
+                Result.success(stillAtClub)
+            } catch (e: Exception) {
+                Log.e(TAG, "verifyPersonStillAtClub failed for $personName @ $expectedClubName", e)
+                Result.failure(e)
+            }
+        }
+
+    /**
+     * Confirms that a person has moved to a new club. Use before updating to ensure 150% certainty.
+     * @return true only if we're definitively sure the person is now at the new club
+     */
+    suspend fun confirmPersonAtNewClub(personName: String, newClubName: String): Result<Boolean> =
+        withContext(Dispatchers.IO) {
+            try {
+                val sanitizedName = personName.trim()
+                val sanitizedClub = newClubName.trim()
+                if (sanitizedName.length < 2 || sanitizedClub.length < 2) {
+                    return@withContext Result.success(false)
+                }
+
+                val model = FirebaseAI.getInstance(backend = GenerativeBackend.googleAI()).generativeModel(
+                    modelName = "gemini-2.5-flash",
+                    generationConfig = generationConfig { temperature = 0.0f },
+                    safetySettings = null,
+                    tools = listOf(Tool.googleSearch())
+                )
+                val prompt = """
+                    Search the web for current employment of "$sanitizedName" in football.
+                    Is "$sanitizedName" currently at "$sanitizedClub" (as coach, director, scout, CEO, or any role)?
+                    Reply with exactly one word:
+                    YES - if they are definitely now at $sanitizedClub
+                    NO - if they are elsewhere or you're not sure
+                    UNKNOWN - if you cannot confirm with certainty
+                """.trimIndent()
+                val response = model.generateContent(prompt)
+                val text = response.text?.trim()?.uppercase() ?: return@withContext Result.success(false)
+
+                val confirmed = text == "YES"
+                Log.d(TAG, "confirmPersonAtNewClub: $personName -> $newClubName: $text (confirmed=$confirmed)")
+                Result.success(confirmed)
+            } catch (e: Exception) {
+                Log.e(TAG, "confirmPersonAtNewClub failed", e)
+                Result.failure(e)
+            }
+        }
+
+    /**
+     * Confirms that a person is currently without a club. Use before updating to ensure 150% certainty.
+     * @return true only if we're definitively sure the person has no club (retired, free agent, etc.)
+     */
+    suspend fun confirmPersonWithoutClub(personName: String): Result<Boolean> =
+        withContext(Dispatchers.IO) {
+            try {
+                val sanitizedName = personName.trim()
+                if (sanitizedName.length < 2) {
+                    return@withContext Result.success(false)
+                }
+
+                val model = FirebaseAI.getInstance(backend = GenerativeBackend.googleAI()).generativeModel(
+                    modelName = "gemini-2.5-flash",
+                    generationConfig = generationConfig { temperature = 0.0f },
+                    safetySettings = null,
+                    tools = listOf(Tool.googleSearch())
+                )
+                val prompt = """
+                    Search the web for current employment of "$sanitizedName" in football.
+                    Is "$sanitizedName" currently without a club (retired, free agent, between jobs, left their last club)?
+                    Reply with exactly one word:
+                    YES - if they are definitely without a club
+                    NO - if they are at a club
+                    UNKNOWN - if you cannot confirm with certainty
+                """.trimIndent()
+                val response = model.generateContent(prompt)
+                val text = response.text?.trim()?.uppercase() ?: return@withContext Result.success(false)
+
+                val confirmed = text == "YES"
+                Log.d(TAG, "confirmPersonWithoutClub: $personName: $text (confirmed=$confirmed)")
+                Result.success(confirmed)
+            } catch (e: Exception) {
+                Log.e(TAG, "confirmPersonWithoutClub failed", e)
+                Result.failure(e)
+            }
+        }
+
+    /**
      * Finds the club and role for a person (coach, scout, director, etc.).
      * Uses Gemini with Google Search, then verifies club on Transfermarkt.
      */

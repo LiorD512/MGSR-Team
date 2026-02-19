@@ -177,6 +177,8 @@
     <string name="feed_filter_value">Value</string>
     <string name="feed_filter_transfers">Transfers</string>
     <string name="feed_filter_notes">Notes</string>
+    <string name="feed_show_all">Show All</string>
+    <string name="feed_show_less">Show Less</string>
     <string name="feed_empty">No recent updates yet.\nUpdates will appear here after the daily sync.</string>
     <string name="feed_market_value_update">Market Value Update</string>
     <string name="feed_club_change">Club Change Detected</string>
@@ -186,6 +188,11 @@
     <string name="feed_mandate_expired">Mandate Expired</string>
     <string name="feed_mandate_uploaded">Mandate Uploaded</string>
     <string name="feed_mandate_uploaded_by">%1$s uploaded mandate for %2$s</string>
+    <string name="feed_mandate_marked_by">Marked by %1$s</string>
+    <string name="feed_mandate_expires">Expires %1$s</string>
+    <string name="feed_mandate_switched_on">Mandate switched on</string>
+    <string name="feed_mandate_switched_off">Mandate switched off</string>
+    <string name="feed_mandate_switched_by">%1$s switched mandate for %2$s</string>
     <string name="feed_contract_expiring">Contract Expiring</string>
     <string name="feed_new_note">New Note</string>
     <string name="feed_note_deleted">Note Deleted</string>
@@ -206,6 +213,9 @@
     <string name="feed_moved_from_to">Moved from %1$s to %2$s</string>
     <string name="feed_released_from">Released from %1$s</string>
     <string name="feed_note_added_by">%1$s added a note on %2$s</string>
+    <string name="feed_player_offered_to_club">Player Offered</string>
+    <string name="feed_offered_to">Offered to %1$s</string>
+    <string name="feed_offered_by">Offered by %1$s</string>
 
     <!-- Time Ago -->
     <string name="time_just_now">Just now</string>
@@ -626,6 +636,9 @@
     <string name="player_info_player_phone">Player Phone</string>
     <string name="player_info_agent_phone">Agent Phone</string>
     <string name="player_info_tm_profile">TM Profile</string>
+    <string name="player_info_tm_short">TM</string>
+    <string name="player_info_wa_short">WA</string>
+    <string name="player_info_ig_short">IG</string>
     <string name="player_info_passport_details">Passport Details</string>
     <string name="player_info_passport_already_exists">There is already a passport for this player</string>
     <string name="player_info_passport_first_name">First name</string>
@@ -681,6 +694,13 @@
     <string name="player_info_remove_number">Remove Number</string>
     <string name="player_info_remove_agency">Remove agency</string>
     <string name="player_info_add_number">Add Number</string>
+    <string name="player_info_instagram">Instagram</string>
+    <string name="player_info_add_instagram">Add Instagram</string>
+    <string name="player_info_add">Add</string>
+    <string name="player_info_instagram_hint">Instagram URL or username (e.g. instagram.com/username)</string>
+    <string name="player_info_open_instagram">Open Instagram</string>
+    <string name="player_info_edit_instagram">Edit Instagram</string>
+    <string name="player_info_remove_instagram">Remove Instagram</string>
     <string name="player_info_contract_expired">Contract Expired</string>
     <string name="player_info_expired">Expired</string>
     <string name="player_info_expires_in_months">Expires in %d mo</string>
@@ -723,6 +743,24 @@
     <string name="player_info_ai_report_full">Full tactical</string>
     <string name="player_info_ai_report_transfer">Transfer focus</string>
     <string name="player_info_ai_report_youth">Youth potential</string>
+
+    <!-- Matching Requests -->
+    <string name="player_info_matching_requests">Matching Requests</string>
+    <string name="player_info_matching_requests_empty">No matching requests</string>
+    <string name="player_info_matching_requests_empty_subtitle">Clubs with requests matching this player will appear here</string>
+    <string name="player_info_matching_requests_mark_offered">Mark as offered</string>
+    <string name="player_info_matching_requests_offered">Offered</string>
+    <string name="player_info_matching_requests_offered_date">Offered: %1$s</string>
+    <string name="player_info_matching_requests_by_agent">by %1$s</string>
+    <string name="player_info_matching_requests_club_feedback">Club feedback</string>
+    <string name="player_info_matching_requests_add_feedback">Add feedback</string>
+    <string name="player_info_matching_requests_edit_feedback">Edit feedback</string>
+    <string name="player_info_matching_requests_add_feedback_title">Add club feedback</string>
+    <string name="player_info_matching_requests_edit_feedback_title">Edit club feedback</string>
+    <string name="player_info_matching_requests_offer_date">Offer date</string>
+    <string name="player_info_matching_requests_feedback_hint">Club feedback (optional)</string>
+    <string name="player_info_matching_requests_feedback_placeholder">e.g. Interested, will discuss with coach…</string>
+    <string name="player_info_matching_requests_cancel">Cancel</string>
 
     <!-- Player Info Accessibility -->
     <string name="player_info_cd_go_back">Go back</string>

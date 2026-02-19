@@ -51,9 +51,12 @@ import com.liordahan.mgsrteam.features.players.playerinfo.documents.CloudVisionO
 import com.liordahan.mgsrteam.features.players.playerinfo.documents.DocumentDetectionService
 import com.liordahan.mgsrteam.features.players.playerinfo.documents.GeminiPassportOcrProvider
 import com.liordahan.mgsrteam.features.players.playerinfo.documents.PlayerDocumentsRepository
+import com.liordahan.mgsrteam.features.players.playerinfo.matchingrequests.IPlayerOffersRepository
+import com.liordahan.mgsrteam.features.players.playerinfo.matchingrequests.PlayerOffersRepository
 import com.liordahan.mgsrteam.features.players.playerinfo.mandate.GenerateMandateViewModel
 import com.liordahan.mgsrteam.features.players.repository.IPlayersRepository
 import com.liordahan.mgsrteam.features.players.repository.PlayersRepository
+import com.liordahan.mgsrteam.features.requests.repository.IRequestsRepository
 import com.liordahan.mgsrteam.transfermarket.ClubSquadValueFetcher
 import com.liordahan.mgsrteam.transfermarket.PlayerSearch
 import com.liordahan.mgsrteam.transfermarket.PlayersUpdate
@@ -85,7 +88,8 @@ val playersModule = module {
     }
     single { GeminiPassportOcrProvider() }
     single { DocumentDetectionService(get<Context>(), get<CloudVisionOcrProvider>(), get<GeminiPassportOcrProvider>()) }
-    viewModel<IPlayerInfoViewModel> { PlayerInfoViewModel(get<Context>(), get(), get(), get(), get(), get()) }
+    single { PlayerOffersRepository(get()) } bind IPlayerOffersRepository::class
+    viewModel<IPlayerInfoViewModel> { PlayerInfoViewModel(get<Context>(), get(), get(), get(), get(), get(), get(), get()) }
     viewModel { GenerateMandateViewModel() }
 
     factory<IAddPositionFilterUseCase> {

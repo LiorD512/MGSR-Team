@@ -81,6 +81,8 @@
     <string name="feed_filter_value">שווי</string>
     <string name="feed_filter_transfers">העברות</string>
     <string name="feed_filter_notes">הערות</string>
+    <string name="feed_show_all">הצג הכל</string>
+    <string name="feed_show_less">הצג פחות</string>
     <string name="feed_empty">אין עדכונים אחרונים עדיין.\nעדכונים יופיעו כאן לאחר הסנכרון היומי.</string>
     <string name="feed_market_value_update">עדכון שווי שוק</string>
     <string name="feed_club_change">זוהה שינוי מועדון</string>

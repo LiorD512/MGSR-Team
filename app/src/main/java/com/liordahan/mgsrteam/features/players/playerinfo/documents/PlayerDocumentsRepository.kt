@@ -47,7 +47,8 @@ class PlayerDocumentsRepository(
         type: DocumentType,
         name: String,
         bytes: ByteArray,
-        expiresAt: Long?
+        expiresAt: Long?,
+        uploadedBy: String? = null
     ): Result<PlayerDocument> {
         return try {
             val safeProfile = playerTmProfile.hashCode().toString().replace("-", "x")
@@ -65,6 +66,9 @@ class PlayerDocumentsRepository(
             if (expiresAt != null) {
                 data["expiresAt"] = expiresAt
             }
+            if (uploadedBy != null) {
+                data["uploadedBy"] = uploadedBy
+            }
             store.collection(firebaseHandler.playerDocumentsTable).add(data).await()
             val doc = PlayerDocument(
                 playerTmProfile = playerTmProfile,
@@ -72,7 +76,8 @@ class PlayerDocumentsRepository(
                 name = name,
                 storageUrl = url,
                 uploadedAt = System.currentTimeMillis(),
-                expiresAt = expiresAt
+                expiresAt = expiresAt,
+                uploadedBy = uploadedBy
             )
             Result.success(doc.copy(id = null))
         } catch (e: Exception) {

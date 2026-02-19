@@ -351,7 +351,8 @@ class PlayerRefreshWorker(
             onLoanFromClub = data.onLoanFromClub,
             foot = data.foot ?: player.foot,
             agency = data.agency ?: player.agency,
-            agencyUrl = data.agencyUrl ?: player.agencyUrl
+            agencyUrl = data.agencyUrl ?: player.agencyUrl,
+            instagramProfile = data.instagramProfile ?: player.instagramProfile
         )
         docRef.set(updated).await()
     }
