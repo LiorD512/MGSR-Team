@@ -30,6 +30,36 @@ android {
                 }.firstOrNull() ?: ""
         } else ""
         buildConfigField("String", "VISION_API_KEY", "\"$visionApiKey\"")
+        // YouTube Data API v3 key for highlights search. Add to local.properties: YOUTUBE_API_KEY=your_key
+        val youtubeApiKey = if (localPropertiesFile.exists()) {
+            localPropertiesFile.readLines()
+                .filter { it.contains("=") && !it.trim().startsWith("#") }
+                .mapNotNull { line ->
+                    val (key, value) = line.split("=", limit = 2).map { it.trim() }
+                    if (key == "YOUTUBE_API_KEY") value else null
+                }.firstOrNull() ?: ""
+        } else ""
+        buildConfigField("String", "YOUTUBE_API_KEY", "\"$youtubeApiKey\"")
+        // Bing Video Search API - searches across the web (YouTube, Dailymotion, Vimeo, Instagram, TikTok, etc.)
+        val bingApiKey = if (localPropertiesFile.exists()) {
+            localPropertiesFile.readLines()
+                .filter { it.contains("=") && !it.trim().startsWith("#") }
+                .mapNotNull { line ->
+                    val (key, value) = line.split("=", limit = 2).map { it.trim() }
+                    if (key == "BING_SEARCH_API_KEY") value else null
+                }.firstOrNull() ?: ""
+        } else ""
+        buildConfigField("String", "BING_SEARCH_API_KEY", "\"$bingApiKey\"")
+        // Vimeo API - search videos. Add to local.properties: VIMEO_ACCESS_TOKEN=your_token
+        val vimeoToken = if (localPropertiesFile.exists()) {
+            localPropertiesFile.readLines()
+                .filter { it.contains("=") && !it.trim().startsWith("#") }
+                .mapNotNull { line ->
+                    val (key, value) = line.split("=", limit = 2).map { it.trim() }
+                    if (key == "VIMEO_ACCESS_TOKEN") value else null
+                }.firstOrNull() ?: ""
+        } else ""
+        buildConfigField("String", "VIMEO_ACCESS_TOKEN", "\"$vimeoToken\"")
     }
 
     buildTypes {
@@ -118,6 +148,7 @@ dependencies {
     implementation(libs.coil.gif)
     implementation(libs.coil.compose)
 
+    implementation(libs.okhttp)
     implementation(project(":transfermarkt"))
 
     // Firebase AI Logic (Gemini)

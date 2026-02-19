@@ -39,6 +39,10 @@
     <string name="players_filter_position_mid">שחקני קישור</string>
     <string name="players_filter_position_fwd">שחקני התקפה</string>
     <string name="players_sort_options">אפשרויות מיון</string>
+    <string name="players_sort_chip_newest">החדשים</string>
+    <string name="players_sort_chip_value">שווי</string>
+    <string name="players_sort_chip_name">שם</string>
+    <string name="players_sort_chip_age">גיל</string>
     <string name="players_reset">איפוס</string>
     <string name="players_sort_newest">החדשים קודם</string>
     <string name="players_sort_market_value">לפי שווי שוק</string>
@@ -124,6 +128,15 @@
     <string name="notification_without_club_body">%d שחקנים הפכו ללא מועדון</string>
     <string name="notification_mandate_expired_title">מנדט פג תוקף</string>
     <string name="notification_mandate_expired_body">המנדט של %1$s פג תוקף.</string>
+
+    <!-- Task notifications -->
+    <string name="notification_task_assigned_title">משימה חדשה הוקצתה</string>
+    <string name="notification_task_assigned_body">%1$s הקצה לך: %2$s</string>
+    <string name="notification_task_assigned_body_fallback">יש לך משימה חדשה: %1$s</string>
+    <string name="notification_task_reminder_title">תזכורת משימה</string>
+    <string name="notification_task_reminder_body_today">"%1$s" אמורה להסתיים היום</string>
+    <string name="notification_task_reminder_body_tomorrow">"%1$s" אמורה להסתיים מחר</string>
+    <string name="notification_task_reminder_body_days">"%1$s" אמורה להסתיים בעוד %2$s ימים</string>
 
     <!-- Greeting -->
     <string name="greeting_good_morning">בוקר טוב</string>
@@ -419,6 +432,16 @@
     <string name="requests_foot_any">לא משנה</string>
     <string name="requests_foot_label">רגל: %s</string>
 
+    <!-- Add Request voice recording -->
+    <string name="requests_record_request">הקלט בקשה</string>
+    <string name="requests_record_hint">דבר על המועדון, עמדה, משכורת, דמי העברה, רגל, גיל</string>
+    <string name="requests_recording">מקליט…</string>
+    <string name="requests_stop_recording">עצור</string>
+    <string name="requests_analyzing">מנתח…</string>
+    <string name="requests_voice_error">לא ניתן לנתח את ההקלטה. נסה שוב.</string>
+    <string name="requests_voice_missing_club_position">לא זוהה מועדון או עמדה. נסה שוב או מלא ידנית.</string>
+    <string name="requests_fill_manually">מלא ידנית</string>
+
     <!-- Add Request stepped flow -->
     <string name="requests_step_of">שלב %1$d מתוך 4</string>
     <string name="requests_step_club">מועדון</string>
@@ -685,6 +708,7 @@
     <string name="player_info_remove_salary_transfer_fee">הסר שכר ודמי העברה</string>
 
     <!-- AI Helper -->
+    <string name="player_info_highlights">היילייטס</string>
     <string name="player_info_ai_helper">סקאוט AI</string>
     <string name="player_info_ai_find_similar_players">מצא שחקנים דומים</string>
     <string name="player_info_ai_create_scout_report">צור דוח סקאוט עבור %s</string>
@@ -725,4 +749,14 @@
 
     <!-- Empty State (shared) -->
     <string name="empty_try_filters">נסה להתאים את המסננים או שאילתת החיפוש</string>
+
+    <!-- Highlights -->
+    <string name="highlights_find_videos">חפש סרטונים</string>
+    <string name="highlights_refresh">רענן</string>
+    <string name="highlights_retry">נסה שוב</string>
+    <string name="highlights_empty_title">אין היילייטס עדיין</string>
+    <string name="highlights_empty_subtitle">חפש היילייטס של %1$s (שנתיים אחרונות)</string>
+    <string name="highlights_results_count">%1$d סרטונים</string>
+    <string name="highlights_video_content_desc">פתח %1$s ב-%2$s</string>
+    <string name="highlights_view_instagram">צפה באינסטגרם</string>
 </resources>

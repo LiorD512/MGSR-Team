@@ -423,6 +423,9 @@ class HomeScreenViewModel(
 
     override fun addTask(agentId: String, agentName: String, title: String, dueDate: Long, priority: Int, notes: String) {
         viewModelScope.launch {
+            val currentAccount = _state.value.currentUserAccount
+            val createdByAgentId = currentAccount?.id ?: ""
+            val createdByAgentName = currentAccount?.let { it.getDisplayName(appContext) } ?: ""
             val newTask = AgentTask(
                 agentId = agentId,
                 agentName = agentName,
@@ -431,7 +434,9 @@ class HomeScreenViewModel(
                 dueDate = dueDate,
                 createdAt = System.currentTimeMillis(),
                 priority = priority,
-                notes = notes
+                notes = notes,
+                createdByAgentId = createdByAgentId,
+                createdByAgentName = createdByAgentName
             )
             // Optimistic update: add to state and sync widget immediately (before Firestore)
             _state.update { state ->

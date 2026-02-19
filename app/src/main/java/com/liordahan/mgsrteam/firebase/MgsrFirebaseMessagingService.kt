@@ -68,6 +68,28 @@ class MgsrFirebaseMessagingService : FirebaseMessagingService() {
         val extraInfo = data[KEY_EXTRA_INFO].orEmpty()
 
         return when (type) {
+            TYPE_TASK_ASSIGNED -> {
+                val createdBy = data[KEY_CREATED_BY_AGENT_NAME].orEmpty()
+                val taskTitle = data[KEY_TASK_TITLE].orEmpty()
+                val title = ctx.getString(R.string.notification_task_assigned_title)
+                val body = if (createdBy.isNotBlank()) {
+                    ctx.getString(R.string.notification_task_assigned_body, createdBy, taskTitle)
+                } else {
+                    ctx.getString(R.string.notification_task_assigned_body_fallback, taskTitle)
+                }
+                title to body
+            }
+            TYPE_TASK_REMINDER -> {
+                val taskTitle = data[KEY_TASK_TITLE].orEmpty()
+                val daysLeft = data[KEY_DAYS_LEFT].orEmpty()
+                val title = ctx.getString(R.string.notification_task_reminder_title)
+                val body = when (daysLeft) {
+                    "0" -> ctx.getString(R.string.notification_task_reminder_body_today, taskTitle)
+                    "1" -> ctx.getString(R.string.notification_task_reminder_body_tomorrow, taskTitle)
+                    else -> ctx.getString(R.string.notification_task_reminder_body_days, taskTitle, daysLeft)
+                }
+                title to body
+            }
             TYPE_CLUB_CHANGE -> {
                 val title = ctx.getString(R.string.notification_club_change_title)
                 val body = ctx.getString(R.string.notification_club_change_body, playerName, oldValue, newValue)
@@ -117,12 +139,13 @@ class MgsrFirebaseMessagingService : FirebaseMessagingService() {
 
         val type = data[KEY_TYPE].orEmpty()
         val playerTmProfile = data[KEY_PLAYER_TM_PROFILE].orEmpty()
+        val screen = data[KEY_SCREEN].orEmpty()
 
         val contentIntent = Intent(this, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
             putExtra(KEY_TYPE, type)
             data[KEY_PLAYER_ID]?.let { putExtra(EXTRA_PLAYER_ID, it) }
-            data[KEY_SCREEN]?.let { putExtra(EXTRA_SCREEN, it) }
+            if (screen.isNotBlank()) putExtra(EXTRA_SCREEN, screen)
             if (playerTmProfile.isNotBlank()) {
                 putExtra(EXTRA_PLAYER_TM_PROFILE, playerTmProfile)
                 if (type == TYPE_NEW_RELEASE_FROM_CLUB) {
@@ -138,6 +161,7 @@ class MgsrFirebaseMessagingService : FirebaseMessagingService() {
         )
 
         val (accentColor, accentDrawable) = when (type) {
+            TYPE_TASK_ASSIGNED, TYPE_TASK_REMINDER -> 0xFF39D164.toInt() to R.drawable.notification_accent_green
             TYPE_CLUB_CHANGE -> 0xFF2196F3.toInt() to R.drawable.notification_accent_blue
             TYPE_BECAME_FREE_AGENT, TYPE_NEW_RELEASE_FROM_CLUB -> 0xFFFF9800.toInt() to R.drawable.notification_accent_orange
             TYPE_MANDATE_EXPIRED -> 0xFFE53935.toInt() to R.drawable.notification_accent_orange
@@ -253,7 +277,12 @@ class MgsrFirebaseMessagingService : FirebaseMessagingService() {
         private const val KEY_NEW_VALUE = "newValue"
         private const val KEY_EXTRA_INFO = "extraInfo"
         private const val KEY_PLAYER_TM_PROFILE = "playerTmProfile"
+        private const val KEY_CREATED_BY_AGENT_NAME = "createdByAgentName"
+        private const val KEY_TASK_TITLE = "taskTitle"
+        private const val KEY_DAYS_LEFT = "daysLeft"
         private const val TYPE_CLUB_CHANGE = "CLUB_CHANGE"
+        const val TYPE_TASK_ASSIGNED = "TASK_ASSIGNED"
+        const val TYPE_TASK_REMINDER = "TASK_REMINDER"
         private const val TYPE_BECAME_FREE_AGENT = "BECAME_FREE_AGENT"
         private const val TYPE_MARKET_VALUE_CHANGE = "MARKET_VALUE_CHANGE"
         const val TYPE_NEW_RELEASE_FROM_CLUB = "NEW_RELEASE_FROM_CLUB"

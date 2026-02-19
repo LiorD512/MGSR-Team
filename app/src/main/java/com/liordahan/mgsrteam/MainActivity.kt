@@ -90,6 +90,13 @@ class MainActivity : AppCompatActivity() {
     private fun handleDeepLink(intent: Intent?) {
         if (intent == null) return
 
+        // Handle notification tap — open Tasks screen when screen=tasks
+        val screen = intent.getStringExtra(com.liordahan.mgsrteam.firebase.MgsrFirebaseMessagingService.EXTRA_SCREEN)
+        if (screen == "tasks") {
+            viewModel.setPendingOpenTasksScreen(true)
+            return
+        }
+
         // Handle notification tap — action or type determines destination
         val notificationAction = intent.getStringExtra(com.liordahan.mgsrteam.firebase.MgsrFirebaseMessagingService.EXTRA_NOTIFICATION_ACTION)
         val dataType = intent.getStringExtra("type")

@@ -20,6 +20,9 @@ abstract class IMainViewModel : ViewModel() {
     abstract val pendingShortlistAddTmUrl: StateFlow<String?>
     abstract fun setPendingShortlistAddTmUrl(url: String?)
     abstract fun clearPendingShortlistAddTmUrl()
+    /** When set, navigate to Tasks screen (e.g. from task notification tap). */
+    abstract val pendingOpenTasksScreen: StateFlow<Boolean>
+    abstract fun setPendingOpenTasksScreen(value: Boolean)
 }
 
 class MainViewModel(
@@ -63,6 +66,13 @@ class MainViewModel(
 
     override fun clearPendingShortlistAddTmUrl() {
         _pendingShortlistAddTmUrl.value = null
+    }
+
+    private val _pendingOpenTasksScreen = MutableStateFlow(false)
+    override val pendingOpenTasksScreen: StateFlow<Boolean> = _pendingOpenTasksScreen
+
+    override fun setPendingOpenTasksScreen(value: Boolean) {
+        _pendingOpenTasksScreen.value = value
     }
 
     init {

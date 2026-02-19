@@ -39,6 +39,10 @@
     <string name="players_filter_position_mid">MID</string>
     <string name="players_filter_position_fwd">FWD</string>
     <string name="players_sort_options">Sort options</string>
+    <string name="players_sort_chip_newest">Newest</string>
+    <string name="players_sort_chip_value">Value</string>
+    <string name="players_sort_chip_name">Name</string>
+    <string name="players_sort_chip_age">Age</string>
     <string name="players_reset">Reset</string>
     <string name="players_sort_newest">Newest First</string>
     <string name="players_sort_market_value">By Market Value</string>
@@ -137,6 +141,15 @@
     <string name="notification_mandate_expired_body">%1$s\'s mandate has expired.</string>
     <string name="notification_action_open_tm">Open Transfermarkt</string>
     <string name="notification_action_add_shortlist">Add to Shortlist</string>
+
+    <!-- Task notifications -->
+    <string name="notification_task_assigned_title">New Task Assigned</string>
+    <string name="notification_task_assigned_body">%1$s assigned you: %2$s</string>
+    <string name="notification_task_assigned_body_fallback">You have a new task: %1$s</string>
+    <string name="notification_task_reminder_title">Task Reminder</string>
+    <string name="notification_task_reminder_body_today">"%1$s" is due today</string>
+    <string name="notification_task_reminder_body_tomorrow">"%1$s" is due tomorrow</string>
+    <string name="notification_task_reminder_body_days">"%1$s" is due in %2$s days</string>
 
     <!-- Greeting -->
     <string name="greeting_good_morning">Good Morning</string>
@@ -440,6 +453,16 @@
     <string name="requests_foot_any">Doesn\'t matter</string>
     <string name="requests_foot_label">Foot: %s</string>
 
+    <!-- Add Request voice recording -->
+    <string name="requests_record_request">Record request</string>
+    <string name="requests_record_hint">Speak the club, position, salary, transfer fee, foot, age</string>
+    <string name="requests_recording">Recording…</string>
+    <string name="requests_stop_recording">Stop</string>
+    <string name="requests_analyzing">Analyzing…</string>
+    <string name="requests_voice_error">Could not analyze recording. Try again.</string>
+    <string name="requests_voice_missing_club_position">Could not detect club or position. Please try again or fill manually.</string>
+    <string name="requests_fill_manually">Fill manually</string>
+
     <!-- Add Request stepped flow -->
     <string name="requests_step_of">Step %1$d of 4</string>
     <string name="requests_step_club">Club</string>
@@ -720,6 +743,7 @@
     <string name="player_info_remove_salary_transfer_fee">Remove salary &amp; transfer fee</string>
 
     <!-- AI Helper -->
+    <string name="player_info_highlights">Highlights</string>
     <string name="player_info_ai_helper">AI Scout</string>
     <string name="player_info_ai_find_similar_players">Find similar players</string>
     <string name="player_info_ai_create_scout_report">Create scout report for %s</string>
@@ -761,6 +785,16 @@
     <string name="player_info_matching_requests_feedback_hint">Club feedback (optional)</string>
     <string name="player_info_matching_requests_feedback_placeholder">e.g. Interested, will discuss with coach…</string>
     <string name="player_info_matching_requests_cancel">Cancel</string>
+
+    <!-- Highlights -->
+    <string name="highlights_find_videos">Find videos</string>
+    <string name="highlights_refresh">Refresh</string>
+    <string name="highlights_retry">Try again</string>
+    <string name="highlights_empty_title">No highlights yet</string>
+    <string name="highlights_empty_subtitle">Search for highlight of %1$s (last 2 years)</string>
+    <string name="highlights_results_count">%1$d videos</string>
+    <string name="highlights_video_content_desc">Open %1$s on %2$s</string>
+    <string name="highlights_view_instagram">View on Instagram</string>
 
     <!-- Player Info Accessibility -->
     <string name="player_info_cd_go_back">Go back</string>

@@ -44,7 +44,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Handshake
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.SwapVert
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.PersonOff
@@ -211,7 +211,10 @@ fun PlayersScreen(
 
             // ── Header ───────────────────────────────────────────────────
             PlayersHeader(
-                onBackClicked = { navController.popBackStack() }
+                onBackClicked = { navController.popBackStack() },
+                sortOption = playersState.sortOption,
+                onSortOptionSelected = { viewModel.setSortOption(it) },
+                onResetSort = { viewModel.resetSortOption() }
             )
 
             // ── Stats Strip ──────────────────────────────────────────────
@@ -235,13 +238,10 @@ fun PlayersScreen(
                 }
             )
 
-            // ── Filter Chips + Sort Menu ──────────────────────────────────
-            PositionFilterChipsWithSortMenu(
+            // ── Position Filter Chips ────────────────────────────────────
+            PositionFilterChips(
                 selectedPositions = playersState.selectedPositions.mapNotNull { it.name },
-                sortOption = playersState.sortOption,
-                onChipClick = { positionName -> viewModel.setPositionFilterByChip(positionName) },
-                onSortOptionSelected = { viewModel.setSortOption(it) },
-                onResetSort = { viewModel.resetSortOption() }
+                onChipClick = { positionName -> viewModel.setPositionFilterByChip(positionName) }
             )
 
             // ── Quick Filter Chips ───────────────────────────────────────
@@ -413,11 +413,19 @@ fun PlayersScreen(
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
-//  HEADER
+//  HEADER (with Sort action in Top App Bar)
 // ═════════════════════════════════════════════════════════════════════════════
 
 @Composable
-private fun PlayersHeader(onBackClicked: () -> Unit) {
+private fun PlayersHeader(
+    onBackClicked: () -> Unit,
+    sortOption: SortOption,
+    onSortOptionSelected: (SortOption) -> Unit,
+    onResetSort: () -> Unit
+) {
+    var sortMenuExpanded by remember { mutableStateOf(false) }
+    val sortContentDesc = stringResource(R.string.players_sort_options)
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -435,8 +443,88 @@ private fun PlayersHeader(onBackClicked: () -> Unit) {
         Spacer(modifier = Modifier.width(8.dp))
         Text(
             text = stringResource(R.string.players_roster_title),
-            style = boldTextStyle(HomeTextPrimary, 26.sp)
+            style = boldTextStyle(HomeTextPrimary, 26.sp),
+            modifier = Modifier.weight(1f)
         )
+
+        Box(
+            modifier = Modifier
+                .clip(RoundedCornerShape(8.dp))
+                .background(HomeDarkCard.copy(alpha = 0.8f))
+                .clickWithNoRipple { sortMenuExpanded = true }
+                .padding(12.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Filled.SwapVert,
+                contentDescription = sortContentDesc,
+                tint = HomeTealAccent,
+                modifier = Modifier.size(24.dp)
+            )
+            DropdownMenu(
+                expanded = sortMenuExpanded,
+                onDismissRequest = { sortMenuExpanded = false },
+                modifier = Modifier.background(HomeDarkCard),
+                containerColor = HomeDarkCard
+            ) {
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            text = stringResource(R.string.players_reset),
+                            style = regularTextStyle(HomeTextPrimary, 13.sp)
+                        )
+                    },
+                    onClick = {
+                        onResetSort()
+                        sortMenuExpanded = false
+                    }
+                )
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            text = stringResource(R.string.players_sort_market_value),
+                            style = regularTextStyle(
+                                if (sortOption == SortOption.MARKET_VALUE) HomeTealAccent else HomeTextPrimary,
+                                13.sp
+                            )
+                        )
+                    },
+                    onClick = {
+                        onSortOptionSelected(SortOption.MARKET_VALUE)
+                        sortMenuExpanded = false
+                    }
+                )
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            text = stringResource(R.string.players_sort_name),
+                            style = regularTextStyle(
+                                if (sortOption == SortOption.NAME) HomeTealAccent else HomeTextPrimary,
+                                13.sp
+                            )
+                        )
+                    },
+                    onClick = {
+                        onSortOptionSelected(SortOption.NAME)
+                        sortMenuExpanded = false
+                    }
+                )
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            text = stringResource(R.string.players_sort_age),
+                            style = regularTextStyle(
+                                if (sortOption == SortOption.AGE) HomeTealAccent else HomeTextPrimary,
+                                13.sp
+                            )
+                        )
+                    },
+                    onClick = {
+                        onSortOptionSelected(SortOption.AGE)
+                        sortMenuExpanded = false
+                    }
+                )
+            }
+        }
     }
 }
 
@@ -600,18 +688,14 @@ private fun PlayersSearchBar(
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
-//  POSITION FILTER CHIPS + SORT MENU (3-dot)
+//  POSITION FILTER CHIPS
 // ═════════════════════════════════════════════════════════════════════════════
 
 @Composable
-private fun PositionFilterChipsWithSortMenu(
+private fun PositionFilterChips(
     selectedPositions: List<String>,
-    sortOption: SortOption,
-    onChipClick: (String) -> Unit,
-    onSortOptionSelected: (SortOption) -> Unit,
-    onResetSort: () -> Unit
+    onChipClick: (String) -> Unit
 ) {
-    var sortMenuExpanded by remember { mutableStateOf(false) }
     val positions = listOf("All", "GK", "DEF", "MID", "FWD")
     val isAllSelected = selectedPositions.isEmpty()
     val scrollState = rememberScrollState()
@@ -619,125 +703,39 @@ private fun PositionFilterChipsWithSortMenu(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 4.dp),
+            .padding(horizontal = 16.dp, vertical = 4.dp)
+            .horizontalScroll(scrollState),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(
-            modifier = Modifier
-                .weight(1f)
-                .horizontalScroll(scrollState),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            positions.forEach { position ->
-                val isSelected = if (position == "All") isAllSelected
-                else selectedPositions.any { it.equals(position, ignoreCase = true) }
+        positions.forEach { position ->
+            val isSelected = if (position == "All") isAllSelected
+            else selectedPositions.any { it.equals(position, ignoreCase = true) }
 
-                val bgColor by animateColorAsState(
-                    targetValue = if (isSelected) HomeTealAccent else Color.Transparent,
-                    label = "chipBg"
-                )
-                val textColor = if (isSelected) HomeDarkBackground else HomeTextSecondary
-                val borderColor = if (isSelected) HomeTealAccent else HomeDarkCardBorder
+            val bgColor by animateColorAsState(
+                targetValue = if (isSelected) HomeTealAccent else Color.Transparent,
+                label = "chipBg"
+            )
+            val textColor = if (isSelected) HomeDarkBackground else HomeTextSecondary
+            val borderColor = if (isSelected) HomeTealAccent else HomeDarkCardBorder
 
-                Text(
-                    text = when (position) {
-                        "All" -> stringResource(R.string.players_filter_all)
-                        "GK" -> stringResource(R.string.players_filter_position_gk)
-                        "DEF" -> stringResource(R.string.players_filter_position_def)
-                        "MID" -> stringResource(R.string.players_filter_position_mid)
-                        "FWD" -> stringResource(R.string.players_filter_position_fwd)
-                        else -> position
-                    },
-                    style = boldTextStyle(textColor, 11.sp),
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(20.dp))
-                        .background(bgColor)
-                        .border(1.dp, borderColor, RoundedCornerShape(20.dp))
-                        .clickWithNoRipple { onChipClick(position) }
-                        .padding(horizontal = 14.dp, vertical = 5.dp)
-                )
-            }
-        }
-
-        Spacer(Modifier.width(4.dp))
-
-        Box {
-            Icon(
-                imageVector = Icons.Filled.MoreVert,
-                contentDescription = stringResource(R.string.players_sort_options),
-                tint = HomeTextSecondary,
+            Text(
+                text = when (position) {
+                    "All" -> stringResource(R.string.players_filter_all)
+                    "GK" -> stringResource(R.string.players_filter_position_gk)
+                    "DEF" -> stringResource(R.string.players_filter_position_def)
+                    "MID" -> stringResource(R.string.players_filter_position_mid)
+                    "FWD" -> stringResource(R.string.players_filter_position_fwd)
+                    else -> position
+                },
+                style = boldTextStyle(textColor, 11.sp),
                 modifier = Modifier
                     .clip(RoundedCornerShape(20.dp))
-                    .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(20.dp))
-                    .clickWithNoRipple { sortMenuExpanded = true }
-                    .padding(8.dp)
+                    .background(bgColor)
+                    .border(1.dp, borderColor, RoundedCornerShape(20.dp))
+                    .clickWithNoRipple { onChipClick(position) }
+                    .padding(horizontal = 14.dp, vertical = 5.dp)
             )
-
-            DropdownMenu(
-                expanded = sortMenuExpanded,
-                onDismissRequest = { sortMenuExpanded = false },
-                modifier = Modifier.background(HomeDarkCard),
-                containerColor = HomeDarkCard
-            ) {
-                DropdownMenuItem(
-                    text = {
-                        Text(
-                            text = stringResource(R.string.players_reset),
-                            style = regularTextStyle(HomeTextPrimary, 13.sp)
-                        )
-                    },
-                    onClick = {
-                        onResetSort()
-                        sortMenuExpanded = false
-                    }
-                )
-                DropdownMenuItem(
-                    text = {
-                        Text(
-                            text = stringResource(R.string.players_sort_market_value),
-                            style = regularTextStyle(
-                                if (sortOption == SortOption.MARKET_VALUE) HomeTealAccent else HomeTextPrimary,
-                                13.sp
-                            )
-                        )
-                    },
-                    onClick = {
-                        onSortOptionSelected(SortOption.MARKET_VALUE)
-                        sortMenuExpanded = false
-                    }
-                )
-                DropdownMenuItem(
-                    text = {
-                        Text(
-                            text = stringResource(R.string.players_sort_name),
-                            style = regularTextStyle(
-                                if (sortOption == SortOption.NAME) HomeTealAccent else HomeTextPrimary,
-                                13.sp
-                            )
-                        )
-                    },
-                    onClick = {
-                        onSortOptionSelected(SortOption.NAME)
-                        sortMenuExpanded = false
-                    }
-                )
-                DropdownMenuItem(
-                    text = {
-                        Text(
-                            text = stringResource(R.string.players_sort_age),
-                            style = regularTextStyle(
-                                if (sortOption == SortOption.AGE) HomeTealAccent else HomeTextPrimary,
-                                13.sp
-                            )
-                        )
-                    },
-                    onClick = {
-                        onSortOptionSelected(SortOption.AGE)
-                        sortMenuExpanded = false
-                    }
-                )
-            }
         }
     }
 }

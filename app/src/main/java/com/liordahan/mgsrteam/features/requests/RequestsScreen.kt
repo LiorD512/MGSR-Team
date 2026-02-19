@@ -1,7 +1,11 @@
 package com.liordahan.mgsrteam.features.requests
 
+import android.Manifest
 import android.content.Intent
+import android.media.MediaRecorder
 import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
@@ -59,7 +63,9 @@ import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkAdd
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.People
+import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -124,6 +130,8 @@ import com.liordahan.mgsrteam.features.players.models.Player
 import com.liordahan.mgsrteam.features.players.playerinfo.ai.AiHelperService
 import com.liordahan.mgsrteam.features.players.playerinfo.WhatsAppIcon
 import com.liordahan.mgsrteam.features.requests.models.DominateFootOptions
+import com.liordahan.mgsrteam.features.requests.voice.RequestVoiceAnalyzer
+import com.liordahan.mgsrteam.features.requests.voice.RequestVoiceRecorder
 import com.liordahan.mgsrteam.features.requests.models.PositionDisplayNames
 import com.liordahan.mgsrteam.features.requests.models.Request
 import com.liordahan.mgsrteam.features.requests.models.SalaryRangeOptions
@@ -1554,7 +1562,30 @@ private fun AddRequestBottomSheet(
 ) {
     val clubSearch: ClubSearch = koinInject()
     val contactsRepository: IContactsRepository = koinInject()
+    val voiceAnalyzer: RequestVoiceAnalyzer = koinInject()
     val contacts by contactsRepository.contactsFlow().collectAsStateWithLifecycle(initialValue = emptyList())
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+
+    var showChoiceScreen by rememberSaveable { mutableStateOf(true) }
+    var isRecording by remember { mutableStateOf(false) }
+    var isAnalyzing by remember { mutableStateOf(false) }
+    var recorder by remember { mutableStateOf<MediaRecorder?>(null) }
+    var recordingFile by remember { mutableStateOf<java.io.File?>(null) }
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            val file = RequestVoiceRecorder.createTempRecordingFile(context)
+            recordingFile = file
+            recorder = RequestVoiceRecorder.startRecording(file)
+            if (recorder != null) isRecording = true
+            else ToastManager.showError(context.getString(R.string.requests_voice_error))
+        } else {
+            ToastManager.showError(context.getString(R.string.player_info_record_permission_denied))
+        }
+    }
 
     var clubSearchQuery by remember { mutableStateOf("") }
     var clubSearchResults by remember { mutableStateOf<List<ClubSearchModel>>(emptyList()) }
@@ -1679,99 +1710,196 @@ private fun AddRequestBottomSheet(
                 }
             }
 
-            AddRequestStepIndicator(currentStep = currentStep, stepLabels = stepLabels)
-
-            Spacer(Modifier.height(16.dp))
-
-            AnimatedContent(
-                modifier = Modifier.weight(1f, fill = true),
-                targetState = currentStep,
-                transitionSpec = {
-                    if (targetState > initialState) {
-                        slideInHorizontally(animationSpec = tween(200)) { it } + fadeIn(tween(200)) togetherWith
-                            slideOutHorizontally(animationSpec = tween(200)) { -it } + fadeOut(tween(200))
-                    } else {
-                        slideInHorizontally(animationSpec = tween(200)) { -it } + fadeIn(tween(200)) togetherWith
-                            slideOutHorizontally(animationSpec = tween(200)) { it } + fadeOut(tween(200))
-                    }
-                },
-                label = "add_request_steps"
-            ) { step ->
-                when (step) {
-                    0 -> AddRequestStep1ClubContent(
-                        clubSearchQuery = clubSearchQuery,
-                        onClubSearchChange = {
-                            clubSearchQuery = it
-                            if (selectedClub != null && it != selectedClub?.clubName) selectedClub = null
-                        },
-                        clubSearchResults = clubSearchResults,
-                        isSearchingClubs = isSearchingClubs,
-                        selectedClub = selectedClub,
-                        filteredContacts = filteredContacts,
-                        selectedContact = selectedContact,
-                        onSelectClub = {
-                            selectedClub = it
-                            clubSearchQuery = ""
-                            clubSearchResults = emptyList()
-                        },
-                        onChangeClub = {
-                            selectedClub = null
-                            clubSearchQuery = ""
-                            clubSearchResults = emptyList()
-                            clubSearchFocusRequester.requestFocus()
-                            keyboardController?.show()
-                        },
-                        onSelectContact = { selectedContact = if (selectedContact?.id == it.id) null else it },
-                        clubSearchFocusRequester = clubSearchFocusRequester
-                    )
-                    1 -> AddRequestStep2PositionContent(
-                        positions = positions,
-                        selectedPosition = selectedPosition,
-                        onSelectPosition = { selectedPosition = it }
-                    )
-                    2 -> AddRequestStep3RequirementsContent(
-                        ageDoesntMatter = ageDoesntMatter,
-                        minAge = minAge,
-                        maxAge = maxAge,
-                        selectedDominateFoot = selectedDominateFoot,
-                        selectedSalaryRange = selectedSalaryRange,
-                        selectedTransferFee = selectedTransferFee,
-                        onAgeDoesntMatterChange = { ageDoesntMatter = it },
-                        onMinAgeChange = { minAge = it },
-                        onMaxAgeChange = { maxAge = it },
-                        onDominateFootSelect = { selectedDominateFoot = it },
-                        onSalaryRangeSelect = { selectedSalaryRange = it },
-                        onTransferFeeSelect = { selectedTransferFee = it }
-                    )
-                    3 -> AddRequestStep4NotesContent(
-                        notes = notes,
-                        onNotesChange = { notes = it },
-                        onDismiss = onDismiss,
-                        onSave = {
-                            val club = selectedClub
-                            val pos = selectedPosition
-                            if (club != null && pos != null) {
-                                onSave(
-                                    club,
-                                    pos,
-                                    selectedContact?.id,
-                                    selectedContact?.name,
-                                    selectedContact?.phoneNumber,
-                                    minAge.toIntOrNull()?.takeIf { it > 0 },
-                                    maxAge.toIntOrNull()?.takeIf { it > 0 },
-                                    ageDoesntMatter,
-                                    selectedDominateFoot?.takeIf { it != DominateFootOptions.ANY },
-                                    selectedSalaryRange,
-                                    selectedTransferFee,
-                                    notes.takeIf { it.isNotBlank() }
-                                )
+            when {
+                showChoiceScreen && !isRecording && !isAnalyzing -> {
+                    Column(modifier = Modifier.weight(1f, fill = true)) {
+                        AddRequestChoiceContent(
+                        onRecordClick = {
+                            if (!RequestVoiceRecorder.isAvailable(context)) {
+                                ToastManager.showError(context.getString(R.string.player_info_record_not_available))
+                                return@AddRequestChoiceContent
                             }
+                            if (!RequestVoiceRecorder.hasRecordAudioPermission(context)) {
+                                permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                                return@AddRequestChoiceContent
+                            }
+                            val file = RequestVoiceRecorder.createTempRecordingFile(context)
+                            recordingFile = file
+                            recorder = RequestVoiceRecorder.startRecording(file)
+                            if (recorder != null) isRecording = true
+                            else ToastManager.showError(context.getString(R.string.requests_voice_error))
+                        },
+                        onFillManuallyClick = { showChoiceScreen = false }
+                        )
+                    }
+                }
+                isRecording -> {
+                    Column(modifier = Modifier.weight(1f, fill = true)) {
+                    AddRequestRecordingContent(
+                        onStopClick = {
+                            val bytesResult = RequestVoiceRecorder.stopRecording(recorder, recordingFile!!)
+                            recorder = null
+                            recordingFile = null
+                            isRecording = false
+                            bytesResult.fold(
+                                onSuccess = { bytes ->
+                                    isAnalyzing = true
+                                    scope.launch {
+                                        voiceAnalyzer.analyzeAudio(bytes, RequestVoiceRecorder.getAudioMimeType())
+                                            .fold(
+                                                onSuccess = { data ->
+                                                    isAnalyzing = false
+                                                    val club = data.club ?: data.clubNameRaw?.let { name ->
+                                                        ClubSearchModel(clubName = name, clubLogo = null, clubTmProfile = null, clubCountry = null, clubCountryFlag = null)
+                                                    }
+                                                    val position = data.position?.takeIf { it.isNotBlank() }
+                                                    if (club == null || position == null) {
+                                                        ToastManager.showError(context.getString(R.string.requests_voice_missing_club_position))
+                                                    } else {
+                                                        val matchingContact = contacts.firstOrNull { c ->
+                                                            c.clubName?.equals(club.clubName, ignoreCase = true) == true
+                                                        }
+                                                        onSave(
+                                                            club,
+                                                            position,
+                                                            matchingContact?.id,
+                                                            matchingContact?.name,
+                                                            matchingContact?.phoneNumber,
+                                                            data.minAge,
+                                                            data.maxAge,
+                                                            data.ageDoesntMatter,
+                                                            data.dominateFoot?.takeIf { it != DominateFootOptions.ANY },
+                                                            data.salaryRange,
+                                                            data.transferFee,
+                                                            data.notes
+                                                        )
+                                                    }
+                                                },
+                                                onFailure = {
+                                                    ToastManager.showError(context.getString(R.string.requests_voice_error))
+                                                    isAnalyzing = false
+                                                }
+                                            )
+                                    }
+                                },
+                                onFailure = {
+                                    ToastManager.showError(context.getString(R.string.requests_voice_error))
+                                }
+                            )
                         }
                     )
+                    }
+                }
+                isAnalyzing -> {
+                    Column(
+                        modifier = Modifier
+                            .weight(1f, fill = true)
+                            .fillMaxWidth(),
+                        verticalArrangement = Arrangement.Center,
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        CircularProgressIndicator(color = HomeTealAccent)
+                        Spacer(Modifier.height(16.dp))
+                        Text(
+                            text = stringResource(R.string.requests_analyzing),
+                            style = regularTextStyle(HomeTextSecondary, 14.sp)
+                        )
+                    }
+                }
+                else -> Column(modifier = Modifier.weight(1f, fill = true)) {
+                    AddRequestStepIndicator(currentStep = currentStep, stepLabels = stepLabels)
+                    Spacer(Modifier.height(16.dp))
+                    AnimatedContent(
+                        modifier = Modifier.weight(1f, fill = true),
+                        targetState = currentStep,
+                        transitionSpec = {
+                            if (targetState > initialState) {
+                                slideInHorizontally(animationSpec = tween(200)) { it } + fadeIn(tween(200)) togetherWith
+                                    slideOutHorizontally(animationSpec = tween(200)) { -it } + fadeOut(tween(200))
+                            } else {
+                                slideInHorizontally(animationSpec = tween(200)) { -it } + fadeIn(tween(200)) togetherWith
+                                    slideOutHorizontally(animationSpec = tween(200)) { it } + fadeOut(tween(200))
+                            }
+                        },
+                        label = "add_request_steps"
+                    ) { step ->
+                        when (step) {
+                            0 -> AddRequestStep1ClubContent(
+                                clubSearchQuery = clubSearchQuery,
+                                onClubSearchChange = { q: String ->
+                                    clubSearchQuery = q
+                                    if (selectedClub != null && q != selectedClub?.clubName) selectedClub = null
+                                },
+                                clubSearchResults = clubSearchResults,
+                                isSearchingClubs = isSearchingClubs,
+                                selectedClub = selectedClub,
+                                filteredContacts = filteredContacts,
+                                selectedContact = selectedContact,
+                                onSelectClub = { club: ClubSearchModel ->
+                                    selectedClub = club
+                                    clubSearchQuery = ""
+                                    clubSearchResults = emptyList()
+                                },
+                                onChangeClub = {
+                                    selectedClub = null
+                                    clubSearchQuery = ""
+                                    clubSearchResults = emptyList()
+                                    clubSearchFocusRequester.requestFocus()
+                                    keyboardController?.show()
+                                },
+                                onSelectContact = { c: Contact -> selectedContact = if (selectedContact?.id == c.id) null else c },
+                                clubSearchFocusRequester = clubSearchFocusRequester
+                            )
+                            1 -> AddRequestStep2PositionContent(
+                                positions = positions,
+                                selectedPosition = selectedPosition,
+                                onSelectPosition = { selectedPosition = it }
+                            )
+                            2 -> AddRequestStep3RequirementsContent(
+                                ageDoesntMatter = ageDoesntMatter,
+                                minAge = minAge,
+                                maxAge = maxAge,
+                                selectedDominateFoot = selectedDominateFoot,
+                                selectedSalaryRange = selectedSalaryRange,
+                                selectedTransferFee = selectedTransferFee,
+                                onAgeDoesntMatterChange = { ageDoesntMatter = it },
+                                onMinAgeChange = { minAge = it },
+                                onMaxAgeChange = { maxAge = it },
+                                onDominateFootSelect = { selectedDominateFoot = it },
+                                onSalaryRangeSelect = { selectedSalaryRange = it },
+                                onTransferFeeSelect = { selectedTransferFee = it }
+                            )
+                            3 -> AddRequestStep4NotesContent(
+                                notes = notes,
+                                onNotesChange = { notes = it },
+                                onDismiss = onDismiss,
+                                onSave = {
+                                    val club = selectedClub
+                                    val pos = selectedPosition
+                                    if (club != null && pos != null) {
+                                        onSave(
+                                            club,
+                                            pos,
+                                            selectedContact?.id,
+                                            selectedContact?.name,
+                                            selectedContact?.phoneNumber,
+                                            minAge.toIntOrNull()?.takeIf { it > 0 },
+                                            maxAge.toIntOrNull()?.takeIf { it > 0 },
+                                            ageDoesntMatter,
+                                            selectedDominateFoot?.takeIf { it != DominateFootOptions.ANY },
+                                            selectedSalaryRange,
+                                            selectedTransferFee,
+                                            notes.takeIf { it.isNotBlank() }
+                                        )
+                                    }
+                                }
+                            )
+                        }
+                    }
                 }
             }
 
-            if (currentStep < 3) {
+            if (!showChoiceScreen && !isRecording && !isAnalyzing && currentStep < 3) {
                 Spacer(Modifier.height(24.dp))
                 Button(
                     onClick = {
@@ -2253,6 +2381,79 @@ private fun AddRequestStep4NotesContent(
                 Text(stringResource(R.string.requests_save_request), style = boldTextStyle(Color.White, 14.sp))
             }
         }
+    }
+}
+
+@Composable
+private fun AddRequestChoiceContent(
+    onRecordClick: () -> Unit,
+    onFillManuallyClick: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .fillMaxHeight(),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = stringResource(R.string.requests_record_hint),
+            style = regularTextStyle(HomeTextSecondary, 14.sp),
+            modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp)
+        )
+        Button(
+            onClick = onRecordClick,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp)
+                .height(56.dp),
+            shape = RoundedCornerShape(12.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = HomeTealAccent)
+        ) {
+            Icon(Icons.Default.Mic, contentDescription = null, modifier = Modifier.size(24.dp), tint = Color.White)
+            Spacer(Modifier.width(12.dp))
+            Text(stringResource(R.string.requests_record_request), style = boldTextStyle(Color.White, 16.sp))
+        }
+        Spacer(Modifier.height(16.dp))
+        TextButton(onClick = onFillManuallyClick) {
+            Text(stringResource(R.string.requests_fill_manually), style = regularTextStyle(HomeTextSecondary, 14.sp))
+        }
+    }
+}
+
+@Composable
+private fun AddRequestRecordingContent(onStopClick: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .fillMaxHeight(),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = stringResource(R.string.requests_recording),
+            style = regularTextStyle(HomeTealAccent, 16.sp),
+            modifier = Modifier.padding(bottom = 24.dp)
+        )
+        IconButton(
+            onClick = onStopClick,
+            modifier = Modifier
+                .size(80.dp)
+                .clip(CircleShape)
+                .background(HomeRedAccent.copy(alpha = 0.2f))
+        ) {
+            Icon(
+                Icons.Default.Stop,
+                contentDescription = stringResource(R.string.requests_stop_recording),
+                modifier = Modifier.size(40.dp),
+                tint = HomeRedAccent
+            )
+        }
+        Spacer(Modifier.height(8.dp))
+        Text(
+            text = stringResource(R.string.requests_stop_recording),
+            style = regularTextStyle(HomeTextSecondary, 14.sp)
+        )
     }
 }
 

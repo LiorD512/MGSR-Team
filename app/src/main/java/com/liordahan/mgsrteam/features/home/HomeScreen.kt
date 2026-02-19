@@ -113,6 +113,15 @@ fun HomeScreen(
         }
     }
 
+    LaunchedEffect(Unit) {
+        mainViewModel.pendingOpenTasksScreen.collectLatest { shouldOpen ->
+            if (shouldOpen) {
+                navController.navigate(Screens.TasksScreen.route)
+                mainViewModel.setPendingOpenTasksScreen(false)
+            }
+        }
+    }
+
     val pendingAddPlayerTmUrl by mainViewModel.pendingAddPlayerTmUrl.collectAsStateWithLifecycle()
 
     LaunchedEffect(Unit) {

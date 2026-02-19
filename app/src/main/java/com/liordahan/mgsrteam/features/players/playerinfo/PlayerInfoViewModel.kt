@@ -94,7 +94,7 @@ class PlayerInfoViewModel(
     private val documentDetectionService: DocumentDetectionService,
     private val aiHelperService: AiHelperService,
     private val requestsRepository: IRequestsRepository,
-    private val offersRepository: IPlayerOffersRepository
+    private val offersRepository: IPlayerOffersRepository,
 ) : IPlayerInfoViewModel() {
 
     private val _playerInfoFlow = MutableStateFlow<Player?>(null)
