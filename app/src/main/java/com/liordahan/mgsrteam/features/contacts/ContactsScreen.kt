@@ -408,7 +408,8 @@ fun ContactsScreen(
                 Icon(
                     Icons.Default.Add,
                     contentDescription = stringResource(R.string.contacts_add),
-                    modifier = Modifier.size(24.dp)
+                    modifier = Modifier.size(24.dp),
+                    tint = Color.White
                 )
             }
         }

@@ -118,6 +118,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -208,7 +209,7 @@ fun RequestsScreen(
                 containerColor = HomeTealAccent,
                 contentColor = HomeDarkBackground
             ) {
-                Icon(Icons.Default.Add, contentDescription = stringResource(R.string.requests_add), modifier = Modifier.size(24.dp))
+                Icon(Icons.Default.Add, contentDescription = stringResource(R.string.requests_add), modifier = Modifier.size(24.dp), tint = Color.White)
             }
         }
     ) { paddingValues ->
@@ -1478,7 +1479,8 @@ private fun RequestsEmptyState(onAddClick: () -> Unit) {
         Spacer(Modifier.height(8.dp))
         Text(
             stringResource(R.string.requests_empty_hint),
-            style = regularTextStyle(HomeTextSecondary, 13.sp)
+            style = regularTextStyle(HomeTextSecondary, 13.sp),
+            textAlign = TextAlign.Center
         )
         Spacer(Modifier.height(24.dp))
         Button(
@@ -1486,7 +1488,7 @@ private fun RequestsEmptyState(onAddClick: () -> Unit) {
             colors = ButtonDefaults.buttonColors(containerColor = HomeTealAccent),
             shape = RoundedCornerShape(14.dp)
         ) {
-            Text(stringResource(R.string.requests_add), style = boldTextStyle(HomeDarkBackground, 14.sp))
+            Text(stringResource(R.string.requests_add), style = boldTextStyle(Color.White, 14.sp))
         }
     }
 }

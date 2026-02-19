@@ -654,7 +654,7 @@ fun AllNotesScreen(
                 contentColor = Color.White,
                 shape = RoundedCornerShape(16.dp)
             ) {
-                Icon(Icons.Default.Add, contentDescription = stringResource(R.string.player_info_add_note))
+                Icon(Icons.Default.Add, contentDescription = stringResource(R.string.player_info_add_note), tint = Color.White)
             }
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
