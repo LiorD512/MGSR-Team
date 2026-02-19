@@ -327,10 +327,6 @@ fun LoginScreen(
                             onValueChange = { password = it; localError = null },
                             hint = stringResource(R.string.login_button_password_hint),
                             leadingIcon = Icons.Default.Lock,
-                            trailingIcon = if (passwordVisible) Icons.Default.Visibility
-                                           else Icons.Default.VisibilityOff,
-                            trailingIconAlwaysVisible = true,
-                            trailingIconContentDescription = stringResource(R.string.login_cd_toggle_password),
                             keyboardOptions = KeyboardOptions(
                                 keyboardType = KeyboardType.Password,
                                 imeAction = ImeAction.Done
@@ -338,7 +334,6 @@ fun LoginScreen(
                             keyboardActions = KeyboardActions(
                                 onDone = { if (isFormValid) performLogin() }
                             ),
-                            onTrailingIconClicked = { passwordVisible = !passwordVisible },
                             darkTheme = true,
                             visualTransformation = if (passwordVisible) VisualTransformation.None
                                                    else PasswordVisualTransformation()
