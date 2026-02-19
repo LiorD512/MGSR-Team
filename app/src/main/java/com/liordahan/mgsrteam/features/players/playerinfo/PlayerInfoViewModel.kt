@@ -58,6 +58,8 @@ abstract class IPlayerInfoViewModel : ViewModel() {
     abstract val documentsFlow: Flow<List<PlayerDocument>>
     abstract val similarPlayersFlow: StateFlow<List<AiHelperService.SimilarPlayerSuggestion>>
     abstract val isSimilarPlayersLoading: StateFlow<Boolean>
+    abstract val hiddenGemFlow: StateFlow<AiHelperService.HiddenGemResult?>
+    abstract val isHiddenGemLoading: StateFlow<Boolean>
     abstract val scoutReportFlow: StateFlow<String?>
     abstract val isScoutReportLoading: StateFlow<Boolean>
     abstract fun getPlayerInfo(playerId: String)
@@ -75,6 +77,7 @@ abstract class IPlayerInfoViewModel : ViewModel() {
     abstract fun uploadDocument(uri: android.net.Uri?, bytes: ByteArray, name: String, mimeType: String?, expiresAt: Long?)
     abstract fun deleteDocument(documentId: String, isPassport: Boolean = false)
     abstract fun findSimilarPlayers(player: Player, languageCode: String = "en", options: SimilarPlayersOptions = SimilarPlayersOptions())
+    abstract fun computeHiddenGemScore(player: Player, languageCode: String = "en")
     abstract fun generateScoutReport(player: Player, languageCode: String = "en", options: ScoutReportOptions = ScoutReportOptions())
     abstract fun consumeUpdateResult()
     abstract val matchingRequestsFlow: StateFlow<List<MatchingRequestUiState>>
@@ -129,6 +132,12 @@ class PlayerInfoViewModel(
 
     private val _isSimilarPlayersLoading = MutableStateFlow(false)
     override val isSimilarPlayersLoading: StateFlow<Boolean> = _isSimilarPlayersLoading
+
+    private val _hiddenGemFlow = MutableStateFlow<AiHelperService.HiddenGemResult?>(null)
+    override val hiddenGemFlow: StateFlow<AiHelperService.HiddenGemResult?> = _hiddenGemFlow
+
+    private val _isHiddenGemLoading = MutableStateFlow(false)
+    override val isHiddenGemLoading: StateFlow<Boolean> = _isHiddenGemLoading
 
     private val _scoutReportFlow = MutableStateFlow<String?>(null)
     override val scoutReportFlow: StateFlow<String?> = _scoutReportFlow
@@ -218,6 +227,7 @@ class PlayerInfoViewModel(
 
     override fun getPlayerInfo(playerId: String) {
         _scoutReportFlow.update { null }
+        _hiddenGemFlow.update { null }
         playerListenerRegistration?.remove()
         playerListenerRegistration = firebaseHandler.firebaseStore.collection(firebaseHandler.playersTable)
             .whereEqualTo("tmProfile", playerId).addSnapshotListener { value, error ->
@@ -677,6 +687,23 @@ class PlayerInfoViewModel(
                     _similarPlayersFlow.update { emptyList() }
                 }
             _isSimilarPlayersLoading.update { false }
+        }
+    }
+
+    override fun computeHiddenGemScore(player: Player, languageCode: String) {
+        viewModelScope.launch {
+            _isHiddenGemLoading.update { true }
+            _hiddenGemFlow.update { null }
+            aiHelperService.computeHiddenGemScore(player, languageCode)
+                .onSuccess { result ->
+                    _hiddenGemFlow.update { result }
+                    Log.d(TAG, "computeHiddenGemScore: ${player.fullName} score=${result.score}")
+                }
+                .onFailure { e ->
+                    Log.e(TAG, "computeHiddenGemScore failed for ${player.fullName}", e)
+                    _hiddenGemFlow.update { null }
+                }
+            _isHiddenGemLoading.update { false }
         }
     }
 

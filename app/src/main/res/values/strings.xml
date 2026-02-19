@@ -745,9 +745,14 @@
     <!-- AI Helper -->
     <string name="player_info_highlights">Highlights</string>
     <string name="player_info_ai_helper">AI Scout</string>
+    <string name="player_info_ai_hidden_gem">Hidden gem potential</string>
+    <string name="player_info_ai_hidden_gem_check">Check hidden gem potential</string>
+    <string name="player_info_ai_hidden_gem_score">%d/100</string>
+    <string name="player_info_ai_hidden_gem_refresh">Refresh</string>
     <string name="player_info_ai_find_similar_players">Find similar players</string>
     <string name="player_info_ai_create_scout_report">Create scout report for %s</string>
     <string name="player_info_ai_generating_scout_report">Generating scout report…</string>
+    <string name="player_info_ai_generating_scout_diamond_report">Generating diamond score…</string>
     <string name="player_info_ai_scout_report_error">Could not generate scout report. Please try again.</string>
     <string name="player_info_ai_no_similar_players">No similar players found</string>
     <string name="player_info_ai_options">Options</string>

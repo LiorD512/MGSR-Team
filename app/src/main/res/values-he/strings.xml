@@ -710,9 +710,14 @@
     <!-- AI Helper -->
     <string name="player_info_highlights">היילייטס</string>
     <string name="player_info_ai_helper">סקאוט AI</string>
+    <string name="player_info_ai_hidden_gem">פוטנציאל ליהלום</string>
+    <string name="player_info_ai_hidden_gem_check">בדוק פוטנציאל ליהלום</string>
+    <string name="player_info_ai_hidden_gem_score">%d/100</string>
+    <string name="player_info_ai_hidden_gem_refresh">רענן</string>
     <string name="player_info_ai_find_similar_players">מצא שחקנים דומים</string>
     <string name="player_info_ai_create_scout_report">צור דוח סקאוט עבור %s</string>
     <string name="player_info_ai_generating_scout_report">מייצר דוח סקאוט…</string>
+    <string name="player_info_ai_generating_scout_diamond_report">מייצר ציון יהלום…</string>
     <string name="player_info_ai_scout_report_error">לא ניתן ליצור דוח סקאוט. נסה שוב.</string>
     <string name="player_info_ai_no_similar_players">לא נמצאו שחקנים דומים</string>
     <string name="player_info_ai_options">הגדרות</string>
