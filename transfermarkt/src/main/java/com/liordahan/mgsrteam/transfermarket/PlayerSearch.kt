@@ -4,10 +4,10 @@ import android.os.Parcelable
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.parcelize.Parcelize
-import org.jsoup.Jsoup
-import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
 import java.io.IOException
+import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
 
 @Parcelize
 data class PlayerSearchModel(
@@ -43,7 +43,9 @@ data class TransfermarktPlayerDetails(
     val nationalityFlag: String? = null,
     val contractExpires: String? = null,
     val marketValue: String? = null,
-    val currentClub: TransfermarktClub? = null
+    val currentClub: TransfermarktClub? = null,
+    val isOnLoan: Boolean = false,
+    val onLoanFromClub: String? = null
 )
 
 class PlayerSearch {
@@ -56,9 +58,10 @@ class PlayerSearch {
             }
 
             try {
+                val encodedQuery = URLEncoder.encode(sanitizedQuery, StandardCharsets.UTF_8.toString())
                 val searchUrl =
-                    "$TRANSFERMARKT_BASE_URL/schnellsuche/ergebnis/schnellsuche?query=$sanitizedQuery"
-                val doc = fetchDocument(searchUrl)
+                    "$TRANSFERMARKT_BASE_URL/schnellsuche/ergebnis/schnellsuche?query=$encodedQuery"
+                val doc = TransfermarktHttp.fetchDocument(searchUrl)
 
                 val playerSection = doc.select("div.box").firstOrNull {
                     it.select("h2.content-box-headline")
@@ -80,13 +83,6 @@ class PlayerSearch {
                 TransfermarktResult.Failed(ex.localizedMessage)
             }
         }
-
-    private fun fetchDocument(url: String): Document {
-        return Jsoup.connect(url)
-            .userAgent(TRANSFERMARKT_USER_AGENT)
-            .timeout(TRANSFERMARKT_TIMEOUT_MS)
-            .get()
-    }
 
     private fun parsePlayerRow(element: Element): PlayerSearchModel? {
         val tdZentriert = element.select("td.zentriert")
@@ -127,10 +123,17 @@ class PlayerSearch {
         withContext(Dispatchers.IO) {
             try {
                 val profileUrl = playerSearchModel.tmProfile.orEmpty()
-                val doc = fetchDocument(profileUrl)
+                val doc = TransfermarktHttp.fetchDocument(profileUrl)
 
+                val nationalityElement = doc.select("[itemprop=nationality] img").firstOrNull()
                 val nationality =
-                    doc.select("[itemprop=nationality] img").attr("title").ifEmpty { "Unknown" }
+                    nationalityElement?.attr("title")?.takeIf { it.isNotEmpty() } ?: "Unknown"
+                val nationalityFlagFromDoc = nationalityElement
+                    ?.attr("src")
+                    ?.replace("verysmall", "head")
+                    ?.replace("tiny", "head")
+                    ?.orEmpty()
+
                 val height = doc.select("[itemprop=height]").text().ifEmpty { "Unknown" }
                 val marketValue = doc.select("div[class=data-header__box--small]").text()
                     .substringBefore("Last").trim()
@@ -160,15 +163,32 @@ class PlayerSearch {
                     doc.select("div.data-header__club-info").select("span.data-header__label")
                         .select("img").attr("title")
 
+                val fullName = playerSearchModel.playerName?.takeIf { it.isNotBlank() }
+                    ?: doc.select("h1.data-header__headline").text().trim().takeIf { it.isNotBlank() }
+                    ?: doc.select("div.data-header__headline-wrapper h1").text().trim().takeIf { it.isNotBlank() }
+                    ?: doc.select("meta[property=og:title]").attr("content").substringBefore(" - ").trim().takeIf { it.isNotBlank() }
+                val profileImage = playerSearchModel.playerImage?.takeIf { it.isNotBlank() }
+                    ?: doc.select("div.data-header__profile-container img").firstOrNull()?.attr("src").orEmpty()
+                val age = playerSearchModel.playerAge?.takeIf { it.isNotBlank() }
+                    ?: doc.select("span[itemprop=birthDate]").firstOrNull()
+                        ?.text()
+                        ?.substringAfter("(")
+                        ?.substringBefore(")")
+                        ?.trim()
+                        .orEmpty()
+                val nationalityFlag = playerSearchModel.nationalityFlag?.takeIf { it.isNotBlank() }
+                    ?: nationalityFlagFromDoc
+
+                val loanInfo = detectLoanStatus(doc, clubName)
 
                 return@withContext TransfermarktPlayerDetails(
                     tmProfile = playerSearchModel.tmProfile,
-                    fullName = playerSearchModel.playerName,
+                    fullName = fullName?.ifEmpty { null },
                     marketValue = marketValue,
-                    profileImage = playerSearchModel.playerImage,
-                    nationalityFlag = playerSearchModel.nationalityFlag,
+                    profileImage = profileImage.ifEmpty { playerSearchModel.playerImage },
+                    nationalityFlag = nationalityFlag?.ifEmpty { null },
                     nationality = nationality,
-                    age = playerSearchModel.playerAge,
+                    age = age.ifEmpty { playerSearchModel.playerAge },
                     height = height,
                     contractExpires = contract,
                     positions = positions,
@@ -177,7 +197,9 @@ class PlayerSearch {
                         clubLogo = clubLogo,
                         clubTmProfile = clubTmProfile,
                         clubCountry = clubCountry
-                    )
+                    ),
+                    isOnLoan = loanInfo.isOnLoan,
+                    onLoanFromClub = loanInfo.onLoanFromClub
                 )
 
             } catch (ex: IOException) {
@@ -190,4 +212,3 @@ class PlayerSearch {
         }
 
 }
-

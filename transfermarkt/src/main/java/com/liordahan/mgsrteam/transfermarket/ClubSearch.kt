@@ -2,8 +2,6 @@ package com.liordahan.mgsrteam.transfermarket
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import org.jsoup.Jsoup
-import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
 import java.io.IOException
 import java.net.URLEncoder
@@ -36,7 +34,7 @@ class ClubSearch {
             try {
                 val encodedQuery = URLEncoder.encode(sanitizedQuery, StandardCharsets.UTF_8.toString())
                 val searchUrl = "$TRANSFERMARKT_BASE_URL/schnellsuche/ergebnis/schnellsuche?query=$encodedQuery"
-                val doc = fetchDocument(searchUrl)
+                val doc = TransfermarktHttp.fetchDocument(searchUrl)
 
                 val clubSection = doc.select("div.box").firstOrNull {
                     val headline = it.select("h2.content-box-headline").text()
@@ -58,22 +56,13 @@ class ClubSearch {
             }
         }
 
-    private fun fetchDocument(url: String): Document {
-        return Jsoup.connect(url)
-            .userAgent(TRANSFERMARKT_USER_AGENT)
-            .timeout(TRANSFERMARKT_TIMEOUT_MS)
-            .get()
-    }
-
     private fun parseClubRow(element: Element): ClubSearchModel? {
         return try {
             val tds = element.select("td")
 
-            // Club: first img in row = club logo (same pattern as PlayerSearch: first img = entity image)
             val clubImg = element.select("img").firstOrNull()
             val clubLogo = clubImg?.attr("src")?.replace("tiny", "head")?.replace("small", "head")
 
-            // Club name and profile URL: from hauptlink cell (link text or img alt)
             val mainLink = element.select("td.hauptlink a").firstOrNull()
             val href = mainLink?.attr("href")?.takeIf { it.isNotBlank() }
             val clubTmProfile = if (href != null) {
@@ -84,15 +73,13 @@ class ClubSearch {
                 ?: clubImg?.attr("alt")?.trim()
                 ?: element.select("td.hauptlink").text().trim()
 
-            // Country and flag: from last column (country column). Use img only from last td
-            // so we never take the club logo; if row has 2+ imgs, last img is country flag
             val lastTdImg = tds.lastOrNull()?.select("img")?.firstOrNull()
             val zentriertLastImg = element.select("td.zentriert").lastOrNull()?.select("img")?.firstOrNull()
             val allImgs = element.select("img")
             val countryImg = when {
                 lastTdImg != null -> lastTdImg
                 zentriertLastImg != null -> zentriertLastImg
-                allImgs.size >= 2 -> allImgs.last() // second img = country flag
+                allImgs.size >= 2 -> allImgs.last()
                 else -> null
             }
             val clubCountry = countryImg?.attr("title")?.takeIf { it.isNotBlank() }

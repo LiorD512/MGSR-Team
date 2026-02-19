@@ -1,9 +1,13 @@
 package com.liordahan.mgsrteam.features.login
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import com.liordahan.mgsrteam.features.login.models.Account
+import com.liordahan.mgsrteam.firebase.FcmTokenManager
 import com.liordahan.mgsrteam.firebase.FirebaseHandler
 import com.liordahan.mgsrteam.helpers.UiResult
+import com.liordahan.mgsrteam.work.PlayerRefreshWorker
+import com.liordahan.mgsrteam.work.ReleasesRefreshWorker
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
@@ -14,7 +18,9 @@ abstract class ILoginScreenViewModel : ViewModel() {
 }
 
 class LoginScreenViewModel(
-    private val firebaseHandler: FirebaseHandler
+    private val appContext: Context,
+    private val firebaseHandler: FirebaseHandler,
+    private val fcmTokenManager: FcmTokenManager
 ) : ILoginScreenViewModel() {
 
     private val _userLoginFlow = MutableStateFlow<UiResult<Account>>(UiResult.UnInitialized)
@@ -35,12 +41,26 @@ class LoginScreenViewModel(
                             ) == true
                         }
 
-                        if (accountToLogin != null){
+                        if (accountToLogin != null) {
+                            fcmTokenManager.registerTokenIfNeeded()
+                            android.util.Log.i("MGSR_Worker", "Login success — enqueuing immediate run for both workers")
+                            PlayerRefreshWorker.enqueueImmediateRefresh(appContext)
+                            ReleasesRefreshWorker.enqueueImmediateRefresh(appContext)
                             _userLoginFlow.update { UiResult.Success(accountToLogin) }
                         } else {
                             _userLoginFlow.update { UiResult.Failed("Your account is not allowed") }
                         }
                     }
+            }
+            .addOnFailureListener { e ->
+                val message = when {
+                    e.message?.contains("password", ignoreCase = true) == true -> "Invalid email or password. Please try again."
+                    e.message?.contains("email", ignoreCase = true) == true -> "Invalid email or password. Please try again."
+                    e.message?.contains("user", ignoreCase = true) == true -> "Invalid email or password. Please try again."
+                    e.message?.contains("INVALID", ignoreCase = true) == true -> "Invalid email or password. Please try again."
+                    else -> e.message ?: "Invalid email or password. Please try again."
+                }
+                _userLoginFlow.update { UiResult.Failed(message) }
             }
     }
 

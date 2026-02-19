@@ -1,21 +1,822 @@
 <resources>
     <string name="app_name" translatable="false">MGSR Team</string>
+    <string name="splash_tagline">Player recruitment made simple</string>
 
-    <string name="nav_item_players">Players</string>
+    <!-- Navigation -->
+    <string name="nav_item_players">Our Roster</string>
+    <string name="nav_item_home">Home</string>
+    <string name="nav_item_dashboard">Dashboard</string>
     <string name="nav_item_releases">Releases</string>
     <string name="nav_item_returnee">Returnee</string>
     <string name="nav_item_contacts">Contacts</string>
+    <string name="nav_item_shortlist">Shortlist</string>
+    <string name="nav_item_requests">Requests</string>
 
-
+    <!-- Login -->
+    <string name="login_welcome_title">Welcome Back</string>
+    <string name="login_welcome_subtitle">Sign in to continue</string>
     <string name="login_button_title">Login</string>
+    <string name="login_signing_in">Signing in…</string>
+    <string name="login_error_invalid_credentials">Invalid email or password. Please try again.</string>
+    <string name="login_error_invalid_email">Please enter a valid email address</string>
     <string name="login_button_email_hint">Your email address</string>
     <string name="login_button_password_hint">Your password</string>
+    <string name="login_cd_app_logo">MGSR Team logo</string>
+    <string name="login_cd_toggle_password">Toggle password visibility</string>
+    <string name="login_cd_language_toggle">Switch language</string>
 
-
+    <!-- Search -->
     <string name="players_screen_hint">Search players or note by keyword</string>
+
+    <!-- Players Screen -->
+    <string name="players_roster_title">Our Roster</string>
+    <string name="players_stat_total">Total</string>
+    <string name="players_add_player">Add Player</string>
+    <string name="players_clear">Clear</string>
+    <string name="players_filter_all">All</string>
+    <string name="players_filter_position_gk">GK</string>
+    <string name="players_filter_position_def">DEF</string>
+    <string name="players_filter_position_mid">MID</string>
+    <string name="players_filter_position_fwd">FWD</string>
+    <string name="players_sort_options">Sort options</string>
+    <string name="players_sort_chip_newest">Newest</string>
+    <string name="players_sort_chip_value">Value</string>
+    <string name="players_sort_chip_name">Name</string>
+    <string name="players_sort_chip_age">Age</string>
+    <string name="players_reset">Reset</string>
+    <string name="players_sort_newest">Newest First</string>
+    <string name="players_sort_market_value">By Market Value</string>
+    <string name="players_sort_name">By Name</string>
+    <string name="players_sort_age">By Age</string>
+    <string name="players_filter_free_agents">Free Agents</string>
+    <string name="players_filter_contract_expiring">Contract Expiring</string>
+    <string name="players_filter_with_mandate">With Mandate</string>
+    <string name="players_filter_my_players_only">My Players Only</string>
+    <string name="players_filter_loan_players_only">Loan Players Only</string>
+    <string name="players_expiring_soon_count">%d Contracts Expiring Soon</string>
+    <string name="players_expiring_action_needed">Action needed before contract ends</string>
+    <string name="players_with_mandate_count">%d Players with Mandate</string>
+    <string name="players_with_mandate_subtitle">Players with active mandate</string>
+    <string name="players_mandate_expires">Mandate: %s</string>
+    <string name="players_free_agent">Free Agent</string>
+    <string name="players_on_loan">On loan</string>
+    <string name="players_on_loan_from">On loan from %s</string>
+    <string name="players_on_loan_from_label">On loan from</string>
+    <string name="players_years_suffix"> yrs</string>
+    <string name="players_age_format">%s yrs</string>
+    <string name="players_no_players_found">No players found</string>
+    <string name="players_empty_hint">Add players to your roster or clear filters to see your full list.</string>
+    <string name="players_reset_filters">Reset Filters</string>
+    <string name="players_clear_all">Clear all</string>
+    <string name="players_filters">Filters</string>
+    <string name="players_filter_by_position">By Position</string>
+    <string name="players_filter_by_agent">By Agent</string>
+    <string name="players_filter_by_contract">By Contract</string>
+    <string name="players_filter_without_club">Without club</string>
+    <string name="players_filter_contract_finishing">Contract finishing soon</string>
+    <string name="players_filter_with_notes">With notes</string>
+    <string name="players_filter_foot_left">Left foot</string>
+    <string name="players_filter_foot_right">Right foot</string>
+    <string name="players_filter_foot_both">Both feet</string>
+    <string name="players_expiring_badge">Contract Expiring</string>
+    <string name="players_contract_not_available">Contract not available</string>
+    <string name="players_done">Done</string>
+    <string name="players_cd_go_back">Go back</string>
+    <string name="players_cd_search">Search players</string>
+    <string name="players_cd_value_up">Market value increased</string>
+    <string name="players_cd_value_down">Market value decreased</string>
+
+    <!-- Shortlist Screen -->
+    <string name="shortlist_title">Shortlist</string>
+    <string name="shortlist_subtitle">Saved profiles from Releases &amp; Returnees — add to agency when ready</string>
+    <string name="shortlist_add_player">Add player</string>
+    <string name="shortlist_stat_this_week">This Week</string>
+    <string name="shortlist_could_not_load">Could not load player. They may already be in your roster.</string>
+    <string name="shortlist_years_suffix"> yrs</string>
+    <string name="shortlist_badge">Shortlisted</string>
+    <string name="shortlist_add_to_agency">Add to agency</string>
+    <string name="shortlist_open_tm">Open TM</string>
+    <string name="shortlist_remove">Remove</string>
+    <string name="shortlist_remove_confirm">Remove this player from your shortlist?</string>
+    <string name="shortlist_no_players">No players in shortlist</string>
+    <string name="shortlist_empty_hint">Add players from Releases or Returnees to save them for later. When ready, add them to your agency.</string>
+    <string name="shortlist_browse_releases">Browse Releases</string>
+    <string name="shortlist_browse_returnees">Browse Returnees</string>
+    <string name="shortlist_added">Added to shortlist</string>
+    <string name="shortlist_added_today">Added today</string>
+    <string name="shortlist_added_yesterday">Added yesterday</string>
+    <string name="shortlist_added_days_ago">Added %d days ago</string>
+    <string name="shortlist_added_week_ago">Added 1 week ago</string>
+    <string name="shortlist_added_weeks_ago">Added %d weeks ago</string>
+    <string name="shortlist_added_months_ago">Added %d months ago</string>
+
     <string name="contacts_screen_search_hint">Search by name, club or country</string>
+    <string name="contacts_filter_all">All</string>
     <string name="add_player_screen_hint">Search</string>
 
-
+    <!-- Account -->
     <string name="account_not_allowed">Account not allowed</string>
+
+    <!-- Notifications -->
+    <string name="notification_channel_name">MGSR Team Alerts</string>
+    <string name="notification_channel_description">Contract reminders, new releases and agency updates</string>
+    <string name="notification_channel_contract_reminder">Contract reminders</string>
+    <string name="notification_contract_reminder_title">Contract expiring soon</string>
+    <string name="notification_contract_reminder_body">%d player(s) have contracts expiring in the next 5 months</string>
+    <string name="notification_channel_without_club">Without club alerts</string>
+    <string name="notification_without_club_title">Player(s) without club</string>
+    <string name="notification_without_club_body">%d player(s) became without club</string>
+
+    <!-- Push notification content (from Cloud Function via FCM) -->
+    <string name="notification_club_change_title">Club Transfer</string>
+    <string name="notification_club_change_body">%1$s moved from %2$s to %3$s</string>
+    <string name="notification_free_agent_title">Free Agent Alert</string>
+    <string name="notification_free_agent_body">%1$s is now without a club (was at %2$s)</string>
+    <string name="notification_market_value_title">Market Value Change</string>
+    <string name="notification_market_value_body">%1$s: %2$s → %3$s</string>
+    <string name="notification_new_release_title">New Free Agent</string>
+    <string name="notification_new_release_body">%1$s released from his club — maybe you want to approach him.</string>
+    <string name="notification_new_release_body_not_in_db">%1$s released from his club — maybe you want to approach him. Not in our database.</string>
+    <string name="notification_mandate_expired_title">Mandate Expired</string>
+    <string name="notification_mandate_expired_body">%1$s\'s mandate has expired.</string>
+    <string name="notification_action_open_tm">Open Transfermarkt</string>
+    <string name="notification_action_add_shortlist">Add to Shortlist</string>
+
+    <!-- Task notifications -->
+    <string name="notification_task_assigned_title">New Task Assigned</string>
+    <string name="notification_task_assigned_body">%1$s assigned you: %2$s</string>
+    <string name="notification_task_assigned_body_fallback">You have a new task: %1$s</string>
+    <string name="notification_task_reminder_title">Task Reminder</string>
+    <string name="notification_task_reminder_body_today">"%1$s" is due today</string>
+    <string name="notification_task_reminder_body_tomorrow">"%1$s" is due tomorrow</string>
+    <string name="notification_task_reminder_body_days">"%1$s" is due in %2$s days</string>
+
+    <!-- Greeting -->
+    <string name="greeting_good_morning">Good Morning</string>
+    <string name="greeting_good_afternoon">Good Afternoon</string>
+    <string name="greeting_good_evening">Good Evening</string>
+    <string name="greeting_agent_default">Agent</string>
+
+    <!-- Dashboard Stats -->
+    <string name="stat_players">Our Roster</string>
+    <string name="stat_mandate">Mandate</string>
+    <string name="stat_free">Free</string>
+    <string name="stat_requests">Requests</string>
+
+    <!-- Quick Actions -->
+    <string name="quick_action_players">Our Roster</string>
+    <string name="quick_action_shortlist">Shortlist</string>
+    <string name="quick_action_releases">Releases</string>
+    <string name="quick_action_returnees">Returnees</string>
+    <string name="quick_action_contacts">Contacts</string>
+    <string name="quick_action_requests">Requests</string>
+    <string name="quick_action_contract_finisher_summer">Contract Finisher - Summer</string>
+    <string name="quick_action_contract_finisher_winter">Contract Finisher - Winter</string>
+
+    <!-- Contract Finisher Screen -->
+    <string name="contract_finisher_title">Contract Finisher</string>
+    <string name="contract_finisher_subtitle">Contracts expiring in %1$s window</string>
+    <string name="contract_finisher_subtitle_summer">Contracts expiring towards Summer window</string>
+    <string name="contract_finisher_subtitle_winter">Contracts expiring towards Winter window</string>
+    <string name="contract_finisher_loading">Loading… %1$d players</string>
+    <string name="contract_finisher_loading_more">Loading more…</string>
+    <string name="contract_finisher_retry">Retry</string>
+    <string name="contract_finisher_badge">Release date - %1$s</string>
+    <string name="contract_finisher_no_found">No contract finishers found in this range</string>
+
+    <!-- Feed -->
+    <string name="feed_recent_updates">Recent Updates</string>
+    <string name="feed_filter_all">All</string>
+    <string name="feed_filter_value">Value</string>
+    <string name="feed_filter_transfers">Transfers</string>
+    <string name="feed_filter_notes">Notes</string>
+    <string name="feed_show_all">Show All</string>
+    <string name="feed_show_less">Show Less</string>
+    <string name="feed_empty">No recent updates yet.\nUpdates will appear here after the daily sync.</string>
+    <string name="feed_market_value_update">Market Value Update</string>
+    <string name="feed_club_change">Club Change Detected</string>
+    <string name="feed_became_free_agent">Became Free Agent</string>
+    <string name="feed_new_release">New Free Agent (Releases)</string>
+    <string name="feed_new_release_not_in_db">Not in our database</string>
+    <string name="feed_mandate_expired">Mandate Expired</string>
+    <string name="feed_mandate_uploaded">Mandate Uploaded</string>
+    <string name="feed_mandate_uploaded_by">%1$s uploaded mandate for %2$s</string>
+    <string name="feed_mandate_marked_by">Marked by %1$s</string>
+    <string name="feed_mandate_expires">Expires %1$s</string>
+    <string name="feed_mandate_switched_on">Mandate switched on</string>
+    <string name="feed_mandate_switched_off">Mandate switched off</string>
+    <string name="feed_mandate_switched_by">%1$s switched mandate for %2$s</string>
+    <string name="feed_contract_expiring">Contract Expiring</string>
+    <string name="feed_new_note">New Note</string>
+    <string name="feed_note_deleted">Note Deleted</string>
+    <string name="feed_note_deleted_by">%1$s deleted a note on %2$s</string>
+    <string name="feed_player_added">Player Added</string>
+    <string name="feed_player_deleted">Player Deleted</string>
+    <string name="feed_player_deleted_error">This player was deleted from the database</string>
+    <string name="feed_shortlist_added">Added to Shortlist</string>
+    <string name="feed_shortlist_removed">Removed from Shortlist</string>
+    <string name="feed_removed_by">Removed by %1$s</string>
+    <string name="feed_added_by">Added by %1$s</string>
+    <string name="feed_request_added">New Request</string>
+    <string name="feed_request_deleted">Request Deleted</string>
+    <string name="feed_deleted_by">Deleted by %1$s</string>
+    <string name="feed_update">Update</string>
+    <string name="feed_value_changed">Value changed from %1$s to %2$s</string>
+    <string name="feed_market_value_no_value">No value</string>
+    <string name="feed_moved_from_to">Moved from %1$s to %2$s</string>
+    <string name="feed_released_from">Released from %1$s</string>
+    <string name="feed_note_added_by">%1$s added a note on %2$s</string>
+    <string name="feed_player_offered_to_club">Player Offered</string>
+    <string name="feed_offered_to">Offered to %1$s</string>
+    <string name="feed_offered_by">Offered by %1$s</string>
+
+    <!-- Time Ago -->
+    <string name="time_just_now">Just now</string>
+    <string name="time_minutes_ago">%1$dm ago</string>
+    <string name="time_hours_ago">%1$dh ago</string>
+    <string name="time_days_ago">%1$dd ago</string>
+
+    <!-- My Agent Hub -->
+    <string name="my_hub_title">My Dashboard</string>
+    <string name="my_hub_players">Players</string>
+    <string name="my_hub_mandate">Mandate</string>
+    <string name="my_hub_free">Free</string>
+    <string name="my_hub_expiring">Expiring</string>
+    <string name="my_hub_coverage">Coverage</string>
+    <string name="my_hub_tasks_done">Tasks Done</string>
+    <string name="my_hub_upcoming_tasks">Upcoming Tasks</string>
+    <string name="my_hub_view_all_tasks">View All</string>
+    <string name="my_hub_view_my_players">My Players</string>
+    <string name="widget_agent_dashboard_description">Your dashboard at a glance: players, tasks, alerts</string>
+    <string name="widget_tap_to_open">Tap to open</string>
+    <string name="my_hub_no_tasks">No upcoming tasks</string>
+    <string name="my_hub_pending_tasks">%d pending</string>
+    <string name="my_hub_overdue_tasks">%d overdue</string>
+    <string name="my_hub_attention">Attention Needed</string>
+    <string name="my_hub_no_alerts">No alerts — all good</string>
+    <string name="my_hub_recent_activity">Recent Activity</string>
+    <string name="my_hub_no_activity">No recent activity for your players</string>
+    <string name="my_hub_no_players">No players assigned yet</string>
+    <string name="my_hub_no_players_hint">Players assigned to you will appear here</string>
+
+    <!-- Team Overview -->
+    <string name="team_overview_title">Team Overview</string>
+    <string name="team_overview_agents_count">%d agents</string>
+
+    <!-- Agent Overview (kept for team cards) -->
+    <string name="agent_overview_title">Agent Overview</string>
+    <string name="agent_players_managed">%d players managed</string>
+    <string name="agent_stat_mandate">Mandate</string>
+    <string name="agent_stat_expiring">Expiring</string>
+    <string name="agent_stat_notes">Notes</string>
+
+    <!-- Agent Tasks -->
+    <string name="agent_tasks_title">Agent Tasks</string>
+    <string name="agent_tasks_done">%1$d of %2$d tasks done</string>
+    <string name="agent_no_tasks">No tasks yet</string>
+    <string name="agent_no_tasks_hint">No tasks yet. Tap + to add one.</string>
+    <string name="agent_add_task">Add Task</string>
+    <string name="agent_new_task_for">New Task for %s</string>
+    <string name="agent_task_description_hint">Task description…</string>
+    <string name="agent_select_due_date">Select due date</string>
+
+    <!-- Tasks Screen -->
+    <string name="tasks_title">Tasks</string>
+    <string name="tasks_overview">Tasks Overview</string>
+    <string name="tasks_due_today">Due Today</string>
+    <string name="tasks_overdue">Overdue</string>
+    <string name="tasks_total">Total</string>
+    <string name="tasks_view_all">View All Tasks</string>
+    <string name="tasks_filter_all">All</string>
+    <string name="tasks_filter_today">Today</string>
+    <string name="tasks_filter_week">This Week</string>
+    <string name="tasks_filter_overdue">Overdue</string>
+    <string name="tasks_filter_by_agent">By Agent</string>
+    <string name="tasks_filter_timeline">Timeline</string>
+    <string name="tasks_section_today">Today</string>
+    <string name="tasks_section_tomorrow">Tomorrow</string>
+    <string name="tasks_section_this_week">This Week</string>
+    <string name="tasks_section_later">Later</string>
+    <string name="tasks_section_no_date">No Due Date</string>
+    <string name="tasks_section_completed">Completed</string>
+    <string name="tasks_empty">No tasks yet</string>
+    <string name="tasks_empty_hint">Tap + to create your first task</string>
+    <string name="tasks_completed_count">%1$d/%2$d completed</string>
+    <string name="tasks_new_task">New Task</string>
+    <string name="tasks_what_needs_done">What needs to be done?</string>
+    <string name="tasks_assign_to">Assign to</string>
+    <string name="tasks_priority">Priority</string>
+    <string name="tasks_priority_low">Low</string>
+    <string name="tasks_priority_medium">Medium</string>
+    <string name="tasks_priority_high">High</string>
+    <string name="tasks_notes_hint">Add notes (optional)</string>
+    <string name="tasks_create">Create Task</string>
+    <string name="tasks_detail_title">Task Details</string>
+    <string name="tasks_mark_complete">Mark Complete</string>
+    <string name="tasks_mark_incomplete">Mark Incomplete</string>
+    <string name="tasks_delete_confirm_title">Delete Task</string>
+    <string name="tasks_delete_confirm_message">Are you sure you want to delete this task?</string>
+    <string name="tasks_deleted">Task deleted</string>
+    <string name="tasks_undo">Undo</string>
+    <string name="tasks_completed_toast">Task completed</string>
+    <string name="tasks_save">Save</string>
+
+    <!-- Due Dates -->
+    <string name="due_overdue">%dd overdue</string>
+    <string name="due_yesterday">Yesterday</string>
+    <string name="due_today">Today</string>
+    <string name="due_tomorrow">Tomorrow</string>
+    <string name="due_in_days">In %dd</string>
+
+    <!-- Transfer Windows -->
+    <string name="transfer_windows_title">Open Transfer Windows</string>
+    <string name="transfer_windows_days_left">%d days left</string>
+    <string name="transfer_windows_open">Open</string>
+    <string name="transfer_windows_empty">No open transfer windows at the moment.</string>
+    <string name="transfer_windows_closing_soon">%d closing soon</string>
+    <string name="transfer_windows_group_priority">Priority Markets</string>
+    <string name="transfer_windows_group_uefa">Europe (UEFA)</string>
+    <string name="transfer_windows_group_conmebol">South America (CONMEBOL)</string>
+    <string name="transfer_windows_group_concacaf">North &amp; Central America (CONCACAF)</string>
+    <string name="transfer_windows_group_afc">Asia (AFC)</string>
+    <string name="transfer_windows_group_caf">Africa (CAF)</string>
+    <string name="transfer_windows_group_ofc">Oceania (OFC)</string>
+
+    <!-- Document Reminders -->
+    <string name="document_reminders_title">Document Reminders</string>
+    <string name="document_missing">%s missing</string>
+    <string name="document_expires_in">%1$s expires in %2$dd</string>
+
+    <!-- General -->
+    <string name="cancel">Cancel</string>
+    <string name="ok">OK</string>
+    <string name="expand">Expand</string>
+    <string name="collapse">Collapse</string>
+    <string name="delete_task">Delete task</string>
+    <string name="notifications">Notifications</string>
+
+    <!-- Language -->
+    <string name="language_change_title">Change Language</string>
+    <string name="language_change_message">The app language will change to %s. The app will restart to apply the change.</string>
+    <string name="language_english">English</string>
+    <string name="language_hebrew">עברית</string>
+    <string name="language_confirm">Confirm</string>
+    <string name="language_switch_cd">Change language</string>
+
+    <!-- Releases Screen -->
+    <string name="releases_title">Releases</string>
+    <string name="releases_subtitle">Latest free agents from Transfermarkt</string>
+    <string name="releases_tm_down">Transfermarkt is down\nTry again later</string>
+    <string name="releases_stat_shortlisted">Shortlisted</string>
+    <string name="releases_stat_visible">Visible</string>
+    <string name="releases_all_count">All %d</string>
+    <string name="releases_add_to_agency">Add to agency</string>
+    <string name="releases_badge_released">Released</string>
+    <string name="releases_badge_released_on">Released on %1$s</string>
+    <string name="releases_badge_loan_return">Loan Return</string>
+    <string name="releases_badge_returned_on">Returned on %1$s</string>
+    <string name="releases_returned_to">Returned to %1$s</string>
+    <string name="releases_roster_teammates_one">%d roster teammate</string>
+    <string name="releases_roster_teammates">%d roster teammates</string>
+    <string name="releases_no_roster_teammates">No roster players played with this player</string>
+    <string name="releases_roster_teammates_loading">Loading teammates…</string>
+    <string name="releases_games_together">%d games together</string>
+    <string name="releases_games_together_label">games together</string>
+    <string name="releases_roster_teammates_tap">Roster teammates</string>
+    <string name="shortlist_in_shortlist">In shortlist</string>
+    <string name="shortlist_add_to_shortlist">Add to shortlist</string>
+
+    <!-- Returnee Screen -->
+    <string name="returnee_title">Returnees</string>
+    <string name="returnee_subtitle">Players returning from loan across European leagues</string>
+    <string name="returnee_no_found">No returnees found</string>
+    <string name="returnee_loading">Loading (%1$d/%2$d leagues)…</string>+
+    <string name="returnee_stat_leagues">Leagues</string>
+    <string name="returnee_all_count">All %d</string>
+
+    <!-- Requests Screen -->
+    <string name="requests_title">Requests</string>
+    <string name="requests_subtitle">Player requests from clubs by position</string>
+    <string name="requests_add">Add request</string>
+    <string name="requests_share">Share requests</string>
+    <string name="requests_stat_positions">Positions</string>
+    <string name="requests_country_club_one">1 club</string>
+    <string name="requests_country_clubs">%d clubs</string>
+    <string name="requests_matching_players_one">%d matching player</string>
+    <string name="requests_matching_players">%d matching players</string>
+    <string name="requests_find_players">Find players</string>
+    <string name="requests_find_players_sheet_title">Players for this request</string>
+    <string name="requests_find_players_online">Find players using AI Scout</string>
+    <string name="requests_online_players_sheet_title">Players from the market</string>
+    <string name="requests_online_players_loading">AI Scout searching…</string>
+    <string name="requests_online_players_empty">No matching players found online</string>
+    <string name="requests_no_match">No roster players match this request</string>
+    <string name="requests_no_requests">No requests yet</string>
+    <string name="requests_empty_hint">Add requests from clubs when they ask for players. Tap + to add your first request.</string>
+    <string name="requests_delete_title">Delete request</string>
+    <string name="requests_delete_confirm">Delete request for %1$s (%2$s)?</string>
+    <string name="requests_add_title">Add Request</string>
+    <string name="requests_add_subtitle">Search club on Transfermarkt, then select position</string>
+    <string name="requests_label_club">CLUB</string>
+    <string name="requests_search_club">Search club…</string>
+    <string name="requests_label_position">POSITION</string>
+    <string name="requests_label_contact">CONTACT</string>
+    <string name="requests_label_age">AGE</string>
+    <string name="requests_min">Min</string>
+    <string name="requests_max">Max</string>
+    <string name="requests_age_any">Age: Any</string>
+    <string name="requests_age_range">Age: %1$d-%2$d</string>
+    <string name="requests_salary">Salary: %s</string>
+    <string name="requests_fee">Fee: %s</string>
+    <string name="requests_via_contact">Via %1$s • %2$s</string>
+    <string name="requests_direct">Direct request • %s</string>
+    <string name="requests_via_short">Via</string>
+    <string name="requests_direct_short">Direct</string>
+    <string name="requests_notes_placeholder">Additional notes…</string>
+    <string name="requests_notes_label">Notes</string>
+    <string name="requests_whatsapp">WhatsApp</string>
+    <string name="requests_edit">Edit</string>
+    <string name="requests_delete">Delete</string>
+    <string name="requests_change_club">Change</string>
+    <string name="requests_contact_optional">CONTACT (optional)</string>
+    <string name="requests_no_contacts_for_club">No contacts for this club</string>
+    <string name="requests_age_doesnt_matter">Doesn\'t matter</string>
+    <string name="requests_label_salary_range">SALARY RANGE</string>
+    <string name="requests_label_transfer_fee">TRANSFER FEE</string>
+    <string name="requests_notes_optional">NOTES (optional)</string>
+    <string name="requests_save_request">Save Request</string>
+    <string name="requests_transfer_fee_free_loan">Free/Free loan</string>
+    <string name="requests_transfer_fee_lt200">Lower than 200</string>
+    <string name="requests_label_dominate_foot">DOMINANT FOOT</string>
+    <string name="requests_foot_left">Left</string>
+    <string name="requests_foot_right">Right</string>
+    <string name="requests_foot_any">Doesn\'t matter</string>
+    <string name="requests_foot_label">Foot: %s</string>
+
+    <!-- Add Request voice recording -->
+    <string name="requests_record_request">Record request</string>
+    <string name="requests_record_hint">Speak the club, position, salary, transfer fee, foot, age</string>
+    <string name="requests_recording">Recording…</string>
+    <string name="requests_stop_recording">Stop</string>
+    <string name="requests_analyzing">Analyzing…</string>
+    <string name="requests_voice_error">Could not analyze recording. Try again.</string>
+    <string name="requests_voice_missing_club_position">Could not detect club or position. Please try again or fill manually.</string>
+    <string name="requests_fill_manually">Fill manually</string>
+
+    <!-- Add Request stepped flow -->
+    <string name="requests_step_of">Step %1$d of 4</string>
+    <string name="requests_step_club">Club</string>
+    <string name="requests_step_position">Position</string>
+    <string name="requests_step_requirements">Requirements</string>
+    <string name="requests_step_notes">Notes</string>
+    <string name="requests_next">Next</string>
+    <string name="requests_search_for_club">Search for club</string>
+
+    <!-- Contacts Screen -->
+    <string name="contacts_title">Worldwide Contacts</string>
+    <string name="contacts_subtitle">Club contacts for player recruitment</string>
+    <string name="contacts_stat_countries">Countries</string>
+    <string name="contacts_add">Add contact</string>
+    <string name="contacts_clear_search">Clear search</string>
+    <string name="contacts_clear">Clear</string>
+    <string name="contacts_edit">Edit</string>
+    <string name="contacts_delete">Delete</string>
+    <string name="contacts_delete_title">Delete contact</string>
+    <string name="contacts_delete_confirm">Delete %s?</string>
+    <string name="contacts_this_contact">this contact</string>
+    <string name="contacts_close">Close</string>
+    <string name="contacts_menu">More options</string>
+    <string name="contacts_no_contacts">No contacts yet</string>
+    <string name="contacts_empty_hint">Add club contacts for player recruitment. Pick from your phone or add manually.</string>
+    <string name="contacts_add_contact">Add contact</string>
+    <string name="contacts_edit_contact">Edit contact</string>
+    <string name="contacts_button_add">Add</string>
+    <string name="contacts_button_save">Save</string>
+    <string name="contacts_label_who">WHO</string>
+    <string name="contacts_import">Import from phone contacts</string>
+    <string name="contacts_import_error">Could not read contact. Try granting contacts permission.</string>
+    <string name="contacts_import_no_phone">This contact has no phone number. Select one with a number.</string>
+    <string name="contacts_permission_denied">Contacts permission needed to import</string>
+    <string name="contacts_enter_manually">or enter manually</string>
+    <string name="contacts_label_role">ROLE</string>
+    <string name="contacts_label_club">CLUB</string>
+    <string name="contacts_label_name">Name</string>
+    <string name="contacts_placeholder_name">Contact name</string>
+    <string name="contacts_label_phone">Phone</string>
+    <string name="contacts_placeholder_phone">Contact number (including phone code)</string>
+    <string name="contacts_no_contacts_found">No contacts found</string>
+    <string name="contacts_try_different_search">Try a different search or add a new contact</string>
+
+    <!-- Contact add stepped flow -->
+    <string name="contacts_step_of">Step %1$d of %2$d</string>
+    <string name="contacts_step_club">Club</string>
+    <string name="contacts_step_contact">Contact</string>
+    <string name="contacts_step_role">Role</string>
+    <string name="contacts_next">Next</string>
+    <string name="contacts_how_add_contact">How do you want to add the contact?</string>
+    <string name="contacts_role_optional">What is their role? (optional)</string>
+    <string name="contacts_search_for_club">Search for club</string>
+    <string name="contacts_club_import_only_hint">Import from your phone contacts. We\'ll search the web to find their club and role, then link to Transfermarkt.</string>
+    <string name="contacts_club_discovery_section">Club &amp; role</string>
+    <string name="contacts_club_searching_web">Searching web for club and role…</string>
+    <string name="contacts_club_found_on_tm">Found on Transfermarkt</string>
+    <string name="contacts_club_search_manually">Search club manually</string>
+    <string name="contacts_club_not_correct">Not the right club?</string>
+    <string name="contacts_try_again">Try again</string>
+    <string name="contacts_duplicate_phone_error">A contact with this phone number already exists</string>
+    <string name="contacts_or_enter_manually">— or enter manually —</string>
+    <string name="contacts_change">Change</string>
+
+    <!-- Contact roles (add/edit contact screen) -->
+    <string name="contact_role_other">Other</string>
+    <string name="contact_role_coach">Coach</string>
+    <string name="contact_role_asst_coach">Asst Coach</string>
+    <string name="contact_role_sport_dir">Sport Dir</string>
+    <string name="contact_role_board">Board</string>
+    <string name="contact_role_ceo">CEO</string>
+    <string name="contact_role_president">President</string>
+    <string name="contact_role_scout">Scout</string>
+    <string name="contact_role_agent">Agent</string>
+    <string name="contact_role_intermediary">Intermediary</string>
+    <string name="contact_role_agency_dir">Agency Dir</string>
+
+    <!-- Contacts Club vs Agency -->
+    <string name="contacts_tab_club">Club</string>
+    <string name="contacts_tab_agency">Agency</string>
+    <string name="contacts_add_type_title">What type of contact?</string>
+    <string name="contacts_add_type_club">Club contact</string>
+    <string name="contacts_add_type_club_hint">Coaches, scouts, sport directors at clubs</string>
+    <string name="contacts_add_type_agency">Agency contact</string>
+    <string name="contacts_add_type_agency_hint">Agents, intermediaries at agencies</string>
+    <string name="contacts_step_type">Type</string>
+    <string name="contacts_step_agency">Agency</string>
+    <string name="contacts_agency_search_hint">Enter agency name</string>
+    <string name="contacts_agency_import_only_hint">Import from your phone contacts. We\'ll search the web to find their agency and link it to Transfermarkt.</string>
+    <string name="contacts_agency_discovery_section">Agency</string>
+    <string name="contacts_agency_discovering">Contact info</string>
+    <string name="contacts_agency_searching_web">Searching web for agency…</string>
+    <string name="contacts_agency_found_on_tm">Found on Transfermarkt</string>
+    <string name="contacts_agency_not_correct">Not the right agency?</string>
+    <string name="contacts_agency_search_manually">Search manually</string>
+    <string name="contacts_agency_manual_fallback">Enter agency name to search Transfermarkt</string>
+    <string name="contacts_label_agency">Agency</string>
+    <string name="contacts_placeholder_agency">Agency name</string>
+    <string name="contacts_label_agency_country">Country (optional)</string>
+    <string name="contacts_placeholder_agency_country">e.g. USA, Germany</string>
+    <string name="contacts_empty_club">No club contacts yet</string>
+    <string name="contacts_empty_club_hint">Add coaches, scouts and club staff for player recruitment.</string>
+    <string name="contacts_empty_agency">No agency contacts yet</string>
+    <string name="contacts_empty_agency_hint">Add agents and intermediaries from player agencies.</string>
+    <string name="contacts_add_club_contact">Add club contact</string>
+    <string name="contacts_add_agency_contact">Add agency contact</string>
+    <string name="contacts_without_agency">Without agency</string>
+    <string name="contacts_without_club">Without club</string>
+    <string name="contacts_search_name_hint">Search by name</string>
+    <string name="contacts_open_transfermarkt">Open Transfermarkt</string>
+    <string name="contacts_agency_players_count">%d players</string>
+    <string name="contacts_agency_no_players">No players under this agency</string>
+
+    <!-- Add Player Screen -->
+    <string name="add_player_contact_title">Add Player Contact</string>
+    <string name="add_player_save">Save Player</string>
+    <string name="add_player_to_shortlist">Add to shortlist</string>
+    <string name="add_player_title">Add Player</string>
+    <string name="add_player_search_roster">Search Transfermarkt to add to roster</string>
+    <string name="add_player_search_shortlist">Search Transfermarkt to add to shortlist</string>
+    <string name="add_player_from_link_title">Add player from link</string>
+    <string name="add_player_from_link_roster">Add to roster (with contact info)</string>
+    <string name="add_player_from_link_shortlist">Add to shortlist</string>
+    <string name="add_player_search_hint_title">Search for a player to add</string>
+    <string name="add_player_search_desc">Type a name to find players on Transfermarkt</string>
+    <string name="add_player_label_player_number">Player Number</string>
+    <string name="add_player_label_agent_number">Agent Number</string>
+    <string name="add_player_tap_to_select">Tap to select</string>
+    <string name="add_player_already_in_shortlist">Player is already in your shortlist</string>
+
+    <!-- Player Info Screen -->
+    <string name="player_info_title">Player Info</string>
+    <string name="player_info_subtitle">View and manage player details</string>
+    <string name="player_info_refresh">Refresh</string>
+    <string name="player_info_refresh_cd">Refresh from Transfermarkt</string>
+    <string name="player_info_share">Share</string>
+    <string name="player_info_generate_mandate">Generate mandate</string>
+
+    <!-- Generate Mandate Wizard -->
+    <string name="mandate_generate_title">Generate Mandate</string>
+    <string name="mandate_expiry_date">Expiry date</string>
+    <string name="mandate_select_expiry">Select expiry date</string>
+    <string name="mandate_valid_leagues">Valid leagues / countries</string>
+    <string name="mandate_select_country">Search country…</string>
+    <string name="mandate_entire_country">Entire country (all clubs)</string>
+    <string name="mandate_generate_pdf">Generate Mandate</string>
+    <string name="mandate_generating">Generating…</string>
+    <string name="mandate_confirm">OK</string>
+    <string name="mandate_cancel">Cancel</string>
+    <string name="mandate_preview_title">Preview Mandate</string>
+    <string name="mandate_preview_page">Page %d</string>
+    <string name="mandate_done">Done</string>
+    <string name="mandate_error_generate_failed">Failed to generate PDF: %1$s</string>
+    <string name="mandate_no_agents_fifa">No agents with FIFA license found</string>
+    <string name="mandate_next">Next</string>
+    <string name="mandate_remove">Remove</string>
+
+    <!-- Mandate Wizard Steps -->
+    <string name="mandate_step_of">Step %1$d of 3</string>
+    <string name="mandate_step_agent">Agent</string>
+    <string name="mandate_step_validity">Validity</string>
+    <string name="mandate_step_review">Review</string>
+    <string name="mandate_step1_title">Select Agent</string>
+    <string name="mandate_step1_subtitle">Who will represent this player?</string>
+    <string name="mandate_step2_title">Validity Details</string>
+    <string name="mandate_step2_subtitle">Set the mandate duration and where it applies</string>
+    <string name="mandate_step3_title">Review &amp; Generate</string>
+    <string name="mandate_step3_subtitle">Confirm all details before generating the mandate</string>
+    <string name="mandate_fifa_license">FIFA License: %1$s</string>
+    <string name="mandate_tap_to_change">Tap to change</string>
+    <string name="mandate_add_country_league">Add Country / League</string>
+    <string name="mandate_no_leagues_hint">No leagues added yet.\nTap the button above to add countries or clubs.</string>
+    <string name="mandate_hint_select_agent">Select an agent to continue</string>
+    <string name="mandate_hint_date_and_leagues">Set an expiry date and add at least one league</string>
+    <string name="mandate_hint_select_date">Select an expiry date to continue</string>
+    <string name="mandate_hint_add_league">Add at least one league or country</string>
+
+    <!-- Mandate Review -->
+    <string name="mandate_review_player">Player</string>
+    <string name="mandate_review_agent">Agent</string>
+    <string name="mandate_review_validity">Validity</string>
+    <string name="mandate_review_fifa_id">FIFA License ID</string>
+
+    <!-- Mandate Bottom Sheet -->
+    <string name="mandate_sheet_search_country">Search for a country</string>
+    <string name="mandate_sheet_search_clubs">Search clubs in %1$s…</string>
+    <string name="mandate_selected_clubs">%d club(s) selected</string>
+    <string name="mandate_sheet_add_button">Add to Mandate</string>
+    <string name="player_info_delete">Delete</string>
+    <string name="player_info_delete_player_confirm">Are you sure you want to delete this player?</string>
+    <string name="player_info_delete_note_confirm">Are you sure you want to delete this note?</string>
+    <string name="player_info_delete_doc_confirm">Are you sure you want to delete \"%s\"?</string>
+    <string name="player_info_contact_header">Contact Info</string>
+    <string name="player_info_player_phone">Player Phone</string>
+    <string name="player_info_agent_phone">Agent Phone</string>
+    <string name="player_info_tm_profile">TM Profile</string>
+    <string name="player_info_tm_short">TM</string>
+    <string name="player_info_wa_short">WA</string>
+    <string name="player_info_ig_short">IG</string>
+    <string name="player_info_passport_details">Passport Details</string>
+    <string name="player_info_passport_already_exists">There is already a passport for this player</string>
+    <string name="player_info_passport_first_name">First name</string>
+    <string name="player_info_passport_last_name">Last name</string>
+    <string name="player_info_passport_number">Passport number</string>
+    <string name="player_info_passport_dob">Date of birth</string>
+    <string name="player_info_documents">Documents</string>
+    <string name="player_info_uploading">Uploading document…</string>
+    <string name="player_info_no_documents">No documents yet</string>
+    <string name="player_info_documents_empty_subtitle">Add passport, mandate, medical or other docs</string>
+    <string name="player_info_add_document">Add document</string>
+    <string name="player_info_notes">Notes</string>
+    <string name="player_info_add_note">Add note</string>
+    <string name="player_info_note_placeholder">Add a new note…</string>
+    <string name="player_info_save_note">Save Note</string>
+    <string name="player_info_no_notes_title">No notes yet</string>
+    <string name="player_info_no_notes_subtitle">Add your first note about this player</string>
+    <string name="player_info_view_all_notes">View all %1$d notes</string>
+    <string name="player_info_all_notes">All Notes</string>
+    <string name="player_info_note_copy">Copy</string>
+    <string name="player_info_record_note">Record note</string>
+    <string name="player_info_recording">Listening…</string>
+    <string name="player_info_record_permission_denied">Microphone permission needed to record notes</string>
+    <string name="player_info_record_not_available">Voice input not available on this device</string>
+    <string name="player_info_stop_recording">Stop recording</string>
+    <string name="player_info_note_deleted">Note deleted</string>
+    <string name="player_info_note_undo">Undo</string>
+    <string name="back">Back</string>
+    <string name="player_info_previously">Previously: %1$s (%2$s)</string>
+    <string name="player_info_added_by">Added by — %s</string>
+    <string name="player_info_contract">Contract %s</string>
+    <string name="player_info_mandate">Mandate</string>
+    <string name="player_info_mandate_expires">Mandate expires %s</string>
+    <string name="player_info_whatsapp">WhatsApp</string>
+    <string name="player_info_general_info">General Info</string>
+    <string name="player_info_height">Height</string>
+    <string name="player_info_age">Age</string>
+    <string name="player_info_positions">Positions</string>
+    <string name="player_info_nationality">Nationality</string>
+    <string name="player_info_foot">Foot</string>
+    <string name="player_info_foot_right">Right</string>
+    <string name="player_info_foot_left">Left</string>
+    <string name="player_info_foot_both">Both</string>
+    <string name="player_info_agency">Agency</string>
+    <string name="player_info_contract_expiry_date">Contract Expiry Date</string>
+    <string name="player_info_current_club">Current Club</string>
+    <string name="player_info_market_value">Market Value</string>
+    <string name="player_info_updating">Updating…</string>
+    <string name="player_info_player_label">Player</string>
+    <string name="player_info_agent_label">Agent</string>
+    <string name="player_info_message_whatsapp">Message on WhatsApp</string>
+    <string name="player_info_edit_number">Edit Number</string>
+    <string name="player_info_remove_number">Remove Number</string>
+    <string name="player_info_remove_agency">Remove agency</string>
+    <string name="player_info_add_number">Add Number</string>
+    <string name="player_info_instagram">Instagram</string>
+    <string name="player_info_add_instagram">Add Instagram</string>
+    <string name="player_info_add">Add</string>
+    <string name="player_info_instagram_hint">Instagram URL or username (e.g. instagram.com/username)</string>
+    <string name="player_info_open_instagram">Open Instagram</string>
+    <string name="player_info_edit_instagram">Edit Instagram</string>
+    <string name="player_info_remove_instagram">Remove Instagram</string>
+    <string name="player_info_contract_expired">Contract Expired</string>
+    <string name="player_info_expired">Expired</string>
+    <string name="player_info_expires_in_months">Expires in %d mo</string>
+    <string name="player_info_without_club">Without club</string>
+    <string name="player_info_unknown">Unknown</string>
+    <string name="player_info_player_data_not_available">Player data not available</string>
+    <string name="player_info_current_club_share">Current Club: %s</string>
+    <string name="player_info_share_with">Share with</string>
+    <string name="player_info_synced_minutes">Synced %dm ago</string>
+    <string name="player_info_synced_hours">Synced %dh ago</string>
+    <string name="player_info_synced_days">Synced %dd ago</string>
+    <string name="player_info_synced_date">Synced %s</string>
+    <string name="player_info_years_short">yrs</string>
+    <string name="player_info_salary_transfer_fee">Salary &amp; Transfer Fee</string>
+    <string name="player_info_salary_transfer_fee_hint">Tap to set for request matching</string>
+    <string name="player_info_salary_transfer_fee_sheet_title">Set match criteria</string>
+    <string name="player_info_remove_salary_transfer_fee">Remove salary &amp; transfer fee</string>
+
+    <!-- AI Helper -->
+    <string name="player_info_highlights">Highlights</string>
+    <string name="player_info_ai_helper">AI Scout</string>
+    <string name="player_info_ai_hidden_gem">Hidden gem potential</string>
+    <string name="player_info_ai_hidden_gem_check">Check hidden gem potential</string>
+    <string name="player_info_ai_hidden_gem_score">%d/100</string>
+    <string name="player_info_ai_hidden_gem_refresh">Refresh</string>
+    <string name="player_info_ai_find_similar_players">Find similar players</string>
+    <string name="player_info_ai_create_scout_report">Create scout report for %s</string>
+    <string name="player_info_ai_generating_scout_report">Generating scout report…</string>
+    <string name="player_info_ai_generating_scout_diamond_report">Generating diamond score…</string>
+    <string name="player_info_ai_scout_report_error">Could not generate scout report. Please try again.</string>
+    <string name="player_info_ai_no_similar_players">No similar players found</string>
+    <string name="player_info_ai_options">Options</string>
+    <string name="player_info_ai_refresh">Refresh</string>
+    <!-- Similar players options -->
+    <string name="player_info_ai_similarity_style">Playing style</string>
+    <string name="player_info_ai_similarity_value">Market value</string>
+    <string name="player_info_ai_similarity_position">Position</string>
+    <string name="player_info_ai_similarity_all">All-round</string>
+    <string name="player_info_ai_age_strict">Age ±2 yrs</string>
+    <string name="player_info_ai_age_relaxed">Age ±5 yrs</string>
+    <string name="player_info_ai_age_any">Any age</string>
+    <string name="player_info_ai_exclude_same_club">Exclude same club</string>
+    <string name="player_info_ai_exclude_same_league">Exclude same league</string>
+    <!-- Scout report options -->
+    <string name="player_info_ai_report_executive">Executive summary</string>
+    <string name="player_info_ai_report_full">Full tactical</string>
+    <string name="player_info_ai_report_transfer">Transfer focus</string>
+    <string name="player_info_ai_report_youth">Youth potential</string>
+
+    <!-- Matching Requests -->
+    <string name="player_info_matching_requests">Matching Requests</string>
+    <string name="player_info_matching_requests_empty">No matching requests</string>
+    <string name="player_info_matching_requests_empty_subtitle">Clubs with requests matching this player will appear here</string>
+    <string name="player_info_matching_requests_mark_offered">Mark as offered</string>
+    <string name="player_info_matching_requests_offered">Offered</string>
+    <string name="player_info_matching_requests_offered_date">Offered: %1$s</string>
+    <string name="player_info_matching_requests_by_agent">by %1$s</string>
+    <string name="player_info_matching_requests_club_feedback">Club feedback</string>
+    <string name="player_info_matching_requests_add_feedback">Add feedback</string>
+    <string name="player_info_matching_requests_edit_feedback">Edit feedback</string>
+    <string name="player_info_matching_requests_add_feedback_title">Add club feedback</string>
+    <string name="player_info_matching_requests_edit_feedback_title">Edit club feedback</string>
+    <string name="player_info_matching_requests_offer_date">Offer date</string>
+    <string name="player_info_matching_requests_feedback_hint">Club feedback (optional)</string>
+    <string name="player_info_matching_requests_feedback_placeholder">e.g. Interested, will discuss with coach…</string>
+    <string name="player_info_matching_requests_cancel">Cancel</string>
+
+    <!-- Highlights -->
+    <string name="highlights_find_videos">Find videos</string>
+    <string name="highlights_refresh">Refresh</string>
+    <string name="highlights_retry">Try again</string>
+    <string name="highlights_empty_title">No highlights yet</string>
+    <string name="highlights_empty_subtitle">Search for highlight of %1$s (last 2 years)</string>
+    <string name="highlights_results_count">%1$d videos</string>
+    <string name="highlights_video_content_desc">Open %1$s on %2$s</string>
+    <string name="highlights_view_instagram">View on Instagram</string>
+
+    <!-- Player Info Accessibility -->
+    <string name="player_info_cd_go_back">Go back</string>
+    <string name="player_info_cd_value_up">Market value trending up</string>
+    <string name="player_info_cd_value_down">Market value trending down</string>
+    <string name="player_info_cd_edit_salary">Edit salary and transfer fee</string>
+    <string name="player_info_cd_open_link">Open link</string>
+    <string name="player_info_cd_delete_document">Delete document</string>
+    <string name="player_info_cd_edit_phone">Edit phone number</string>
+    <string name="player_info_cd_clear_phone">Clear phone number</string>
+    <string name="player_info_cd_delete_note">Delete note</string>
+    <string name="player_info_cd_expand">Expand</string>
+    <string name="player_info_cd_collapse">Collapse</string>
+
+    <!-- Returnee Players Bottom Sheet -->
+    <string name="returnee_no_players_league">No players found in this league</string>
+
+    <!-- Empty State (shared) -->
+    <string name="empty_try_filters">Try adjusting your filters or search query</string>
 </resources>

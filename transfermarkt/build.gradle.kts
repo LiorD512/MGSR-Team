@@ -18,8 +18,15 @@ android {
     }
 }
 
+kotlin {
+    compilerOptions {
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_21)
+    }
+}
+
 dependencies {
     implementation(libs.jsoup)
     implementation(libs.coroutines)
+    implementation(libs.okhttp)
 }
 

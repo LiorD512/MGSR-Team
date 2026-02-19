@@ -1,5 +1,8 @@
 package com.liordahan.mgsrteam.ui.theme
 
+import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
@@ -8,7 +11,10 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.WindowCompat
 
 private val DarkColorScheme = darkColorScheme(
     primary = Purple80,
@@ -32,6 +38,8 @@ private val LightColorScheme = lightColorScheme(
     */
 )
 
+private const val DARK_APP_BG = 0xFF0F1923.toInt()
+
 @Composable
 fun MGSRTeamTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
@@ -39,7 +47,21 @@ fun MGSRTeamTheme(
     dynamicColor: Boolean = true,
     content: @Composable () -> Unit
 ) {
-    val colorScheme = when {
+    val view = LocalView.current
+    DisposableEffect(Unit) {
+        val window = view.context.findWindow()
+        if (window != null) {
+            window.statusBarColor = DARK_APP_BG
+            window.navigationBarColor = DARK_APP_BG
+            WindowCompat.getInsetsController(window, view).apply {
+                isAppearanceLightStatusBars = false
+                isAppearanceLightNavigationBars = false
+            }
+        }
+        onDispose { }
+    }
+
+    val baseColorScheme = when {
         dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
             val context = LocalContext.current
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
@@ -48,10 +70,23 @@ fun MGSRTeamTheme(
         darkTheme -> DarkColorScheme
         else -> LightColorScheme
     }
+    val colorScheme = baseColorScheme.copy(background = HomeDarkBackground)
 
     MaterialTheme(
         colorScheme = colorScheme,
         typography = Typography,
         content = content
     )
+}
+
+private fun Context.findWindow(): android.view.Window? {
+    var ctx: Context? = this
+    while (ctx != null) {
+        when (ctx) {
+            is Activity -> return ctx.window
+            is ContextWrapper -> ctx = ctx.baseContext
+            else -> break
+        }
+    }
+    return null
 }

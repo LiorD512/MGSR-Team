@@ -2,17 +2,16 @@ package com.liordahan.mgsrteam.features.add
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.liordahan.mgsrteam.features.home.models.FeedEvent
 import com.liordahan.mgsrteam.features.login.models.Account
+import com.liordahan.mgsrteam.features.players.models.Club
 import com.liordahan.mgsrteam.features.players.models.Player
 import com.liordahan.mgsrteam.firebase.FirebaseHandler
-import com.liordahan.mgsrteam.features.players.models.Club
 import com.liordahan.mgsrteam.transfermarket.PlayerSearch
 import com.liordahan.mgsrteam.transfermarket.PlayerSearchModel
 import com.liordahan.mgsrteam.transfermarket.TransfermarktPlayerDetails
 import com.liordahan.mgsrteam.transfermarket.TransfermarktResult
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -37,11 +36,14 @@ abstract class IAddPlayerViewModel : ViewModel() {
     abstract val errorMessageFlow: SharedFlow<String?>
     abstract val searchQuery: StateFlow<String>
     abstract fun onPlayerSelected(player: PlayerSearchModel)
+    /** Load player by Transfermarkt profile URL (e.g. from Releases/Returnee "Add to agency"). */
+    abstract fun loadPlayerByTmProfileUrl(tmProfileUrl: String)
     abstract fun updatePlayerNumber(number: String)
     abstract fun updateAgentNumber(number: String)
     abstract fun updateSearchQuery(query: String?)
     abstract fun onSavePlayerClicked()
-
+    /** Call when closing the add-player sheet so the next open doesn't use stale state. */
+    abstract fun resetAfterAdd()
 }
 
 @OptIn(FlowPreview::class)
@@ -101,18 +103,37 @@ class AddPlayerViewModel(
 
     override fun onPlayerSelected(player: PlayerSearchModel) {
         viewModelScope.launch {
-            _playerSearchStateFlow.update { it.copy(showPlayerSelectedSearchProgress = true) }
-           firebaseHandler.firebaseStore.collection(firebaseHandler.playersTable).whereEqualTo("tmProfile" , player.tmProfile).get().addOnSuccessListener {
-               val isPlayerExist = it.toObjects(Player::class.java).firstOrNull()
-                if (isPlayerExist != null) {
-                    viewModelScope.launch {
-                        _errorMessageFlow.emit("Player already exist in the database")
-                    }
-                    _playerSearchStateFlow.update { it.copy(showPlayerSelectedSearchProgress = false) }
-                } else {
-                    getPlayerBasicInfo(player)
-                }
-           }
+            selectPlayerAndLoadIfNew(player)
+        }
+    }
+
+    override fun loadPlayerByTmProfileUrl(tmProfileUrl: String) {
+        val url = tmProfileUrl.trim()
+        if (url.isBlank()) return
+        viewModelScope.launch {
+            val searchModel = PlayerSearchModel(tmProfile = url)
+            selectPlayerAndLoadIfNew(searchModel)
+        }
+    }
+
+    private suspend fun selectPlayerAndLoadIfNew(player: PlayerSearchModel) {
+        _playerSearchStateFlow.update { it.copy(showPlayerSelectedSearchProgress = true) }
+        try {
+            val snapshot = firebaseHandler.firebaseStore
+                .collection(firebaseHandler.playersTable)
+                .whereEqualTo("tmProfile", player.tmProfile)
+                .get()
+                .await()
+            val existing = snapshot.toObjects(Player::class.java).firstOrNull()
+            if (existing != null) {
+                _errorMessageFlow.emit("Player already in roster")
+                _playerSearchStateFlow.update { it.copy(showPlayerSelectedSearchProgress = false) }
+            } else {
+                getPlayerBasicInfo(player)
+            }
+        } catch (e: Exception) {
+            _errorMessageFlow.emit(e.message ?: "Failed to check player")
+            _playerSearchStateFlow.update { it.copy(showPlayerSelectedSearchProgress = false) }
         }
     }
 
@@ -138,7 +159,9 @@ class AddPlayerViewModel(
                         clubCountry = it.clubCountry
                     )
                 },
-                createdAt = System.currentTimeMillis()
+                createdAt = System.currentTimeMillis(),
+                isOnLoan = details.isOnLoan,
+                onLoanFromClub = details.onLoanFromClub
             )
             _selectedPlayerFlow.update { playerToSave }
             _playerSearchStateFlow.update { it.copy(showPlayerSelectedSearchProgress = false) }
@@ -183,7 +206,19 @@ class AddPlayerViewModel(
                 _selectedPlayerFlow.value?.let { playerToSave ->
                     firebaseHandler.firebaseStore.collection(firebaseHandler.playersTable).add(playerToSave)
                         .addOnSuccessListener {
+                            com.liordahan.mgsrteam.analytics.AnalyticsHelper.logAddPlayer()
                             _isPlayerAddedFlow.update { true }
+                            // Write feed event (no push)
+                            firebaseHandler.firebaseStore.collection(firebaseHandler.feedEventsTable).add(
+                                FeedEvent(
+                                    type = FeedEvent.TYPE_PLAYER_ADDED,
+                                    playerName = playerToSave.fullName,
+                                    playerImage = playerToSave.profileImage,
+                                    playerTmProfile = playerToSave.tmProfile,
+                                    timestamp = System.currentTimeMillis(),
+                                    agentName = agentInChargeName
+                                )
+                            )
                         }
                 }
             }
@@ -194,4 +229,9 @@ class AddPlayerViewModel(
         _playerSearchStateFlow.update { it.copy(showSearchProgress = showProgress) }
     }
 
+    override fun resetAfterAdd() {
+        _isPlayerAddedFlow.value = false
+        _selectedPlayerFlow.value = null
+        _playerSearchStateFlow.update { it.copy(showPlayerSelectedSearchProgress = false) }
+    }
 }
