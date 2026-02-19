@@ -54,6 +54,7 @@ abstract class IPlayerInfoViewModel : ViewModel() {
     abstract fun deletePlayer(playerTmProfile: String, onDeleteSuccessfully: () -> Unit)
     abstract fun updatePlayerNumber(number: String)
     abstract fun updateAgentNumber(number: String)
+    abstract fun clearAgency()
     abstract fun updateHaveMandate(hasMandate: Boolean)
     abstract fun updateSalaryRange(salaryRange: String?)
     abstract fun updateTransferFee(transferFee: String?)
@@ -183,18 +184,30 @@ class PlayerInfoViewModel(
     }
 
     override fun deletePlayer(playerTmProfile: String, onDeleteSuccessfully: () -> Unit) {
-        _showButtonProgress.update { true }
-        firebaseHandler.firebaseStore.collection(firebaseHandler.playersTable)
-            .whereEqualTo("tmProfile", playerTmProfile).get().addOnSuccessListener {
-                it.documents[0].reference.delete().addOnSuccessListener {
-                    _showButtonProgress.update { false }
-                    onDeleteSuccessfully()
-                }.addOnFailureListener {
-                    _showButtonProgress.update { false }
-                }
-            }.addOnFailureListener {
+        viewModelScope.launch {
+            _showButtonProgress.update { true }
+            try {
+                val snapshot = firebaseHandler.firebaseStore.collection(firebaseHandler.playersTable)
+                    .whereEqualTo("tmProfile", playerTmProfile).get().await()
+                val doc = snapshot.documents.firstOrNull() ?: return@launch
+                val player = doc.toObject(Player::class.java)
+                doc.reference.delete().await()
+                val deletedBy = getCurrentUserName()
+                firebaseHandler.firebaseStore.collection(firebaseHandler.feedEventsTable).add(
+                    FeedEvent(
+                        type = FeedEvent.TYPE_PLAYER_DELETED,
+                        playerName = player?.fullName,
+                        playerImage = player?.profileImage,
+                        playerTmProfile = playerTmProfile,
+                        agentName = deletedBy,
+                        timestamp = System.currentTimeMillis()
+                    )
+                ).await()
+                onDeleteSuccessfully()
+            } finally {
                 _showButtonProgress.update { false }
             }
+        }
     }
 
     override fun updatePlayerNumber(number: String) {
@@ -218,6 +231,23 @@ class PlayerInfoViewModel(
     override fun updateAgentNumber(number: String) {
         _playerInfoFlow.update {
             it?.copy(agentPhoneNumber = number, playerAdditionalInfoModel = null)
+        }
+
+        _playerInfoFlow.value?.let { player ->
+            viewModelScope.launch {
+                val doc = firebaseHandler.firebaseStore
+                    .collection(firebaseHandler.playersTable)
+                    .whereEqualTo("tmProfile", player.tmProfile)
+                    .get().await().documents.firstOrNull()
+
+                doc?.reference?.set(player)?.await()
+            }
+        }
+    }
+
+    override fun clearAgency() {
+        _playerInfoFlow.update {
+            it?.copy(agency = null, agencyUrl = null)
         }
 
         _playerInfoFlow.value?.let { player ->
@@ -345,6 +375,21 @@ class PlayerInfoViewModel(
                     .get().await().documents.firstOrNull()
 
                 doc?.reference?.set(player)?.await()
+
+                // Write feed event for note deleted
+                val deletedBy = getCurrentUserName()
+                val notePreview = note.notes?.take(120)?.let { if (it.length == 120) "$it…" else it }
+                firebaseHandler.firebaseStore.collection(firebaseHandler.feedEventsTable).add(
+                    FeedEvent(
+                        type = FeedEvent.TYPE_NOTE_DELETED,
+                        playerName = player.fullName,
+                        playerImage = player.profileImage,
+                        playerTmProfile = player.tmProfile,
+                        agentName = deletedBy,
+                        extraInfo = notePreview,
+                        timestamp = System.currentTimeMillis()
+                    )
+                ).await()
             }
         }
     }

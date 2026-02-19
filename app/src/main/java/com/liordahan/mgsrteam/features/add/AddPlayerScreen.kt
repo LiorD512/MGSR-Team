@@ -70,6 +70,8 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDirection
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
@@ -114,6 +116,7 @@ fun AddPlayerScreen(
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val context = LocalContext.current
     val keyboardController = LocalSoftwareKeyboardController.current
+    val focusManager = LocalFocusManager.current
 
     val snackBarHostState = remember { SnackbarHostState() }
 
@@ -241,6 +244,7 @@ fun AddPlayerScreen(
                             SearchListItem(
                                 playerSearchModel = playerSearchModel,
                                 onCardClicked = {
+                                    focusManager.clearFocus()
                                     keyboardController?.hide()
                                     viewModel.onPlayerSelected(it)
                                 }
@@ -653,7 +657,8 @@ fun ContactPickerRow(
                     text = value.takeIf { !it.isNullOrEmpty() } ?: stringResource(R.string.add_player_tap_to_select),
                     style = regularTextStyle(
                         if (value.isNullOrEmpty()) HomeTextSecondary else HomeTextPrimary,
-                        14.sp
+                        14.sp,
+                        direction = if (value.isNullOrEmpty()) TextDirection.Content else TextDirection.Ltr
                     )
                 )
             }

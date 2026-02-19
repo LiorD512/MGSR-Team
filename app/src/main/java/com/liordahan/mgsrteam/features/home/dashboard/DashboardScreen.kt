@@ -38,9 +38,12 @@ import androidx.compose.material.icons.automirrored.filled.NoteAdd
 import androidx.compose.material.icons.automirrored.filled.TrendingDown
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.BookmarkAdd
+import androidx.compose.material.icons.filled.BookmarkRemove
 import androidx.compose.material.icons.filled.Autorenew
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.ContactPhone
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Handshake
@@ -121,12 +124,14 @@ import com.liordahan.mgsrteam.ui.theme.HomeDarkCard
 import com.liordahan.mgsrteam.ui.theme.HomeDarkCardBorder
 import com.liordahan.mgsrteam.ui.theme.HomeGreenAccent
 import com.liordahan.mgsrteam.ui.theme.HomeOrangeAccent
+import com.liordahan.mgsrteam.ui.theme.HomeRoseAccent
 import com.liordahan.mgsrteam.ui.theme.HomePurpleAccent
 import com.liordahan.mgsrteam.ui.theme.HomeRedAccent
 import com.liordahan.mgsrteam.ui.theme.HomeTealAccent
 import com.liordahan.mgsrteam.ui.theme.HomeTextPrimary
 import com.liordahan.mgsrteam.ui.theme.HomeTextSecondary
 import com.liordahan.mgsrteam.ui.components.SkeletonDashboardLayout
+import com.liordahan.mgsrteam.ui.components.ToastManager
 import com.liordahan.mgsrteam.ui.utils.boldTextStyle
 import com.liordahan.mgsrteam.ui.utils.clickWithNoRipple
 import com.liordahan.mgsrteam.ui.utils.regularTextStyle
@@ -238,7 +243,22 @@ fun DashboardScreen(
                 }
             } else {
                 items(filteredEvents.take(15), key = { it.id ?: it.hashCode() }) { event ->
-                    FeedEventCard(event = event, navController = navController)
+                    FeedEventCard(
+                        event = event,
+                        navController = navController,
+                        allAccounts = state.allAccounts,
+                        onNavigateToPlayer = { tmProfile ->
+                            viewModel.checkPlayerExists(tmProfile) { exists ->
+                                if (exists) {
+                                    navController.navigate("${Screens.PlayerInfoScreen.route}/${android.net.Uri.encode(tmProfile)}")
+                                } else {
+                                    ToastManager.showError(
+                                        context.getString(R.string.feed_player_deleted_error)
+                                    )
+                                }
+                            }
+                        }
+                    )
                 }
             }
 
@@ -756,7 +776,12 @@ private fun FeedSectionHeader(
 }
 
 @Composable
-private fun FeedEventCard(event: FeedEvent, navController: NavController) {
+private fun FeedEventCard(
+    event: FeedEvent,
+    navController: NavController,
+    allAccounts: List<com.liordahan.mgsrteam.features.login.models.Account> = emptyList(),
+    onNavigateToPlayer: (tmProfile: String) -> Unit = {}
+) {
     val (icon, accentColor, title) = when (event.type) {
         FeedEvent.TYPE_MARKET_VALUE_CHANGE -> {
             val isDrop = isMarketValueDrop(event.oldValue, event.newValue)
@@ -772,8 +797,14 @@ private fun FeedEventCard(event: FeedEvent, navController: NavController) {
         FeedEvent.TYPE_MANDATE_EXPIRED -> Triple(Icons.Default.Warning, HomeRedAccent, stringResource(R.string.feed_mandate_expired))
         FeedEvent.TYPE_MANDATE_UPLOADED -> Triple(Icons.Default.Description, HomeTealAccent, stringResource(R.string.feed_mandate_uploaded))
         FeedEvent.TYPE_CONTRACT_EXPIRING -> Triple(Icons.Default.Warning, HomeOrangeAccent, stringResource(R.string.feed_contract_expiring))
-        FeedEvent.TYPE_NOTE_ADDED -> Triple(Icons.AutoMirrored.Filled.NoteAdd, HomePurpleAccent, stringResource(R.string.feed_new_note))
+        FeedEvent.TYPE_NOTE_ADDED -> Triple(Icons.AutoMirrored.Filled.NoteAdd, HomeRoseAccent, stringResource(R.string.feed_new_note))
+        FeedEvent.TYPE_NOTE_DELETED -> Triple(Icons.Default.Delete, HomeRedAccent, stringResource(R.string.feed_note_deleted))
         FeedEvent.TYPE_PLAYER_ADDED -> Triple(Icons.Default.Add, HomeTealAccent, stringResource(R.string.feed_player_added))
+        FeedEvent.TYPE_PLAYER_DELETED -> Triple(Icons.Default.Delete, HomeRedAccent, stringResource(R.string.feed_player_deleted))
+        FeedEvent.TYPE_SHORTLIST_ADDED -> Triple(Icons.Default.BookmarkAdd, HomeBlueAccent, stringResource(R.string.feed_shortlist_added))
+        FeedEvent.TYPE_SHORTLIST_REMOVED -> Triple(Icons.Default.BookmarkRemove, HomeRedAccent, stringResource(R.string.feed_shortlist_removed))
+        FeedEvent.TYPE_REQUEST_ADDED -> Triple(Icons.Default.RequestQuote, HomePurpleAccent, stringResource(R.string.feed_request_added))
+        FeedEvent.TYPE_REQUEST_DELETED -> Triple(Icons.Default.Delete, HomeRedAccent, stringResource(R.string.feed_request_deleted))
         else -> Triple(Icons.Default.Notifications, HomeTextSecondary, stringResource(R.string.feed_update))
     }
 
@@ -783,14 +814,25 @@ private fun FeedEventCard(event: FeedEvent, navController: NavController) {
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 4.dp)
             .clickWithNoRipple {
-                event.playerTmProfile?.let { tm ->
-                    when {
-                        event.type == FeedEvent.TYPE_NEW_RELEASE_FROM_CLUB && event.extraInfo == "NOT_IN_DATABASE" ->
-                            context.startActivity(Intent(Intent.ACTION_VIEW, tm.toUri()))
-                        event.type == FeedEvent.TYPE_NEW_RELEASE_FROM_CLUB ->
-                            navController.navigate("${Screens.AddPlayerScreen.route}/${Uri.encode(tm)}")
-                        else ->
-                            navController.navigate("${Screens.PlayerInfoScreen.route}/${Uri.encode(tm)}")
+                when {
+                    event.type == FeedEvent.TYPE_REQUEST_ADDED ||
+                    event.type == FeedEvent.TYPE_REQUEST_DELETED ->
+                        navController.navigate(Screens.RequestsScreen.route)
+                    event.type == FeedEvent.TYPE_SHORTLIST_ADDED ||
+                    event.type == FeedEvent.TYPE_SHORTLIST_REMOVED ->
+                        navController.navigate(Screens.ShortlistScreen.route)
+                    event.type == FeedEvent.TYPE_PLAYER_DELETED ->
+                        navController.navigate(Screens.PlayersScreen.route)
+                    event.playerTmProfile != null -> {
+                        val tm = event.playerTmProfile
+                        when {
+                            event.type == FeedEvent.TYPE_NEW_RELEASE_FROM_CLUB && event.extraInfo == "NOT_IN_DATABASE" ->
+                                context.startActivity(Intent(Intent.ACTION_VIEW, tm.toUri()))
+                            event.type == FeedEvent.TYPE_NEW_RELEASE_FROM_CLUB ->
+                                navController.navigate("${Screens.AddPlayerScreen.route}/${Uri.encode(tm)}")
+                            else ->
+                                onNavigateToPlayer(tm)
+                        }
                     }
                 }
             },
@@ -911,10 +953,15 @@ private fun FeedEventCard(event: FeedEvent, navController: NavController) {
                         )
                     }
                     FeedEvent.TYPE_NOTE_ADDED -> {
+                        val agentDisplayName = event.agentName?.let { raw ->
+                            allAccounts.find { it.name.equals(raw, ignoreCase = true) || it.hebrewName?.equals(raw, ignoreCase = true) == true }
+                                ?.getDisplayName(context)
+                                ?: raw
+                        } ?: stringResource(R.string.greeting_agent_default)
                         Text(
                             text = stringResource(
                                 R.string.feed_note_added_by,
-                                event.agentName ?: stringResource(R.string.greeting_agent_default),
+                                agentDisplayName,
                                 event.playerName ?: ""
                             ),
                             style = boldTextStyle(HomeTextPrimary, 14.sp)
@@ -925,6 +972,143 @@ private fun FeedEventCard(event: FeedEvent, navController: NavController) {
                                 style = regularTextStyle(HomeTextSecondary, 12.sp),
                                 maxLines = 2,
                                 overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+                    FeedEvent.TYPE_NOTE_DELETED -> {
+                        val agentDisplayName = event.agentName?.let { raw ->
+                            allAccounts.find { it.name.equals(raw, ignoreCase = true) || it.hebrewName?.equals(raw, ignoreCase = true) == true }
+                                ?.getDisplayName(context)
+                                ?: raw
+                        } ?: stringResource(R.string.greeting_agent_default)
+                        Text(
+                            text = stringResource(
+                                R.string.feed_note_deleted_by,
+                                agentDisplayName,
+                                event.playerName ?: ""
+                            ),
+                            style = boldTextStyle(HomeTextPrimary, 14.sp)
+                        )
+                        event.extraInfo?.let {
+                            Text(
+                                text = it,
+                                style = regularTextStyle(HomeTextSecondary, 12.sp),
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+                    FeedEvent.TYPE_SHORTLIST_ADDED -> {
+                        val agentDisplayName = event.agentName?.let { raw ->
+                            allAccounts.find { it.name.equals(raw, ignoreCase = true) || it.hebrewName?.equals(raw, ignoreCase = true) == true }
+                                ?.getDisplayName(context)
+                                ?: raw
+                        }
+                        Text(
+                            text = event.playerName ?: stringResource(R.string.feed_update),
+                            style = boldTextStyle(HomeTextPrimary, 14.sp)
+                        )
+                        agentDisplayName?.let {
+                            Text(
+                                text = stringResource(R.string.feed_added_by, it),
+                                style = regularTextStyle(HomeTextSecondary, 12.sp)
+                            )
+                        }
+                    }
+                    FeedEvent.TYPE_SHORTLIST_REMOVED -> {
+                        val agentDisplayName = event.agentName?.let { raw ->
+                            allAccounts.find { it.name.equals(raw, ignoreCase = true) || it.hebrewName?.equals(raw, ignoreCase = true) == true }
+                                ?.getDisplayName(context)
+                                ?: raw
+                        }
+                        Text(
+                            text = event.playerName ?: stringResource(R.string.feed_update),
+                            style = boldTextStyle(HomeTextPrimary, 14.sp)
+                        )
+                        agentDisplayName?.let {
+                            Text(
+                                text = stringResource(R.string.feed_removed_by, it),
+                                style = regularTextStyle(HomeTextSecondary, 12.sp)
+                            )
+                        }
+                    }
+                    FeedEvent.TYPE_REQUEST_ADDED -> {
+                        val agentDisplayName = event.agentName?.let { raw ->
+                            allAccounts.find { it.name.equals(raw, ignoreCase = true) || it.hebrewName?.equals(raw, ignoreCase = true) == true }
+                                ?.getDisplayName(context)
+                                ?: raw
+                        }
+                        Text(
+                            text = event.playerName ?: "",
+                            style = boldTextStyle(HomeTextPrimary, 14.sp)
+                        )
+                        val parts = buildList {
+                            event.newValue?.takeIf { it.isNotBlank() }?.let { add(it) }
+                            agentDisplayName?.takeIf { it.isNotBlank() }?.let {
+                                add(stringResource(R.string.feed_added_by, it))
+                            }
+                        }
+                        if (parts.isNotEmpty()) {
+                            Text(
+                                text = parts.joinToString(" • "),
+                                style = regularTextStyle(HomeTextSecondary, 12.sp)
+                            )
+                        }
+                    }
+                    FeedEvent.TYPE_REQUEST_DELETED -> {
+                        val agentDisplayName = event.agentName?.let { raw ->
+                            allAccounts.find { it.name.equals(raw, ignoreCase = true) || it.hebrewName?.equals(raw, ignoreCase = true) == true }
+                                ?.getDisplayName(context)
+                                ?: raw
+                        }
+                        Text(
+                            text = event.playerName ?: "",
+                            style = boldTextStyle(HomeTextPrimary, 14.sp)
+                        )
+                        val parts = buildList {
+                            event.newValue?.takeIf { it.isNotBlank() }?.let { add(it) }
+                            agentDisplayName?.takeIf { it.isNotBlank() }?.let {
+                                add(stringResource(R.string.feed_deleted_by, it))
+                            }
+                        }
+                        if (parts.isNotEmpty()) {
+                            Text(
+                                text = parts.joinToString(" • "),
+                                style = regularTextStyle(HomeTextSecondary, 12.sp)
+                            )
+                        }
+                    }
+                    FeedEvent.TYPE_PLAYER_ADDED -> {
+                        val agentDisplayName = event.agentName?.let { raw ->
+                            allAccounts.find { it.name.equals(raw, ignoreCase = true) || it.hebrewName?.equals(raw, ignoreCase = true) == true }
+                                ?.getDisplayName(context)
+                                ?: raw
+                        }
+                        Text(
+                            text = event.playerName ?: "",
+                            style = boldTextStyle(HomeTextPrimary, 14.sp)
+                        )
+                        agentDisplayName?.let {
+                            Text(
+                                text = stringResource(R.string.feed_added_by, it),
+                                style = regularTextStyle(HomeTextSecondary, 12.sp)
+                            )
+                        }
+                    }
+                    FeedEvent.TYPE_PLAYER_DELETED -> {
+                        val agentDisplayName = event.agentName?.let { raw ->
+                            allAccounts.find { it.name.equals(raw, ignoreCase = true) || it.hebrewName?.equals(raw, ignoreCase = true) == true }
+                                ?.getDisplayName(context)
+                                ?: raw
+                        }
+                        Text(
+                            text = event.playerName ?: "",
+                            style = boldTextStyle(HomeTextPrimary, 14.sp)
+                        )
+                        agentDisplayName?.let {
+                            Text(
+                                text = stringResource(R.string.feed_deleted_by, it),
+                                style = regularTextStyle(HomeTextSecondary, 12.sp)
                             )
                         }
                     }
@@ -997,7 +1181,9 @@ private fun List<FeedEvent>.filterByType(filter: FeedFilter): List<FeedEvent> {
                 it.type == FeedEvent.TYPE_MANDATE_EXPIRED ||
                 it.type == FeedEvent.TYPE_MANDATE_UPLOADED
         }
-        FeedFilter.NOTES -> filter { it.type == FeedEvent.TYPE_NOTE_ADDED }
+        FeedFilter.NOTES -> filter {
+            it.type == FeedEvent.TYPE_NOTE_ADDED || it.type == FeedEvent.TYPE_NOTE_DELETED
+        }
     }
 }
 

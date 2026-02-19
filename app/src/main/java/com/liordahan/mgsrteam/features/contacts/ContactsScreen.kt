@@ -87,6 +87,7 @@ import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -133,6 +134,7 @@ import com.liordahan.mgsrteam.features.contacts.playersForAgencyContact
 import com.liordahan.mgsrteam.features.players.models.Player
 import com.liordahan.mgsrteam.features.players.playerinfo.WhatsAppIcon
 import com.liordahan.mgsrteam.features.contacts.agency.AgencyDiscoveryService
+import com.liordahan.mgsrteam.features.contacts.club.ClubDiscoveryService
 import com.liordahan.mgsrteam.transfermarket.AgencySearch
 import com.liordahan.mgsrteam.transfermarket.AgencySearchModel
 import com.liordahan.mgsrteam.transfermarket.ClubSearch
@@ -627,7 +629,14 @@ fun ContactsScreen(
                                                 editingContact = contact
                                                 showAddEditSheet = true
                                             },
-                                            onDelete = { contactToDelete = contact }
+                                            onDelete = { contactToDelete = contact },
+                                            onOpenTransfermarkt = {
+                                                contact.clubTmProfile?.takeIf { u -> u.isNotBlank() }?.let { url ->
+                                                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                                                    try { context.startActivity(intent) }
+                                                    catch (_: ActivityNotFoundException) { }
+                                                }
+                                            }
                                         )
                                     }
                                 }
@@ -642,7 +651,14 @@ fun ContactsScreen(
                                             editingContact = contact
                                             showAddEditSheet = true
                                         },
-                                        onDelete = { contactToDelete = contact }
+                                        onDelete = { contactToDelete = contact },
+                                        onOpenTransfermarkt = {
+                                            contact.clubTmProfile?.takeIf { u -> u.isNotBlank() }?.let { url ->
+                                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                                                try { context.startActivity(intent) }
+                                                catch (_: ActivityNotFoundException) { }
+                                            }
+                                        }
                                     )
                                 }
                             }
@@ -689,6 +705,7 @@ fun ContactsScreen(
                     modifier = Modifier.align(Alignment.BottomCenter),
                     initialContact = editingContact,
                     initialContactType = selectedTab,
+                    existingContacts = state.contacts,
                     pickedName = pickedName,
                     pickedPhone = pickedPhone,
                     onNameChange = { pickedName = it },
@@ -1210,7 +1227,8 @@ private fun CountrySectionHeader(
 private fun ContactCard(
     contact: Contact,
     onEdit: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onOpenTransfermarkt: (() -> Unit)? = null
 ) {
     var showMenu by remember { mutableStateOf(false) }
     Card(
@@ -1225,7 +1243,11 @@ private fun ContactCard(
             modifier = Modifier
                 .fillMaxWidth()
                 .combinedClickable(
-                    onClick = { },
+                    onClick = {
+                        if (contact.contactTypeEnum == ContactType.CLUB && contact.clubTmProfile?.isNotBlank() == true) {
+                            onOpenTransfermarkt?.invoke()
+                        }
+                    },
                     onLongClick = { showMenu = true }
                 )
                 .drawBehind {
@@ -1621,12 +1643,16 @@ private val agencyRoles = listOf(
     ContactRole.AGENCY_DIRECTOR, ContactRole.SCOUT
 )
 
+private fun normalizePhoneForComparison(phone: String?): String =
+    phone?.replace(Regex("[^0-9]"), "")?.takeIf { it.isNotBlank() } ?: ""
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun AddEditContactBottomSheet(
     modifier: Modifier,
     initialContact: Contact?,
     initialContactType: ContactType? = null,
+    existingContacts: List<Contact> = emptyList(),
     pickedName: String,
     pickedPhone: String,
     onNameChange: (String) -> Unit,
@@ -1635,11 +1661,31 @@ private fun AddEditContactBottomSheet(
     onDismiss: () -> Unit,
     onSave: (Contact) -> Unit
 ) {
+    val context = LocalContext.current
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val clubSearch: ClubSearch = koinInject()
     val agencySearch: AgencySearch = koinInject()
+    val clubDiscovery: ClubDiscoveryService = koinInject()
     val agencyDiscovery: AgencyDiscoveryService = koinInject()
     val isEdit = initialContact != null
+    var duplicatePhoneError by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(pickedPhone) { duplicatePhoneError = null }
+
+    val performSave: (Contact) -> Unit = { contact ->
+        if (contact.id != null) {
+            onSave(contact)
+        } else {
+            val normalized = normalizePhoneForComparison(contact.phoneNumber)
+            val exists = existingContacts.any { normalizePhoneForComparison(it.phoneNumber) == normalized }
+            if (exists) {
+                duplicatePhoneError = context.getString(R.string.contacts_duplicate_phone_error)
+            } else {
+                duplicatePhoneError = null
+                onSave(contact)
+            }
+        }
+    }
 
     var selectedContactType by remember(initialContact, initialContactType) {
         mutableStateOf<ContactType?>(initialContact?.contactTypeEnum ?: initialContactType)
@@ -1670,12 +1716,23 @@ private fun AddEditContactBottomSheet(
             else null
         )
     }
+    var showManualAgencySearch by remember { mutableStateOf(false) }
     var isDiscoveringAgency by remember { mutableStateOf(false) }
     var discoveryError by remember { mutableStateOf<String?>(null) }
 
     var clubSearchResults by remember { mutableStateOf<List<ClubSearchModel>>(emptyList()) }
     val clubSearchFocusRequester = remember { FocusRequester() }
     var isSearchingClubs by remember { mutableStateOf(false) }
+    var isDiscoveringClub by remember { mutableStateOf(false) }
+    var discoveryClubError by remember { mutableStateOf<String?>(null) }
+    var showManualClubSearch by remember { mutableStateOf(false) }
+    var retryClubDiscoveryTrigger by remember { mutableStateOf(0) }
+    var retryAgencyDiscoveryTrigger by remember { mutableStateOf(0) }
+    var selectedRole by remember(initialContact, selectedContactType) {
+        val initial = initialContact?.roleEnum ?: ContactRole.UNKNOWN
+        val valid = if (selectedContactType == ContactType.AGENCY) agencyRoles else clubRoles
+        mutableStateOf(if (initial in valid) initial else valid.first())
+    }
     var selectedClub by remember(initialContact) {
         mutableStateOf(
             if (initialContact != null && !initialContact.clubName.isNullOrBlank())
@@ -1709,7 +1766,37 @@ private fun AddEditContactBottomSheet(
         isSearchingClubs = false
     }
 
-    androidx.compose.runtime.LaunchedEffect(pickedName, selectedContactType, isEdit) {
+    androidx.compose.runtime.LaunchedEffect(pickedName, pickedPhone, selectedContactType, isEdit, retryClubDiscoveryTrigger) {
+        if (isEdit || selectedContactType != ContactType.CLUB) return@LaunchedEffect
+        val name = pickedName.trim()
+        val phone = pickedPhone.trim()
+        if (name.length < 2 || phone.length < 5) return@LaunchedEffect
+        showManualClubSearch = false
+        try {
+            isDiscoveringClub = true
+            discoveryClubError = null
+            clubDiscovery.discoverClubForPerson(name)
+                .onSuccess { discovered ->
+                    discovered?.let {
+                        selectedClub = it.clubModel ?: ClubSearchModel(
+                            clubName = it.clubName,
+                            clubLogo = null,
+                            clubTmProfile = null,
+                            clubCountry = null,
+                            clubCountryFlag = null
+                        )
+                        selectedRole = it.role
+                    }
+                }
+                .onFailure { e ->
+                    discoveryClubError = e.message ?: "Search failed"
+                }
+        } finally {
+            isDiscoveringClub = false
+        }
+    }
+
+    androidx.compose.runtime.LaunchedEffect(pickedName, selectedContactType, isEdit, retryAgencyDiscoveryTrigger) {
         if (isEdit || selectedContactType != ContactType.AGENCY) return@LaunchedEffect
         val name = pickedName.trim()
         if (name.length < 2) return@LaunchedEffect
@@ -1757,11 +1844,6 @@ private fun AddEditContactBottomSheet(
         ContactType.AGENCY -> agencyRoles
         else -> clubRoles
     }
-    var selectedRole by remember(initialContact, selectedContactType) {
-        val initial = initialContact?.roleEnum ?: ContactRole.UNKNOWN
-        val valid = if (selectedContactType == ContactType.AGENCY) agencyRoles else clubRoles
-        mutableStateOf(if (initial in valid) initial else valid.first())
-    }
 
     val containerSize = LocalWindowInfo.current.containerSize
     val density = LocalDensity.current.density
@@ -1770,7 +1852,9 @@ private fun AddEditContactBottomSheet(
 
     val totalSteps = when {
         isEdit && selectedContactType == ContactType.AGENCY -> 1
+        isEdit && selectedContactType == ContactType.CLUB -> 3
         selectedContactType == ContactType.AGENCY -> 2
+        selectedContactType == ContactType.CLUB -> 2
         isEdit -> 3
         else -> 4
     }
@@ -1778,7 +1862,8 @@ private fun AddEditContactBottomSheet(
 
     val canProceedStepType = selectedContactType != null
     val canProceedStepOrg = when (selectedContactType) {
-        ContactType.CLUB -> selectedClub != null || clubSearchQuery.trim().isNotBlank()
+        ContactType.CLUB -> if (isEdit) selectedClub != null || clubSearchQuery.trim().isNotBlank()
+            else pickedName.isNotBlank() && pickedPhone.isNotBlank() && selectedClub != null && selectedRole in clubRoles
         ContactType.AGENCY -> pickedName.isNotBlank() && pickedPhone.isNotBlank() && agencyName.trim().isNotBlank()
         null -> false
     }
@@ -1885,7 +1970,7 @@ private fun AddEditContactBottomSheet(
                         onTypeSelected = { selectedContactType = it }
                     )
                     step == orgStep -> when (selectedContactType) {
-                        ContactType.CLUB -> Step1ClubContent(
+                        ContactType.CLUB -> if (isEdit) Step1ClubContent(
                             clubSearchQuery = clubSearchQuery,
                             onClubSearchChange = {
                                 clubSearchQuery = it
@@ -1908,6 +1993,47 @@ private fun AddEditContactBottomSheet(
                                 clubSearchFocusRequester.requestFocus()
                                 keyboardController?.show()
                             }
+                        ) else Step1ClubContentAdd(
+                            pickedName = pickedName,
+                            pickedPhone = pickedPhone,
+                            selectedClub = selectedClub,
+                            selectedRole = selectedRole,
+                            clubSearchQuery = clubSearchQuery,
+                            onClubSearchChange = {
+                                clubSearchQuery = it
+                                if (selectedClub != null && it != selectedClub?.clubName) selectedClub = null
+                            },
+                            clubSearchResults = clubSearchResults,
+                            isSearchingClubs = isSearchingClubs,
+                            clubSearchFocusRequester = clubSearchFocusRequester,
+                            keyboardController = keyboardController,
+                            isDiscovering = isDiscoveringClub,
+                            discoveryError = discoveryClubError,
+                            showManualClubSearch = showManualClubSearch,
+                            onPickContact = onPickContact,
+                            onSearchManually = {
+                                showManualClubSearch = true
+                                clubSearchQuery = ""
+                                clubSearchFocusRequester.requestFocus()
+                                keyboardController?.show()
+                            },
+                            onSelectClub = {
+                                selectedClub = it
+                                clubSearchQuery = ""
+                                clubSearchResults = emptyList()
+                            },
+                            onChangeClub = {
+                                selectedClub = null
+                                clubSearchQuery = ""
+                                clubSearchResults = emptyList()
+                                clubSearchFocusRequester.requestFocus()
+                                keyboardController?.show()
+                            },
+                            onTryAgain = {
+                                showManualClubSearch = false
+                                discoveryClubError = null
+                                retryClubDiscoveryTrigger++
+                            }
                         )
                         ContactType.AGENCY -> Step1AgencyContent(
                             isEdit = isEdit,
@@ -1921,6 +2047,7 @@ private fun AddEditContactBottomSheet(
                             selectedAgency = selectedAgency,
                             isDiscovering = isDiscoveringAgency,
                             discoveryError = discoveryError,
+                            showManualAgencySearch = showManualAgencySearch,
                             onPickContact = onPickContact,
                             onNameChange = onNameChange,
                             onPhoneChange = onPhoneChange,
@@ -1934,11 +2061,17 @@ private fun AddEditContactBottomSheet(
                                 agencyName = it.agencyName ?: agencySearchQuery
                                 agencyUrl = it.agencyUrl ?: ""
                             },
-                            onChangeAgency = {
+                            onNotCorrectAgency = {
+                                showManualAgencySearch = true
                                 selectedAgency = null
                                 agencySearchQuery = ""
                                 agencyName = ""
                                 agencyUrl = ""
+                            },
+                            onTryAgain = {
+                                showManualAgencySearch = false
+                                discoveryError = null
+                                retryAgencyDiscoveryTrigger++
                             }
                         )
                         null -> Step1ClubContent(
@@ -1982,7 +2115,7 @@ private fun AddEditContactBottomSheet(
                         onDismiss = onDismiss,
                         onSave = {
                             val type = selectedContactType ?: ContactType.CLUB
-                            onSave(
+                            performSave(
                                 Contact(
                                     id = initialContact?.id,
                                     name = pickedName.trim(),
@@ -1992,6 +2125,7 @@ private fun AddEditContactBottomSheet(
                                     clubCountry = if (type == ContactType.CLUB) selectedClub?.clubCountry else null,
                                     clubLogo = if (type == ContactType.CLUB) selectedClub?.clubLogo else null,
                                     clubCountryFlag = if (type == ContactType.CLUB) selectedClub?.clubCountryFlag else null,
+                                    clubTmProfile = if (type == ContactType.CLUB) selectedClub?.clubTmProfile else null,
                                     contactType = type.name,
                                     agencyName = if (type == ContactType.AGENCY) agencyName.trim().takeIf { it.isNotBlank() } else null,
                                     agencyCountry = null,
@@ -2006,8 +2140,17 @@ private fun AddEditContactBottomSheet(
             val lastStepIndex = totalSteps - 1
             val orgStepIndex = if (isEdit) 0 else 1
             val isAgencyLastStep = currentStep == orgStepIndex && selectedContactType == ContactType.AGENCY
+            val isClubLastStep = !isEdit && currentStep == orgStepIndex && selectedContactType == ContactType.CLUB
+            duplicatePhoneError?.let { err ->
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = err,
+                    style = regularTextStyle(HomeRedAccent, 12.sp),
+                    modifier = Modifier.padding(horizontal = 4.dp)
+                )
+            }
             Spacer(Modifier.height(24.dp))
-            if (isAgencyLastStep) {
+            if (isClubLastStep) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -2020,7 +2163,52 @@ private fun AddEditContactBottomSheet(
                     }
                     Button(
                         onClick = {
-                            onSave(
+                            performSave(
+                                Contact(
+                                    id = initialContact?.id,
+                                    name = pickedName.trim(),
+                                    phoneNumber = pickedPhone.trim(),
+                                    role = selectedRole.name,
+                                    clubName = selectedClub?.clubName,
+                                    clubCountry = selectedClub?.clubCountry,
+                                    clubLogo = selectedClub?.clubLogo,
+                                    clubCountryFlag = selectedClub?.clubCountryFlag,
+                                    clubTmProfile = selectedClub?.clubTmProfile,
+                                    contactType = ContactType.CLUB.name,
+                                    agencyName = null,
+                                    agencyCountry = null,
+                                    agencyUrl = null
+                                )
+                            )
+                        },
+                        enabled = canProceedStepOrg,
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = HomeTealAccent,
+                            disabledContainerColor = HomeTealAccent.copy(alpha = 0.4f)
+                        )
+                    ) {
+                        Text(
+                            stringResource(R.string.contacts_button_add),
+                            style = boldTextStyle(Color.White, 14.sp)
+                        )
+                    }
+                }
+            } else if (isAgencyLastStep) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    TextButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text(stringResource(R.string.cancel), style = regularTextStyle(HomeTextSecondary, 14.sp))
+                    }
+                    Button(
+                        onClick = {
+                            performSave(
                                 Contact(
                                     id = initialContact?.id,
                                     name = pickedName.trim(),
@@ -2214,6 +2402,216 @@ private fun Step0TypeContent(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
+private fun Step1ClubContentAdd(
+    pickedName: String,
+    pickedPhone: String,
+    selectedClub: ClubSearchModel?,
+    selectedRole: ContactRole,
+    clubSearchQuery: String,
+    onClubSearchChange: (String) -> Unit,
+    clubSearchResults: List<ClubSearchModel>,
+    isSearchingClubs: Boolean,
+    clubSearchFocusRequester: FocusRequester,
+    keyboardController: androidx.compose.ui.platform.SoftwareKeyboardController?,
+    isDiscovering: Boolean,
+    discoveryError: String?,
+    showManualClubSearch: Boolean,
+    onPickContact: () -> Unit,
+    onSearchManually: () -> Unit,
+    onSelectClub: (ClubSearchModel) -> Unit,
+    onChangeClub: () -> Unit,
+    onTryAgain: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .verticalScroll(rememberScrollState())
+    ) {
+        Text(
+            text = stringResource(R.string.contacts_club_import_only_hint),
+            style = regularTextStyle(HomeTextSecondary, 11.sp),
+            modifier = Modifier.padding(bottom = 12.dp)
+        )
+        OutlinedCard(
+            onClick = onPickContact,
+            shape = RoundedCornerShape(12.dp),
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.outlinedCardColors(containerColor = HomeTealAccent.copy(alpha = 0.15f)),
+            border = BorderStroke(1.dp, HomeTealAccent)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(14.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Person,
+                    contentDescription = null,
+                    tint = HomeTealAccent,
+                    modifier = Modifier.size(22.dp)
+                )
+                Spacer(Modifier.width(12.dp))
+                Text(
+                    text = stringResource(R.string.contacts_import),
+                    style = boldTextStyle(HomeTealAccent, 14.sp)
+                )
+            }
+        }
+        if (pickedName.isNotBlank() || pickedPhone.isNotBlank()) {
+            Spacer(Modifier.height(12.dp))
+            Text(
+                text = stringResource(R.string.contacts_agency_discovering),
+                style = regularTextStyle(HomeTextSecondary, 12.sp),
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+            if (isDiscovering) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    CircularProgressIndicator(
+                        color = HomeTealAccent,
+                        strokeWidth = 2.dp,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(Modifier.width(12.dp))
+                    Text(
+                        text = stringResource(R.string.contacts_club_searching_web),
+                        style = regularTextStyle(HomeTextSecondary, 13.sp)
+                    )
+                }
+            } else if (selectedClub != null) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(HomeDarkBackground)
+                        .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(10.dp))
+                        .padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    selectedClub.clubLogo?.let { logo ->
+                        AsyncImage(
+                            model = logo,
+                            contentDescription = null,
+                            modifier = Modifier.size(28.dp),
+                            contentScale = ContentScale.Fit
+                        )
+                        Spacer(Modifier.width(10.dp))
+                    }
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            text = selectedClub.clubName ?: "",
+                            style = boldTextStyle(HomeTextPrimary, 14.sp)
+                        )
+                        Text(
+                            text = getRoleDisplayLabel(selectedRole),
+                            style = regularTextStyle(HomeTextSecondary, 11.sp)
+                        )
+                        Text(
+                            text = selectedClub.clubCountry?.let { c ->
+                                stringResource(R.string.contacts_club_found_on_tm) + " • $c"
+                            } ?: stringResource(R.string.contacts_club_found_on_tm),
+                            style = regularTextStyle(HomeTealAccent, 11.sp)
+                        )
+                    }
+                    if (showManualClubSearch) {
+                        TextButton(onClick = onChangeClub) {
+                            Text(stringResource(R.string.contacts_change), style = regularTextStyle(HomeTealAccent, 12.sp))
+                        }
+                    }
+                }
+            } else if (showManualClubSearch) {
+                Spacer(Modifier.height(12.dp))
+                Text(
+                    text = stringResource(R.string.contacts_search_for_club),
+                    style = regularTextStyle(HomeTextSecondary, 11.sp),
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+                OutlinedTextField(
+                    value = clubSearchQuery,
+                    onValueChange = onClubSearchChange,
+                    placeholder = {
+                        Text(
+                            stringResource(R.string.requests_search_club),
+                            style = regularTextStyle(HomeTextSecondary, 14.sp)
+                        )
+                    },
+                    modifier = Modifier.fillMaxWidth().focusRequester(clubSearchFocusRequester),
+                    singleLine = true,
+                    colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(
+                        focusedTextColor = HomeTextPrimary,
+                        unfocusedTextColor = HomeTextPrimary,
+                        focusedBorderColor = HomeTealAccent,
+                        unfocusedBorderColor = HomeDarkCardBorder,
+                        cursorColor = HomeTealAccent
+                    ),
+                    trailingIcon = {
+                        if (isSearchingClubs) {
+                            Box(Modifier.size(32.dp), contentAlignment = Alignment.Center) {
+                                CircularProgressIndicator(
+                                    color = HomeTealAccent,
+                                    strokeWidth = 2.dp,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+                        }
+                    }
+                )
+                if (clubSearchResults.isNotEmpty()) {
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 260.dp)
+                            .padding(vertical = 8.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        items(clubSearchResults) { clubItem ->
+                            ClubSearchResultRow(
+                                club = clubItem,
+                                onClick = { onSelectClub(clubItem) }
+                            )
+                        }
+                    }
+                }
+            } else if (pickedName.isNotBlank() || pickedPhone.isNotBlank()) {
+                Spacer(Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    TextButton(onClick = onTryAgain) {
+                        Text(
+                            text = stringResource(R.string.contacts_try_again),
+                            style = regularTextStyle(HomeTealAccent, 13.sp)
+                        )
+                    }
+                    TextButton(onClick = onSearchManually) {
+                        Text(
+                            text = stringResource(R.string.contacts_club_search_manually),
+                            style = regularTextStyle(HomeTealAccent, 13.sp)
+                        )
+                    }
+                }
+            }
+        }
+        discoveryError?.let { err ->
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = err,
+                style = regularTextStyle(HomeRedAccent, 11.sp)
+            )
+            TextButton(onClick = onTryAgain) {
+                Text(
+                    text = stringResource(R.string.contacts_try_again),
+                    style = regularTextStyle(HomeTealAccent, 13.sp)
+                )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
 private fun Step1ClubContent(
     clubSearchQuery: String,
     onClubSearchChange: (String) -> Unit,
@@ -2329,12 +2727,14 @@ private fun Step1AgencyContent(
     selectedAgency: AgencySearchModel?,
     isDiscovering: Boolean,
     discoveryError: String?,
+    showManualAgencySearch: Boolean,
     onPickContact: () -> Unit,
     onNameChange: (String) -> Unit,
     onPhoneChange: (String) -> Unit,
     onAgencySearchChange: (String) -> Unit,
     onSelectAgency: (AgencySearchModel) -> Unit,
-    onChangeAgency: () -> Unit
+    onNotCorrectAgency: () -> Unit,
+    onTryAgain: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -2438,6 +2838,9 @@ private fun Step1AgencyContent(
                         )
                     }
                 }
+                TextButton(onClick = onNotCorrectAgency) {
+                    Text(stringResource(R.string.contacts_agency_not_correct), style = regularTextStyle(HomeTealAccent, 12.sp))
+                }
             }
         }
         discoveryError?.let { err ->
@@ -2446,17 +2849,35 @@ private fun Step1AgencyContent(
                 text = err,
                 style = regularTextStyle(HomeRedAccent, 11.sp)
             )
+            TextButton(onClick = onTryAgain) {
+                Text(stringResource(R.string.contacts_try_again), style = regularTextStyle(HomeTealAccent, 13.sp))
+            }
         }
-        Spacer(Modifier.height(16.dp))
-        Text(
-            text = stringResource(R.string.contacts_agency_manual_fallback),
-            style = regularTextStyle(HomeTextSecondary, 11.sp),
-            modifier = Modifier.padding(bottom = 8.dp)
-        )
-        OutlinedTextField(
-            value = agencySearchQuery,
-            onValueChange = onAgencySearchChange,
-            placeholder = {
+        if (!isDiscovering && agencyName.isBlank() && selectedAgency == null && !showManualAgencySearch) {
+            Spacer(Modifier.height(16.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                TextButton(onClick = onTryAgain) {
+                    Text(stringResource(R.string.contacts_try_again), style = regularTextStyle(HomeTealAccent, 14.sp))
+                }
+                TextButton(onClick = onNotCorrectAgency) {
+                    Text(stringResource(R.string.contacts_agency_search_manually), style = regularTextStyle(HomeTealAccent, 14.sp))
+                }
+            }
+        }
+        if (showManualAgencySearch) {
+            Spacer(Modifier.height(16.dp))
+            Text(
+                text = stringResource(R.string.contacts_agency_manual_fallback),
+                style = regularTextStyle(HomeTextSecondary, 11.sp),
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+            OutlinedTextField(
+                value = agencySearchQuery,
+                onValueChange = onAgencySearchChange,
+                placeholder = {
                 Text(
                     stringResource(R.string.contacts_agency_search_hint),
                     style = regularTextStyle(HomeTextSecondary, 14.sp)
@@ -2482,20 +2903,21 @@ private fun Step1AgencyContent(
                     }
                 }
             }
-        )
-        if (agencySearchResults.isNotEmpty()) {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(max = 260.dp)
-                    .padding(vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                items(agencySearchResults) { agencyItem ->
-                    AgencySearchResultRow(
-                        agency = agencyItem,
-                        onClick = { onSelectAgency(agencyItem) }
-                    )
+            )
+            if (agencySearchResults.isNotEmpty()) {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 260.dp)
+                        .padding(vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    items(agencySearchResults) { agencyItem ->
+                        AgencySearchResultRow(
+                            agency = agencyItem,
+                            onClick = { onSelectAgency(agencyItem) }
+                        )
+                    }
                 }
             }
         }
@@ -2524,8 +2946,8 @@ private fun Step1AgencyContent(
                         style = regularTextStyle(HomeTextSecondary, 11.sp)
                     )
                 }
-                TextButton(onClick = onChangeAgency) {
-                    Text(stringResource(R.string.contacts_change), style = regularTextStyle(HomeTealAccent, 12.sp))
+                TextButton(onClick = onNotCorrectAgency) {
+                    Text(stringResource(R.string.contacts_agency_not_correct), style = regularTextStyle(HomeTealAccent, 12.sp))
                 }
             }
         }

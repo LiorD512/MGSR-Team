@@ -426,7 +426,7 @@ fun RequestsScreen(
                     confirmButton = {
                         Button(
                             onClick = {
-                                req.id?.let { viewModel.deleteRequest(it) }
+                                viewModel.deleteRequest(req)
                                 requestToDelete = null
                             },
                             colors = ButtonDefaults.buttonColors(containerColor = HomeRedAccent)

@@ -1,6 +1,9 @@
 package com.liordahan.mgsrteam.features.requests.repository
 
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.ListenerRegistration
+import com.liordahan.mgsrteam.features.home.models.FeedEvent
+import com.liordahan.mgsrteam.features.login.models.Account
 import com.liordahan.mgsrteam.features.requests.models.Request
 import com.liordahan.mgsrteam.firebase.FirebaseHandler
 import kotlinx.coroutines.channels.awaitClose
@@ -11,7 +14,7 @@ import kotlinx.coroutines.tasks.await
 interface IRequestsRepository {
     fun requestsFlow(): Flow<List<Request>>
     suspend fun addRequest(request: Request): Result<Unit>
-    suspend fun deleteRequest(requestId: String): Result<Unit>
+    suspend fun deleteRequest(request: Request): Result<Unit>
 }
 
 class RequestsRepository(
@@ -32,7 +35,48 @@ class RequestsRepository(
         awaitClose { listener.remove() }
     }
 
+    private suspend fun getCurrentUserAccountName(): String? {
+        val email = FirebaseAuth.getInstance().currentUser?.email ?: return null
+        val snapshot = firebaseHandler.firebaseStore.collection(firebaseHandler.accountsTable).get().await()
+        return snapshot.toObjects(Account::class.java)
+            .firstOrNull { it.email?.equals(email, ignoreCase = true) == true }
+            ?.name
+    }
+
+    private fun writeFeedEventRequest(request: Request, agentName: String?) {
+        try {
+            firebaseHandler.firebaseStore.collection(firebaseHandler.feedEventsTable).add(
+                FeedEvent(
+                    type = FeedEvent.TYPE_REQUEST_ADDED,
+                    playerName = request.clubName,
+                    playerImage = request.clubLogo,
+                    playerTmProfile = request.clubTmProfile,
+                    newValue = request.position,
+                    timestamp = request.createdAt ?: System.currentTimeMillis(),
+                    agentName = agentName
+                )
+            )
+        } catch (_: Exception) { /* fire-and-forget */ }
+    }
+
+    private fun writeFeedEventRequestDeleted(request: Request, agentName: String?) {
+        try {
+            firebaseHandler.firebaseStore.collection(firebaseHandler.feedEventsTable).add(
+                FeedEvent(
+                    type = FeedEvent.TYPE_REQUEST_DELETED,
+                    playerName = request.clubName,
+                    playerImage = request.clubLogo,
+                    playerTmProfile = request.clubTmProfile,
+                    newValue = request.position,
+                    timestamp = System.currentTimeMillis(),
+                    agentName = agentName
+                )
+            )
+        } catch (_: Exception) { /* fire-and-forget */ }
+    }
+
     override suspend fun addRequest(request: Request): Result<Unit> = runCatching {
+        val agentName = getCurrentUserAccountName() ?: FirebaseAuth.getInstance().currentUser?.displayName
         val data = mapOf(
             "clubTmProfile" to (request.clubTmProfile ?: ""),
             "clubName" to (request.clubName ?: ""),
@@ -58,9 +102,13 @@ class RequestsRepository(
             .collection(firebaseHandler.clubRequestsTable)
             .add(data)
             .await()
+        writeFeedEventRequest(request, agentName)
     }
 
-    override suspend fun deleteRequest(requestId: String): Result<Unit> = runCatching {
+    override suspend fun deleteRequest(request: Request): Result<Unit> = runCatching {
+        val requestId = request.id ?: return@runCatching
+        val agentName = getCurrentUserAccountName() ?: FirebaseAuth.getInstance().currentUser?.displayName
+        writeFeedEventRequestDeleted(request, agentName)
         firebaseHandler.firebaseStore
             .collection(firebaseHandler.clubRequestsTable)
             .document(requestId)

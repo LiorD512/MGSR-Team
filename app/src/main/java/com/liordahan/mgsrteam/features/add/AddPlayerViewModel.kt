@@ -2,6 +2,7 @@ package com.liordahan.mgsrteam.features.add
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.liordahan.mgsrteam.features.home.models.FeedEvent
 import com.liordahan.mgsrteam.features.login.models.Account
 import com.liordahan.mgsrteam.features.players.models.Club
 import com.liordahan.mgsrteam.features.players.models.Player
@@ -207,6 +208,17 @@ class AddPlayerViewModel(
                         .addOnSuccessListener {
                             com.liordahan.mgsrteam.analytics.AnalyticsHelper.logAddPlayer()
                             _isPlayerAddedFlow.update { true }
+                            // Write feed event (no push)
+                            firebaseHandler.firebaseStore.collection(firebaseHandler.feedEventsTable).add(
+                                FeedEvent(
+                                    type = FeedEvent.TYPE_PLAYER_ADDED,
+                                    playerName = playerToSave.fullName,
+                                    playerImage = playerToSave.profileImage,
+                                    playerTmProfile = playerToSave.tmProfile,
+                                    timestamp = System.currentTimeMillis(),
+                                    agentName = agentInChargeName
+                                )
+                            )
                         }
                 }
             }

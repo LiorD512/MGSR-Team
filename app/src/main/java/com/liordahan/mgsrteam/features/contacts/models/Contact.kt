@@ -12,6 +12,7 @@ data class Contact(
     val clubCountry: String? = null,
     val clubLogo: String? = null,
     val clubCountryFlag: String? = null,
+    val clubTmProfile: String? = null,
     val contactType: String? = null, // ContactType name stored for Firestore
     val agencyName: String? = null,
     val agencyCountry: String? = null,

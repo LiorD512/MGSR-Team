@@ -35,4 +35,5 @@ val HomeOrangeAccent = Color(0xFFFF9800)
 val HomeRedAccent = Color(0xFFE53935)
 val HomeBlueAccent = Color(0xFF42A5F5)
 val HomePurpleAccent = Color(0xFFAB47BC)
+val HomeRoseAccent = Color(0xFFF48FB1)   // soft rose/pink for notes - distinct from other accents
 val HomeLiveRed = Color(0xFFFF1744)

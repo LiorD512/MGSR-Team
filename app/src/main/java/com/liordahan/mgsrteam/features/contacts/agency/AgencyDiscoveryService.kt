@@ -123,8 +123,8 @@ class AgencyDiscoveryService(
         }
 
     /**
-     * Strategy: Google "{personName} agent", get Transfermarkt URL, fetch page, extract agency.
-     * Validates that the agent name on the page matches personName at least 90%.
+     * Strategy: Search "{personName} agent transfermarkt", get multiple URLs, iterate through
+     * each result, fetch page, extract agent name, validate 90-95% match. Return first valid match.
      */
     private suspend fun findAgencyViaGoogleAndTransfermarkt(personName: String): DiscoveredAgency? =
         withContext(Dispatchers.IO) {
@@ -136,42 +136,52 @@ class AgencyDiscoveryService(
                     tools = listOf(Tool.googleSearch())
                 )
                 val prompt = """
-                    Search the web for "$personName agent" (football/soccer agent).
-                    Find their Transfermarkt profile page. Reply with ONLY the full Transfermarkt URL.
-                    Example: https://www.transfermarkt.com/jorge-mendes/profil/berater/141
-                    Or the agency page if that's what appears: https://www.transfermarkt.com/gestifute/beraterfirma/berater/123
-                    One line only. No explanation. If not found: UNKNOWN
+                    Search the web for: "$personName" agent transfermarkt
+                    Find Transfermarkt URLs (agent profiles or agency pages) that might contain the football agent "$personName".
+                    Return a list of up to 5 Transfermarkt URLs, one per line. Only full URLs containing transfermarkt.com.
+                    Include agent profiles (profil/berater) and agency pages (beraterfirma).
+                    One URL per line. No other text. If none found: UNKNOWN
                 """.trimIndent()
                 val response = model.generateContent(prompt)
                 val text = response.text?.trim() ?: return@withContext null
                 if (text.equals("UNKNOWN", ignoreCase = true) || text.isBlank()) return@withContext null
 
-                val url = text.lines().firstOrNull()?.trim()?.takeIf { it.isNotBlank() }
-                    ?.takeIf { it.contains("transfermarkt", ignoreCase = true) }
-                    ?: return@withContext null
+                val urls = text.lines()
+                    .map { it.trim() }
+                    .filter { it.isNotBlank() && it.contains("transfermarkt", ignoreCase = true) }
+                    .distinct()
+                    .take(5)
 
-                val extracted = agencySearch.fetchAgentPageAndExtractAgency(url) ?: return@withContext null
-                val (agentNameOnPage, agencyName, agencyUrl) = extracted
+                if (urls.isEmpty()) return@withContext null
 
-                if (agencyName.isNullOrBlank() || agencyUrl.isNullOrBlank()) {
-                    Log.w(TAG, "findAgencyViaGoogleAndTransfermarkt: no agency on page")
-                    return@withContext null
-                }
+                for (url in urls) {
+                    try {
+                        val extracted = agencySearch.fetchAgentPageAndExtractAgency(url) ?: continue
+                        val (agentNameOnPage, agencyName, agencyUrl) = extracted
 
-                val isAgentProfile = !url.contains("beraterfirma", ignoreCase = true)
-                if (isAgentProfile && agentNameOnPage != null && agentNameOnPage.isNotBlank()) {
-                    if (!nameSimilarityAtLeast(personName, agentNameOnPage, 0.9f)) {
-                        Log.w(TAG, "findAgencyViaGoogleAndTransfermarkt: name match <90%: '$personName' vs '$agentNameOnPage'")
-                        return@withContext null
+                        if (agencyName.isNullOrBlank() || agencyUrl.isNullOrBlank()) continue
+
+                        val isAgentProfile = !url.contains("beraterfirma", ignoreCase = true)
+                        if (isAgentProfile && agentNameOnPage != null && agentNameOnPage.isNotBlank()) {
+                            if (!nameSimilarityAtLeast(personName, agentNameOnPage, 0.90f)) {
+                                Log.d(TAG, "findAgencyViaGoogleAndTransfermarkt: skip '$url' - name match <90%: '$personName' vs '$agentNameOnPage'")
+                                continue
+                            }
+                        } else if (!isAgentProfile) {
+                            continue
+                        }
+
+                        Log.d(TAG, "findAgencyViaGoogleAndTransfermarkt: $personName -> $agencyName (${agencyUrl})")
+                        return@withContext DiscoveredAgency(
+                            agencyName = agencyName,
+                            agencyUrl = agencyUrl,
+                            personNameOnTransfermarkt = agentNameOnPage
+                        )
+                    } catch (e: Exception) {
+                        Log.w(TAG, "findAgencyViaGoogleAndTransfermarkt: failed to fetch $url", e)
                     }
                 }
-
-                Log.d(TAG, "findAgencyViaGoogleAndTransfermarkt: $personName -> $agencyName (${agencyUrl})")
-                DiscoveredAgency(
-                    agencyName = agencyName,
-                    agencyUrl = agencyUrl,
-                    personNameOnTransfermarkt = agentNameOnPage
-                )
+                null
             } catch (e: Exception) {
                 Log.e(TAG, "findAgencyViaGoogleAndTransfermarkt failed", e)
                 null
@@ -179,15 +189,32 @@ class AgencyDiscoveryService(
         }
 
     private fun nameSimilarityAtLeast(a: String, b: String, minSimilarity: Float): Boolean {
-        val sa = a.trim().lowercase().replace(Regex("\\s+"), " ")
-        val sb = b.trim().lowercase().replace(Regex("\\s+"), " ")
+        val sa = normalizeName(a)
+        val sb = normalizeName(b)
         if (sa == sb) return true
         if (sa.isEmpty() || sb.isEmpty()) return false
-        val distance = levenshteinDistance(sa, sb)
-        val maxLen = maxOf(sa.length, sb.length)
-        val similarity = 1f - (distance.toFloat() / maxLen)
-        return similarity >= minSimilarity
+
+        val wordsA = sa.split(" ").filter { it.length > 1 }
+        val wordsB = sb.split(" ").filter { it.length > 1 }
+        if (wordsA.isEmpty() || wordsB.isEmpty()) {
+            val distance = levenshteinDistance(sa, sb)
+            val maxLen = maxOf(sa.length, sb.length)
+            return (1f - distance.toFloat() / maxLen) >= minSimilarity
+        }
+
+        val lastA = wordsA.lastOrNull() ?: ""
+        val lastB = wordsB.lastOrNull() ?: ""
+        if (lastA != lastB) {
+            val lastSimilarity = 1f - levenshteinDistance(lastA, lastB).toFloat() / maxOf(lastA.length, lastB.length, 1)
+            if (lastSimilarity < 0.9f) return false
+        }
+
+        val fullSimilarity = 1f - levenshteinDistance(sa, sb).toFloat() / maxOf(sa.length, sb.length)
+        return fullSimilarity >= minSimilarity
     }
+
+    private fun normalizeName(s: String): String =
+        s.trim().lowercase().replace(Regex("\\s+"), " ")
 
     private fun levenshteinDistance(s1: String, s2: String): Int {
         val len1 = s1.length
@@ -224,10 +251,11 @@ class AgencyDiscoveryService(
                 )
 
                 val prompt = """
-                    Search the web to find which football/soccer player agency or sports agency the person "$personName" works for.
-                    Focus on: football agent, player agent, sports agency, Transfermarkt.
-                    Reply with ONLY the agency/company name as it appears on Transfermarkt (e.g. "Wasserman", "CAA Sports", "Stellar Group", "CAA Stellar").
-                    One line only. No explanation. If you cannot find reliable information, reply: UNKNOWN
+                    Search: site:transfermarkt.com "$personName" football agent
+                    Find which football/soccer agency the agent "$personName" works for.
+                    Return ONLY the exact agency name as shown on Transfermarkt. No other text.
+                    The person must be "$personName" - not someone with a similar name.
+                    If not found or uncertain: UNKNOWN
                 """.trimIndent()
 
                 val response = model.generateContent(prompt)
@@ -257,9 +285,11 @@ class AgencyDiscoveryService(
                     tools = listOf(Tool.googleSearch())
                 )
                 val prompt = """
-                    Search transfermarkt.com for the football/soccer agent or intermediary "$personName".
-                    Find their profile or agency page. What is the EXACT name as displayed on Transfermarkt (e.g. "Jorge Mendes", "Vincenzo Raiola")?
-                    Reply with ONLY the name as shown on Transfermarkt. One line. No explanation. If not found, reply: UNKNOWN
+                    Search: site:transfermarkt.com "$personName" football agent
+                    Find the Transfermarkt profile of the agent "$personName".
+                    Return ONLY the exact name as displayed on their Transfermarkt profile.
+                    Must be the same person "$personName", not a different agent with similar name.
+                    One line. If not found: UNKNOWN
                 """.trimIndent()
                 val response = model.generateContent(prompt)
                 val text = response.text?.trim() ?: return@withContext null

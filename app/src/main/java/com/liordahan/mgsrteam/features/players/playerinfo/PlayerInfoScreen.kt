@@ -644,7 +644,10 @@ fun PlayerInfoScreen(
                     AgencyInfoRow(
                         title = stringResource(R.string.player_info_agency),
                         agencyName = playerToPresent?.agency,
-                        agencyUrl = playerToPresent?.agencyUrl
+                        agencyUrl = playerToPresent?.agencyUrl,
+                        onRemoveAgency = if (playerToPresent?.agency != null || playerToPresent?.agencyUrl != null) {
+                            { viewModel.clearAgency() }
+                        } else null
                     )
 
                     HorizontalDivider(
@@ -2148,24 +2151,44 @@ fun ClubInfoRow(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun AgencyInfoRow(
     title: String,
     agencyName: String?,
-    agencyUrl: String?
+    agencyUrl: String?,
+    onRemoveAgency: (() -> Unit)? = null
 ) {
     val context = LocalContext.current
     val url = agencyUrl?.takeIf { it.isNotBlank() }
+    val hasAgency = agencyName != null || agencyUrl != null
+    var showMenu by remember { mutableStateOf(false) }
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 6.dp)
             .then(
-                if (url != null) Modifier.clickWithNoRipple {
-                    val intent = Intent(Intent.ACTION_VIEW, url.toUri())
-                    context.startActivity(intent)
-                } else Modifier
+                when {
+                    hasAgency && onRemoveAgency != null -> Modifier.combinedClickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = {
+                            if (url != null) {
+                                val intent = Intent(Intent.ACTION_VIEW, url.toUri())
+                                context.startActivity(intent)
+                            } else {
+                                showMenu = true
+                            }
+                        },
+                        onLongClick = { showMenu = true }
+                    )
+                    url != null -> Modifier.clickWithNoRipple {
+                        val intent = Intent(Intent.ACTION_VIEW, url.toUri())
+                        context.startActivity(intent)
+                    }
+                    else -> Modifier
+                }
             ),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
@@ -2204,6 +2227,37 @@ fun AgencyInfoRow(
                     tint = HomeTealAccent
                 )
             }
+        }
+    }
+
+    if (onRemoveAgency != null) {
+        DropdownMenu(
+            expanded = showMenu,
+            onDismissRequest = { showMenu = false },
+            containerColor = HomeDarkCard,
+            shape = RoundedCornerShape(12.dp),
+            border = BorderStroke(1.dp, HomeDarkCardBorder)
+        ) {
+            DropdownMenuItem(
+                text = {
+                    Text(
+                        text = stringResource(R.string.player_info_remove_agency),
+                        style = regularTextStyle(HomeRedAccent, 14.sp)
+                    )
+                },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp),
+                        tint = HomeRedAccent
+                    )
+                },
+                onClick = {
+                    showMenu = false
+                    onRemoveAgency()
+                }
+            )
         }
     }
 }

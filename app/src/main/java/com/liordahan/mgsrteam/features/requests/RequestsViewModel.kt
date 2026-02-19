@@ -56,7 +56,7 @@ abstract class IRequestsViewModel : ViewModel() {
         transferFee: String?,
         notes: String?
     )
-    abstract fun deleteRequest(requestId: String)
+    abstract fun deleteRequest(request: Request)
     abstract fun clearAddRequestMessage()
 }
 
@@ -174,9 +174,9 @@ class RequestsViewModel(
         }
     }
 
-    override fun deleteRequest(requestId: String) {
+    override fun deleteRequest(request: Request) {
         viewModelScope.launch {
-            requestsRepository.deleteRequest(requestId)
+            requestsRepository.deleteRequest(request)
         }
     }
 

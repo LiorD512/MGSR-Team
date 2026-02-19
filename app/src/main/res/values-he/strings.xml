@@ -175,7 +175,18 @@
     <string name="feed_mandate_uploaded_by">%1$s העלה מנדט עבור %2$s</string>
     <string name="feed_contract_expiring">חוזה מסתיים</string>
     <string name="feed_new_note">הערה חדשה</string>
+    <string name="feed_note_deleted">הערה נמחקה</string>
+    <string name="feed_note_deleted_by">%1$s מחק הערה על %2$s</string>
     <string name="feed_player_added">שחקן נוסף</string>
+    <string name="feed_player_deleted">שחקן נמחק</string>
+    <string name="feed_player_deleted_error">שחקן זה נמחק ממאגר הנתונים</string>
+    <string name="feed_shortlist_added">נוסף לרשימת מעקב</string>
+    <string name="feed_shortlist_removed">הוסר מרשימת מעקב</string>
+    <string name="feed_removed_by">הוסר על ידי %1$s</string>
+    <string name="feed_request_added">בקשה חדשה</string>
+    <string name="feed_request_deleted">בקשה נמחקה</string>
+    <string name="feed_deleted_by">נמחק על ידי %1$s</string>
+    <string name="feed_added_by">נוסף על ידי %1$s</string>
     <string name="feed_update">עדכון</string>
     <string name="feed_value_changed">שווי השתנה מ-%1$s ל-%2$s</string>
     <string name="feed_market_value_no_value">ללא שווי</string>
@@ -459,6 +470,12 @@
     <string name="contacts_how_add_contact">איך תרצה להוסיף את איש הקשר?</string>
     <string name="contacts_role_optional">מה התפקיד שלו? (אופציונלי)</string>
     <string name="contacts_search_for_club">חפש מועדון</string>
+    <string name="contacts_club_import_only_hint">ייבא מספר אנשי הקשר. נחפש ברשת את המועדון והתפקיד שלהם ואז נקשור לטרנספרמרקט.</string>
+    <string name="contacts_club_searching_web">מחפש מועדון ותפקיד ברשת…</string>
+    <string name="contacts_club_found_on_tm">נמצא בטרנספרמרקט</string>
+    <string name="contacts_club_search_manually">חפש מועדון ידנית</string>
+    <string name="contacts_try_again">נסה שוב</string>
+    <string name="contacts_duplicate_phone_error">קיים כבר איש קשר עם מספר טלפון זה</string>
     <string name="contacts_or_enter_manually">— או הזן ידנית —</string>
     <string name="contacts_change">החלף</string>
 
@@ -490,7 +507,9 @@
     <string name="contacts_agency_discovering">פרטי קשר</string>
     <string name="contacts_agency_searching_web">מחפש סוכנות ברשת…</string>
     <string name="contacts_agency_found_on_tm">נמצא בטרנספרמרקט</string>
-    <string name="contacts_agency_manual_fallback">או הזן ידנית אם לא נמצא</string>
+    <string name="contacts_agency_not_correct">לא הסוכנות הנכונה?</string>
+    <string name="contacts_agency_search_manually">חפש ידנית</string>
+    <string name="contacts_agency_manual_fallback">הזן שם סוכנות לחיפוש בטרנספרמרקט</string>
     <string name="contacts_label_agency">סוכנות</string>
     <string name="contacts_placeholder_agency">שם סוכנות</string>
     <string name="contacts_label_agency_country">מדינה (אופציונלי)</string>
@@ -630,6 +649,7 @@
     <string name="player_info_message_whatsapp">שלח הודעה בוואטסאפ</string>
     <string name="player_info_edit_number">ערוך מספר</string>
     <string name="player_info_remove_number">הסר מספר</string>
+    <string name="player_info_remove_agency">הסר סוכנות</string>
     <string name="player_info_add_number">הוסף מספר</string>
     <string name="player_info_contract_expired">חוזה פג תוקף</string>
     <string name="player_info_expired">פג תוקף</string>

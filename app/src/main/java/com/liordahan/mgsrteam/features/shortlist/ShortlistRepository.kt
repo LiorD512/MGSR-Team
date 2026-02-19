@@ -2,6 +2,8 @@ package com.liordahan.mgsrteam.features.shortlist
 
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.DocumentSnapshot
+import com.liordahan.mgsrteam.features.home.models.FeedEvent
+import com.liordahan.mgsrteam.features.login.models.Account
 import com.google.firebase.firestore.FirebaseFirestore
 import com.liordahan.mgsrteam.firebase.FirebaseHandler
 import com.liordahan.mgsrteam.transfermarket.LatestTransferModel
@@ -123,6 +125,12 @@ class ShortlistRepository(
             release.marketValue?.takeIf { it.isNotBlank() }?.let { entryMap["marketValue"] = it }
             current.add(entryMap)
             docRef.set(mapOf("entries" to current)).await()
+            writeFeedEventShortlist(
+                playerName = release.playerName,
+                playerImage = release.playerImage,
+                playerTmProfile = url,
+                agentName = getCurrentUserAccountName()
+            )
             true
         } finally {
             _shortlistPendingUrls.value = _shortlistPendingUrls.value - url
@@ -147,9 +155,60 @@ class ShortlistRepository(
                 "addedAt" to System.currentTimeMillis()
             ))
             docRef.set(mapOf("entries" to current)).await()
+            writeFeedEventShortlist(playerName = null, playerImage = null, playerTmProfile = url, agentName = getCurrentUserAccountName())
         } finally {
             _shortlistPendingUrls.value = _shortlistPendingUrls.value - url
         }
+    }
+
+    private suspend fun getCurrentUserAccountName(): String? {
+        val email = FirebaseAuth.getInstance().currentUser?.email ?: return null
+        val snapshot = firebaseHandler.firebaseStore.collection(firebaseHandler.accountsTable).get().await()
+        return snapshot.toObjects(Account::class.java)
+            .firstOrNull { it.email?.equals(email, ignoreCase = true) == true }
+            ?.name
+    }
+
+    private fun writeFeedEventShortlist(
+        playerName: String?,
+        playerImage: String?,
+        playerTmProfile: String,
+        agentName: String?
+    ) {
+        try {
+            val resolvedAgent = agentName ?: FirebaseAuth.getInstance().currentUser?.displayName
+            firebaseHandler.firebaseStore.collection(firebaseHandler.feedEventsTable).add(
+                FeedEvent(
+                    type = FeedEvent.TYPE_SHORTLIST_ADDED,
+                    playerName = playerName,
+                    playerImage = playerImage,
+                    playerTmProfile = playerTmProfile,
+                    timestamp = System.currentTimeMillis(),
+                    agentName = resolvedAgent
+                )
+            )
+        } catch (_: Exception) { /* fire-and-forget */ }
+    }
+
+    private fun writeFeedEventShortlistRemoved(
+        playerName: String?,
+        playerImage: String?,
+        playerTmProfile: String,
+        agentName: String?
+    ) {
+        try {
+            val resolvedAgent = agentName ?: FirebaseAuth.getInstance().currentUser?.displayName
+            firebaseHandler.firebaseStore.collection(firebaseHandler.feedEventsTable).add(
+                FeedEvent(
+                    type = FeedEvent.TYPE_SHORTLIST_REMOVED,
+                    playerName = playerName,
+                    playerImage = playerImage,
+                    playerTmProfile = playerTmProfile,
+                    timestamp = System.currentTimeMillis(),
+                    agentName = resolvedAgent
+                )
+            )
+        } catch (_: Exception) { /* fire-and-forget */ }
     }
 
     suspend fun removeFromShortlist(tmProfileUrl: String) {
@@ -160,8 +219,17 @@ class ShortlistRepository(
             val snapshot = docRef.get().await()
             val current = snapshot.getEntriesList().toMutableList()
             if (current.isEmpty()) return
+            val entry = current.find { (it["tmProfileUrl"] as? String) == url }
+            val playerName = entry?.get("playerName") as? String
+            val playerImage = entry?.get("playerImage") as? String
             current.removeAll { (it["tmProfileUrl"] as? String) == url }
             docRef.set(mapOf("entries" to current)).await()
+            writeFeedEventShortlistRemoved(
+                playerName = playerName?.takeIf { it.isNotBlank() },
+                playerImage = playerImage?.takeIf { it.isNotBlank() },
+                playerTmProfile = url,
+                agentName = getCurrentUserAccountName()
+            )
         } finally {
             _shortlistPendingUrls.value = _shortlistPendingUrls.value - url
         }
