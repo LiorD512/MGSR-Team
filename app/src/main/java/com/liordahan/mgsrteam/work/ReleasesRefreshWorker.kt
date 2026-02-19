@@ -47,8 +47,10 @@ import java.util.concurrent.TimeUnit
  * ## Logic
  * 1. Fetches releases using the same ranges as the Releases screen.
  * 2. Compares with previously known release URLs (stored in SharedPreferences).
- * 3. For each NEW player (not seen before):
- *    - Checks if the player exists in our Firestore Players database.
+ * 3. For each NEW player (not in known URLs):
+ *    - Skips if a [FeedEvent] with [FeedEvent.TYPE_NEW_RELEASE_FROM_CLUB] already exists
+ *      for that player (avoids duplicate events and notifications).
+ *    - Otherwise: checks if the player exists in our Firestore Players database.
  *    - Writes a [FeedEvent] with type [FeedEvent.TYPE_NEW_RELEASE_FROM_CLUB].
  *    - Sets [FeedEvent.extraInfo] to "NOT_IN_DATABASE" or "IN_DATABASE" so the user knows.
  * 4. Updates the stored known URLs for the next run.
@@ -113,7 +115,21 @@ class ReleasesRefreshWorker(
 
             Log.i(TAG, "Total releases: ${distinctReleases.size}, new: ${newReleases.size}")
 
-            for (release in newReleases) {
+            // Filter out players that already have a FeedEvent (avoids duplicate events & notifications)
+            val newReleaseUrls = newReleases.mapNotNull { it.playerUrl }
+            val alreadyHaveEvents = mutableSetOf<String>()
+            for (chunk in newReleaseUrls.chunked(30)) {  // Firestore whereIn limit is 30
+                val snapshot = feedRef
+                    .whereEqualTo("type", FeedEvent.TYPE_NEW_RELEASE_FROM_CLUB)
+                    .whereIn("playerTmProfile", chunk)
+                    .get()
+                    .await()
+                alreadyHaveEvents.addAll(snapshot.documents.mapNotNull { it.getString("playerTmProfile") })
+            }
+            val releasesToCreate = newReleases.filter { (it.playerUrl ?: "") !in alreadyHaveEvents }
+            Log.i(TAG, "Releases already in feed: ${alreadyHaveEvents.size}, creating events for: ${releasesToCreate.size}")
+
+            for (release in releasesToCreate) {
                 val playerUrl = release.playerUrl ?: continue
                 val isInDatabase = playersRef.whereEqualTo("tmProfile", playerUrl).get().await().documents.isNotEmpty()
 
@@ -135,11 +151,17 @@ class ReleasesRefreshWorker(
 
             saveKnownReleaseUrls(currentUrls)
             markRefreshSuccess()
-            Log.i(TAG, "Releases refresh complete — ${newReleases.size} new, ${currentUrls.size} total known")
+            Log.i(TAG, "Releases refresh complete — ${releasesToCreate.size} new events created, ${currentUrls.size} total known")
             Result.success()
         } catch (e: Exception) {
             Log.e(TAG, "Worker failed with exception", e)
             Result.retry()
+        } finally {
+            // Dismiss notification when work completes. When using the fallback path
+            // (showNotification), WorkManager does not own the notification, so we must
+            // cancel it explicitly. When using setForeground(), cancel is harmless.
+            (applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager)
+                .cancel(FOREGROUND_NOTIFICATION_ID)
         }
     }
 

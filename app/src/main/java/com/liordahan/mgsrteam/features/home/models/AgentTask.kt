@@ -1,5 +1,6 @@
 package com.liordahan.mgsrteam.features.home.models
 
+import androidx.annotation.Keep
 import com.google.firebase.firestore.DocumentId
 import com.google.firebase.firestore.PropertyName
 
@@ -11,6 +12,7 @@ import com.google.firebase.firestore.PropertyName
  * @param createdByAgentName Display name of the creator.
  * @param remindersSent Days-before-due values for which reminders were already sent (e.g. [7, 3, 1]).
  */
+@Keep
 data class AgentTask(
     @DocumentId
     val id: String = "",

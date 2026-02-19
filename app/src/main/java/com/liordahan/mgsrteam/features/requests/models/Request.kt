@@ -1,7 +1,9 @@
 package com.liordahan.mgsrteam.features.requests.models
 
+import androidx.annotation.Keep
 import com.google.firebase.firestore.DocumentId
 
+@Keep
 data class Request(
     @DocumentId
     val id: String? = null,

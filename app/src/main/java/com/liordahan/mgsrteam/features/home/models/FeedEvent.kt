@@ -1,11 +1,13 @@
 package com.liordahan.mgsrteam.features.home.models
 
+import androidx.annotation.Keep
 import com.google.firebase.firestore.DocumentId
 
 /**
  * Persisted feed event – written by PlayerRefreshWorker (or manual refresh)
  * and displayed on the Home dashboard.
  */
+@Keep
 data class FeedEvent(
     @DocumentId
     val id: String? = null,
@@ -49,8 +51,6 @@ data class FeedEvent(
         const val TYPE_REQUEST_ADDED = "REQUEST_ADDED"
         /** Club request was deleted. No push notification. */
         const val TYPE_REQUEST_DELETED = "REQUEST_DELETED"
-        /** Club contact left their club (moved to new club or is without club). */
-        const val TYPE_CLUB_CONTACT_LEFT = "CLUB_CONTACT_LEFT"
         /** Player was offered to a club (from Matching Requests). No push notification. */
         const val TYPE_PLAYER_OFFERED_TO_CLUB = "PLAYER_OFFERED_TO_CLUB"
     }

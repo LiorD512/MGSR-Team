@@ -244,6 +244,12 @@ class PlayerRefreshWorker(
         } catch (e: Exception) {
             Log.e(TAG, "Worker failed with exception", e)
             Result.retry()
+        } finally {
+            // Dismiss notification when work completes. When using the fallback path
+            // (showNotification), WorkManager does not own the notification, so we must
+            // cancel it explicitly. When using setForeground(), cancel is harmless.
+            (applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager)
+                .cancel(FOREGROUND_NOTIFICATION_ID)
         }
     }
 

@@ -3,14 +3,17 @@ package com.liordahan.mgsrteam.features.requests
 import com.liordahan.mgsrteam.features.players.models.Player
 import com.liordahan.mgsrteam.features.requests.models.DominateFootOptions
 import com.liordahan.mgsrteam.features.requests.models.Request
+import com.liordahan.mgsrteam.features.requests.models.SalaryRangeOptions
 
 /**
  * Matches roster players to a request based on position, age, dominate foot, salary range, and transfer fee.
  * - Position: player must have the requested position (or equivalent)
  * - Age: if request has an age range, player age must fall within it
  * - Dominate foot: if request specifies left/right, player must match; players without foot info are shown anyway
- * - Salary: if request has salaryRange, player's salaryRange must match exactly
- * - Transfer fee: if request has transferFee, player's transferFee must match exactly
+ * - Salary: if request has salaryRange, player's salaryRange must match the request range OR an adjacent range
+ *   (e.g. request 26-30 also accepts 20-25 and 30+). Players with no salary data are included as suggestions.
+ * - Transfer fee: if request has transferFee, player's transferFee must match exactly.
+ *   Players with no transfer fee data are included as suggestions.
  */
 object RequestMatcher {
 
@@ -62,14 +65,26 @@ object RequestMatcher {
     }
 
     private fun matchesSalaryRange(player: Player, request: Request): Boolean {
-        val reqSalary = request.salaryRange?.takeIf { it.isNotBlank() } ?: return true
-        val playerSalary = player.salaryRange?.takeIf { it.isNotBlank() } ?: return false
-        return playerSalary.equals(reqSalary, ignoreCase = true)
+        val reqSalary = request.salaryRange?.trim()?.takeIf { it.isNotBlank() } ?: return true
+        val playerSalary = player.salaryRange?.trim()?.takeIf { it.isNotBlank() }
+        if (playerSalary == null) return true // Include players with no salary data as suggestions
+
+        val ranges = SalaryRangeOptions.all
+        val reqIndex = ranges.indexOfFirst { it.equals(reqSalary, ignoreCase = true) }
+        if (reqIndex < 0) return playerSalary.equals(reqSalary, ignoreCase = true) // fallback for unknown range
+
+        val acceptedRanges = buildSet {
+            add(ranges[reqIndex])
+            if (reqIndex > 0) add(ranges[reqIndex - 1])
+            if (reqIndex < ranges.lastIndex) add(ranges[reqIndex + 1])
+        }
+        return acceptedRanges.any { it.equals(playerSalary, ignoreCase = true) }
     }
 
     private fun matchesTransferFee(player: Player, request: Request): Boolean {
         val reqFee = request.transferFee?.takeIf { it.isNotBlank() } ?: return true
-        val playerFee = player.transferFee?.takeIf { it.isNotBlank() } ?: return false
+        val playerFee = player.transferFee?.takeIf { it.isNotBlank() }
+        if (playerFee == null) return true // Include players with no transfer fee data as suggestions
         return playerFee.equals(reqFee, ignoreCase = true)
     }
 }

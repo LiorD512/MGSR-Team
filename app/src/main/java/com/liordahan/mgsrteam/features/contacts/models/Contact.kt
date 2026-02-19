@@ -1,7 +1,9 @@
 package com.liordahan.mgsrteam.features.contacts.models
 
+import androidx.annotation.Keep
 import com.google.firebase.firestore.DocumentId
 
+@Keep
 data class Contact(
     @DocumentId
     val id: String? = null,

@@ -1,16 +1,11 @@
 package com.liordahan.mgsrteam.work
 
-import android.app.NotificationChannel
-import android.app.NotificationManager
 import android.content.Context
-import android.content.pm.ServiceInfo
 import android.util.Log
-import androidx.core.app.NotificationCompat
 import androidx.work.Constraints
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.ExistingWorkPolicy
-import androidx.work.ForegroundInfo
 import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.OutOfQuotaPolicy
@@ -19,7 +14,6 @@ import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
-import com.liordahan.mgsrteam.R
 import com.liordahan.mgsrteam.features.home.models.FeedEvent
 import com.liordahan.mgsrteam.features.players.models.Player
 import com.liordahan.mgsrteam.firebase.FirebaseHandler
@@ -55,11 +49,6 @@ class MandateExpiryWorker(
     params: WorkerParameters
 ) : CoroutineWorker(context, params) {
 
-    private var canUseForeground = true
-
-    override suspend fun getForegroundInfo(): ForegroundInfo =
-        createForegroundInfo("Checking mandate expiry…")
-
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
         Log.i(TAG, "=== MandateExpiryWorker triggered ===")
         Log.i("MGSR_Worker", "MandateExpiryWorker doWork() started")
@@ -70,8 +59,6 @@ class MandateExpiryWorker(
             return@withContext Result.success()
         }
         Log.i(TAG, "Authorized device confirmed — starting mandate expiry check")
-
-        updateProgress("Checking mandate expiry…")
 
         val firebaseHandler = FirebaseHandler()
         val store = FirebaseFirestore.getInstance()
@@ -104,7 +91,6 @@ class MandateExpiryWorker(
 
             for ((docRef, playerTmProfile, uploadedByAndExpiry) in expiredMandates) {
                 val (uploadedBy, expiresAt) = uploadedByAndExpiry
-                updateProgress("Processing expired mandates…")
 
                 // Mark document as expired
                 docRef.update(mapOf("expired" to true)).await()
@@ -123,25 +109,18 @@ class MandateExpiryWorker(
                     !expFlag && (exp == null || exp >= now)
                 }
 
-                if (!hasOtherValidMandate) {
-                    // Turn off mandate switch on the player
-                    val playerSnap = playersRef.whereEqualTo("tmProfile", playerTmProfile).get().await()
-                    val playerDoc = playerSnap.documents.firstOrNull()
-                    if (playerDoc != null) {
-                        val player = playerDoc.toObject(Player::class.java)
-                        if (player != null && player.haveMandate) {
-                            val updated = player.copy(haveMandate = false)
-                            playerDoc.reference.set(updated).await()
-                            Log.i(TAG, "Turned off mandate switch for ${player.fullName}")
-                        }
-                    }
-                }
-
-                // Get player name for the feed event
+                // Fetch player once and reuse for both mandate switch update and feed event
                 val playerSnap = playersRef.whereEqualTo("tmProfile", playerTmProfile).get().await()
-                val player = playerSnap.documents.firstOrNull()?.toObject(Player::class.java)
+                val playerDoc = playerSnap.documents.firstOrNull()
+                val player = playerDoc?.toObject(Player::class.java)
                 val playerName = player?.fullName ?: "Unknown"
                 val playerImage = player?.profileImage
+
+                if (!hasOtherValidMandate && player != null && player.haveMandate && playerDoc != null) {
+                    val updated = player.copy(haveMandate = false)
+                    playerDoc.reference.set(updated).await()
+                    Log.i(TAG, "Turned off mandate switch for ${player.fullName}")
+                }
 
                 writeFeedEvent(
                     feedRef,
@@ -169,41 +148,6 @@ class MandateExpiryWorker(
         }
     }
 
-    private suspend fun updateProgress(text: String, current: Int = 0, total: Int = 0) {
-        if (canUseForeground) {
-            try {
-                setForeground(createForegroundInfo(text, current, total))
-                return
-            } catch (e: IllegalStateException) {
-                Log.w(TAG, "Foreground promotion blocked — falling back to plain notification: ${e.message}")
-                canUseForeground = false
-            }
-        }
-        showNotification(text, current, total)
-    }
-
-    private fun showNotification(text: String, current: Int = 0, total: Int = 0) {
-        ensureNotificationChannel()
-        val body = if (total > 0) "$text $current / $total" else text
-        val notification = NotificationCompat.Builder(applicationContext, NOTIFICATION_CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_stat_mgsr)
-            .setContentTitle("MGSR Mandate Expiry")
-            .setContentText(body)
-            .setOngoing(true)
-            .setSilent(true)
-            .apply {
-                if (total > 0) {
-                    setProgress(total, current, false)
-                    setSubText("$current / $total")
-                } else {
-                    setProgress(0, 0, true)
-                }
-            }
-            .build()
-        (applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager)
-            .notify(FOREGROUND_NOTIFICATION_ID, notification)
-    }
-
     private fun markRefreshSuccess() {
         applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             .edit()
@@ -222,55 +166,6 @@ class MandateExpiryWorker(
         }
     }
 
-    private fun createForegroundInfo(
-        text: String,
-        current: Int = 0,
-        total: Int = 0
-    ): ForegroundInfo {
-        ensureNotificationChannel()
-        val body = if (total > 0) "$text $current / $total" else text
-        val notification = NotificationCompat.Builder(applicationContext, NOTIFICATION_CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_stat_mgsr)
-            .setContentTitle("MGSR Mandate Expiry")
-            .setContentText(body)
-            .setOngoing(true)
-            .setSilent(true)
-            .apply {
-                if (total > 0) {
-                    setProgress(total, current, false)
-                    setSubText("$current / $total")
-                } else {
-                    setProgress(0, 0, true)
-                }
-            }
-            .build()
-
-        return if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
-            ForegroundInfo(
-                FOREGROUND_NOTIFICATION_ID,
-                notification,
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
-            )
-        } else {
-            ForegroundInfo(FOREGROUND_NOTIFICATION_ID, notification)
-        }
-    }
-
-    private fun ensureNotificationChannel() {
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                NOTIFICATION_CHANNEL_ID,
-                applicationContext.getString(R.string.notification_channel_name),
-                NotificationManager.IMPORTANCE_LOW
-            ).apply {
-                description = applicationContext.getString(R.string.notification_channel_description)
-            }
-            val manager = applicationContext
-                .getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            manager.createNotificationChannel(channel)
-        }
-    }
-
     companion object {
         private const val TAG = "MandateExpiryWorker"
         private const val AUTHORIZED_EMAIL = "dahanliordahan@gmail.com"
@@ -278,8 +173,6 @@ class MandateExpiryWorker(
         private const val KEY_LAST_SUCCESSFUL_REFRESH = "last_successful_refresh"
         private const val STALE_DATA_THRESHOLD_MS = 24 * 3_600_000L  // 24 hours
         private const val INITIAL_WORK_NAME = "MandateExpiryWorker_initial"
-        private const val NOTIFICATION_CHANNEL_ID = "mgsr_team_notifications"
-        private const val FOREGROUND_NOTIFICATION_ID = 1005
 
         fun enqueueImmediateRefresh(context: Context) {
             Log.i(TAG, "Enqueuing immediate one-time run")

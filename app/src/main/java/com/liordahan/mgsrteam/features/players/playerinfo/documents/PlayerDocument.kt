@@ -1,7 +1,9 @@
 package com.liordahan.mgsrteam.features.players.playerinfo.documents
 
+import androidx.annotation.Keep
 import com.google.firebase.firestore.DocumentId
 
+@Keep
 data class PlayerDocument(
     @DocumentId
     val id: String? = null,
@@ -18,6 +20,7 @@ data class PlayerDocument(
         get() = DocumentType.fromString(type)
 }
 
+@Keep
 enum class DocumentType(val displayName: String) {
     MANDATE("Mandate"),
     PASSPORT("Passport"),
