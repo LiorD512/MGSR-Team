@@ -14,7 +14,6 @@ import com.liordahan.mgsrteam.application.di.applicationModules
 import com.liordahan.mgsrteam.firebase.FcmTokenManager
 import com.liordahan.mgsrteam.localization.LocaleManager
 import com.liordahan.mgsrteam.BuildConfig
-import com.liordahan.mgsrteam.work.ClubContactsRefreshWorker
 import com.liordahan.mgsrteam.work.MandateExpiryWorker
 import com.liordahan.mgsrteam.work.PlayerRefreshWorker
 import com.liordahan.mgsrteam.work.ReleasesRefreshWorker
@@ -76,9 +75,6 @@ class MGSRTeamApplication : Application(), KoinComponent {
         // Schedule nightly mandate expiry check at 04:00 Israel time
         MandateExpiryWorker.schedule(this)
         Log.i("MGSR_Worker", "MandateExpiryWorker: periodic schedule enqueued (04:00 Israel)")
-        // Schedule monthly club contacts re-validation at 05:00 Israel time
-        ClubContactsRefreshWorker.schedule(this)
-        Log.i("MGSR_Worker", "ClubContactsRefreshWorker: periodic schedule enqueued (05:00 Israel, monthly)")
 
         // If the user is already logged in, check whether the last successful
         // refresh was more than 24 h ago. If so, enqueue an immediate catch-up
@@ -93,12 +89,10 @@ class MGSRTeamApplication : Application(), KoinComponent {
                 PlayerRefreshWorker.enqueueImmediateRefresh(this)
                 ReleasesRefreshWorker.enqueueImmediateRefresh(this)
                 MandateExpiryWorker.enqueueImmediateRefresh(this)
-                ClubContactsRefreshWorker.enqueueImmediateRefresh(this)
             } else {
                 PlayerRefreshWorker.enqueueIfStale(this)
                 ReleasesRefreshWorker.enqueueIfStale(this)
                 MandateExpiryWorker.enqueueIfStale(this)
-                ClubContactsRefreshWorker.enqueueIfStale(this)
             }
         } else {
             Log.i("MGSR_Worker", "User not logged in — workers will run after login")

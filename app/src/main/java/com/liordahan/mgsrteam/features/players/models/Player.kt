@@ -1,10 +1,12 @@
 package com.liordahan.mgsrteam.features.players.models
 
 import android.os.Parcelable
+import androidx.annotation.Keep
 import com.google.firebase.firestore.DocumentId
 import com.google.firebase.firestore.PropertyName
 import kotlinx.parcelize.Parcelize
 
+@Keep
 @Parcelize
 data class Player(
     val fullName: String? = null,
@@ -42,6 +44,7 @@ data class Player(
     val agencyUrl: String? = null
 ) : Parcelable
 
+@Keep
 @Parcelize
 data class PassportDetails(
     val firstName: String? = null,
@@ -52,6 +55,7 @@ data class PassportDetails(
     val lastUpdatedAt: Long? = null
 ) : Parcelable
 
+@Keep
 @Parcelize
 data class MarketValueEntry(
     val value: String? = null,
@@ -68,6 +72,7 @@ fun Player.getAgentPhoneNumber(): String? {
     else agentPhoneNumber?.takeIf { it.isNotBlank() }
 }
 
+@Keep
 @Parcelize
 data class Club(
     @DocumentId
@@ -79,12 +84,14 @@ data class Club(
     val offeredAt: String? = null
 ) : Parcelable
 
+@Keep
 @Parcelize
 data class PlayerAdditionalInfoModel(
     val playerNumber: String? = null,
     val agentNumber: String? = null,
 ) : Parcelable
 
+@Keep
 @Parcelize
 data class NotesModel(
     val notes: String? = null,

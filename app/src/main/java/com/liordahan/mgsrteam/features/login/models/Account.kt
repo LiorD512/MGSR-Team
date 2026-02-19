@@ -2,10 +2,12 @@ package com.liordahan.mgsrteam.features.login.models
 
 import android.content.Context
 import android.os.Parcelable
+import androidx.annotation.Keep
 import com.google.firebase.firestore.DocumentId
 import com.liordahan.mgsrteam.localization.LocaleManager
 import kotlinx.parcelize.Parcelize
 
+@Keep
 @Parcelize
 data class Account(
     @DocumentId

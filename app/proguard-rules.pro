@@ -23,6 +23,15 @@
 # ── Suppress R8 warnings for missing optional dependencies ────────────────
 -dontwarn com.gemalto.jp2.JP2Decoder
 
+# ── Preserve attributes needed for reflection-based deserialization ───────
+-keepattributes Signature
+-keepattributes *Annotation*
+
+# ── Firebase AI (Gemini) SDK ──────────────────────────────────────────────
+# Internal model classes used for API request/response serialization need no-arg constructors.
+-keep class com.google.firebase.ai.** { *; }
+-keepclassmembers class com.google.firebase.ai.** { <init>(); }
+
 # ── Firebase Firestore model classes (need no-arg constructors) ───────────
 # Keep all model/data classes that Firestore deserializes via toObjects/toObject.
 -keep class com.liordahan.mgsrteam.features.players.models.** { *; }
@@ -33,6 +42,7 @@
 -keep class com.liordahan.mgsrteam.features.shortlist.** { <init>(...); *; }
 -keep class com.liordahan.mgsrteam.features.players.playerinfo.documents.PlayerDocument { *; }
 -keep class com.liordahan.mgsrteam.features.players.playerinfo.documents.DocumentType { *; }
+-keep class com.liordahan.mgsrteam.features.players.playerinfo.matchingrequests.PlayerOffer { *; }
 -keep class com.liordahan.mgsrteam.features.home.DocumentReminder { *; }
 -keep class com.liordahan.mgsrteam.features.home.HomeDashboardState { *; }
 -keep class com.liordahan.mgsrteam.features.players.PlayersUiState { *; }

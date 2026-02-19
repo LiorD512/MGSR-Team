@@ -22,7 +22,6 @@ const AGENT_TASKS_COLLECTION = "AgentTasks";
 const NOTIFIABLE_TYPES = [
   "BECAME_FREE_AGENT",
   "CLUB_CHANGE",
-  "CLUB_CONTACT_LEFT",
   "MARKET_VALUE_CHANGE",
   "NEW_RELEASE_FROM_CLUB",
   "MANDATE_EXPIRED",
@@ -74,13 +73,6 @@ exports.onNewFeedEvent = onDocumentCreated("FeedEvents/{eventId}", async (event)
     case "MANDATE_EXPIRED":
       title = "Mandate Expired";
       body = `${playerName}'s mandate has expired.`;
-      break;
-    case "CLUB_CONTACT_LEFT":
-      title = "Club Contact Update";
-      body =
-        newValue === "Without club"
-          ? `${playerName} is no longer at ${oldValue} (now without club)`
-          : `${playerName} moved from ${oldValue} to ${newValue}`;
       break;
     default:
       title = "MGSR Team Update";
