@@ -21,3 +21,19 @@ val contentDefault = Color(0XFF242E30)
 val searchHeaderButtonBackground = Color(0xFFF5F3F1)
 val dividerColor = Color(0x14000000)
 val redErrorColor = Color(0XFFD50525)
+
+// ── Home Dashboard (dark theme) ── matching navigation bar DarkCharcoal / TealAccent
+val HomeDarkBackground = Color(0xFF0F1923)
+val HomeDarkCard = Color(0xFF1A2736)
+val HomeDarkCardBorder = Color(0xFF253545)
+val HomeTealAccent = Color(0xFF4DB6AC)     // same teal as nav-bar
+val HomeDarkCharcoal = Color(0xFF1A2327)   // same as nav-bar
+val HomeTextPrimary = Color(0xFFE8EAED)
+val HomeTextSecondary = Color(0xFF8C999B)
+val HomeGreenAccent = Color(0xFF4CAF50)
+val HomeOrangeAccent = Color(0xFFFF9800)
+val HomeRedAccent = Color(0xFFE53935)
+val HomeBlueAccent = Color(0xFF42A5F5)
+val HomePurpleAccent = Color(0xFFAB47BC)
+val HomeRoseAccent = Color(0xFFF48FB1)   // soft rose/pink for notes - distinct from other accents
+val HomeLiveRed = Color(0xFFFF1744)

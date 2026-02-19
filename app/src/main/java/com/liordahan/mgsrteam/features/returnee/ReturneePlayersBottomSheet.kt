@@ -22,7 +22,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.SheetValue
+import androidx.compose.material3.ModalBottomSheetProperties
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -36,28 +36,31 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.platform.rememberNestedScrollInteropConnection
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
 import coil.compose.AsyncImage
+import com.liordahan.mgsrteam.R
 import com.liordahan.mgsrteam.features.players.models.Position
 import com.liordahan.mgsrteam.features.players.ui.EmptyState
 import com.liordahan.mgsrteam.features.players.ui.FilterStripUi
 import com.liordahan.mgsrteam.features.releases.ReleaseListItem
 import com.liordahan.mgsrteam.features.returnee.model.Leagues
 import com.liordahan.mgsrteam.transfermarket.LatestTransferModel
-import com.liordahan.mgsrteam.ui.theme.contentDefault
-import com.liordahan.mgsrteam.ui.theme.dividerColor
-import com.liordahan.mgsrteam.ui.utils.ProgressIndicator
+import com.liordahan.mgsrteam.ui.components.DarkSystemBarsForBottomSheet
+import com.liordahan.mgsrteam.ui.theme.HomeDarkCard
+import com.liordahan.mgsrteam.ui.theme.HomeDarkCardBorder
+import com.liordahan.mgsrteam.ui.theme.HomeTextPrimary
+import com.liordahan.mgsrteam.ui.components.SkeletonPlayerCardList
 import com.liordahan.mgsrteam.ui.utils.boldTextStyle
 import kotlinx.coroutines.launch
 
@@ -68,8 +71,9 @@ fun ReturneePlayersBottomSheet(
     viewModel: IReturneeViewModel,
     leagues: Leagues,
     onAddToAgencyClicked: (String) -> Unit,
-    onAddToShortlistClicked: ((String) -> Unit)? = null,
+    onAddToShortlistClicked: ((LatestTransferModel) -> Unit)? = null,
     isInShortlist: ((String) -> Boolean)? = null,
+    isShortlistPending: ((String) -> Boolean)? = null,
     onDismiss: () -> Unit
 ) {
 
@@ -129,11 +133,15 @@ fun ReturneePlayersBottomSheet(
             viewModel.updateSelectedPosition(null)
             onDismiss()
         },
-        containerColor = Color.White,
+        containerColor = HomeDarkCard,
         shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
-        dragHandle = null
+        dragHandle = null,
+        properties = ModalBottomSheetProperties(
+            isAppearanceLightStatusBars = true,
+            isAppearanceLightNavigationBars = true
+        )
     ) {
-
+        DarkSystemBarsForBottomSheet()
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -151,6 +159,7 @@ fun ReturneePlayersBottomSheet(
                     shadowElevation = 6.dp,
                     tonalElevation = 12.dp,
                     shape = CircleShape,
+                    color = HomeDarkCard
                 ) {
                     AsyncImage(
                         modifier = Modifier
@@ -166,25 +175,21 @@ fun ReturneePlayersBottomSheet(
 
                 Text(
                     text = leagues.leagueName,
-                    style = boldTextStyle(contentDefault, 16.sp)
+                    style = boldTextStyle(HomeTextPrimary, 16.sp)
                 )
             }
 
             HorizontalDivider(
                 thickness = 1.dp,
-                color = dividerColor,
+                color = HomeDarkCardBorder,
                 modifier = Modifier.padding(top = 16.dp)
             )
 
             if (showLoader) {
-                Box(
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    ProgressIndicator(
-                        modifier = Modifier.align(Alignment.Center)
-                    )
-                }
-
+                SkeletonPlayerCardList(
+                    modifier = Modifier.fillMaxSize(),
+                    itemCount = 5
+                )
                 return@Column
             }
 
@@ -193,7 +198,7 @@ fun ReturneePlayersBottomSheet(
                     modifier = Modifier.fillMaxSize()
                 ) {
                     EmptyState(
-                        text = "No players found in this league",
+                        text = stringResource(R.string.returnee_no_players_league),
                         showResetFiltersButton = false,
                         onResetFiltersClicked = {}
                     )
@@ -237,7 +242,8 @@ fun ReturneePlayersBottomSheet(
                         isFromReturnee = true,
                         onAddToAgencyClicked = onAddToAgencyClicked,
                         onAddToShortlistClicked = onAddToShortlistClicked,
-                        isInShortlist = isInShortlist
+                        isInShortlist = isInShortlist,
+                        isShortlistPending = it.playerUrl?.let { url -> isShortlistPending?.invoke(url) == true } ?: false
                     )
                 }
             }

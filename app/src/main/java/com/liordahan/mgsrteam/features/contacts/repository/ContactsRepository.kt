@@ -2,6 +2,7 @@ package com.liordahan.mgsrteam.features.contacts.repository
 
 import com.google.firebase.firestore.ListenerRegistration
 import com.liordahan.mgsrteam.features.contacts.models.Contact
+import com.liordahan.mgsrteam.features.contacts.models.ContactType
 import com.liordahan.mgsrteam.firebase.FirebaseHandler
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -41,7 +42,12 @@ class ContactsRepository(
             "clubName" to (contact.clubName ?: ""),
             "clubCountry" to (contact.clubCountry ?: ""),
             "clubLogo" to (contact.clubLogo ?: ""),
-            "clubCountryFlag" to (contact.clubCountryFlag ?: "")
+            "clubCountryFlag" to (contact.clubCountryFlag ?: ""),
+            "clubTmProfile" to (contact.clubTmProfile ?: ""),
+            "contactType" to (contact.contactType ?: ContactType.CLUB.name),
+            "agencyName" to (contact.agencyName ?: ""),
+            "agencyCountry" to (contact.agencyCountry ?: ""),
+            "agencyUrl" to (contact.agencyUrl ?: "")
         )
         firebaseHandler.firebaseStore
             .collection(firebaseHandler.contactsTable)
@@ -58,7 +64,12 @@ class ContactsRepository(
             "clubName" to (contact.clubName ?: ""),
             "clubCountry" to (contact.clubCountry ?: ""),
             "clubLogo" to (contact.clubLogo ?: ""),
-            "clubCountryFlag" to (contact.clubCountryFlag ?: "")
+            "clubCountryFlag" to (contact.clubCountryFlag ?: ""),
+            "clubTmProfile" to (contact.clubTmProfile ?: ""),
+            "contactType" to (contact.contactType ?: ContactType.CLUB.name),
+            "agencyName" to (contact.agencyName ?: ""),
+            "agencyCountry" to (contact.agencyCountry ?: ""),
+            "agencyUrl" to (contact.agencyUrl ?: "")
         )
         firebaseHandler.firebaseStore
             .collection(firebaseHandler.contactsTable)

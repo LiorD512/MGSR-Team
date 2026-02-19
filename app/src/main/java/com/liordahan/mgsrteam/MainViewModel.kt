@@ -5,15 +5,24 @@ import com.google.firebase.auth.FirebaseUser
 import com.liordahan.mgsrteam.firebase.FirebaseHandler
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.update
 
 abstract class IMainViewModel : ViewModel() {
     abstract val currentUserFlow: StateFlow<FirebaseUser?>
-    abstract val showVideoSplash: StateFlow<Boolean>
+    abstract val isReady: StateFlow<Boolean>
     abstract val pendingDeepLinkPlayerId: StateFlow<String?>
     abstract fun setPendingDeepLinkPlayerId(playerId: String?)
     abstract fun clearPendingDeepLink()
-    abstract fun dismissVideoSplash()
+    /** Transfermarkt player URL from Share/View intent — when set, navigate to Players and show add-player sheet. */
+    abstract val pendingAddPlayerTmUrl: StateFlow<String?>
+    abstract fun setPendingAddPlayerTmUrl(url: String?)
+    abstract fun clearPendingAddPlayerTmUrl()
+    /** Transfermarkt URL for Add to Shortlist — when set, navigate to Shortlist and show add sheet. */
+    abstract val pendingShortlistAddTmUrl: StateFlow<String?>
+    abstract fun setPendingShortlistAddTmUrl(url: String?)
+    abstract fun clearPendingShortlistAddTmUrl()
+    /** When set, navigate to Tasks screen (e.g. from task notification tap). */
+    abstract val pendingOpenTasksScreen: StateFlow<Boolean>
+    abstract fun setPendingOpenTasksScreen(value: Boolean)
 }
 
 class MainViewModel(
@@ -23,11 +32,14 @@ class MainViewModel(
     private val _currentUserFlow = MutableStateFlow<FirebaseUser?>(null)
     override val currentUserFlow: StateFlow<FirebaseUser?> = _currentUserFlow
 
-    private val _showVideoSplash = MutableStateFlow(true)
-    override val showVideoSplash: StateFlow<Boolean> = _showVideoSplash
+    private val _isReady = MutableStateFlow(false)
+    override val isReady: StateFlow<Boolean> = _isReady
 
     private val _pendingDeepLinkPlayerId = MutableStateFlow<String?>(null)
     override val pendingDeepLinkPlayerId: StateFlow<String?> = _pendingDeepLinkPlayerId
+
+    private val _pendingAddPlayerTmUrl = MutableStateFlow<String?>(null)
+    override val pendingAddPlayerTmUrl: StateFlow<String?> = _pendingAddPlayerTmUrl
 
     override fun setPendingDeepLinkPlayerId(playerId: String?) {
         _pendingDeepLinkPlayerId.value = playerId
@@ -37,14 +49,35 @@ class MainViewModel(
         _pendingDeepLinkPlayerId.value = null
     }
 
-    override fun dismissVideoSplash() {
-        _showVideoSplash.value = false
+    override fun setPendingAddPlayerTmUrl(url: String?) {
+        _pendingAddPlayerTmUrl.value = url
+    }
+
+    override fun clearPendingAddPlayerTmUrl() {
+        _pendingAddPlayerTmUrl.value = null
+    }
+
+    private val _pendingShortlistAddTmUrl = MutableStateFlow<String?>(null)
+    override val pendingShortlistAddTmUrl: StateFlow<String?> = _pendingShortlistAddTmUrl
+
+    override fun setPendingShortlistAddTmUrl(url: String?) {
+        _pendingShortlistAddTmUrl.value = url
+    }
+
+    override fun clearPendingShortlistAddTmUrl() {
+        _pendingShortlistAddTmUrl.value = null
+    }
+
+    private val _pendingOpenTasksScreen = MutableStateFlow(false)
+    override val pendingOpenTasksScreen: StateFlow<Boolean> = _pendingOpenTasksScreen
+
+    override fun setPendingOpenTasksScreen(value: Boolean) {
+        _pendingOpenTasksScreen.value = value
     }
 
     init {
         getCurrentUser()
     }
-
 
     private fun getCurrentUser() {
         firebaseHandler.firebaseAuth.currentUser?.let { user ->
@@ -52,5 +85,6 @@ class MainViewModel(
         } ?: run {
             _currentUserFlow.value = null
         }
+        _isReady.value = true
     }
 }

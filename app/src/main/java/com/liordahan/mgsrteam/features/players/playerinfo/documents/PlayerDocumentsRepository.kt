@@ -47,7 +47,8 @@ class PlayerDocumentsRepository(
         type: DocumentType,
         name: String,
         bytes: ByteArray,
-        expiresAt: Long?
+        expiresAt: Long?,
+        uploadedBy: String? = null
     ): Result<PlayerDocument> {
         return try {
             val safeProfile = playerTmProfile.hashCode().toString().replace("-", "x")
@@ -55,15 +56,29 @@ class PlayerDocumentsRepository(
             val ref = storage.child("player_docs").child(safeProfile).child(fileName)
             ref.putBytes(bytes).await()
             val url = ref.downloadUrl.await().toString()
+            val data = hashMapOf<String, Any>(
+                "playerTmProfile" to playerTmProfile,
+                "type" to type.name,
+                "name" to name,
+                "storageUrl" to url,
+                "uploadedAt" to System.currentTimeMillis()
+            )
+            if (expiresAt != null) {
+                data["expiresAt"] = expiresAt
+            }
+            if (uploadedBy != null) {
+                data["uploadedBy"] = uploadedBy
+            }
+            store.collection(firebaseHandler.playerDocumentsTable).add(data).await()
             val doc = PlayerDocument(
                 playerTmProfile = playerTmProfile,
                 type = type.name,
                 name = name,
                 storageUrl = url,
                 uploadedAt = System.currentTimeMillis(),
-                expiresAt = expiresAt
+                expiresAt = expiresAt,
+                uploadedBy = uploadedBy
             )
-            store.collection(firebaseHandler.playerDocumentsTable).add(doc).await()
             Result.success(doc.copy(id = null))
         } catch (e: Exception) {
             Result.failure(e)
@@ -73,6 +88,16 @@ class PlayerDocumentsRepository(
     suspend fun deleteDocument(documentId: String): Result<Unit> {
         return try {
             store.collection(firebaseHandler.playerDocumentsTable).document(documentId).delete().await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun markDocumentExpired(documentId: String): Result<Unit> {
+        return try {
+            store.collection(firebaseHandler.playerDocumentsTable).document(documentId)
+                .update("expired", true).await()
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)

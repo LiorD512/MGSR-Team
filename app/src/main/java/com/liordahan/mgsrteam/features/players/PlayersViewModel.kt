@@ -1,28 +1,38 @@
 package com.liordahan.mgsrteam.features.players
 
-import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.liordahan.mgsrteam.features.login.models.Account
 import com.liordahan.mgsrteam.features.players.filters.ContractFilterOption
-import com.liordahan.mgsrteam.features.players.filters.usecases.GetIsWithNotesCheckedUseCase
-import com.liordahan.mgsrteam.features.players.filters.usecases.GetPositionFilterFlowUseCase
+import com.liordahan.mgsrteam.features.players.filters.FootFilterOption
 import com.liordahan.mgsrteam.features.players.filters.usecases.IGetAgentFilterFlowUseCase
 import com.liordahan.mgsrteam.features.players.filters.usecases.IGetContractFilterOptionUseCase
+import com.liordahan.mgsrteam.features.players.filters.usecases.IGetFootFilterOptionUseCase
 import com.liordahan.mgsrteam.features.players.filters.usecases.IGetIsWithNotesCheckedUseCase
 import com.liordahan.mgsrteam.features.players.filters.usecases.IGetPositionFilterFlowUseCase
 import com.liordahan.mgsrteam.features.players.filters.usecases.IGetSortOptionUseCase
+import com.liordahan.mgsrteam.features.players.filters.usecases.IQuickFilterUseCase
 import com.liordahan.mgsrteam.features.players.filters.usecases.IRemoveAllFiltersUseCase
+import com.liordahan.mgsrteam.features.players.filters.usecases.IResetSortOptionUseCase
+import com.liordahan.mgsrteam.features.players.filters.usecases.ISetFootFilterOptionUseCase
+import com.liordahan.mgsrteam.features.players.filters.usecases.ISetPositionFiltersByNamesUseCase
+import com.liordahan.mgsrteam.features.players.filters.usecases.ISetSortOptionUseCase
 import com.liordahan.mgsrteam.features.players.models.Player
 import com.liordahan.mgsrteam.features.players.models.Position
+import com.liordahan.mgsrteam.features.players.playerinfo.documents.PlayerDocument
 import com.liordahan.mgsrteam.features.players.sort.SortOption
+import com.google.firebase.firestore.ListenerRegistration
 import com.liordahan.mgsrteam.firebase.FirebaseHandler
 import com.liordahan.mgsrteam.helpers.Result
 import com.liordahan.mgsrteam.transfermarket.PlayersUpdate
-import kotlinx.coroutines.async
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
@@ -33,10 +43,14 @@ import java.time.format.DateTimeParseException
 import java.util.Locale
 
 
+data class PlayerWithMandateExpiry(val player: Player, val mandateExpiryAt: Long?)
+
 data class PlayersUiState(
     val playersList: List<Player> = emptyList(),
     val visibleList: List<Player> = emptyList(),
+    val allAccounts: List<Account> = emptyList(),
     val expiringSoonPlayers: List<Player> = emptyList(),
+    val playersWithMandate: List<PlayerWithMandateExpiry> = emptyList(),
     val showPageLoader: Boolean = false,
     val showRefreshButton: Boolean = false,
     val selectedPositions: List<Position> = emptyList(),
@@ -44,7 +58,18 @@ data class PlayersUiState(
     val contractFilterOption: ContractFilterOption = ContractFilterOption.NONE,
     val sortOption: SortOption = SortOption.DEFAULT,
     val isWithNotesChecked: Boolean = false,
-    val searchQuery: String = ""
+    val searchQuery: String = "",
+    val totalPlayers: Int = 0,
+    val mandateCount: Int = 0,
+    val freeAgentCount: Int = 0,
+    val expiringCount: Int = 0,
+    val quickFilterFreeAgents: Boolean = false,
+    val quickFilterContractExpiring: Boolean = false,
+    val quickFilterWithMandate: Boolean = false,
+    val quickFilterMyPlayersOnly: Boolean = false,
+    val quickFilterLoanPlayersOnly: Boolean = false,
+    val footFilterOption: FootFilterOption = FootFilterOption.NONE,
+    val currentUserName: String? = null
 )
 
 abstract class IPlayersViewModel : ViewModel() {
@@ -52,6 +77,18 @@ abstract class IPlayersViewModel : ViewModel() {
     abstract suspend fun getCurrentUserName(): String?
     abstract fun updateSearchQuery(query: String)
     abstract fun removeAllFilters()
+    abstract fun setPositionFilterByChip(positionName: String)
+    abstract fun toggleQuickFilterFreeAgents()
+    abstract fun toggleQuickFilterContractExpiring()
+    abstract fun toggleQuickFilterWithMandate()
+    abstract fun toggleQuickFilterMyPlayersOnly()
+    abstract fun toggleQuickFilterLoanPlayersOnly()
+    /** Apply "My Players Only" filter only when first landing from dashboard. Never re-apply on back. */
+    abstract fun applyInitialMyPlayersOnlyIfNeeded(initialMyPlayersOnly: Boolean)
+    abstract fun toggleQuickFilterWithNotesOnly()
+    abstract fun setFootFilterOption(option: FootFilterOption)
+    abstract fun setSortOption(option: SortOption)
+    abstract fun resetSortOption()
     abstract suspend fun exportRosterCsv(): Result<ByteArray>
 }
 
@@ -61,81 +98,124 @@ class PlayersViewModel(
     private val getPositionFilterFlowUseCase: IGetPositionFilterFlowUseCase,
     private val getAgentFilterFlowUseCase: IGetAgentFilterFlowUseCase,
     private val getContractFilterOptionUseCase: IGetContractFilterOptionUseCase,
+    private val getFootFilterOptionUseCase: IGetFootFilterOptionUseCase,
+    private val setFootFilterOptionUseCase: ISetFootFilterOptionUseCase,
     private val getIsWithNotesCheckedUseCase: IGetIsWithNotesCheckedUseCase,
     private val removeAllFiltersUseCase: IRemoveAllFiltersUseCase,
-    private val getSortOptionUseCase: IGetSortOptionUseCase
+    private val getSortOptionUseCase: IGetSortOptionUseCase,
+    private val setPositionFiltersByNamesUseCase: ISetPositionFiltersByNamesUseCase,
+    private val quickFilterUseCase: IQuickFilterUseCase,
+    private val setSortOptionUseCase: ISetSortOptionUseCase,
+    private val resetSortOptionUseCase: IResetSortOptionUseCase
 ) : IPlayersViewModel() {
 
-    private val _playersFlow = MutableStateFlow(PlayersUiState())
-    override val playersFlow: StateFlow<PlayersUiState> = _playersFlow
+    private val _inputState = MutableStateFlow(PlayersUiState())
+    private val _searchQuery = MutableStateFlow("")
+    private val _mandateExpiryByPlayer = MutableStateFlow<Map<String, Long>>(emptyMap())
+
+    @OptIn(kotlinx.coroutines.FlowPreview::class)
+    override val playersFlow: StateFlow<PlayersUiState> = combine(
+        _inputState,
+        _searchQuery.debounce(300L),
+        _mandateExpiryByPlayer
+    ) { state, debouncedQuery, mandateMap ->
+        computeUiState(state, debouncedQuery, mandateMap)
+    }
+        .flowOn(Dispatchers.Default)
+        .stateIn(viewModelScope, SharingStarted.Eagerly, PlayersUiState(showPageLoader = true))
+
+    private val listenerRegistrations = mutableListOf<ListenerRegistration>()
+    private var hasAppliedInitialMyPlayersOnly = false
 
     init {
         getAllPlayers()
+        loadAllAccounts()
+        loadMandateDocuments()
 
-        viewModelScope.launch {
-            _playersFlow.collect {
-                _playersFlow.update {
-                    val visible = it.playersList
-                        .filterPlayersByPosition(it.selectedPositions)
-                        ?.filterPlayersByAgent(it.selectedAccounts)
-                        ?.filterPlayersByContractOption(it.contractFilterOption)
-                        ?.filterByNotes(it.isWithNotesChecked)
-                        ?.filterPlayersByNameOrByNote(it.searchQuery)
-                        ?.sortedWith(compareByDescending<Player> {
-                            it.noteList?.isNotEmpty() ?: false
-                        }
-                            .thenByDescending { player ->
-                                player.noteList?.maxOfOrNull { note ->
-                                    note.createdAt ?: Long.MIN_VALUE
-                                } ?: Long.MIN_VALUE
-                            }
-                            .thenByDescending { it.notes?.isNotEmpty() ?: false }
-                            .thenByDescending { it.createdAt })
-                        ?.sortBySortOption(it.sortOption) ?: emptyList()
-                    val expiringSoon = it.playersList.filter { player ->
-                        isContractExpiringWithinMonths(player.contractExpired, 5)
-                    }
-                    it.copy(
-                        visibleList = visible,
-                        expiringSoonPlayers = expiringSoon
-                    )
-                }
-            }
+        viewModelScope.launch(Dispatchers.IO) {
+            val name = getCurrentUserName()
+            _inputState.update { it.copy(currentUserName = name) }
         }
 
         viewModelScope.launch {
-            launch {
-                getAgentFilterFlowUseCase().collect { accountFilter ->
-                    _playersFlow.update { it.copy(selectedAccounts = accountFilter) }
-                }
-            }
-
-            launch {
-                getPositionFilterFlowUseCase().collect { positionFilter ->
-                    _playersFlow.update { it.copy(selectedPositions = positionFilter) }
-                }
-            }
-
-            launch {
-                getContractFilterOptionUseCase().collect { contractFilterOption ->
-                    _playersFlow.update { it.copy(contractFilterOption = contractFilterOption) }
-                }
-            }
-
-            launch {
-                getIsWithNotesCheckedUseCase().collect { isChecked ->
-                    _playersFlow.update { it.copy(isWithNotesChecked = isChecked) }
-                }
-            }
-
-            launch {
-                getSortOptionUseCase().collect { sortOption ->
-                    _playersFlow.update { it.copy(sortOption = sortOption) }
-                }
-            }
+            launch { getAgentFilterFlowUseCase().collect { v -> _inputState.update { it.copy(selectedAccounts = v) } } }
+            launch { getPositionFilterFlowUseCase().collect { v -> _inputState.update { it.copy(selectedPositions = v) } } }
+            launch { getContractFilterOptionUseCase().collect { v -> _inputState.update { it.copy(contractFilterOption = v) } } }
+            launch { getFootFilterOptionUseCase().collect { v -> _inputState.update { it.copy(footFilterOption = v) } } }
+            launch { getIsWithNotesCheckedUseCase().collect { v -> _inputState.update { it.copy(isWithNotesChecked = v) } } }
+            launch { getSortOptionUseCase().collect { v -> _inputState.update { it.copy(sortOption = v) } } }
+            launch { quickFilterUseCase.quickFilterFreeAgents.collect { v -> _inputState.update { it.copy(quickFilterFreeAgents = v) } } }
+            launch { quickFilterUseCase.quickFilterContractExpiring.collect { v -> _inputState.update { it.copy(quickFilterContractExpiring = v) } } }
+            launch { quickFilterUseCase.quickFilterWithMandate.collect { v -> _inputState.update { it.copy(quickFilterWithMandate = v) } } }
+            launch { quickFilterUseCase.quickFilterMyPlayersOnly.collect { v -> _inputState.update { it.copy(quickFilterMyPlayersOnly = v) } } }
+            launch { quickFilterUseCase.quickFilterLoanPlayersOnly.collect { v -> _inputState.update { it.copy(quickFilterLoanPlayersOnly = v) } } }
         }
     }
 
+    private fun computeUiState(
+        state: PlayersUiState,
+        query: String,
+        mandateMap: Map<String, Long>
+    ): PlayersUiState {
+        val visible = state.playersList
+            .filterPlayersByPosition(state.selectedPositions)
+            ?.filterPlayersByAgent(state.selectedAccounts)
+            ?.filterPlayersByQuickFilterAndContract(
+                quickFilterFreeAgents = state.quickFilterFreeAgents,
+                quickFilterContractExpiring = state.quickFilterContractExpiring,
+                contractFilterOption = state.contractFilterOption
+            )
+            ?.filterPlayersByWithMandate(state.quickFilterWithMandate, mandateMap)
+            ?.filterPlayersByMyPlayersOnly(state.quickFilterMyPlayersOnly, state.currentUserName)
+            ?.filterPlayersByLoanPlayers(state.quickFilterLoanPlayersOnly)
+            ?.filterPlayersByFoot(state.footFilterOption)
+            ?.filterByNotes(state.isWithNotesChecked)
+            ?.filterPlayersByNameOrByNote(query)
+            ?.sortPlayers(state.isWithNotesChecked, state.sortOption) ?: emptyList()
+
+        val allPlayers = state.playersList
+        val expiringSoon = allPlayers.filter { player ->
+            isContractExpiringWithinMonths(player.contractExpired, 5)
+        }
+        val playersWithMandate = allPlayers
+            .filter { player ->
+                player.haveMandate || (player.tmProfile != null && player.tmProfile in mandateMap)
+            }
+            .map { player ->
+                PlayerWithMandateExpiry(
+                    player = player,
+                    mandateExpiryAt = player.tmProfile?.let { mandateMap[it] }
+                )
+            }
+            .sortedBy { it.mandateExpiryAt ?: Long.MAX_VALUE }
+        val mandateCount = playersWithMandate.size
+        val freeAgentCount = allPlayers.count { player ->
+            player.currentClub?.clubName.equals("Without Club", ignoreCase = true) ||
+                    player.currentClub?.clubName.equals("Without club", ignoreCase = true)
+        }
+
+        return state.copy(
+            visibleList = visible,
+            searchQuery = query,
+            expiringSoonPlayers = expiringSoon,
+            playersWithMandate = playersWithMandate,
+            totalPlayers = allPlayers.size,
+            mandateCount = mandateCount,
+            freeAgentCount = freeAgentCount,
+            expiringCount = expiringSoon.size
+        )
+    }
+
+
+
+
+    override fun onCleared() {
+        super.onCleared()
+        listenerRegistrations.forEach { it.remove() }
+        listenerRegistrations.clear()
+        // User left player list (back to dashboard). Reset filters so next visit is fresh.
+        removeAllFiltersUseCase()
+    }
 
     override suspend fun getCurrentUserName(): String? {
         return try {
@@ -150,7 +230,7 @@ class PlayersViewModel(
                 ) == true
             }
             if (account?.email.equals("dahanliordahan@gmail.com", ignoreCase = true)) {
-                _playersFlow.update { it.copy(showRefreshButton = true) }
+                _inputState.update { it.copy(showRefreshButton = true) }
             }
 
             account?.name
@@ -174,7 +254,7 @@ class PlayersViewModel(
 
 
     override fun updateSearchQuery(query: String) {
-        _playersFlow.update { it.copy(searchQuery = query) }
+        _searchQuery.value = query
     }
 
     override fun removeAllFilters() {
@@ -182,9 +262,39 @@ class PlayersViewModel(
         removeAllFiltersUseCase()
     }
 
+    override fun setPositionFilterByChip(positionName: String) {
+        when (positionName) {
+            "All" -> setPositionFiltersByNamesUseCase(emptyList())
+            else -> {
+                val current = _inputState.value.selectedPositions.mapNotNull { it.name }
+                val isAlreadySelected = current.size == 1 && current.any { it.equals(positionName, ignoreCase = true) }
+                if (isAlreadySelected) setPositionFiltersByNamesUseCase(emptyList())
+                else setPositionFiltersByNamesUseCase(listOf(positionName))
+            }
+        }
+    }
+
+    override fun toggleQuickFilterFreeAgents() = quickFilterUseCase.toggleFreeAgents()
+    override fun toggleQuickFilterContractExpiring() = quickFilterUseCase.toggleContractExpiring()
+    override fun toggleQuickFilterWithMandate() = quickFilterUseCase.toggleWithMandate()
+    override fun toggleQuickFilterMyPlayersOnly() = quickFilterUseCase.toggleMyPlayersOnly()
+    override fun toggleQuickFilterLoanPlayersOnly() = quickFilterUseCase.toggleLoanPlayersOnly()
+    override fun toggleQuickFilterWithNotesOnly() = quickFilterUseCase.toggleWithNotesOnly()
+    override fun setFootFilterOption(option: FootFilterOption) = setFootFilterOptionUseCase(option)
+
+    override fun applyInitialMyPlayersOnlyIfNeeded(initialMyPlayersOnly: Boolean) {
+        if (!initialMyPlayersOnly || hasAppliedInitialMyPlayersOnly) return
+        if (!_inputState.value.quickFilterMyPlayersOnly) {
+            quickFilterUseCase.toggleMyPlayersOnly()
+        }
+        hasAppliedInitialMyPlayersOnly = true
+    }
+    override fun setSortOption(option: SortOption) = setSortOptionUseCase(option)
+    override fun resetSortOption() = resetSortOptionUseCase()
+
     override suspend fun exportRosterCsv(): Result<ByteArray> {
         return try {
-            val list = _playersFlow.value.playersList
+            val list = _inputState.value.playersList
             val header = "Name,Age,Position,Club,Market Value,Contract,Nationality,Agent"
             val rows = list.map { p ->
                 listOf(
@@ -209,11 +319,25 @@ class PlayersViewModel(
         return if (positions.isEmpty()) {
             this
         } else {
-            val positionNames = positions.map { it.name }.toSet()
+            val positionNames = expandPositionNames(positions.mapNotNull { it.name })
             this?.filter { player ->
-                player.positions?.any { pos -> pos in positionNames } == true
+                player.positions?.any { pos ->
+                    pos?.uppercase()?.let { p -> positionNames.any { it.equals(p, ignoreCase = true) } } == true
+                } == true
             }
         }
+    }
+
+    /** Expands chip labels (DEF, MID, FWD) to actual position codes from Transfermarkt. */
+    private fun expandPositionNames(names: List<String>): Set<String> {
+        val groupToCodes = mapOf(
+            "DEF" to setOf("CB", "RB", "LB"),
+            "MID" to setOf("CM", "DM", "AM"),
+            "FWD" to setOf("ST", "CF", "LW", "RW", "SS", "AM")
+        )
+        return names.flatMap { name ->
+            groupToCodes[name.uppercase()] ?: setOf(name)
+        }.toSet()
     }
 
     private fun List<Player>?.filterPlayersByAgent(accounts: List<Account>): List<Player>? {
@@ -224,6 +348,29 @@ class PlayersViewModel(
             this?.filter { player ->
                 player.agentInChargeName in accountNames
             }
+        }
+    }
+
+    private fun List<Player>?.filterPlayersByQuickFilterAndContract(
+        quickFilterFreeAgents: Boolean,
+        quickFilterContractExpiring: Boolean,
+        contractFilterOption: ContractFilterOption
+    ): List<Player>? {
+        return when {
+            quickFilterFreeAgents || quickFilterContractExpiring -> {
+                this?.filter { player ->
+                    val isFreeAgent = player.currentClub?.clubName.equals("Without Club", ignoreCase = true) ||
+                            player.currentClub?.clubName.equals("Without club", ignoreCase = true)
+                    val isExpiring = isContractExpiringWithin6Months(player.contractExpired)
+                    when {
+                        quickFilterFreeAgents && quickFilterContractExpiring -> isFreeAgent || isExpiring
+                        quickFilterFreeAgents -> isFreeAgent
+                        else -> isExpiring
+                    }
+                }
+            }
+            contractFilterOption != ContractFilterOption.NONE -> filterPlayersByContractOption(contractFilterOption)
+            else -> this
         }
     }
 
@@ -243,10 +390,49 @@ class PlayersViewModel(
         }
     }
 
+    private fun List<Player>?.filterPlayersByWithMandate(
+        enabled: Boolean,
+        mandateExpiryByPlayer: Map<String, Long> = emptyMap()
+    ): List<Player>? {
+        return if (!enabled) this
+        else this?.filter { player ->
+            player.haveMandate || (player.tmProfile != null && player.tmProfile in mandateExpiryByPlayer)
+        }
+    }
+
+    private fun List<Player>?.filterPlayersByMyPlayersOnly(enabled: Boolean, currentUserName: String?): List<Player>? {
+        return if (!enabled || currentUserName.isNullOrBlank()) this
+        else this?.filter { it.agentInChargeName.equals(currentUserName, ignoreCase = true) }
+    }
+
+    private fun List<Player>?.filterPlayersByLoanPlayers(enabled: Boolean): List<Player>? {
+        return if (!enabled) this else this?.filter { it.isOnLoan }
+    }
+
+    private fun List<Player>?.filterPlayersByFoot(footFilterOption: FootFilterOption): List<Player>? {
+        return when (footFilterOption) {
+            FootFilterOption.NONE -> this
+            FootFilterOption.LEFT -> this?.filter { it.foot?.lowercase() == "left" }
+            FootFilterOption.RIGHT -> this?.filter { it.foot?.lowercase() == "right" }
+        }
+    }
+
+    /** Newest first by default. When withNotesOnly is on, players with most recent note date come first. */
+    private fun List<Player>?.sortPlayers(withNotesOnly: Boolean, sortOption: SortOption): List<Player>? {
+        return if (withNotesOnly) {
+            this?.sortedWith(
+                compareByDescending<Player> { player ->
+                    player.noteList?.maxOfOrNull { note -> note.createdAt ?: Long.MIN_VALUE } ?: Long.MIN_VALUE
+                }.thenByDescending { it.createdAt }
+            )
+        } else {
+            this?.sortBySortOption(sortOption)
+        }
+    }
+
     private fun List<Player>?.sortBySortOption(sortOption: SortOption): List<Player>? {
         return when (sortOption) {
-            SortOption.DEFAULT -> this
-            SortOption.NEWEST -> this?.sortedByDescending { it.createdAt }
+            SortOption.DEFAULT, SortOption.NEWEST -> this?.sortedByDescending { it.createdAt }
             SortOption.MARKET_VALUE -> this?.sortedByDescending { it.marketValue?.toNumericValue() }
             SortOption.NAME -> this?.sortedBy { it.fullName }
             SortOption.AGE -> this?.sortedBy { it.age }
@@ -307,31 +493,60 @@ class PlayersViewModel(
         return !expiryDate.isBefore(now) && !expiryDate.isAfter(threshold)
     }
 
+    private fun loadMandateDocuments() {
+        val reg = firebaseHandler.firebaseStore.collection(firebaseHandler.playerDocumentsTable)
+            .whereEqualTo("type", "MANDATE")
+            .addSnapshotListener { snapshot, _ ->
+                if (snapshot == null) return@addSnapshotListener
+                val docs = snapshot.toObjects(PlayerDocument::class.java)
+                viewModelScope.launch(Dispatchers.Default) {
+                    val map = docs
+                        .filter { it.playerTmProfile != null && it.expiresAt != null && !it.expired }
+                        .filter { it.expiresAt!! >= System.currentTimeMillis() }
+                        .groupBy { it.playerTmProfile!! }
+                        .mapValues { (_, list) -> list.maxOf { it.expiresAt!! } }
+                    _mandateExpiryByPlayer.value = map
+                }
+            }
+        listenerRegistrations.add(reg)
+    }
+
+    private fun loadAllAccounts() {
+        val reg = firebaseHandler.firebaseStore.collection(firebaseHandler.accountsTable)
+            .addSnapshotListener { snapshot, _ ->
+                if (snapshot == null) return@addSnapshotListener
+                val accounts = snapshot.toObjects(Account::class.java)
+                _inputState.update { it.copy(allAccounts = accounts) }
+            }
+        listenerRegistrations.add(reg)
+    }
+
     private fun getAllPlayers() {
+        _inputState.update { it.copy(showPageLoader = true) }
 
-        _playersFlow.update { it.copy(showPageLoader = true) }
-
-        firebaseHandler.firebaseStore.collection(firebaseHandler.playersTable)
+        val reg = firebaseHandler.firebaseStore.collection(firebaseHandler.playersTable)
             .addSnapshotListener { value, error ->
                 if (error != null) {
-                    _playersFlow.update {
+                    _inputState.update {
                         it.copy(
                             playersList = emptyList(),
-                            visibleList = emptyList(),
                             showPageLoader = false
                         )
                     }
                 } else {
                     val playersList = value?.toObjects(Player::class.java) ?: emptyList()
-                    _playersFlow.update {
-                        it.copy(
-                            playersList = playersList.sortedByDescending { it.createdAt },
-                            visibleList = playersList.sortedByDescending { it.createdAt },
-                            showPageLoader = false
-                        )
+                    viewModelScope.launch(Dispatchers.Default) {
+                        val sorted = playersList.sortedByDescending { it.createdAt }
+                        _inputState.update {
+                            it.copy(
+                                playersList = sorted,
+                                showPageLoader = false
+                            )
+                        }
                     }
                 }
             }
+        listenerRegistrations.add(reg)
     }
 
 }

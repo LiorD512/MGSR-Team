@@ -1,0 +1,767 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- Navigation -->
+    <string name="nav_item_players">המאגר שלנו</string>
+    <string name="nav_item_home">בית</string>
+    <string name="nav_item_dashboard">פיד</string>
+    <string name="nav_item_releases">שחרורים</string>
+    <string name="nav_item_returnee">חזרו מהשאלה</string>
+    <string name="nav_item_contacts">אנשי קשר</string>
+    <string name="nav_item_shortlist">רשימת מעקב</string>
+    <string name="nav_item_requests">בקשות</string>
+
+    <!-- Login -->
+    <string name="login_welcome_title">ברוך הבא</string>
+    <string name="login_welcome_subtitle">התחבר כדי להמשיך</string>
+    <string name="login_button_title">התחברות</string>
+    <string name="login_signing_in">מתחבר…</string>
+    <string name="login_error_invalid_credentials">אימייל או סיסמה שגויים. אנא נסה שוב.</string>
+    <string name="login_error_invalid_email">אנא הזן כתובת מייל תקינה</string>
+    <string name="login_button_email_hint">הקלד כתובת מייל</string>
+    <string name="login_button_password_hint">הקלד סיסמא</string>
+    <string name="login_cd_app_logo">לוגו MGSR Team</string>
+    <string name="splash_tagline">גיוס שחקנים בפשטות</string>
+    <string name="login_cd_toggle_password">הצג/הסתר סיסמא</string>
+    <string name="login_cd_language_toggle">החלף שפה</string>
+
+    <!-- Search -->
+    <string name="players_screen_hint">חפש שחקן לפי שם</string>
+
+    <!-- Players Screen -->
+    <string name="players_roster_title">המאגר שלנו</string>
+    <string name="players_stat_total">סה״כ</string>
+    <string name="players_add_player">הוסף שחקן</string>
+    <string name="players_clear">נקה</string>
+    <string name="players_filter_all">הכל</string>
+    <string name="players_filter_position_gk">שוערים</string>
+    <string name="players_filter_position_def">שחקני הגנה</string>
+    <string name="players_filter_position_mid">שחקני קישור</string>
+    <string name="players_filter_position_fwd">שחקני התקפה</string>
+    <string name="players_sort_options">אפשרויות מיון</string>
+    <string name="players_sort_chip_newest">החדשים</string>
+    <string name="players_sort_chip_value">שווי</string>
+    <string name="players_sort_chip_name">שם</string>
+    <string name="players_sort_chip_age">גיל</string>
+    <string name="players_reset">איפוס</string>
+    <string name="players_sort_newest">החדשים קודם</string>
+    <string name="players_sort_market_value">לפי שווי שוק</string>
+    <string name="players_sort_name">לפי שם</string>
+    <string name="players_sort_age">לפי גיל</string>
+    <string name="players_filter_free_agents">שחקנים חופשיים</string>
+    <string name="players_filter_contract_expiring">חוזה מסתיים</string>
+    <string name="players_filter_with_mandate">עם מנדט</string>
+    <string name="players_filter_my_players_only">השחקנים שלי בלבד</string>
+    <string name="players_filter_loan_players_only">שחקנים בהשאלה בלבד</string>
+    <string name="players_expiring_soon_count">%d חוזים מסתיימים בקרוב</string>
+    <string name="players_expiring_action_needed">נדרש טיפול לפני סיום החוזה</string>
+    <string name="players_with_mandate_count">%d שחקנים עם מנדט</string>
+    <string name="players_with_mandate_subtitle">שחקנים עם מנדט פעיל</string>
+    <string name="players_mandate_expires">מנדט: %s</string>
+    <string name="players_free_agent">שחקן חופשי</string>
+    <string name="players_on_loan">בהשאלה</string>
+    <string name="players_on_loan_from">בהשאלה מ-%s</string>
+    <string name="players_on_loan_from_label">בהשאלה מ</string>
+    <string name="players_years_suffix"> שנים</string>
+    <string name="players_age_format">בן %s</string>
+    <string name="players_no_players_found">לא נמצאו שחקנים</string>
+    <string name="players_empty_hint">הוסף שחקנים לסגל או נקה מסננים כדי לראות את הרשימה המלאה.</string>
+    <string name="players_reset_filters">איפוס מסננים</string>
+    <string name="players_clear_all">נקה הכל</string>
+    <string name="players_filters">מסננים</string>
+    <string name="players_filter_by_position">לפי עמדה</string>
+    <string name="players_filter_by_agent">לפי סוכן</string>
+    <string name="players_filter_by_contract">לפי חוזה</string>
+    <string name="players_filter_without_club">ללא מועדון</string>
+    <string name="players_filter_contract_finishing">חוזה מסתיים בקרוב</string>
+    <string name="players_filter_with_notes">עם הערות</string>
+    <string name="players_filter_foot_left">רגל שמאל</string>
+    <string name="players_filter_foot_right">רגל ימין</string>
+    <string name="players_filter_foot_both">שתי רגליים</string>
+    <string name="players_expiring_badge">מסיים חוזה</string>
+    <string name="players_contract_not_available">חוזה לא זמין</string>
+    <string name="players_done">סיום</string>
+    <string name="players_cd_go_back">חזרה</string>
+    <string name="players_cd_search">חיפוש שחקנים</string>
+    <string name="players_cd_value_up">שווי שוק עלה</string>
+    <string name="players_cd_value_down">שווי שוק ירד</string>
+
+    <!-- Shortlist Screen -->
+    <string name="shortlist_title">רשימת מעקב</string>
+    <string name="shortlist_subtitle">פרופילים שמורים משחרורים וחזרו מהשאלה — הוסף לסוכנות כשמוכן</string>
+    <string name="shortlist_add_player">הוסף שחקן</string>
+    <string name="shortlist_stat_this_week">השבוע</string>
+    <string name="shortlist_could_not_load">לא ניתן לטעון את השחקן. ייתכן שהוא כבר במאגר שלך.</string>
+    <string name="shortlist_years_suffix"> שנים</string>
+    <string name="shortlist_badge">ברשימת מעקב</string>
+    <string name="shortlist_add_to_agency">הוסף לסוכנות</string>
+    <string name="shortlist_open_tm">פתח TM</string>
+    <string name="shortlist_remove">הסר</string>
+    <string name="shortlist_remove_confirm">להסיר את השחקן מרשימת המעקב?</string>
+    <string name="shortlist_no_players">אין שחקנים ברשימת מעקב</string>
+    <string name="shortlist_empty_hint">הוסף שחקנים משחרורים או חזרו מהשאלה כדי לשמור אותם להמשך. כשמוכן, הוסף אותם לסוכנות שלך.</string>
+    <string name="shortlist_browse_releases">עיין בשחרורים</string>
+    <string name="shortlist_browse_returnees">עיין בחזרו מהשאלה</string>
+    <string name="shortlist_added">נוסף לרשימת מעקב</string>
+    <string name="shortlist_added_today">נוסף היום</string>
+    <string name="shortlist_added_yesterday">נוסף אתמול</string>
+    <string name="shortlist_added_days_ago">נוסף לפני %d ימים</string>
+    <string name="shortlist_added_week_ago">נוסף לפני שבוע</string>
+    <string name="shortlist_added_weeks_ago">נוסף לפני %d שבועות</string>
+    <string name="shortlist_added_months_ago">נוסף לפני %d חודשים</string>
+
+    <string name="contacts_screen_search_hint">חפש לפי שם, מועדון או מדינה</string>
+    <string name="contacts_filter_all">הכל</string>
+    <string name="add_player_screen_hint">חיפוש</string>
+
+    <!-- Account -->
+    <string name="account_not_allowed">חשבון לא מורשה</string>
+
+    <!-- Notifications -->
+    <string name="notification_channel_name">התראות MGSR Team</string>
+    <string name="notification_channel_description">תזכורות חוזים, שחרורים ועדכוני סוכנות</string>
+    <string name="notification_channel_contract_reminder">תזכורות חוזים</string>
+    <string name="notification_contract_reminder_title">חוזה מסתיים בקרוב</string>
+    <string name="notification_contract_reminder_body">ל-%d שחקנים חוזה שמסתיים ב-5 החודשים הקרובים</string>
+    <string name="notification_channel_without_club">התראות שחקנים ללא מועדון</string>
+    <string name="notification_without_club_title">שחקן/ים ללא מועדון</string>
+    <string name="notification_without_club_body">%d שחקנים הפכו ללא מועדון</string>
+    <string name="notification_mandate_expired_title">מנדט פג תוקף</string>
+    <string name="notification_mandate_expired_body">המנדט של %1$s פג תוקף.</string>
+
+    <!-- Task notifications -->
+    <string name="notification_task_assigned_title">משימה חדשה הוקצתה</string>
+    <string name="notification_task_assigned_body">%1$s הקצה לך: %2$s</string>
+    <string name="notification_task_assigned_body_fallback">יש לך משימה חדשה: %1$s</string>
+    <string name="notification_task_reminder_title">תזכורת משימה</string>
+    <string name="notification_task_reminder_body_today">"%1$s" אמורה להסתיים היום</string>
+    <string name="notification_task_reminder_body_tomorrow">"%1$s" אמורה להסתיים מחר</string>
+    <string name="notification_task_reminder_body_days">"%1$s" אמורה להסתיים בעוד %2$s ימים</string>
+
+    <!-- Greeting -->
+    <string name="greeting_good_morning">בוקר טוב</string>
+    <string name="greeting_good_afternoon">צהריים טובים</string>
+    <string name="greeting_good_evening">ערב טוב</string>
+    <string name="greeting_agent_default">סוכן</string>
+
+    <!-- Dashboard Stats -->
+    <string name="stat_players">המאגר שלנו</string>
+    <string name="stat_mandate">מנדט</string>
+    <string name="stat_free">חופשיים</string>
+    <string name="stat_requests">בקשות</string>
+
+    <!-- Quick Actions -->
+    <string name="quick_action_players">המאגר שלנו</string>
+    <string name="quick_action_shortlist">רשימת מעקב</string>
+    <string name="quick_action_releases">שחרורים</string>
+    <string name="quick_action_returnees">חזרו מהשאלה</string>
+    <string name="quick_action_contacts">אנשי קשר</string>
+    <string name="quick_action_requests">בקשות</string>
+    <string name="quick_action_contract_finisher_summer">מסיימי חוזה - קיץ</string>
+    <string name="quick_action_contract_finisher_winter">מסיימי חוזה - חורף</string>
+
+    <!-- Contract Finisher Screen -->
+    <string name="contract_finisher_title">מסיימי חוזה</string>
+    <string name="contract_finisher_subtitle">חוזים שמסתיימים בחלון %1$s</string>
+    <string name="contract_finisher_subtitle_summer">חוזים שמסתיימים לקראת חלון קיץ</string>
+    <string name="contract_finisher_subtitle_winter">חוזים שמסתיימים לקראת חלון חורף</string>
+    <string name="contract_finisher_loading">טוען… %1$d שחקנים</string>
+    <string name="contract_finisher_loading_more">טוען עוד…</string>
+    <string name="contract_finisher_retry">נסה שוב</string>
+    <string name="contract_finisher_badge">תאריך סיום חוזה - %1$s</string>
+    <string name="contract_finisher_no_found">לא נמצאו מסיימי חוזה בטווח זה</string>
+
+    <!-- Feed -->
+    <string name="feed_recent_updates">עדכונים אחרונים</string>
+    <string name="feed_filter_all">הכל</string>
+    <string name="feed_filter_value">שווי</string>
+    <string name="feed_filter_transfers">העברות</string>
+    <string name="feed_filter_notes">הערות</string>
+    <string name="feed_show_all">הצג הכל</string>
+    <string name="feed_show_less">הצג פחות</string>
+    <string name="feed_empty">אין עדכונים אחרונים עדיין.\nעדכונים יופיעו כאן לאחר הסנכרון היומי.</string>
+    <string name="feed_market_value_update">עדכון שווי שוק</string>
+    <string name="feed_club_change">זוהה שינוי מועדון</string>
+    <string name="feed_became_free_agent">הפך לשחקן חופשי</string>
+    <string name="feed_new_release">שחקן חופשי חדש (שחרורים)</string>
+    <string name="feed_new_release_not_in_db">לא במאגר שלנו</string>
+    <string name="feed_mandate_expired">מנדט פג תוקף</string>
+    <string name="feed_mandate_uploaded">מנדט הועלה</string>
+    <string name="feed_mandate_uploaded_by">%1$s העלה מנדט עבור %2$s</string>
+    <string name="feed_contract_expiring">חוזה מסתיים</string>
+    <string name="feed_new_note">הערה חדשה</string>
+    <string name="feed_note_deleted">הערה נמחקה</string>
+    <string name="feed_note_deleted_by">%1$s מחק הערה על %2$s</string>
+    <string name="feed_player_added">שחקן נוסף</string>
+    <string name="feed_player_deleted">שחקן נמחק</string>
+    <string name="feed_player_deleted_error">שחקן זה נמחק ממאגר הנתונים</string>
+    <string name="feed_shortlist_added">נוסף לרשימת מעקב</string>
+    <string name="feed_shortlist_removed">הוסר מרשימת מעקב</string>
+    <string name="feed_removed_by">הוסר על ידי %1$s</string>
+    <string name="feed_request_added">בקשה חדשה</string>
+    <string name="feed_request_deleted">בקשה נמחקה</string>
+    <string name="feed_deleted_by">נמחק על ידי %1$s</string>
+    <string name="feed_added_by">נוסף על ידי %1$s</string>
+    <string name="feed_update">עדכון</string>
+    <string name="feed_value_changed">שווי השתנה מ-%1$s ל-%2$s</string>
+    <string name="feed_market_value_no_value">ללא שווי</string>
+    <string name="feed_moved_from_to">עבר מ-%1$s ל-%2$s</string>
+    <string name="feed_released_from">שוחרר מ-%1$s</string>
+    <string name="feed_note_added_by">%1$s הוסיף הערה על %2$s</string>
+
+    <!-- Time Ago -->
+    <string name="time_just_now">עכשיו</string>
+    <string name="time_minutes_ago">לפני %1$d דק׳</string>
+    <string name="time_hours_ago">לפני %1$d שע׳</string>
+    <string name="time_days_ago">לפני %1$d ימים</string>
+
+    <!-- My Agent Hub -->
+    <string name="my_hub_title">הלוח שלי</string>
+    <string name="my_hub_players">שחקנים</string>
+    <string name="my_hub_mandate">מנדט</string>
+    <string name="my_hub_free">חופשיים</string>
+    <string name="my_hub_expiring">מסיימי חוזה</string>
+    <string name="my_hub_coverage">כיסוי</string>
+    <string name="my_hub_tasks_done">משימות הושלמו</string>
+    <string name="my_hub_upcoming_tasks">משימות קרובות</string>
+    <string name="my_hub_view_all_tasks">הצג הכל</string>
+    <string name="my_hub_view_my_players">השחקנים שלי</string>
+    <string name="widget_agent_dashboard_description">הלוח שלך במבט אחד: שחקנים, משימות, התראות</string>
+    <string name="widget_tap_to_open">לחץ לפתיחה</string>
+    <string name="my_hub_no_tasks">אין משימות קרובות</string>
+    <string name="my_hub_pending_tasks">%d ממתינות</string>
+    <string name="my_hub_overdue_tasks">%d באיחור</string>
+    <string name="my_hub_attention">דורש טיפול</string>
+    <string name="my_hub_no_alerts">אין התראות — הכל תקין</string>
+    <string name="my_hub_recent_activity">פעילות אחרונה</string>
+    <string name="my_hub_no_activity">אין פעילות אחרונה לשחקנים שלך</string>
+    <string name="my_hub_no_players">אין שחקנים משויכים</string>
+    <string name="my_hub_no_players_hint">שחקנים שמשויכים אליך יופיעו כאן</string>
+
+    <!-- Team Overview -->
+    <string name="team_overview_title">סקירת הצוות</string>
+    <string name="team_overview_agents_count">%d סוכנים</string>
+
+    <!-- Agent Overview -->
+    <string name="agent_overview_title">סקירת סוכנים</string>
+    <string name="agent_players_managed">%d שחקנים מנוהלים</string>
+    <string name="agent_stat_mandate">מנדט</string>
+    <string name="agent_stat_expiring">מסיימי חוזה</string>
+    <string name="agent_stat_notes">הערות</string>
+
+    <!-- Agent Tasks -->
+    <string name="agent_tasks_title">משימות סוכנים</string>
+    <string name="agent_tasks_done">%1$d מתוך %2$d משימות הושלמו</string>
+    <string name="agent_no_tasks">אין משימות עדיין</string>
+    <string name="agent_no_tasks_hint">אין משימות עדיין. לחץ + להוספה.</string>
+    <string name="agent_add_task">הוסף משימה</string>
+    <string name="agent_new_task_for">משימה חדשה עבור %s</string>
+    <string name="agent_task_description_hint">תיאור המשימה…</string>
+    <string name="agent_select_due_date">בחר תאריך יעד</string>
+
+    <!-- Tasks Screen -->
+    <string name="tasks_title">משימות</string>
+    <string name="tasks_overview">סקירת משימות</string>
+    <string name="tasks_due_today">להיום</string>
+    <string name="tasks_overdue">באיחור</string>
+    <string name="tasks_total">סה״כ</string>
+    <string name="tasks_view_all">כל המשימות</string>
+    <string name="tasks_filter_all">הכל</string>
+    <string name="tasks_filter_today">היום</string>
+    <string name="tasks_filter_week">השבוע</string>
+    <string name="tasks_filter_overdue">באיחור</string>
+    <string name="tasks_filter_by_agent">לפי סוכן</string>
+    <string name="tasks_filter_timeline">ציר זמן</string>
+    <string name="tasks_section_today">היום</string>
+    <string name="tasks_section_tomorrow">מחר</string>
+    <string name="tasks_section_this_week">השבוע</string>
+    <string name="tasks_section_later">מאוחר יותר</string>
+    <string name="tasks_section_no_date">ללא תאריך</string>
+    <string name="tasks_section_completed">הושלמו</string>
+    <string name="tasks_empty">אין משימות עדיין</string>
+    <string name="tasks_empty_hint">לחץ + ליצירת המשימה הראשונה</string>
+    <string name="tasks_completed_count">%1$d/%2$d הושלמו</string>
+    <string name="tasks_new_task">משימה חדשה</string>
+    <string name="tasks_what_needs_done">מה צריך לעשות?</string>
+    <string name="tasks_assign_to">הקצה ל</string>
+    <string name="tasks_priority">עדיפות</string>
+    <string name="tasks_priority_low">נמוכה</string>
+    <string name="tasks_priority_medium">בינונית</string>
+    <string name="tasks_priority_high">גבוהה</string>
+    <string name="tasks_notes_hint">הוסף הערות (אופציונלי)</string>
+    <string name="tasks_create">צור משימה</string>
+    <string name="tasks_detail_title">פרטי משימה</string>
+    <string name="tasks_mark_complete">סמן כהושלם</string>
+    <string name="tasks_mark_incomplete">סמן כלא הושלם</string>
+    <string name="tasks_delete_confirm_title">מחק משימה</string>
+    <string name="tasks_delete_confirm_message">האם אתה בטוח שברצונך למחוק משימה זו?</string>
+    <string name="tasks_deleted">המשימה נמחקה</string>
+    <string name="tasks_undo">בטל</string>
+    <string name="tasks_completed_toast">המשימה הושלמה</string>
+    <string name="tasks_save">שמור</string>
+
+    <!-- Due Dates -->
+    <string name="due_overdue">איחור של %d ימים</string>
+    <string name="due_yesterday">אתמול</string>
+    <string name="due_today">היום</string>
+    <string name="due_tomorrow">מחר</string>
+    <string name="due_in_days">בעוד %d ימים</string>
+
+    <!-- Transfer Windows -->
+    <string name="transfer_windows_title">חלונות העברה פתוחים</string>
+    <string name="transfer_windows_days_left">%d ימים נותרו</string>
+    <string name="transfer_windows_open">פתוח</string>
+    <string name="transfer_windows_empty">אין חלונות העברה פתוחים כרגע.</string>
+    <string name="transfer_windows_closing_soon">%d נסגרים בקרוב</string>
+    <string name="transfer_windows_group_priority">שווקים עיקריים</string>
+    <string name="transfer_windows_group_uefa">אירופה (UEFA)</string>
+    <string name="transfer_windows_group_conmebol">דרום אמריקה (CONMEBOL)</string>
+    <string name="transfer_windows_group_concacaf">צפון ומרכז אמריקה (CONCACAF)</string>
+    <string name="transfer_windows_group_afc">אסיה (AFC)</string>
+    <string name="transfer_windows_group_caf">אפריקה (CAF)</string>
+    <string name="transfer_windows_group_ofc">אוקיאניה (OFC)</string>
+
+    <!-- Document Reminders -->
+    <string name="document_reminders_title">תזכורות מסמכים</string>
+    <string name="document_missing">%s חסר</string>
+    <string name="document_expires_in">%1$s פג תוקף בעוד %2$d ימים</string>
+
+    <!-- General -->
+    <string name="cancel">ביטול</string>
+    <string name="ok">אישור</string>
+    <string name="expand">הרחב</string>
+    <string name="collapse">צמצם</string>
+    <string name="delete_task">מחק משימה</string>
+    <string name="notifications">התראות</string>
+
+    <!-- Language -->
+    <string name="language_change_title">שנה שפה</string>
+    <string name="language_change_message">שפת האפליקציה תשתנה ל%s. האפליקציה תופעל מחדש כדי להחיל את השינוי.</string>
+    <string name="language_english">English</string>
+    <string name="language_hebrew">עברית</string>
+    <string name="language_confirm">אישור</string>
+    <string name="language_switch_cd">שנה שפה</string>
+
+    <!-- Releases Screen -->
+    <string name="releases_title">שחרורים</string>
+    <string name="releases_subtitle">שחקנים חופשיים אחרונים מ-Transfermarkt</string>
+    <string name="releases_tm_down">Transfermarkt לא זמין\nנסה שוב מאוחר יותר</string>
+    <string name="releases_stat_shortlisted">ברשימת מעקב</string>
+    <string name="releases_stat_visible">מוצגים</string>
+    <string name="releases_all_count">הכל %d</string>
+    <string name="releases_add_to_agency">הוסף לסוכנות</string>
+    <string name="releases_badge_released">שוחרר</string>
+    <string name="releases_badge_released_on">שוחרר ב-%1$s</string>
+    <string name="releases_badge_loan_return">חזר מהשאלה</string>
+    <string name="releases_badge_returned_on">חזר ב-%1$s</string>
+    <string name="releases_returned_to">חזר ל-%1$s</string>
+    <string name="releases_roster_teammates_one">%d שחקן מהמאגר שיחק איתו</string>
+    <string name="releases_roster_teammates">%d שחקנים מהמאגר שיחקו איתו</string>
+    <string name="releases_no_roster_teammates">אין שחקנים מהמאגר ששיחקו עם שחקן זה</string>
+    <string name="releases_roster_teammates_loading">טוען שחקנים…</string>
+    <string name="releases_games_together">%d משחקים ביחד</string>
+    <string name="releases_games_together_label">משחקים ביחד</string>
+    <string name="releases_roster_teammates_tap">שחקנים מהמאגר ששיחקו איתו</string>
+    <string name="shortlist_in_shortlist">ברשימת מעקב</string>
+    <string name="shortlist_add_to_shortlist">הוסף לרשימת מעקב</string>
+
+    <!-- Returnee Screen -->
+    <string name="returnee_title">חזרו מהשאלה</string>
+    <string name="returnee_subtitle">שחקנים שחוזרים מהשאלה בליגות אירופאיות</string>
+    <string name="returnee_no_found">לא נמצאו שחקנים שחזרו</string>
+    <string name="returnee_loading">טוען (%1$d/%2$d ליגות)…</string>
+    <string name="returnee_stat_leagues">ליגות</string>
+    <string name="returnee_all_count">הכל %d</string>
+
+    <!-- Requests Screen -->
+    <string name="requests_title">בקשות</string>
+    <string name="requests_subtitle">בקשות שחקנים ממועדונים לפי עמדה</string>
+    <string name="requests_add">הוסף בקשה</string>
+    <string name="requests_share">שתף בקשות</string>
+    <string name="requests_stat_positions">עמדות</string>
+    <string name="requests_country_club_one">מועדון 1</string>
+    <string name="requests_country_clubs">%d מועדונים</string>
+    <string name="requests_matching_players_one">%d שחקן תואם</string>
+    <string name="requests_matching_players">%d שחקנים תואמים במאגר</string>
+    <string name="requests_find_players">מצא שחקנים</string>
+    <string name="requests_find_players_sheet_title">שחקנים לבקשה זו</string>
+    <string name="requests_find_players_online">מצא שחקנים בעזרת AI סקאוט</string>
+    <string name="requests_online_players_sheet_title">שחקנים מהשוק</string>
+    <string name="requests_online_players_loading">הAI סקאוט מחפש שחקנים…</string>
+    <string name="requests_online_players_empty">לא נמצאו שחקנים תואמים באינטרנט</string>
+    <string name="requests_no_match">אין שחקנים במאגר התואמים לבקשה זו</string>
+    <string name="requests_no_requests">אין בקשות עדיין</string>
+    <string name="requests_empty_hint">הוסף בקשות ממועדונים כשהם מבקשים שחקנים. לחץ + להוספת הבקשה הראשונה.</string>
+    <string name="requests_delete_title">מחק בקשה</string>
+    <string name="requests_delete_confirm">למחוק בקשה עבור %1$s (%2$s)?</string>
+    <string name="requests_add_title">הוסף בקשה</string>
+    <string name="requests_add_subtitle">חפש מועדון ב-Transfermarkt, ואז בחר עמדה</string>
+    <string name="requests_label_club">מועדון</string>
+    <string name="requests_search_club">חפש מועדון…</string>
+    <string name="requests_label_position">עמדה</string>
+    <string name="requests_label_contact">איש קשר</string>
+    <string name="requests_label_age">גיל</string>
+    <string name="requests_min">מינימום</string>
+    <string name="requests_max">מקסימום</string>
+    <string name="requests_age_any">גיל: כלשהו</string>
+    <string name="requests_age_range">גיל: %1$d-%2$d</string>
+    <string name="requests_salary">שכר: %s</string>
+    <string name="requests_fee">דמי העברה: %s</string>
+    <string name="requests_via_contact">דרך %1$s • %2$s</string>
+    <string name="requests_direct">בקשה ישירה • %s</string>
+    <string name="requests_via_short">דרך</string>
+    <string name="requests_direct_short">בקשה ישירה</string>
+    <string name="requests_notes_placeholder">הערות נוספות…</string>
+    <string name="requests_notes_label">הערות</string>
+    <string name="requests_whatsapp">WhatsApp</string>
+    <string name="requests_edit">ערוך</string>
+    <string name="requests_delete">מחק</string>
+    <string name="requests_change_club">החלף</string>
+    <string name="requests_contact_optional">איש קשר (אופציונלי)</string>
+    <string name="requests_no_contacts_for_club">אין אנשי קשר למועדון זה</string>
+    <string name="requests_age_doesnt_matter">לא משנה</string>
+    <string name="requests_label_salary_range">טווח שכר</string>
+    <string name="requests_label_transfer_fee">דמי העברה</string>
+    <string name="requests_notes_optional">הערות (אופציונלי)</string>
+    <string name="requests_save_request">שמור בקשה</string>
+    <string name="requests_transfer_fee_free_loan">חופשי/השאלה בחינם</string>
+    <string name="requests_transfer_fee_lt200">מתחת ל-200</string>
+    <string name="requests_label_dominate_foot">רגל דומיננטית</string>
+    <string name="requests_foot_left">שמאל</string>
+    <string name="requests_foot_right">ימין</string>
+    <string name="requests_foot_any">לא משנה</string>
+    <string name="requests_foot_label">רגל: %s</string>
+
+    <!-- Add Request voice recording -->
+    <string name="requests_record_request">הקלט בקשה</string>
+    <string name="requests_record_hint">דבר על המועדון, עמדה, משכורת, דמי העברה, רגל, גיל</string>
+    <string name="requests_recording">מקליט…</string>
+    <string name="requests_stop_recording">עצור</string>
+    <string name="requests_analyzing">מנתח…</string>
+    <string name="requests_voice_error">לא ניתן לנתח את ההקלטה. נסה שוב.</string>
+    <string name="requests_voice_missing_club_position">לא זוהה מועדון או עמדה. נסה שוב או מלא ידנית.</string>
+    <string name="requests_fill_manually">מלא ידנית</string>
+
+    <!-- Add Request stepped flow -->
+    <string name="requests_step_of">שלב %1$d מתוך 4</string>
+    <string name="requests_step_club">מועדון</string>
+    <string name="requests_step_position">עמדה</string>
+    <string name="requests_step_requirements">דרישות</string>
+    <string name="requests_step_notes">הערות</string>
+    <string name="requests_next">הבא</string>
+    <string name="requests_search_for_club">חפש מועדון</string>
+
+    <!-- Contacts Screen -->
+    <string name="contacts_title">אנשי קשר בעולם</string>
+    <string name="contacts_subtitle">אנשי קשר במועדונים לגיוס שחקנים</string>
+    <string name="contacts_stat_countries">מדינות</string>
+    <string name="contacts_add">הוסף איש קשר</string>
+    <string name="contacts_clear_search">נקה חיפוש</string>
+    <string name="contacts_clear">נקה</string>
+    <string name="contacts_edit">ערוך</string>
+    <string name="contacts_delete">מחק</string>
+    <string name="contacts_delete_title">מחק איש קשר</string>
+    <string name="contacts_delete_confirm">למחוק את %s?</string>
+    <string name="contacts_this_contact">איש קשר זה</string>
+    <string name="contacts_close">סגור</string>
+    <string name="contacts_menu">אפשרויות נוספות</string>
+    <string name="contacts_no_contacts">אין אנשי קשר עדיין</string>
+    <string name="contacts_empty_hint">הוסף אנשי קשר במועדונים לגיוס שחקנים. בחר מהטלפון או הוסף ידנית.</string>
+    <string name="contacts_add_contact">הוסף איש קשר</string>
+    <string name="contacts_edit_contact">ערוך איש קשר</string>
+    <string name="contacts_button_add">הוסף</string>
+    <string name="contacts_button_save">שמור</string>
+    <string name="contacts_label_who">מי</string>
+    <string name="contacts_import">ייבא מאנשי קשר בטלפון</string>
+    <string name="contacts_import_error">לא ניתן לקרוא את איש הקשר. נסה לאשר הרשאת אנשי קשר.</string>
+    <string name="contacts_import_no_phone">לאיש קשר זה אין מספר טלפון. בחר אחד עם מספר.</string>
+    <string name="contacts_permission_denied">נדרשת הרשאת אנשי קשר לייבוא</string>
+    <string name="contacts_enter_manually">או הזן ידנית</string>
+    <string name="contacts_label_role">תפקיד</string>
+    <string name="contacts_label_club">מועדון</string>
+    <string name="contacts_label_name">שם</string>
+    <string name="contacts_placeholder_name">שם איש קשר</string>
+    <string name="contacts_label_phone">טלפון</string>
+    <string name="contacts_placeholder_phone">מספר טלפון (כולל קידומת)</string>
+    <string name="contacts_no_contacts_found">לא נמצאו אנשי קשר</string>
+    <string name="contacts_try_different_search">נסה חיפוש אחר או הוסף איש קשר חדש</string>
+
+    <!-- Contact add stepped flow -->
+    <string name="contacts_step_of">שלב %1$d מתוך %2$d</string>
+    <string name="contacts_step_club">מועדון</string>
+    <string name="contacts_step_contact">איש קשר</string>
+    <string name="contacts_step_role">תפקיד</string>
+    <string name="contacts_next">הבא</string>
+    <string name="contacts_how_add_contact">איך תרצה להוסיף את איש הקשר?</string>
+    <string name="contacts_role_optional">מה התפקיד שלו? (אופציונלי)</string>
+    <string name="contacts_search_for_club">חפש מועדון</string>
+    <string name="contacts_club_import_only_hint">ייבא מספר אנשי הקשר. נחפש ברשת את המועדון והתפקיד שלהם ואז נקשור לטרנספרמרקט.</string>
+    <string name="contacts_club_discovery_section">מועדון ותפקיד</string>
+    <string name="contacts_club_searching_web">מחפש מועדון ותפקיד ברשת…</string>
+    <string name="contacts_club_found_on_tm">נמצא בטרנספרמרקט</string>
+    <string name="contacts_club_search_manually">חפש מועדון ידנית</string>
+    <string name="contacts_club_not_correct">לא המועדון הנכון?</string>
+    <string name="contacts_try_again">נסה שוב</string>
+    <string name="contacts_duplicate_phone_error">קיים כבר איש קשר עם מספר טלפון זה</string>
+    <string name="contacts_or_enter_manually">— או הזן ידנית —</string>
+    <string name="contacts_change">החלף</string>
+
+    <!-- Contact roles (add/edit contact screen) -->
+    <string name="contact_role_other">אחר</string>
+    <string name="contact_role_coach">מאמן</string>
+    <string name="contact_role_asst_coach">עוזר מאמן</string>
+    <string name="contact_role_sport_dir">ספורט דיירקטור</string>
+    <string name="contact_role_board">דירקטור</string>
+    <string name="contact_role_ceo">מנכ״ל</string>
+    <string name="contact_role_president">נשיא</string>
+    <string name="contact_role_scout">סקאוט</string>
+    <string name="contact_role_agent">סוכן</string>
+    <string name="contact_role_intermediary">מתווך</string>
+    <string name="contact_role_agency_dir">מנהל סוכנות</string>
+
+    <!-- Contacts Club vs Agency -->
+    <string name="contacts_tab_club">מועדון</string>
+    <string name="contacts_tab_agency">סוכנות</string>
+    <string name="contacts_add_type_title">איזה סוג אנשי קשר?</string>
+    <string name="contacts_add_type_club">אנשי קשר במועדון</string>
+    <string name="contacts_add_type_club_hint">מאמנים, סקאוטים, מנהלי ספורט במועדונים</string>
+    <string name="contacts_add_type_agency">אנשי קשר בסוכנות</string>
+    <string name="contacts_add_type_agency_hint">סוכנים, מתווכים בסוכנויות</string>
+    <string name="contacts_step_type">סוג</string>
+    <string name="contacts_step_agency">סוכנות</string>
+    <string name="contacts_agency_search_hint">הזן שם סוכנות</string>
+    <string name="contacts_agency_import_only_hint">ייבא מאנשי הקשר בטלפון. נחפש ברשת את הסוכנות ונקשר לטרנספרמרקט.</string>
+    <string name="contacts_agency_discovery_section">סוכנות</string>
+    <string name="contacts_agency_discovering">פרטי קשר</string>
+    <string name="contacts_agency_searching_web">מחפש סוכנות ברשת…</string>
+    <string name="contacts_agency_found_on_tm">נמצא בטרנספרמרקט</string>
+    <string name="contacts_agency_not_correct">לא הסוכנות הנכונה?</string>
+    <string name="contacts_agency_search_manually">חפש ידנית</string>
+    <string name="contacts_agency_manual_fallback">הזן שם סוכנות לחיפוש בטרנספרמרקט</string>
+    <string name="contacts_label_agency">סוכנות</string>
+    <string name="contacts_placeholder_agency">שם סוכנות</string>
+    <string name="contacts_label_agency_country">מדינה (אופציונלי)</string>
+    <string name="contacts_placeholder_agency_country">למשל ארה״ב, גרמניה</string>
+    <string name="contacts_empty_club">אין אנשי קשר במועדונים</string>
+    <string name="contacts_empty_club_hint">הוסף מאמנים, סקאוטים ואנשי צוות במועדונים לגיוס שחקנים.</string>
+    <string name="contacts_empty_agency">אין אנשי קשר בסוכנויות</string>
+    <string name="contacts_empty_agency_hint">הוסף סוכנים ומתווכים מסוכנויות שחקנים.</string>
+    <string name="contacts_add_club_contact">הוסף איש קשר במועדון</string>
+    <string name="contacts_add_agency_contact">הוסף איש קשר בסוכנות</string>
+    <string name="contacts_without_agency">ללא סוכנות</string>
+    <string name="contacts_without_club">ללא מועדון</string>
+    <string name="contacts_search_name_hint">חפש לפי שם</string>
+    <string name="contacts_open_transfermarkt">פתח בטרנספרמרקט</string>
+    <string name="contacts_agency_players_count">%d שחקנים</string>
+    <string name="contacts_agency_no_players">אין שחקנים תחת סוכנות זו</string>
+
+    <!-- Add Player Screen -->
+    <string name="add_player_contact_title">הוסף פרטי קשר לשחקן</string>
+    <string name="add_player_save">שמור שחקן</string>
+    <string name="add_player_to_shortlist">הוסף לרשימת מעקב</string>
+    <string name="add_player_title">הוסף שחקן</string>
+    <string name="add_player_search_roster">חפש ב-Transfermarkt להוספה לסגל</string>
+    <string name="add_player_search_shortlist">חפש ב-Transfermarkt להוספה לרשימת מעקב</string>
+    <string name="add_player_from_link_title">הוסף שחקן מקישור</string>
+    <string name="add_player_from_link_roster">הוסף לסגל (עם פרטי קשר)</string>
+    <string name="add_player_from_link_shortlist">הוסף לרשימת מעקב</string>
+    <string name="add_player_search_hint_title">חפש שחקן להוספה</string>
+    <string name="add_player_search_desc">הקלד שם למציאת שחקנים ב-Transfermarkt</string>
+    <string name="add_player_label_player_number">מספר שחקן</string>
+    <string name="add_player_label_agent_number">מספר סוכן</string>
+    <string name="add_player_tap_to_select">לחץ לבחירה</string>
+    <string name="add_player_already_in_shortlist">השחקן כבר ברשימת המעקב שלך</string>
+
+    <!-- Player Info Screen -->
+    <string name="player_info_title">פרטי שחקן</string>
+    <string name="player_info_subtitle">צפה ונהל פרטי שחקן</string>
+    <string name="player_info_refresh">רענן</string>
+    <string name="player_info_refresh_cd">רענן מ-Transfermarkt</string>
+    <string name="player_info_share">שתף</string>
+    <string name="player_info_generate_mandate">יצירת מנדט</string>
+
+    <!-- Generate Mandate Wizard -->
+    <string name="mandate_generate_title">יצירת מנדט</string>
+    <string name="mandate_expiry_date">תאריך תפוגה</string>
+    <string name="mandate_select_expiry">בחר תאריך תפוגה</string>
+    <string name="mandate_valid_leagues">ליגות / מדינות תקפות</string>
+    <string name="mandate_select_country">חפש מדינה…</string>
+    <string name="mandate_entire_country">כל המדינה (כל המועדונים)</string>
+    <string name="mandate_generate_pdf">יצירת מנדט</string>
+    <string name="mandate_generating">מייצר…</string>
+    <string name="mandate_confirm">אישור</string>
+    <string name="mandate_cancel">ביטול</string>
+    <string name="mandate_preview_title">תצוגה מקדימה</string>
+    <string name="mandate_preview_page">עמוד %d</string>
+    <string name="mandate_done">סיום</string>
+    <string name="mandate_error_generate_failed">יצירת ה-PDF נכשלה: %1$s</string>
+    <string name="mandate_no_agents_fifa">לא נמצאו סוכנים עם רישיון פיפ״א</string>
+    <string name="mandate_next">הבא</string>
+    <string name="mandate_remove">הסר</string>
+
+    <!-- Mandate Wizard Steps -->
+    <string name="mandate_step_of">שלב %1$d מתוך 3</string>
+    <string name="mandate_step_agent">סוכן</string>
+    <string name="mandate_step_validity">תוקף</string>
+    <string name="mandate_step_review">סקירה</string>
+    <string name="mandate_step1_title">בחר סוכן</string>
+    <string name="mandate_step1_subtitle">מי ייצג את השחקן?</string>
+    <string name="mandate_step2_title">פרטי תוקף</string>
+    <string name="mandate_step2_subtitle">הגדר את משך המנדט והיכן הוא תקף</string>
+    <string name="mandate_step3_title">סקירה ויצירה</string>
+    <string name="mandate_step3_subtitle">אשר את כל הפרטים לפני יצירת המנדט</string>
+    <string name="mandate_fifa_license">רישיון פיפ״א: %1$s</string>
+    <string name="mandate_tap_to_change">לחץ לשינוי</string>
+    <string name="mandate_add_country_league">הוסף מדינה / ליגה</string>
+    <string name="mandate_no_leagues_hint">לא נוספו ליגות עדיין.\nלחץ על הכפתור למעלה להוספת מדינות או מועדונים.</string>
+    <string name="mandate_hint_select_agent">בחר סוכן כדי להמשיך</string>
+    <string name="mandate_hint_date_and_leagues">הגדר תאריך תפוגה והוסף לפחות ליגה אחת</string>
+    <string name="mandate_hint_select_date">בחר תאריך תפוגה כדי להמשיך</string>
+    <string name="mandate_hint_add_league">הוסף לפחות ליגה או מדינה אחת</string>
+
+    <!-- Mandate Review -->
+    <string name="mandate_review_player">שחקן</string>
+    <string name="mandate_review_agent">סוכן</string>
+    <string name="mandate_review_validity">תוקף</string>
+    <string name="mandate_review_fifa_id">מספר רישיון פיפ״א</string>
+
+    <!-- Mandate Bottom Sheet -->
+    <string name="mandate_sheet_search_country">חפש מדינה</string>
+    <string name="mandate_sheet_search_clubs">חפש מועדונים ב%1$s…</string>
+    <string name="mandate_selected_clubs">%d מועדון(ים) נבחרו</string>
+    <string name="mandate_sheet_add_button">הוסף למנדט</string>
+    <string name="player_info_delete">מחק</string>
+    <string name="player_info_delete_player_confirm">האם אתה בטוח שברצונך למחוק את השחקן?</string>
+    <string name="player_info_delete_note_confirm">האם אתה בטוח שברצונך למחוק את ההערה?</string>
+    <string name="player_info_delete_doc_confirm">האם אתה בטוח שברצונך למחוק את \"%s\"?</string>
+    <string name="player_info_contact_header">פרטי קשר</string>
+    <string name="player_info_player_phone">טלפון שחקן</string>
+    <string name="player_info_agent_phone">טלפון סוכן</string>
+    <string name="player_info_tm_profile">פרופיל TM</string>
+    <string name="player_info_tm_short">TM</string>
+    <string name="player_info_wa_short">WA</string>
+    <string name="player_info_ig_short">IG</string>
+    <string name="player_info_passport_details">פרטי דרכון</string>
+    <string name="player_info_passport_already_exists">כבר קיים דרכון לשחקן זה</string>
+    <string name="player_info_passport_first_name">שם פרטי</string>
+    <string name="player_info_passport_last_name">שם משפחה</string>
+    <string name="player_info_passport_number">מספר דרכון</string>
+    <string name="player_info_passport_dob">תאריך לידה</string>
+    <string name="player_info_documents">מסמכים</string>
+    <string name="player_info_uploading">מעלה מסמך…</string>
+    <string name="player_info_no_documents">אין מסמכים עדיין</string>
+    <string name="player_info_documents_empty_subtitle">הוסף דרכון, ייפוי כוח, רפואי או מסמכים אחרים</string>
+    <string name="player_info_add_document">הוסף מסמך</string>
+    <string name="player_info_notes">הערות</string>
+    <string name="player_info_add_note">הוסף הערה</string>
+    <string name="player_info_note_placeholder">הוסף הערה חדשה…</string>
+    <string name="player_info_record_note">הקלט הערה</string>
+    <string name="player_info_recording">מאזין…</string>
+    <string name="player_info_record_permission_denied">נדרשת הרשאת מיקרופון להקלטת הערות</string>
+    <string name="player_info_record_not_available">קלט קולי לא זמין במכשיר זה</string>
+    <string name="player_info_stop_recording">הפסק הקלטה</string>
+    <string name="player_info_previously">קודם: %1$s (%2$s)</string>
+    <string name="player_info_added_by">נוסף על ידי — %s</string>
+    <string name="player_info_contract">חוזה %s</string>
+    <string name="player_info_mandate">מנדט</string>
+    <string name="player_info_mandate_expires">תוקף מנדט: %s</string>
+    <string name="player_info_whatsapp">WhatsApp</string>
+    <string name="player_info_general_info">מידע כללי</string>
+    <string name="player_info_height">גובה</string>
+    <string name="player_info_age">גיל</string>
+    <string name="player_info_positions">עמדות</string>
+    <string name="player_info_nationality">לאום</string>
+    <string name="player_info_contract_expiry_date">תאריך סיום חוזה</string>
+    <string name="player_info_current_club">מועדון נוכחי</string>
+    <string name="player_info_market_value">שווי שוק</string>
+    <string name="player_info_updating">מעדכן…</string>
+    <string name="player_info_player_label">שחקן</string>
+    <string name="player_info_agent_label">סוכן</string>
+    <string name="player_info_message_whatsapp">שלח הודעה בוואטסאפ</string>
+    <string name="player_info_edit_number">ערוך מספר</string>
+    <string name="player_info_remove_number">הסר מספר</string>
+    <string name="player_info_remove_agency">הסר סוכנות</string>
+    <string name="player_info_add_number">הוסף מספר</string>
+    <string name="player_info_instagram">אינסטגרם</string>
+    <string name="player_info_add_instagram">הוסף אינסטגרם</string>
+    <string name="player_info_add">הוסף</string>
+    <string name="player_info_instagram_hint">כתובת אינסטגרם או שם משתמש</string>
+    <string name="player_info_open_instagram">פתח אינסטגרם</string>
+    <string name="player_info_edit_instagram">ערוך אינסטגרם</string>
+    <string name="player_info_remove_instagram">הסר אינסטגרם</string>
+    <string name="player_info_contract_expired">חוזה פג תוקף</string>
+    <string name="player_info_expired">פג תוקף</string>
+    <string name="player_info_expires_in_months">פג תוקף בעוד %d חודשים</string>
+    <string name="player_info_without_club">ללא מועדון</string>
+    <string name="player_info_unknown">לא ידוע</string>
+    <string name="player_info_player_data_not_available">נתוני שחקן לא זמינים</string>
+    <string name="player_info_current_club_share">מועדון נוכחי: %s</string>
+    <string name="player_info_share_with">שתף עם</string>
+    <string name="player_info_synced_minutes">סונכרן לפני %d דקות</string>
+    <string name="player_info_synced_hours">סונכרן לפני %d שעות</string>
+    <string name="player_info_synced_days">סונכרן לפני %d ימים</string>
+    <string name="player_info_synced_date">סונכרן %s</string>
+    <string name="player_info_years_short">שנים</string>
+    <string name="player_info_salary_transfer_fee">שכר ודמי העברה</string>
+    <string name="player_info_salary_transfer_fee_hint">לחץ להגדרה להתאמת בקשות</string>
+    <string name="player_info_salary_transfer_fee_sheet_title">הגדר קריטריוני התאמה</string>
+    <string name="player_info_remove_salary_transfer_fee">הסר שכר ודמי העברה</string>
+
+    <!-- AI Helper -->
+    <string name="player_info_highlights">היילייטס</string>
+    <string name="player_info_ai_helper">סקאוט AI</string>
+    <string name="player_info_ai_hidden_gem">פוטנציאל ליהלום</string>
+    <string name="player_info_ai_hidden_gem_check">בדוק פוטנציאל ליהלום</string>
+    <string name="player_info_ai_hidden_gem_score">%d/100</string>
+    <string name="player_info_ai_hidden_gem_refresh">רענן</string>
+    <string name="player_info_ai_find_similar_players">מצא שחקנים דומים</string>
+    <string name="player_info_ai_create_scout_report">צור דוח סקאוט עבור %s</string>
+    <string name="player_info_ai_generating_scout_report">מייצר דוח סקאוט…</string>
+    <string name="player_info_ai_generating_scout_diamond_report">מייצר ציון יהלום…</string>
+    <string name="player_info_ai_scout_report_error">לא ניתן ליצור דוח סקאוט. נסה שוב.</string>
+    <string name="player_info_ai_no_similar_players">לא נמצאו שחקנים דומים</string>
+    <string name="player_info_ai_options">הגדרות</string>
+    <string name="player_info_ai_refresh">רענן</string>
+    <string name="player_info_ai_similarity_style">סגנון משחק</string>
+    <string name="player_info_ai_similarity_value">שווי שוק</string>
+    <string name="player_info_ai_similarity_position">עמדה</string>
+    <string name="player_info_ai_similarity_all">מאוזן</string>
+    <string name="player_info_ai_age_strict">גיל ±2 שנים</string>
+    <string name="player_info_ai_age_relaxed">גיל ±5 שנים</string>
+    <string name="player_info_ai_age_any">כל גיל</string>
+    <string name="player_info_ai_exclude_same_club">לא מאותו מועדון</string>
+    <string name="player_info_ai_exclude_same_league">לא מאותה ליגה</string>
+    <string name="player_info_ai_report_executive">סיכום מנהלים</string>
+    <string name="player_info_ai_report_full">טקטי מלא</string>
+    <string name="player_info_ai_report_transfer">התמקדות העברה</string>
+    <string name="player_info_ai_report_youth">פוטנציאל צעירים</string>
+
+    <!-- Player Info Accessibility -->
+    <string name="player_info_cd_go_back">חזרה</string>
+    <string name="player_info_cd_value_up">שווי שוק במגמת עלייה</string>
+    <string name="player_info_cd_value_down">שווי שוק במגמת ירידה</string>
+    <string name="player_info_cd_edit_salary">עריכת שכר ודמי העברה</string>
+    <string name="player_info_cd_open_link">פתח קישור</string>
+    <string name="player_info_cd_delete_document">מחק מסמך</string>
+    <string name="player_info_cd_edit_phone">ערוך מספר טלפון</string>
+    <string name="player_info_cd_clear_phone">נקה מספר טלפון</string>
+    <string name="player_info_cd_delete_note">מחק הערה</string>
+    <string name="player_info_cd_expand">הרחב</string>
+    <string name="player_info_cd_collapse">כווץ</string>
+
+    <!-- Returnee Players Bottom Sheet -->
+    <string name="returnee_no_players_league">לא נמצאו שחקנים בליגה זו</string>
+
+    <!-- Empty State (shared) -->
+    <string name="empty_try_filters">נסה להתאים את המסננים או שאילתת החיפוש</string>
+
+    <!-- Highlights -->
+    <string name="highlights_find_videos">חפש סרטונים</string>
+    <string name="highlights_refresh">רענן</string>
+    <string name="highlights_retry">נסה שוב</string>
+    <string name="highlights_empty_title">אין היילייטס עדיין</string>
+    <string name="highlights_empty_subtitle">חפש היילייטס של %1$s (שנתיים אחרונות)</string>
+    <string name="highlights_results_count">%1$d סרטונים</string>
+    <string name="highlights_video_content_desc">פתח %1$s ב-%2$s</string>
+    <string name="highlights_view_instagram">צפה באינסטגרם</string>
+</resources>

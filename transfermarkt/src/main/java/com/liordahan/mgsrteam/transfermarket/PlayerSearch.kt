@@ -4,10 +4,10 @@ import android.os.Parcelable
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.parcelize.Parcelize
-import org.jsoup.Jsoup
-import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
 import java.io.IOException
+import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
 
 @Parcelize
 data class PlayerSearchModel(
@@ -43,7 +43,9 @@ data class TransfermarktPlayerDetails(
     val nationalityFlag: String? = null,
     val contractExpires: String? = null,
     val marketValue: String? = null,
-    val currentClub: TransfermarktClub? = null
+    val currentClub: TransfermarktClub? = null,
+    val isOnLoan: Boolean = false,
+    val onLoanFromClub: String? = null
 )
 
 class PlayerSearch {
@@ -56,9 +58,10 @@ class PlayerSearch {
             }
 
             try {
+                val encodedQuery = URLEncoder.encode(sanitizedQuery, StandardCharsets.UTF_8.toString())
                 val searchUrl =
-                    "$TRANSFERMARKT_BASE_URL/schnellsuche/ergebnis/schnellsuche?query=$sanitizedQuery"
-                val doc = fetchDocument(searchUrl)
+                    "$TRANSFERMARKT_BASE_URL/schnellsuche/ergebnis/schnellsuche?query=$encodedQuery"
+                val doc = TransfermarktHttp.fetchDocument(searchUrl)
 
                 val playerSection = doc.select("div.box").firstOrNull {
                     it.select("h2.content-box-headline")
@@ -80,13 +83,6 @@ class PlayerSearch {
                 TransfermarktResult.Failed(ex.localizedMessage)
             }
         }
-
-    private fun fetchDocument(url: String): Document {
-        return Jsoup.connect(url)
-            .userAgent(TRANSFERMARKT_USER_AGENT)
-            .timeout(TRANSFERMARKT_TIMEOUT_MS)
-            .get()
-    }
 
     private fun parsePlayerRow(element: Element): PlayerSearchModel? {
         val tdZentriert = element.select("td.zentriert")
@@ -127,7 +123,7 @@ class PlayerSearch {
         withContext(Dispatchers.IO) {
             try {
                 val profileUrl = playerSearchModel.tmProfile.orEmpty()
-                val doc = fetchDocument(profileUrl)
+                val doc = TransfermarktHttp.fetchDocument(profileUrl)
 
                 val nationalityElement = doc.select("[itemprop=nationality] img").firstOrNull()
                 val nationality =
@@ -167,7 +163,6 @@ class PlayerSearch {
                     doc.select("div.data-header__club-info").select("span.data-header__label")
                         .select("img").attr("title")
 
-                // When loading by URL only (e.g. from Releases), search model has no name/image/age — parse from profile page
                 val fullName = playerSearchModel.playerName?.takeIf { it.isNotBlank() }
                     ?: doc.select("h1.data-header__headline").text().trim().takeIf { it.isNotBlank() }
                     ?: doc.select("div.data-header__headline-wrapper h1").text().trim().takeIf { it.isNotBlank() }
@@ -183,6 +178,8 @@ class PlayerSearch {
                         .orEmpty()
                 val nationalityFlag = playerSearchModel.nationalityFlag?.takeIf { it.isNotBlank() }
                     ?: nationalityFlagFromDoc
+
+                val loanInfo = detectLoanStatus(doc, clubName)
 
                 return@withContext TransfermarktPlayerDetails(
                     tmProfile = playerSearchModel.tmProfile,
@@ -200,7 +197,9 @@ class PlayerSearch {
                         clubLogo = clubLogo,
                         clubTmProfile = clubTmProfile,
                         clubCountry = clubCountry
-                    )
+                    ),
+                    isOnLoan = loanInfo.isOnLoan,
+                    onLoanFromClub = loanInfo.onLoanFromClub
                 )
 
             } catch (ex: IOException) {
@@ -213,4 +212,3 @@ class PlayerSearch {
         }
 
 }
-

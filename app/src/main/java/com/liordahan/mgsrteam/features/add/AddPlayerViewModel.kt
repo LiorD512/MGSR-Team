@@ -2,17 +2,16 @@ package com.liordahan.mgsrteam.features.add
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.liordahan.mgsrteam.features.home.models.FeedEvent
 import com.liordahan.mgsrteam.features.login.models.Account
+import com.liordahan.mgsrteam.features.players.models.Club
 import com.liordahan.mgsrteam.features.players.models.Player
 import com.liordahan.mgsrteam.firebase.FirebaseHandler
-import com.liordahan.mgsrteam.features.players.models.Club
 import com.liordahan.mgsrteam.transfermarket.PlayerSearch
 import com.liordahan.mgsrteam.transfermarket.PlayerSearchModel
 import com.liordahan.mgsrteam.transfermarket.TransfermarktPlayerDetails
 import com.liordahan.mgsrteam.transfermarket.TransfermarktResult
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -160,7 +159,9 @@ class AddPlayerViewModel(
                         clubCountry = it.clubCountry
                     )
                 },
-                createdAt = System.currentTimeMillis()
+                createdAt = System.currentTimeMillis(),
+                isOnLoan = details.isOnLoan,
+                onLoanFromClub = details.onLoanFromClub
             )
             _selectedPlayerFlow.update { playerToSave }
             _playerSearchStateFlow.update { it.copy(showPlayerSelectedSearchProgress = false) }
@@ -207,6 +208,17 @@ class AddPlayerViewModel(
                         .addOnSuccessListener {
                             com.liordahan.mgsrteam.analytics.AnalyticsHelper.logAddPlayer()
                             _isPlayerAddedFlow.update { true }
+                            // Write feed event (no push)
+                            firebaseHandler.firebaseStore.collection(firebaseHandler.feedEventsTable).add(
+                                FeedEvent(
+                                    type = FeedEvent.TYPE_PLAYER_ADDED,
+                                    playerName = playerToSave.fullName,
+                                    playerImage = playerToSave.profileImage,
+                                    playerTmProfile = playerToSave.tmProfile,
+                                    timestamp = System.currentTimeMillis(),
+                                    agentName = agentInChargeName
+                                )
+                            )
                         }
                 }
             }

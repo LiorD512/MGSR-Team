@@ -1,63 +1,89 @@
 package com.liordahan.mgsrteam.features.returnee
 
-import android.app.Activity
-import androidx.activity.compose.BackHandler
+import android.net.Uri
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
+import androidx.compose.material3.Icon
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.ModalBottomSheetProperties
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.app.ActivityCompat
 import androidx.navigation.NavController
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.rememberModalBottomSheetState
+import com.liordahan.mgsrteam.R
 import com.liordahan.mgsrteam.features.add.AddPlayerContactFormContent
 import com.liordahan.mgsrteam.features.add.IAddPlayerViewModel
-import com.liordahan.mgsrteam.features.players.ui.EmptyState
-import com.liordahan.mgsrteam.features.players.ui.FilterStripUi
 import com.liordahan.mgsrteam.features.players.models.Position
+import com.liordahan.mgsrteam.features.players.repository.IPlayersRepository
+import com.liordahan.mgsrteam.features.players.ui.EmptyState
 import com.liordahan.mgsrteam.features.releases.ReleaseListItem
+import com.liordahan.mgsrteam.features.releases.RosterTeammateMatch
 import com.liordahan.mgsrteam.features.shortlist.ShortlistRepository
+import com.liordahan.mgsrteam.navigation.Screens
 import com.liordahan.mgsrteam.transfermarket.LatestTransferModel
-import com.liordahan.mgsrteam.ui.theme.contentDefault
-import com.liordahan.mgsrteam.ui.theme.dividerColor
-import com.liordahan.mgsrteam.ui.utils.ProgressIndicator
+import com.liordahan.mgsrteam.transfermarket.TeammatesFetcher
+import com.liordahan.mgsrteam.transfermarket.TransfermarktResult
+import com.liordahan.mgsrteam.ui.components.DarkSystemBarsForBottomSheet
+import com.liordahan.mgsrteam.ui.theme.HomeDarkBackground
+import com.liordahan.mgsrteam.ui.theme.HomeDarkCard
+import com.liordahan.mgsrteam.ui.theme.HomeDarkCardBorder
+import com.liordahan.mgsrteam.ui.theme.HomeGreenAccent
+import com.liordahan.mgsrteam.ui.theme.HomeTealAccent
+import com.liordahan.mgsrteam.ui.theme.HomeTextPrimary
+import com.liordahan.mgsrteam.ui.theme.HomeTextSecondary
 import com.liordahan.mgsrteam.ui.utils.boldTextStyle
+import com.liordahan.mgsrteam.ui.utils.clickWithNoRipple
 import com.liordahan.mgsrteam.ui.utils.regularTextStyle
+import com.liordahan.mgsrteam.utils.extractPlayerIdFromUrl
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.koinInject
-import androidx.compose.runtime.rememberCoroutineScope
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -65,11 +91,18 @@ fun ReturneeScreen(
     navController: NavController,
     viewModel: IReturneeViewModel = koinViewModel(),
     addPlayerViewModel: IAddPlayerViewModel = koinViewModel(),
-    shortlistRepository: ShortlistRepository = koinInject()
+    shortlistRepository: ShortlistRepository = koinInject(),
+    playersRepository: IPlayersRepository = koinInject(),
+    teammatesFetcher: TeammatesFetcher = koinInject()
 ) {
 
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+
+    val rosterPlayers by playersRepository.playersFlow().collectAsState(initial = emptyList())
+    var expandedPlayerUrl by remember { mutableStateOf<String?>(null) }
+    var teammatesCache by remember { mutableStateOf<Map<String, List<RosterTeammateMatch>>>(emptyMap()) }
+    var loadingPlayerUrl by remember { mutableStateOf<String?>(null) }
 
     val returneeState by viewModel.returneeFlow.collectAsState()
     val visibleReturneeList = returneeState.visibleList
@@ -93,14 +126,17 @@ fun ReturneeScreen(
     val state = rememberLazyListState()
 
     // Track shortlist status
-    val shortlistEntries by shortlistRepository.getShortlistFlow().collectAsState(initial = emptyList())
+    val shortlistEntries by shortlistRepository.getShortlistFlow()
+        .collectAsState(initial = emptyList())
     val shortlistUrls = remember(shortlistEntries) {
         shortlistEntries.map { it.tmProfileUrl }.toSet()
     }
     var justAddedUrls by remember { mutableStateOf(setOf<String>()) }
+    val shortlistPendingUrls by shortlistRepository.getShortlistPendingUrlsFlow()
+        .collectAsState(initial = emptySet())
 
-    BackHandler {
-        ActivityCompat.finishAffinity(context as Activity)
+    val shortlistedCount = remember(originalReturneeList, shortlistUrls, justAddedUrls) {
+        originalReturneeList.count { it.playerUrl in shortlistUrls || it.playerUrl in justAddedUrls }
     }
 
     LaunchedEffect(Unit) {
@@ -121,125 +157,156 @@ fun ReturneeScreen(
         }
     }
 
-
-    Scaffold(
-        modifier = Modifier.fillMaxSize(),
-        containerColor = Color.White,
-        topBar = {
-            ReturneeTopBar()
-        },
-    ) { paddingValues ->
-
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-        ) {
-            // Show progress bar while still loading, even when results are already showing
-            if (isLoading && visibleReturneeList.isEmpty()) {
-                Box(modifier = Modifier.fillMaxSize()) {
-                    Column(
-                        modifier = Modifier.align(Alignment.Center),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        ProgressIndicator(modifier = Modifier)
-                        if (totalCount > 0) {
-                            Text(
-                                text = "Loading leagues ($loadedCount/$totalCount)...",
-                                style = regularTextStyle(contentDefault, 12.sp),
-                                modifier = Modifier.padding(top = 12.dp)
-                            )
-                        }
+    LaunchedEffect(expandedPlayerUrl) {
+        val url = expandedPlayerUrl ?: return@LaunchedEffect
+        if (url in teammatesCache) return@LaunchedEffect
+        loadingPlayerUrl = url
+        when (val result = teammatesFetcher.fetchTeammates(url)) {
+            is TransfermarktResult.Success -> {
+                val rosterIds = rosterPlayers.mapNotNull { extractPlayerIdFromUrl(it.tmProfile) }.toSet()
+                val matches = result.data
+                    .filter { teammate -> extractPlayerIdFromUrl(teammate.tmProfileUrl) in rosterIds }
+                    .mapNotNull { teammate ->
+                        val id = extractPlayerIdFromUrl(teammate.tmProfileUrl) ?: return@mapNotNull null
+                        rosterPlayers.firstOrNull { extractPlayerIdFromUrl(it.tmProfile) == id }
+                            ?.let { RosterTeammateMatch(it, teammate.matchesPlayedTogether) }
                     }
-                    return@Column
+                    .sortedByDescending { it.matchesPlayedTogether }
+                teammatesCache = teammatesCache + (url to matches)
+            }
+            is TransfermarktResult.Failed -> {
+                teammatesCache = teammatesCache + (url to emptyList())
+            }
+        }
+        loadingPlayerUrl = null
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(HomeDarkBackground)
+    ) {
+        Column(
+            modifier = Modifier.fillMaxSize()
+        ) {
+            // Header (same position/style as Releases)
+            ReturneesHeader(onBackClicked = { navController.popBackStack() })
+
+            // Stats Strip (same structure as Releases)
+            ReturneesStatsStrip(
+                total = originalReturneeList.size,
+                shortlisted = shortlistedCount,
+                leaguesLoaded = "$loadedCount/$totalCount"
+            )
+
+            // Position Filter Chips (same as Releases)
+            ReturneesPositionChips(
+                positionList = positionList,
+                selectedPosition = selectedPosition,
+                originalReturneeList = originalReturneeList,
+                onPositionClicked = {
+                    selectedPosition = if (selectedPosition == it) null else it
+                    viewModel.updateSelectedPosition(selectedPosition)
+                },
+                onAllClicked = {
+                    selectedPosition = null
+                    viewModel.updateSelectedPosition(null)
                 }
+            )
+
+            // Empty state when no returnees
+            if (visibleReturneeList.isEmpty() && !isLoading) {
+                EmptyState(
+                    text = stringResource(R.string.returnee_no_found),
+                    showResetFiltersButton = selectedPosition != null,
+                    onResetFiltersClicked = {
+                        selectedPosition = null
+                        viewModel.updateSelectedPosition(null)
+                    }
+                )
+                return@Column
             }
 
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 state = state,
                 contentPadding = PaddingValues(
-                    top = 24.dp,
+                    top = 16.dp,
                     bottom = 100.dp,
-                    start = 12.dp,
-                    end = 12.dp
+                    start = 16.dp,
+                    end = 16.dp
                 ),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                item {
-                    val positionCounts = remember(originalReturneeList) {
-                        positionList.associateWith { position ->
-                            originalReturneeList.count { player ->
-                                player.playerPosition?.equals(position.name) == true
-                            }
-                        }
-                    }
-
-                    FilterStripUi(
-                        positions = positionList,
-                        selectedPosition = selectedPosition,
-                        playerList = originalReturneeList,
-                        onPositionClicked = {
-                            selectedPosition = if (selectedPosition == it) {
-                                null
-                            } else {
-                                it
-                            }
-                            viewModel.updateSelectedPosition(selectedPosition)
-                        }
-                    )
-                }
-
-                item {
-                    HorizontalDivider(
-                        thickness = 1.dp,
-                        color = dividerColor,
-                        modifier = Modifier.padding(bottom = 16.dp)
-                    )
-                }
-
-                // Show inline loading indicator when results are showing but still loading more leagues
-                if (isLoading && visibleReturneeList.isNotEmpty()) {
+                // Inline loading when results showing but still loading more leagues
+                if (isLoading) {
                     item {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(bottom = 8.dp),
+                                .padding(bottom = 8.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(HomeDarkCard)
+                                .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(12.dp))
+                                .padding(horizontal = 16.dp, vertical = 10.dp),
                             horizontalArrangement = Arrangement.Center,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             CircularProgressIndicator(
                                 modifier = Modifier.size(16.dp),
                                 strokeWidth = 2.dp,
-                                color = contentDefault
+                                color = HomeTealAccent
                             )
                             Text(
-                                text = "Loading ($loadedCount/$totalCount leagues)... ${visibleReturneeList.size} players found",
-                                style = regularTextStyle(contentDefault, 12.sp),
+                                text = stringResource(R.string.returnee_loading, loadedCount, totalCount),
+                                style = regularTextStyle(HomeTextSecondary, 12.sp),
                                 modifier = Modifier.padding(start = 8.dp)
                             )
                         }
                     }
                 }
 
-                items(visibleReturneeList) {
+                items(visibleReturneeList, key = { it.playerUrl ?: it.hashCode() }) { release ->
+                    val playerUrl = release.playerUrl
+                    val isExpanded = playerUrl != null && expandedPlayerUrl == playerUrl
+                    val rosterTeammates = playerUrl?.let { teammatesCache[it] }
+                    val isLoadingTeammates = playerUrl != null && loadingPlayerUrl == playerUrl
                     ReleaseListItem(
                         context = context,
-                        release = it,
+                        release = release,
                         isFromReturnee = true,
+                        rosterTeammates = rosterTeammates,
+                        isLoadingTeammates = isLoadingTeammates,
+                        isTeammatesExpanded = isExpanded,
+                        onToggleTeammatesExpand = {
+                            expandedPlayerUrl = if (isExpanded) null else playerUrl
+                        },
+                        onRosterTeammateClick = { player ->
+                            player.tmProfile?.let { profile ->
+                                navController.navigate("${Screens.PlayerInfoScreen.route}/${Uri.encode(profile)}")
+                            }
+                        },
                         onAddToAgencyClicked = { url ->
                             addPlayerTmUrl = url
                             showAddPlayerBottomSheet = true
                         },
-                        onAddToShortlistClicked = { url ->
+                        onAddToShortlistClicked = { r ->
                             scope.launch {
-                                shortlistRepository.addToShortlist(url)
-                                justAddedUrls = justAddedUrls + url
+                                val url = r.playerUrl ?: return@launch
+                                val isInShortlist = url in shortlistUrls || url in justAddedUrls
+                                if (isInShortlist) {
+                                    shortlistRepository.removeFromShortlist(url)
+                                    justAddedUrls = justAddedUrls - url
+                                } else {
+                                    shortlistRepository.addToShortlist(r)
+                                    justAddedUrls = justAddedUrls + url
+                                }
                             }
                         },
                         isInShortlist = { url ->
                             url in shortlistUrls || url in justAddedUrls
-                        }
+                        },
+                        isShortlistPending = (playerUrl != null && playerUrl in shortlistPendingUrls)
                     )
                 }
             }
@@ -253,10 +320,15 @@ fun ReturneeScreen(
                         addPlayerViewModel.resetAfterAdd()
                     },
                     sheetState = sheetState,
-                    containerColor = Color.White,
-                    shape = RoundedCornerShape(16.dp),
-                    tonalElevation = 8.dp
+                    containerColor = HomeDarkCard,
+                    shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
+                    tonalElevation = 8.dp,
+                    properties = ModalBottomSheetProperties(
+                        isAppearanceLightStatusBars = true,
+                        isAppearanceLightNavigationBars = true
+                    )
                 ) {
+                    DarkSystemBarsForBottomSheet()
                     when {
                         addPlayerState.value.showPlayerSelectedSearchProgress && selectedPlayer == null -> {
                             Box(
@@ -265,19 +337,21 @@ fun ReturneeScreen(
                                     .padding(32.dp),
                                 contentAlignment = Alignment.Center
                             ) {
-                                CircularProgressIndicator(color = contentDefault)
+                                CircularProgressIndicator(color = HomeTealAccent)
                             }
                         }
+
                         selectedPlayer != null -> {
                             AddPlayerContactFormContent(
                                 context = context,
                                 viewModel = addPlayerViewModel
                             )
                         }
+
                         else -> {
                             Text(
-                                text = "Could not load player. They may already be in your roster.",
-                                style = regularTextStyle(contentDefault, 14.sp),
+                                text = stringResource(R.string.shortlist_could_not_load),
+                                style = regularTextStyle(HomeTextSecondary, 14.sp),
                                 modifier = Modifier.padding(24.dp)
                             )
                         }
@@ -286,31 +360,232 @@ fun ReturneeScreen(
             }
         }
     }
-
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+// ═════════════════════════════════════════════════════════════════════════════
+//  HEADER (same position and style as Releases)
+// ═════════════════════════════════════════════════════════════════════════════
+
 @Composable
-fun ReturneeTopBar() {
-    Surface(shadowElevation = 12.dp, color = Color.White) {
-        TopAppBar(
-            title = {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 12.dp)
-                ) {
+private fun ReturneesHeader(onBackClicked: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 20.dp, end = 12.dp, top = 48.dp, bottom = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+            contentDescription = null,
+            tint = HomeTextSecondary,
+            modifier = Modifier
+                .size(24.dp)
+                .clickWithNoRipple { onBackClicked() }
+        )
+        Spacer(modifier = Modifier.width(8.dp))
 
-                    Text(
-                        text = "Returnees",
-                        style = boldTextStyle(contentDefault, 21.sp),
-                        modifier = Modifier.weight(1f)
-                    )
+        Column(
+            modifier = Modifier
+                .weight(1f)
+        ) {
+            Text(
+                text = stringResource(R.string.returnee_title),
+                style = boldTextStyle(HomeTextPrimary, 26.sp)
+            )
+            Text(
+                text = stringResource(R.string.returnee_subtitle),
+                style = regularTextStyle(HomeTextSecondary, 13.sp),
+                modifier = Modifier.padding(top = 4.dp)
+            )
+        }
+    }
+}
 
-                }
-            },
-            colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White),
+// ═════════════════════════════════════════════════════════════════════════════
+//  STATS STRIP (same structure as Releases)
+// ═════════════════════════════════════════════════════════════════════════════
+
+@Composable
+private fun ReturneesStatsStrip(total: Int, shortlisted: Int, leaguesLoaded: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(HomeDarkCard)
+            .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(16.dp)),
+        horizontalArrangement = Arrangement.SpaceEvenly
+    ) {
+        ReturneesStatItem(
+            value = total.toString(),
+            label = stringResource(R.string.players_stat_total),
+            accentColor = HomeTealAccent,
+            modifier = Modifier.weight(1f)
+        )
+        ReturneesStatsStripDivider()
+        ReturneesStatItem(
+            value = shortlisted.toString(),
+            label = stringResource(R.string.releases_stat_shortlisted),
+            accentColor = HomeGreenAccent,
+            modifier = Modifier.weight(1f)
+        )
+        ReturneesStatsStripDivider()
+        ReturneesStatItem(
+            value = leaguesLoaded,
+            label = stringResource(R.string.returnee_stat_leagues),
+            accentColor = HomeTealAccent,
+            modifier = Modifier.weight(1f)
         )
     }
 }
 
+@Composable
+private fun ReturneesStatsStripDivider() {
+    Box(
+        modifier = Modifier
+            .width(1.dp)
+            .height(40.dp)
+            .padding(vertical = 4.dp)
+            .background(HomeDarkCardBorder)
+    )
+}
+
+@Composable
+private fun ReturneesStatItem(
+    value: String,
+    label: String,
+    accentColor: Color,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier.padding(vertical = 10.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Box(
+            modifier = Modifier
+                .size(6.dp)
+                .clip(CircleShape)
+                .background(accentColor)
+        )
+        Spacer(Modifier.height(4.dp))
+        Text(
+            text = value,
+            style = boldTextStyle(HomeTextPrimary, 18.sp)
+        )
+        Text(
+            text = label,
+            style = regularTextStyle(HomeTextSecondary, 9.sp)
+        )
+    }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+//  POSITION FILTER CHIPS (same as Releases)
+// ═════════════════════════════════════════════════════════════════════════════
+
+@Composable
+private fun ReturneesPositionChips(
+    positionList: List<Position>,
+    selectedPosition: Position?,
+    originalReturneeList: List<LatestTransferModel>,
+    onPositionClicked: (Position) -> Unit,
+    onAllClicked: () -> Unit
+) {
+    val scrollState = rememberScrollState()
+    val totalCount = originalReturneeList.size
+    val isAllSelected = selectedPosition == null
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 4.dp)
+                .horizontalScroll(scrollState),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.Bottom
+        ) {
+            ReturneesChipWithLine(
+                text = stringResource(R.string.returnee_all_count, totalCount),
+                isSelected = isAllSelected,
+                isDisabled = false,
+                onClick = onAllClicked
+            )
+
+            positionList.forEach { position ->
+                val count =
+                    originalReturneeList.count { it.playerPosition?.equals(position.name) == true }
+                val isSelected = selectedPosition == position
+                val isDisabled = count == 0
+                val positionName = position.name ?: ""
+
+                ReturneesChipWithLine(
+                    text = if (count > 0) "$positionName $count" else positionName,
+                    isSelected = isSelected,
+                    isDisabled = isDisabled,
+                    onClick = { if (!isDisabled) onPositionClicked(position) }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ReturneesChipWithLine(
+    text: String,
+    isSelected: Boolean,
+    isDisabled: Boolean,
+    onClick: () -> Unit
+) {
+    val bgColor by animateColorAsState(
+        targetValue = when {
+            isDisabled -> Color.Transparent
+            isSelected -> HomeTealAccent
+            else -> Color.Transparent
+        },
+        animationSpec = tween(280),
+        label = "chipBg"
+    )
+    val textColor = when {
+        isDisabled -> HomeTextSecondary.copy(alpha = 0.5f)
+        isSelected -> HomeDarkBackground
+        else -> HomeTextSecondary
+    }
+    val borderColor = when {
+        isDisabled -> HomeDarkCardBorder.copy(alpha = 0.5f)
+        isSelected -> HomeTealAccent
+        else -> HomeDarkCardBorder
+    }
+
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.padding(bottom = 4.dp)
+    ) {
+        Text(
+            text = text,
+            style = boldTextStyle(textColor, 11.sp),
+            modifier = Modifier
+                .clip(RoundedCornerShape(20.dp))
+                .background(bgColor)
+                .border(1.dp, borderColor, RoundedCornerShape(20.dp))
+                .then(
+                    if (isDisabled) Modifier
+                    else Modifier.clickWithNoRipple(onClick = onClick)
+                )
+                .padding(horizontal = 14.dp, vertical = 5.dp)
+        )
+        AnimatedVisibility(
+            visible = isSelected,
+            enter = fadeIn(tween(280)) + expandVertically(animationSpec = tween(280)),
+            exit = fadeOut(tween(280)) + shrinkVertically(animationSpec = tween(280))
+        ) {
+            Box(
+                modifier = Modifier
+                    .padding(top = 4.dp)
+                    .width(40.dp)
+                    .height(3.dp)
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(HomeTealAccent)
+            )
+        }
+    }
+}

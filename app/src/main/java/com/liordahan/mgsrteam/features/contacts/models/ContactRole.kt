@@ -8,7 +8,11 @@ enum class ContactRole(val displayName: String) {
     CEO("CEO"),
     BOARD_MEMBER("Board Member"),
     PRESIDENT("President"),
-    SCOUT("Scout");
+    SCOUT("Scout"),
+    // Agency-specific roles
+    AGENT("Agent"),
+    INTERMEDIARY("Intermediary"),
+    AGENCY_DIRECTOR("Agency Director");
 
     companion object {
         fun fromString(value: String?): ContactRole? = entries.find {

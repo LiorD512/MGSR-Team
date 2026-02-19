@@ -1,9 +1,8 @@
 package com.liordahan.mgsrteam.transfermarket
 
+import android.net.Network
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import org.jsoup.Jsoup
-import org.jsoup.nodes.Document
 
 data class PlayerToUpdateValues(
     val marketValue: String?,
@@ -14,17 +13,35 @@ data class PlayerToUpdateValues(
     val contract: String?,
     val positions: List<String?>?,
     val currentClub: TransfermarktClub?,
+    val isOnLoan: Boolean = false,
+    val onLoanFromClub: String? = null,
+    val foot: String? = null,
+    val agency: String? = null,
+    val agencyUrl: String? = null,
+    val instagramProfile: String? = null
 )
 
 class PlayersUpdate {
 
-    suspend fun updatePlayerByTmProfile(tmProfile: String?): TransfermarktResult<PlayerToUpdateValues?> =
+    /**
+     * @param network optional [Network] to route the request through (for IP rotation).
+     *                When non-null the request is opened via [Network.openConnection] so it
+     *                travels over that specific interface (WiFi / Cellular).
+     */
+    suspend fun updatePlayerByTmProfile(
+        tmProfile: String?,
+        network: Network? = null
+    ): TransfermarktResult<PlayerToUpdateValues?> =
         withContext(Dispatchers.IO) {
             val profileUrl = tmProfile?.trim()
                 ?: return@withContext TransfermarktResult.Failed("Profile URL is null or blank")
 
             return@withContext try {
-                val doc = fetchDocument(profileUrl)
+                val doc = if (network != null) {
+                    TransfermarktHttp.fetchDocument(profileUrl, network)
+                } else {
+                    TransfermarktHttp.fetchDocument(profileUrl)
+                }
 
                 val nationalityElement = doc.select("[itemprop=nationality] img").firstOrNull()
                 val citizenship = nationalityElement?.attr("title").orEmpty()
@@ -101,6 +118,43 @@ class PlayersUpdate {
                     clubCountry = clubCountry
                 )
 
+                val loanInfo = detectLoanStatus(doc, clubName)
+
+                val instagramLink = doc.select("a[href*=\"instagram.com\"]").firstOrNull()
+                    ?.attr("href")
+                    ?.takeIf { it.isNotBlank() }
+                    ?.let { href ->
+                        href.trim().removeSuffix("/")
+                            .replace("http://", "https://")
+                            .let { n -> if (n.startsWith("http")) n else "https://$n" }
+                    }
+
+                val infoLabels = doc.select("span.info-table__content--regular")
+                var foot: String? = null
+                var agency: String? = null
+                var agencyUrl: String? = null
+
+                for (label in infoLabels) {
+                    val labelText = label.text().trim().lowercase()
+                    val valueSpan = label.nextElementSibling() ?: continue
+
+                    when {
+                        labelText.contains("foot") -> {
+                            foot = valueSpan.text().trim().takeIf { it.isNotBlank() }
+                        }
+                        labelText.contains("player agent") || labelText.contains("agent") -> {
+                            val link = valueSpan.selectFirst("a")
+                            agency = link?.text()?.trim()?.takeIf { it.isNotBlank() }
+                                ?: valueSpan.text().trim().takeIf { it.isNotBlank() }
+                            val href = link?.attr("href")
+                            if (!href.isNullOrBlank()) {
+                                agencyUrl = if (href.startsWith("http")) href
+                                else TRANSFERMARKT_BASE_URL + href
+                            }
+                        }
+                    }
+                }
+
                 TransfermarktResult.Success(
                     PlayerToUpdateValues(
                         marketValue = marketValue,
@@ -110,19 +164,17 @@ class PlayersUpdate {
                         age = age,
                         contract = contract,
                         positions = positionsList,
-                        currentClub = club
+                        currentClub = club,
+                        isOnLoan = loanInfo.isOnLoan,
+                        onLoanFromClub = loanInfo.onLoanFromClub,
+                        foot = foot,
+                        agency = agency,
+                        agencyUrl = agencyUrl,
+                        instagramProfile = instagramLink
                     )
                 )
             } catch (ex: Exception) {
                 TransfermarktResult.Failed(ex.localizedMessage ?: "Unknown error")
             }
         }
-
-    private fun fetchDocument(url: String): Document {
-        return Jsoup.connect(url)
-            .userAgent(TRANSFERMARKT_USER_AGENT)
-            .timeout(TRANSFERMARKT_TIMEOUT_MS)
-            .get()
-    }
 }
-
