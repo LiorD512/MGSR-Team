@@ -25,6 +25,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withContext
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeParseException
@@ -98,6 +99,8 @@ enum class FeedFilter(@param:StringRes val labelRes: Int) {
 
 abstract class IHomeScreenViewModel : ViewModel() {
     abstract val dashboardState: StateFlow<HomeDashboardState>
+    /** Checks if player exists in DB; calls onResult(true) if exists, onResult(false) if deleted. */
+    abstract fun checkPlayerExists(tmProfile: String, onResult: (Boolean) -> Unit)
     abstract fun selectFeedFilter(filter: FeedFilter)
     abstract fun toggleAgentExpanded(agentId: String)
     abstract fun toggleTaskCompleted(task: AgentTask)
@@ -137,6 +140,16 @@ class HomeScreenViewModel(
         super.onCleared()
         listenerRegistrations.forEach { it.remove() }
         listenerRegistrations.clear()
+    }
+
+    override fun checkPlayerExists(tmProfile: String, onResult: (Boolean) -> Unit) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val exists = try {
+                firebaseHandler.firebaseStore.collection(firebaseHandler.playersTable)
+                    .whereEqualTo("tmProfile", tmProfile).get().await().documents.isNotEmpty()
+            } catch (_: Exception) { false }
+            withContext(Dispatchers.Main) { onResult(exists) }
+        }
     }
 
     // ── Greeting ─────────────────────────────────────────────────────────────

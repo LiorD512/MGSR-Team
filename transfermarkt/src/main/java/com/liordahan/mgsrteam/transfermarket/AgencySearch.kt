@@ -24,13 +24,112 @@ class AgencySearch {
 
     /**
      * Search by person name - Transfermarkt may return their agency in the agents section.
-     * E.g. "Jonathan Barnett" can match Stellar Group. Returns first agency result if any.
+     * When multiple agencies match, fetches each page and returns the one where the person
+     * is actually listed in Staff. E.g. "Boris Laval" matches 2SAgency (not Gold Players S.A.).
      */
     suspend fun searchAgencyByPersonName(personName: String): AgencySearchModel? =
         withContext(Dispatchers.IO) {
             when (val results = getAgencySearchResults(personName)) {
-                is TransfermarktResult.Success -> results.data.firstOrNull()
+                is TransfermarktResult.Success -> {
+                    val agencies = results.data
+                    if (agencies.isEmpty()) return@withContext null
+                    if (agencies.size == 1) return@withContext agencies.first()
+
+                    // Multiple agencies: pick the one where person is in staff
+                    agencies.firstOrNull { agency ->
+                        agency.agencyUrl?.let { url ->
+                            isPersonInAgencyStaff(personName, url)
+                        } ?: false
+                    } ?: agencies.firstOrNull()
+                }
                 is TransfermarktResult.Failed -> null
+            }
+        }
+
+    /**
+     * Fetches an agency page and checks if the person name appears in the Staff section.
+     */
+    suspend fun isPersonInAgencyStaff(personName: String, agencyUrl: String): Boolean =
+        withContext(Dispatchers.IO) {
+            fetchAgencyPageStaffNames(agencyUrl).any { staffName ->
+                namesMatch(personName, staffName)
+            }
+        }
+
+    private fun namesMatch(a: String, b: String): Boolean {
+        val sa = a.trim().lowercase().replace(Regex("\\s+"), " ")
+        val sb = b.trim().lowercase().replace(Regex("\\s+"), " ")
+        if (sa == sb) return true
+        if (sa.isEmpty() || sb.isEmpty()) return false
+        val wordsA = sa.split(" ").filter { it.length > 1 }
+        val wordsB = sb.split(" ").filter { it.length > 1 }
+        if (wordsA.isEmpty() || wordsB.isEmpty()) {
+            return sa in sb || sb in sa || levenshteinSimilarity(sa, sb) >= 0.9f
+        }
+        val lastA = wordsA.lastOrNull() ?: ""
+        val lastB = wordsB.lastOrNull() ?: ""
+        if (lastA != lastB && levenshteinSimilarity(lastA, lastB) < 0.9f) return false
+        return levenshteinSimilarity(sa, sb) >= 0.9f
+    }
+
+    private fun levenshteinSimilarity(s1: String, s2: String): Float {
+        val d = levenshteinDistance(s1, s2)
+        return 1f - d.toFloat() / maxOf(s1.length, s2.length, 1)
+    }
+
+    private fun levenshteinDistance(s1: String, s2: String): Int {
+        val len1 = s1.length
+        val len2 = s2.length
+        val dp = Array(len1 + 1) { IntArray(len2 + 1) }
+        for (i in 0..len1) dp[i][0] = i
+        for (j in 0..len2) dp[0][j] = j
+        for (i in 1..len1) {
+            for (j in 1..len2) {
+                val cost = if (s1[i - 1] == s2[j - 1]) 0 else 1
+                dp[i][j] = minOf(dp[i - 1][j] + 1, dp[i][j - 1] + 1, dp[i - 1][j - 1] + cost)
+            }
+        }
+        return dp[len1][len2]
+    }
+
+    /**
+     * Fetches an agency (beraterfirma) page and extracts staff/agent names from the Staff section.
+     */
+    suspend fun fetchAgencyPageStaffNames(agencyUrl: String): List<String> =
+        withContext(Dispatchers.IO) {
+            try {
+                val doc = TransfermarktHttp.fetchDocument(agencyUrl)
+                val staffNames = mutableListOf<String>()
+
+                // Staff section: table with agent names (e.g. "Boris Laval", "Arnaud Vaillant")
+                doc.select("div.box").forEach { box ->
+                    val headline = box.select("h2.content-box-headline").text().lowercase()
+                    if (headline.contains("staff") || headline.contains("berater") ||
+                        headline.contains("agent") || headline.contains("mitarbeiter")
+                    ) {
+                        box.select("table.items tr.odd, table.items tr.even").forEach { row ->
+                            val nameCell = row.select("td.hauptlink a").firstOrNull()
+                                ?: row.select("td.hauptlink").firstOrNull()
+                                ?: row.select("td a").firstOrNull()
+                            val name = nameCell?.text()?.trim()?.takeIf { it.isNotBlank() }
+                            if (name != null && name.length > 2) staffNames.add(name)
+                        }
+                    }
+                }
+
+                // Fallback: agent/berater profile links anywhere on agency page
+                if (staffNames.isEmpty()) {
+                    doc.select("a[href*='/profil/berater/'], a[href*='beraterfirma']").forEach { link ->
+                        val name = link.text().trim().takeIf { it.isNotBlank() && it.length > 2 }
+                        if (name != null && !link.attr("href").contains("/beraterfirma/berater/")) {
+                            staffNames.add(name)
+                        }
+                    }
+                }
+
+                staffNames.distinct()
+            } catch (e: Exception) {
+                emptyList()
             }
         }
 

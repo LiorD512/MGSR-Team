@@ -44,5 +44,7 @@ data class FeedEvent(
         const val TYPE_REQUEST_ADDED = "REQUEST_ADDED"
         /** Club request was deleted. No push notification. */
         const val TYPE_REQUEST_DELETED = "REQUEST_DELETED"
+        /** Club contact left their club (moved to new club or is without club). */
+        const val TYPE_CLUB_CONTACT_LEFT = "CLUB_CONTACT_LEFT"
     }
 }

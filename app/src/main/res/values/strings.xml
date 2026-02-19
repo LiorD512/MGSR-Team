@@ -383,7 +383,7 @@
     <string name="requests_matching_players">%d matching players</string>
     <string name="requests_find_players">Find players</string>
     <string name="requests_find_players_sheet_title">Players for this request</string>
-    <string name="requests_find_players_online">Find players online</string>
+    <string name="requests_find_players_online">Find players using AI Scout</string>
     <string name="requests_online_players_sheet_title">Players from the market</string>
     <string name="requests_online_players_loading">AI Scout searching…</string>
     <string name="requests_online_players_empty">No matching players found online</string>
@@ -484,9 +484,11 @@
     <string name="contacts_role_optional">What is their role? (optional)</string>
     <string name="contacts_search_for_club">Search for club</string>
     <string name="contacts_club_import_only_hint">Import from your phone contacts. We\'ll search the web to find their club and role, then link to Transfermarkt.</string>
+    <string name="contacts_club_discovery_section">Club &amp; role</string>
     <string name="contacts_club_searching_web">Searching web for club and role…</string>
     <string name="contacts_club_found_on_tm">Found on Transfermarkt</string>
     <string name="contacts_club_search_manually">Search club manually</string>
+    <string name="contacts_club_not_correct">Not the right club?</string>
     <string name="contacts_try_again">Try again</string>
     <string name="contacts_duplicate_phone_error">A contact with this phone number already exists</string>
     <string name="contacts_or_enter_manually">— or enter manually —</string>
@@ -517,6 +519,7 @@
     <string name="contacts_step_agency">Agency</string>
     <string name="contacts_agency_search_hint">Enter agency name</string>
     <string name="contacts_agency_import_only_hint">Import from your phone contacts. We\'ll search the web to find their agency and link it to Transfermarkt.</string>
+    <string name="contacts_agency_discovery_section">Agency</string>
     <string name="contacts_agency_discovering">Contact info</string>
     <string name="contacts_agency_searching_web">Searching web for agency…</string>
     <string name="contacts_agency_found_on_tm">Found on Transfermarkt</string>

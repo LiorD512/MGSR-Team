@@ -2023,6 +2023,7 @@ private fun AddEditContactBottomSheet(
                                 clubSearchResults = emptyList()
                             },
                             onChangeClub = {
+                                showManualClubSearch = true
                                 selectedClub = null
                                 clubSearchQuery = ""
                                 clubSearchResults = emptyList()
@@ -2430,7 +2431,11 @@ private fun Step1ClubContentAdd(
         Text(
             text = stringResource(R.string.contacts_club_import_only_hint),
             style = regularTextStyle(HomeTextSecondary, 11.sp),
-            modifier = Modifier.padding(bottom = 12.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 12.dp),
+            maxLines = 4,
+            overflow = TextOverflow.Ellipsis
         )
         OutlinedCard(
             onClick = onPickContact,
@@ -2459,7 +2464,7 @@ private fun Step1ClubContentAdd(
         if (pickedName.isNotBlank() || pickedPhone.isNotBlank()) {
             Spacer(Modifier.height(12.dp))
             Text(
-                text = stringResource(R.string.contacts_agency_discovering),
+                text = stringResource(R.string.contacts_club_discovery_section),
                 style = regularTextStyle(HomeTextSecondary, 12.sp),
                 modifier = Modifier.padding(bottom = 8.dp)
             )
@@ -2480,43 +2485,63 @@ private fun Step1ClubContentAdd(
                     )
                 }
             } else if (selectedClub != null) {
-                Row(
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(10.dp))
                         .background(HomeDarkBackground)
                         .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(10.dp))
-                        .padding(12.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                        .padding(12.dp)
                 ) {
-                    selectedClub.clubLogo?.let { logo ->
-                        AsyncImage(
-                            model = logo,
-                            contentDescription = null,
-                            modifier = Modifier.size(28.dp),
-                            contentScale = ContentScale.Fit
-                        )
-                        Spacer(Modifier.width(10.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        selectedClub.clubLogo?.let { logo ->
+                            AsyncImage(
+                                model = logo,
+                                contentDescription = null,
+                                modifier = Modifier.size(28.dp),
+                                contentScale = ContentScale.Fit
+                            )
+                            Spacer(Modifier.width(10.dp))
+                        }
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = selectedClub.clubName ?: "",
+                                style = boldTextStyle(HomeTextPrimary, 14.sp),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Text(
+                                text = getRoleDisplayLabel(selectedRole),
+                                style = regularTextStyle(HomeTextSecondary, 11.sp)
+                            )
+                            Text(
+                                text = selectedClub.clubCountry?.let { c ->
+                                    stringResource(R.string.contacts_club_found_on_tm) + " • $c"
+                                } ?: stringResource(R.string.contacts_club_found_on_tm),
+                                style = regularTextStyle(HomeTealAccent, 11.sp)
+                            )
+                        }
                     }
-                    Column(Modifier.weight(1f)) {
-                        Text(
-                            text = selectedClub.clubName ?: "",
-                            style = boldTextStyle(HomeTextPrimary, 14.sp)
-                        )
-                        Text(
-                            text = getRoleDisplayLabel(selectedRole),
-                            style = regularTextStyle(HomeTextSecondary, 11.sp)
-                        )
-                        Text(
-                            text = selectedClub.clubCountry?.let { c ->
-                                stringResource(R.string.contacts_club_found_on_tm) + " • $c"
-                            } ?: stringResource(R.string.contacts_club_found_on_tm),
-                            style = regularTextStyle(HomeTealAccent, 11.sp)
-                        )
-                    }
-                    if (showManualClubSearch) {
-                        TextButton(onClick = onChangeClub) {
-                            Text(stringResource(R.string.contacts_change), style = regularTextStyle(HomeTealAccent, 12.sp))
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        TextButton(
+                            onClick = onChangeClub,
+                            modifier = Modifier.height(48.dp)
+                        ) {
+                            Text(stringResource(R.string.contacts_club_not_correct), style = regularTextStyle(HomeTealAccent, 12.sp))
+                        }
+                        TextButton(
+                            onClick = onTryAgain,
+                            modifier = Modifier.height(48.dp)
+                        ) {
+                            Text(stringResource(R.string.contacts_try_again), style = regularTextStyle(HomeTealAccent, 12.sp))
                         }
                     }
                 }
@@ -2744,7 +2769,11 @@ private fun Step1AgencyContent(
         Text(
             text = stringResource(R.string.contacts_agency_import_only_hint),
             style = regularTextStyle(HomeTextSecondary, 11.sp),
-            modifier = Modifier.padding(bottom = 12.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 12.dp),
+            maxLines = 4,
+            overflow = TextOverflow.Ellipsis
         )
         OutlinedCard(
             onClick = onPickContact,
@@ -2770,14 +2799,17 @@ private fun Step1AgencyContent(
                 )
             }
         }
-        Spacer(Modifier.height(16.dp))
-        AddContactTextField(
-            label = stringResource(R.string.contacts_label_name),
-            value = pickedName,
-            onValueChange = onNameChange,
-            placeholder = stringResource(R.string.contacts_placeholder_name),
-            modifier = Modifier.fillMaxWidth()
-        )
+        if (pickedName.isNotBlank() || isEdit) {
+            Spacer(Modifier.height(12.dp))
+            AddContactTextField(
+                label = stringResource(R.string.contacts_label_name),
+                value = pickedName,
+                onValueChange = onNameChange,
+                placeholder = stringResource(R.string.contacts_placeholder_name),
+                readOnly = !isEdit,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
         if (isEdit) {
             Spacer(Modifier.height(8.dp))
             AddContactTextField(
@@ -2790,80 +2822,120 @@ private fun Step1AgencyContent(
                 modifier = Modifier.fillMaxWidth()
             )
         }
-        Spacer(Modifier.height(12.dp))
-        Text(
-            text = stringResource(R.string.contacts_agency_discovering),
-            style = regularTextStyle(HomeTextSecondary, 12.sp),
-            modifier = Modifier.padding(bottom = 8.dp)
-        )
-        if (isDiscovering) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                CircularProgressIndicator(
-                    color = HomeBlueAccent,
-                    strokeWidth = 2.dp,
-                    modifier = Modifier.size(24.dp)
-                )
-                Spacer(Modifier.width(12.dp))
-                Text(
-                    text = stringResource(R.string.contacts_agency_searching_web),
-                    style = regularTextStyle(HomeTextSecondary, 13.sp)
-                )
-            }
-        } else if (agencyName.isNotBlank()) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(HomeDarkBackground)
-                    .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(10.dp))
-                    .padding(12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Business,
-                    contentDescription = null,
-                    tint = HomeBlueAccent,
-                    modifier = Modifier.size(28.dp)
-                )
-                Spacer(Modifier.width(10.dp))
-                Column(Modifier.weight(1f)) {
-                    Text(agencyName, style = boldTextStyle(HomeTextPrimary, 14.sp))
-                    if (agencyUrl.isNotBlank()) {
-                        Text(
-                            text = stringResource(R.string.contacts_agency_found_on_tm),
-                            style = regularTextStyle(HomeTextSecondary, 11.sp)
+        if (pickedName.isNotBlank() || isEdit) {
+            Spacer(Modifier.height(12.dp))
+            Text(
+                text = stringResource(R.string.contacts_agency_discovery_section),
+                style = regularTextStyle(HomeTextSecondary, 12.sp),
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+        }
+        if (pickedName.isNotBlank() || isEdit) {
+            if (isDiscovering) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    CircularProgressIndicator(
+                        color = HomeBlueAccent,
+                        strokeWidth = 2.dp,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(Modifier.width(12.dp))
+                    Text(
+                        text = stringResource(R.string.contacts_agency_searching_web),
+                        style = regularTextStyle(HomeTextSecondary, 13.sp)
+                    )
+                }
+            } else if (agencyName.isNotBlank()) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(HomeDarkBackground)
+                        .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(10.dp))
+                        .padding(12.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Business,
+                            contentDescription = null,
+                            tint = HomeBlueAccent,
+                            modifier = Modifier.size(28.dp)
                         )
+                        Spacer(Modifier.width(10.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = agencyName,
+                                style = boldTextStyle(HomeTextPrimary, 14.sp),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            if (agencyUrl.isNotBlank()) {
+                                Text(
+                                    text = stringResource(R.string.contacts_agency_found_on_tm),
+                                    style = regularTextStyle(HomeTextSecondary, 11.sp)
+                                )
+                            }
+                        }
+                    }
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        TextButton(
+                            onClick = onNotCorrectAgency,
+                            modifier = Modifier.height(48.dp)
+                        ) {
+                            Text(stringResource(R.string.contacts_agency_not_correct), style = regularTextStyle(HomeTealAccent, 12.sp))
+                        }
+                        TextButton(
+                            onClick = onTryAgain,
+                            modifier = Modifier.height(48.dp)
+                        ) {
+                            Text(stringResource(R.string.contacts_try_again), style = regularTextStyle(HomeTealAccent, 12.sp))
+                        }
                     }
                 }
-                TextButton(onClick = onNotCorrectAgency) {
-                    Text(stringResource(R.string.contacts_agency_not_correct), style = regularTextStyle(HomeTealAccent, 12.sp))
-                }
             }
         }
-        discoveryError?.let { err ->
-            Spacer(Modifier.height(8.dp))
-            Text(
-                text = err,
-                style = regularTextStyle(HomeRedAccent, 11.sp)
-            )
-            TextButton(onClick = onTryAgain) {
-                Text(stringResource(R.string.contacts_try_again), style = regularTextStyle(HomeTealAccent, 13.sp))
-            }
-        }
-        if (!isDiscovering && agencyName.isBlank() && selectedAgency == null && !showManualAgencySearch) {
-            Spacer(Modifier.height(16.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                TextButton(onClick = onTryAgain) {
-                    Text(stringResource(R.string.contacts_try_again), style = regularTextStyle(HomeTealAccent, 14.sp))
+        if (pickedName.isNotBlank() || isEdit) {
+            discoveryError?.let { err ->
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = err,
+                    style = regularTextStyle(HomeRedAccent, 11.sp)
+                )
+                TextButton(
+                    onClick = onTryAgain,
+                    modifier = Modifier.height(48.dp)
+                ) {
+                    Text(stringResource(R.string.contacts_try_again), style = regularTextStyle(HomeTealAccent, 13.sp))
                 }
-                TextButton(onClick = onNotCorrectAgency) {
-                    Text(stringResource(R.string.contacts_agency_search_manually), style = regularTextStyle(HomeTealAccent, 14.sp))
+            }
+            if (!isDiscovering && agencyName.isBlank() && selectedAgency == null && !showManualAgencySearch) {
+                Spacer(Modifier.height(16.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    TextButton(
+                        onClick = onTryAgain,
+                        modifier = Modifier.height(48.dp)
+                    ) {
+                        Text(stringResource(R.string.contacts_try_again), style = regularTextStyle(HomeTealAccent, 14.sp))
+                    }
+                    TextButton(
+                        onClick = onNotCorrectAgency,
+                        modifier = Modifier.height(48.dp)
+                    ) {
+                        Text(stringResource(R.string.contacts_agency_search_manually), style = regularTextStyle(HomeTealAccent, 14.sp))
+                    }
                 }
             }
         }
@@ -2922,32 +2994,57 @@ private fun Step1AgencyContent(
             }
         }
         selectedAgency?.let { agency ->
-            Row(
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 8.dp)
                     .clip(RoundedCornerShape(10.dp))
                     .background(HomeDarkBackground)
                     .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(10.dp))
-                    .padding(12.dp),
-                verticalAlignment = Alignment.CenterVertically
+                    .padding(12.dp)
             ) {
-                Icon(
-                    imageVector = Icons.Default.Business,
-                    contentDescription = null,
-                    tint = HomeBlueAccent,
-                    modifier = Modifier.size(28.dp)
-                )
-                Spacer(Modifier.width(10.dp))
-                Column(Modifier.weight(1f)) {
-                    Text(agency.agencyName ?: "", style = boldTextStyle(HomeTextPrimary, 12.sp))
-                    Text(
-                        text = stringResource(R.string.contacts_agency_found_on_tm),
-                        style = regularTextStyle(HomeTextSecondary, 11.sp)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Business,
+                        contentDescription = null,
+                        tint = HomeBlueAccent,
+                        modifier = Modifier.size(28.dp)
                     )
+                    Spacer(Modifier.width(10.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = agency.agencyName ?: "",
+                            style = boldTextStyle(HomeTextPrimary, 12.sp),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Text(
+                            text = stringResource(R.string.contacts_agency_found_on_tm),
+                            style = regularTextStyle(HomeTextSecondary, 11.sp)
+                        )
+                    }
                 }
-                TextButton(onClick = onNotCorrectAgency) {
-                    Text(stringResource(R.string.contacts_agency_not_correct), style = regularTextStyle(HomeTealAccent, 12.sp))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    TextButton(
+                        onClick = onNotCorrectAgency,
+                        modifier = Modifier.height(48.dp)
+                    ) {
+                        Text(stringResource(R.string.contacts_agency_not_correct), style = regularTextStyle(HomeTealAccent, 12.sp))
+                    }
+                    TextButton(
+                        onClick = onTryAgain,
+                        modifier = Modifier.height(48.dp)
+                    ) {
+                        Text(stringResource(R.string.contacts_try_again), style = regularTextStyle(HomeTealAccent, 12.sp))
+                    }
                 }
             }
         }
@@ -3044,6 +3141,7 @@ private fun Step2ContactContent(
             value = pickedName,
             onValueChange = onNameChange,
             placeholder = stringResource(R.string.contacts_placeholder_name),
+            readOnly = !isEdit,
             modifier = Modifier.fillMaxWidth()
         )
         Spacer(Modifier.height(8.dp))

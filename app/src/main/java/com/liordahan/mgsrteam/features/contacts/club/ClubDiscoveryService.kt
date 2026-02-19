@@ -82,6 +82,7 @@ class ClubDiscoveryService(
                     Reply with exactly two lines:
                     Line 1: The club name as it appears on Transfermarkt (e.g. "FC Barcelona", "Real Madrid")
                     Line 2: The role - one of: Coach, Assistant Coach, Sport Director, Scout, CEO, President, Board Member, Unknown
+                    If the person has left their previous club and is currently without a club (retired, free agent, between jobs): Line 1: Without club
                     If not found: UNKNOWN
                 """.trimIndent()
                 val response = model.generateContent(prompt)

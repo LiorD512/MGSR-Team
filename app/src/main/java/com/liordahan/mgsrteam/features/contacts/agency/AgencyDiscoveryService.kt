@@ -136,10 +136,11 @@ class AgencyDiscoveryService(
                     tools = listOf(Tool.googleSearch())
                 )
                 val prompt = """
-                    Search the web for: "$personName" agent transfermarkt
-                    Find Transfermarkt URLs (agent profiles or agency pages) that might contain the football agent "$personName".
+                    Search the web for Transfermarkt pages about the football agent "$personName".
+                    Try these searches: "$personName" transfermarkt, "$personName" agent transfermarkt, "$personName" football agent.
+                    Find Transfermarkt URLs (agent profiles or agency pages beraterfirma) that contain "$personName".
+                    The person may be listed as staff at an agency - include agency pages (beraterfirma) where staff are shown.
                     Return a list of up to 5 Transfermarkt URLs, one per line. Only full URLs containing transfermarkt.com.
-                    Include agent profiles (profil/berater) and agency pages (beraterfirma).
                     One URL per line. No other text. If none found: UNKNOWN
                 """.trimIndent()
                 val response = model.generateContent(prompt)
@@ -162,13 +163,17 @@ class AgencyDiscoveryService(
                         if (agencyName.isNullOrBlank() || agencyUrl.isNullOrBlank()) continue
 
                         val isAgentProfile = !url.contains("beraterfirma", ignoreCase = true)
-                        if (isAgentProfile && agentNameOnPage != null && agentNameOnPage.isNotBlank()) {
-                            if (!nameSimilarityAtLeast(personName, agentNameOnPage, 0.90f)) {
-                                Log.d(TAG, "findAgencyViaGoogleAndTransfermarkt: skip '$url' - name match <90%: '$personName' vs '$agentNameOnPage'")
+                        if (isAgentProfile) {
+                            if (agentNameOnPage.isNullOrBlank() || !nameSimilarityAtLeast(personName, agentNameOnPage, 0.90f)) {
+                                Log.d(TAG, "findAgencyViaGoogleAndTransfermarkt: skip agent profile '$url' - name mismatch")
                                 continue
                             }
-                        } else if (!isAgentProfile) {
-                            continue
+                        } else {
+                            // Agency (beraterfirma) page: verify person is in staff
+                            if (!agencySearch.isPersonInAgencyStaff(personName, url)) {
+                                Log.d(TAG, "findAgencyViaGoogleAndTransfermarkt: skip agency '$url' - $personName not in staff")
+                                continue
+                            }
                         }
 
                         Log.d(TAG, "findAgencyViaGoogleAndTransfermarkt: $personName -> $agencyName (${agencyUrl})")
@@ -251,8 +256,9 @@ class AgencyDiscoveryService(
                 )
 
                 val prompt = """
-                    Search: site:transfermarkt.com "$personName" football agent
-                    Find which football/soccer agency the agent "$personName" works for.
+                    Search site:transfermarkt.com for the football agent "$personName".
+                    Try: "$personName", "$personName" agent, "$personName" football agent.
+                    Find which agency "$personName" works for (they may be listed in Staff section).
                     Return ONLY the exact agency name as shown on Transfermarkt. No other text.
                     The person must be "$personName" - not someone with a similar name.
                     If not found or uncertain: UNKNOWN

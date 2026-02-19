@@ -370,7 +370,7 @@
     <string name="requests_matching_players">%d שחקנים תואמים במאגר</string>
     <string name="requests_find_players">מצא שחקנים</string>
     <string name="requests_find_players_sheet_title">שחקנים לבקשה זו</string>
-    <string name="requests_find_players_online">מצא שחקנים באינטרנט</string>
+    <string name="requests_find_players_online">מצא שחקנים בעזרת AI סקאוט</string>
     <string name="requests_online_players_sheet_title">שחקנים מהשוק</string>
     <string name="requests_online_players_loading">הAI סקאוט מחפש שחקנים…</string>
     <string name="requests_online_players_empty">לא נמצאו שחקנים תואמים באינטרנט</string>
@@ -471,9 +471,11 @@
     <string name="contacts_role_optional">מה התפקיד שלו? (אופציונלי)</string>
     <string name="contacts_search_for_club">חפש מועדון</string>
     <string name="contacts_club_import_only_hint">ייבא מספר אנשי הקשר. נחפש ברשת את המועדון והתפקיד שלהם ואז נקשור לטרנספרמרקט.</string>
+    <string name="contacts_club_discovery_section">מועדון ותפקיד</string>
     <string name="contacts_club_searching_web">מחפש מועדון ותפקיד ברשת…</string>
     <string name="contacts_club_found_on_tm">נמצא בטרנספרמרקט</string>
     <string name="contacts_club_search_manually">חפש מועדון ידנית</string>
+    <string name="contacts_club_not_correct">לא המועדון הנכון?</string>
     <string name="contacts_try_again">נסה שוב</string>
     <string name="contacts_duplicate_phone_error">קיים כבר איש קשר עם מספר טלפון זה</string>
     <string name="contacts_or_enter_manually">— או הזן ידנית —</string>
@@ -504,6 +506,7 @@
     <string name="contacts_step_agency">סוכנות</string>
     <string name="contacts_agency_search_hint">הזן שם סוכנות</string>
     <string name="contacts_agency_import_only_hint">ייבא מאנשי הקשר בטלפון. נחפש ברשת את הסוכנות ונקשר לטרנספרמרקט.</string>
+    <string name="contacts_agency_discovery_section">סוכנות</string>
     <string name="contacts_agency_discovering">פרטי קשר</string>
     <string name="contacts_agency_searching_web">מחפש סוכנות ברשת…</string>
     <string name="contacts_agency_found_on_tm">נמצא בטרנספרמרקט</string>
