@@ -290,11 +290,18 @@ fun HomeScreen(
             }
 
             composable(
-                route = "${Screens.PlayerInfoScreen.route}/{playerId}",
-                arguments = listOf(navArgument("playerId") { NavType.StringType })
+                route = "${Screens.PlayerInfoScreen.route}/{playerId}?autoRefresh={autoRefresh}",
+                arguments = listOf(
+                    navArgument("playerId") { type = NavType.StringType },
+                    navArgument("autoRefresh") {
+                        type = NavType.BoolType
+                        defaultValue = false
+                    }
+                )
             ) { backStackEntry ->
                 val playerId = backStackEntry.arguments?.getString("playerId") ?: return@composable
-                PlayerInfoScreen(playerId = playerId, navController = navController)
+                val autoRefresh = backStackEntry.arguments?.getBoolean("autoRefresh") ?: false
+                PlayerInfoScreen(playerId = playerId, autoRefresh = autoRefresh, navController = navController)
             }
 
             composable(

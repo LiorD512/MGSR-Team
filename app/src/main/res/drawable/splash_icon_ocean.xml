@@ -1,6 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Smaller logo (56dp) with generous padding to avoid circular mask clipping on Android 12 -->
+<!-- Pre-API 31: Logo + same multi-color glow as API 31+ for consistency -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:drawable="@drawable/splash_gradient_bg"
+        android:width="288dp"
+        android:height="288dp"
+        android:gravity="center" />
     <item
         android:drawable="@drawable/for_app_logo"
         android:width="56dp"

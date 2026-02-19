@@ -177,6 +177,7 @@ import java.util.Locale
 fun PlayerInfoScreen(
     viewModel: IPlayerInfoViewModel = koinViewModel(),
     playerId: String,
+    autoRefresh: Boolean = false,
     navController: NavController
 ) {
 
@@ -277,6 +278,14 @@ fun PlayerInfoScreen(
     var documentsList by remember { mutableStateOf<List<PlayerDocument>>(emptyList()) }
     var docToDelete by remember { mutableStateOf<PlayerDocument?>(null) }
     var isUploadingDocument by remember { mutableStateOf(false) }
+    var hasAutoRefreshed by remember { mutableStateOf(false) }
+
+    LaunchedEffect(autoRefresh, playerToPresent) {
+        if (autoRefresh && !hasAutoRefreshed && playerToPresent != null) {
+            hasAutoRefreshed = true
+            viewModel.refreshPlayerInfo()
+        }
+    }
 
     LaunchedEffect(Unit) {
 
@@ -3065,7 +3074,7 @@ private fun playerInfoGetContractCountdown(resources: android.content.res.Resour
         if (expiryDate == null) return null
         val now = java.time.LocalDate.now()
         when {
-            expiryDate.isBefore(now) -> resources.getString(R.string.player_info_expired)
+            !expiryDate.isAfter(now) -> resources.getString(R.string.player_info_expired)
             else -> {
                 val months = java.time.temporal.ChronoUnit.MONTHS.between(now, expiryDate)
                 resources.getString(R.string.player_info_expires_in_months, months.toInt())

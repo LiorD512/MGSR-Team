@@ -251,10 +251,12 @@ fun DashboardScreen(
                         event = event,
                         navController = navController,
                         allAccounts = state.allAccounts,
-                        onNavigateToPlayer = { tmProfile ->
+                        onNavigateToPlayer = { tmProfile, autoRefresh ->
                             viewModel.checkPlayerExists(tmProfile) { exists ->
                                 if (exists) {
-                                    navController.navigate("${Screens.PlayerInfoScreen.route}/${android.net.Uri.encode(tmProfile)}")
+                                    val route = "${Screens.PlayerInfoScreen.route}/${android.net.Uri.encode(tmProfile)}" +
+                                        if (autoRefresh) "?autoRefresh=true" else ""
+                                    navController.navigate(route)
                                 } else {
                                     ToastManager.showError(
                                         context.getString(R.string.feed_player_deleted_error)
@@ -816,7 +818,7 @@ private fun FeedEventCard(
     event: FeedEvent,
     navController: NavController,
     allAccounts: List<com.liordahan.mgsrteam.features.login.models.Account> = emptyList(),
-    onNavigateToPlayer: (tmProfile: String) -> Unit = {}
+    onNavigateToPlayer: (tmProfile: String, autoRefresh: Boolean) -> Unit = { _, _ -> }
 ) {
     val (icon, accentColor, title) = when (event.type) {
         FeedEvent.TYPE_MARKET_VALUE_CHANGE -> {
@@ -858,7 +860,7 @@ private fun FeedEventCard(
                     event.type == FeedEvent.TYPE_REQUEST_DELETED ->
                         navController.navigate(Screens.RequestsScreen.route)
                     event.type == FeedEvent.TYPE_PLAYER_OFFERED_TO_CLUB && event.playerTmProfile != null ->
-                        onNavigateToPlayer(event.playerTmProfile)
+                        onNavigateToPlayer(event.playerTmProfile, false)
                     event.type == FeedEvent.TYPE_SHORTLIST_ADDED ||
                     event.type == FeedEvent.TYPE_SHORTLIST_REMOVED ->
                         navController.navigate(Screens.ShortlistScreen.route)
@@ -869,10 +871,12 @@ private fun FeedEventCard(
                         when {
                             event.type == FeedEvent.TYPE_NEW_RELEASE_FROM_CLUB && event.extraInfo == "NOT_IN_DATABASE" ->
                                 context.startActivity(Intent(Intent.ACTION_VIEW, tm.toUri()))
+                            event.type == FeedEvent.TYPE_NEW_RELEASE_FROM_CLUB && event.extraInfo == "IN_DATABASE" ->
+                                onNavigateToPlayer(tm, true)
                             event.type == FeedEvent.TYPE_NEW_RELEASE_FROM_CLUB ->
                                 navController.navigate("${Screens.AddPlayerScreen.route}/${Uri.encode(tm)}")
                             else ->
-                                onNavigateToPlayer(tm)
+                                onNavigateToPlayer(tm, false)
                         }
                     }
                 }
