@@ -8,6 +8,10 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -114,6 +118,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.stringResource
@@ -144,6 +149,7 @@ import com.liordahan.mgsrteam.transfermarket.ClubSearchModel
 import com.liordahan.mgsrteam.transfermarket.LatestTransferModel
 import com.liordahan.mgsrteam.transfermarket.TransfermarktResult
 import com.liordahan.mgsrteam.ui.components.DarkSystemBarsForBottomSheet
+import com.liordahan.mgsrteam.ui.components.RecordingWaveform
 import com.liordahan.mgsrteam.ui.theme.HomeDarkBackground
 import com.liordahan.mgsrteam.ui.theme.HomeDarkCard
 import com.liordahan.mgsrteam.ui.theme.HomeDarkCardBorder
@@ -159,6 +165,7 @@ import com.liordahan.mgsrteam.ui.components.ToastManager
 import com.liordahan.mgsrteam.ui.utils.boldTextStyle
 import com.liordahan.mgsrteam.ui.utils.clickWithNoRipple
 import com.liordahan.mgsrteam.ui.utils.regularTextStyle
+import android.view.HapticFeedbackConstants
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
@@ -1587,17 +1594,29 @@ private fun AddRequestBottomSheet(
     val contacts by contactsRepository.contactsFlow().collectAsStateWithLifecycle(initialValue = emptyList())
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    val view = LocalView.current
 
     var showChoiceScreen by rememberSaveable { mutableStateOf(true) }
     var isRecording by remember { mutableStateOf(false) }
+    var recordingDuration by remember { mutableStateOf(0) }
     var isAnalyzing by remember { mutableStateOf(false) }
     var recorder by remember { mutableStateOf<MediaRecorder?>(null) }
     var recordingFile by remember { mutableStateOf<java.io.File?>(null) }
+
+    LaunchedEffect(isRecording) {
+        if (!isRecording) return@LaunchedEffect
+        recordingDuration = 0
+        while (true) {
+            delay(1000)
+            recordingDuration += 1
+        }
+    }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { isGranted ->
         if (isGranted) {
+            view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
             val file = RequestVoiceRecorder.createTempRecordingFile(context)
             recordingFile = file
             recorder = RequestVoiceRecorder.startRecording(file)
@@ -1744,6 +1763,7 @@ private fun AddRequestBottomSheet(
                                 permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
                                 return@AddRequestChoiceContent
                             }
+                            view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
                             val file = RequestVoiceRecorder.createTempRecordingFile(context)
                             recordingFile = file
                             recorder = RequestVoiceRecorder.startRecording(file)
@@ -1757,6 +1777,7 @@ private fun AddRequestBottomSheet(
                 isRecording -> {
                     Column(modifier = Modifier.weight(1f, fill = true)) {
                     AddRequestRecordingContent(
+                        durationSeconds = recordingDuration,
                         onStopClick = {
                             val bytesResult = RequestVoiceRecorder.stopRecording(recorder, recordingFile!!)
                             recorder = null
@@ -1820,9 +1841,14 @@ private fun AddRequestBottomSheet(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         CircularProgressIndicator(color = HomeTealAccent)
-                        Spacer(Modifier.height(16.dp))
+                        Spacer(Modifier.height(24.dp))
                         Text(
                             text = stringResource(R.string.requests_analyzing),
+                            style = boldTextStyle(HomeTextPrimary, 16.sp)
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            text = stringResource(R.string.requests_analyzing_subtitle),
                             style = regularTextStyle(HomeTextSecondary, 14.sp)
                         )
                     }
@@ -2420,30 +2446,66 @@ private fun AddRequestChoiceContent(
         Text(
             text = stringResource(R.string.requests_record_hint),
             style = regularTextStyle(HomeTextSecondary, 14.sp),
-            modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp)
+            modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp),
+            textAlign = TextAlign.Center
         )
-        Button(
-            onClick = onRecordClick,
+        Spacer(Modifier.height(24.dp))
+        Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 24.dp)
-                .height(56.dp),
-            shape = RoundedCornerShape(12.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = HomeTealAccent)
+                .size(96.dp)
+                .clip(CircleShape)
+                .background(HomeTealAccent)
+                .clickWithNoRipple(onClick = onRecordClick),
+            contentAlignment = Alignment.Center
         ) {
-            Icon(Icons.Default.Mic, contentDescription = null, modifier = Modifier.size(24.dp), tint = Color.White)
-            Spacer(Modifier.width(12.dp))
-            Text(stringResource(R.string.requests_record_request), style = boldTextStyle(Color.White, 16.sp))
+            Icon(
+                Icons.Default.Mic,
+                contentDescription = stringResource(R.string.requests_record_request),
+                modifier = Modifier.size(40.dp),
+                tint = Color.White
+            )
         }
         Spacer(Modifier.height(16.dp))
+        Text(
+            text = stringResource(R.string.requests_record_request),
+            style = boldTextStyle(HomeTextPrimary, 16.sp)
+        )
+        Spacer(Modifier.height(24.dp))
+        Text(
+            text = "—— ${stringResource(R.string.requests_or)} ——",
+            style = regularTextStyle(HomeTextSecondary, 12.sp)
+        )
+        Spacer(Modifier.height(8.dp))
         TextButton(onClick = onFillManuallyClick) {
-            Text(stringResource(R.string.requests_fill_manually), style = regularTextStyle(HomeTextSecondary, 14.sp))
+            Text(
+                stringResource(R.string.requests_fill_manually),
+                style = regularTextStyle(HomeTealAccent, 14.sp)
+            )
         }
     }
 }
 
+private fun formatRecordingDuration(seconds: Int): String {
+    val m = seconds / 60
+    val s = seconds % 60
+    return "%d:%02d".format(m, s)
+}
+
 @Composable
-private fun AddRequestRecordingContent(onStopClick: () -> Unit) {
+private fun AddRequestRecordingContent(
+    durationSeconds: Int,
+    onStopClick: () -> Unit
+) {
+    val infiniteTransition = rememberInfiniteTransition(label = "stop_pulse")
+    val pulseScale by infiniteTransition.animateFloat(
+        initialValue = 1f,
+        targetValue = 1.08f,
+        animationSpec = infiniteRepeatable<Float>(
+            animation = tween(600),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "pulse"
+    )
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -2454,14 +2516,28 @@ private fun AddRequestRecordingContent(onStopClick: () -> Unit) {
         Text(
             text = stringResource(R.string.requests_recording),
             style = regularTextStyle(HomeTealAccent, 16.sp),
-            modifier = Modifier.padding(bottom = 24.dp)
+            modifier = Modifier.padding(bottom = 16.dp)
         )
-        IconButton(
-            onClick = onStopClick,
+        RecordingWaveform(
+            barCount = 10,
+            color = HomeTealAccent,
+            barWidth = 6.dp,
+            barHeight = 12.dp,
+            modifier = Modifier.padding(vertical = 16.dp)
+        )
+        Text(
+            text = formatRecordingDuration(durationSeconds),
+            style = boldTextStyle(HomeTextPrimary, 24.sp),
+            modifier = Modifier.padding(vertical = 8.dp)
+        )
+        Box(
             modifier = Modifier
                 .size(80.dp)
+                .graphicsLayer { scaleX = pulseScale; scaleY = pulseScale }
                 .clip(CircleShape)
                 .background(HomeRedAccent.copy(alpha = 0.2f))
+                .clickWithNoRipple(onClick = onStopClick),
+            contentAlignment = Alignment.Center
         ) {
             Icon(
                 Icons.Default.Stop,
@@ -2472,7 +2548,7 @@ private fun AddRequestRecordingContent(onStopClick: () -> Unit) {
         }
         Spacer(Modifier.height(8.dp))
         Text(
-            text = stringResource(R.string.requests_stop_recording),
+            text = stringResource(R.string.requests_tap_to_stop),
             style = regularTextStyle(HomeTextSecondary, 14.sp)
         )
     }

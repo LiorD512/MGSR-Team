@@ -469,10 +469,13 @@
     <string name="requests_record_hint">Speak the club, position, salary, transfer fee, foot, age</string>
     <string name="requests_recording">Recording…</string>
     <string name="requests_stop_recording">Stop</string>
-    <string name="requests_analyzing">Analyzing…</string>
+    <string name="requests_tap_to_stop">Tap to stop</string>
+    <string name="requests_analyzing">Analyzing your request</string>
+    <string name="requests_analyzing_subtitle">Extracting club, position, requirements</string>
     <string name="requests_voice_error">Could not analyze recording. Try again.</string>
     <string name="requests_voice_missing_club_position">Could not detect club or position. Please try again or fill manually.</string>
     <string name="requests_fill_manually">Fill manually</string>
+    <string name="requests_or">or</string>
 
     <!-- Add Request stepped flow -->
     <string name="requests_step_of">Step %1$d of 4</string>

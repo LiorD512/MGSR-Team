@@ -8,10 +8,16 @@ import android.speech.SpeechRecognizer
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.border
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -75,6 +81,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
@@ -97,10 +105,14 @@ import com.liordahan.mgsrteam.ui.theme.HomeRedAccent
 import com.liordahan.mgsrteam.ui.theme.HomeTealAccent
 import com.liordahan.mgsrteam.ui.theme.HomeTextPrimary
 import com.liordahan.mgsrteam.ui.theme.HomeTextSecondary
+import com.liordahan.mgsrteam.ui.components.RecordingWaveform
 import com.liordahan.mgsrteam.ui.components.ToastManager
+import com.liordahan.mgsrteam.ui.utils.clickWithNoRipple
 import com.liordahan.mgsrteam.ui.utils.boldTextStyle
 import com.liordahan.mgsrteam.ui.utils.regularTextStyle
 import androidx.core.content.ContextCompat
+import android.view.HapticFeedbackConstants
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Locale
@@ -406,6 +418,77 @@ fun NoteCard(
 
 // ─── Add Note Bottom Sheet ──────────────────────────────────────────────────
 
+private fun formatDuration(seconds: Int): String {
+    val m = seconds / 60
+    val s = seconds % 60
+    return "%d:%02d".format(m, s)
+}
+
+@Composable
+private fun NoteRecordingContent(
+    durationSeconds: Int,
+    onStopClick: () -> Unit
+) {
+    val infiniteTransition = rememberInfiniteTransition(label = "note_stop_pulse")
+    val pulseScale by infiniteTransition.animateFloat(
+        initialValue = 1f,
+        targetValue = 1.08f,
+        animationSpec = infiniteRepeatable<Float>(
+            animation = tween(600),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "pulse"
+    )
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(HomeTealAccent.copy(alpha = 0.08f))
+            .border(1.dp, HomeTealAccent.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
+            .padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = stringResource(R.string.player_info_recording),
+            style = regularTextStyle(HomeTealAccent, 16.sp),
+            modifier = Modifier.padding(bottom = 16.dp)
+        )
+        RecordingWaveform(
+            barCount = 10,
+            color = HomeTealAccent,
+            barWidth = 6.dp,
+            barHeight = 12.dp,
+            modifier = Modifier.padding(vertical = 16.dp)
+        )
+        Text(
+            text = formatDuration(durationSeconds),
+            style = boldTextStyle(HomeTextPrimary, 24.sp),
+            modifier = Modifier.padding(vertical = 8.dp)
+        )
+        Box(
+            modifier = Modifier
+                .size(80.dp)
+                .graphicsLayer { scaleX = pulseScale; scaleY = pulseScale }
+                .clip(CircleShape)
+                .background(HomeRedAccent.copy(alpha = 0.2f))
+                .clickWithNoRipple(onClick = onStopClick),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                Icons.Default.Stop,
+                contentDescription = stringResource(R.string.player_info_stop_recording),
+                modifier = Modifier.size(40.dp),
+                tint = HomeRedAccent
+            )
+        }
+        Spacer(Modifier.height(8.dp))
+        Text(
+            text = stringResource(R.string.requests_tap_to_stop),
+            style = regularTextStyle(HomeTextSecondary, 14.sp)
+        )
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddNoteBottomSheet(
@@ -414,18 +497,30 @@ fun AddNoteBottomSheet(
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val context = LocalContext.current
+    val view = LocalView.current
     var noteText by remember { mutableStateOf("") }
     var isRecording by remember { mutableStateOf(false) }
+    var recordingDuration by remember { mutableStateOf(0) }
     val keyboardController = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current
     val isValid = noteText.isNotBlank()
     var hasEnteredText by remember { mutableStateOf(false) }
     val speechRecognizer = remember { VoiceNoteRecorder.createSpeechRecognizer(context) }
 
+    LaunchedEffect(isRecording) {
+        if (!isRecording) return@LaunchedEffect
+        recordingDuration = 0
+        while (true) {
+            delay(1000)
+            recordingDuration += 1
+        }
+    }
+
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { isGranted ->
         if (isGranted) {
+            view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
             startVoiceRecording(
                 context = context,
                 speechRecognizer = speechRecognizer,
@@ -457,6 +552,7 @@ fun AddNoteBottomSheet(
             permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
             return
         }
+        view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
         if (isRecording) {
             speechRecognizer?.stopListening()
             isRecording = false
@@ -506,7 +602,7 @@ fun AddNoteBottomSheet(
                 onValueChange = { if (it.length <= MAX_NOTE_LENGTH) noteText = it },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(min = 120.dp, max = 240.dp),
+                    .heightIn(min = 100.dp, max = 200.dp),
                 textStyle = regularTextStyle(
                     HomeTextPrimary,
                     14.sp,
@@ -522,15 +618,17 @@ fun AddNoteBottomSheet(
                     )
                 },
                 trailingIcon = {
-                    IconButton(
-                        onClick = { onRecordClick() },
-                        modifier = Modifier.size(48.dp)
-                    ) {
-                        Icon(
-                            imageVector = if (isRecording) Icons.Default.Stop else Icons.Default.Mic,
-                            contentDescription = if (isRecording) stringResource(R.string.player_info_stop_recording) else stringResource(R.string.player_info_record_note),
-                            tint = if (isRecording) HomeRedAccent else HomeTextSecondary
-                        )
+                    if (!isRecording) {
+                        IconButton(
+                            onClick = { onRecordClick() },
+                            modifier = Modifier.size(48.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Mic,
+                                contentDescription = stringResource(R.string.player_info_record_note),
+                                tint = HomeTextSecondary
+                            )
+                        }
                     }
                 },
                 colors = OutlinedTextFieldDefaults.colors(
@@ -548,11 +646,10 @@ fun AddNoteBottomSheet(
             )
 
             if (isRecording) {
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    text = stringResource(R.string.player_info_recording),
-                    style = regularTextStyle(HomeTealAccent, 12.sp),
-                    modifier = Modifier.align(Alignment.CenterHorizontally)
+                Spacer(Modifier.height(20.dp))
+                NoteRecordingContent(
+                    durationSeconds = recordingDuration,
+                    onStopClick = { onRecordClick() }
                 )
             }
 
