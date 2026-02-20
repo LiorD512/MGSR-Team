@@ -158,7 +158,7 @@
     <string name="greeting_agent_default">Agent</string>
 
     <!-- Dashboard Stats -->
-    <string name="stat_players">Our Roster</string>
+    <string name="stat_players">Roster</string>
     <string name="stat_mandate">Mandate</string>
     <string name="stat_free">Free</string>
     <string name="stat_requests">Requests</string>
@@ -249,6 +249,17 @@
     <string name="my_hub_view_my_players">My Players</string>
     <string name="widget_agent_dashboard_description">Your dashboard at a glance: players, tasks, alerts</string>
     <string name="widget_tap_to_open">Tap to open</string>
+    <string name="widget_updated_just_now">Just now</string>
+    <string name="widget_updated_minutes_ago">Updated %dm ago</string>
+    <string name="widget_updated_hours_ago">Updated %dh ago</string>
+    <string name="widget_updated_days_ago">Updated %dd ago</string>
+    <string name="widget_tasks">Tasks</string>
+    <string name="widget_players">Players</string>
+    <string name="widget_add_player">Add Player</string>
+    <string name="widget_refresh">Refresh</string>
+    <string name="widget_upcoming">Upcoming:</string>
+    <string name="widget_stats">Stats</string>
+    <string name="widget_tasks_label">Tasks</string>
     <string name="my_hub_no_tasks">No upcoming tasks</string>
     <string name="my_hub_pending_tasks">%d pending</string>
     <string name="my_hub_overdue_tasks">%d overdue</string>
@@ -661,7 +672,6 @@
     <string name="player_info_tm_profile">TM Profile</string>
     <string name="player_info_tm_short">TM</string>
     <string name="player_info_wa_short">WA</string>
-    <string name="player_info_ig_short">IG</string>
     <string name="player_info_passport_details">Passport Details</string>
     <string name="player_info_passport_already_exists">There is already a passport for this player</string>
     <string name="player_info_passport_first_name">First name</string>
@@ -717,13 +727,7 @@
     <string name="player_info_remove_number">Remove Number</string>
     <string name="player_info_remove_agency">Remove agency</string>
     <string name="player_info_add_number">Add Number</string>
-    <string name="player_info_instagram">Instagram</string>
-    <string name="player_info_add_instagram">Add Instagram</string>
     <string name="player_info_add">Add</string>
-    <string name="player_info_instagram_hint">Instagram URL or username (e.g. instagram.com/username)</string>
-    <string name="player_info_open_instagram">Open Instagram</string>
-    <string name="player_info_edit_instagram">Edit Instagram</string>
-    <string name="player_info_remove_instagram">Remove Instagram</string>
     <string name="player_info_contract_expired">Contract Expired</string>
     <string name="player_info_expired">Expired</string>
     <string name="player_info_expires_in_months">Expires in %d mo</string>
@@ -799,7 +803,6 @@
     <string name="highlights_empty_subtitle">Search for highlight of %1$s (last 2 years)</string>
     <string name="highlights_results_count">%1$d videos</string>
     <string name="highlights_video_content_desc">Open %1$s on %2$s</string>
-    <string name="highlights_view_instagram">View on Instagram</string>
 
     <!-- Player Info Accessibility -->
     <string name="player_info_cd_go_back">Go back</string>

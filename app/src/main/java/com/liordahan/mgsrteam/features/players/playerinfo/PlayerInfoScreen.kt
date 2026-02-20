@@ -31,6 +31,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -271,7 +272,6 @@ fun PlayerInfoScreen(
     var showDeletePlayerIcon by remember { mutableStateOf(false) }
 
     var showDeleteDialog by remember { mutableStateOf(false) }
-    var showInstagramDialog by remember { mutableStateOf(false) }
     var showSalaryTransferFeeSheet by remember { mutableStateOf(false) }
     var showAddNoteSheet by remember { mutableStateOf(false) }
     var showAllNotes by remember { mutableStateOf(false) }
@@ -515,23 +515,8 @@ fun PlayerInfoScreen(
                             agentNumberPermissionLauncher
                         )
                     },
-                    onRemoveAgentNumber = { viewModel.updateAgentNumber("") },
-                    onEditInstagram = { showInstagramDialog = true },
-                    onUpdateInstagram = { viewModel.updateInstagramProfile(it) }
+                    onRemoveAgentNumber = { viewModel.updateAgentNumber("") }
                 )
-            }
-
-            if (showInstagramDialog) {
-                playerToPresent?.let { player ->
-                    InstagramEditDialog(
-                        currentUrl = player.instagramProfile,
-                        onDismiss = { showInstagramDialog = false },
-                        onSave = { url ->
-                            viewModel.updateInstagramProfile(url)
-                            showInstagramDialog = false
-                        }
-                    )
-                }
             }
 
             // Section: AI Helper
@@ -1209,14 +1194,11 @@ private fun PlayerInfoQuickActions(
     onEditPlayerNumber: () -> Unit,
     onRemovePlayerNumber: () -> Unit,
     onEditAgentNumber: () -> Unit,
-    onRemoveAgentNumber: () -> Unit,
-    onEditInstagram: () -> Unit,
-    onUpdateInstagram: (String?) -> Unit
+    onRemoveAgentNumber: () -> Unit
 ) {
     val playerPhone = player.getPlayerPhoneNumber()
     val agentPhone = player.getAgentPhoneNumber()
     val hasTmProfile = player.tmProfile != null
-    val instagramProfile = player.instagramProfile
 
     Card(
         modifier = Modifier
@@ -1258,22 +1240,6 @@ private fun PlayerInfoQuickActions(
                 context = context,
                 onEditNumber = onEditAgentNumber,
                 onRemoveNumber = onRemoveAgentNumber
-            )
-
-            Box(
-                modifier = Modifier
-                    .width(1.dp)
-                    .height(32.dp)
-                    .background(HomeDarkCardBorder)
-            )
-
-            // Instagram action
-            PlayerInfoInstagramAction(
-                modifier = Modifier.weight(1f),
-                instagramProfile = instagramProfile,
-                context = context,
-                onEditInstagram = onEditInstagram,
-                onRemoveInstagram = { onUpdateInstagram(null) }
             )
 
             if (hasTmProfile) {
@@ -1351,7 +1317,7 @@ private fun PlayerInfoPhoneAction(
     val hasPhone = !phone.isNullOrBlank()
     var showMenu by remember { mutableStateOf(false) }
 
-    Box(modifier = modifier) {
+    Box(modifier = modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -1380,7 +1346,7 @@ private fun PlayerInfoPhoneAction(
             horizontalArrangement = Arrangement.Center
         ) {
             Column(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.wrapContentWidth(Alignment.CenterHorizontally),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
@@ -1486,237 +1452,6 @@ private fun PlayerInfoPhoneAction(
                     onRemoveNumber()
                 }
             )
-        }
-    }
-}
-
-@OptIn(ExperimentalFoundationApi::class)
-@Composable
-private fun PlayerInfoInstagramAction(
-    modifier: Modifier = Modifier,
-    instagramProfile: String?,
-    context: Context,
-    onEditInstagram: () -> Unit,
-    onRemoveInstagram: () -> Unit
-) {
-    val hasInstagram = !instagramProfile.isNullOrBlank()
-    var showMenu by remember { mutableStateOf(false) }
-
-    Box(modifier = modifier) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .then(
-                    if (hasInstagram) {
-                        Modifier.combinedClickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = null,
-                            onClick = {
-                                val url = instagramProfile.orEmpty().trim()
-                                val normalized = when {
-                                    url.startsWith("http") -> url
-                                    url.startsWith("instagram.com") -> "https://$url"
-                                    else -> "https://instagram.com/$url"
-                                }
-                                context.startActivity(
-                                    Intent(Intent.ACTION_VIEW, Uri.parse(normalized))
-                                )
-                            },
-                            onLongClick = { showMenu = true }
-                        )
-                    } else {
-                        Modifier.clickWithNoRipple { onEditInstagram() }
-                    }
-                )
-                .padding(vertical = 12.dp, horizontal = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center
-        ) {
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
-            ) {
-                Box(
-                    modifier = Modifier.size(28.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_instagram),
-                        contentDescription = null,
-                        modifier = Modifier.size(24.dp),
-                        tint = HomeTealAccent
-                    )
-                }
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    text = if (hasInstagram) stringResource(R.string.player_info_ig_short) else stringResource(R.string.player_info_add),
-                    style = boldTextStyle(HomeTextSecondary, 11.sp),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    textAlign = TextAlign.Center
-                )
-            }
-        }
-
-        DropdownMenu(
-            expanded = showMenu,
-            onDismissRequest = { showMenu = false },
-            containerColor = HomeDarkCard,
-            shape = RoundedCornerShape(12.dp),
-            border = BorderStroke(1.dp, HomeDarkCardBorder)
-        ) {
-            DropdownMenuItem(
-                text = {
-                    Text(
-                        text = stringResource(R.string.player_info_open_instagram),
-                        style = regularTextStyle(HomeTextPrimary, 14.sp)
-                    )
-                },
-                leadingIcon = {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_instagram),
-                        contentDescription = null,
-                        modifier = Modifier.size(20.dp),
-                        tint = HomeTealAccent
-                    )
-                },
-                onClick = {
-                    showMenu = false
-                    val url = instagramProfile.orEmpty().trim()
-                    val normalized = when {
-                        url.startsWith("http") -> url
-                        url.startsWith("instagram.com") -> "https://$url"
-                        else -> "https://instagram.com/$url"
-                    }
-                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(normalized)))
-                }
-            )
-            HorizontalDivider(
-                color = HomeDarkCardBorder,
-                thickness = 0.5.dp,
-                modifier = Modifier.padding(horizontal = 12.dp)
-            )
-            DropdownMenuItem(
-                text = {
-                    Text(
-                        text = stringResource(R.string.player_info_edit_instagram),
-                        style = regularTextStyle(HomeTextPrimary, 14.sp)
-                    )
-                },
-                leadingIcon = {
-                    Icon(
-                        imageVector = Icons.Default.Edit,
-                        contentDescription = null,
-                        modifier = Modifier.size(20.dp),
-                        tint = HomeTealAccent
-                    )
-                },
-                onClick = {
-                    showMenu = false
-                    onEditInstagram()
-                }
-            )
-            HorizontalDivider(
-                color = HomeDarkCardBorder,
-                thickness = 0.5.dp,
-                modifier = Modifier.padding(horizontal = 12.dp)
-            )
-            DropdownMenuItem(
-                text = {
-                    Text(
-                        text = stringResource(R.string.player_info_remove_instagram),
-                        style = regularTextStyle(HomeRedAccent, 14.sp)
-                    )
-                },
-                leadingIcon = {
-                    Icon(
-                        imageVector = Icons.Default.Delete,
-                        contentDescription = null,
-                        modifier = Modifier.size(20.dp),
-                        tint = HomeRedAccent
-                    )
-                },
-                onClick = {
-                    showMenu = false
-                    onRemoveInstagram()
-                }
-            )
-        }
-    }
-}
-
-@Composable
-private fun InstagramEditDialog(
-    currentUrl: String?,
-    onDismiss: () -> Unit,
-    onSave: (String?) -> Unit
-) {
-    var input by remember { mutableStateOf(currentUrl?.takeIf { it.isNotBlank() } ?: "") }
-
-    fun normalizeInstagramUrl(raw: String): String? {
-        val trimmed = raw.trim()
-        if (trimmed.isEmpty()) return null
-        return when {
-            trimmed.startsWith("http") -> trimmed.trimEnd('/')
-            trimmed.startsWith("instagram.com") -> "https://$trimmed".trimEnd('/')
-            trimmed.contains("/") -> "https://$trimmed".trimEnd('/')
-            else -> "https://instagram.com/$trimmed".trimEnd('/')
-        }
-    }
-
-    Dialog(onDismissRequest = onDismiss) {
-        Card(
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = HomeDarkCard),
-            border = BorderStroke(1.dp, HomeDarkCardBorder)
-        ) {
-            Column(
-                modifier = Modifier.padding(20.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                Text(
-                    text = stringResource(R.string.player_info_edit_instagram),
-                    style = boldTextStyle(HomeTextPrimary, 18.sp)
-                )
-                OutlinedTextField(
-                    value = input,
-                    onValueChange = { input = it },
-                    placeholder = {
-                        Text(
-                            text = stringResource(R.string.player_info_instagram_hint),
-                            style = regularTextStyle(HomeTextSecondary, 14.sp)
-                        )
-                    },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = HomeTextPrimary,
-                        unfocusedTextColor = HomeTextPrimary,
-                        focusedBorderColor = HomeTealAccent,
-                        unfocusedBorderColor = HomeDarkCardBorder,
-                        cursorColor = HomeTealAccent,
-                        focusedContainerColor = HomeDarkCard,
-                        unfocusedContainerColor = HomeDarkCard
-                    )
-                )
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    TextButton(onClick = onDismiss) {
-                        Text(stringResource(R.string.player_info_matching_requests_cancel), style = regularTextStyle(HomeTextSecondary, 14.sp))
-                    }
-                    Spacer(Modifier.width(8.dp))
-                    Button(
-                        onClick = { onSave(normalizeInstagramUrl(input)) },
-                        colors = ButtonDefaults.buttonColors(containerColor = HomeTealAccent)
-                    ) {
-                        Text(stringResource(android.R.string.ok), style = boldTextStyle(HomeTextPrimary, 14.sp))
-                    }
-                }
-            }
         }
     }
 }

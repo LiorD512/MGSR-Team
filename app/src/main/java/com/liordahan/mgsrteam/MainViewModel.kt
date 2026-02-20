@@ -23,6 +23,12 @@ abstract class IMainViewModel : ViewModel() {
     /** When set, navigate to Tasks screen (e.g. from task notification tap). */
     abstract val pendingOpenTasksScreen: StateFlow<Boolean>
     abstract fun setPendingOpenTasksScreen(value: Boolean)
+    /** When set, navigate to Players screen (My Players). */
+    abstract val pendingOpenPlayersScreen: StateFlow<Boolean>
+    abstract fun setPendingOpenPlayersScreen(value: Boolean)
+    /** When set, navigate to Add Player screen. */
+    abstract val pendingOpenAddPlayerScreen: StateFlow<Boolean>
+    abstract fun setPendingOpenAddPlayerScreen(value: Boolean)
 }
 
 class MainViewModel(
@@ -73,6 +79,20 @@ class MainViewModel(
 
     override fun setPendingOpenTasksScreen(value: Boolean) {
         _pendingOpenTasksScreen.value = value
+    }
+
+    private val _pendingOpenPlayersScreen = MutableStateFlow(false)
+    override val pendingOpenPlayersScreen: StateFlow<Boolean> = _pendingOpenPlayersScreen
+
+    override fun setPendingOpenPlayersScreen(value: Boolean) {
+        _pendingOpenPlayersScreen.value = value
+    }
+
+    private val _pendingOpenAddPlayerScreen = MutableStateFlow(false)
+    override val pendingOpenAddPlayerScreen: StateFlow<Boolean> = _pendingOpenAddPlayerScreen
+
+    override fun setPendingOpenAddPlayerScreen(value: Boolean) {
+        _pendingOpenAddPlayerScreen.value = value
     }
 
     init {

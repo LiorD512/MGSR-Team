@@ -22,6 +22,7 @@ object WidgetDataStore {
     private const val KEY_HAS_DATA = "has_data"
     private const val KEY_TASKS = "tasks"
     private const val KEY_ALERTS = "alerts"
+    private const val KEY_LAST_UPDATED = "last_updated"
 
     private fun prefs(context: Context): SharedPreferences =
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -72,6 +73,7 @@ object WidgetDataStore {
             .putString(KEY_TASKS, tasksJson)
             .putString(KEY_ALERTS, alertsJson)
             .putBoolean(KEY_HAS_DATA, true)
+            .putLong(KEY_LAST_UPDATED, System.currentTimeMillis())
             .apply()
     }
 
@@ -86,10 +88,11 @@ object WidgetDataStore {
         val alertCount: Int,
         val hasData: Boolean,
         val tasks: List<WidgetTask>,
-        val alerts: List<WidgetAlert>
+        val alerts: List<WidgetAlert>,
+        val lastUpdatedMillis: Long
     )
 
-    fun emptyData(): WidgetData = WidgetData(0, 0, 0, 0, 0, 0, 0, 0, false, emptyList(), emptyList())
+    fun emptyData(): WidgetData = WidgetData(0, 0, 0, 0, 0, 0, 0, 0, false, emptyList(), emptyList(), 0L)
 
     private fun parseTasks(json: String): List<WidgetTask> = try {
         JSONArray(json).let { arr ->
@@ -130,7 +133,8 @@ object WidgetDataStore {
             alertCount = p.getInt(KEY_ALERT_COUNT, 0),
             hasData = p.getBoolean(KEY_HAS_DATA, false),
             tasks = parseTasks(p.getString(KEY_TASKS, "[]") ?: "[]"),
-            alerts = parseAlerts(p.getString(KEY_ALERTS, "[]") ?: "[]")
+            alerts = parseAlerts(p.getString(KEY_ALERTS, "[]") ?: "[]"),
+            lastUpdatedMillis = p.getLong(KEY_LAST_UPDATED, 0L)
         )
     }
 }

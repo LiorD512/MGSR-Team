@@ -8,11 +8,23 @@ import com.google.firebase.ai.type.generationConfig
 import com.liordahan.mgsrteam.features.players.models.Player
 import com.liordahan.mgsrteam.features.requests.models.Request
 import com.liordahan.mgsrteam.transfermarket.ClubSquadValueFetcher
+import com.liordahan.mgsrteam.transfermarket.LatestReleases
+import com.liordahan.mgsrteam.transfermarket.LatestTransferModel
 import com.liordahan.mgsrteam.transfermarket.PlayerSearch
 import com.liordahan.mgsrteam.transfermarket.PlayerSearchModel
 import com.liordahan.mgsrteam.transfermarket.TransfermarktPlayerDetails
 import com.liordahan.mgsrteam.transfermarket.TransfermarktResult
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.channelFlow
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 
@@ -25,7 +37,8 @@ import org.json.JSONObject
  */
 class AiHelperService(
     private val playerSearch: PlayerSearch,
-    private val clubSquadValueFetcher: ClubSquadValueFetcher
+    private val clubSquadValueFetcher: ClubSquadValueFetcher,
+    private val latestReleases: LatestReleases
 ) {
 
     companion object {
@@ -146,8 +159,8 @@ class AiHelperService(
 
     /**
      * Finds players from the open market (Transfermarkt) that match a club request.
-     * Considers: club, league/country, position, age, salary range, transfer fee, foot.
-     * Excludes players already in the roster.
+     * FAST path: For "Free/Free loan" requests, uses Transfermarkt LatestReleases (free agents) directly — no AI.
+     * AI path: For other requests, uses Gemini + parallel verification with rate-limited TM fetches.
      */
     suspend fun findPlayersForRequest(
         request: Request,
@@ -156,27 +169,31 @@ class AiHelperService(
     ): Result<List<SimilarPlayerSuggestion>> =
         withContext(Dispatchers.IO) {
             try {
-                val (minValue, maxValue) = transferFeeToMarketValueRange(request.transferFee)
                 val positionGroups = request.position?.let { getPositionGroupsFromCode(it) } ?: emptySet()
-                val salaryEuros = request.salaryRange?.let { salaryRangeToEuros(it) }
                 Log.d(TAG, """
                     |findPlayersForRequest PARAMS:
                     |  clubName=${request.clubName}
                     |  clubCountry=${request.clubCountry}
                     |  position=${request.position} (groups=$positionGroups)
-                    |  age: min=${request.minAge}, max=${request.maxAge}, doesntMatter=${request.ageDoesntMatter}
-                    |  salaryRange=${request.salaryRange} -> $salaryEuros
-                    |  transferFee=${request.transferFee} -> marketValue €${minValue.toInt()}-€${if (maxValue == Double.MAX_VALUE) "∞" else maxValue.toInt()}${if (request.transferFee?.lowercase()?.contains("free") == true) " (free: uses club squad avg±200k)" else ""}
-                    |  dominateFoot=${request.dominateFoot}
-                    |  notes=${request.notes}
+                    |  transferFee=${request.transferFee}
                     |  excludeRosterCount=${excludeTmProfileUrls.size}
-                    |  languageCode=$languageCode
                 """.trimMargin())
 
+                // FAST PATH: Free/Free loan — use Transfermarkt free agents directly (no AI, ~2–5s)
+                if (request.transferFee?.trim()?.lowercase() == "free/free loan" && positionGroups.isNotEmpty()) {
+                    val tmFirst = fetchFreeAgentsForRequest(request, excludeTmProfileUrls, positionGroups)
+                    if (tmFirst.isNotEmpty()) {
+                        Log.d(TAG, "findPlayersForRequest: Transfermarkt-first returned ${tmFirst.size} free agents")
+                        return@withContext Result.success(tmFirst.take(12))
+                    }
+                }
+
+                // AI PATH: Gemini suggests names, then parallel verification
+                val (minValue, maxValue) = transferFeeToMarketValueRange(request.transferFee)
                 val model = FirebaseAI.getInstance(backend = GenerativeBackend.googleAI()).generativeModel(
                     modelName = "gemini-2.5-flash",
                     generationConfig = generationConfig {
-                        temperature = 0.4f
+                        temperature = 0.3f  // Lower for more accurate, less hallucinated names
                         responseMimeType = "application/json"
                         responseSchema = Schema.obj(
                             mapOf(
@@ -203,51 +220,28 @@ class AiHelperService(
                 val requestContext = buildRequestContext(request)
                 val outputLanguage = if (languageCode == "he" || languageCode == "iw") "Hebrew" else "English"
                 val excludeHint = if (excludeTmProfileUrls.isNotEmpty()) {
-                    "CRITICAL: Do NOT suggest players already in the requester's roster. Only suggest players from OTHER clubs who could be signed."
+                    "Do NOT suggest players already in the requester's roster."
                 } else ""
                 val leagueExclusionHint = request.clubCountry?.takeIf { it.isNotBlank() }?.let { country ->
-                    """
-                    SCOUTING VALUE — SAME LEAGUE/COUNTRY EXCLUSION:
-                    Do NOT suggest players from the same league or country as the request ($country). The requester can find those players themselves. Your job is to surface players from OTHER leagues and countries — hidden gems, international options, players from different markets. This is the real value of professional scouting. Every suggestion MUST be from a different league/country.
-                    """.trimIndent()
+                    "Do NOT suggest players from $country. Suggest ONLY from OTHER leagues/countries."
                 } ?: ""
-                val freeHint = if (request.transferFee?.trim()?.lowercase() == "free/free loan") {
-                    """
-                    FREE TRANSFER: Do NOT suggest low-value players (0-150k). Instead: suggest players with market value similar to ${request.clubName}'s current squad level. Prioritize (a) players whose value fits the club's typical squad value, and (b) players whose contract ends soon with value ±200k of the squad average.
-                    """.trimIndent()
-                } else ""
+
+                val positionCode = request.position?.trim()?.uppercase()?.takeIf { it.isNotBlank() }
+                val positionLongName = positionCode?.let { positionCodeToLongName(it) } ?: ""
+                val positionExclusions = positionCode?.let { positionExclusionsForPrompt(it) } ?: ""
+                val positionBlock = if (positionLongName.isNotBlank()) """
+                    POSITION (NON-NEGOTIABLE): Only $positionLongName ($positionCode). $positionExclusions
+                """.trimIndent() else ""
 
                 val prompt = """
-                    You are a TOP-TIER football scout (Barcelona/Real Madrid level). Accuracy is non-negotiable. Every suggestion will be verified against Transfermarkt; displayed stats (age, market value, position) come from that verification. Your job: suggest players who precisely fit the request.
+                    You are a football scout. Suggest exactly 18 players who match this request. Names must be EXACTLY as on Transfermarkt (2024-2025 active players). No URLs.
                     
-                    TASK: Perform a full scouting analysis. Suggest 10-12 players who match ALL criteria. Each player will be verified via Transfermarkt — we fetch their REAL age, market value, position, and history. Only suggest players you are confident exist and fit.
-                    
-                    REQUEST PROFILE:
-                    $requestContext
-                    
+                    REQUEST: $requestContext
+                    $positionBlock
                     $excludeHint
                     $leagueExclusionHint
-                    $freeHint
                     
-                    FULL SCOUTING CRITERIA — match ALL that apply:
-                    - Position: Exact or compatible for the role. Tactical fit: can they play the position in the requested system?
-                    - Age: Within requested range
-                    - Transfer fee / Market value: Must fit the club's budget
-                    - Salary: Wage level aligns with range (values in thousands)
-                    - Preferred foot: Match if specified
-                    - Club & League: Players from OTHER countries/leagues only — NOT from ${request.clubCountry ?: "the request's country"}. Same level or below in terms of club stature.
-                    - Notes: Fit any playing style or experience requirements
-                    - Technical profile: Suggest players who fit the club's typical level — technical, positional play, press resistance where relevant
-                    
-                    CRITICAL — similarityReason RULES:
-                    - NEVER include specific numbers: no € amounts, no ages, no market values.
-                    - We display verified Transfermarkt data (age, value, position) — your description must NOT repeat or invent stats.
-                    - similarityReason: 1-2 sentences in $outputLanguage — QUALITATIVE ONLY. Explain WHY they fit (position fit, value bracket fit, club level fit, playing style). Example: "Fits CF role, value bracket aligns with budget, suitable for Polish league level."
-                    
-                    ACCURACY: You are a top scout. Suggest only players whose names are EXACTLY as on Transfermarkt. No invented stats. No guesswork.
-                    
-                    RULES:
-                    - Full name EXACTLY as on Transfermarkt. No URLs. Active players 2024-2025.
+                    RULES: Full name only. similarityReason: 1-2 sentences in $outputLanguage, qualitative only (no €, no ages). Suggest players you are confident exist on Transfermarkt.
                 """.trimIndent()
 
                 val response = model.generateContent(prompt)
@@ -269,6 +263,180 @@ class AiHelperService(
                 Result.failure(e)
             }
         }
+
+    /**
+     * Same as findPlayersForRequest but emits results progressively.
+     * User sees first matches in ~3–5s instead of waiting for all.
+     */
+    fun findPlayersForRequestAsFlow(
+        request: Request,
+        excludeTmProfileUrls: Set<String>,
+        languageCode: String = "en"
+    ): Flow<List<SimilarPlayerSuggestion>> = channelFlow {
+        withContext(Dispatchers.IO) {
+            val positionGroups = request.position?.let { getPositionGroupsFromCode(it) } ?: emptySet()
+            // FAST PATH: Free/Free loan
+            if (request.transferFee?.trim()?.lowercase() == "free/free loan" && positionGroups.isNotEmpty()) {
+                val tmFirst = fetchFreeAgentsForRequest(request, excludeTmProfileUrls, positionGroups)
+                if (tmFirst.isNotEmpty()) {
+                    send(tmFirst.take(12))
+                    return@withContext
+                }
+            }
+            // AI PATH: emit as we verify
+            send(emptyList())
+            val model = FirebaseAI.getInstance(backend = GenerativeBackend.googleAI()).generativeModel(
+                modelName = "gemini-2.5-flash",
+                generationConfig = generationConfig {
+                    temperature = 0.3f
+                    responseMimeType = "application/json"
+                    responseSchema = Schema.obj(
+                        mapOf(
+                            "similarPlayers" to Schema.array(
+                                Schema.obj(
+                                    mapOf(
+                                        "name" to Schema.string(),
+                                        "position" to Schema.string(),
+                                        "age" to Schema.string(),
+                                        "marketValue" to Schema.string(),
+                                        "similarityReason" to Schema.string()
+                                    ),
+                                    optionalProperties = listOf("position", "age", "marketValue", "similarityReason")
+                                )
+                            )
+                        )
+                    )
+                }
+            )
+            val requestContext = buildRequestContext(request)
+            val outputLanguage = if (languageCode == "he" || languageCode == "iw") "Hebrew" else "English"
+            val excludeHint = if (excludeTmProfileUrls.isNotEmpty()) "Do NOT suggest players already in the requester's roster." else ""
+            val leagueExclusionHint = request.clubCountry?.takeIf { it.isNotBlank() }?.let { "Do NOT suggest players from $it. Suggest ONLY from OTHER leagues/countries." } ?: ""
+            val positionCode = request.position?.trim()?.uppercase()?.takeIf { it.isNotBlank() }
+            val positionLongName = positionCode?.let { positionCodeToLongName(it) } ?: ""
+            val positionExclusions = positionCode?.let { positionExclusionsForPrompt(it) } ?: ""
+            val positionBlock = if (positionLongName.isNotBlank()) "POSITION (NON-NEGOTIABLE): Only $positionLongName ($positionCode). $positionExclusions" else ""
+            val prompt = """
+                You are a football scout. Suggest exactly 18 players who match this request. Names must be EXACTLY as on Transfermarkt (2024-2025 active players). No URLs.
+                REQUEST: $requestContext
+                $positionBlock
+                $excludeHint
+                $leagueExclusionHint
+                RULES: Full name only. similarityReason: 1-2 sentences in $outputLanguage, qualitative only. Suggest players you are confident exist on Transfermarkt.
+            """.trimIndent()
+            val response = model.generateContent(prompt)
+            val text = response.text ?: return@withContext
+            val rawSuggestions = parseSimilarPlayersResponse(text)
+            if (rawSuggestions.isEmpty()) return@withContext
+            val channel = Channel<SimilarPlayerSuggestion?>(Channel.UNLIMITED)
+            val accumulated = mutableListOf<SimilarPlayerSuggestion>()
+            val sem = Semaphore(8)
+            launch {
+                rawSuggestions.map { suggestion ->
+                    async {
+                        sem.withPermit {
+                            val r = verifyOneSuggestionForRequest(suggestion, request, excludeTmProfileUrls)
+                            channel.send(r)
+                        }
+                    }
+                }.awaitAll()
+                channel.close()
+            }
+            for (r in channel) {
+                if (r != null) {
+                    accumulated.add(r)
+                    send(accumulated.take(12).toList())
+                }
+            }
+        }
+    }.flowOn(Dispatchers.IO)
+
+    private suspend fun verifyOneSuggestionForRequest(
+        suggestion: SimilarPlayerSuggestion,
+        request: Request,
+        excludeUrls: Set<String>,
+        allowSameLeague: Boolean = false
+    ): SimilarPlayerSuggestion? {
+        val positionGroups = request.position?.let { getPositionGroupsFromCode(it) } ?: emptySet()
+        val excludeNormalized = excludeUrls.mapNotNull { normalizeTmProfileForExclusion(it) }.toSet()
+        val tmProfile = findBestMatchingProfileForRequest(suggestion.name, positionGroups) ?: return null
+        val url = tmProfile.tmProfile?.takeIf { it.contains("/profil/spieler/", ignoreCase = true) } ?: return null
+        if (normalizeTmProfileForExclusion(url) in excludeNormalized) return null
+        if (!allowSameLeague && isSameLeagueOrCountry(request.clubCountry, tmProfile.currentClub?.clubCountry)) return null
+        val (minValue, maxValue) = when (request.transferFee?.trim()?.lowercase()) {
+            "free/free loan" -> request.clubTmProfile?.let { clubSquadValueFetcher.getAverageSquadValue(it) }?.let { avg ->
+                Pair(maxOf(0.0, avg - 200_000.0), (avg + 200_000).toDouble())
+            } ?: Pair(0.0, 2_000_000.0)
+            else -> transferFeeToMarketValueRange(request.transferFee)
+        }
+        val minAge = if (request.ageDoesntMatter == true) 16 else (request.minAge ?: 16)
+        val maxAge = if (request.ageDoesntMatter == true) 40 else (request.maxAge ?: 40)
+        val reqFoot = request.dominateFoot?.trim()?.lowercase()?.takeIf { it.isNotBlank() }
+        val enriched = suggestion.copy(
+            name = tmProfile.fullName ?: suggestion.name,
+            position = tmProfile.positions?.filterNotNull()?.joinToString(", ")?.takeIf { it.isNotBlank() } ?: tmProfile.positions?.firstOrNull(),
+            age = tmProfile.age,
+            marketValue = tmProfile.marketValue,
+            transfermarktUrl = url,
+            similarityReason = sanitizeSimilarityReason(suggestion.similarityReason, tmProfile.age, tmProfile.marketValue)
+        )
+        if (!hasTransferValue(enriched)) return null
+        if (!meetsRequestConstraints(enriched, minAge, maxAge, minValue, maxValue, positionGroups, reqFoot) &&
+            !meetsRequestConstraintsRelaxed(enriched, minAge, maxAge, minValue, maxValue, positionGroups, reqFoot)) return null
+        return enriched
+    }
+
+    /** Transfermarkt-first: fetch free agents (LatestReleases) and filter by position, age, league. Very fast. */
+    private suspend fun fetchFreeAgentsForRequest(
+        request: Request,
+        excludeUrls: Set<String>,
+        positionGroups: Set<String>
+    ): List<SimilarPlayerSuggestion> {
+        val (minValue, maxValue) = when (request.transferFee?.trim()?.lowercase()) {
+            "free/free loan" -> {
+                val avgValue = request.clubTmProfile?.let { clubSquadValueFetcher.getAverageSquadValue(it) }
+                if (avgValue != null && avgValue > 0) {
+                    val center = avgValue.toDouble()
+                    Pair(maxOf(0, (center - 200_000).toInt()), (center + 200_000).toInt())
+                } else Pair(150_000, 2_000_000)
+            }
+            else -> Pair(0, 2_000_000)
+        }
+        val minAge = if (request.ageDoesntMatter == true) 16 else (request.minAge ?: 16)
+        val maxAge = if (request.ageDoesntMatter == true) 40 else (request.maxAge ?: 40)
+        val excludeNormalized = excludeUrls.mapNotNull { normalizeTmProfileForExclusion(it) }.toSet()
+
+        return when (val result = latestReleases.getLatestReleases(minValue, maxValue, maxRetries = 2, forceEnrichAll = false)) {
+            is TransfermarktResult.Success -> {
+                val filtered = result.data.filterNotNull()
+                    .filter { model ->
+                        val url = model.playerUrl ?: return@filter false
+                        normalizeTmProfileForExclusion(url) !in excludeNormalized
+                    }
+                    .filter { model ->
+                        val pos = model.playerPosition?.let { normalizePositionToCode(it) }
+                        pos != null && positionGroups.contains(pos)
+                    }
+                    .filter { model ->
+                        val age = model.playerAge?.toIntOrNull() ?: return@filter true
+                        age in minAge..maxAge
+                    }
+                    .mapNotNull { model ->
+                        val url = model.playerUrl?.takeIf { it.contains("/profil/spieler/", ignoreCase = true) } ?: return@mapNotNull null
+                        SimilarPlayerSuggestion(
+                            name = model.playerName ?: "Unknown",
+                            position = model.playerPosition,
+                            age = model.playerAge,
+                            marketValue = model.marketValue,
+                            transfermarktUrl = url,
+                            similarityReason = null
+                        )
+                    }
+                filtered.take(12)
+            }
+            is TransfermarktResult.Failed -> emptyList()
+        }
+    }
 
     /** Converts salary range (e.g. "11-15") to euros: 11 = €11,000. */
     private fun salaryRangeToEuros(range: String): String {
@@ -385,28 +553,34 @@ class AiHelperService(
         val positionGroups = request.position?.let { getPositionGroupsFromCode(it) } ?: emptySet()
         val reqFoot = request.dominateFoot?.trim()?.lowercase()?.takeIf { it.isNotBlank() }
 
-        val enriched = rawSuggestions.mapNotNull { suggestion ->
-            val tmProfile = findBestMatchingProfile(suggestion.name)
-            if (tmProfile != null) {
-                val url = tmProfile.tmProfile?.takeIf { it.contains("/profil/spieler/", ignoreCase = true) }
-                if (url != null && normalizeTmProfileForExclusion(url) in excludeNormalized) return@mapNotNull null  // Exclude roster
-                if (isSameLeagueOrCountry(request.clubCountry, tmProfile.currentClub?.clubCountry)) {
-                    Log.d(TAG, "Excluded ${suggestion.name}: same league/country as request (${tmProfile.currentClub?.clubCountry})")
-                    return@mapNotNull null
+        // PARALLEL verification: 8 concurrent TM requests (was sequential = very slow)
+        val sem = Semaphore(8)
+        val enriched = coroutineScope {
+            rawSuggestions.map { suggestion ->
+                async {
+                    sem.withPermit {
+                        val tmProfile = findBestMatchingProfileForRequest(suggestion.name, positionGroups)
+                        if (tmProfile != null) {
+                            val url = tmProfile.tmProfile?.takeIf { it.contains("/profil/spieler/", ignoreCase = true) }
+                            if (url != null && normalizeTmProfileForExclusion(url) in excludeNormalized) return@async null
+                            if (isSameLeagueOrCountry(request.clubCountry, tmProfile.currentClub?.clubCountry)) {
+                                Log.d(TAG, "Excluded ${suggestion.name}: same league/country (${tmProfile.currentClub?.clubCountry})")
+                                return@async null
+                            }
+                            val verifiedPosition = tmProfile.positions?.filterNotNull()?.joinToString(", ")?.takeIf { it.isNotBlank() }
+                                ?: tmProfile.positions?.firstOrNull()?.takeIf { it.isNotBlank() }
+                            suggestion.copy(
+                                name = tmProfile.fullName ?: suggestion.name,
+                                position = verifiedPosition,
+                                age = tmProfile.age,
+                                marketValue = tmProfile.marketValue,
+                                transfermarktUrl = url,
+                                similarityReason = sanitizeSimilarityReason(suggestion.similarityReason, tmProfile.age, tmProfile.marketValue)
+                            )
+                        } else null
+                    }
                 }
-                val verifiedPosition = tmProfile.positions?.filterNotNull()?.joinToString(", ")?.takeIf { it.isNotBlank() }
-                    ?: tmProfile.positions?.firstOrNull()?.takeIf { it.isNotBlank() }
-                val verifiedAge = tmProfile.age
-                val verifiedValue = tmProfile.marketValue
-                suggestion.copy(
-                    name = tmProfile.fullName ?: suggestion.name,
-                    position = verifiedPosition,
-                    age = verifiedAge,
-                    marketValue = verifiedValue,
-                    transfermarktUrl = url,
-                    similarityReason = sanitizeSimilarityReason(suggestion.similarityReason, verifiedAge, verifiedValue)
-                )
-            } else null
+            }.awaitAll().filterNotNull()
         }
 
         var result = enriched.filter {
@@ -417,7 +591,7 @@ class AiHelperService(
                 meetsRequestConstraintsRelaxed(it, minAge, maxAge, minValue, maxValue, positionGroups, reqFoot) && hasTransferValue(it)
             }
         }
-        Log.d(TAG, "verifyAndEnrichForRequest: raw=${rawSuggestions.size}, enriched=${enriched.size}, afterFilter=${result.size} (minAge=$minAge, maxAge=$maxAge)")
+        Log.d(TAG, "verifyAndEnrichForRequest: raw=${rawSuggestions.size}, enriched=${enriched.size}, afterFilter=${result.size}")
         return result.take(12)
     }
 
@@ -433,15 +607,65 @@ class AiHelperService(
         }
     }
 
+    /**
+     * Returns acceptable position CODES for a request (used with positionsOverlap).
+     * CF ≠ CB: Center Forward must NOT match Center Back. Same position role only.
+     */
     private fun getPositionGroupsFromCode(position: String): Set<String> {
         val code = position.trim().uppercase()
         return when {
             code == "GK" -> setOf("GK")
-            code in setOf("CB", "LB", "RB") -> setOf("defender")
-            code in setOf("LW", "RW", "LM", "RM") -> setOf("winger")
-            code in setOf("ST", "CF", "SS") -> setOf("striker")
-            code in setOf("CM", "DM", "AM") -> setOf("midfielder")
+            code in setOf("CB", "LB", "RB") -> setOf("CB", "LB", "RB")
+            code in setOf("LW", "RW", "LM", "RM") -> setOf("LW", "RW", "LM", "RM")
+            code in setOf("ST", "CF", "SS") -> setOf("ST", "CF", "SS")
+            code in setOf("CM", "DM", "AM") -> {
+                when (code) {
+                    "DM" -> setOf("DM")
+                    "AM" -> setOf("AM")
+                    else -> setOf("CM", "DM", "AM")
+                }
+            }
             else -> emptySet()
+        }
+    }
+
+    /** Long name for position code — used in AI prompts for clarity. CF ≠ CB. */
+    private fun positionCodeToLongName(code: String): String {
+        return when (code.trim().uppercase()) {
+            "GK" -> "Goalkeeper"
+            "CB" -> "Centre Back"
+            "LB" -> "Left Back"
+            "RB" -> "Right Back"
+            "DM" -> "Defensive Midfield"
+            "CM" -> "Central Midfield"
+            "AM" -> "Attacking Midfield"
+            "RW" -> "Right Winger"
+            "LW" -> "Left Winger"
+            "CF" -> "Centre Forward"
+            "ST" -> "Striker"
+            "SS" -> "Second Striker"
+            "RM" -> "Right Midfield"
+            "LM" -> "Left Midfield"
+            "LWB" -> "Left Wing-Back"
+            "RWB" -> "Right Wing-Back"
+            else -> code
+        }
+    }
+
+    /** Explicit exclusions for position — e.g. for CF: "NOT Centre Back, NOT Defender". */
+    private fun positionExclusionsForPrompt(code: String): String {
+        val upper = code.trim().uppercase()
+        return when {
+            upper in setOf("CF", "ST", "SS") -> "NEVER suggest Centre Back (CB), Left Back (LB), Right Back (RB), or any defender. ONLY forwards: Centre Forward, Striker, Second Striker."
+            upper in setOf("CB", "LB", "RB") -> "NEVER suggest Centre Forward (CF), Striker (ST), or any forward. ONLY defenders: Centre Back, Left Back, Right Back."
+            upper in setOf("DM", "CM", "AM") -> when (upper) {
+                "DM" -> "NEVER suggest Attacking Midfield (AM) or forwards. ONLY Defensive Midfield (DM)."
+                "AM" -> "NEVER suggest Defensive Midfield (DM) or defenders. ONLY Attacking Midfield (AM)."
+                else -> "ONLY midfielders: Central, Defensive, or Attacking Midfield."
+            }
+            upper in setOf("LW", "RW", "LM", "RM") -> "NEVER suggest Centre Forward (CF), Striker (ST), or Centre Back (CB). ONLY wingers: Left/Right Winger, Left/Right Midfield."
+            upper == "GK" -> "ONLY Goalkeepers. No outfield players."
+            else -> ""
         }
     }
 
@@ -482,7 +706,8 @@ class AiHelperService(
             val relaxedMax = maxValue * 2.0
             if (value < relaxedMin || value > relaxedMax) return false
         }
-        if (positionGroups.isNotEmpty() && !positionsOverlap(positionGroups, suggestion.position)) return true  // Relax position
+        // Position is NON-NEGOTIABLE even in relaxed mode — CF ≠ CB, never accept wrong position
+        if (positionGroups.isNotEmpty() && !positionsOverlap(positionGroups, suggestion.position)) return false
         return true
     }
 
@@ -1015,6 +1240,47 @@ class AiHelperService(
     }
 
     /**
+     * Optimized for request matching: pre-filters search results by position before fetching profile.
+     * Fetches only 1 profile (best match) instead of 5 — much faster.
+     */
+    private suspend fun findBestMatchingProfileForRequest(
+        playerName: String,
+        positionGroups: Set<String>
+    ): TransfermarktPlayerDetails? = withContext(Dispatchers.IO) {
+        when (val result = playerSearch.getSearchResults(playerName)) {
+            is TransfermarktResult.Success -> {
+                val candidates = result.data.filter { it.tmProfile?.contains("/profil/spieler/", ignoreCase = true) == true }
+                if (candidates.isEmpty()) {
+                    val swapped = swapNameOrder(playerName)
+                    if (swapped != playerName) {
+                        when (val retry = playerSearch.getSearchResults(swapped)) {
+                            is TransfermarktResult.Success -> {
+                                val retryCandidates = retry.data.filter { it.tmProfile?.contains("/profil/spieler/", ignoreCase = true) == true }
+                                pickBestMatchForRequest(playerName, retryCandidates, positionGroups)
+                            }
+                            is TransfermarktResult.Failed -> null
+                        }
+                    } else null
+                } else {
+                    pickBestMatchForRequest(playerName, candidates, positionGroups)
+                }
+            }
+            is TransfermarktResult.Failed -> {
+                val swapped = swapNameOrder(playerName)
+                if (swapped != playerName) {
+                    when (val retry = playerSearch.getSearchResults(swapped)) {
+                        is TransfermarktResult.Success -> {
+                            val candidates = retry.data.filter { it.tmProfile?.contains("/profil/spieler/", ignoreCase = true) == true }
+                            pickBestMatchForRequest(playerName, candidates, positionGroups)
+                        }
+                        is TransfermarktResult.Failed -> null
+                    }
+                } else null
+            }
+        }
+    }
+
+    /**
      * Search Transfermarkt, fetch full profiles, return best name match.
      * Tries "Firstname Lastname" first; if no results, tries "Lastname Firstname".
      */
@@ -1055,6 +1321,46 @@ class AiHelperService(
     private fun swapNameOrder(name: String): String {
         val parts = name.trim().split(Regex("\\s+")).filter { it.isNotBlank() }
         return if (parts.size >= 2) "${parts.last()} ${parts.dropLast(1).joinToString(" ")}" else name
+    }
+
+    /** Optimized: pre-filter by position from search result, fetch only 1 profile. */
+    private suspend fun pickBestMatchForRequest(
+        playerName: String,
+        candidates: List<PlayerSearchModel>,
+        positionGroups: Set<String>
+    ): TransfermarktPlayerDetails? {
+        if (candidates.isEmpty()) return null
+        // Pre-filter by position from search result (no profile fetch)
+        val positionFiltered = if (positionGroups.isNotEmpty()) {
+            candidates.filter { model ->
+                val pos = model.playerPosition?.let { normalizePositionToCode(it) }
+                pos != null && positionGroups.contains(pos)
+            }
+        } else candidates
+        val toCheck = if (positionFiltered.isNotEmpty()) positionFiltered else candidates
+        // Fetch only the first/best candidate's profile (was 5 before)
+        val best = toCheck.maxByOrNull { computeNameMatchScoreFromSearch(playerName, it) }
+            ?: toCheck.firstOrNull()
+        return best?.let {
+            try { playerSearch.getPlayerBasicInfo(it) } catch (e: Exception) {
+                Log.w(TAG, "Failed to fetch profile for ${it.playerName}", e)
+                null
+            }
+        }
+    }
+
+    private fun computeNameMatchScoreFromSearch(expectedName: String, model: PlayerSearchModel): Int {
+        val profileName = model.playerName?.lowercase() ?: ""
+        val expectedLower = expectedName.lowercase()
+        if (profileName == expectedLower) return 100
+        if (profileName.contains(expectedLower) || expectedLower.contains(profileName)) return 80
+        val expectedParts = expectedLower.split(Regex("\\s+")).filter { it.length > 2 }
+        val matchCount = expectedParts.count { profileName.contains(it) }
+        return when {
+            matchCount == expectedParts.size -> 70
+            matchCount >= 1 -> 50
+            else -> 20
+        }
     }
 
     private suspend fun pickBestMatch(playerName: String, candidates: List<PlayerSearchModel>): TransfermarktPlayerDetails? {

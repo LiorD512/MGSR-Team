@@ -49,7 +49,7 @@
     <string name="greeting_agent_default">סוכן</string>
 
     <!-- Dashboard Stats -->
-    <string name="stat_players">המאגר שלנו</string>
+    <string name="stat_players">במאגר</string>
     <string name="stat_mandate">ייפוי כוח</string>
     <string name="stat_free">חופשיים</string>
     <string name="stat_requests">בקשות</string>
@@ -120,6 +120,17 @@
     <string name="my_hub_view_my_players">השחקנים שלי</string>
     <string name="widget_agent_dashboard_description">הלוח שלך במבט אחד: שחקנים, משימות, התראות</string>
     <string name="widget_tap_to_open">לחץ לפתיחה</string>
+    <string name="widget_updated_just_now">עכשיו</string>
+    <string name="widget_updated_minutes_ago">עודכן לפני %dm</string>
+    <string name="widget_updated_hours_ago">עודכן לפני %dh</string>
+    <string name="widget_updated_days_ago">עודכן לפני %dd</string>
+    <string name="widget_tasks">משימות</string>
+    <string name="widget_players">שחקנים</string>
+    <string name="widget_add_player">הוסף שחקן</string>
+    <string name="widget_refresh">רענן</string>
+    <string name="widget_upcoming">קרובות:</string>
+    <string name="widget_stats">סטטיסטיקות</string>
+    <string name="widget_tasks_label">משימות</string>
     <string name="my_hub_no_tasks">אין משימות קרובות</string>
     <string name="my_hub_pending_tasks">%d ממתינות</string>
     <string name="my_hub_overdue_tasks">%d באיחור</string>

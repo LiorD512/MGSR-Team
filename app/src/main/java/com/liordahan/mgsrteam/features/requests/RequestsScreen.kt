@@ -381,6 +381,9 @@ fun RequestsScreen(
                                                             }
                                                         }
                                                     },
+                                                    onTryAgainSearch = {
+                                                        viewModel.findPlayersOnlineForRequest(request, LocaleManager.getSavedLanguage(context))
+                                                    },
                                                     onEdit = { /* Edit flow - can be implemented later */ },
                                                     onDelete = { requestToDelete = request }
                                                 )
@@ -678,6 +681,7 @@ private fun RequestCard(
     onOnlinePlayerClick: (AiHelperService.SimilarPlayerSuggestion) -> Unit,
     onOpenTransfermarkt: (String) -> Unit,
     onToggleShortlist: (AiHelperService.SimilarPlayerSuggestion) -> Unit,
+    onTryAgainSearch: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
@@ -1017,12 +1021,30 @@ private fun RequestCard(
                         }
                         Spacer(Modifier.height(16.dp))
                     } else if (onlinePlayers.isEmpty()) {
-                        Text(
-                            stringResource(R.string.requests_online_players_empty),
-                            style = regularTextStyle(HomeTextSecondary, 12.sp)
-                        )
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Text(
+                                stringResource(R.string.requests_online_players_empty),
+                                style = regularTextStyle(HomeTextSecondary, 12.sp)
+                            )
+                            TextButton(
+                                onClick = onTryAgainSearch,
+                                colors = ButtonDefaults.textButtonColors(contentColor = HomeTealAccent)
+                            ) {
+                                Text(
+                                    stringResource(R.string.contacts_try_again),
+                                    style = regularTextStyle(HomeTealAccent, 14.sp)
+                                )
+                            }
+                        }
                     } else {
-                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
                             onlinePlayers.forEach { suggestion ->
                                 val url = suggestion.transfermarktUrl
                                 val isInShortlist = url != null && (url in shortlistUrls || url in justAddedUrls)
@@ -1031,9 +1053,19 @@ private fun RequestCard(
                                     suggestion = suggestion,
                                     isInShortlist = isInShortlist,
                                     isShortlistPending = isShortlistPending,
-                                    onClick = { onOnlinePlayerClick(suggestion) },
-                                    onOpenTransfermarkt = { url?.let { onOpenTransfermarkt(it) } },
+                                    onClick = { url?.let { onOpenTransfermarkt(it) } },
                                     onToggleShortlist = { onToggleShortlist(suggestion) }
+                                )
+                            }
+                            Spacer(Modifier.height(8.dp))
+                            TextButton(
+                                onClick = onTryAgainSearch,
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = ButtonDefaults.textButtonColors(contentColor = HomeTealAccent)
+                            ) {
+                                Text(
+                                    stringResource(R.string.contacts_try_again),
+                                    style = regularTextStyle(HomeTealAccent, 12.sp)
                                 )
                             }
                         }
@@ -1253,8 +1285,7 @@ private fun RequestOnlinePlayersBottomSheet(
                         OnlinePlayerSuggestionRow(
                             suggestion = suggestion,
                             isInShortlist = isInShortlist,
-                            onClick = { onPlayerClick(suggestion) },
-                            onOpenTransfermarkt = { url?.let { onOpenTransfermarkt(it) } },
+                            onClick = { url?.let { onOpenTransfermarkt(it) } },
                             onToggleShortlist = { onToggleShortlist(suggestion) }
                         )
                     }
@@ -1270,7 +1301,6 @@ private fun OnlinePlayerSuggestionRow(
     isInShortlist: Boolean,
     isShortlistPending: Boolean = false,
     onClick: () -> Unit,
-    onOpenTransfermarkt: () -> Unit,
     onToggleShortlist: () -> Unit
 ) {
     Box(modifier = Modifier.fillMaxWidth()) {
@@ -1281,69 +1311,58 @@ private fun OnlinePlayerSuggestionRow(
                 .background(HomeDarkBackground)
                 .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(10.dp))
                 .clickWithNoRipple { onClick() }
-                .padding(horizontal = 10.dp, vertical = 12.dp),
+                .padding(horizontal = 12.dp, vertical = 14.dp),
             verticalAlignment = Alignment.Top
         ) {
-        Box(
-            modifier = Modifier
-                .size(40.dp)
-                .clip(CircleShape)
-                .background(HomeDarkCardBorder),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                (suggestion.name.take(2)).uppercase(),
-                style = boldTextStyle(HomeTextSecondary, 12.sp)
-            )
-        }
-        Spacer(Modifier.width(12.dp))
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .align(Alignment.Top),
-            verticalArrangement = Arrangement.spacedBy(2.dp)
-        ) {
-            Text(
-                suggestion.name,
-                style = boldTextStyle(HomeTextPrimary, 14.sp)
-            )
-            Text(
-                "${suggestion.age ?: "-"} • ${suggestion.position ?: "-"} • ${suggestion.marketValue ?: "-"}",
-                style = regularTextStyle(HomeTextSecondary, 11.sp)
-            )
-            suggestion.similarityReason?.takeIf { it.isNotBlank() }?.let { reason ->
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(CircleShape)
+                    .background(HomeDarkCardBorder),
+                contentAlignment = Alignment.Center
+            ) {
                 Text(
-                    reason,
-                    style = regularTextStyle(HomeTextSecondary, 10.sp),
-                    modifier = Modifier.padding(top = 2.dp),
-                    maxLines = 2
+                    (suggestion.name.take(2)).uppercase(),
+                    style = boldTextStyle(HomeTextSecondary, 13.sp)
+                )
+            }
+            Spacer(Modifier.width(12.dp))
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .align(Alignment.Top),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text(
+                    suggestion.name,
+                    style = boldTextStyle(HomeTextPrimary, 14.sp)
+                )
+                Text(
+                    "${suggestion.age ?: "-"} • ${suggestion.position ?: "-"} • ${suggestion.marketValue ?: "-"}",
+                    style = regularTextStyle(HomeTextSecondary, 12.sp)
+                )
+                suggestion.similarityReason?.takeIf { it.isNotBlank() }?.let { reason ->
+                    Text(
+                        reason,
+                        style = regularTextStyle(HomeTextSecondary, 12.sp),
+                        modifier = Modifier.padding(top = 2.dp),
+                        lineHeight = 18.sp
+                    )
+                }
+            }
+            Spacer(Modifier.width(8.dp))
+            IconButton(
+                onClick = onToggleShortlist,
+                modifier = Modifier.size(48.dp)
+            ) {
+                Icon(
+                    imageVector = if (isInShortlist) Icons.Default.Bookmark else Icons.Default.BookmarkAdd,
+                    contentDescription = if (isInShortlist) stringResource(R.string.shortlist_in_shortlist) else stringResource(R.string.shortlist_add_to_shortlist),
+                    tint = if (isInShortlist) HomeGreenAccent else HomeTextSecondary,
+                    modifier = Modifier.size(22.dp)
                 )
             }
         }
-        Spacer(Modifier.width(8.dp))
-        IconButton(
-            onClick = onOpenTransfermarkt,
-            modifier = Modifier.size(40.dp)
-        ) {
-            Icon(
-                Icons.Default.Link,
-                contentDescription = stringResource(R.string.shortlist_open_tm),
-                tint = HomeTealAccent,
-                modifier = Modifier.size(20.dp)
-            )
-        }
-        IconButton(
-            onClick = onToggleShortlist,
-            modifier = Modifier.size(40.dp)
-        ) {
-            Icon(
-                imageVector = if (isInShortlist) Icons.Default.Bookmark else Icons.Default.BookmarkAdd,
-                contentDescription = if (isInShortlist) stringResource(R.string.shortlist_in_shortlist) else stringResource(R.string.shortlist_add_to_shortlist),
-                tint = if (isInShortlist) HomeGreenAccent else HomeTextSecondary,
-                modifier = Modifier.size(20.dp)
-            )
-        }
-    }
         if (isShortlistPending) {
             Box(
                 modifier = Modifier

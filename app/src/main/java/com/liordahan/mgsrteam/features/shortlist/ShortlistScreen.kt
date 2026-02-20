@@ -1,5 +1,6 @@
 package com.liordahan.mgsrteam.features.shortlist
 
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.BorderStroke
@@ -267,6 +268,7 @@ fun ShortlistScreen(
                             val playerUrl = entry.tmProfileUrl
                             val isExpanded = playerUrl == expandedPlayerUrl
                             ShortlistCard(
+                                context = context,
                                 entry = entry,
                                 rosterTeammates = teammatesCache[playerUrl],
                                 isLoadingTeammates = loadingPlayerUrl == playerUrl,
@@ -485,6 +487,7 @@ private fun ShortlistStatsStripDivider() {
 
 @Composable
 private fun ShortlistCard(
+    context: Context,
     entry: ShortlistEntry,
     rosterTeammates: List<RosterTeammateMatch>? = null,
     isLoadingTeammates: Boolean = false,

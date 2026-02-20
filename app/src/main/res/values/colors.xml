@@ -11,4 +11,6 @@
     <color name="widget_accent_orange">#FFFF9800</color>
     <color name="widget_accent_red">#FFE53935</color>
     <color name="widget_accent_yellow">#FFFDD835</color>
+    <color name="widget_pill_mandate">#FF4A5568</color>
+    <color name="widget_progress_track">#FF2D3748</color>
 </resources>
