@@ -44,7 +44,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -61,6 +60,7 @@ import com.liordahan.mgsrteam.features.players.models.Position
 import com.liordahan.mgsrteam.features.players.repository.IPlayersRepository
 import com.liordahan.mgsrteam.features.players.ui.EmptyState
 import com.liordahan.mgsrteam.features.releases.ReleaseListItem
+import com.liordahan.mgsrteam.transfermarket.Confederation
 import com.liordahan.mgsrteam.features.releases.RosterTeammateMatch
 import com.liordahan.mgsrteam.features.shortlist.ShortlistRepository
 import com.liordahan.mgsrteam.navigation.Screens
@@ -111,7 +111,10 @@ fun ContractFinisherScreen(
 
     val state by viewModel.contractFinisherFlow.collectAsState()
     val positionList by viewModel.positionsFlow.collectAsState(initial = emptyList())
-    var selectedPosition by rememberSaveable { mutableStateOf<Position?>(null) }
+    val selectedAgeRange by viewModel.selectedAgeRangeFlow.collectAsState()
+    val selectedFoot by viewModel.selectedFootFlow.collectAsState()
+    val selectedConfederation by viewModel.selectedConfederationFlow.collectAsState()
+    val selectedPosition by viewModel.selectedPositionFlow.collectAsState()
 
     val shortlistEntries by shortlistRepository.getShortlistFlow().collectAsState(initial = emptyList())
     val shortlistPendingUrls by shortlistRepository.getShortlistPendingUrlsFlow()
@@ -131,10 +134,6 @@ fun ContractFinisherScreen(
             addPlayerTmUrl = null
             addPlayerViewModel.resetAfterAdd()
         }
-    }
-
-    LaunchedEffect(selectedPosition) {
-        viewModel.selectPosition(selectedPosition)
     }
 
     LaunchedEffect(expandedPlayerUrl) {
@@ -193,11 +192,15 @@ fun ContractFinisherScreen(
             )
 
             if (state.visibleList.isEmpty() && !state.isLoading) {
+                val isFilteredEmpty = state.releasesList.isNotEmpty()
                 EmptyState(
-                    text = stringResource(R.string.contract_finisher_no_found),
+                    text = if (isFilteredEmpty) stringResource(R.string.contract_finisher_no_match_filters)
+                    else stringResource(R.string.contract_finisher_no_found),
                     showResetFiltersButton = true,
-                    optionalButtonText = stringResource(R.string.contract_finisher_retry),
-                    onResetFiltersClicked = { viewModel.retry() }
+                    optionalButtonText = if (isFilteredEmpty) stringResource(R.string.contract_finisher_clear_filters)
+                    else stringResource(R.string.contract_finisher_retry),
+                    onResetFiltersClicked = if (isFilteredEmpty) { { viewModel.clearFilters() } }
+                    else { { viewModel.retry() } }
                 )
                 return
             }
@@ -206,10 +209,17 @@ fun ContractFinisherScreen(
                 positionList = positionList,
                 selectedPosition = selectedPosition,
                 playersCount = state.playersCount,
-                onPositionClicked = {
-                    selectedPosition = if (selectedPosition == it) null else it
-                },
-                onAllClicked = { selectedPosition = null }
+                onPositionClicked = { viewModel.selectPosition(if (selectedPosition == it) null else it) },
+                onAllClicked = { viewModel.selectPosition(null) }
+            )
+
+            ContractFinisherSecondaryFilters(
+                selectedAgeRange = selectedAgeRange,
+                selectedFoot = selectedFoot,
+                selectedConfederation = selectedConfederation,
+                onAgeRangeClicked = { viewModel.selectAgeRange(it) },
+                onFootClicked = { viewModel.selectFoot(it) },
+                onConfederationClicked = { viewModel.selectConfederation(it) }
             )
 
             LazyColumn(
@@ -446,6 +456,99 @@ private fun ContractFinisherStatItem(
         Spacer(Modifier.height(4.dp))
         Text(text = value, style = boldTextStyle(HomeTextPrimary, 18.sp))
         Text(text = label, style = regularTextStyle(HomeTextSecondary, 9.sp))
+    }
+}
+
+@Composable
+private fun ContractFinisherSecondaryFilters(
+    selectedAgeRange: ContractFinisherAgeRange,
+    selectedFoot: ContractFinisherFootFilter,
+    selectedConfederation: Confederation?,
+    onAgeRangeClicked: (ContractFinisherAgeRange) -> Unit,
+    onFootClicked: (ContractFinisherFootFilter) -> Unit,
+    onConfederationClicked: (Confederation?) -> Unit
+) {
+    val scrollState = rememberScrollState()
+    val confederations = listOf(
+        null to R.string.feed_filter_all,
+        Confederation.UEFA to R.string.transfer_windows_group_uefa,
+        Confederation.CONMEBOL to R.string.transfer_windows_group_conmebol,
+        Confederation.CONCACAF to R.string.transfer_windows_group_concacaf,
+        Confederation.AFC to R.string.transfer_windows_group_afc,
+        Confederation.CAF to R.string.transfer_windows_group_caf,
+        Confederation.OFC to R.string.transfer_windows_group_ofc
+    )
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 4.dp)
+                .horizontalScroll(scrollState),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.Bottom
+        ) {
+            // Foot chips
+            ContractFinisherChipWithLine(
+                text = stringResource(R.string.feed_filter_all),
+                isSelected = selectedFoot == ContractFinisherFootFilter.ALL,
+                isDisabled = false,
+                onClick = { onFootClicked(ContractFinisherFootFilter.ALL) }
+            )
+            ContractFinisherChipWithLine(
+                text = stringResource(R.string.players_filter_foot_left),
+                isSelected = selectedFoot == ContractFinisherFootFilter.LEFT,
+                isDisabled = false,
+                onClick = { onFootClicked(ContractFinisherFootFilter.LEFT) }
+            )
+            ContractFinisherChipWithLine(
+                text = stringResource(R.string.players_filter_foot_right),
+                isSelected = selectedFoot == ContractFinisherFootFilter.RIGHT,
+                isDisabled = false,
+                onClick = { onFootClicked(ContractFinisherFootFilter.RIGHT) }
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            // Age chips
+            ContractFinisherChipWithLine(
+                text = stringResource(R.string.feed_filter_all),
+                isSelected = selectedAgeRange == ContractFinisherAgeRange.ALL,
+                isDisabled = false,
+                onClick = { onAgeRangeClicked(ContractFinisherAgeRange.ALL) }
+            )
+            ContractFinisherChipWithLine(
+                text = stringResource(R.string.contract_finisher_filter_age_18_21),
+                isSelected = selectedAgeRange == ContractFinisherAgeRange.RANGE_18_21,
+                isDisabled = false,
+                onClick = { onAgeRangeClicked(ContractFinisherAgeRange.RANGE_18_21) }
+            )
+            ContractFinisherChipWithLine(
+                text = stringResource(R.string.contract_finisher_filter_age_22_25),
+                isSelected = selectedAgeRange == ContractFinisherAgeRange.RANGE_22_25,
+                isDisabled = false,
+                onClick = { onAgeRangeClicked(ContractFinisherAgeRange.RANGE_22_25) }
+            )
+            ContractFinisherChipWithLine(
+                text = stringResource(R.string.contract_finisher_filter_age_26_29),
+                isSelected = selectedAgeRange == ContractFinisherAgeRange.RANGE_26_29,
+                isDisabled = false,
+                onClick = { onAgeRangeClicked(ContractFinisherAgeRange.RANGE_26_29) }
+            )
+            ContractFinisherChipWithLine(
+                text = stringResource(R.string.contract_finisher_filter_age_30_plus),
+                isSelected = selectedAgeRange == ContractFinisherAgeRange.RANGE_30_PLUS,
+                isDisabled = false,
+                onClick = { onAgeRangeClicked(ContractFinisherAgeRange.RANGE_30_PLUS) }
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            // Confederation chips
+            confederations.forEach { (conf, labelRes) ->
+                ContractFinisherChipWithLine(
+                    text = stringResource(labelRes),
+                    isSelected = selectedConfederation == conf,
+                    isDisabled = false,
+                    onClick = { onConfederationClicked(conf) }
+                )
+            }
+        }
     }
 }
 

@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.windowInsetsPadding
+import kotlinx.coroutines.delay
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -31,7 +32,13 @@ fun ToastHost(
     val toast by ToastManager.toastFlow.collectAsState()
     var lastMessage by remember { mutableStateOf<ToastMessage?>(null) }
     LaunchedEffect(toast) {
-        if (toast != null) lastMessage = toast
+        if (toast != null) {
+            lastMessage = toast
+        } else if (lastMessage != null) {
+            // Toast dismissed - wait for exit animation then clear so Dialog fully closes
+            delay(400)
+            lastMessage = null
+        }
     }
     val messageToShow = toast ?: lastMessage
 

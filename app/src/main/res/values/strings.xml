@@ -183,6 +183,12 @@
     <string name="contract_finisher_retry">Retry</string>
     <string name="contract_finisher_badge">Release date - %1$s</string>
     <string name="contract_finisher_no_found">No contract finishers found in this range</string>
+    <string name="contract_finisher_no_match_filters">No players match your filters</string>
+    <string name="contract_finisher_clear_filters">Clear filters</string>
+    <string name="contract_finisher_filter_age_18_21">18-21</string>
+    <string name="contract_finisher_filter_age_22_25">22-25</string>
+    <string name="contract_finisher_filter_age_26_29">26-29</string>
+    <string name="contract_finisher_filter_age_30_plus">30+</string>
 
     <!-- Feed -->
     <string name="feed_recent_updates">Recent Updates</string>

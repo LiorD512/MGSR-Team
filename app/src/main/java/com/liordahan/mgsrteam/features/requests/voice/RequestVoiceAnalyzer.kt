@@ -93,12 +93,13 @@ class RequestVoiceAnalyzer(
         val transferOptions = TransferFeeOptions.all.joinToString(", ")
         return """
             You are analyzing a voice recording of a football/soccer agent or club representative describing a player request.
+            The speaker may speak in Hebrew or English.
 
             TASK: Listen to the audio and extract structured data about the request. The speaker may mention:
             - Club name (the club looking for a player)
             - Position (e.g. CF, LW, DM, CB, GK — use standard codes)
             - Salary range (in thousands of euros per year)
-            - Transfer fee / market value budget
+            - Transfer fee / market value budget — Hebrew terms: העברה (transfer), סכום העברה (transfer fee), טרנספר פי (transfer fee)
             - Preferred foot (left, right, or any)
             - Age range (min and max) if specified
 
@@ -106,10 +107,16 @@ class RequestVoiceAnalyzer(
             - clubName: MUST be in ENGLISH. If the speaker says the club in Hebrew or any other language, translate to English. Examples: מכבי חיפה → Maccabi Haifa, הפועל תל אביב → Hapoel Tel Aviv, מכבי תל אביב → Maccabi Tel Aviv, בית"ר ירושלים → Beitar Jerusalem, הפועל באר שבע → Hapoel Be'er Sheva, מכבי פתח תקווה → Maccabi Petah Tikva. Transfermarkt search requires English names.
             - position: Use standard codes: GK, CB, RB, LB, DM, CM, AM, LM, RM, LW, RW, CF, ST, SS, LWB, RWB. If unclear, use the closest match.
             - salaryRange: MUST be one of: $salaryOptions (these are in thousands: e.g. "6-10" = €6k–€10k, "30+" = €30k+)
-            - transferFee: MUST be one of: $transferOptions
+            - transferFee: MUST be one of: $transferOptions. IMPORTANT: Recognize Hebrew terms for transfer fee:
+              * "Free/Free loan" = חינם, הלוואה, בחינם, free, loan
+              * "<200" = מתחת ל־200, פחות מ־200, under 200, below 200
+              * "300-600" = 300-600, שלוש מאות עד שש מאות
+              * "700-900" = 700-900, שבע מאות עד תשע מאות
+              * "1m+" = מיליון, מיליון פלוס, 1m, million
+              When the speaker says העברה, סכום העברה, or טרנספר פי followed by a number/range, extract the corresponding option.
             - dominateFoot: "left", "right", or "any"
             - minAge, maxAge: integers 16-40, or null if not mentioned
-            - notes: Any additional context (contact name, urgency, etc.) or empty string
+            - notes: Keep in the ORIGINAL LANGUAGE. If the speaker speaks Hebrew, write notes in Hebrew. If English, write in English. Do not translate notes.
 
             If something is not mentioned, use null or empty string. Never invent data.
             Return valid JSON only. No markdown, no explanation.
@@ -190,11 +197,23 @@ class RequestVoiceAnalyzer(
 
     private fun matchTransferFee(raw: String): String? {
         val lower = raw.lowercase().trim()
+        // English
         if (lower.contains("free") || lower.contains("loan")) return "Free/Free loan"
         if (lower.contains("200") && !lower.contains("300")) return "<200"
         if (lower.contains("300") || lower.contains("600")) return "300-600"
         if (lower.contains("700") || lower.contains("900")) return "700-900"
         if (lower.contains("1m") || lower.contains("million")) return "1m+"
+        // Hebrew: חינם, הלוואה, בחינם
+        if (lower.contains("חינם") || lower.contains("הלוואה") || lower.contains("בחינם")) return "Free/Free loan"
+        // Hebrew: מתחת ל־200, פחות מ־200, העברה מתחת ל־200
+        if (lower.contains("מתחת") || lower.contains("פחות מ") || lower.contains("פחות מ־")) {
+            if (lower.contains("200") || lower.contains("מאתיים")) return "<200"
+        }
+        // Hebrew: מיליון, מיליון פלוס, טרנספר פי מיליון
+        if (lower.contains("מיליון") || lower.contains("מליון")) return "1m+"
+        // Hebrew numbers for ranges: שלוש מאות, שש מאות, שבע מאות, תשע מאות
+        if (lower.contains("300") || lower.contains("שלוש מאות") || lower.contains("שש מאות") || lower.contains("600")) return "300-600"
+        if (lower.contains("700") || lower.contains("שבע מאות") || lower.contains("תשע מאות") || lower.contains("900")) return "700-900"
         return TransferFeeOptions.all.firstOrNull { it.equals(lower, ignoreCase = true) }
     }
 

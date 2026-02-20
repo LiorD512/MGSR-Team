@@ -182,6 +182,12 @@
     <string name="contract_finisher_retry">נסה שוב</string>
     <string name="contract_finisher_badge">תאריך סיום חוזה - %1$s</string>
     <string name="contract_finisher_no_found">לא נמצאו מסיימי חוזה בטווח זה</string>
+    <string name="contract_finisher_no_match_filters">אין שחקנים התואמים את הסינון</string>
+    <string name="contract_finisher_clear_filters">נקה סינון</string>
+    <string name="contract_finisher_filter_age_18_21">18-21</string>
+    <string name="contract_finisher_filter_age_22_25">22-25</string>
+    <string name="contract_finisher_filter_age_26_29">26-29</string>
+    <string name="contract_finisher_filter_age_30_plus">30+</string>
 
     <!-- Feed -->
     <string name="feed_recent_updates">עדכונים אחרונים</string>
