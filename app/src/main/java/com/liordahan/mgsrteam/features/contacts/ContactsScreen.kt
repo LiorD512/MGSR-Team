@@ -444,106 +444,28 @@ fun ContactsScreen(
                         SkeletonContactList(modifier = Modifier.fillMaxSize())
                     }
 
-                    tabContacts.isEmpty() -> {
-                        ContactsStatsStrip(
-                            total = 0,
-                            countries = 0,
-                            showCountries = selectedTab != ContactType.AGENCY
-                        )
-                        ContactsSearchBar(
-                            query = searchContactInput.text,
-                            onQueryChange = { searchContactInput = TextFieldValue(it) },
-                            onClear = {
-                                searchContactInput = TextFieldValue("")
-                                keyboardController?.hide()
-                                focusManager.clearFocus()
-                            },
-                            searchHint = if (selectedTab == ContactType.AGENCY) R.string.contacts_search_agency_hint else R.string.contacts_screen_search_hint
-                        )
-                        ContactsEmptyState(
-                            title = when (selectedTab) {
-                                ContactType.CLUB -> stringResource(R.string.contacts_empty_club)
-                                ContactType.AGENCY -> stringResource(R.string.contacts_empty_agency)
-                            },
-                            subtitle = when (selectedTab) {
-                                ContactType.CLUB -> stringResource(R.string.contacts_empty_club_hint)
-                                ContactType.AGENCY -> stringResource(R.string.contacts_empty_agency_hint)
-                            },
-                            buttonText = when (selectedTab) {
-                                ContactType.CLUB -> stringResource(R.string.contacts_add_club_contact)
-                                ContactType.AGENCY -> stringResource(R.string.contacts_add_agency_contact)
-                            },
-                            onAddContact = { showAddEditSheet = true }
-                        )
-                    }
-
-                    filteredContacts.isEmpty() -> {
-                        ContactsStatsStrip(
-                            total = tabContacts.size,
-                            countries = tabContacts.map {
-                                it.displayCountry?.takeIf { c -> c.isNotBlank() } ?: "Other"
-                            }.toSet().size,
-                            showCountries = selectedTab != ContactType.AGENCY
-                        )
-                        ContactsSearchBar(
-                            query = searchContactInput.text,
-                            onQueryChange = { searchContactInput = TextFieldValue(it) },
-                            onClear = {
-                                searchContactInput = TextFieldValue("")
-                                keyboardController?.hide()
-                                focusManager.clearFocus()
-                            },
-                            searchHint = if (selectedTab == ContactType.AGENCY) R.string.contacts_search_agency_hint else R.string.contacts_screen_search_hint
-                        )
-                        ContactsEmptyState(
-                            title = stringResource(R.string.contacts_no_contacts_found),
-                            subtitle = stringResource(R.string.contacts_try_different_search),
-                            buttonText = stringResource(R.string.contacts_clear_search),
-                            onButtonClick = { searchContactInput = TextFieldValue("") }
-                        )
-                    }
-
-                    countryFilteredContacts.isEmpty() -> {
-                        ContactsStatsStrip(
-                            total = filteredContacts.size,
-                            countries = filteredContacts.map {
-                                it.displayCountry?.takeIf { c -> c.isNotBlank() } ?: "Other"
-                            }.toSet().size,
-                            showCountries = selectedTab != ContactType.AGENCY
-                        )
-                        ContactsSearchBar(
-                            query = searchContactInput.text,
-                            onQueryChange = { searchContactInput = TextFieldValue(it) },
-                            onClear = {
-                                searchContactInput = TextFieldValue("")
-                                keyboardController?.hide()
-                                focusManager.clearFocus()
-                            },
-                            searchHint = if (selectedTab == ContactType.AGENCY) R.string.contacts_search_agency_hint else R.string.contacts_screen_search_hint
-                        )
-                        if (selectedTab != ContactType.AGENCY) {
-                            ContactsFilterChips(
-                                countries = countryChips,
-                                selectedCountry = selectedCountryFilter,
-                                onCountrySelected = { selectedCountryFilter = it },
-                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
-                            )
-                        }
-                        ContactsEmptyState(
-                            title = stringResource(R.string.contacts_no_contacts_found),
-                            subtitle = stringResource(R.string.contacts_try_different_search),
-                            buttonText = stringResource(R.string.contacts_filter_all),
-                            onButtonClick = { selectedCountryFilter = null }
-                        )
-                    }
-
                     else -> {
-                        val uniqueCountries = countryFilteredContacts.map {
-                            it.displayCountry?.takeIf { c -> c.isNotBlank() } ?: "Other"
-                        }.toSet().size
+                        val statsTotal = when {
+                            tabContacts.isEmpty() -> 0
+                            filteredContacts.isEmpty() -> tabContacts.size
+                            countryFilteredContacts.isEmpty() -> filteredContacts.size
+                            else -> countryFilteredContacts.size
+                        }
+                        val statsCountries = when {
+                            tabContacts.isEmpty() -> 0
+                            filteredContacts.isEmpty() -> tabContacts.map {
+                                it.displayCountry?.takeIf { c -> c.isNotBlank() } ?: "Other"
+                            }.toSet().size
+                            countryFilteredContacts.isEmpty() -> filteredContacts.map {
+                                it.displayCountry?.takeIf { c -> c.isNotBlank() } ?: "Other"
+                            }.toSet().size
+                            else -> countryFilteredContacts.map {
+                                it.displayCountry?.takeIf { c -> c.isNotBlank() } ?: "Other"
+                            }.toSet().size
+                        }
                         ContactsStatsStrip(
-                            total = countryFilteredContacts.size,
-                            countries = uniqueCountries,
+                            total = statsTotal,
+                            countries = statsCountries,
                             showCountries = selectedTab != ContactType.AGENCY
                         )
                         ContactsSearchBar(
@@ -564,7 +486,36 @@ fun ContactsScreen(
                                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
                             )
                         }
-                        val isAgencyTab = selectedTab == ContactType.AGENCY
+                        when {
+                            tabContacts.isEmpty() -> ContactsEmptyState(
+                                title = when (selectedTab) {
+                                    ContactType.CLUB -> stringResource(R.string.contacts_empty_club)
+                                    ContactType.AGENCY -> stringResource(R.string.contacts_empty_agency)
+                                },
+                                subtitle = when (selectedTab) {
+                                    ContactType.CLUB -> stringResource(R.string.contacts_empty_club_hint)
+                                    ContactType.AGENCY -> stringResource(R.string.contacts_empty_agency_hint)
+                                },
+                                buttonText = when (selectedTab) {
+                                    ContactType.CLUB -> stringResource(R.string.contacts_add_club_contact)
+                                    ContactType.AGENCY -> stringResource(R.string.contacts_add_agency_contact)
+                                },
+                                onAddContact = { showAddEditSheet = true }
+                            )
+                            filteredContacts.isEmpty() -> ContactsEmptyState(
+                                title = stringResource(R.string.contacts_no_contacts_found),
+                                subtitle = stringResource(R.string.contacts_try_different_search),
+                                buttonText = stringResource(R.string.contacts_clear_search),
+                                onButtonClick = { searchContactInput = TextFieldValue("") }
+                            )
+                            countryFilteredContacts.isEmpty() -> ContactsEmptyState(
+                                title = stringResource(R.string.contacts_no_contacts_found),
+                                subtitle = stringResource(R.string.contacts_try_different_search),
+                                buttonText = stringResource(R.string.contacts_filter_all),
+                                onButtonClick = { selectedCountryFilter = null }
+                            )
+                            else -> {
+                                val isAgencyTab = selectedTab == ContactType.AGENCY
                         val agencyContacts = if (isAgencyTab) countryFilteredContacts.sortedBy { it.displayOrganization?.lowercase() ?: "" } else null
                         val showGroupedByCountry = !isAgencyTab && selectedCountryFilter == null
                         val grouped = remember(countryFilteredContacts, showGroupedByCountry) {
@@ -665,6 +616,8 @@ fun ContactsScreen(
                                 }
                             }
                         }
+                    }
+                }
                     }
                 }
             }
