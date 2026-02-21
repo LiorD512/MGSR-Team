@@ -2017,11 +2017,31 @@ private fun SimilarPlayerSuggestionRow(
                     suggestion.name,
                     style = boldTextStyle(HomeTextPrimary, 14.sp)
                 )
-                Text(
-                    "${suggestion.age ?: "-"} • ${suggestion.position ?: "-"} • ${suggestion.marketValue ?: "-"}",
-                    style = regularTextStyle(HomeTextSecondary, 11.sp),
-                    modifier = Modifier.padding(top = 2.dp)
-                )
+                Row(
+                    modifier = Modifier.padding(top = 2.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Text(
+                        "${suggestion.age ?: "-"} • ${suggestion.position ?: "-"} • ${suggestion.marketValue ?: "-"}",
+                        style = regularTextStyle(HomeTextSecondary, 11.sp)
+                    )
+                    suggestion.matchPercent?.let { pct ->
+                        val matchColor = when {
+                            pct >= 80 -> HomeGreenAccent
+                            pct >= 60 -> HomeTealAccent
+                            else -> HomeOrangeAccent
+                        }
+                        Text(
+                            "${pct}%",
+                            style = boldTextStyle(matchColor, 11.sp),
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(matchColor.copy(alpha = 0.15f))
+                                .padding(horizontal = 5.dp, vertical = 1.dp)
+                        )
+                    }
+                }
             }
             if (suggestion.transfermarktUrl != null) {
                 Icon(
@@ -2054,20 +2074,115 @@ private fun SimilarPlayerSuggestionRow(
                     .graphicsLayer { rotationZ = if (isExpanded) 180f else 0f }
             )
         }
-        AnimatedVisibility(visible = isExpanded && !suggestion.similarityReason.isNullOrBlank()) {
-            Box(
+        // --- Expanded scout analysis section ---
+        val hasAnalysis = !suggestion.scoutAnalysis.isNullOrBlank()
+                || !suggestion.playingStyle.isNullOrBlank()
+                || !suggestion.similarityReason.isNullOrBlank()
+        AnimatedVisibility(visible = isExpanded && hasAnalysis) {
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(start = 10.dp, end = 10.dp, bottom = 10.dp)
                     .clip(RoundedCornerShape(8.dp))
                     .background(HomeDarkCard)
                     .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(8.dp))
-                    .padding(12.dp)
+                    .padding(12.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Text(
-                    text = suggestion.similarityReason ?: "",
-                    style = regularTextStyle(HomeTextSecondary, 12.sp)
-                )
+                // Playing style badge + match %
+                val hasStyleOrMatch = !suggestion.playingStyle.isNullOrBlank() || suggestion.matchPercent != null
+                if (hasStyleOrMatch) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        suggestion.playingStyle?.takeIf { it.isNotBlank() }?.let { style ->
+                            Text(
+                                text = style,
+                                style = boldTextStyle(HomeTealAccent, 12.sp),
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(HomeTealAccent.copy(alpha = 0.12f))
+                                    .border(1.dp, HomeTealAccent.copy(alpha = 0.3f), RoundedCornerShape(6.dp))
+                                    .padding(horizontal = 8.dp, vertical = 4.dp)
+                            )
+                        }
+                        suggestion.matchPercent?.let { pct ->
+                            val matchColor = when {
+                                pct >= 80 -> HomeGreenAccent
+                                pct >= 60 -> HomeTealAccent
+                                else -> HomeOrangeAccent
+                            }
+                            Text(
+                                text = "Match: $pct%",
+                                style = boldTextStyle(matchColor, 12.sp),
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(matchColor.copy(alpha = 0.12f))
+                                    .border(1.dp, matchColor.copy(alpha = 0.3f), RoundedCornerShape(6.dp))
+                                    .padding(horizontal = 8.dp, vertical = 4.dp)
+                            )
+                        }
+                    }
+                }
+
+                // Scout analysis explanation (stat comparisons, position, physical profile)
+                suggestion.scoutAnalysis?.takeIf { it.isNotBlank() }?.let { analysis ->
+                    // Split explanation into sentences for structured display
+                    val parts = analysis.split(". ").filter { it.isNotBlank() }
+                    parts.forEach { part ->
+                        val cleanPart = part.trimEnd('.').trim()
+                        if (cleanPart.isNotBlank()) {
+                            val isStatLine = cleanPart.contains("/90:") || cleanPart.startsWith("Similar stats:")
+                            if (isStatLine) {
+                                // Stat comparison line — format with highlight
+                                val statText = cleanPart.removePrefix("Similar stats: ").trim()
+                                Row(verticalAlignment = Alignment.Top) {
+                                    Text(
+                                        "\u26A1 ",
+                                        style = regularTextStyle(HomeTealAccent, 12.sp)
+                                    )
+                                    Text(
+                                        statText,
+                                        style = regularTextStyle(HomeTextPrimary, 12.sp),
+                                        lineHeight = 18.sp
+                                    )
+                                }
+                            } else {
+                                // Other info (position, age, build, foot, value)
+                                val icon = when {
+                                    cleanPart.contains("position", ignoreCase = true) -> "\uD83C\uDFBD"
+                                    cleanPart.contains("age", ignoreCase = true) -> "\uD83D\uDCC5"
+                                    cleanPart.contains("build", ignoreCase = true) || cleanPart.contains("height", ignoreCase = true) -> "\uD83D\uDCCF"
+                                    cleanPart.contains("foot", ignoreCase = true) -> "\uD83E\uDDB6"
+                                    cleanPart.contains("value", ignoreCase = true) -> "\uD83D\uDCB0"
+                                    cleanPart.contains("style", ignoreCase = true) -> "\uD83C\uDFA8"
+                                    else -> "\u2022"
+                                }
+                                Row(verticalAlignment = Alignment.Top) {
+                                    Text(
+                                        "$icon ",
+                                        style = regularTextStyle(HomeTextSecondary, 12.sp)
+                                    )
+                                    Text(
+                                        cleanPart,
+                                        style = regularTextStyle(HomeTextSecondary, 12.sp),
+                                        lineHeight = 18.sp
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Fallback: show raw reason if no structured analysis
+                if (suggestion.scoutAnalysis.isNullOrBlank() && !suggestion.similarityReason.isNullOrBlank()) {
+                    Text(
+                        text = suggestion.similarityReason,
+                        style = regularTextStyle(HomeTextSecondary, 12.sp),
+                        lineHeight = 18.sp
+                    )
+                }
             }
         }
     }

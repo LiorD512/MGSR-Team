@@ -57,6 +57,7 @@ import com.liordahan.mgsrteam.features.players.playerinfo.mandate.GenerateMandat
 import com.liordahan.mgsrteam.features.players.repository.IPlayersRepository
 import com.liordahan.mgsrteam.features.players.repository.PlayersRepository
 import com.liordahan.mgsrteam.features.requests.repository.IRequestsRepository
+import com.liordahan.mgsrteam.features.scouting.ScoutApiClient
 import com.liordahan.mgsrteam.transfermarket.ClubSquadValueFetcher
 import com.liordahan.mgsrteam.transfermarket.LatestReleases
 import com.liordahan.mgsrteam.transfermarket.PlayerSearch
@@ -82,7 +83,8 @@ val playersModule = module {
     viewModel<IPlayersViewModel> { PlayersViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
     single { PlayerDocumentsRepository(get()) }
     single { ClubSquadValueFetcher() }
-    single { AiHelperService(get<PlayerSearch>(), get<ClubSquadValueFetcher>(), get<LatestReleases>()) }
+    single { ScoutApiClient() }
+    single { AiHelperService(get<PlayerSearch>(), get<ClubSquadValueFetcher>(), get<LatestReleases>(), get<ScoutApiClient>()) }
     single {
         val apiKey = BuildConfig.VISION_API_KEY
         CloudVisionOcrProvider(if (apiKey.isBlank()) null else apiKey)

@@ -1344,17 +1344,59 @@ private fun OnlinePlayerSuggestionRow(
                     suggestion.name,
                     style = boldTextStyle(HomeTextPrimary, 14.sp)
                 )
-                Text(
-                    "${suggestion.age ?: "-"} • ${suggestion.position ?: "-"} • ${suggestion.marketValue ?: "-"}",
-                    style = regularTextStyle(HomeTextSecondary, 12.sp)
-                )
-                suggestion.similarityReason?.takeIf { it.isNotBlank() }?.let { reason ->
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
                     Text(
-                        reason,
+                        "${suggestion.age ?: "-"} • ${suggestion.position ?: "-"} • ${suggestion.marketValue ?: "-"}",
+                        style = regularTextStyle(HomeTextSecondary, 12.sp)
+                    )
+                    suggestion.matchPercent?.let { pct ->
+                        val matchColor = when {
+                            pct >= 80 -> HomeGreenAccent
+                            pct >= 60 -> HomeTealAccent
+                            else -> HomeOrangeAccent
+                        }
+                        Text(
+                            "${pct}%",
+                            style = boldTextStyle(matchColor, 11.sp),
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(matchColor.copy(alpha = 0.15f))
+                                .padding(horizontal = 5.dp, vertical = 1.dp)
+                        )
+                    }
+                }
+                // Playing style badge
+                suggestion.playingStyle?.takeIf { it.isNotBlank() }?.let { style ->
+                    Text(
+                        text = style,
+                        style = boldTextStyle(HomeTealAccent, 11.sp),
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(HomeTealAccent.copy(alpha = 0.12f))
+                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                    )
+                }
+                // Scout analysis explanation
+                suggestion.scoutAnalysis?.takeIf { it.isNotBlank() }?.let { analysis ->
+                    Text(
+                        analysis,
                         style = regularTextStyle(HomeTextSecondary, 12.sp),
                         modifier = Modifier.padding(top = 2.dp),
                         lineHeight = 18.sp
                     )
+                } ?: run {
+                    // Fallback to raw reason if no structured analysis
+                    suggestion.similarityReason?.takeIf { it.isNotBlank() }?.let { reason ->
+                        Text(
+                            reason,
+                            style = regularTextStyle(HomeTextSecondary, 12.sp),
+                            modifier = Modifier.padding(top = 2.dp),
+                            lineHeight = 18.sp
+                        )
+                    }
                 }
             }
             Spacer(Modifier.width(8.dp))
