@@ -1684,6 +1684,8 @@ private fun AddEditContactBottomSheet(
     var showManualClubSearch by remember { mutableStateOf(false) }
     var retryClubDiscoveryTrigger by remember { mutableStateOf(0) }
     var retryAgencyDiscoveryTrigger by remember { mutableStateOf(0) }
+    /** Name found by discovery (club/agency) - used when saving instead of contact picker name */
+    var discoveredPersonName by remember { mutableStateOf<String?>(null) }
     var selectedRole by remember(initialContact, selectedContactType) {
         val initial = initialContact?.roleEnum ?: ContactRole.UNKNOWN
         val valid = if (selectedContactType == ContactType.AGENCY) agencyRoles else clubRoles
@@ -1742,6 +1744,10 @@ private fun AddEditContactBottomSheet(
                             clubCountryFlag = null
                         )
                         selectedRole = it.role
+                        it.personNameOnTransfermarkt?.takeIf { n -> n.isNotBlank() }?.let { tmName ->
+                            discoveredPersonName = tmName
+                            onNameChange(tmName)
+                        }
                     }
                 }
                 .onFailure { e ->
@@ -1766,8 +1772,10 @@ private fun AddEditContactBottomSheet(
                         agencyUrl = it.agencyUrl
                         agencySearchQuery = it.agencyName
                         selectedAgency = null
-                        it.personNameOnTransfermarkt?.takeIf { n -> n.isNotBlank() && n != pickedName.trim() }
-                            ?.let { tmName -> onNameChange(tmName) }
+                        it.personNameOnTransfermarkt?.takeIf { n -> n.isNotBlank() }?.let { tmName ->
+                            discoveredPersonName = tmName
+                            onNameChange(tmName)
+                        }
                     }
                 }
                 .onFailure { e ->
@@ -1827,6 +1835,9 @@ private fun AddEditContactBottomSheet(
         null -> false
     }
     val canProceedStepContact = pickedName.isNotBlank() && pickedPhone.isNotBlank()
+
+    /** Prefer discovered name (from club/agency lookup) over contact picker name when saving */
+    val nameToSave = (discoveredPersonName?.takeIf { it.isNotBlank() } ?: pickedName).trim()
 
     ModalBottomSheet(
         sheetState = sheetState,
@@ -2079,7 +2090,7 @@ private fun AddEditContactBottomSheet(
                             performSave(
                                 Contact(
                                     id = initialContact?.id,
-                                    name = pickedName.trim(),
+                                    name = nameToSave,
                                     phoneNumber = pickedPhone.trim(),
                                     role = selectedRole.name,
                                     clubName = if (type == ContactType.CLUB) selectedClub?.clubName ?: clubSearchQuery.trim().takeIf { it.isNotBlank() } else null,
@@ -2127,7 +2138,7 @@ private fun AddEditContactBottomSheet(
                             performSave(
                                 Contact(
                                     id = initialContact?.id,
-                                    name = pickedName.trim(),
+                                    name = nameToSave,
                                     phoneNumber = pickedPhone.trim(),
                                     role = selectedRole.name,
                                     clubName = selectedClub?.clubName,
@@ -2172,7 +2183,7 @@ private fun AddEditContactBottomSheet(
                             performSave(
                                 Contact(
                                     id = initialContact?.id,
-                                    name = pickedName.trim(),
+                                    name = nameToSave,
                                     phoneNumber = pickedPhone.trim(),
                                     role = ContactRole.AGENT.name,
                                     clubName = null,

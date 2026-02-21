@@ -27,7 +27,9 @@ class ClubDiscoveryService(
     data class DiscoveredClub(
         val clubName: String,
         val role: ContactRole,
-        val clubModel: ClubSearchModel?
+        val clubModel: ClubSearchModel?,
+        /** Person's name as displayed on Transfermarkt (from same search that found the club) */
+        val personNameOnTransfermarkt: String? = null
     )
 
     /**
@@ -162,7 +164,7 @@ class ClubDiscoveryService(
                     return@withContext Result.success(null)
                 }
 
-                val (clubName, roleName) = findClubAndRoleViaWebSearch(sanitizedName)
+                val (clubName, roleName, personNameFromResult) = findClubAndRoleViaWebSearch(sanitizedName)
                     ?: return@withContext Result.success(null)
 
                 val role = parseRole(roleName) ?: ContactRole.UNKNOWN
@@ -172,12 +174,13 @@ class ClubDiscoveryService(
                     is TransfermarktResult.Failed -> null
                 }
 
-                Log.d(TAG, "discoverClubForPerson: $personName -> $clubName ($role)")
+                Log.d(TAG, "discoverClubForPerson: $personName -> $clubName ($role), name=$personNameFromResult")
                 Result.success(
                     DiscoveredClub(
                         clubName = clubName,
                         role = role,
-                        clubModel = clubModel
+                        clubModel = clubModel,
+                        personNameOnTransfermarkt = personNameFromResult?.takeIf { it.isNotBlank() }
                     )
                 )
             } catch (e: Exception) {
@@ -186,7 +189,7 @@ class ClubDiscoveryService(
             }
         }
 
-    private suspend fun findClubAndRoleViaWebSearch(personName: String): Pair<String, String>? =
+    private suspend fun findClubAndRoleViaWebSearch(personName: String): Triple<String, String, String?>? =
         withContext(Dispatchers.IO) {
             try {
                 val model = FirebaseAI.getInstance(backend = GenerativeBackend.googleAI()).generativeModel(
@@ -198,10 +201,11 @@ class ClubDiscoveryService(
                 val prompt = """
                     Search the web for: "$personName" football club
                     Find which football/soccer club this person works at and their role (coach, assistant coach, sport director, scout, CEO, president, board member).
-                    Reply with exactly two lines:
+                    Reply with exactly three lines:
                     Line 1: The club name as it appears on Transfermarkt (e.g. "FC Barcelona", "Real Madrid")
                     Line 2: The role - one of: Coach, Assistant Coach, Sport Director, Scout, CEO, President, Board Member, Unknown
-                    If the person has left their previous club and is currently without a club (retired, free agent, between jobs): Line 1: Without club
+                    Line 3: The person's name exactly as displayed on Transfermarkt (e.g. "Xabi Alonso", "Jürgen Klopp") - copy from the source you found
+                    If the person has left their previous club and is currently without a club (retired, free agent, between jobs): Line 1: Without club, Line 3: the name as displayed
                     If not found: UNKNOWN
                 """.trimIndent()
                 val response = model.generateContent(prompt)
@@ -211,9 +215,10 @@ class ClubDiscoveryService(
                 val lines = text.lines().map { it.trim() }.filter { it.isNotBlank() }
                 val clubName = lines.getOrNull(0)?.takeIf { !it.equals("UNKNOWN", ignoreCase = true) } ?: return@withContext null
                 val roleName = lines.getOrNull(1) ?: "Unknown"
+                val personNameFromResult = lines.getOrNull(2)?.takeIf { !it.equals("UNKNOWN", ignoreCase = true) }
 
-                Log.d(TAG, "findClubAndRoleViaWebSearch: $personName -> $clubName, $roleName")
-                clubName to roleName
+                Log.d(TAG, "findClubAndRoleViaWebSearch: $personName -> $clubName, $roleName, name=$personNameFromResult")
+                Triple(clubName, roleName, personNameFromResult)
             } catch (e: Exception) {
                 Log.e(TAG, "findClubAndRoleViaWebSearch failed", e)
                 null

@@ -55,12 +55,11 @@ class AgencyDiscoveryService(
                 val url = tmDirect?.agencyUrl
                 if (name != null && url != null) {
                     Log.d(TAG, "discoverAgencyForPerson: found via TM direct: $name")
-                    val tmPersonName = findPersonNameOnTransfermarkt(sanitizedName)
                     return@withContext Result.success(
                         DiscoveredAgency(
                             agencyName = name,
                             agencyUrl = url,
-                            personNameOnTransfermarkt = tmPersonName
+                            personNameOnTransfermarkt = null
                         )
                     )
                 }
@@ -85,33 +84,30 @@ class AgencyDiscoveryService(
                         val best = pickBestAgencyMatch(agencyNameFromWeb, tmResult.data)
                         if (best != null) {
                             Log.d(TAG, "discoverAgencyForPerson: found ${best.agencyName} for $personName")
-                            val tmPersonName = findPersonNameOnTransfermarkt(sanitizedName)
                             Result.success(
                                 DiscoveredAgency(
                                     agencyName = best.agencyName!!,
                                     agencyUrl = best.agencyUrl!!,
-                                    personNameOnTransfermarkt = tmPersonName
+                                    personNameOnTransfermarkt = null
                                 )
                             )
                         } else {
-                            val tmPersonName = findPersonNameOnTransfermarkt(sanitizedName)
                             Result.success(
                                 DiscoveredAgency(
                                     agencyName = agencyNameFromWeb,
                                     agencyUrl = "",
-                                    personNameOnTransfermarkt = tmPersonName
+                                    personNameOnTransfermarkt = null
                                 )
                             )
                         }
                     }
                     is TransfermarktResult.Failed -> {
                         Log.w(TAG, "Transfermarkt agency search failed: ${tmResult.cause}")
-                        val tmPersonName = findPersonNameOnTransfermarkt(sanitizedName)
                         Result.success(
                             DiscoveredAgency(
                                 agencyName = agencyNameFromWeb,
                                 agencyUrl = "",
-                                personNameOnTransfermarkt = tmPersonName
+                                personNameOnTransfermarkt = null
                             )
                         )
                     }
@@ -273,38 +269,6 @@ class AgencyDiscoveryService(
                 name
             } catch (e: Exception) {
                 Log.e(TAG, "findAgencyNameViaWebSearch failed", e)
-                null
-            }
-        }
-
-    /**
-     * Uses Gemini with Google Search to find the person's name as displayed on Transfermarkt.
-     * E.g. "Mino Raiola" -> "Vincenzo Raiola", "Jorge Mendes" -> "Jorge Mendes"
-     */
-    private suspend fun findPersonNameOnTransfermarkt(personName: String): String? =
-        withContext(Dispatchers.IO) {
-            try {
-                val model = FirebaseAI.getInstance(backend = GenerativeBackend.googleAI()).generativeModel(
-                    modelName = "gemini-2.5-flash",
-                    generationConfig = generationConfig { temperature = 0.1f },
-                    safetySettings = null,
-                    tools = listOf(Tool.googleSearch())
-                )
-                val prompt = """
-                    Search: site:transfermarkt.com "$personName" football agent
-                    Find the Transfermarkt profile of the agent "$personName".
-                    Return ONLY the exact name as displayed on their Transfermarkt profile.
-                    Must be the same person "$personName", not a different agent with similar name.
-                    One line. If not found: UNKNOWN
-                """.trimIndent()
-                val response = model.generateContent(prompt)
-                val text = response.text?.trim() ?: return@withContext null
-                if (text.equals("UNKNOWN", ignoreCase = true) || text.isBlank()) return@withContext null
-                val name = text.lines().firstOrNull()?.trim()?.takeIf { it.isNotBlank() }
-                Log.d(TAG, "findPersonNameOnTransfermarkt: $personName -> $name")
-                name
-            } catch (e: Exception) {
-                Log.e(TAG, "findPersonNameOnTransfermarkt failed", e)
                 null
             }
         }
