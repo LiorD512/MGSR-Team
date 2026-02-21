@@ -204,13 +204,13 @@ class AiHelperService(
             // Try scouting server first
             if (scoutApiClient != null) {
                 Log.d(TAG, "┌── findPlayersForRequest: trying SERVER for ${request.clubName}")
-                val serverResult = tryServerForRequest(request)
+                val serverResult = tryServerForRequest(request, excludeTmProfileUrls, languageCode)
                 if (serverResult != null && serverResult.isNotEmpty()) {
                     val filtered = serverResult.filter { s ->
                         s.transfermarktUrl == null || s.transfermarktUrl !in excludeTmProfileUrls
                     }
                     Log.d(TAG, "✅ findPlayersForRequest: SERVER returned ${serverResult.size} results (${filtered.size} after filtering) for ${request.clubName}")
-                    return@withContext Result.success(filtered.take(12))
+                    return@withContext Result.success(filtered.take(10))
                 } else {
                     Log.w(TAG, "❌ findPlayersForRequest: server returned ${serverResult?.size ?: "null"}, falling back to AI")
                 }
@@ -327,11 +327,11 @@ class AiHelperService(
             // Try scouting server first (instant results)
             if (scoutApiClient != null) {
                 Log.d(TAG, "┌── findPlayersForRequestAsFlow: trying SERVER for ${request.clubName}")
-                val serverResult = tryServerForRequest(request)
+                val serverResult = tryServerForRequest(request, excludeTmProfileUrls, languageCode)
                 if (serverResult != null && serverResult.isNotEmpty()) {
                     val filtered = serverResult.filter { s ->
                         s.transfermarktUrl == null || s.transfermarktUrl !in excludeTmProfileUrls
-                    }.take(12)
+                    }.take(10)
                     Log.d(TAG, "✅ findPlayersForRequestAsFlow: SERVER returned ${serverResult.size} results (${filtered.size} after filtering)")
                     send(filtered)
                     return@withContext
@@ -679,26 +679,28 @@ class AiHelperService(
      * Try the scouting server to find players matching a request.
      * Returns null if the server is unavailable or returns no results.
      */
-    private suspend fun tryServerForRequest(request: Request): List<SimilarPlayerSuggestion>? {
+    private suspend fun tryServerForRequest(request: Request, excludeUrls: Set<String> = emptySet(), lang: String = "en"): List<SimilarPlayerSuggestion>? {
         val api = scoutApiClient ?: return null
         return try {
-            val valueMax = request.transferFee?.let {
-                transferFeeToMarketValueRange(it).second.takeIf { v -> v < Double.MAX_VALUE }
-            }
             Log.d(TAG, """┌── tryServerForRequest ──
                 |│ Club: ${request.clubName}
                 |│ Position: ${request.position}
                 |│ Age: ${request.minAge} - ${request.maxAge}
                 |│ Foot: ${request.dominateFoot}
                 |│ Transfer Fee: ${request.transferFee}
-                |│ Value Max (converted): $valueMax
+                |│ Notes: ${request.notes}
+                |│ Exclude URLs: ${excludeUrls.size}
+                |│ Lang: $lang
                 |└──────────────────────────────""".trimMargin())
             val result = api.findPlayersForRequest(
                 position = request.position,
                 ageMin = request.minAge,
                 ageMax = request.maxAge,
                 foot = request.dominateFoot?.takeIf { it.isNotBlank() && it.lowercase() != "doesn't matter" },
-                valueMax = valueMax,
+                notes = request.notes,
+                transferFee = request.transferFee,
+                excludeUrls = excludeUrls,
+                lang = lang,
                 sortBy = "score",
                 limit = 15
             )
@@ -826,7 +828,6 @@ class AiHelperService(
     ): Result<String> =
         withContext(Dispatchers.IO) {
             try {
-                // Use same config pattern as findSimilarPlayers (which works); avoid maxOutputTokens to use model default
                 val model = FirebaseAI.getInstance(backend = GenerativeBackend.googleAI()).generativeModel(
                     modelName = "gemini-2.5-flash",
                     generationConfig = generationConfig {
@@ -868,7 +869,7 @@ class AiHelperService(
                     
                     Note: If a field is missing above (e.g. no contract, no description), do not invent it. Work with what is provided.
                     
-                    Write the report in $outputLanguage. Use clear section headers where appropriate. Be specific about what the data shows. Avoid generic fluff. Your verdict should be actionable. Never fabricate facts.
+                    Write the report in $outputLanguage. Use clear numbered section headers (e.g. "1. Executive Summary", "2. Technical Profile"). Do NOT use markdown asterisks (**bold**) or hashtags — use plain text only. Be specific about what the data shows. Avoid generic fluff. Your verdict should be actionable. Never fabricate facts.
                 """.trimIndent()
                 val response = model.generateContent(prompt)
                 val text = response.text?.trim()

@@ -31,8 +31,8 @@ class ScoutApiClient(private val baseUrl: String = DEFAULT_BASE_URL) {
 
     private val client = OkHttpClient.Builder()
         .connectionPool(ConnectionPool(5, 1, TimeUnit.MINUTES))
-        .connectTimeout(10, TimeUnit.SECONDS)
-        .readTimeout(30, TimeUnit.SECONDS)
+        .connectTimeout(15, TimeUnit.SECONDS)
+        .readTimeout(60, TimeUnit.SECONDS)
         .build()
 
     // ── Similar players (for PlayerInfo screen) ──
@@ -80,6 +80,10 @@ class ScoutApiClient(private val baseUrl: String = DEFAULT_BASE_URL) {
         ageMax: Int? = null,
         foot: String? = null,
         valueMax: Double? = null,
+        notes: String? = null,
+        transferFee: String? = null,
+        excludeUrls: Set<String> = emptySet(),
+        lang: String = "en",
         sortBy: String = "score",
         limit: Int = 15
     ): Result<List<AiHelperService.SimilarPlayerSuggestion>> = runCatching {
@@ -89,6 +93,12 @@ class ScoutApiClient(private val baseUrl: String = DEFAULT_BASE_URL) {
             ageMax?.let { add("age_max=$it") }
             foot?.let { add("foot=${encode(it)}") }
             valueMax?.let { add("value_max=$it") }
+            notes?.takeIf { it.isNotBlank() }?.let { add("notes=${encode(it)}") }
+            transferFee?.takeIf { it.isNotBlank() }?.let { add("transfer_fee=${encode(it)}") }
+            if (excludeUrls.isNotEmpty()) {
+                add("exclude_urls=${encode(excludeUrls.joinToString(","))}")
+            }
+            add("lang=$lang")
             add("sort_by=$sortBy")
             add("limit=$limit")
         }
@@ -99,7 +109,9 @@ class ScoutApiClient(private val baseUrl: String = DEFAULT_BASE_URL) {
             |│ ageMin: $ageMin, ageMax: $ageMax
             |│ foot: $foot
             |│ valueMax: $valueMax
-            |│ sortBy: $sortBy, limit: $limit
+            |│ notes: $notes
+            |│ transferFee: $transferFee
+            |│ lang: $lang, sortBy: $sortBy, limit: $limit
             |└──────────────────────────────""".trimMargin())
         val json = fetch(url)
         val results = parseSimilarPlayerSuggestions(json)
@@ -165,13 +177,19 @@ class ScoutApiClient(private val baseUrl: String = DEFAULT_BASE_URL) {
             val marketValue = p.optString("market_value", "")
             val url = p.optString("url", "")
             val league = p.optString("league", "")
-            val score = p.optDouble("scouting_score", 0.0)
+            val scoutingScore = p.optDouble("scouting_score", 0.0)
+            val smartScore = p.optDouble("smart_score", 0.0)
             val simScore = p.optDouble("similarity_score", 0.0)
 
             // Build a reason from available stats
             val playingStyle = p.optString("playing_style", "").takeIf { it.isNotBlank() }
             val explanation = p.optString("explanation", "").takeIf { it.isNotBlank() }
-            val matchPct = if (simScore > 0) (simScore * 100).toInt() else null
+            val effectiveScore = when {
+                smartScore > 0 -> smartScore.toInt()
+                simScore > 0 -> (simScore * 100).toInt()
+                scoutingScore > 0 -> scoutingScore.toInt()
+                else -> null
+            }
 
             // Build compact reason (shown in collapsed header or inline)
             val reason = buildString {
@@ -180,9 +198,9 @@ class ScoutApiClient(private val baseUrl: String = DEFAULT_BASE_URL) {
                     if (isNotBlank()) append(" · ")
                     append(league)
                 }
-                if (matchPct != null) {
+                if (effectiveScore != null) {
                     if (isNotBlank()) append(" · ")
-                    append("Match: $matchPct%")
+                    append("Match: $effectiveScore%")
                 }
             }
 
@@ -194,9 +212,10 @@ class ScoutApiClient(private val baseUrl: String = DEFAULT_BASE_URL) {
                 transfermarktUrl = url,
                 similarityReason = reason.ifBlank { null },
                 playingStyle = playingStyle,
-                matchPercent = matchPct,
+                matchPercent = effectiveScore,
                 scoutAnalysis = explanation
             )
         }
     }
+
 }

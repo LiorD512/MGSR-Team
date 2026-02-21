@@ -1861,14 +1861,10 @@ private fun PlayerInfoAiHelperSection(
                                 )
                             }
                         } else if (scoutReport != null) {
-                            Text(
-                                text = scoutReport!!,
-                                style = regularTextStyle(HomeTextPrimary, 13.sp),
+                            ScoutReportContent(
+                                reportText = scoutReport!!,
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(12.dp)
-                                    .clip(RoundedCornerShape(10.dp))
-                                    .background(HomeDarkBackground)
                                     .padding(12.dp)
                             )
                         } else {
