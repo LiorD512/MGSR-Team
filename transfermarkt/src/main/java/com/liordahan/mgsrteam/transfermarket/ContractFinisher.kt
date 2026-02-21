@@ -66,6 +66,7 @@ class ContractFinisher {
         val all = mutableListOf<LatestTransferModel>()
         val seenUrls = mutableSetOf<String>()
         var totalPagesFetched = 0
+        var first10Logged = false
 
         try {
             for (jahr in config.yearsToQuery) {
@@ -115,6 +116,14 @@ class ContractFinisher {
                     val sorted = all.sortedByDescending { it.getRealMarketValue() }
                     emit(ContractFinisherProgress(players = sorted, pagesLoaded = totalPagesFetched, isLoading = true))
 
+                    // Log first 10 players as they arrive (order received, not final sorted) - once only
+                    if (!first10Logged && all.size >= 10) {
+                        first10Logged = true
+                        all.take(10).forEachIndexed { i, p ->
+                            Log.d(TAG, "First10 #${i + 1}: name=${p.playerName} age=${p.playerAge} nationality=${p.playerNationality} position=${p.playerPosition} value=${p.marketValue}")
+                        }
+                    }
+
                     if (batchShouldBreak) break
                     page += batchPages.size
                     delay(DELAY_BETWEEN_BATCHES_MS)
@@ -122,7 +131,6 @@ class ContractFinisher {
             }
 
             val sorted = all.sortedByDescending { it.getRealMarketValue() }
-            emit(ContractFinisherProgress(players = sorted, pagesLoaded = totalPagesFetched, isLoading = false))
             Log.d(TAG, "ContractFinisher flow done: ${sorted.size} players")
         } catch (e: CancellationException) {
             throw e

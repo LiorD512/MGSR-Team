@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
@@ -191,9 +192,12 @@ class RequestsViewModel(
             _onlinePlayersResult.value = emptyList()
             val rosterUrls = playersRepository.playersFlow().first()
                 .mapNotNull { it.tmProfile?.takeIf { url -> url.isNotBlank() } }.toSet()
-            aiHelperService.findPlayersForRequest(request, rosterUrls, languageCode)
-                .onSuccess { _onlinePlayersResult.value = it }
-                .onFailure { _onlinePlayersResult.value = emptyList() }
+            aiHelperService.findPlayersForRequestAsFlow(request, rosterUrls, languageCode)
+                .catch { _onlinePlayersResult.value = emptyList() }
+                .collect { list ->
+                    _onlinePlayersResult.value = list
+                    if (list.size >= 12) _onlinePlayersLoading.value = false
+                }
             _onlinePlayersLoading.value = false
         }
     }

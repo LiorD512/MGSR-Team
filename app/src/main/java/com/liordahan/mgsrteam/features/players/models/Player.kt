@@ -20,7 +20,6 @@ data class Player(
     val contractExpired: String? = null,
     val tmProfile: String? = null,
     val marketValue: String? = null,
-    val instagramProfile: String? = null,
     val createdAt: Long? = 0,
     val currentClub: Club? = null,
     val agentInChargeId: String? = null,

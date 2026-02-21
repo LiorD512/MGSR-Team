@@ -2,39 +2,22 @@ package com.liordahan.mgsrteam.features.home
 
 import android.annotation.SuppressLint
 import android.app.Activity
-import android.content.Intent
+import android.util.Log
 import android.net.Uri
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.PersonAdd
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -42,6 +25,8 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.liordahan.mgsrteam.IMainViewModel
 import com.liordahan.mgsrteam.R
+import com.liordahan.mgsrteam.deeplink.PendingShareHolder
+import com.liordahan.mgsrteam.features.add.AddFromLinkBottomSheet
 import com.liordahan.mgsrteam.features.add.AddPlayerScreen
 import com.liordahan.mgsrteam.features.contacts.ContactsScreen
 import com.liordahan.mgsrteam.features.contractfinisher.ContractFinisherScreen
@@ -56,18 +41,13 @@ import com.liordahan.mgsrteam.features.players.playerinfo.mandate.MandatePreview
 import com.liordahan.mgsrteam.features.releases.ReleasesScreen
 import com.liordahan.mgsrteam.features.requests.RequestsScreen
 import com.liordahan.mgsrteam.features.returnee.ReturneeScreen
+import com.liordahan.mgsrteam.features.add.IAddPlayerViewModel
 import com.liordahan.mgsrteam.features.shortlist.ShortlistScreen
+import com.liordahan.mgsrteam.BuildConfig
 import com.liordahan.mgsrteam.navigation.NavigationTransitions
 import com.liordahan.mgsrteam.navigation.Screens
 import com.liordahan.mgsrteam.ui.theme.HomeDarkBackground
-import com.liordahan.mgsrteam.ui.theme.HomeDarkCard
-import com.liordahan.mgsrteam.ui.theme.HomeDarkCardBorder
-import com.liordahan.mgsrteam.ui.theme.HomeTealAccent
-import com.liordahan.mgsrteam.ui.theme.HomeTextPrimary
-import com.liordahan.mgsrteam.ui.theme.HomeTextSecondary
-import com.liordahan.mgsrteam.ui.utils.boldTextStyle
-import com.liordahan.mgsrteam.ui.utils.regularTextStyle
-import com.liordahan.mgsrteam.utils.extractTransfermarktPlayerUrl
+import com.liordahan.mgsrteam.utils.extractTransfermarktUrlFromIntent
 import kotlinx.coroutines.flow.collectLatest
 import org.koin.androidx.compose.koinViewModel
 
@@ -80,28 +60,48 @@ fun HomeScreen(
 
     val navController = rememberNavController()
     val context = LocalContext.current
+    val addPlayerViewModel: IAddPlayerViewModel = koinViewModel()
 
-    // Process share/VIEW intent when HomeScreen is visible — handles cold start when
-    // handleDeepLink in onCreate may run before ViewModel/UI is ready (e.g. Hebrew locale)
+    var pendingAddFromLinkUrl by remember { mutableStateOf<String?>(null) }
+
+    // CRITICAL: Process share intent DIRECTLY when HomeScreen appears.
+    // Read from: 1) activity intent 2) PendingShareHolder 3) ViewModel — then navigate immediately.
     LaunchedEffect(Unit) {
         val activity = context as? Activity ?: return@LaunchedEffect
-        val intent = activity.intent ?: return@LaunchedEffect
-        when {
-            intent.action == Intent.ACTION_SEND -> {
-                val sharedText = intent.getStringExtra(Intent.EXTRA_TEXT)
-                    ?: intent.getCharSequenceExtra(Intent.EXTRA_TEXT)?.toString()
-                    ?: intent.data?.toString()
-                extractTransfermarktPlayerUrl(sharedText)?.let { url ->
-                    mainViewModel.setPendingAddPlayerTmUrl(url)
-                }
-            }
-            intent.data != null && intent.data?.scheme == "https" &&
-                intent.data?.host?.contains("transfermarkt") == true -> {
-                extractTransfermarktPlayerUrl(intent.data.toString())?.let { url ->
-                    mainViewModel.setPendingAddPlayerTmUrl(url)
-                }
-            }
+        val fromIntent = extractTransfermarktUrlFromIntent(activity.intent)
+        val fromHolder = PendingShareHolder.takePendingAddPlayerTmUrl()
+        val fromVm = mainViewModel.pendingAddPlayerTmUrl.value.takeIf { !it.isNullOrBlank() }
+        val url = fromIntent ?: fromHolder ?: fromVm
+        if (BuildConfig.DEBUG) {
+            Log.d("MGSR_DeepLink", "HomeScreen LaunchedEffect: fromIntent=${fromIntent?.take(50)}, fromHolder=${fromHolder?.take(50)}, fromVm=${fromVm?.take(50)}, url=${url?.take(50)}")
         }
+        if (!url.isNullOrBlank()) {
+            mainViewModel.clearPendingAddPlayerTmUrl()
+            if (BuildConfig.DEBUG) Log.d("MGSR_DeepLink", "HomeScreen: showing add-from-link sheet")
+            pendingAddFromLinkUrl = url
+        }
+    }
+
+    // React when intent arrives AFTER HomeScreen is already shown (e.g. share while app open)
+    val pendingFromHolder by PendingShareHolder.pendingAddPlayerTmUrl.collectAsStateWithLifecycle(initialValue = null)
+    val pendingFromViewModel by mainViewModel.pendingAddPlayerTmUrl.collectAsStateWithLifecycle(initialValue = null)
+    LaunchedEffect(pendingFromHolder, pendingFromViewModel) {
+        val url = pendingFromHolder ?: pendingFromViewModel
+        if (!url.isNullOrBlank()) {
+            mainViewModel.clearPendingAddPlayerTmUrl()
+            PendingShareHolder.takePendingAddPlayerTmUrl()
+            if (BuildConfig.DEBUG) Log.d("MGSR_DeepLink", "HomeScreen: showing add-from-link sheet (from holder/vm)")
+            pendingAddFromLinkUrl = url
+        }
+    }
+
+    pendingAddFromLinkUrl?.let { url ->
+        AddFromLinkBottomSheet(
+            tmProfileUrl = url,
+            onDismiss = { pendingAddFromLinkUrl = null },
+            onPopToDashboard = { navController.popBackStack(Screens.DashboardScreen.route, false) },
+            addPlayerViewModel = addPlayerViewModel
+        )
     }
 
     LaunchedEffect(Unit) {
@@ -122,78 +122,29 @@ fun HomeScreen(
         }
     }
 
-    val pendingAddPlayerTmUrl by mainViewModel.pendingAddPlayerTmUrl.collectAsStateWithLifecycle()
+    LaunchedEffect(Unit) {
+        mainViewModel.pendingOpenPlayersScreen.collectLatest { shouldOpen ->
+            if (shouldOpen) {
+                navController.navigate(Screens.playersRoute(myPlayersOnly = true))
+                mainViewModel.setPendingOpenPlayersScreen(false)
+            }
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        mainViewModel.pendingOpenAddPlayerScreen.collectLatest { shouldOpen ->
+            if (shouldOpen) {
+                navController.navigate("${Screens.AddPlayerScreen.route}/")
+                mainViewModel.setPendingOpenAddPlayerScreen(false)
+            }
+        }
+    }
 
     LaunchedEffect(Unit) {
         mainViewModel.pendingShortlistAddTmUrl.collectLatest { tmUrl ->
             if (!tmUrl.isNullOrBlank()) {
                 navController.navigate(Screens.ShortlistScreen.route)
                 // URL is consumed by ShortlistScreen when it shows the add sheet
-            }
-        }
-    }
-
-    if (!pendingAddPlayerTmUrl.isNullOrBlank()) {
-        val url = pendingAddPlayerTmUrl!!
-        val encodedUrl = Uri.encode(url)
-        Dialog(
-            onDismissRequest = { mainViewModel.clearPendingAddPlayerTmUrl() }
-        ) {
-            Card(
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = HomeDarkCard),
-                border = BorderStroke(1.dp, HomeDarkCardBorder)
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(20.dp)
-                ) {
-                    Text(
-                        text = stringResource(R.string.add_player_from_link_title),
-                        style = boldTextStyle(HomeTextPrimary, 18.sp)
-                    )
-                    Spacer(Modifier.height(20.dp))
-                    TextButton(
-                        onClick = {
-                            mainViewModel.clearPendingAddPlayerTmUrl()
-                            navController.navigate("${Screens.AddPlayerScreen.route}/$encodedUrl")
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Icon(Icons.Filled.PersonAdd, contentDescription = null, tint = HomeTealAccent, modifier = Modifier.size(24.dp))
-                        Spacer(Modifier.width(12.dp))
-                        Text(
-                            text = stringResource(R.string.add_player_from_link_roster),
-                            style = regularTextStyle(HomeTextPrimary, 16.sp)
-                        )
-                    }
-                    TextButton(
-                        onClick = {
-                            mainViewModel.clearPendingAddPlayerTmUrl()
-                            navController.navigate(Screens.addToShortlistRoute(encodedUrl))
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Icon(Icons.Filled.Person, contentDescription = null, tint = HomeTealAccent, modifier = Modifier.size(24.dp))
-                        Spacer(Modifier.width(12.dp))
-                        Text(
-                            text = stringResource(R.string.add_player_from_link_shortlist),
-                            style = regularTextStyle(HomeTextPrimary, 16.sp)
-                        )
-                    }
-                    Spacer(Modifier.height(8.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.End
-                    ) {
-                        TextButton(
-                            onClick = { mainViewModel.clearPendingAddPlayerTmUrl() }
-                        ) {
-                            Text(stringResource(android.R.string.cancel), style = regularTextStyle(HomeTextSecondary, 14.sp))
-                        }
-                    }
-                }
             }
         }
     }

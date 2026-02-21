@@ -2,6 +2,7 @@ package com.liordahan.mgsrteam.transfermarket
 
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
+import kotlin.text.RegexOption
 
 // Pre-compiled regexes for ribbon-based loan extraction
 private val RIBBON_LOAN_EN = Regex("on loan from (.+?) until", RegexOption.IGNORE_CASE)
@@ -182,4 +183,96 @@ private fun fromDomFallbacks(doc: Document, clubName: String): String? {
         }
     }
     return doc.select("a[href*='verein']").mapNotNull { extractClubFromLink(it) }.firstOrNull { it != clubName }
+}
+
+// Foot extraction - "Foot: left/right/both" in Facts and data. Position varies per profile.
+private val FOOT_REGEX = Regex(
+    """(?:Foot|Fuss|Preferred\s+foot)\s*:?\s*(\w+)""",
+    RegexOption.IGNORE_CASE
+)
+
+/** Valid foot values - used to reject false positives from regex. */
+private val VALID_FOOT_VALUES = setOf("left", "right", "both", "links", "rechts", "beide", "l", "r", "b")
+
+/**
+ * Extracts preferred foot from a Transfermarkt player profile.
+ * Structure: div.info-table contains label (span.info-table__content--regular "Foot:")
+ * and value (span.info-table__content--bold "left"). Order of attributes varies per profile.
+ *
+ * @param doc parsed document
+ * @param rawHtml optional raw HTML for regex fallback (avoids doc.html() serialization)
+ */
+internal fun extractFootFromDocument(doc: Document, rawHtml: String? = null): String? {
+    // Method 1: info-table structure - label (--regular) + value (--bold) as siblings
+    // Scan all content spans; when we find "Foot" label, next sibling is value
+    val infoTable = doc.select("div.info-table").firstOrNull()
+        ?: doc.select("div[class*='info-table']").firstOrNull()
+    if (infoTable != null) {
+        val contentSpans = infoTable.select("span.info-table__content--regular, span.info-table__content--bold")
+        for (i in contentSpans.indices) {
+            val span = contentSpans[i]
+            val text = span.text().trim().lowercase()
+            if (text.contains("foot") || text.contains("fuss")) {
+                // This is the label - value is next span (--bold) or nextElementSibling
+                val valueSpan = contentSpans.getOrNull(i + 1) ?: span.nextElementSibling()
+                val value = valueSpan?.text()?.trim()?.takeIf { it.isNotBlank() }
+                if (value != null && isValidFootValue(value)) {
+                    return normalizeFoot(value)
+                }
+            }
+        }
+        // Fallback: iterate label spans, get nextElementSibling for value
+        for (label in infoTable.select("span.info-table__content--regular")) {
+            val labelText = label.text().trim().lowercase()
+            if (labelText.contains("foot") || labelText.contains("fuss")) {
+                val valueSpan = label.nextElementSibling()
+                val value = valueSpan?.text()?.trim()?.takeIf { it.isNotBlank() }
+                if (value != null && isValidFootValue(value)) {
+                    return normalizeFoot(value)
+                }
+            }
+        }
+    }
+
+    // Method 2: Any span.info-table__content--regular containing "Foot" + next sibling
+    for (label in doc.select("span.info-table__content--regular")) {
+        val labelText = label.text().trim().lowercase()
+        if (labelText.contains("foot") || labelText.contains("fuss")) {
+            val valueSpan = label.nextElementSibling()
+            val value = valueSpan?.text()?.trim()?.takeIf { it.isNotBlank() }
+            if (value != null && isValidFootValue(value)) {
+                return normalizeFoot(value)
+            }
+        }
+    }
+
+    // Method 3: Regex on document text (works regardless of DOM structure)
+    val bodyText = doc.body().text().ifBlank { null } ?: rawHtml ?: doc.html()
+    FOOT_REGEX.find(bodyText)?.groupValues?.getOrNull(1)?.trim()?.takeIf { it.isNotBlank() }
+        ?.let { if (isValidFootValue(it)) return normalizeFoot(it) }
+
+    // Method 4: Regex on raw HTML
+    if (rawHtml != null) {
+        FOOT_REGEX.find(rawHtml)?.groupValues?.getOrNull(1)?.trim()?.takeIf { it.isNotBlank() }
+            ?.let { if (isValidFootValue(it)) return normalizeFoot(it) }
+    }
+
+    return null
+}
+
+private fun isValidFootValue(raw: String): Boolean {
+    val lower = raw.trim().lowercase()
+    return lower in VALID_FOOT_VALUES ||
+        lower.startsWith("left") || lower.startsWith("right") || lower.startsWith("links") ||
+        lower.startsWith("rechts") || lower.contains("both") || lower.contains("beide")
+}
+
+internal fun normalizeFoot(raw: String): String {
+    val lower = raw.trim().lowercase()
+    return when {
+        lower.startsWith("left") || lower == "l" || lower.startsWith("links") -> "Left"
+        lower.startsWith("right") || lower == "r" || lower.startsWith("rechts") -> "Right"
+        lower.contains("both") || lower.contains("two") || lower == "b" || lower.contains("beide") -> "Both"
+        else -> raw.trim()
+    }
 }

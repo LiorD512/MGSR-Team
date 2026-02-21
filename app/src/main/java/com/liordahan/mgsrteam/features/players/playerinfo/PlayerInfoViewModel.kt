@@ -66,7 +66,6 @@ abstract class IPlayerInfoViewModel : ViewModel() {
     abstract fun deletePlayer(playerTmProfile: String, onDeleteSuccessfully: () -> Unit)
     abstract fun updatePlayerNumber(number: String)
     abstract fun updateAgentNumber(number: String)
-    abstract fun updateInstagramProfile(instagramUrl: String?)
     abstract fun clearAgency()
     abstract fun updateHaveMandate(hasMandate: Boolean, isManual: Boolean = true)
     abstract fun updateSalaryRange(salaryRange: String?)
@@ -303,23 +302,6 @@ class PlayerInfoViewModel(
         }
     }
 
-    override fun updateInstagramProfile(instagramUrl: String?) {
-        _playerInfoFlow.update {
-            it?.copy(instagramProfile = instagramUrl?.takeIf { url -> url.isNotBlank() })
-        }
-
-        _playerInfoFlow.value?.let { player ->
-            viewModelScope.launch {
-                val doc = firebaseHandler.firebaseStore
-                    .collection(firebaseHandler.playersTable)
-                    .whereEqualTo("tmProfile", player.tmProfile)
-                    .get().await().documents.firstOrNull()
-
-                doc?.reference?.set(player)?.await()
-            }
-        }
-    }
-
     override fun clearAgency() {
         _playerInfoFlow.update {
             it?.copy(agency = null, agencyUrl = null)
@@ -529,7 +511,6 @@ class PlayerInfoViewModel(
                         foot = response.data?.foot ?: player.foot,
                         agency = response.data?.agency ?: player.agency,
                         agencyUrl = response.data?.agencyUrl ?: player.agencyUrl,
-                        instagramProfile = response.data?.instagramProfile ?: player.instagramProfile,
                         noteList = if (player.notes?.isNotEmpty() == true) {
                             val currentNotes = player.noteList?.toMutableList() ?: mutableListOf()
                             currentNotes.add(

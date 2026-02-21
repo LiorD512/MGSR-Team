@@ -1,9 +1,12 @@
 package com.liordahan.mgsrteam.features.shortlist
 
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -27,13 +30,14 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.ExpandMore
-import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -267,6 +271,7 @@ fun ShortlistScreen(
                             val playerUrl = entry.tmProfileUrl
                             val isExpanded = playerUrl == expandedPlayerUrl
                             ShortlistCard(
+                                context = context,
                                 entry = entry,
                                 rosterTeammates = teammatesCache[playerUrl],
                                 isLoadingTeammates = loadingPlayerUrl == playerUrl,
@@ -485,6 +490,7 @@ private fun ShortlistStatsStripDivider() {
 
 @Composable
 private fun ShortlistCard(
+    context: Context,
     entry: ShortlistEntry,
     rosterTeammates: List<RosterTeammateMatch>? = null,
     isLoadingTeammates: Boolean = false,
@@ -495,11 +501,18 @@ private fun ShortlistCard(
     onOpenTm: () -> Unit,
     onRemove: () -> Unit
 ) {
+    var showMenu by remember { mutableStateOf(false) }
     val release = entry.toLatestTransferModel()
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickWithNoRipple(onClick = onOpenTm),
+    Box(modifier = Modifier.fillMaxWidth()) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .combinedClickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = onOpenTm,
+                    onLongClick = { showMenu = true }
+                ),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = HomeDarkCard),
         border = BorderStroke(1.dp, HomeDarkCardBorder)
@@ -752,29 +765,38 @@ private fun ShortlistCard(
                             tint = HomeTealAccent
                         )
                     }
-                    IconButton(
-                        onClick = onOpenTm,
-                        modifier = Modifier.size(36.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Link,
-                            contentDescription = stringResource(R.string.shortlist_open_tm),
-                            tint = HomeTextSecondary
-                        )
-                    }
-                    IconButton(
-                        onClick = onRemove,
-                        modifier = Modifier.size(36.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Delete,
-                            contentDescription = stringResource(R.string.shortlist_remove),
-                            tint = HomeRedAccent
-                        )
-                    }
                 }
             }
         }
+    }
+    DropdownMenu(
+        expanded = showMenu,
+        onDismissRequest = { showMenu = false },
+        modifier = Modifier.background(HomeDarkCard),
+        containerColor = HomeDarkCard,
+        border = BorderStroke(1.dp, HomeDarkCardBorder)
+    ) {
+        DropdownMenuItem(
+            text = {
+                Text(
+                    text = stringResource(R.string.shortlist_remove),
+                    style = regularTextStyle(HomeRedAccent, 14.sp)
+                )
+            },
+            leadingIcon = {
+                Icon(
+                    imageVector = Icons.Default.Delete,
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp),
+                    tint = HomeRedAccent
+                )
+            },
+            onClick = {
+                showMenu = false
+                onRemove()
+            }
+        )
+    }
     }
 }
 

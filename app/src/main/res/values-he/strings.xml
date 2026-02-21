@@ -145,7 +145,7 @@
     <string name="greeting_agent_default">סוכן</string>
 
     <!-- Dashboard Stats -->
-    <string name="stat_players">המאגר שלנו</string>
+    <string name="stat_players">במאגר</string>
     <string name="stat_mandate">מנדט</string>
     <string name="stat_free">חופשיים</string>
     <string name="stat_requests">בקשות</string>
@@ -170,6 +170,23 @@
     <string name="contract_finisher_retry">נסה שוב</string>
     <string name="contract_finisher_badge">תאריך סיום חוזה - %1$s</string>
     <string name="contract_finisher_no_found">לא נמצאו מסיימי חוזה בטווח זה</string>
+    <string name="contract_finisher_no_match_filters">אין שחקנים התואמים את הסינון</string>
+    <string name="contract_finisher_clear_filters">נקה סינון</string>
+    <string name="contract_finisher_apply_filters">החל סינון</string>
+    <string name="contract_finisher_filter_age_18_21">18-21</string>
+    <string name="contract_finisher_filter_age_22_25">22-25</string>
+    <string name="contract_finisher_filter_age_26_29">26-29</string>
+    <string name="contract_finisher_filter_age_30_plus">30+</string>
+    <string name="contract_finisher_filter_value_all">הכל</string>
+    <string name="contract_finisher_filter_value_150k_500k">€150K–500K</string>
+    <string name="contract_finisher_filter_value_500k_1m">€500K–1M</string>
+    <string name="contract_finisher_filter_value_1m_2m">€1M–2M</string>
+    <string name="contract_finisher_filter_value_2m_3m">€2M–3M</string>
+    <string name="contract_finisher_filter_label_value">שווי</string>
+    <string name="contract_finisher_filter_label_position">עמדה</string>
+    <string name="contract_finisher_filter_label_foot">רגל</string>
+    <string name="contract_finisher_filter_label_age">גיל</string>
+    <string name="contract_finisher_filter_label_region">אזור</string>
 
     <!-- Feed -->
     <string name="feed_recent_updates">עדכונים אחרונים</string>
@@ -228,6 +245,17 @@
     <string name="my_hub_view_my_players">השחקנים שלי</string>
     <string name="widget_agent_dashboard_description">הלוח שלך במבט אחד: שחקנים, משימות, התראות</string>
     <string name="widget_tap_to_open">לחץ לפתיחה</string>
+    <string name="widget_updated_just_now">עכשיו</string>
+    <string name="widget_updated_minutes_ago">עודכן לפני %dm</string>
+    <string name="widget_updated_hours_ago">עודכן לפני %dh</string>
+    <string name="widget_updated_days_ago">עודכן לפני %dd</string>
+    <string name="widget_tasks">משימות</string>
+    <string name="widget_players">שחקנים</string>
+    <string name="widget_add_player">הוסף שחקן</string>
+    <string name="widget_refresh">רענן</string>
+    <string name="widget_upcoming">קרובות:</string>
+    <string name="widget_stats">סטטיסטיקות</string>
+    <string name="widget_tasks_label">משימות</string>
     <string name="my_hub_no_tasks">אין משימות קרובות</string>
     <string name="my_hub_pending_tasks">%d ממתינות</string>
     <string name="my_hub_overdue_tasks">%d באיחור</string>
@@ -437,10 +465,13 @@
     <string name="requests_record_hint">דבר על המועדון, עמדה, משכורת, דמי העברה, רגל, גיל</string>
     <string name="requests_recording">מקליט…</string>
     <string name="requests_stop_recording">עצור</string>
-    <string name="requests_analyzing">מנתח…</string>
+    <string name="requests_tap_to_stop">הקש לעצירה</string>
+    <string name="requests_analyzing">מנתח את הבקשה שלך</string>
+    <string name="requests_analyzing_subtitle">מחלץ מועדון, עמדה, דרישות</string>
     <string name="requests_voice_error">לא ניתן לנתח את ההקלטה. נסה שוב.</string>
     <string name="requests_voice_missing_club_position">לא זוהה מועדון או עמדה. נסה שוב או מלא ידנית.</string>
     <string name="requests_fill_manually">מלא ידנית</string>
+    <string name="requests_or">או</string>
 
     <!-- Add Request stepped flow -->
     <string name="requests_step_of">שלב %1$d מתוך 4</string>
@@ -551,6 +582,7 @@
     <string name="contacts_without_agency">ללא סוכנות</string>
     <string name="contacts_without_club">ללא מועדון</string>
     <string name="contacts_search_name_hint">חפש לפי שם</string>
+    <string name="contacts_search_agency_hint">חפש לפי שם או סוכנות</string>
     <string name="contacts_open_transfermarkt">פתח בטרנספרמרקט</string>
     <string name="contacts_agency_players_count">%d שחקנים</string>
     <string name="contacts_agency_no_players">אין שחקנים תחת סוכנות זו</string>
@@ -640,7 +672,6 @@
     <string name="player_info_tm_profile">פרופיל TM</string>
     <string name="player_info_tm_short">TM</string>
     <string name="player_info_wa_short">WA</string>
-    <string name="player_info_ig_short">IG</string>
     <string name="player_info_passport_details">פרטי דרכון</string>
     <string name="player_info_passport_already_exists">כבר קיים דרכון לשחקן זה</string>
     <string name="player_info_passport_first_name">שם פרטי</string>
@@ -682,13 +713,7 @@
     <string name="player_info_remove_number">הסר מספר</string>
     <string name="player_info_remove_agency">הסר סוכנות</string>
     <string name="player_info_add_number">הוסף מספר</string>
-    <string name="player_info_instagram">אינסטגרם</string>
-    <string name="player_info_add_instagram">הוסף אינסטגרם</string>
     <string name="player_info_add">הוסף</string>
-    <string name="player_info_instagram_hint">כתובת אינסטגרם או שם משתמש</string>
-    <string name="player_info_open_instagram">פתח אינסטגרם</string>
-    <string name="player_info_edit_instagram">ערוך אינסטגרם</string>
-    <string name="player_info_remove_instagram">הסר אינסטגרם</string>
     <string name="player_info_contract_expired">חוזה פג תוקף</string>
     <string name="player_info_expired">פג תוקף</string>
     <string name="player_info_expires_in_months">פג תוקף בעוד %d חודשים</string>
@@ -763,5 +788,4 @@
     <string name="highlights_empty_subtitle">חפש היילייטס של %1$s (שנתיים אחרונות)</string>
     <string name="highlights_results_count">%1$d סרטונים</string>
     <string name="highlights_video_content_desc">פתח %1$s ב-%2$s</string>
-    <string name="highlights_view_instagram">צפה באינסטגרם</string>
 </resources>

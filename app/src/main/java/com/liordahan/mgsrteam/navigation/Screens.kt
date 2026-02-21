@@ -14,6 +14,7 @@ sealed class Screens(val route: String) {
     data object ContactsScreen : Screens(ScreenName.CONTACTS)
     data object ShortlistScreen : Screens(ScreenName.SHORTLIST)
     data object AddToShortlistScreen : Screens(ScreenName.ADD_TO_SHORTLIST)
+    data object AddPlayerFromLinkScreen : Screens(ScreenName.ADD_PLAYER_FROM_LINK)
     data object RequestsScreen : Screens(ScreenName.REQUESTS)
     data object MandatePreviewScreen : Screens(ScreenName.MANDATE_PREVIEW)
     data object GenerateMandateScreen : Screens(ScreenName.GENERATE_MANDATE)
@@ -24,6 +25,7 @@ sealed class Screens(val route: String) {
         fun addPlayerWithTmProfileRoute(tmProfileUrl: String) = "${ScreenName.ADD_PLAYER}/$tmProfileUrl"
         fun addToShortlistRoute(tmProfileUrl: String = "") =
             if (tmProfileUrl.isBlank()) ScreenName.ADD_TO_SHORTLIST else "${ScreenName.ADD_TO_SHORTLIST}/$tmProfileUrl"
+        fun addPlayerFromLinkRoute(tmProfileUrl: String) = "${ScreenName.ADD_PLAYER_FROM_LINK}/$tmProfileUrl"
         fun taskDetailRoute(taskId: String) = "${ScreenName.TASK_DETAIL}/$taskId"
         fun playersRoute(myPlayersOnly: Boolean = false) =
             if (myPlayersOnly) "${ScreenName.PLAYERS}?myPlayersOnly=true" else ScreenName.PLAYERS
@@ -43,6 +45,7 @@ object ScreenName {
     const val CONTACTS = "contacts"
     const val SHORTLIST = "shortlist"
     const val ADD_TO_SHORTLIST = "add_to_shortlist"
+    const val ADD_PLAYER_FROM_LINK = "add_player_from_link"
     const val REQUESTS = "requests"
     const val MANDATE_PREVIEW = "mandate_preview"
     const val GENERATE_MANDATE = "generate_mandate"

@@ -60,3 +60,7 @@
 
 # ── App widget (required for launcher to discover and display) ──────────────
 -keep class com.liordahan.mgsrteam.widget.** { *; }
+
+# ── Deep link / Share intent (release minification must not break) ──────────
+-keep class com.liordahan.mgsrteam.deeplink.** { *; }
+-keep class com.liordahan.mgsrteam.utils.** { *; }

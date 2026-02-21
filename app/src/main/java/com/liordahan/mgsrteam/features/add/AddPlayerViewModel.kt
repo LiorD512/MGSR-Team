@@ -161,7 +161,8 @@ class AddPlayerViewModel(
                 },
                 createdAt = System.currentTimeMillis(),
                 isOnLoan = details.isOnLoan,
-                onLoanFromClub = details.onLoanFromClub
+                onLoanFromClub = details.onLoanFromClub,
+                foot = details.foot
             )
             _selectedPlayerFlow.update { playerToSave }
             _playerSearchStateFlow.update { it.copy(showPlayerSelectedSearchProgress = false) }

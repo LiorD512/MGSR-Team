@@ -8,6 +8,10 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -114,10 +118,12 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -143,6 +149,7 @@ import com.liordahan.mgsrteam.transfermarket.ClubSearchModel
 import com.liordahan.mgsrteam.transfermarket.LatestTransferModel
 import com.liordahan.mgsrteam.transfermarket.TransfermarktResult
 import com.liordahan.mgsrteam.ui.components.DarkSystemBarsForBottomSheet
+import com.liordahan.mgsrteam.ui.components.RecordingWaveform
 import com.liordahan.mgsrteam.ui.theme.HomeDarkBackground
 import com.liordahan.mgsrteam.ui.theme.HomeDarkCard
 import com.liordahan.mgsrteam.ui.theme.HomeDarkCardBorder
@@ -158,6 +165,7 @@ import com.liordahan.mgsrteam.ui.components.ToastManager
 import com.liordahan.mgsrteam.ui.utils.boldTextStyle
 import com.liordahan.mgsrteam.ui.utils.clickWithNoRipple
 import com.liordahan.mgsrteam.ui.utils.regularTextStyle
+import android.view.HapticFeedbackConstants
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
@@ -208,7 +216,7 @@ fun RequestsScreen(
                 containerColor = HomeTealAccent,
                 contentColor = HomeDarkBackground
             ) {
-                Icon(Icons.Default.Add, contentDescription = stringResource(R.string.requests_add), modifier = Modifier.size(24.dp))
+                Icon(Icons.Default.Add, contentDescription = stringResource(R.string.requests_add), modifier = Modifier.size(24.dp), tint = Color.White)
             }
         }
     ) { paddingValues ->
@@ -379,6 +387,9 @@ fun RequestsScreen(
                                                                 }
                                                             }
                                                         }
+                                                    },
+                                                    onTryAgainSearch = {
+                                                        viewModel.findPlayersOnlineForRequest(request, LocaleManager.getSavedLanguage(context))
                                                     },
                                                     onEdit = { /* Edit flow - can be implemented later */ },
                                                     onDelete = { requestToDelete = request }
@@ -677,6 +688,7 @@ private fun RequestCard(
     onOnlinePlayerClick: (AiHelperService.SimilarPlayerSuggestion) -> Unit,
     onOpenTransfermarkt: (String) -> Unit,
     onToggleShortlist: (AiHelperService.SimilarPlayerSuggestion) -> Unit,
+    onTryAgainSearch: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
@@ -1016,12 +1028,30 @@ private fun RequestCard(
                         }
                         Spacer(Modifier.height(16.dp))
                     } else if (onlinePlayers.isEmpty()) {
-                        Text(
-                            stringResource(R.string.requests_online_players_empty),
-                            style = regularTextStyle(HomeTextSecondary, 12.sp)
-                        )
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Text(
+                                stringResource(R.string.requests_online_players_empty),
+                                style = regularTextStyle(HomeTextSecondary, 12.sp)
+                            )
+                            TextButton(
+                                onClick = onTryAgainSearch,
+                                colors = ButtonDefaults.textButtonColors(contentColor = HomeTealAccent)
+                            ) {
+                                Text(
+                                    stringResource(R.string.contacts_try_again),
+                                    style = regularTextStyle(HomeTealAccent, 14.sp)
+                                )
+                            }
+                        }
                     } else {
-                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
                             onlinePlayers.forEach { suggestion ->
                                 val url = suggestion.transfermarktUrl
                                 val isInShortlist = url != null && (url in shortlistUrls || url in justAddedUrls)
@@ -1030,9 +1060,19 @@ private fun RequestCard(
                                     suggestion = suggestion,
                                     isInShortlist = isInShortlist,
                                     isShortlistPending = isShortlistPending,
-                                    onClick = { onOnlinePlayerClick(suggestion) },
-                                    onOpenTransfermarkt = { url?.let { onOpenTransfermarkt(it) } },
+                                    onClick = { url?.let { onOpenTransfermarkt(it) } },
                                     onToggleShortlist = { onToggleShortlist(suggestion) }
+                                )
+                            }
+                            Spacer(Modifier.height(8.dp))
+                            TextButton(
+                                onClick = onTryAgainSearch,
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = ButtonDefaults.textButtonColors(contentColor = HomeTealAccent)
+                            ) {
+                                Text(
+                                    stringResource(R.string.contacts_try_again),
+                                    style = regularTextStyle(HomeTealAccent, 12.sp)
                                 )
                             }
                         }
@@ -1252,8 +1292,7 @@ private fun RequestOnlinePlayersBottomSheet(
                         OnlinePlayerSuggestionRow(
                             suggestion = suggestion,
                             isInShortlist = isInShortlist,
-                            onClick = { onPlayerClick(suggestion) },
-                            onOpenTransfermarkt = { url?.let { onOpenTransfermarkt(it) } },
+                            onClick = { url?.let { onOpenTransfermarkt(it) } },
                             onToggleShortlist = { onToggleShortlist(suggestion) }
                         )
                     }
@@ -1269,7 +1308,6 @@ private fun OnlinePlayerSuggestionRow(
     isInShortlist: Boolean,
     isShortlistPending: Boolean = false,
     onClick: () -> Unit,
-    onOpenTransfermarkt: () -> Unit,
     onToggleShortlist: () -> Unit
 ) {
     Box(modifier = Modifier.fillMaxWidth()) {
@@ -1280,69 +1318,58 @@ private fun OnlinePlayerSuggestionRow(
                 .background(HomeDarkBackground)
                 .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(10.dp))
                 .clickWithNoRipple { onClick() }
-                .padding(horizontal = 10.dp, vertical = 12.dp),
+                .padding(horizontal = 12.dp, vertical = 14.dp),
             verticalAlignment = Alignment.Top
         ) {
-        Box(
-            modifier = Modifier
-                .size(40.dp)
-                .clip(CircleShape)
-                .background(HomeDarkCardBorder),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                (suggestion.name.take(2)).uppercase(),
-                style = boldTextStyle(HomeTextSecondary, 12.sp)
-            )
-        }
-        Spacer(Modifier.width(12.dp))
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .align(Alignment.Top),
-            verticalArrangement = Arrangement.spacedBy(2.dp)
-        ) {
-            Text(
-                suggestion.name,
-                style = boldTextStyle(HomeTextPrimary, 14.sp)
-            )
-            Text(
-                "${suggestion.age ?: "-"} • ${suggestion.position ?: "-"} • ${suggestion.marketValue ?: "-"}",
-                style = regularTextStyle(HomeTextSecondary, 11.sp)
-            )
-            suggestion.similarityReason?.takeIf { it.isNotBlank() }?.let { reason ->
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(CircleShape)
+                    .background(HomeDarkCardBorder),
+                contentAlignment = Alignment.Center
+            ) {
                 Text(
-                    reason,
-                    style = regularTextStyle(HomeTextSecondary, 10.sp),
-                    modifier = Modifier.padding(top = 2.dp),
-                    maxLines = 2
+                    (suggestion.name.take(2)).uppercase(),
+                    style = boldTextStyle(HomeTextSecondary, 13.sp)
+                )
+            }
+            Spacer(Modifier.width(12.dp))
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .align(Alignment.Top),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text(
+                    suggestion.name,
+                    style = boldTextStyle(HomeTextPrimary, 14.sp)
+                )
+                Text(
+                    "${suggestion.age ?: "-"} • ${suggestion.position ?: "-"} • ${suggestion.marketValue ?: "-"}",
+                    style = regularTextStyle(HomeTextSecondary, 12.sp)
+                )
+                suggestion.similarityReason?.takeIf { it.isNotBlank() }?.let { reason ->
+                    Text(
+                        reason,
+                        style = regularTextStyle(HomeTextSecondary, 12.sp),
+                        modifier = Modifier.padding(top = 2.dp),
+                        lineHeight = 18.sp
+                    )
+                }
+            }
+            Spacer(Modifier.width(8.dp))
+            IconButton(
+                onClick = onToggleShortlist,
+                modifier = Modifier.size(48.dp)
+            ) {
+                Icon(
+                    imageVector = if (isInShortlist) Icons.Default.Bookmark else Icons.Default.BookmarkAdd,
+                    contentDescription = if (isInShortlist) stringResource(R.string.shortlist_in_shortlist) else stringResource(R.string.shortlist_add_to_shortlist),
+                    tint = if (isInShortlist) HomeGreenAccent else HomeTextSecondary,
+                    modifier = Modifier.size(22.dp)
                 )
             }
         }
-        Spacer(Modifier.width(8.dp))
-        IconButton(
-            onClick = onOpenTransfermarkt,
-            modifier = Modifier.size(40.dp)
-        ) {
-            Icon(
-                Icons.Default.Link,
-                contentDescription = stringResource(R.string.shortlist_open_tm),
-                tint = HomeTealAccent,
-                modifier = Modifier.size(20.dp)
-            )
-        }
-        IconButton(
-            onClick = onToggleShortlist,
-            modifier = Modifier.size(40.dp)
-        ) {
-            Icon(
-                imageVector = if (isInShortlist) Icons.Default.Bookmark else Icons.Default.BookmarkAdd,
-                contentDescription = if (isInShortlist) stringResource(R.string.shortlist_in_shortlist) else stringResource(R.string.shortlist_add_to_shortlist),
-                tint = if (isInShortlist) HomeGreenAccent else HomeTextSecondary,
-                modifier = Modifier.size(20.dp)
-            )
-        }
-    }
         if (isShortlistPending) {
             Box(
                 modifier = Modifier
@@ -1478,7 +1505,8 @@ private fun RequestsEmptyState(onAddClick: () -> Unit) {
         Spacer(Modifier.height(8.dp))
         Text(
             stringResource(R.string.requests_empty_hint),
-            style = regularTextStyle(HomeTextSecondary, 13.sp)
+            style = regularTextStyle(HomeTextSecondary, 13.sp),
+            textAlign = TextAlign.Center
         )
         Spacer(Modifier.height(24.dp))
         Button(
@@ -1486,7 +1514,7 @@ private fun RequestsEmptyState(onAddClick: () -> Unit) {
             colors = ButtonDefaults.buttonColors(containerColor = HomeTealAccent),
             shape = RoundedCornerShape(14.dp)
         ) {
-            Text(stringResource(R.string.requests_add), style = boldTextStyle(HomeDarkBackground, 14.sp))
+            Text(stringResource(R.string.requests_add), style = boldTextStyle(Color.White, 14.sp))
         }
     }
 }
@@ -1566,17 +1594,29 @@ private fun AddRequestBottomSheet(
     val contacts by contactsRepository.contactsFlow().collectAsStateWithLifecycle(initialValue = emptyList())
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    val view = LocalView.current
 
     var showChoiceScreen by rememberSaveable { mutableStateOf(true) }
     var isRecording by remember { mutableStateOf(false) }
+    var recordingDuration by remember { mutableStateOf(0) }
     var isAnalyzing by remember { mutableStateOf(false) }
     var recorder by remember { mutableStateOf<MediaRecorder?>(null) }
     var recordingFile by remember { mutableStateOf<java.io.File?>(null) }
+
+    LaunchedEffect(isRecording) {
+        if (!isRecording) return@LaunchedEffect
+        recordingDuration = 0
+        while (true) {
+            delay(1000)
+            recordingDuration += 1
+        }
+    }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { isGranted ->
         if (isGranted) {
+            view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
             val file = RequestVoiceRecorder.createTempRecordingFile(context)
             recordingFile = file
             recorder = RequestVoiceRecorder.startRecording(file)
@@ -1723,6 +1763,7 @@ private fun AddRequestBottomSheet(
                                 permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
                                 return@AddRequestChoiceContent
                             }
+                            view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
                             val file = RequestVoiceRecorder.createTempRecordingFile(context)
                             recordingFile = file
                             recorder = RequestVoiceRecorder.startRecording(file)
@@ -1736,6 +1777,7 @@ private fun AddRequestBottomSheet(
                 isRecording -> {
                     Column(modifier = Modifier.weight(1f, fill = true)) {
                     AddRequestRecordingContent(
+                        durationSeconds = recordingDuration,
                         onStopClick = {
                             val bytesResult = RequestVoiceRecorder.stopRecording(recorder, recordingFile!!)
                             recorder = null
@@ -1799,9 +1841,14 @@ private fun AddRequestBottomSheet(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         CircularProgressIndicator(color = HomeTealAccent)
-                        Spacer(Modifier.height(16.dp))
+                        Spacer(Modifier.height(24.dp))
                         Text(
                             text = stringResource(R.string.requests_analyzing),
+                            style = boldTextStyle(HomeTextPrimary, 16.sp)
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            text = stringResource(R.string.requests_analyzing_subtitle),
                             style = regularTextStyle(HomeTextSecondary, 14.sp)
                         )
                     }
@@ -2399,30 +2446,66 @@ private fun AddRequestChoiceContent(
         Text(
             text = stringResource(R.string.requests_record_hint),
             style = regularTextStyle(HomeTextSecondary, 14.sp),
-            modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp)
+            modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp),
+            textAlign = TextAlign.Center
         )
-        Button(
-            onClick = onRecordClick,
+        Spacer(Modifier.height(24.dp))
+        Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 24.dp)
-                .height(56.dp),
-            shape = RoundedCornerShape(12.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = HomeTealAccent)
+                .size(96.dp)
+                .clip(CircleShape)
+                .background(HomeTealAccent)
+                .clickWithNoRipple(onClick = onRecordClick),
+            contentAlignment = Alignment.Center
         ) {
-            Icon(Icons.Default.Mic, contentDescription = null, modifier = Modifier.size(24.dp), tint = Color.White)
-            Spacer(Modifier.width(12.dp))
-            Text(stringResource(R.string.requests_record_request), style = boldTextStyle(Color.White, 16.sp))
+            Icon(
+                Icons.Default.Mic,
+                contentDescription = stringResource(R.string.requests_record_request),
+                modifier = Modifier.size(40.dp),
+                tint = Color.White
+            )
         }
         Spacer(Modifier.height(16.dp))
+        Text(
+            text = stringResource(R.string.requests_record_request),
+            style = boldTextStyle(HomeTextPrimary, 16.sp)
+        )
+        Spacer(Modifier.height(24.dp))
+        Text(
+            text = "—— ${stringResource(R.string.requests_or)} ——",
+            style = regularTextStyle(HomeTextSecondary, 12.sp)
+        )
+        Spacer(Modifier.height(8.dp))
         TextButton(onClick = onFillManuallyClick) {
-            Text(stringResource(R.string.requests_fill_manually), style = regularTextStyle(HomeTextSecondary, 14.sp))
+            Text(
+                stringResource(R.string.requests_fill_manually),
+                style = regularTextStyle(HomeTealAccent, 14.sp)
+            )
         }
     }
 }
 
+private fun formatRecordingDuration(seconds: Int): String {
+    val m = seconds / 60
+    val s = seconds % 60
+    return "%d:%02d".format(m, s)
+}
+
 @Composable
-private fun AddRequestRecordingContent(onStopClick: () -> Unit) {
+private fun AddRequestRecordingContent(
+    durationSeconds: Int,
+    onStopClick: () -> Unit
+) {
+    val infiniteTransition = rememberInfiniteTransition(label = "stop_pulse")
+    val pulseScale by infiniteTransition.animateFloat(
+        initialValue = 1f,
+        targetValue = 1.08f,
+        animationSpec = infiniteRepeatable<Float>(
+            animation = tween(600),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "pulse"
+    )
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -2433,14 +2516,28 @@ private fun AddRequestRecordingContent(onStopClick: () -> Unit) {
         Text(
             text = stringResource(R.string.requests_recording),
             style = regularTextStyle(HomeTealAccent, 16.sp),
-            modifier = Modifier.padding(bottom = 24.dp)
+            modifier = Modifier.padding(bottom = 16.dp)
         )
-        IconButton(
-            onClick = onStopClick,
+        RecordingWaveform(
+            barCount = 10,
+            color = HomeTealAccent,
+            barWidth = 6.dp,
+            barHeight = 12.dp,
+            modifier = Modifier.padding(vertical = 16.dp)
+        )
+        Text(
+            text = formatRecordingDuration(durationSeconds),
+            style = boldTextStyle(HomeTextPrimary, 24.sp),
+            modifier = Modifier.padding(vertical = 8.dp)
+        )
+        Box(
             modifier = Modifier
                 .size(80.dp)
+                .graphicsLayer { scaleX = pulseScale; scaleY = pulseScale }
                 .clip(CircleShape)
                 .background(HomeRedAccent.copy(alpha = 0.2f))
+                .clickWithNoRipple(onClick = onStopClick),
+            contentAlignment = Alignment.Center
         ) {
             Icon(
                 Icons.Default.Stop,
@@ -2451,7 +2548,7 @@ private fun AddRequestRecordingContent(onStopClick: () -> Unit) {
         }
         Spacer(Modifier.height(8.dp))
         Text(
-            text = stringResource(R.string.requests_stop_recording),
+            text = stringResource(R.string.requests_tap_to_stop),
             style = regularTextStyle(HomeTextSecondary, 14.sp)
         )
     }

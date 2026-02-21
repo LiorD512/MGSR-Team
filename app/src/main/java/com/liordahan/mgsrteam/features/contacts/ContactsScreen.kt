@@ -140,6 +140,7 @@ import com.liordahan.mgsrteam.transfermarket.AgencySearchModel
 import com.liordahan.mgsrteam.transfermarket.ClubSearch
 import com.liordahan.mgsrteam.transfermarket.ClubSearchModel
 import com.liordahan.mgsrteam.transfermarket.TransfermarktResult
+import com.liordahan.mgsrteam.localization.CountryNameTranslator
 import com.liordahan.mgsrteam.ui.components.DarkSystemBarsForBottomSheet
 import com.liordahan.mgsrteam.ui.components.ToastManager
 import com.liordahan.mgsrteam.ui.theme.HomeBlueAccent
@@ -173,6 +174,7 @@ private fun ClubSearchResultRow(
     club: ClubSearchModel,
     onClick: () -> Unit
 ) {
+    val context = LocalContext.current
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -203,7 +205,7 @@ private fun ClubSearchResultRow(
                 )
                 club.clubCountry?.let { country ->
                     Text(
-                        text = country,
+                        text = CountryNameTranslator.getDisplayName(context, country),
                         style = regularTextStyle(HomeTextSecondary, 12.sp)
                     )
                 }
@@ -372,12 +374,14 @@ fun ContactsScreen(
         if (searchQuery.isBlank()) tabContacts
         else when (selectedTab) {
             ContactType.AGENCY -> tabContacts.filter { contact ->
-                contact.name?.contains(searchQuery, ignoreCase = true) == true
+                contact.name?.contains(searchQuery, ignoreCase = true) == true ||
+                        contact.displayOrganization?.contains(searchQuery, ignoreCase = true) == true
             }
             else -> tabContacts.filter { contact ->
                 contact.name?.contains(searchQuery, ignoreCase = true) == true ||
                         contact.clubName?.contains(searchQuery, ignoreCase = true) == true ||
-                        contact.clubCountry?.contains(searchQuery, ignoreCase = true) == true
+                        contact.clubCountry?.contains(searchQuery, ignoreCase = true) == true ||
+                        contact.clubCountry?.let { CountryNameTranslator.getHebrewName(it)?.contains(searchQuery) == true } == true
             }
         }
     }
@@ -408,7 +412,8 @@ fun ContactsScreen(
                 Icon(
                     Icons.Default.Add,
                     contentDescription = stringResource(R.string.contacts_add),
-                    modifier = Modifier.size(24.dp)
+                    modifier = Modifier.size(24.dp),
+                    tint = Color.White
                 )
             }
         }
@@ -442,106 +447,28 @@ fun ContactsScreen(
                         SkeletonContactList(modifier = Modifier.fillMaxSize())
                     }
 
-                    tabContacts.isEmpty() -> {
-                        ContactsStatsStrip(
-                            total = 0,
-                            countries = 0,
-                            showCountries = selectedTab != ContactType.AGENCY
-                        )
-                        ContactsSearchBar(
-                            query = searchContactInput.text,
-                            onQueryChange = { searchContactInput = TextFieldValue(it) },
-                            onClear = {
-                                searchContactInput = TextFieldValue("")
-                                keyboardController?.hide()
-                                focusManager.clearFocus()
-                            },
-                            searchHint = if (selectedTab == ContactType.AGENCY) R.string.contacts_search_name_hint else R.string.contacts_screen_search_hint
-                        )
-                        ContactsEmptyState(
-                            title = when (selectedTab) {
-                                ContactType.CLUB -> stringResource(R.string.contacts_empty_club)
-                                ContactType.AGENCY -> stringResource(R.string.contacts_empty_agency)
-                            },
-                            subtitle = when (selectedTab) {
-                                ContactType.CLUB -> stringResource(R.string.contacts_empty_club_hint)
-                                ContactType.AGENCY -> stringResource(R.string.contacts_empty_agency_hint)
-                            },
-                            buttonText = when (selectedTab) {
-                                ContactType.CLUB -> stringResource(R.string.contacts_add_club_contact)
-                                ContactType.AGENCY -> stringResource(R.string.contacts_add_agency_contact)
-                            },
-                            onAddContact = { showAddEditSheet = true }
-                        )
-                    }
-
-                    filteredContacts.isEmpty() -> {
-                        ContactsStatsStrip(
-                            total = tabContacts.size,
-                            countries = tabContacts.map {
-                                it.displayCountry?.takeIf { c -> c.isNotBlank() } ?: "Other"
-                            }.toSet().size,
-                            showCountries = selectedTab != ContactType.AGENCY
-                        )
-                        ContactsSearchBar(
-                            query = searchContactInput.text,
-                            onQueryChange = { searchContactInput = TextFieldValue(it) },
-                            onClear = {
-                                searchContactInput = TextFieldValue("")
-                                keyboardController?.hide()
-                                focusManager.clearFocus()
-                            },
-                            searchHint = if (selectedTab == ContactType.AGENCY) R.string.contacts_search_name_hint else R.string.contacts_screen_search_hint
-                        )
-                        ContactsEmptyState(
-                            title = stringResource(R.string.contacts_no_contacts_found),
-                            subtitle = stringResource(R.string.contacts_try_different_search),
-                            buttonText = stringResource(R.string.contacts_clear_search),
-                            onButtonClick = { searchContactInput = TextFieldValue("") }
-                        )
-                    }
-
-                    countryFilteredContacts.isEmpty() -> {
-                        ContactsStatsStrip(
-                            total = filteredContacts.size,
-                            countries = filteredContacts.map {
-                                it.displayCountry?.takeIf { c -> c.isNotBlank() } ?: "Other"
-                            }.toSet().size,
-                            showCountries = selectedTab != ContactType.AGENCY
-                        )
-                        ContactsSearchBar(
-                            query = searchContactInput.text,
-                            onQueryChange = { searchContactInput = TextFieldValue(it) },
-                            onClear = {
-                                searchContactInput = TextFieldValue("")
-                                keyboardController?.hide()
-                                focusManager.clearFocus()
-                            },
-                            searchHint = if (selectedTab == ContactType.AGENCY) R.string.contacts_search_name_hint else R.string.contacts_screen_search_hint
-                        )
-                        if (selectedTab != ContactType.AGENCY) {
-                            ContactsFilterChips(
-                                countries = countryChips,
-                                selectedCountry = selectedCountryFilter,
-                                onCountrySelected = { selectedCountryFilter = it },
-                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
-                            )
-                        }
-                        ContactsEmptyState(
-                            title = stringResource(R.string.contacts_no_contacts_found),
-                            subtitle = stringResource(R.string.contacts_try_different_search),
-                            buttonText = stringResource(R.string.contacts_filter_all),
-                            onButtonClick = { selectedCountryFilter = null }
-                        )
-                    }
-
                     else -> {
-                        val uniqueCountries = countryFilteredContacts.map {
-                            it.displayCountry?.takeIf { c -> c.isNotBlank() } ?: "Other"
-                        }.toSet().size
+                        val statsTotal = when {
+                            tabContacts.isEmpty() -> 0
+                            filteredContacts.isEmpty() -> tabContacts.size
+                            countryFilteredContacts.isEmpty() -> filteredContacts.size
+                            else -> countryFilteredContacts.size
+                        }
+                        val statsCountries = when {
+                            tabContacts.isEmpty() -> 0
+                            filteredContacts.isEmpty() -> tabContacts.map {
+                                it.displayCountry?.takeIf { c -> c.isNotBlank() } ?: "Other"
+                            }.toSet().size
+                            countryFilteredContacts.isEmpty() -> filteredContacts.map {
+                                it.displayCountry?.takeIf { c -> c.isNotBlank() } ?: "Other"
+                            }.toSet().size
+                            else -> countryFilteredContacts.map {
+                                it.displayCountry?.takeIf { c -> c.isNotBlank() } ?: "Other"
+                            }.toSet().size
+                        }
                         ContactsStatsStrip(
-                            total = countryFilteredContacts.size,
-                            countries = uniqueCountries,
+                            total = statsTotal,
+                            countries = statsCountries,
                             showCountries = selectedTab != ContactType.AGENCY
                         )
                         ContactsSearchBar(
@@ -552,7 +479,7 @@ fun ContactsScreen(
                                 keyboardController?.hide()
                                 focusManager.clearFocus()
                             },
-                            searchHint = if (selectedTab == ContactType.AGENCY) R.string.contacts_search_name_hint else R.string.contacts_screen_search_hint
+                            searchHint = if (selectedTab == ContactType.AGENCY) R.string.contacts_search_agency_hint else R.string.contacts_screen_search_hint
                         )
                         if (selectedTab != ContactType.AGENCY) {
                             ContactsFilterChips(
@@ -562,7 +489,36 @@ fun ContactsScreen(
                                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
                             )
                         }
-                        val isAgencyTab = selectedTab == ContactType.AGENCY
+                        when {
+                            tabContacts.isEmpty() -> ContactsEmptyState(
+                                title = when (selectedTab) {
+                                    ContactType.CLUB -> stringResource(R.string.contacts_empty_club)
+                                    ContactType.AGENCY -> stringResource(R.string.contacts_empty_agency)
+                                },
+                                subtitle = when (selectedTab) {
+                                    ContactType.CLUB -> stringResource(R.string.contacts_empty_club_hint)
+                                    ContactType.AGENCY -> stringResource(R.string.contacts_empty_agency_hint)
+                                },
+                                buttonText = when (selectedTab) {
+                                    ContactType.CLUB -> stringResource(R.string.contacts_add_club_contact)
+                                    ContactType.AGENCY -> stringResource(R.string.contacts_add_agency_contact)
+                                },
+                                onAddContact = { showAddEditSheet = true }
+                            )
+                            filteredContacts.isEmpty() -> ContactsEmptyState(
+                                title = stringResource(R.string.contacts_no_contacts_found),
+                                subtitle = stringResource(R.string.contacts_try_different_search),
+                                buttonText = stringResource(R.string.contacts_clear_search),
+                                onButtonClick = { searchContactInput = TextFieldValue("") }
+                            )
+                            countryFilteredContacts.isEmpty() -> ContactsEmptyState(
+                                title = stringResource(R.string.contacts_no_contacts_found),
+                                subtitle = stringResource(R.string.contacts_try_different_search),
+                                buttonText = stringResource(R.string.contacts_filter_all),
+                                onButtonClick = { selectedCountryFilter = null }
+                            )
+                            else -> {
+                                val isAgencyTab = selectedTab == ContactType.AGENCY
                         val agencyContacts = if (isAgencyTab) countryFilteredContacts.sortedBy { it.displayOrganization?.lowercase() ?: "" } else null
                         val showGroupedByCountry = !isAgencyTab && selectedCountryFilter == null
                         val grouped = remember(countryFilteredContacts, showGroupedByCountry) {
@@ -663,6 +619,8 @@ fun ContactsScreen(
                                 }
                             }
                         }
+                    }
+                }
                     }
                 }
             }
@@ -980,6 +938,7 @@ private fun ContactsFilterChips(
     modifier: Modifier = Modifier
 ) {
     if (countries.isEmpty()) return
+    val context = LocalContext.current
     LazyRow(
         modifier = modifier,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -994,7 +953,7 @@ private fun ContactsFilterChips(
         }
         items(countries, key = { it }) { country ->
             FilterChip(
-                label = country,
+                label = CountryNameTranslator.getDisplayName(context, country),
                 selected = selectedCountry == country,
                 onClick = { onCountrySelected(country) }
             )
@@ -1174,7 +1133,9 @@ private fun CountrySectionHeader(
     country: String,
     countryFlagUrl: String?
 ) {
+    val context = LocalContext.current
     val layoutDirection = LocalLayoutDirection.current
+    val displayCountry = CountryNameTranslator.getDisplayName(context, country)
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -1192,7 +1153,7 @@ private fun CountrySectionHeader(
                 )
             }
             .padding(
-                start = if (layoutDirection == LayoutDirection.Ltr) 4.dp else 16.dp,
+                start = if (layoutDirection == LayoutDirection.Ltr) 12.dp else 16.dp,
                 end = if (layoutDirection == LayoutDirection.Rtl) 4.dp else 16.dp,
                 top = 12.dp,
                 bottom = 12.dp
@@ -1212,7 +1173,7 @@ private fun CountrySectionHeader(
             Spacer(Modifier.width(8.dp))
         }
         Text(
-            text = country,
+            text = displayCountry,
             style = boldTextStyle(HomeTextPrimary, 14.sp)
         )
     }
@@ -1331,12 +1292,13 @@ private fun ContactCard(
                     }
                 }
                 Spacer(Modifier.height(2.dp))
+                val context = LocalContext.current
                 Text(
                     text = when {
                         !contact.displayOrganization.isNullOrBlank() -> buildString {
                             append(contact.displayOrganization)
                             contact.displayCountry?.takeIf { it.isNotBlank() }
-                                ?.let { append(" • $it") }
+                                ?.let { append(" • ${CountryNameTranslator.getDisplayName(context, it)}") }
                         }
                         contact.contactTypeEnum == ContactType.AGENCY -> stringResource(R.string.contacts_without_agency)
                         else -> stringResource(R.string.contacts_without_club)
@@ -1717,6 +1679,7 @@ private fun AddEditContactBottomSheet(
         )
     }
     var showManualAgencySearch by remember { mutableStateOf(false) }
+    val agencySearchFocusRequester = remember { FocusRequester() }
     var isDiscoveringAgency by remember { mutableStateOf(false) }
     var discoveryError by remember { mutableStateOf<String?>(null) }
 
@@ -1728,6 +1691,8 @@ private fun AddEditContactBottomSheet(
     var showManualClubSearch by remember { mutableStateOf(false) }
     var retryClubDiscoveryTrigger by remember { mutableStateOf(0) }
     var retryAgencyDiscoveryTrigger by remember { mutableStateOf(0) }
+    /** Name found by discovery (club/agency) - used when saving instead of contact picker name */
+    var discoveredPersonName by remember { mutableStateOf<String?>(null) }
     var selectedRole by remember(initialContact, selectedContactType) {
         val initial = initialContact?.roleEnum ?: ContactRole.UNKNOWN
         val valid = if (selectedContactType == ContactType.AGENCY) agencyRoles else clubRoles
@@ -1786,6 +1751,10 @@ private fun AddEditContactBottomSheet(
                             clubCountryFlag = null
                         )
                         selectedRole = it.role
+                        it.personNameOnTransfermarkt?.takeIf { n -> n.isNotBlank() }?.let { tmName ->
+                            discoveredPersonName = tmName
+                            onNameChange(tmName)
+                        }
                     }
                 }
                 .onFailure { e ->
@@ -1810,8 +1779,10 @@ private fun AddEditContactBottomSheet(
                         agencyUrl = it.agencyUrl
                         agencySearchQuery = it.agencyName
                         selectedAgency = null
-                        it.personNameOnTransfermarkt?.takeIf { n -> n.isNotBlank() && n != pickedName.trim() }
-                            ?.let { tmName -> onNameChange(tmName) }
+                        it.personNameOnTransfermarkt?.takeIf { n -> n.isNotBlank() }?.let { tmName ->
+                            discoveredPersonName = tmName
+                            onNameChange(tmName)
+                        }
                     }
                 }
                 .onFailure { e ->
@@ -1864,10 +1835,16 @@ private fun AddEditContactBottomSheet(
     val canProceedStepOrg = when (selectedContactType) {
         ContactType.CLUB -> if (isEdit) selectedClub != null || clubSearchQuery.trim().isNotBlank()
             else pickedName.isNotBlank() && pickedPhone.isNotBlank() && selectedClub != null && selectedRole in clubRoles
-        ContactType.AGENCY -> pickedName.isNotBlank() && pickedPhone.isNotBlank() && agencyName.trim().isNotBlank()
+        ContactType.AGENCY -> pickedName.isNotBlank() && pickedPhone.isNotBlank() && (
+            agencyName.trim().isNotBlank() ||
+            (showManualAgencySearch && agencySearchQuery.trim().isNotBlank())
+        )
         null -> false
     }
     val canProceedStepContact = pickedName.isNotBlank() && pickedPhone.isNotBlank()
+
+    /** Prefer discovered name (from club/agency lookup) over contact picker name when saving */
+    val nameToSave = (discoveredPersonName?.takeIf { it.isNotBlank() } ?: pickedName).trim()
 
     ModalBottomSheet(
         sheetState = sheetState,
@@ -2049,12 +2026,13 @@ private fun AddEditContactBottomSheet(
                             isDiscovering = isDiscoveringAgency,
                             discoveryError = discoveryError,
                             showManualAgencySearch = showManualAgencySearch,
+                            agencySearchFocusRequester = agencySearchFocusRequester,
+                            keyboardController = keyboardController,
                             onPickContact = onPickContact,
                             onNameChange = onNameChange,
                             onPhoneChange = onPhoneChange,
                             onAgencySearchChange = {
                                 agencySearchQuery = it
-                                agencyName = it
                                 selectedAgency = null
                             },
                             onSelectAgency = {
@@ -2119,7 +2097,7 @@ private fun AddEditContactBottomSheet(
                             performSave(
                                 Contact(
                                     id = initialContact?.id,
-                                    name = pickedName.trim(),
+                                    name = nameToSave,
                                     phoneNumber = pickedPhone.trim(),
                                     role = selectedRole.name,
                                     clubName = if (type == ContactType.CLUB) selectedClub?.clubName ?: clubSearchQuery.trim().takeIf { it.isNotBlank() } else null,
@@ -2167,7 +2145,7 @@ private fun AddEditContactBottomSheet(
                             performSave(
                                 Contact(
                                     id = initialContact?.id,
-                                    name = pickedName.trim(),
+                                    name = nameToSave,
                                     phoneNumber = pickedPhone.trim(),
                                     role = selectedRole.name,
                                     clubName = selectedClub?.clubName,
@@ -2212,7 +2190,7 @@ private fun AddEditContactBottomSheet(
                             performSave(
                                 Contact(
                                     id = initialContact?.id,
-                                    name = pickedName.trim(),
+                                    name = nameToSave,
                                     phoneNumber = pickedPhone.trim(),
                                     role = ContactRole.AGENT.name,
                                     clubName = null,
@@ -2220,7 +2198,8 @@ private fun AddEditContactBottomSheet(
                                     clubLogo = null,
                                     clubCountryFlag = null,
                                     contactType = ContactType.AGENCY.name,
-                                    agencyName = agencyName.trim().takeIf { it.isNotBlank() },
+                                    agencyName = (agencyName.trim().takeIf { it.isNotBlank() }
+                                        ?: agencySearchQuery.trim().takeIf { it.isNotBlank() }),
                                     agencyCountry = null,
                                     agencyUrl = agencyUrl.trim().takeIf { it.isNotBlank() }
                                 )
@@ -2519,7 +2498,7 @@ private fun Step1ClubContentAdd(
                             )
                             Text(
                                 text = selectedClub.clubCountry?.let { c ->
-                                    stringResource(R.string.contacts_club_found_on_tm) + " • $c"
+                                    stringResource(R.string.contacts_club_found_on_tm) + " • ${CountryNameTranslator.getDisplayName(LocalContext.current, c)}"
                                 } ?: stringResource(R.string.contacts_club_found_on_tm),
                                 style = regularTextStyle(HomeTealAccent, 11.sp)
                             )
@@ -2648,6 +2627,7 @@ private fun Step1ClubContent(
     onSelectClub: (ClubSearchModel) -> Unit,
     onChangeClub: () -> Unit
 ) {
+    val context = LocalContext.current
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -2727,7 +2707,7 @@ private fun Step1ClubContent(
                 Column(Modifier.weight(1f)) {
                     Text(club.clubName ?: "", style = boldTextStyle(HomeTextPrimary, 12.sp))
                     club.clubCountry?.let { c ->
-                        Text(c, style = regularTextStyle(HomeTextSecondary, 11.sp))
+                        Text(CountryNameTranslator.getDisplayName(context, c), style = regularTextStyle(HomeTextSecondary, 11.sp))
                     }
                 }
                 TextButton(onClick = onChangeClub) {
@@ -2753,6 +2733,8 @@ private fun Step1AgencyContent(
     isDiscovering: Boolean,
     discoveryError: String?,
     showManualAgencySearch: Boolean,
+    agencySearchFocusRequester: FocusRequester,
+    keyboardController: androidx.compose.ui.platform.SoftwareKeyboardController?,
     onPickContact: () -> Unit,
     onNameChange: (String) -> Unit,
     onPhoneChange: (String) -> Unit,
@@ -2940,6 +2922,10 @@ private fun Step1AgencyContent(
             }
         }
         if (showManualAgencySearch) {
+            LaunchedEffect(Unit) {
+                agencySearchFocusRequester.requestFocus()
+                keyboardController?.show()
+            }
             Spacer(Modifier.height(16.dp))
             Text(
                 text = stringResource(R.string.contacts_agency_manual_fallback),
@@ -2949,32 +2935,34 @@ private fun Step1AgencyContent(
             OutlinedTextField(
                 value = agencySearchQuery,
                 onValueChange = onAgencySearchChange,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .focusRequester(agencySearchFocusRequester),
                 placeholder = {
-                Text(
-                    stringResource(R.string.contacts_agency_search_hint),
-                    style = regularTextStyle(HomeTextSecondary, 14.sp)
-                )
-            },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(
-                focusedTextColor = HomeTextPrimary,
-                unfocusedTextColor = HomeTextPrimary,
-                focusedBorderColor = HomeBlueAccent,
-                unfocusedBorderColor = HomeDarkCardBorder,
-                cursorColor = HomeBlueAccent
-            ),
-            trailingIcon = {
-                if (isSearchingAgencies) {
-                    Box(Modifier.size(32.dp), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator(
-                            color = HomeBlueAccent,
-                            strokeWidth = 2.dp,
-                            modifier = Modifier.size(24.dp)
-                        )
+                    Text(
+                        stringResource(R.string.contacts_agency_search_hint),
+                        style = regularTextStyle(HomeTextSecondary, 14.sp)
+                    )
+                },
+                singleLine = true,
+                colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(
+                    focusedTextColor = HomeTextPrimary,
+                    unfocusedTextColor = HomeTextPrimary,
+                    focusedBorderColor = HomeBlueAccent,
+                    unfocusedBorderColor = HomeDarkCardBorder,
+                    cursorColor = HomeBlueAccent
+                ),
+                trailingIcon = {
+                    if (isSearchingAgencies) {
+                        Box(Modifier.size(32.dp), contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator(
+                                color = HomeBlueAccent,
+                                strokeWidth = 2.dp,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
                     }
                 }
-            }
             )
             if (agencySearchResults.isNotEmpty()) {
                 LazyColumn(
@@ -2984,7 +2972,10 @@ private fun Step1AgencyContent(
                         .padding(vertical = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    items(agencySearchResults) { agencyItem ->
+                    items(
+                        items = agencySearchResults,
+                        key = { it.agencyUrl ?: it.agencyName ?: "" }
+                    ) { agencyItem ->
                         AgencySearchResultRow(
                             agency = agencyItem,
                             onClick = { onSelectAgency(agencyItem) }

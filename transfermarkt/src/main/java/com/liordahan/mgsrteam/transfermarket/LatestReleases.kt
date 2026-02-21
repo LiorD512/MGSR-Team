@@ -46,6 +46,7 @@ data class LatestTransferModel(
     val playerAge: String? = null,
     val playerNationality: String? = null,
     val playerNationalityFlag: String? = null,
+    val playerFoot: String? = null, // "Left", "Right", "Both" - from profile enrichment
     val clubJoinedLogo: String? = null,
     val clubJoinedName: String? = null,
     val transferDate: String? = null,
@@ -234,8 +235,9 @@ class LatestReleases {
                     playerAge,
                     playerNationality,
                     playerNationalityFlag,
-                    null,
-                    null,
+                    playerFoot = null,
+                    clubJoinedLogo = null,
+                    clubJoinedName = null,
                     transferDate,
                     marketValue
                 )

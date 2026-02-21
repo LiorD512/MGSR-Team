@@ -14,8 +14,8 @@ android {
         applicationId = "com.liordahan.mgsrteam"
         minSdk = 28
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 8
+        versionName = "1.0.7"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -163,4 +163,8 @@ dependencies {
     // Glance for home screen widget
     implementation(libs.glance.appwidget)
     implementation(libs.glance.material3)
+
+    // Google Play In-App Update (mandatory update flow)
+    implementation(libs.play.app.update)
+    implementation(libs.play.app.update.ktx)
 }

@@ -157,7 +157,7 @@ fun TasksScreen(
                 shape = CircleShape,
                 modifier = Modifier.size(56.dp)
             ) {
-                Icon(Icons.Default.Add, contentDescription = stringResource(R.string.tasks_new_task))
+                Icon(Icons.Default.Add, contentDescription = stringResource(R.string.tasks_new_task), tint = Color.White)
             }
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }

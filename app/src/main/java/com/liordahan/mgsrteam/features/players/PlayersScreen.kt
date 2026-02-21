@@ -349,7 +349,8 @@ fun PlayersScreen(
             Icon(
                 imageVector = Icons.Filled.PersonAdd,
                 contentDescription = stringResource(R.string.players_add_player),
-                modifier = Modifier.size(24.dp)
+                modifier = Modifier.size(24.dp),
+                tint = Color.White
             )
         }
 

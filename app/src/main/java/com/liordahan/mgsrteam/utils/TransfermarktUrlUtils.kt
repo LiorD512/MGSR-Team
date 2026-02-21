@@ -28,6 +28,7 @@ fun extractPlayerIdFromUrl(url: String?): String? {
  * - https://www.transfermarkt.com/player-name/profil/spieler/12345
  * - https://transfermarkt.com/.../profil/spieler/12345
  * - Plain text containing such URLs
+ * - URLs with query params, fragments, or trailing punctuation from messaging apps
  */
 fun extractTransfermarktPlayerUrl(text: String?): String? {
     val input = text?.trim() ?: return null
@@ -51,12 +52,17 @@ fun extractTransfermarktPlayerUrl(text: String?): String? {
 
 private fun isTransfermarktPlayerUrl(url: String): Boolean {
     val lower = url.lowercase()
-    return lower.contains("transfermarkt") &&
-            (lower.contains("/profil/spieler/") || lower.contains("/profile/player/"))
+    if (!lower.contains("transfermarkt")) return false
+    // Standard: /profil/spieler/ID or /profile/player/ID
+    if (lower.contains("/profil/spieler/") || lower.contains("/profile/player/")) return true
+    // Fallback: /spieler/ID (some shares or old links)
+    if (lower.contains("/spieler/")) return true
+    return false
 }
 
 private fun normalizeTransfermarktUrl(url: String): String {
     var normalized = url.trim()
+        .trimEnd('.', ',', ')', ']', '!', '?', ';', ':') // Common trailing punctuation from shares
     if (!normalized.startsWith("http")) {
         normalized = "https://$normalized"
     }
