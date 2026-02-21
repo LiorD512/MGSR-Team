@@ -75,7 +75,7 @@ abstract class IPlayerInfoViewModel : ViewModel() {
     abstract fun onDeleteNoteClicked(note: NotesModel)
     abstract fun uploadDocument(uri: android.net.Uri?, bytes: ByteArray, name: String, mimeType: String?, expiresAt: Long?)
     abstract fun deleteDocument(documentId: String, isPassport: Boolean = false)
-    abstract fun findSimilarPlayers(player: Player, languageCode: String = "en", options: SimilarPlayersOptions = SimilarPlayersOptions())
+    abstract fun findSimilarPlayers(player: Player, languageCode: String = "en", options: SimilarPlayersOptions = SimilarPlayersOptions(), excludeNames: List<String> = emptyList())
     abstract fun computeHiddenGemScore(player: Player, languageCode: String = "en")
     abstract fun generateScoutReport(player: Player, languageCode: String = "en", options: ScoutReportOptions = ScoutReportOptions())
     abstract fun consumeUpdateResult()
@@ -654,18 +654,16 @@ class PlayerInfoViewModel(
         }
     }
 
-    override fun findSimilarPlayers(player: Player, languageCode: String, options: SimilarPlayersOptions) {
+    override fun findSimilarPlayers(player: Player, languageCode: String, options: SimilarPlayersOptions, excludeNames: List<String>) {
         viewModelScope.launch {
             _isSimilarPlayersLoading.update { true }
-            _similarPlayersFlow.update { emptyList() }
-            aiHelperService.findSimilarPlayers(player, languageCode, options)
+            aiHelperService.findSimilarPlayers(player, languageCode, options, excludeNames = excludeNames)
                 .onSuccess { suggestions ->
                     _similarPlayersFlow.update { suggestions }
                     Log.d(TAG, "findSimilarPlayers: found ${suggestions.size} similar players for ${player.fullName}")
                 }
                 .onFailure { e ->
                     Log.e(TAG, "findSimilarPlayers failed for ${player.fullName}", e)
-                    _similarPlayersFlow.update { emptyList() }
                 }
             _isSimilarPlayersLoading.update { false }
         }

@@ -1633,100 +1633,20 @@ private fun PlayerInfoAiHelperSection(
                             .padding(start = 17.dp, end = 12.dp, bottom = 12.dp),
                         verticalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        // Similar players options
-                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Text(
-                                stringResource(R.string.player_info_ai_options),
-                                style = regularTextStyle(HomeTextSecondary, 11.sp)
-                            )
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .horizontalScroll(rememberScrollState()),
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)
-                            ) {
-                                listOf(
-                                    SimilarPlayersOptions.SimilarityMode.PLAYING_STYLE to R.string.player_info_ai_similarity_style,
-                                    SimilarPlayersOptions.SimilarityMode.MARKET_VALUE to R.string.player_info_ai_similarity_value,
-                                    SimilarPlayersOptions.SimilarityMode.POSITION_PROFILE to R.string.player_info_ai_similarity_position,
-                                    SimilarPlayersOptions.SimilarityMode.ALL_ROUND to R.string.player_info_ai_similarity_all
-                                ).forEach { (mode, resId) ->
-                                    FilterChip(
-                                        selected = similarPlayersOptions.similarityMode == mode,
-                                        onClick = { similarPlayersOptions = similarPlayersOptions.copy(similarityMode = mode) },
-                                        label = { Text(stringResource(resId), style = regularTextStyle(HomeTextPrimary, 11.sp)) },
-                                        colors = FilterChipDefaults.filterChipColors(
-                                            containerColor = Color.Transparent,
-                                            labelColor = HomeTextPrimary,
-                                            selectedContainerColor = HomeTealAccent.copy(alpha = 0.4f),
-                                            selectedLabelColor = HomeTealAccent
-                                        ),
-                                        border = BorderStroke(1.dp, if (similarPlayersOptions.similarityMode == mode) HomeTealAccent else HomeDarkCardBorder)
+                        // Refresh button
+                        if (similarPlayers.isNotEmpty()) {
+                            TextButton(
+                                onClick = {
+                                    val currentNames = similarPlayers.mapNotNull { it.name.takeIf(String::isNotBlank) }
+                                    viewModel.findSimilarPlayers(
+                                        player,
+                                        LocaleManager.getSavedLanguage(context),
+                                        similarPlayersOptions,
+                                        excludeNames = currentNames
                                     )
                                 }
-                            }
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .horizontalScroll(rememberScrollState()),
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)
                             ) {
-                                listOf(
-                                    SimilarPlayersOptions.AgeRangePreference.STRICT to R.string.player_info_ai_age_strict,
-                                    SimilarPlayersOptions.AgeRangePreference.RELAXED to R.string.player_info_ai_age_relaxed,
-                                    SimilarPlayersOptions.AgeRangePreference.ANY to R.string.player_info_ai_age_any
-                                ).forEach { (pref, resId) ->
-                                    FilterChip(
-                                        selected = similarPlayersOptions.ageRange == pref,
-                                        onClick = { similarPlayersOptions = similarPlayersOptions.copy(ageRange = pref) },
-                                        label = { Text(stringResource(resId), style = regularTextStyle(HomeTextPrimary, 11.sp)) },
-                                        colors = FilterChipDefaults.filterChipColors(
-                                            containerColor = Color.Transparent,
-                                            labelColor = HomeTextPrimary,
-                                            selectedContainerColor = HomeTealAccent.copy(alpha = 0.4f),
-                                            selectedLabelColor = HomeTealAccent
-                                        ),
-                                        border = BorderStroke(1.dp, if (similarPlayersOptions.ageRange == pref) HomeTealAccent else HomeDarkCardBorder)
-                                    )
-                                }
-                            }
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .horizontalScroll(rememberScrollState()),
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)
-                            ) {
-                                FilterChip(
-                                    selected = similarPlayersOptions.excludeSameClub,
-                                    onClick = { similarPlayersOptions = similarPlayersOptions.copy(excludeSameClub = !similarPlayersOptions.excludeSameClub) },
-                                    label = { Text(stringResource(R.string.player_info_ai_exclude_same_club), style = regularTextStyle(HomeTextPrimary, 11.sp)) },
-                                    colors = FilterChipDefaults.filterChipColors(
-                                        containerColor = Color.Transparent,
-                                        labelColor = HomeTextPrimary,
-                                        selectedContainerColor = HomeTealAccent.copy(alpha = 0.4f),
-                                        selectedLabelColor = HomeTealAccent
-                                    ),
-                                    border = BorderStroke(1.dp, if (similarPlayersOptions.excludeSameClub) HomeTealAccent else HomeDarkCardBorder)
-                                )
-                                FilterChip(
-                                    selected = similarPlayersOptions.excludeSameLeague,
-                                    onClick = { similarPlayersOptions = similarPlayersOptions.copy(excludeSameLeague = !similarPlayersOptions.excludeSameLeague) },
-                                    label = { Text(stringResource(R.string.player_info_ai_exclude_same_league), style = regularTextStyle(HomeTextPrimary, 11.sp)) },
-                                    colors = FilterChipDefaults.filterChipColors(
-                                        containerColor = Color.Transparent,
-                                        labelColor = HomeTextPrimary,
-                                        selectedContainerColor = HomeTealAccent.copy(alpha = 0.4f),
-                                        selectedLabelColor = HomeTealAccent
-                                    ),
-                                    border = BorderStroke(1.dp, if (similarPlayersOptions.excludeSameLeague) HomeTealAccent else HomeDarkCardBorder)
-                                )
-                            }
-                            if (similarPlayers.isNotEmpty()) {
-                                TextButton(
-                                    onClick = { viewModel.findSimilarPlayers(player, LocaleManager.getSavedLanguage(context), similarPlayersOptions) }
-                                ) {
-                                    Text(stringResource(R.string.player_info_ai_refresh), color = HomeTealAccent)
-                                }
+                                Text(stringResource(R.string.player_info_ai_refresh), color = HomeTealAccent)
                             }
                         }
                         if (isSimilarLoading) {
@@ -2013,18 +1933,16 @@ private fun SimilarPlayerSuggestionRow(
             }
             Spacer(Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    suggestion.name,
-                    style = boldTextStyle(HomeTextPrimary, 14.sp)
-                )
                 Row(
-                    modifier = Modifier.padding(top = 2.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     Text(
-                        "${suggestion.age ?: "-"} • ${suggestion.position ?: "-"} • ${suggestion.marketValue ?: "-"}",
-                        style = regularTextStyle(HomeTextSecondary, 11.sp)
+                        suggestion.name,
+                        style = boldTextStyle(HomeTextPrimary, 14.sp),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false)
                     )
                     suggestion.matchPercent?.let { pct ->
                         val matchColor = when {
@@ -2042,16 +1960,15 @@ private fun SimilarPlayerSuggestionRow(
                         )
                     }
                 }
+                Text(
+                    "${suggestion.age ?: "-"} • ${suggestion.position ?: "-"} • ${suggestion.marketValue ?: "-"}",
+                    style = regularTextStyle(HomeTextSecondary, 11.sp),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(top = 2.dp)
+                )
             }
             if (suggestion.transfermarktUrl != null) {
-                Icon(
-                    Icons.Default.Link,
-                    contentDescription = null,
-                    modifier = Modifier
-                        .size(20.dp)
-                        .clickWithNoRipple { onTmLinkClick() },
-                    tint = HomeTealAccent
-                )
                 Spacer(Modifier.width(8.dp))
             }
             onAddToShortlistClick?.let { onAdd ->
@@ -2087,7 +2004,7 @@ private fun SimilarPlayerSuggestionRow(
                     .background(HomeDarkCard)
                     .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(8.dp))
                     .padding(12.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 // Playing style badge + match %
                 val hasStyleOrMatch = !suggestion.playingStyle.isNullOrBlank() || suggestion.matchPercent != null
@@ -2126,49 +2043,100 @@ private fun SimilarPlayerSuggestionRow(
                     }
                 }
 
-                // Scout analysis explanation (stat comparisons, position, physical profile)
+                // Scout analysis — structured bullet display
                 suggestion.scoutAnalysis?.takeIf { it.isNotBlank() }?.let { analysis ->
-                    // Split explanation into sentences for structured display
                     val parts = analysis.split(". ").filter { it.isNotBlank() }
-                    parts.forEach { part ->
-                        val cleanPart = part.trimEnd('.').trim()
-                        if (cleanPart.isNotBlank()) {
-                            val isStatLine = cleanPart.contains("/90:") || cleanPart.startsWith("Similar stats:")
-                            if (isStatLine) {
-                                // Stat comparison line — format with highlight
-                                val statText = cleanPart.removePrefix("Similar stats: ").trim()
-                                Row(verticalAlignment = Alignment.Top) {
-                                    Text(
-                                        "\u26A1 ",
-                                        style = regularTextStyle(HomeTealAccent, 12.sp)
-                                    )
-                                    Text(
-                                        statText,
-                                        style = regularTextStyle(HomeTextPrimary, 12.sp),
-                                        lineHeight = 18.sp
-                                    )
-                                }
-                            } else {
-                                // Other info (position, age, build, foot, value)
+
+                    // Separate stat lines from profile lines
+                    val statLines = parts.filter { it.contains("/90") || it.contains("/shot") || it.contains("/שער") || it.contains("/בעיטה") }
+                    val profileLines = parts.filter { it !in statLines }
+
+                    // Profile info bullets (position, age, foot, build, value, style)
+                    if (profileLines.isNotEmpty()) {
+                        profileLines.forEach { part ->
+                            val cleanPart = part.trimEnd('.').trim()
+                            if (cleanPart.isNotBlank()) {
                                 val icon = when {
-                                    cleanPart.contains("position", ignoreCase = true) -> "\uD83C\uDFBD"
-                                    cleanPart.contains("age", ignoreCase = true) -> "\uD83D\uDCC5"
-                                    cleanPart.contains("build", ignoreCase = true) || cleanPart.contains("height", ignoreCase = true) -> "\uD83D\uDCCF"
-                                    cleanPart.contains("foot", ignoreCase = true) -> "\uD83E\uDDB6"
-                                    cleanPart.contains("value", ignoreCase = true) -> "\uD83D\uDCB0"
-                                    cleanPart.contains("style", ignoreCase = true) -> "\uD83C\uDFA8"
-                                    else -> "\u2022"
+                                    cleanPart.contains("position", ignoreCase = true) || cleanPart.contains("תפקיד") -> "🏟"
+                                    cleanPart.contains("age", ignoreCase = true) || cleanPart.contains("גיל") -> "📅"
+                                    cleanPart.contains("build", ignoreCase = true) || cleanPart.contains("height", ignoreCase = true) || cleanPart.contains("מבנה") -> "📏"
+                                    cleanPart.contains("foot", ignoreCase = true) || cleanPart.contains("רגל") -> "🦶"
+                                    cleanPart.contains("value", ignoreCase = true) || cleanPart.contains("שווי") -> "💰"
+                                    cleanPart.contains("style", ignoreCase = true) || cleanPart.contains("סגנון") -> "🎨"
+                                    cleanPart.contains("match", ignoreCase = true) || cleanPart.contains("התאמ") -> "✅"
+                                    else -> "•"
                                 }
-                                Row(verticalAlignment = Alignment.Top) {
+                                Row(
+                                    verticalAlignment = Alignment.Top,
+                                    modifier = Modifier.padding(vertical = 1.dp)
+                                ) {
                                     Text(
                                         "$icon ",
                                         style = regularTextStyle(HomeTextSecondary, 12.sp)
                                     )
                                     Text(
                                         cleanPart,
-                                        style = regularTextStyle(HomeTextSecondary, 12.sp),
+                                        style = regularTextStyle(HomeTextPrimary, 12.sp),
                                         lineHeight = 18.sp
                                     )
+                                }
+                            }
+                        }
+                    }
+
+                    // Stat comparison section with divider
+                    if (statLines.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(1.dp)
+                                .background(HomeDarkCardBorder)
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+
+                        statLines.forEach { stat ->
+                            val cleanStat = stat.trimEnd('.').trim()
+                            if (cleanStat.isNotBlank()) {
+                                // Parse "Label: value vs value" format
+                                val hasVs = cleanStat.contains(" vs ")
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(4.dp))
+                                        .background(HomeDarkBackground.copy(alpha = 0.5f))
+                                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        "⚡ ",
+                                        style = regularTextStyle(HomeTealAccent, 11.sp)
+                                    )
+                                    if (hasVs) {
+                                        val colonIdx = cleanStat.indexOf(":")
+                                        if (colonIdx > 0) {
+                                            val statName = cleanStat.substring(0, colonIdx).trim()
+                                            val values = cleanStat.substring(colonIdx + 1).trim()
+                                            Text(
+                                                "$statName: ",
+                                                style = boldTextStyle(HomeTextSecondary, 11.sp)
+                                            )
+                                            Text(
+                                                values,
+                                                style = regularTextStyle(HomeTealAccent, 11.sp)
+                                            )
+                                        } else {
+                                            Text(
+                                                cleanStat,
+                                                style = regularTextStyle(HomeTextPrimary, 11.sp)
+                                            )
+                                        }
+                                    } else {
+                                        Text(
+                                            cleanStat,
+                                            style = regularTextStyle(HomeTextPrimary, 11.sp)
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -2182,6 +2150,32 @@ private fun SimilarPlayerSuggestionRow(
                         style = regularTextStyle(HomeTextSecondary, 12.sp),
                         lineHeight = 18.sp
                     )
+                }
+
+                // Transfermarkt profile link at the bottom
+                if (suggestion.transfermarktUrl != null) {
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(6.dp))
+                            .clickWithNoRipple { onTmLinkClick() }
+                            .padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        Icon(
+                            Icons.Default.Link,
+                            contentDescription = null,
+                            modifier = Modifier.size(14.dp),
+                            tint = HomeTealAccent.copy(alpha = 0.7f)
+                        )
+                        Spacer(Modifier.width(4.dp))
+                        Text(
+                            text = "Transfermarkt",
+                            style = regularTextStyle(HomeTealAccent.copy(alpha = 0.7f), 11.sp),
+                        )
+                    }
                 }
             }
         }

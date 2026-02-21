@@ -71,7 +71,8 @@ class AiHelperService(
     suspend fun findSimilarPlayers(
         player: Player,
         languageCode: String = "en",
-        options: SimilarPlayersOptions = SimilarPlayersOptions()
+        options: SimilarPlayersOptions = SimilarPlayersOptions(),
+        excludeNames: List<String> = emptyList()
     ): Result<List<SimilarPlayerSuggestion>> =
         withContext(Dispatchers.IO) {
             // Try scouting server first (fast, data-driven)
@@ -80,9 +81,10 @@ class AiHelperService(
                 |│ Player: ${player.fullName}
                 |│ TM URL: $tmUrl
                 |│ Server available: ${scoutApiClient != null}
+                |│ Excluding: ${excludeNames.size} players
                 |└──────────────────────────────""".trimMargin())
             if (scoutApiClient != null && tmUrl != null) {
-                val serverResult = scoutApiClient.findSimilarPlayers(tmUrl)
+                val serverResult = scoutApiClient.findSimilarPlayers(tmUrl, lang = languageCode, excludeNames = excludeNames)
                 if (serverResult.isSuccess) {
                     val results = serverResult.getOrDefault(emptyList())
                     if (results.isNotEmpty()) {

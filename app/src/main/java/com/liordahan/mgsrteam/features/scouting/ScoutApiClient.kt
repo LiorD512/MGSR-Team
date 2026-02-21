@@ -42,8 +42,12 @@ class ScoutApiClient(private val baseUrl: String = DEFAULT_BASE_URL) {
      * Calls /similar_players?player_url=...
      * Returns results mapped to the existing SimilarPlayerSuggestion type.
      */
-    suspend fun findSimilarPlayers(tmProfileUrl: String): Result<List<AiHelperService.SimilarPlayerSuggestion>> = runCatching {
-        val url = "$baseUrl/similar_players?player_url=${encode(tmProfileUrl)}"
+    suspend fun findSimilarPlayers(tmProfileUrl: String, lang: String = "en", excludeNames: List<String> = emptyList()): Result<List<AiHelperService.SimilarPlayerSuggestion>> = runCatching {
+        val urlBuilder = StringBuilder("$baseUrl/similar_players?player_url=${encode(tmProfileUrl)}&lang=${encode(lang)}")
+        if (excludeNames.isNotEmpty()) {
+            urlBuilder.append("&exclude=${encode(excludeNames.joinToString(","))}")
+        }
+        val url = urlBuilder.toString()
         Log.d(TAG, """┌── findSimilarPlayers REQUEST ──
             |│ URL: $url
             |│ tmProfileUrl: $tmProfileUrl
