@@ -4,6 +4,7 @@ import android.os.Parcelable
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.parcelize.Parcelize
+import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
 import java.io.IOException
 import java.net.URLEncoder
@@ -45,7 +46,8 @@ data class TransfermarktPlayerDetails(
     val marketValue: String? = null,
     val currentClub: TransfermarktClub? = null,
     val isOnLoan: Boolean = false,
-    val onLoanFromClub: String? = null
+    val onLoanFromClub: String? = null,
+    val foot: String? = null
 )
 
 class PlayerSearch {
@@ -181,6 +183,8 @@ class PlayerSearch {
 
                 val loanInfo = detectLoanStatus(doc, clubName)
 
+                val foot = extractFootFromProfile(doc)
+
                 return@withContext TransfermarktPlayerDetails(
                     tmProfile = playerSearchModel.tmProfile,
                     fullName = fullName?.ifEmpty { null },
@@ -199,7 +203,8 @@ class PlayerSearch {
                         clubCountry = clubCountry
                     ),
                     isOnLoan = loanInfo.isOnLoan,
-                    onLoanFromClub = loanInfo.onLoanFromClub
+                    onLoanFromClub = loanInfo.onLoanFromClub,
+                    foot = foot
                 )
 
             } catch (ex: IOException) {
@@ -210,5 +215,7 @@ class PlayerSearch {
                 throw ex
             }
         }
+
+    private fun extractFootFromProfile(doc: Document): String? = extractFootFromDocument(doc, null)
 
 }

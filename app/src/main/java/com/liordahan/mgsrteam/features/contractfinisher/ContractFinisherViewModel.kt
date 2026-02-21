@@ -28,9 +28,13 @@ enum class ContractFinisherAgeRange(val minAge: Int?, val maxAge: Int?) {
     RANGE_30_PLUS(30, null)
 }
 
-/** Foot filter - Left, Right, or All. */
-enum class ContractFinisherFootFilter {
-    ALL, LEFT, RIGHT
+/** Market value range filter (values in €). */
+enum class ContractFinisherMarketValueRange(val minValue: Int?, val maxValue: Int?) {
+    ALL(null, null),
+    RANGE_150K_500K(150_000, 500_000),
+    RANGE_500K_1M(500_000, 1_000_000),
+    RANGE_1M_2M(1_000_000, 2_000_000),
+    RANGE_2M_3M(2_000_000, 3_000_000)
 }
 
 data class ContractFinisherUiState(
@@ -49,13 +53,13 @@ abstract class IContractFinisherViewModel : ViewModel() {
     abstract val selectedPositionFlow: StateFlow<Position?>
     abstract val positionsFlow: StateFlow<List<Position>>
     abstract val selectedAgeRangeFlow: StateFlow<ContractFinisherAgeRange>
-    abstract val selectedFootFlow: StateFlow<ContractFinisherFootFilter>
     abstract val selectedConfederationFlow: StateFlow<Confederation?>
+    abstract val selectedMarketValueRangeFlow: StateFlow<ContractFinisherMarketValueRange>
 
     abstract fun selectPosition(position: Position?)
     abstract fun selectAgeRange(range: ContractFinisherAgeRange)
-    abstract fun selectFoot(filter: ContractFinisherFootFilter)
     abstract fun selectConfederation(confederation: Confederation?)
+    abstract fun selectMarketValueRange(range: ContractFinisherMarketValueRange)
     abstract fun clearFilters()
     abstract fun retry()
 }
@@ -71,8 +75,8 @@ class ContractFinisherViewModel(
     private val _selectedPositionFlow = MutableStateFlow<Position?>(null)
     private val _positionsFlow = MutableStateFlow<List<Position>>(emptyList())
     private val _selectedAgeRangeFlow = MutableStateFlow(ContractFinisherAgeRange.ALL)
-    private val _selectedFootFlow = MutableStateFlow(ContractFinisherFootFilter.ALL)
     private val _selectedConfederationFlow = MutableStateFlow<Confederation?>(null)
+    private val _selectedMarketValueRangeFlow = MutableStateFlow(ContractFinisherMarketValueRange.ALL)
     private val _fetchErrorFlow = MutableStateFlow<String?>(null)
     private val _isLoadingFlow = MutableStateFlow(true)
     private var fetchJob: Job? = null
@@ -80,15 +84,15 @@ class ContractFinisherViewModel(
     override val selectedPositionFlow: StateFlow<Position?> = _selectedPositionFlow.asStateFlow()
     override val positionsFlow: StateFlow<List<Position>> = _positionsFlow.asStateFlow()
     override val selectedAgeRangeFlow: StateFlow<ContractFinisherAgeRange> = _selectedAgeRangeFlow.asStateFlow()
-    override val selectedFootFlow: StateFlow<ContractFinisherFootFilter> = _selectedFootFlow.asStateFlow()
     override val selectedConfederationFlow: StateFlow<Confederation?> = _selectedConfederationFlow.asStateFlow()
+    override val selectedMarketValueRangeFlow: StateFlow<ContractFinisherMarketValueRange> = _selectedMarketValueRangeFlow.asStateFlow()
 
     override val contractFinisherFlow: StateFlow<ContractFinisherUiState> = combine(
         _playersFlow,
         _selectedPositionFlow,
         _selectedAgeRangeFlow,
-        _selectedFootFlow,
         _selectedConfederationFlow,
+        _selectedMarketValueRangeFlow,
         _fetchErrorFlow,
         _isLoadingFlow
     ) { arr ->
@@ -96,15 +100,15 @@ class ContractFinisherViewModel(
         val players = arr[0] as List<LatestTransferModel>
         val selectedPos = arr[1] as Position?
         val ageRange = arr[2] as ContractFinisherAgeRange
-        val footFilter = arr[3] as ContractFinisherFootFilter
-        val confederation = arr[4] as Confederation?
+        val confederation = arr[3] as Confederation?
+        val marketValueRange = arr[4] as ContractFinisherMarketValueRange
         val error = arr[5] as String?
         val loading = arr[6] as Boolean
         val visible = players
             .filter { selectedPos == null || it.playerPosition.equals(selectedPos.name, ignoreCase = true) }
             .filter { passesAgeFilter(it, ageRange) }
-            .filter { passesFootFilter(it, footFilter) }
             .filter { passesConfederationFilter(it, confederation) }
+            .filter { passesMarketValueFilter(it, marketValueRange) }
             .sortedByDescending { it.getRealMarketValue() }
         ContractFinisherUiState(
             releasesList = players,
@@ -134,20 +138,19 @@ class ContractFinisherViewModel(
         }
     }
 
-    private fun passesFootFilter(player: LatestTransferModel, filter: ContractFinisherFootFilter): Boolean {
-        if (filter == ContractFinisherFootFilter.ALL) return true
-        val foot = player.playerFoot?.trim()?.lowercase() ?: return false
-        return when (filter) {
-            ContractFinisherFootFilter.ALL -> true
-            ContractFinisherFootFilter.LEFT -> foot == "left" || foot == "both"
-            ContractFinisherFootFilter.RIGHT -> foot == "right" || foot == "both"
-        }
-    }
-
     private fun passesConfederationFilter(player: LatestTransferModel, confederation: Confederation?): Boolean {
         if (confederation == null) return true
         val playerConf = NationToConfederation.getConfederation(player.playerNationality) ?: return false
         return playerConf == confederation
+    }
+
+    private fun passesMarketValueFilter(player: LatestTransferModel, range: ContractFinisherMarketValueRange): Boolean {
+        if (range == ContractFinisherMarketValueRange.ALL) return true
+        val value = player.getRealMarketValue()
+        if (value <= 0) return false
+        val min = range.minValue ?: return true
+        val max = range.maxValue ?: return value >= min
+        return value in min..max
     }
 
     init {
@@ -194,19 +197,19 @@ class ContractFinisherViewModel(
         _selectedAgeRangeFlow.update { range }
     }
 
-    override fun selectFoot(filter: ContractFinisherFootFilter) {
-        _selectedFootFlow.update { filter }
-    }
-
     override fun selectConfederation(confederation: Confederation?) {
         _selectedConfederationFlow.update { confederation }
+    }
+
+    override fun selectMarketValueRange(range: ContractFinisherMarketValueRange) {
+        _selectedMarketValueRangeFlow.update { range }
     }
 
     override fun clearFilters() {
         _selectedPositionFlow.value = null
         _selectedAgeRangeFlow.value = ContractFinisherAgeRange.ALL
-        _selectedFootFlow.value = ContractFinisherFootFilter.ALL
         _selectedConfederationFlow.value = null
+        _selectedMarketValueRangeFlow.value = ContractFinisherMarketValueRange.ALL
     }
 
     override fun retry() {

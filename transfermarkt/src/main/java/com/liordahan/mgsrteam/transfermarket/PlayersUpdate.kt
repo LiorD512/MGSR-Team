@@ -119,8 +119,9 @@ class PlayersUpdate {
 
                 val loanInfo = detectLoanStatus(doc, clubName)
 
+                val foot = extractFootFromDocument(doc, null)
+
                 val infoLabels = doc.select("span.info-table__content--regular")
-                var foot: String? = null
                 var agency: String? = null
                 var agencyUrl: String? = null
 
@@ -129,9 +130,6 @@ class PlayersUpdate {
                     val valueSpan = label.nextElementSibling() ?: continue
 
                     when {
-                        labelText.contains("foot") -> {
-                            foot = valueSpan.text().trim().takeIf { it.isNotBlank() }
-                        }
                         labelText.contains("player agent") || labelText.contains("agent") -> {
                             val link = valueSpan.selectFirst("a")
                             agency = link?.text()?.trim()?.takeIf { it.isNotBlank() }

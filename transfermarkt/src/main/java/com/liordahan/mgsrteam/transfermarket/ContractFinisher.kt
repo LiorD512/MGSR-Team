@@ -10,8 +10,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
-import kotlinx.coroutines.sync.Semaphore
-import kotlinx.coroutines.sync.withPermit
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
 import java.util.Calendar
@@ -33,8 +31,6 @@ class ContractFinisher {
         private const val MAX_PAGES = 80
         private const val BATCH_SIZE = 3
         private const val DELAY_BETWEEN_BATCHES_MS = 150L
-        private const val FOOT_ENRICHMENT_LIMIT = 80
-        private const val FOOT_ENRICHMENT_CONCURRENCY = 5
     }
 
     enum class TransferWindow { SUMMER, WINTER }
@@ -134,21 +130,8 @@ class ContractFinisher {
                 }
             }
 
-            var sorted = all.sortedByDescending { it.getRealMarketValue() }
-            emit(ContractFinisherProgress(players = sorted, pagesLoaded = totalPagesFetched, isLoading = false))
-
-            // Enrich top players with foot from profile (list page doesn't include it)
-            sorted = enrichFootForTopPlayers(sorted)
-            val withFoot = sorted.count { it.playerFoot != null }
-            Log.d(TAG, "ContractFinisher: $withFoot/${sorted.size} players have foot data after enrichment")
-            if (sorted.any { it.playerFoot != null }) {
-                emit(ContractFinisherProgress(players = sorted, pagesLoaded = totalPagesFetched, isLoading = false))
-            }
+            val sorted = all.sortedByDescending { it.getRealMarketValue() }
             Log.d(TAG, "ContractFinisher flow done: ${sorted.size} players")
-            sorted.take(10).forEachIndexed { i, p ->
-                val conf = NationToConfederation.getConfederation(p.playerNationality)
-                Log.d(TAG, "Top10 #${i + 1}: name=${p.playerName} age=${p.playerAge} nationality=${p.playerNationality} conf=${conf?.name} foot=${p.playerFoot} position=${p.playerPosition} value=${p.marketValue}")
-            }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -250,85 +233,6 @@ class ContractFinisher {
                 val isFirstYear = config.yearsToQuery.firstOrNull() == jahr
                 if (isFirstYear) "31.12.$jahr" else "31.01.$jahr"
             }
-        }
-    }
-
-    /**
-     * Enriches top players with foot from profile page. The endendevertraege list doesn't include foot.
-     */
-    private suspend fun enrichFootForTopPlayers(players: List<LatestTransferModel>): List<LatestTransferModel> {
-        val toEnrich = players.take(FOOT_ENRICHMENT_LIMIT).filter { it.playerUrl != null && it.playerFoot == null }
-        if (toEnrich.isEmpty()) return players
-
-        val sem = Semaphore(FOOT_ENRICHMENT_CONCURRENCY)
-        val enriched = coroutineScope {
-            toEnrich.map { player ->
-                async {
-                    sem.withPermit {
-                        delay(80L) // Avoid rate limiting
-                        runCatching {
-                            val foot = fetchFootFromProfile(player.playerUrl!!)
-                            if (foot != null) player.copy(playerFoot = foot) else player
-                        }.getOrElse { player }
-                    }
-                }
-            }.awaitAll()
-        }
-
-        val enrichedByUrl = enriched.associateBy { it.playerUrl!! }
-        return players.map { p ->
-            if (p.playerUrl != null && p.playerUrl in enrichedByUrl) enrichedByUrl[p.playerUrl]!! else p
-        }
-    }
-
-    private suspend fun fetchFootFromProfile(profileUrl: String): String? {
-        return try {
-            val (doc, rawHtml) = TransfermarktHttp.fetchDocumentWithHtml(profileUrl)
-
-            // Method 1: span.info-table__content--regular (label) + next sibling (value)
-            for (label in doc.select("span.info-table__content--regular")) {
-                if (label.text().trim().lowercase().contains("foot")) {
-                    label.nextElementSibling()?.text()?.trim()?.takeIf { it.isNotBlank() }
-                        ?.let { return normalizeFoot(it) }
-                }
-            }
-
-            // Method 2: dt/dd pairs - dt has label, dd has value
-            for (dt in doc.select("dt")) {
-                if (dt.text().trim().lowercase().contains("foot")) {
-                    dt.nextElementSibling()?.text()?.trim()?.takeIf { it.isNotBlank() }
-                        ?.let { return normalizeFoot(it) }
-                }
-            }
-
-            // Method 3: any element containing "Foot" - try next sibling
-            for (el in doc.select("[class*='info-table']")) {
-                if (el.ownText().trim().lowercase().contains("foot") || el.text().trim().lowercase() == "foot") {
-                    el.nextElementSibling()?.text()?.trim()?.takeIf { it.isNotBlank() }
-                        ?.let { return normalizeFoot(it) }
-                }
-            }
-
-            // Method 4: Regex fallback on raw HTML - "Foot:" or "Foot" followed by value
-            val footRegex = Regex("""[Ff]oot\s*:?\s*([A-Za-z]+)""")
-            footRegex.find(rawHtml)?.groupValues?.getOrNull(1)?.trim()?.takeIf { it.isNotBlank() }
-                ?.let { return normalizeFoot(it) }
-
-            null
-        } catch (e: Exception) {
-            Log.w(TAG, "Failed to fetch foot from $profileUrl: ${e.message}")
-            null
-        }
-    }
-
-    /** Normalizes foot to "Left", "Right", or "Both" for consistent filtering. */
-    private fun normalizeFoot(raw: String): String {
-        val lower = raw.trim().lowercase()
-        return when {
-            lower.startsWith("left") || lower == "l" -> "Left"
-            lower.startsWith("right") || lower == "r" -> "Right"
-            lower.contains("both") || lower.contains("two") || lower == "b" -> "Both"
-            else -> raw.trim()
         }
     }
 }

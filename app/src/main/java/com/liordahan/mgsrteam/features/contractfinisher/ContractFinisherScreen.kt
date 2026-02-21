@@ -1,18 +1,15 @@
 package com.liordahan.mgsrteam.features.contractfinisher
 
 import android.net.Uri
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -25,7 +22,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -98,6 +94,7 @@ fun ContractFinisherScreen(
 
     var showAddPlayerBottomSheet by remember { mutableStateOf(false) }
     var addPlayerTmUrl by remember { mutableStateOf<String?>(null) }
+    var showFilterSheet by remember { mutableStateOf(false) }
 
     // Roster teammates feature (same as Releases)
     val rosterPlayers by playersRepository.playersFlow().collectAsState(initial = emptyList())
@@ -112,8 +109,8 @@ fun ContractFinisherScreen(
     val state by viewModel.contractFinisherFlow.collectAsState()
     val positionList by viewModel.positionsFlow.collectAsState(initial = emptyList())
     val selectedAgeRange by viewModel.selectedAgeRangeFlow.collectAsState()
-    val selectedFoot by viewModel.selectedFootFlow.collectAsState()
     val selectedConfederation by viewModel.selectedConfederationFlow.collectAsState()
+    val selectedMarketValueRange by viewModel.selectedMarketValueRangeFlow.collectAsState()
     val selectedPosition by viewModel.selectedPositionFlow.collectAsState()
 
     val shortlistEntries by shortlistRepository.getShortlistFlow().collectAsState(initial = emptyList())
@@ -170,12 +167,11 @@ fun ContractFinisherScreen(
             .background(HomeDarkBackground)
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
-            ContractFinisherHeader(
-                windowLabel = state.windowLabel,
-                onBackClicked = { navController.popBackStack() }
-            )
-
             if (state.showError) {
+                ContractFinisherHeader(
+                    windowLabel = state.windowLabel,
+                    onBackClicked = { navController.popBackStack() }
+                )
                 EmptyState(
                     text = stringResource(R.string.releases_tm_down),
                     showResetFiltersButton = true,
@@ -185,10 +181,19 @@ fun ContractFinisherScreen(
                 return
             }
 
-            ContractFinisherStatsStrip(
+            ContractFinisherHeaderWithFilters(
+                windowLabel = state.windowLabel,
                 total = state.releasesList.size,
                 shortlisted = shortlistedCount,
-                visible = state.visibleList.size
+                visible = state.visibleList.size,
+                activeFiltersCount = listOfNotNull(
+                    selectedPosition,
+                    if (selectedAgeRange != ContractFinisherAgeRange.ALL) selectedAgeRange else null,
+                    selectedConfederation,
+                    if (selectedMarketValueRange != ContractFinisherMarketValueRange.ALL) selectedMarketValueRange else null
+                ).size,
+                onBackClicked = { navController.popBackStack() },
+                onFiltersClicked = { showFilterSheet = true }
             )
 
             if (state.visibleList.isEmpty() && !state.isLoading) {
@@ -204,23 +209,6 @@ fun ContractFinisherScreen(
                 )
                 return
             }
-
-            ContractFinisherPositionChips(
-                positionList = positionList,
-                selectedPosition = selectedPosition,
-                playersCount = state.playersCount,
-                onPositionClicked = { viewModel.selectPosition(if (selectedPosition == it) null else it) },
-                onAllClicked = { viewModel.selectPosition(null) }
-            )
-
-            ContractFinisherSecondaryFilters(
-                selectedAgeRange = selectedAgeRange,
-                selectedFoot = selectedFoot,
-                selectedConfederation = selectedConfederation,
-                onAgeRangeClicked = { viewModel.selectAgeRange(it) },
-                onFootClicked = { viewModel.selectFoot(it) },
-                onConfederationClicked = { viewModel.selectConfederation(it) }
-            )
 
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
@@ -298,6 +286,47 @@ fun ContractFinisherScreen(
                         isShortlistPending = (playerUrl != null && playerUrl in shortlistPendingUrls)
                     )
                 }
+            }
+        }
+
+        if (showFilterSheet) {
+            val filterSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+            ModalBottomSheet(
+                onDismissRequest = { showFilterSheet = false },
+                sheetState = filterSheetState,
+                containerColor = HomeDarkCard,
+                shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+                dragHandle = {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 12.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .width(40.dp)
+                                .height(4.dp)
+                                .clip(RoundedCornerShape(2.dp))
+                                .background(HomeDarkCardBorder)
+                        )
+                    }
+                }
+            ) {
+                ContractFinisherFilterSheetContent(
+                    positionList = positionList,
+                    selectedPosition = selectedPosition,
+                    playersCount = state.playersCount,
+                    selectedAgeRange = selectedAgeRange,
+                    selectedConfederation = selectedConfederation,
+                    selectedMarketValueRange = selectedMarketValueRange,
+                    onPositionClicked = { viewModel.selectPosition(if (selectedPosition == it) null else it) },
+                    onAllPositionsClicked = { viewModel.selectPosition(null) },
+                    onAgeRangeClicked = { viewModel.selectAgeRange(it) },
+                    onConfederationClicked = { viewModel.selectConfederation(it) },
+                    onMarketValueRangeClicked = { viewModel.selectMarketValueRange(it) },
+                    onApplyClicked = { showFilterSheet = false }
+                )
             }
         }
 
@@ -387,88 +416,128 @@ private fun ContractFinisherHeader(
 }
 
 @Composable
-private fun ContractFinisherStatsStrip(
+private fun ContractFinisherHeaderWithFilters(
+    windowLabel: String,
     total: Int,
     shortlisted: Int,
-    visible: Int
+    visible: Int,
+    activeFiltersCount: Int,
+    onBackClicked: () -> Unit,
+    onFiltersClicked: () -> Unit
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
-            .clip(RoundedCornerShape(16.dp))
-            .background(HomeDarkCard)
-            .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(16.dp)),
-        horizontalArrangement = Arrangement.SpaceEvenly
-    ) {
-        ContractFinisherStatItem(
-            value = total.toString(),
-            label = stringResource(R.string.players_stat_total),
-            accentColor = HomeTealAccent,
-            modifier = Modifier.weight(1f)
-        )
-        Box(
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
             modifier = Modifier
-                .width(1.dp)
-                .height(40.dp)
-                .padding(vertical = 4.dp)
-                .background(HomeDarkCardBorder)
-        )
-        ContractFinisherStatItem(
-            value = shortlisted.toString(),
-            label = stringResource(R.string.releases_stat_shortlisted),
-            accentColor = HomeGreenAccent,
-            modifier = Modifier.weight(1f)
-        )
-        Box(
+                .fillMaxWidth()
+                .padding(start = 20.dp, end = 16.dp, top = 48.dp, bottom = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                contentDescription = null,
+                tint = HomeTextSecondary,
+                modifier = Modifier
+                    .size(24.dp)
+                    .clickWithNoRipple { onBackClicked() }
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = stringResource(R.string.contract_finisher_title),
+                    style = boldTextStyle(HomeTextPrimary, 22.sp)
+                )
+                Text(
+                    text = when (windowLabel) {
+                        "Summer" -> stringResource(R.string.contract_finisher_subtitle_summer)
+                        else -> stringResource(R.string.contract_finisher_subtitle_winter)
+                    },
+                    style = regularTextStyle(HomeTextSecondary, 13.sp),
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+            }
+            Row(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(24.dp))
+                    .background(HomeTealAccent.copy(alpha = 0.15f))
+                    .border(1.dp, HomeTealAccent, RoundedCornerShape(24.dp))
+                    .clickWithNoRipple { onFiltersClicked() }
+                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Text(
+                    text = stringResource(R.string.players_filters),
+                    style = boldTextStyle(HomeTealAccent, 14.sp)
+                )
+                if (activeFiltersCount > 0) {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(HomeTealAccent)
+                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                    ) {
+                        Text(
+                            text = activeFiltersCount.toString(),
+                            style = boldTextStyle(HomeDarkBackground, 11.sp)
+                        )
+                    }
+                }
+            }
+        }
+        Row(
             modifier = Modifier
-                .width(1.dp)
-                .height(40.dp)
-                .padding(vertical = 4.dp)
-                .background(HomeDarkCardBorder)
-        )
-        ContractFinisherStatItem(
-            value = visible.toString(),
-            label = stringResource(R.string.releases_stat_visible),
-            accentColor = HomeOrangeAccent,
-            modifier = Modifier.weight(1f)
-        )
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(HomeDarkCard)
+                .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(12.dp))
+                .padding(vertical = 12.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
+                Text(text = total.toString(), style = boldTextStyle(HomeTealAccent, 18.sp))
+                Text(
+                    text = stringResource(R.string.players_stat_total),
+                    style = regularTextStyle(HomeTextSecondary, 10.sp),
+                    modifier = Modifier.padding(top = 2.dp)
+                )
+            }
+            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
+                Text(text = shortlisted.toString(), style = boldTextStyle(HomeGreenAccent, 18.sp))
+                Text(
+                    text = stringResource(R.string.releases_stat_shortlisted),
+                    style = regularTextStyle(HomeTextSecondary, 10.sp),
+                    modifier = Modifier.padding(top = 2.dp)
+                )
+            }
+            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
+                Text(text = visible.toString(), style = boldTextStyle(HomeOrangeAccent, 18.sp))
+                Text(
+                    text = stringResource(R.string.releases_stat_visible),
+                    style = regularTextStyle(HomeTextSecondary, 10.sp),
+                    modifier = Modifier.padding(top = 2.dp)
+                )
+            }
+        }
     }
 }
 
 @Composable
-private fun ContractFinisherStatItem(
-    value: String,
-    label: String,
-    accentColor: androidx.compose.ui.graphics.Color,
-    modifier: Modifier = Modifier
-) {
-    Column(
-        modifier = modifier.padding(vertical = 10.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Box(
-            modifier = Modifier
-                .size(6.dp)
-                .clip(CircleShape)
-                .background(accentColor)
-        )
-        Spacer(Modifier.height(4.dp))
-        Text(text = value, style = boldTextStyle(HomeTextPrimary, 18.sp))
-        Text(text = label, style = regularTextStyle(HomeTextSecondary, 9.sp))
-    }
-}
-
-@Composable
-private fun ContractFinisherSecondaryFilters(
+private fun ContractFinisherFilterSheetContent(
+    positionList: List<Position>,
+    selectedPosition: Position?,
+    playersCount: Map<String, Int>,
     selectedAgeRange: ContractFinisherAgeRange,
-    selectedFoot: ContractFinisherFootFilter,
     selectedConfederation: Confederation?,
+    selectedMarketValueRange: ContractFinisherMarketValueRange,
+    onPositionClicked: (Position) -> Unit,
+    onAllPositionsClicked: () -> Unit,
     onAgeRangeClicked: (ContractFinisherAgeRange) -> Unit,
-    onFootClicked: (ContractFinisherFootFilter) -> Unit,
-    onConfederationClicked: (Confederation?) -> Unit
+    onConfederationClicked: (Confederation?) -> Unit,
+    onMarketValueRangeClicked: (ContractFinisherMarketValueRange) -> Unit,
+    onApplyClicked: () -> Unit
 ) {
-    val scrollState = rememberScrollState()
+    val totalCount = playersCount.values.sum()
     val confederations = listOf(
         null to R.string.feed_filter_all,
         Confederation.UEFA to R.string.transfer_windows_group_uefa,
@@ -478,128 +547,144 @@ private fun ContractFinisherSecondaryFilters(
         Confederation.CAF to R.string.transfer_windows_group_caf,
         Confederation.OFC to R.string.transfer_windows_group_ofc
     )
-    Column(modifier = Modifier.fillMaxWidth()) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 4.dp)
-                .horizontalScroll(scrollState),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-            verticalAlignment = Alignment.Bottom
+    val marketValueRanges = listOf(
+        ContractFinisherMarketValueRange.ALL to R.string.contract_finisher_filter_value_all,
+        ContractFinisherMarketValueRange.RANGE_150K_500K to R.string.contract_finisher_filter_value_150k_500k,
+        ContractFinisherMarketValueRange.RANGE_500K_1M to R.string.contract_finisher_filter_value_500k_1m,
+        ContractFinisherMarketValueRange.RANGE_1M_2M to R.string.contract_finisher_filter_value_1m_2m,
+        ContractFinisherMarketValueRange.RANGE_2M_3M to R.string.contract_finisher_filter_value_2m_3m
+    )
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 24.dp, vertical = 8.dp)
+.padding(bottom = 32.dp)
+    ) {
+        // Value
+        ContractFinisherFilterGroup(
+            label = stringResource(R.string.contract_finisher_filter_label_value)
         ) {
-            // Foot chips
-            ContractFinisherChipWithLine(
-                text = stringResource(R.string.feed_filter_all),
-                isSelected = selectedFoot == ContractFinisherFootFilter.ALL,
-                isDisabled = false,
-                onClick = { onFootClicked(ContractFinisherFootFilter.ALL) }
-            )
-            ContractFinisherChipWithLine(
-                text = stringResource(R.string.players_filter_foot_left),
-                isSelected = selectedFoot == ContractFinisherFootFilter.LEFT,
-                isDisabled = false,
-                onClick = { onFootClicked(ContractFinisherFootFilter.LEFT) }
-            )
-            ContractFinisherChipWithLine(
-                text = stringResource(R.string.players_filter_foot_right),
-                isSelected = selectedFoot == ContractFinisherFootFilter.RIGHT,
-                isDisabled = false,
-                onClick = { onFootClicked(ContractFinisherFootFilter.RIGHT) }
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            // Age chips
-            ContractFinisherChipWithLine(
-                text = stringResource(R.string.feed_filter_all),
-                isSelected = selectedAgeRange == ContractFinisherAgeRange.ALL,
-                isDisabled = false,
-                onClick = { onAgeRangeClicked(ContractFinisherAgeRange.ALL) }
-            )
-            ContractFinisherChipWithLine(
-                text = stringResource(R.string.contract_finisher_filter_age_18_21),
-                isSelected = selectedAgeRange == ContractFinisherAgeRange.RANGE_18_21,
-                isDisabled = false,
-                onClick = { onAgeRangeClicked(ContractFinisherAgeRange.RANGE_18_21) }
-            )
-            ContractFinisherChipWithLine(
-                text = stringResource(R.string.contract_finisher_filter_age_22_25),
-                isSelected = selectedAgeRange == ContractFinisherAgeRange.RANGE_22_25,
-                isDisabled = false,
-                onClick = { onAgeRangeClicked(ContractFinisherAgeRange.RANGE_22_25) }
-            )
-            ContractFinisherChipWithLine(
-                text = stringResource(R.string.contract_finisher_filter_age_26_29),
-                isSelected = selectedAgeRange == ContractFinisherAgeRange.RANGE_26_29,
-                isDisabled = false,
-                onClick = { onAgeRangeClicked(ContractFinisherAgeRange.RANGE_26_29) }
-            )
-            ContractFinisherChipWithLine(
-                text = stringResource(R.string.contract_finisher_filter_age_30_plus),
-                isSelected = selectedAgeRange == ContractFinisherAgeRange.RANGE_30_PLUS,
-                isDisabled = false,
-                onClick = { onAgeRangeClicked(ContractFinisherAgeRange.RANGE_30_PLUS) }
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            // Confederation chips
-            confederations.forEach { (conf, labelRes) ->
-                ContractFinisherChipWithLine(
+            marketValueRanges.forEach { (range, labelRes) ->
+                ContractFinisherPill(
                     text = stringResource(labelRes),
-                    isSelected = selectedConfederation == conf,
-                    isDisabled = false,
-                    onClick = { onConfederationClicked(conf) }
+                    isSelected = selectedMarketValueRange == range,
+                    onClick = { onMarketValueRangeClicked(range) }
                 )
             }
         }
-    }
-}
-
-@Composable
-private fun ContractFinisherPositionChips(
-    positionList: List<Position>,
-    selectedPosition: Position?,
-    playersCount: Map<String, Int>,
-    onPositionClicked: (Position) -> Unit,
-    onAllClicked: () -> Unit
-) {
-    val scrollState = rememberScrollState()
-    val totalCount = playersCount.values.sum()
-    val isAllSelected = selectedPosition == null
-
-    Column(modifier = Modifier.fillMaxWidth()) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 4.dp)
-                .horizontalScroll(scrollState),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-            verticalAlignment = Alignment.Bottom
+        Spacer(Modifier.height(24.dp))
+        // Position
+        ContractFinisherFilterGroup(
+            label = stringResource(R.string.contract_finisher_filter_label_position)
         ) {
-            ContractFinisherChipWithLine(
+            ContractFinisherPill(
                 text = stringResource(R.string.releases_all_count, totalCount),
-                isSelected = isAllSelected,
-                isDisabled = false,
-                onClick = onAllClicked
+                isSelected = selectedPosition == null,
+                onClick = onAllPositionsClicked
             )
             positionList.forEach { position ->
                 val count = playersCount[position.name ?: ""] ?: 0
-                val isSelected = selectedPosition == position
                 val isDisabled = count == 0
                 val positionName = position.name ?: ""
-                ContractFinisherChipWithLine(
+                ContractFinisherPill(
                     text = if (count > 0) "$positionName $count" else positionName,
-                    isSelected = isSelected,
+                    isSelected = selectedPosition == position,
                     isDisabled = isDisabled,
                     onClick = { if (!isDisabled) onPositionClicked(position) }
                 )
             }
         }
+        Spacer(Modifier.height(24.dp))
+        // Age
+        ContractFinisherFilterGroup(
+            label = stringResource(R.string.contract_finisher_filter_label_age)
+        ) {
+            ContractFinisherPill(
+                text = stringResource(R.string.feed_filter_all),
+                isSelected = selectedAgeRange == ContractFinisherAgeRange.ALL,
+                onClick = { onAgeRangeClicked(ContractFinisherAgeRange.ALL) }
+            )
+            ContractFinisherPill(
+                text = stringResource(R.string.contract_finisher_filter_age_18_21),
+                isSelected = selectedAgeRange == ContractFinisherAgeRange.RANGE_18_21,
+                onClick = { onAgeRangeClicked(ContractFinisherAgeRange.RANGE_18_21) }
+            )
+            ContractFinisherPill(
+                text = stringResource(R.string.contract_finisher_filter_age_22_25),
+                isSelected = selectedAgeRange == ContractFinisherAgeRange.RANGE_22_25,
+                onClick = { onAgeRangeClicked(ContractFinisherAgeRange.RANGE_22_25) }
+            )
+            ContractFinisherPill(
+                text = stringResource(R.string.contract_finisher_filter_age_26_29),
+                isSelected = selectedAgeRange == ContractFinisherAgeRange.RANGE_26_29,
+                onClick = { onAgeRangeClicked(ContractFinisherAgeRange.RANGE_26_29) }
+            )
+            ContractFinisherPill(
+                text = stringResource(R.string.contract_finisher_filter_age_30_plus),
+                isSelected = selectedAgeRange == ContractFinisherAgeRange.RANGE_30_PLUS,
+                onClick = { onAgeRangeClicked(ContractFinisherAgeRange.RANGE_30_PLUS) }
+            )
+        }
+        Spacer(Modifier.height(24.dp))
+        // Region
+        ContractFinisherFilterGroup(
+            label = stringResource(R.string.contract_finisher_filter_label_region)
+        ) {
+            confederations.forEach { (conf, labelRes) ->
+                ContractFinisherPill(
+                    text = stringResource(labelRes),
+                    isSelected = selectedConfederation == conf,
+                    onClick = { onConfederationClicked(conf) }
+                )
+            }
+        }
+        Spacer(Modifier.height(24.dp))
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(12.dp))
+                .background(HomeTealAccent)
+                .clickWithNoRipple { onApplyClicked() }
+                .padding(vertical = 14.dp),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = stringResource(R.string.contract_finisher_apply_filters),
+                style = boldTextStyle(HomeDarkBackground, 15.sp)
+            )
+        }
     }
 }
 
 @Composable
-private fun ContractFinisherChipWithLine(
+private fun ContractFinisherFilterGroup(
+    label: String,
+    content: @Composable () -> Unit
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Text(
+            text = label.uppercase(),
+            style = regularTextStyle(HomeTextSecondary, 12.sp),
+            modifier = Modifier.padding(bottom = 10.dp)
+        )
+        FlowRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            content()
+        }
+    }
+}
+
+@Composable
+private fun ContractFinisherPill(
     text: String,
     isSelected: Boolean,
-    isDisabled: Boolean,
+    isDisabled: Boolean = false,
     onClick: () -> Unit
 ) {
     val bgColor by animateColorAsState(
@@ -609,7 +694,7 @@ private fun ContractFinisherChipWithLine(
             else -> androidx.compose.ui.graphics.Color.Transparent
         },
         animationSpec = tween(280),
-        label = "chipBg"
+        label = "pillBg"
     )
     val textColor = when {
         isDisabled -> HomeTextSecondary.copy(alpha = 0.5f)
@@ -622,36 +707,18 @@ private fun ContractFinisherChipWithLine(
         else -> HomeDarkCardBorder
     }
 
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.padding(bottom = 4.dp)
-    ) {
-        Text(
-            text = text,
-            style = boldTextStyle(textColor, 11.sp),
-            modifier = Modifier
-                .clip(RoundedCornerShape(20.dp))
-                .background(bgColor)
-                .border(1.dp, borderColor, RoundedCornerShape(20.dp))
-                .then(
-                    if (isDisabled) Modifier
-                    else Modifier.clickWithNoRipple(onClick = onClick)
-                )
-                .padding(horizontal = 14.dp, vertical = 5.dp)
-        )
-        AnimatedVisibility(
-            visible = isSelected,
-            enter = fadeIn(tween(280)) + expandVertically(animationSpec = tween(280)),
-            exit = fadeOut(tween(280)) + shrinkVertically(animationSpec = tween(280))
-        ) {
-            Box(
-                modifier = Modifier
-                    .padding(top = 4.dp)
-                    .width(40.dp)
-                    .height(3.dp)
-                    .clip(RoundedCornerShape(2.dp))
-                    .background(HomeTealAccent)
+    Text(
+        text = text,
+        style = boldTextStyle(textColor, 13.sp),
+        modifier = Modifier
+            .clip(RoundedCornerShape(20.dp))
+            .background(bgColor)
+            .border(1.dp, borderColor, RoundedCornerShape(20.dp))
+            .then(
+                if (isDisabled) Modifier
+                else Modifier.clickWithNoRipple(onClick = onClick)
             )
-        }
-    }
+            .padding(horizontal = 14.dp, vertical = 8.dp)
+    )
 }
+

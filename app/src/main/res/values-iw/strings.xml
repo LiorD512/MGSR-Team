@@ -184,10 +184,21 @@
     <string name="contract_finisher_no_found">לא נמצאו מסיימי חוזה בטווח זה</string>
     <string name="contract_finisher_no_match_filters">אין שחקנים התואמים את הסינון</string>
     <string name="contract_finisher_clear_filters">נקה סינון</string>
+    <string name="contract_finisher_apply_filters">החל סינון</string>
     <string name="contract_finisher_filter_age_18_21">18-21</string>
     <string name="contract_finisher_filter_age_22_25">22-25</string>
     <string name="contract_finisher_filter_age_26_29">26-29</string>
     <string name="contract_finisher_filter_age_30_plus">30+</string>
+    <string name="contract_finisher_filter_value_all">הכל</string>
+    <string name="contract_finisher_filter_value_150k_500k">€150K–500K</string>
+    <string name="contract_finisher_filter_value_500k_1m">€500K–1M</string>
+    <string name="contract_finisher_filter_value_1m_2m">€1M–2M</string>
+    <string name="contract_finisher_filter_value_2m_3m">€2M–3M</string>
+    <string name="contract_finisher_filter_label_value">שווי</string>
+    <string name="contract_finisher_filter_label_position">עמדה</string>
+    <string name="contract_finisher_filter_label_foot">רגל</string>
+    <string name="contract_finisher_filter_label_age">גיל</string>
+    <string name="contract_finisher_filter_label_region">אזור</string>
 
     <!-- Feed -->
     <string name="feed_recent_updates">עדכונים אחרונים</string>

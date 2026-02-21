@@ -185,10 +185,21 @@
     <string name="contract_finisher_no_found">No contract finishers found in this range</string>
     <string name="contract_finisher_no_match_filters">No players match your filters</string>
     <string name="contract_finisher_clear_filters">Clear filters</string>
+    <string name="contract_finisher_apply_filters">Apply Filters</string>
     <string name="contract_finisher_filter_age_18_21">18-21</string>
     <string name="contract_finisher_filter_age_22_25">22-25</string>
     <string name="contract_finisher_filter_age_26_29">26-29</string>
     <string name="contract_finisher_filter_age_30_plus">30+</string>
+    <string name="contract_finisher_filter_value_all">All</string>
+    <string name="contract_finisher_filter_value_150k_500k">€150K–500K</string>
+    <string name="contract_finisher_filter_value_500k_1m">€500K–1M</string>
+    <string name="contract_finisher_filter_value_1m_2m">€1M–2M</string>
+    <string name="contract_finisher_filter_value_2m_3m">€2M–3M</string>
+    <string name="contract_finisher_filter_label_value">Value</string>
+    <string name="contract_finisher_filter_label_position">Position</string>
+    <string name="contract_finisher_filter_label_foot">Foot</string>
+    <string name="contract_finisher_filter_label_age">Age</string>
+    <string name="contract_finisher_filter_label_region">Region</string>
 
     <!-- Feed -->
     <string name="feed_recent_updates">Recent Updates</string>
