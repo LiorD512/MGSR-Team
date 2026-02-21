@@ -372,7 +372,8 @@ fun ContactsScreen(
         if (searchQuery.isBlank()) tabContacts
         else when (selectedTab) {
             ContactType.AGENCY -> tabContacts.filter { contact ->
-                contact.name?.contains(searchQuery, ignoreCase = true) == true
+                contact.name?.contains(searchQuery, ignoreCase = true) == true ||
+                        contact.displayOrganization?.contains(searchQuery, ignoreCase = true) == true
             }
             else -> tabContacts.filter { contact ->
                 contact.name?.contains(searchQuery, ignoreCase = true) == true ||
@@ -457,7 +458,7 @@ fun ContactsScreen(
                                 keyboardController?.hide()
                                 focusManager.clearFocus()
                             },
-                            searchHint = if (selectedTab == ContactType.AGENCY) R.string.contacts_search_name_hint else R.string.contacts_screen_search_hint
+                            searchHint = if (selectedTab == ContactType.AGENCY) R.string.contacts_search_agency_hint else R.string.contacts_screen_search_hint
                         )
                         ContactsEmptyState(
                             title = when (selectedTab) {
@@ -492,7 +493,7 @@ fun ContactsScreen(
                                 keyboardController?.hide()
                                 focusManager.clearFocus()
                             },
-                            searchHint = if (selectedTab == ContactType.AGENCY) R.string.contacts_search_name_hint else R.string.contacts_screen_search_hint
+                            searchHint = if (selectedTab == ContactType.AGENCY) R.string.contacts_search_agency_hint else R.string.contacts_screen_search_hint
                         )
                         ContactsEmptyState(
                             title = stringResource(R.string.contacts_no_contacts_found),
@@ -518,7 +519,7 @@ fun ContactsScreen(
                                 keyboardController?.hide()
                                 focusManager.clearFocus()
                             },
-                            searchHint = if (selectedTab == ContactType.AGENCY) R.string.contacts_search_name_hint else R.string.contacts_screen_search_hint
+                            searchHint = if (selectedTab == ContactType.AGENCY) R.string.contacts_search_agency_hint else R.string.contacts_screen_search_hint
                         )
                         if (selectedTab != ContactType.AGENCY) {
                             ContactsFilterChips(
@@ -553,7 +554,7 @@ fun ContactsScreen(
                                 keyboardController?.hide()
                                 focusManager.clearFocus()
                             },
-                            searchHint = if (selectedTab == ContactType.AGENCY) R.string.contacts_search_name_hint else R.string.contacts_screen_search_hint
+                            searchHint = if (selectedTab == ContactType.AGENCY) R.string.contacts_search_agency_hint else R.string.contacts_screen_search_hint
                         )
                         if (selectedTab != ContactType.AGENCY) {
                             ContactsFilterChips(
@@ -1718,6 +1719,7 @@ private fun AddEditContactBottomSheet(
         )
     }
     var showManualAgencySearch by remember { mutableStateOf(false) }
+    val agencySearchFocusRequester = remember { FocusRequester() }
     var isDiscoveringAgency by remember { mutableStateOf(false) }
     var discoveryError by remember { mutableStateOf<String?>(null) }
 
@@ -1865,7 +1867,10 @@ private fun AddEditContactBottomSheet(
     val canProceedStepOrg = when (selectedContactType) {
         ContactType.CLUB -> if (isEdit) selectedClub != null || clubSearchQuery.trim().isNotBlank()
             else pickedName.isNotBlank() && pickedPhone.isNotBlank() && selectedClub != null && selectedRole in clubRoles
-        ContactType.AGENCY -> pickedName.isNotBlank() && pickedPhone.isNotBlank() && agencyName.trim().isNotBlank()
+        ContactType.AGENCY -> pickedName.isNotBlank() && pickedPhone.isNotBlank() && (
+            agencyName.trim().isNotBlank() ||
+            (showManualAgencySearch && agencySearchQuery.trim().isNotBlank())
+        )
         null -> false
     }
     val canProceedStepContact = pickedName.isNotBlank() && pickedPhone.isNotBlank()
@@ -2050,12 +2055,13 @@ private fun AddEditContactBottomSheet(
                             isDiscovering = isDiscoveringAgency,
                             discoveryError = discoveryError,
                             showManualAgencySearch = showManualAgencySearch,
+                            agencySearchFocusRequester = agencySearchFocusRequester,
+                            keyboardController = keyboardController,
                             onPickContact = onPickContact,
                             onNameChange = onNameChange,
                             onPhoneChange = onPhoneChange,
                             onAgencySearchChange = {
                                 agencySearchQuery = it
-                                agencyName = it
                                 selectedAgency = null
                             },
                             onSelectAgency = {
@@ -2221,7 +2227,8 @@ private fun AddEditContactBottomSheet(
                                     clubLogo = null,
                                     clubCountryFlag = null,
                                     contactType = ContactType.AGENCY.name,
-                                    agencyName = agencyName.trim().takeIf { it.isNotBlank() },
+                                    agencyName = (agencyName.trim().takeIf { it.isNotBlank() }
+                                        ?: agencySearchQuery.trim().takeIf { it.isNotBlank() }),
                                     agencyCountry = null,
                                     agencyUrl = agencyUrl.trim().takeIf { it.isNotBlank() }
                                 )
@@ -2754,6 +2761,8 @@ private fun Step1AgencyContent(
     isDiscovering: Boolean,
     discoveryError: String?,
     showManualAgencySearch: Boolean,
+    agencySearchFocusRequester: FocusRequester,
+    keyboardController: androidx.compose.ui.platform.SoftwareKeyboardController?,
     onPickContact: () -> Unit,
     onNameChange: (String) -> Unit,
     onPhoneChange: (String) -> Unit,
@@ -2941,6 +2950,10 @@ private fun Step1AgencyContent(
             }
         }
         if (showManualAgencySearch) {
+            LaunchedEffect(Unit) {
+                agencySearchFocusRequester.requestFocus()
+                keyboardController?.show()
+            }
             Spacer(Modifier.height(16.dp))
             Text(
                 text = stringResource(R.string.contacts_agency_manual_fallback),
@@ -2950,32 +2963,34 @@ private fun Step1AgencyContent(
             OutlinedTextField(
                 value = agencySearchQuery,
                 onValueChange = onAgencySearchChange,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .focusRequester(agencySearchFocusRequester),
                 placeholder = {
-                Text(
-                    stringResource(R.string.contacts_agency_search_hint),
-                    style = regularTextStyle(HomeTextSecondary, 14.sp)
-                )
-            },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(
-                focusedTextColor = HomeTextPrimary,
-                unfocusedTextColor = HomeTextPrimary,
-                focusedBorderColor = HomeBlueAccent,
-                unfocusedBorderColor = HomeDarkCardBorder,
-                cursorColor = HomeBlueAccent
-            ),
-            trailingIcon = {
-                if (isSearchingAgencies) {
-                    Box(Modifier.size(32.dp), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator(
-                            color = HomeBlueAccent,
-                            strokeWidth = 2.dp,
-                            modifier = Modifier.size(24.dp)
-                        )
+                    Text(
+                        stringResource(R.string.contacts_agency_search_hint),
+                        style = regularTextStyle(HomeTextSecondary, 14.sp)
+                    )
+                },
+                singleLine = true,
+                colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(
+                    focusedTextColor = HomeTextPrimary,
+                    unfocusedTextColor = HomeTextPrimary,
+                    focusedBorderColor = HomeBlueAccent,
+                    unfocusedBorderColor = HomeDarkCardBorder,
+                    cursorColor = HomeBlueAccent
+                ),
+                trailingIcon = {
+                    if (isSearchingAgencies) {
+                        Box(Modifier.size(32.dp), contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator(
+                                color = HomeBlueAccent,
+                                strokeWidth = 2.dp,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
                     }
                 }
-            }
             )
             if (agencySearchResults.isNotEmpty()) {
                 LazyColumn(
@@ -2985,7 +3000,10 @@ private fun Step1AgencyContent(
                         .padding(vertical = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    items(agencySearchResults) { agencyItem ->
+                    items(
+                        items = agencySearchResults,
+                        key = { it.agencyUrl ?: it.agencyName ?: "" }
+                    ) { agencyItem ->
                         AgencySearchResultRow(
                             agency = agencyItem,
                             onClick = { onSelectAgency(agencyItem) }

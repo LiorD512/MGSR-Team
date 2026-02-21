@@ -603,6 +603,7 @@
     <string name="contacts_without_agency">Without agency</string>
     <string name="contacts_without_club">Without club</string>
     <string name="contacts_search_name_hint">Search by name</string>
+    <string name="contacts_search_agency_hint">Search by name or agency</string>
     <string name="contacts_open_transfermarkt">Open Transfermarkt</string>
     <string name="contacts_agency_players_count">%d players</string>
     <string name="contacts_agency_no_players">No players under this agency</string>

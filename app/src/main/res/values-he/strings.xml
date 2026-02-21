@@ -582,6 +582,7 @@
     <string name="contacts_without_agency">ללא סוכנות</string>
     <string name="contacts_without_club">ללא מועדון</string>
     <string name="contacts_search_name_hint">חפש לפי שם</string>
+    <string name="contacts_search_agency_hint">חפש לפי שם או סוכנות</string>
     <string name="contacts_open_transfermarkt">פתח בטרנספרמרקט</string>
     <string name="contacts_agency_players_count">%d שחקנים</string>
     <string name="contacts_agency_no_players">אין שחקנים תחת סוכנות זו</string>
