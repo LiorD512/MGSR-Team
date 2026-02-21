@@ -140,6 +140,7 @@ import com.liordahan.mgsrteam.transfermarket.AgencySearchModel
 import com.liordahan.mgsrteam.transfermarket.ClubSearch
 import com.liordahan.mgsrteam.transfermarket.ClubSearchModel
 import com.liordahan.mgsrteam.transfermarket.TransfermarktResult
+import com.liordahan.mgsrteam.localization.CountryNameTranslator
 import com.liordahan.mgsrteam.ui.components.DarkSystemBarsForBottomSheet
 import com.liordahan.mgsrteam.ui.components.ToastManager
 import com.liordahan.mgsrteam.ui.theme.HomeBlueAccent
@@ -173,6 +174,7 @@ private fun ClubSearchResultRow(
     club: ClubSearchModel,
     onClick: () -> Unit
 ) {
+    val context = LocalContext.current
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -203,7 +205,7 @@ private fun ClubSearchResultRow(
                 )
                 club.clubCountry?.let { country ->
                     Text(
-                        text = country,
+                        text = CountryNameTranslator.getDisplayName(context, country),
                         style = regularTextStyle(HomeTextSecondary, 12.sp)
                     )
                 }
@@ -378,7 +380,8 @@ fun ContactsScreen(
             else -> tabContacts.filter { contact ->
                 contact.name?.contains(searchQuery, ignoreCase = true) == true ||
                         contact.clubName?.contains(searchQuery, ignoreCase = true) == true ||
-                        contact.clubCountry?.contains(searchQuery, ignoreCase = true) == true
+                        contact.clubCountry?.contains(searchQuery, ignoreCase = true) == true ||
+                        contact.clubCountry?.let { CountryNameTranslator.getHebrewName(it)?.contains(searchQuery) == true } == true
             }
         }
     }
@@ -935,6 +938,7 @@ private fun ContactsFilterChips(
     modifier: Modifier = Modifier
 ) {
     if (countries.isEmpty()) return
+    val context = LocalContext.current
     LazyRow(
         modifier = modifier,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -949,7 +953,7 @@ private fun ContactsFilterChips(
         }
         items(countries, key = { it }) { country ->
             FilterChip(
-                label = country,
+                label = CountryNameTranslator.getDisplayName(context, country),
                 selected = selectedCountry == country,
                 onClick = { onCountrySelected(country) }
             )
@@ -1129,7 +1133,9 @@ private fun CountrySectionHeader(
     country: String,
     countryFlagUrl: String?
 ) {
+    val context = LocalContext.current
     val layoutDirection = LocalLayoutDirection.current
+    val displayCountry = CountryNameTranslator.getDisplayName(context, country)
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -1147,7 +1153,7 @@ private fun CountrySectionHeader(
                 )
             }
             .padding(
-                start = if (layoutDirection == LayoutDirection.Ltr) 4.dp else 16.dp,
+                start = if (layoutDirection == LayoutDirection.Ltr) 12.dp else 16.dp,
                 end = if (layoutDirection == LayoutDirection.Rtl) 4.dp else 16.dp,
                 top = 12.dp,
                 bottom = 12.dp
@@ -1167,7 +1173,7 @@ private fun CountrySectionHeader(
             Spacer(Modifier.width(8.dp))
         }
         Text(
-            text = country,
+            text = displayCountry,
             style = boldTextStyle(HomeTextPrimary, 14.sp)
         )
     }
@@ -1286,12 +1292,13 @@ private fun ContactCard(
                     }
                 }
                 Spacer(Modifier.height(2.dp))
+                val context = LocalContext.current
                 Text(
                     text = when {
                         !contact.displayOrganization.isNullOrBlank() -> buildString {
                             append(contact.displayOrganization)
                             contact.displayCountry?.takeIf { it.isNotBlank() }
-                                ?.let { append(" • $it") }
+                                ?.let { append(" • ${CountryNameTranslator.getDisplayName(context, it)}") }
                         }
                         contact.contactTypeEnum == ContactType.AGENCY -> stringResource(R.string.contacts_without_agency)
                         else -> stringResource(R.string.contacts_without_club)
@@ -2491,7 +2498,7 @@ private fun Step1ClubContentAdd(
                             )
                             Text(
                                 text = selectedClub.clubCountry?.let { c ->
-                                    stringResource(R.string.contacts_club_found_on_tm) + " • $c"
+                                    stringResource(R.string.contacts_club_found_on_tm) + " • ${CountryNameTranslator.getDisplayName(LocalContext.current, c)}"
                                 } ?: stringResource(R.string.contacts_club_found_on_tm),
                                 style = regularTextStyle(HomeTealAccent, 11.sp)
                             )
@@ -2620,6 +2627,7 @@ private fun Step1ClubContent(
     onSelectClub: (ClubSearchModel) -> Unit,
     onChangeClub: () -> Unit
 ) {
+    val context = LocalContext.current
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -2699,7 +2707,7 @@ private fun Step1ClubContent(
                 Column(Modifier.weight(1f)) {
                     Text(club.clubName ?: "", style = boldTextStyle(HomeTextPrimary, 12.sp))
                     club.clubCountry?.let { c ->
-                        Text(c, style = regularTextStyle(HomeTextSecondary, 11.sp))
+                        Text(CountryNameTranslator.getDisplayName(context, c), style = regularTextStyle(HomeTextSecondary, 11.sp))
                     }
                 }
                 TextButton(onClick = onChangeClub) {
