@@ -469,6 +469,7 @@ export default function DashboardPage() {
             },
             { href: '/shortlist', count: shortlistCount, label: t('shortlist') },
             { href: '/releases', count: null, label: t('releases'), arrow: true },
+            { href: '/contract-finisher', count: null, label: t('nav_contract_finisher'), arrow: true },
           ].map((item, i) => (
             <Link
               key={item.href}
@@ -477,7 +478,7 @@ export default function DashboardPage() {
               style={{ animationDelay: `${i * 50}ms` }}
             >
               <p className="text-3xl font-bold text-mgsr-teal font-display">
-                {item.arrow ? '→' : item.count}
+                {item.arrow ? (isRtl ? '←' : '→') : item.count}
               </p>
               <p className="text-sm text-mgsr-muted mt-1">{item.label}</p>
               {item.badge !== undefined && item.badge > 0 && (
@@ -843,6 +844,7 @@ export default function DashboardPage() {
             { href: '/players/add', label: t('add_player') },
             { href: '/shortlist', label: t('shortlist') },
             { href: '/releases', label: t('releases') },
+            { href: '/contract-finisher', label: t('nav_contract_finisher') },
             { href: '/tasks', label: t('tasks') },
             { href: '/requests', label: t('requests') },
             { href: '/contacts', label: t('contacts') },

@@ -363,6 +363,288 @@ app.get('/api/transfermarkt/releases', async (req, res) => {
   }
 });
 
+// ─── Contract Finishers (contracts expiring in next transfer window) ─────────────
+const CF_MIN_VALUE = 150000;
+const CF_MAX_VALUE = 3000000;
+const CF_MAX_AGE = 31;
+const CF_MAX_PAGES = 80;
+const CF_BATCH_SIZE = 3;
+
+function getContractFinisherWindow() {
+  const now = new Date();
+  const month = now.getMonth() + 1;
+  const year = Math.max(now.getFullYear(), 2026);
+  if (month >= 2 && month <= 9) {
+    return { window: 'Summer', yearsToQuery: [year] };
+  }
+  return { window: 'Winter', yearsToQuery: [year, year + 1] };
+}
+
+function parseMarketValueCF(val) {
+  if (!val || val.includes('-')) return 0;
+  const s = val.replace(/[€\s]/g, '').toLowerCase();
+  if (s.includes('k')) return (parseFloat(s.replace('k', '')) || 0) * 1000;
+  if (s.includes('m')) return (parseFloat(s.replace('m', '')) || 0) * 1000000;
+  return parseFloat(s) || 0;
+}
+
+function formatContractExpiryDate(window, year, isFirstYear) {
+  if (window === 'Summer') return `30.06.${year}`;
+  return isFirstYear ? `31.12.${year}` : `31.01.${year}`;
+}
+
+function extractNationalityAndFlagCF($, row) {
+  const img = $(row).find('td.zentriert img[title]').first();
+  const natImg = img.length ? img : $(row).find('img[alt]').filter((_, el) => {
+    const alt = $(el).attr('alt') || '';
+    return alt.length >= 2 && alt.length <= 50;
+  }).first();
+  const nationality = (natImg.attr('title') || natImg.attr('alt') || '').trim() || null;
+  let flag = natImg.attr('data-src') || natImg.attr('src') || '';
+  if (flag) {
+    flag = makeAbsoluteUrl(flag).replace(/verysmall|tiny/g, 'head');
+  }
+  return { nationality, flag: flag || null };
+}
+
+app.get('/api/transfermarkt/contract-finishers', async (req, res) => {
+  try {
+    const config = getContractFinisherWindow();
+    const seenUrls = new Set();
+    const all = [];
+    let totalPagesFetched = 0;
+
+    for (const jahr of config.yearsToQuery) {
+      let page = 1;
+      let batchShouldBreak = false;
+
+      while (page <= CF_MAX_PAGES && !batchShouldBreak) {
+        const batchEnd = Math.min(page + CF_BATCH_SIZE - 1, CF_MAX_PAGES);
+        const batch = [];
+
+        for (let p = page; p <= batchEnd; p++) {
+          const url = `${TRANSFERMARKT_BASE}/transfers/endendevertraege/statistik?plus=1&jahr=${jahr}&land_id=0&ausrichtung=alle&spielerposition_id=alle&altersklasse=alle&page=${p}`;
+          try {
+            const html = await fetchHtmlWithRetry(url);
+            batch.push({ html, page: p });
+          } catch (e) {
+            batch.push({ html: null, page: p });
+          }
+        }
+
+        for (const { html, page: p } of batch) {
+          if (!html) continue;
+          const $ = cheerio.load(html);
+          const rows = $('table.items tbody tr.odd, table.items tbody tr.even, table.items tr.odd, table.items tr.even');
+          let rawRowCount = 0;
+          let maxValueOnPage = 0;
+
+          rows.each((_, row) => {
+            try {
+              const playerLink = $(row).find('a[href*="/profil/spieler/"], a[href*="/profile/player/"]').first();
+              const href = playerLink.attr('href');
+              if (!href) return;
+              rawRowCount++;
+
+              const playerUrl = href.startsWith('http') ? href : TRANSFERMARKT_BASE + href;
+              if (seenUrls.has(playerUrl)) return;
+
+              const tables = $(row).find('table.inline-table');
+              const playerTable = tables.first();
+              const playerName = (playerLink.attr('title') || playerTable.find('img').attr('title') || playerLink.text().trim() || '').trim() || null;
+              const posText = playerTable.find('tr').eq(1).text().replace(/-/g, ' ').trim();
+              const playerPosition = convertPosition(posText) || posText || null;
+
+              const ageTd = $(row).find('td.zentriert').first().text().trim();
+              const ageMatch = ageTd.match(/\((\d+)\)/);
+              const playerAge = ageMatch ? ageMatch[1] : (parseInt(ageTd, 10) || '').toString() || null;
+
+              let marketValue = null;
+              $(row).find('td').each((__, td) => {
+                const t = $(td).text().trim();
+                if (t.includes('€')) { marketValue = t; return false; }
+              });
+
+              const valueNum = parseMarketValueCF(marketValue);
+              const ageNum = parseInt(playerAge, 10);
+              if (valueNum > maxValueOnPage) maxValueOnPage = valueNum;
+
+              if (Number.isNaN(ageNum) || ageNum > CF_MAX_AGE || valueNum < CF_MIN_VALUE || valueNum > CF_MAX_VALUE) return;
+              seenUrls.add(playerUrl);
+
+              const { nationality, flag } = extractNationalityAndFlagCF($, row);
+              const clubTable = tables.eq(1);
+              const clubName = (clubTable.find('a[href*="/startseite/verein/"]').attr('title') || clubTable.find('img').attr('title') || '').trim() || null;
+              const clubLogoRaw = clubTable.find('img').attr('data-src') || clubTable.find('img').attr('src') || '';
+              const clubJoinedLogo = clubLogoRaw ? makeAbsoluteUrl(clubLogoRaw) : null;
+              const playerImageRaw = playerTable.find('img').attr('data-src') || playerTable.find('img').attr('src') || '';
+              const playerImage = playerImageRaw ? makeAbsoluteUrl(playerImageRaw.replace('medium', 'big')) : null;
+
+              const contractExpiry = formatContractExpiryDate(config.window, jahr, config.yearsToQuery[0] === jahr);
+              all.push({
+                playerImage,
+                playerName,
+                playerUrl,
+                playerPosition,
+                playerAge,
+                playerNationality: nationality,
+                playerNationalityFlag: flag,
+                clubJoinedLogo,
+                clubJoinedName: clubName,
+                transferDate: contractExpiry,
+                marketValue: marketValue || '',
+              });
+            } catch (e) {}
+          });
+
+          totalPagesFetched++;
+          if (rawRowCount === 0) batchShouldBreak = true;
+          if (maxValueOnPage > 0 && maxValueOnPage < CF_MIN_VALUE) batchShouldBreak = true;
+        }
+
+        page += CF_BATCH_SIZE;
+        if (batchShouldBreak) break;
+        await new Promise((r) => setTimeout(r, 150));
+      }
+    }
+
+    all.sort((a, b) => parseMarketValueCF(b.marketValue) - parseMarketValueCF(a.marketValue));
+    res.json({ players: all, windowLabel: config.window });
+  } catch (err) {
+    console.error('Contract finishers error:', err.message);
+    res.status(500).json({ error: err.message || 'Failed to fetch contract finishers' });
+  }
+});
+
+// ─── Contract Finishers SSE (streaming – show results as they load) ─────────────
+app.get('/api/transfermarkt/contract-finishers/stream', async (req, res) => {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders();
+
+  const send = (data) => {
+    res.write(`data: ${JSON.stringify(data)}\n\n`);
+    if (typeof res.flush === 'function') res.flush();
+  };
+
+  try {
+    const config = getContractFinisherWindow();
+    send({ windowLabel: config.window, players: [], isLoading: true });
+    const seenUrls = new Set();
+    const all = [];
+
+    for (const jahr of config.yearsToQuery) {
+      let page = 1;
+      let batchShouldBreak = false;
+
+      while (page <= CF_MAX_PAGES && !batchShouldBreak) {
+        const batchEnd = Math.min(page + CF_BATCH_SIZE - 1, CF_MAX_PAGES);
+        const batch = [];
+
+        for (let p = page; p <= batchEnd; p++) {
+          const url = `${TRANSFERMARKT_BASE}/transfers/endendevertraege/statistik?plus=1&jahr=${jahr}&land_id=0&ausrichtung=alle&spielerposition_id=alle&altersklasse=alle&page=${p}`;
+          try {
+            const html = await fetchHtmlWithRetry(url);
+            batch.push({ html, page: p });
+          } catch (e) {
+            batch.push({ html: null, page: p });
+          }
+        }
+
+        const batchPlayers = [];
+        for (const { html } of batch) {
+          if (!html) continue;
+          const $ = cheerio.load(html);
+          const rows = $('table.items tbody tr.odd, table.items tbody tr.even, table.items tr.odd, table.items tr.even');
+          let rawRowCount = 0;
+          let maxValueOnPage = 0;
+
+          rows.each((_, row) => {
+            try {
+              const playerLink = $(row).find('a[href*="/profil/spieler/"], a[href*="/profile/player/"]').first();
+              const href = playerLink.attr('href');
+              if (!href) return;
+              rawRowCount++;
+
+              const playerUrl = href.startsWith('http') ? href : TRANSFERMARKT_BASE + href;
+              if (seenUrls.has(playerUrl)) return;
+
+              const tables = $(row).find('table.inline-table');
+              const playerTable = tables.first();
+              const playerName = (playerLink.attr('title') || playerTable.find('img').attr('title') || playerLink.text().trim() || '').trim() || null;
+              const posText = playerTable.find('tr').eq(1).text().replace(/-/g, ' ').trim();
+              const playerPosition = convertPosition(posText) || posText || null;
+
+              const ageTd = $(row).find('td.zentriert').first().text().trim();
+              const ageMatch = ageTd.match(/\((\d+)\)/);
+              const playerAge = ageMatch ? ageMatch[1] : (parseInt(ageTd, 10) || '').toString() || null;
+
+              let marketValue = null;
+              $(row).find('td').each((__, td) => {
+                const t = $(td).text().trim();
+                if (t.includes('€')) { marketValue = t; return false; }
+              });
+
+              const valueNum = parseMarketValueCF(marketValue);
+              const ageNum = parseInt(playerAge, 10);
+              if (valueNum > maxValueOnPage) maxValueOnPage = valueNum;
+
+              if (Number.isNaN(ageNum) || ageNum > CF_MAX_AGE || valueNum < CF_MIN_VALUE || valueNum > CF_MAX_VALUE) return;
+              seenUrls.add(playerUrl);
+
+              const { nationality, flag } = extractNationalityAndFlagCF($, row);
+              const clubTable = tables.eq(1);
+              const clubName = (clubTable.find('a[href*="/startseite/verein/"]').attr('title') || clubTable.find('img').attr('title') || '').trim() || null;
+              const clubLogoRaw = clubTable.find('img').attr('data-src') || clubTable.find('img').attr('src') || '';
+              const clubJoinedLogo = clubLogoRaw ? makeAbsoluteUrl(clubLogoRaw) : null;
+              const playerImageRaw = playerTable.find('img').attr('data-src') || playerTable.find('img').attr('src') || '';
+              const playerImage = playerImageRaw ? makeAbsoluteUrl(playerImageRaw.replace('medium', 'big')) : null;
+
+              const contractExpiry = formatContractExpiryDate(config.window, jahr, config.yearsToQuery[0] === jahr);
+              const p = {
+                playerImage,
+                playerName,
+                playerUrl,
+                playerPosition,
+                playerAge,
+                playerNationality: nationality,
+                playerNationalityFlag: flag,
+                clubJoinedLogo,
+                clubJoinedName: clubName,
+                transferDate: contractExpiry,
+                marketValue: marketValue || '',
+              };
+              all.push(p);
+              batchPlayers.push(p);
+            } catch (e) {}
+          });
+
+          if (rawRowCount === 0) batchShouldBreak = true;
+          if (maxValueOnPage > 0 && maxValueOnPage < CF_MIN_VALUE) batchShouldBreak = true;
+        }
+
+        if (batchPlayers.length > 0) {
+          const sorted = [...all].sort((a, b) => parseMarketValueCF(b.marketValue) - parseMarketValueCF(a.marketValue));
+          send({ players: sorted, isLoading: true });
+        }
+
+        page += CF_BATCH_SIZE;
+        if (batchShouldBreak) break;
+        await new Promise((r) => setTimeout(r, 150));
+      }
+    }
+
+    const sorted = [...all].sort((a, b) => parseMarketValueCF(b.marketValue) - parseMarketValueCF(a.marketValue));
+    send({ players: sorted, windowLabel: config.window, isLoading: false });
+  } catch (err) {
+    console.error('Contract finishers stream error:', err.message);
+    send({ error: err.message || 'Failed to fetch', isLoading: false });
+  } finally {
+    res.end();
+  }
+});
+
 // ─── Teammates (games played together) ────────────────────────────────────────
 function extractPlayerIdFromUrl(url) {
   if (!url || typeof url !== 'string') return null;

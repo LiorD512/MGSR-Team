@@ -6,44 +6,43 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { doc, getDoc, setDoc, collection, getDocs, query, orderBy, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import {
-  getReleasesAllPages,
-  getReleasesAllRanges,
-  getTeammates,
-  extractPlayerIdFromUrl,
-  ReleasePlayer,
-} from '@/lib/api';
-import {
-  sortByMarketValue,
-  getUniquePositions,
-  filterByAge,
-  type AgeFilter,
-} from '@/lib/releases';
+import { getTeammates, extractPlayerIdFromUrl, type ContractFinisherPlayer } from '@/lib/api';
+import { subscribe, loadContractFinishers, getContractFinisherState } from '@/lib/contractFinisherStore';
+import { parseMarketValue } from '@/lib/releases';
+import { getConfederation } from '@/lib/nationToConfederation';
+import type { Confederation } from '@/lib/api';
 import AppLayout from '@/components/AppLayout';
 import Link from 'next/link';
 import { getScreenCache, setScreenCache } from '@/lib/screenCache';
 
-const VALUE_PRESETS = [
-  { min: 0, max: 50000000, label: 'All', labelHe: 'הכל', isAll: true },
-  { min: 0, max: 500000, label: '0-500K', labelHe: '0-500K', isAll: false },
-  { min: 500000, max: 1000000, label: '500K-1M', labelHe: '500K-1M', isAll: false },
-  { min: 1000000, max: 5000000, label: '1M-5M', labelHe: '1M-5M', isAll: false },
-  { min: 5000000, max: 50000000, label: '5M+', labelHe: '5M+', isAll: false },
-];
+const VALUE_FILTERS = [
+  { min: null as number | null, max: null as number | null, key: 'all' },
+  { min: 150000, max: 500000, key: '150k_500k' },
+  { min: 500000, max: 1000000, key: '500k_1m' },
+  { min: 1000000, max: 2000000, key: '1m_2m' },
+  { min: 2000000, max: 3000000, key: '2m_3m' },
+] as const;
 
-/** Session cache: do not refetch unless user presses Reload */
-const sessionCache: Record<number, ReleasePlayer[]> = {};
+const AGE_FILTERS = [
+  { min: null, max: null, key: 'all' },
+  { min: 18, max: 21, key: '18_21' },
+  { min: 22, max: 25, key: '22_25' },
+  { min: 26, max: 29, key: '26_29' },
+  { min: 30, max: null, key: '30_plus' },
+] as const;
+
+const REGION_OPTIONS: { value: Confederation; key: string }[] = [
+  { value: 'UEFA', key: 'transfer_windows_group_uefa' },
+  { value: 'CONMEBOL', key: 'transfer_windows_group_conmebol' },
+  { value: 'CONCACAF', key: 'transfer_windows_group_concacaf' },
+  { value: 'AFC', key: 'transfer_windows_group_afc' },
+  { value: 'CAF', key: 'transfer_windows_group_caf' },
+  { value: 'OFC', key: 'transfer_windows_group_ofc' },
+];
 
 const POSITION_ORDER = ['GK', 'CB', 'RB', 'LB', 'DM', 'CM', 'AM', 'LW', 'RW', 'CF', 'SS'];
 const POSITION_EXCLUDED = new Set(['LM', 'RM']);
 const POSITION_HEBREW: Record<string, string> = { SS: 'חלוץ שני' };
-
-const AGE_FILTERS: { value: AgeFilter; labelKey: string }[] = [
-  { value: 'all', labelKey: 'releases_age_all' },
-  { value: 'u23', labelKey: 'releases_age_u23' },
-  { value: '23-30', labelKey: 'releases_age_23_30' },
-  { value: '30+', labelKey: 'releases_age_30plus' },
-];
 
 interface RosterPlayer {
   id: string;
@@ -61,7 +60,18 @@ interface RosterTeammateMatch {
   matchesPlayedTogether: number;
 }
 
-function ReleaseCard({
+interface ContractFinisherCache {
+  players: ContractFinisherPlayer[];
+  windowLabel: string;
+  valueFilter: string;
+  positionFilter: string | null;
+  ageFilter: string;
+  regionFilter: Confederation | null;
+  rosterPlayers: RosterPlayer[];
+  shortlistUrls: string[];
+}
+
+function ContractFinisherCard({
   player,
   onAddToShortlist,
   isAdding,
@@ -74,9 +84,10 @@ function ReleaseCard({
   onToggleTeammates,
   onFetchTeammates,
   isTeammatesExpanded,
+  badgeText,
 }: {
-  player: ReleasePlayer;
-  onAddToShortlist: (p: ReleasePlayer) => void;
+  player: ContractFinisherPlayer;
+  onAddToShortlist: (p: ContractFinisherPlayer) => void;
   isAdding: boolean;
   isInShortlist: boolean;
   t: (k: string) => string;
@@ -87,6 +98,7 @@ function ReleaseCard({
   onToggleTeammates: (url: string) => void;
   onFetchTeammates: (url: string) => void;
   isTeammatesExpanded: string | null;
+  badgeText: string;
 }) {
   const playerUrl = player.playerUrl || '';
   const rosterTeammates = playerUrl ? teammatesCache[playerUrl] : undefined;
@@ -131,7 +143,7 @@ function ReleaseCard({
       <div className="absolute top-0 right-0 w-32 h-32 bg-mgsr-teal/5 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2 group-hover:scale-150 transition-transform duration-500" />
       <div className="relative p-5">
         <span className="absolute top-4 left-4 rtl:left-auto rtl:right-4 text-[10px] font-semibold uppercase tracking-wider px-2 py-1 rounded-md bg-amber-500/20 text-amber-400 border border-amber-500/30">
-          {t('releases_free_agent')}
+          {badgeText}
         </span>
         <div className="flex gap-4 mt-6">
           <div className="relative shrink-0">
@@ -170,9 +182,9 @@ function ReleaseCard({
             <span className="text-xl font-display font-bold text-mgsr-teal">
               {player.marketValue || '—'}
             </span>
-            {player.transferDate && (
+            {player.clubJoinedName && (
               <span className="text-xs text-mgsr-muted truncate max-w-[100px]">
-                {player.transferDate}
+                {player.clubJoinedName}
               </span>
             )}
           </div>
@@ -217,7 +229,6 @@ function ReleaseCard({
           </div>
         </div>
 
-        {/* Roster teammates section */}
         <div className="mt-4" data-no-propagate>
           <button
             type="button"
@@ -258,7 +269,7 @@ function ReleaseCard({
                 rosterTeammates?.map((match) => (
                   <Link
                     key={match.player.id}
-                    href={`/players/${match.player.id}?from=/releases`}
+                    href={`/players/${match.player.id}?from=/contract-finisher`}
                     onClick={(e) => e.stopPropagation()}
                     className="flex items-center gap-3 p-2.5 rounded-xl bg-mgsr-dark/50 border border-mgsr-border/80 hover:border-mgsr-teal/40 hover:bg-mgsr-dark/70 transition-all"
                   >
@@ -289,45 +300,30 @@ function ReleaseCard({
   );
 }
 
-interface ReleasesCache {
-  players: ReleasePlayer[];
-  preset: number;
-  search: string;
-  positionFilter: string | null;
-  ageFilter: AgeFilter;
-  rosterPlayers: RosterPlayer[];
-  shortlistUrls: string[];
-}
-
-export default function ReleasesPage() {
+export default function ContractFinisherPage() {
   const { user, loading } = useAuth();
   const { t, isRtl } = useLanguage();
   const router = useRouter();
-  const cached = user ? getScreenCache<ReleasesCache>('releases', user.uid) : undefined;
-  const [players, setPlayers] = useState<ReleasePlayer[]>(cached?.players ?? []);
-  const [loadingList, setLoadingList] = useState(cached === undefined);
-  const [error, setError] = useState('');
-  const [preset, setPreset] = useState(cached?.preset ?? 0);
-  const [addingUrl, setAddingUrl] = useState<string | null>(null);
-  const [search, setSearch] = useState(cached?.search ?? '');
+  const cached = user ? getScreenCache<ContractFinisherCache>('contract-finisher', user.uid) : undefined;
+  const storeState = getContractFinisherState();
+  const [players, setPlayers] = useState<ContractFinisherPlayer[]>(storeState.players);
+  const [windowLabel, setWindowLabel] = useState(storeState.windowLabel);
+  const [loadingList, setLoadingList] = useState(storeState.isLoading);
+  const [error, setError] = useState(storeState.error ?? '');
+  const [valueFilter, setValueFilter] = useState(cached?.valueFilter ?? 'all');
   const [positionFilter, setPositionFilter] = useState<string | null>(cached?.positionFilter ?? null);
-  const [ageFilter, setAgeFilter] = useState<AgeFilter>(cached?.ageFilter ?? 'all');
+  const [ageFilter, setAgeFilter] = useState(cached?.ageFilter ?? 'all');
+  const [regionFilter, setRegionFilter] = useState<Confederation | null>(cached?.regionFilter ?? null);
+  const [showFilters, setShowFilters] = useState(false);
   const [firestorePositions, setFirestorePositions] = useState<{ name?: string; hebrewName?: string }[]>([]);
   const [rosterPlayers, setRosterPlayers] = useState<RosterPlayer[]>(cached?.rosterPlayers ?? []);
   const [teammatesCache, setTeammatesCache] = useState<Record<string, RosterTeammateMatch[]>>({});
   const [loadingTeammatesUrl, setLoadingTeammatesUrl] = useState<string | null>(null);
   const [expandedTeammatesUrl, setExpandedTeammatesUrl] = useState<string | null>(null);
+  const [addingUrl, setAddingUrl] = useState<string | null>(null);
   const [shortlistUrls, setShortlistUrls] = useState<Set<string>>(
     () => new Set(cached?.shortlistUrls ?? [])
   );
-  const isMountedRef = useRef(true);
-
-  useEffect(() => {
-    isMountedRef.current = true;
-    return () => {
-      isMountedRef.current = false;
-    };
-  }, []);
 
   useEffect(() => {
     getDocs(collection(db, 'Positions'))
@@ -361,75 +357,43 @@ export default function ReleasesPage() {
     if (!loading && !user) router.replace('/login');
   }, [user, loading, router]);
 
-  const loadReleases = useCallback(async () => {
-    setError('');
-    setLoadingList(true);
-    const currentPreset = preset;
-    const uid = user?.uid;
-    try {
-      const p = VALUE_PRESETS[preset];
-      const list = p.isAll
-        ? await getReleasesAllRanges()
-        : await getReleasesAllPages(p.min, p.max);
-      const sorted = sortByMarketValue(list);
-      sessionCache[currentPreset] = sorted;
-      if (isMountedRef.current) {
-        setPlayers(sorted);
-      } else if (uid) {
-        setScreenCache<ReleasesCache>(
-          'releases',
-          {
-            players: sorted,
-            preset: currentPreset,
-            search,
-            positionFilter,
-            ageFilter,
-            rosterPlayers,
-            shortlistUrls: Array.from(shortlistUrls),
-          },
-          uid
-        );
-      }
-    } catch (err) {
-      if (isMountedRef.current) {
-        setError(err instanceof Error ? err.message : t('releases_empty'));
-        setPlayers([]);
-      }
-    } finally {
-      if (isMountedRef.current) {
-        setLoadingList(false);
-      }
-    }
-  }, [preset, t, user?.uid, search, positionFilter, ageFilter, rosterPlayers, shortlistUrls]);
+  const startLoad = useCallback(() => {
+    loadContractFinishers();
+  }, []);
 
   useEffect(() => {
-    const sessionCached = sessionCache[preset];
-    if (sessionCached) {
-      setPlayers(sessionCached);
-      setLoadingList(false);
-    } else {
-      loadReleases();
+    const unsub = subscribe((s) => {
+      setPlayers(s.players);
+      setWindowLabel(s.windowLabel);
+      setLoadingList(s.isLoading);
+      setError(s.error ?? '');
+    });
+    const st = getContractFinisherState();
+    if (!st.isLoading && st.players.length === 0 && !st.error) {
+      startLoad();
     }
-  }, [preset, loadReleases]);
+    return () => unsub();
+  }, [startLoad]);
 
   useEffect(() => {
-    setScreenCache<ReleasesCache>(
-      'releases',
+    setScreenCache<ContractFinisherCache>(
+      'contract-finisher',
       {
         players,
-        preset,
-        search,
+        windowLabel,
+        valueFilter,
         positionFilter,
         ageFilter,
+        regionFilter,
         rosterPlayers,
         shortlistUrls: Array.from(shortlistUrls),
       },
       user?.uid ?? undefined
     );
-  }, [players, preset, search, positionFilter, ageFilter, rosterPlayers, shortlistUrls, user?.uid]);
+  }, [players, windowLabel, valueFilter, positionFilter, ageFilter, regionFilter, rosterPlayers, shortlistUrls, user?.uid]);
 
   const addToShortlist = useCallback(
-    async (player: ReleasePlayer) => {
+    async (player: ContractFinisherPlayer) => {
       if (!user || !player.playerUrl) return;
       setAddingUrl(player.playerUrl);
       try {
@@ -443,7 +407,7 @@ export default function ReleasesPage() {
           playerAge: player.playerAge ?? null,
           playerNationality: player.playerNationality ?? null,
           playerNationalityFlag: player.playerNationalityFlag ?? null,
-          clubJoinedName: null,
+          clubJoinedName: player.clubJoinedName ?? null,
           transferDate: player.transferDate ?? null,
           marketValue: player.marketValue ?? null,
         };
@@ -489,7 +453,7 @@ export default function ReleasesPage() {
   }, []);
 
   const positions = useMemo(() => {
-    const fromData = getUniquePositions(players);
+    const fromData = new Set(players.map((p) => p.playerPosition).filter(Boolean) as string[]);
     const fromFirestore = firestorePositions.map((p) => p.name).filter(Boolean) as string[];
     const merged = new Set([...fromFirestore, ...fromData]);
     return Array.from(merged)
@@ -506,25 +470,51 @@ export default function ReleasesPage() {
 
   const filteredPlayers = useMemo(() => {
     let result = players;
-    if (search.trim()) {
-      const q = search.toLowerCase().trim();
-      result = result.filter(
-        (p) =>
-          p.playerName?.toLowerCase().includes(q) ||
-          p.playerPosition?.toLowerCase().includes(q) ||
-          p.playerNationality?.toLowerCase().includes(q)
-      );
-    }
     if (positionFilter) {
       result = result.filter(
         (p) => p.playerPosition?.toLowerCase() === positionFilter.toLowerCase()
       );
     }
-    result = filterByAge(result, ageFilter);
+    const ageF = AGE_FILTERS.find((a) => a.key === ageFilter);
+    if (ageF && (ageF.min != null || ageF.max != null)) {
+      result = result.filter((p) => {
+        const age = parseInt(p.playerAge || '', 10);
+        if (Number.isNaN(age)) return false;
+        if (ageF.min != null && age < ageF.min) return false;
+        if (ageF.max != null && age > ageF.max) return false;
+        return true;
+      });
+    }
+    if (regionFilter) {
+      result = result.filter((p) => {
+        const conf = getConfederation(p.playerNationality);
+        return conf === regionFilter;
+      });
+    }
+    const valueF = VALUE_FILTERS.find((v) => v.key === valueFilter);
+    if (valueF && (valueF.min != null || valueF.max != null)) {
+      result = result.filter((p) => {
+        const val = parseMarketValue(p.marketValue);
+        if (val <= 0) return false;
+        if (valueF.min != null && val < valueF.min) return false;
+        if (valueF.max != null && val > valueF.max) return false;
+        return true;
+      });
+    }
     return result;
-  }, [players, search, positionFilter, ageFilter]);
+  }, [players, positionFilter, ageFilter, regionFilter, valueFilter]);
 
-  const hasActiveFilters = search.trim() || positionFilter || ageFilter !== 'all';
+  const shortlistedCount = useMemo(
+    () => filteredPlayers.filter((p) => p.playerUrl && shortlistUrls.has(p.playerUrl)).length,
+    [filteredPlayers, shortlistUrls]
+  );
+
+  const activeFilterCount = [
+    positionFilter,
+    ageFilter !== 'all',
+    regionFilter,
+    valueFilter !== 'all',
+  ].filter(Boolean).length;
 
   if (loading || !user) {
     return (
@@ -540,33 +530,35 @@ export default function ReleasesPage() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
           <div>
             <h1 className="text-3xl font-display font-bold text-mgsr-text tracking-tight">
-              {t('releases_title')}
+              {t('contract_finisher_title')}
             </h1>
-            <p className="text-mgsr-muted mt-1 text-sm">{t('releases_value_filter')}</p>
+            <p className="text-mgsr-muted mt-1 text-sm">
+              {windowLabel === 'Summer'
+                ? t('contract_finisher_subtitle_summer')
+                : t('contract_finisher_subtitle_winter')}
+            </p>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            {(!loadingList || players.length > 0 || error) && (
+          <div className="flex items-center gap-2">
+            {(players.length > 0 || error) && (
               <button
-                onClick={() => loadReleases()}
+                onClick={() => startLoad()}
                 disabled={loadingList}
                 className="px-4 py-2.5 rounded-xl text-sm font-medium bg-mgsr-card border border-mgsr-border text-mgsr-teal hover:bg-mgsr-teal/20 hover:border-mgsr-teal/40 disabled:opacity-50 transition"
               >
-                {t('releases_reload')}
+                {t('contract_finisher_retry')}
               </button>
             )}
-            {VALUE_PRESETS.map((p, i) => (
-              <button
-                key={i}
-                onClick={() => setPreset(i)}
-                className={`px-4 py-2.5 rounded-xl text-sm font-medium transition ${
-                  preset === i
-                    ? 'bg-mgsr-teal text-mgsr-dark'
-                    : 'bg-mgsr-card border border-mgsr-border text-mgsr-muted hover:text-mgsr-text hover:border-mgsr-teal/30'
-                }`}
-              >
-                {p.isAll ? t('releases_all') : isRtl ? p.labelHe : p.label}
-              </button>
-            ))}
+            <button
+              onClick={() => setShowFilters(true)}
+              className="relative px-4 py-2.5 rounded-xl text-sm font-medium bg-mgsr-card border border-mgsr-border text-mgsr-muted hover:text-mgsr-text hover:border-mgsr-teal/30 transition"
+            >
+              {t('contract_finisher_filters')}
+              {activeFilterCount > 0 && (
+                <span className="absolute -top-1 -right-1 rtl:right-auto rtl:-left-1 w-5 h-5 rounded-full bg-mgsr-teal text-mgsr-dark text-xs font-bold flex items-center justify-center">
+                  {activeFilterCount}
+                </span>
+              )}
+            </button>
           </div>
         </div>
 
@@ -576,93 +568,41 @@ export default function ReleasesPage() {
           </div>
         )}
 
-        {loadingList ? (
+        {loadingList && players.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 gap-3">
-            <div className="animate-pulse text-mgsr-muted">{t('releases_loading')}</div>
+            <div className="animate-pulse text-mgsr-muted">{t('contract_finisher_loading')}</div>
           </div>
         ) : players.length === 0 ? (
           <div className="relative overflow-hidden p-16 bg-mgsr-card/50 border border-mgsr-border rounded-2xl text-center">
             <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(77,182,172,0.06)_0%,transparent_70%)]" />
-            <p className="text-mgsr-muted text-lg mb-2 relative">{t('releases_empty')}</p>
-            <p className="text-mgsr-muted/80 text-sm relative">{t('releases_try_filter')}</p>
+            <p className="text-mgsr-muted text-lg mb-2 relative">{t('contract_finisher_no_found')}</p>
+            <p className="text-mgsr-muted/80 text-sm relative">{t('contract_finisher_retry')}</p>
           </div>
         ) : (
           <>
-            {/* Stats strip */}
             <div className="flex flex-wrap items-center gap-4 mb-4 py-3 px-4 rounded-xl bg-mgsr-card/50 border border-mgsr-border">
+              {loadingList && (
+                <span className="text-sm text-mgsr-teal animate-pulse">{t('contract_finisher_loading_more')}</span>
+              )}
               <span className="text-sm text-mgsr-muted">
-                {t('releases_stats_total')}: <strong className="text-mgsr-text">{players.length}</strong>
+                {t('contract_finisher_stats_total')}: <strong className="text-mgsr-text">{players.length}</strong>
               </span>
               <span className="text-sm text-mgsr-muted">
-                {t('releases_stats_showing')}: <strong className="text-mgsr-teal">{filteredPlayers.length}</strong>
+                {t('contract_finisher_stats_shortlisted')}: <strong className="text-amber-400">{shortlistedCount}</strong>
               </span>
-            </div>
-
-            {/* Search + filters */}
-            <div className="flex flex-col gap-4 mb-6">
-              <input
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder={t('releases_search')}
-                className="w-full max-w-md px-4 py-2.5 rounded-xl bg-mgsr-card border border-mgsr-border text-mgsr-text placeholder-mgsr-muted focus:outline-none focus:border-mgsr-teal/60"
-              />
-              <div className="flex flex-wrap gap-2">
-                <span className="text-xs text-mgsr-muted self-center">{t('releases_position')}:</span>
-                <button
-                  onClick={() => setPositionFilter(null)}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${
-                    !positionFilter
-                      ? 'bg-mgsr-teal text-mgsr-dark'
-                      : 'bg-mgsr-card border border-mgsr-border text-mgsr-muted hover:text-mgsr-text'
-                  }`}
-                >
-                  {t('releases_all')}
-                </button>
-                {positions.map((pos) => {
-                  const fp = firestorePositions.find((p) => p.name?.toLowerCase() === pos.toLowerCase());
-                  const label = isRtl ? (fp?.hebrewName || POSITION_HEBREW[pos] || pos) : pos;
-                  return (
-                    <button
-                      key={pos}
-                      onClick={() => setPositionFilter(positionFilter === pos ? null : pos)}
-                      className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${
-                        positionFilter === pos
-                          ? 'bg-mgsr-teal text-mgsr-dark'
-                          : 'bg-mgsr-card border border-mgsr-border text-mgsr-muted hover:text-mgsr-text'
-                      }`}
-                    >
-                      {label}
-                    </button>
-                  );
-                })}
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <span className="text-xs text-mgsr-muted self-center">{t('releases_age')}:</span>
-                {AGE_FILTERS.map(({ value, labelKey }) => (
-                  <button
-                    key={value}
-                    onClick={() => setAgeFilter(ageFilter === value ? 'all' : value)}
-                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${
-                      ageFilter === value
-                        ? 'bg-mgsr-teal text-mgsr-dark'
-                        : 'bg-mgsr-card border border-mgsr-border text-mgsr-muted hover:text-mgsr-text'
-                    }`}
-                  >
-                    {t(labelKey)}
-                  </button>
-                ))}
-              </div>
+              <span className="text-sm text-mgsr-muted">
+                {t('contract_finisher_stats_visible')}: <strong className="text-mgsr-teal">{filteredPlayers.length}</strong>
+              </span>
             </div>
 
             {filteredPlayers.length === 0 ? (
               <div className="p-12 bg-mgsr-card/50 border border-mgsr-border rounded-xl text-center text-mgsr-muted">
-                {hasActiveFilters ? t('search_no_results') : t('releases_empty')}
+                {activeFilterCount > 0 ? t('contract_finisher_no_match_filters') : t('contract_finisher_no_found')}
               </div>
             ) : (
               <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
                 {filteredPlayers.map((p) => (
-                  <ReleaseCard
+                  <ContractFinisherCard
                     key={p.playerUrl}
                     player={p}
                     onAddToShortlist={addToShortlist}
@@ -676,6 +616,7 @@ export default function ReleasesPage() {
                     onToggleTeammates={toggleTeammates}
                     onFetchTeammates={fetchTeammates}
                     isTeammatesExpanded={expandedTeammatesUrl}
+                    badgeText={`${t('contract_finisher_badge')} – ${p.transferDate || ''}`}
                   />
                 ))}
               </div>
@@ -683,6 +624,139 @@ export default function ReleasesPage() {
           </>
         )}
       </div>
+
+      {showFilters && (
+        <div
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60"
+          onClick={() => setShowFilters(false)}
+        >
+          <div
+            className="w-full max-w-lg max-h-[85vh] overflow-y-auto bg-mgsr-card border-t sm:border border-mgsr-border rounded-t-2xl sm:rounded-2xl p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-lg font-semibold text-mgsr-text mb-4 font-display">
+              {t('contract_finisher_filters')}
+            </h3>
+            <div className="space-y-6">
+              <div>
+                <p className="text-xs text-mgsr-muted mb-2">{t('contract_finisher_filter_label_value')}</p>
+                <div className="flex flex-wrap gap-2">
+                  {VALUE_FILTERS.map((v) => (
+                    <button
+                      key={v.key}
+                      onClick={() => setValueFilter(v.key)}
+                      className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${
+                        valueFilter === v.key
+                          ? 'bg-mgsr-teal text-mgsr-dark'
+                          : 'bg-mgsr-dark/60 border border-mgsr-border text-mgsr-muted hover:text-mgsr-text'
+                      }`}
+                    >
+                      {t(`contract_finisher_filter_value_${v.key}`)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <p className="text-xs text-mgsr-muted mb-2">{t('contract_finisher_filter_label_position')}</p>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => setPositionFilter(null)}
+                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${
+                      !positionFilter
+                        ? 'bg-mgsr-teal text-mgsr-dark'
+                        : 'bg-mgsr-dark/60 border border-mgsr-border text-mgsr-muted hover:text-mgsr-text'
+                    }`}
+                  >
+                    {t('contract_finisher_filter_age_all')}
+                  </button>
+                  {positions.map((pos) => {
+                    const fp = firestorePositions.find((p) => p.name?.toLowerCase() === pos.toLowerCase());
+                    const label = isRtl ? (fp?.hebrewName || POSITION_HEBREW[pos] || pos) : pos;
+                    return (
+                      <button
+                        key={pos}
+                        onClick={() => setPositionFilter(positionFilter === pos ? null : pos)}
+                        className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${
+                          positionFilter === pos
+                            ? 'bg-mgsr-teal text-mgsr-dark'
+                            : 'bg-mgsr-dark/60 border border-mgsr-border text-mgsr-muted hover:text-mgsr-text'
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              <div>
+                <p className="text-xs text-mgsr-muted mb-2">{t('contract_finisher_filter_label_age')}</p>
+                <div className="flex flex-wrap gap-2">
+                  {AGE_FILTERS.map((a) => (
+                    <button
+                      key={a.key}
+                      onClick={() => setAgeFilter(a.key)}
+                      className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${
+                        ageFilter === a.key
+                          ? 'bg-mgsr-teal text-mgsr-dark'
+                          : 'bg-mgsr-dark/60 border border-mgsr-border text-mgsr-muted hover:text-mgsr-text'
+                      }`}
+                    >
+                      {t(`contract_finisher_filter_age_${a.key}`)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <p className="text-xs text-mgsr-muted mb-2">{t('contract_finisher_filter_label_region')}</p>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => setRegionFilter(null)}
+                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${
+                      !regionFilter
+                        ? 'bg-mgsr-teal text-mgsr-dark'
+                        : 'bg-mgsr-dark/60 border border-mgsr-border text-mgsr-muted hover:text-mgsr-text'
+                    }`}
+                  >
+                    {t('contract_finisher_filter_age_all')}
+                  </button>
+                  {REGION_OPTIONS.map((r) => (
+                    <button
+                      key={r.value}
+                      onClick={() => setRegionFilter(regionFilter === r.value ? null : r.value)}
+                      className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${
+                        regionFilter === r.value
+                          ? 'bg-mgsr-teal text-mgsr-dark'
+                          : 'bg-mgsr-dark/60 border border-mgsr-border text-mgsr-muted hover:text-mgsr-text'
+                      }`}
+                    >
+                      {t(r.key)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => {
+                  setPositionFilter(null);
+                  setAgeFilter('all');
+                  setRegionFilter(null);
+                  setValueFilter('all');
+                }}
+                className="flex-1 px-4 py-2.5 rounded-xl text-sm font-medium border border-mgsr-border text-mgsr-muted hover:text-mgsr-text"
+              >
+                {t('contract_finisher_clear_filters')}
+              </button>
+              <button
+                onClick={() => setShowFilters(false)}
+                className="flex-1 px-4 py-2.5 rounded-xl text-sm font-medium bg-mgsr-teal text-mgsr-dark"
+              >
+                {t('contract_finisher_apply_filters')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </AppLayout>
   );
 }

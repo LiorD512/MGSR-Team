@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { doc, getDoc, collection, query, where, getDocs, onSnapshot } from 'firebase/firestore';
@@ -9,6 +9,7 @@ import { db } from '@/lib/firebase';
 import { getPlayerDetails, PlayerDetails } from '@/lib/api';
 import AppLayout from '@/components/AppLayout';
 import Link from 'next/link';
+import { toWhatsAppUrl } from '@/lib/whatsapp';
 
 interface Player {
   id: string;
@@ -86,7 +87,17 @@ export default function PlayerInfoPage() {
   const { t, isRtl } = useLanguage();
   const router = useRouter();
   const params = useParams();
+  const searchParams = useSearchParams();
   const id = params.id as string;
+  const fromPath = searchParams.get('from') || '/players';
+  const backLabelKey =
+    fromPath === '/requests'
+      ? 'player_info_back_requests'
+      : fromPath === '/releases'
+        ? 'player_info_back_releases'
+        : fromPath === '/contract-finisher'
+          ? 'player_info_back_contract_finisher'
+          : 'player_info_back_players';
   const [player, setPlayer] = useState<Player | null>(null);
   const [liveData, setLiveData] = useState<PlayerDetails | null>(null);
   const [documents, setDocuments] = useState<PlayerDocument[]>([]);
@@ -216,11 +227,11 @@ export default function PlayerInfoPage() {
         <div dir={isRtl ? 'rtl' : 'ltr'} className="max-w-3xl mx-auto text-center py-20">
           <p className="text-mgsr-muted text-lg mb-6">{t('player_info_not_found')}</p>
           <Link
-            href="/players"
+            href={fromPath}
             className="inline-flex items-center gap-2 text-mgsr-teal hover:underline"
           >
             <span className={isRtl ? 'rotate-180' : ''}>←</span>
-            {t('player_info_back')}
+            {t(backLabelKey)}
           </Link>
         </div>
       </AppLayout>
@@ -237,11 +248,11 @@ export default function PlayerInfoPage() {
         {/* Back + actions */}
         <div className="flex items-center justify-between mb-6">
           <Link
-            href="/players"
+            href={fromPath}
             className="inline-flex items-center gap-2 text-mgsr-teal hover:underline"
           >
             <span className={isRtl ? 'rotate-180' : ''}>←</span>
-            {t('player_info_back')}
+            {t(backLabelKey)}
           </Link>
           <div className="flex items-center gap-3">
             {player.tmProfile && (
@@ -389,7 +400,9 @@ export default function PlayerInfoPage() {
                     <div>
                       <p className="text-xs text-mgsr-muted">{t('player_info_agent_phone')}</p>
                       <a
-                        href={`tel:${getAgentPhone()}`}
+                        href={toWhatsAppUrl(getAgentPhone()) ?? `tel:${getAgentPhone()}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
                         className="text-mgsr-teal hover:underline inline-block"
                         dir="ltr"
                       >
@@ -401,7 +414,9 @@ export default function PlayerInfoPage() {
                     <div>
                       <p className="text-xs text-mgsr-muted">{t('player_info_player_phone')}</p>
                       <a
-                        href={`tel:${getPhone()}`}
+                        href={toWhatsAppUrl(getPhone()) ?? `tel:${getPhone()}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
                         className="text-mgsr-teal hover:underline inline-block"
                         dir="ltr"
                       >

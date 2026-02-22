@@ -13,6 +13,7 @@ const navItems = [
   { href: '/shortlist', labelKey: 'nav_shortlist' },
   { href: '/contacts', labelKey: 'nav_contacts' },
   { href: '/releases', labelKey: 'nav_releases' },
+  { href: '/contract-finisher', labelKey: 'nav_contract_finisher' },
   { href: '/requests', labelKey: 'nav_requests' },
 ];
 

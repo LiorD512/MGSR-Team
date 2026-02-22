@@ -8,6 +8,8 @@ import { getScreenCache, setScreenCache } from '@/lib/screenCache';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import AppLayout from '@/components/AppLayout';
+import { getCountryDisplayName } from '@/lib/countryTranslations';
+import { toWhatsAppUrl } from '@/lib/whatsapp';
 
 interface Contact {
   id: string;
@@ -16,6 +18,7 @@ interface Contact {
   role?: string;
   clubName?: string;
   clubCountry?: string;
+  clubCountryFlag?: string;
   clubLogo?: string;
   clubTmProfile?: string;
   contactType?: string;
@@ -28,6 +31,37 @@ interface ContactsCache {
   contacts: Contact[];
   filter: 'all' | 'club' | 'agency';
   search: string;
+}
+
+const OTHER_LABEL = 'Other';
+
+function buildContactsGroupedByCountry(
+  contacts: Contact[],
+  isRtl: boolean
+): { country: string; flagUrl?: string; contacts: Contact[] }[] {
+  const grouped = contacts.reduce<Record<string, Contact[]>>((acc, c) => {
+    const country = (c.contactType === 'AGENCY' ? c.agencyCountry : c.clubCountry)?.trim() || OTHER_LABEL;
+    if (!acc[country]) acc[country] = [];
+    acc[country].push(c);
+    return acc;
+  }, {});
+  const sortedCountries = Object.keys(grouped).sort((a, b) =>
+    a === OTHER_LABEL ? 1 : b === OTHER_LABEL ? -1 : a.localeCompare(b, isRtl ? 'he' : 'en')
+  );
+  return sortedCountries.map((country) => {
+    const list = grouped[country].sort((a, b) =>
+      (a.contactType === 'AGENCY' ? a.agencyName : a.clubName || '').localeCompare(
+        b.contactType === 'AGENCY' ? b.agencyName : b.clubName || '',
+        isRtl ? 'he' : 'en'
+      )
+    );
+    const flagUrl = list.find((c) => c.clubCountryFlag?.startsWith('http'))?.clubCountryFlag;
+    return {
+      country: country === OTHER_LABEL ? (isRtl ? 'אחר' : OTHER_LABEL) : getCountryDisplayName(country, isRtl),
+      flagUrl,
+      contacts: list,
+    };
+  });
 }
 
 export default function ContactsPage() {
@@ -78,8 +112,11 @@ export default function ContactsPage() {
 
   const displayOrg = (c: Contact) =>
     c.contactType === 'AGENCY' ? c.agencyName : c.clubName;
-  const displayCountry = (c: Contact) =>
-    c.contactType === 'AGENCY' ? c.agencyCountry : c.clubCountry;
+
+  const groupedByCountry = useMemo(
+    () => buildContactsGroupedByCountry(filtered, isRtl),
+    [filtered, isRtl]
+  );
 
   const clubsCount = contacts.filter((c) => c.contactType === 'CLUB').length;
   const agenciesCount = contacts.filter((c) => c.contactType === 'AGENCY').length;
@@ -141,46 +178,66 @@ export default function ContactsPage() {
             <p className="text-mgsr-muted text-lg relative">{t('contacts_empty')}</p>
           </div>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {filtered.map((c, i) => (
-              <div
-                key={c.id}
-                className="group flex items-start gap-4 p-4 bg-mgsr-card border border-mgsr-border rounded-xl hover:border-mgsr-teal/30 transition-all duration-300 animate-fade-in"
-                style={{ animationDelay: `${i * 30}ms` }}
-              >
-                <div className="shrink-0">
-                  {c.clubLogo ? (
+          <div className="space-y-6">
+            {groupedByCountry.map((group) => (
+              <div key={group.country}>
+                <div className="flex items-center gap-2 mb-3">
+                  {group.flagUrl && (
                     <img
-                      src={c.clubLogo}
+                      src={group.flagUrl}
                       alt=""
-                      className="w-14 h-14 rounded-full object-cover bg-mgsr-dark ring-2 ring-mgsr-border"
+                      className="w-5 h-5 rounded-full object-cover"
                     />
-                  ) : (
-                    <div className="w-14 h-14 rounded-full bg-mgsr-teal/20 flex items-center justify-center">
-                      <span className="text-xl font-display font-bold text-mgsr-teal">
-                        {(c.name || c.clubName || '?')[0]}
+                  )}
+                  <h2 className="text-sm font-semibold text-mgsr-muted uppercase tracking-wider">
+                    {group.country}
+                  </h2>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {group.contacts.map((c, i) => (
+                    <div
+                      key={c.id}
+                      className="group flex items-start gap-4 p-4 bg-mgsr-card border border-mgsr-border rounded-xl hover:border-mgsr-teal/30 transition-all duration-300 animate-fade-in"
+                      style={{ animationDelay: `${i * 30}ms` }}
+                    >
+                      <div className="shrink-0">
+                        {c.clubLogo ? (
+                          <img
+                            src={c.clubLogo}
+                            alt=""
+                            className="w-14 h-14 rounded-full object-cover bg-mgsr-dark ring-2 ring-mgsr-border"
+                          />
+                        ) : (
+                          <div className="w-14 h-14 rounded-full bg-mgsr-teal/20 flex items-center justify-center">
+                            <span className="text-xl font-display font-bold text-mgsr-teal">
+                              {(c.name || c.clubName || '?')[0]}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-mgsr-text truncate">{c.name || 'Unknown'}</p>
+                        <p className="text-sm text-mgsr-muted truncate">
+                          {displayOrg(c) || '—'}
+                        </p>
+                        {c.phoneNumber && (
+                          <a
+                            href={toWhatsAppUrl(c.phoneNumber) ?? `tel:${c.phoneNumber}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-block mt-2 text-sm text-mgsr-teal hover:underline"
+                            dir="ltr"
+                          >
+                            {c.phoneNumber}
+                          </a>
+                        )}
+                      </div>
+                      <span className="text-xs px-2.5 py-1 rounded-lg bg-mgsr-teal/20 text-mgsr-teal shrink-0">
+                        {c.contactType === 'AGENCY' ? t('contact_type_agency') : t('contact_type_club')}
                       </span>
                     </div>
-                  )}
+                  ))}
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-mgsr-text truncate">{c.name || 'Unknown'}</p>
-                  <p className="text-sm text-mgsr-muted truncate">
-                    {displayOrg(c) || '—'} • {displayCountry(c) || '—'}
-                  </p>
-                  {c.phoneNumber && (
-                    <a
-                      href={`tel:${c.phoneNumber}`}
-                      className="inline-block mt-2 text-sm text-mgsr-teal hover:underline"
-                      dir="ltr"
-                    >
-                      {c.phoneNumber}
-                    </a>
-                  )}
-                </div>
-                <span className="text-xs px-2.5 py-1 rounded-lg bg-mgsr-teal/20 text-mgsr-teal shrink-0">
-                  {c.contactType === 'AGENCY' ? t('contact_type_agency') : t('contact_type_club')}
-                </span>
               </div>
             ))}
           </div>
