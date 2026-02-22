@@ -1,0 +1,433 @@
+const express = require('express');
+const cors = require('cors');
+const cheerio = require('cheerio');
+const https = require('https');
+const { URL } = require('url');
+
+const app = express();
+const PORT = process.env.PORT || 8080;
+const TRANSFERMARKT_BASE = 'https://www.transfermarkt.com';
+
+// CORS first - must run before any routes
+app.use(cors({ origin: true }));
+app.use(express.json());
+
+const USER_AGENTS = [
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+];
+
+function getRandomUserAgent() {
+  return USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
+}
+
+const FETCH_TIMEOUT_MS = 60000; // 60s - Transfermarkt can be slow
+
+function fetchHtml(url) {
+  return new Promise((resolve, reject) => {
+    const u = new URL(url);
+    const req = https.request({
+      hostname: u.hostname,
+      path: u.pathname + u.search,
+      method: 'GET',
+      headers: {
+        'User-Agent': getRandomUserAgent(),
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.9',
+      },
+    }, (res) => {
+      if (res.statusCode !== 200) {
+        reject(new Error(`HTTP ${res.statusCode}`));
+        return;
+      }
+      let data = '';
+      res.on('data', (chunk) => { data += chunk; });
+      res.on('end', () => resolve(data));
+    });
+    req.on('error', reject);
+    req.setTimeout(FETCH_TIMEOUT_MS, () => { req.destroy(); reject(new Error('Timeout')); });
+    req.end();
+  });
+}
+
+async function fetchHtmlWithRetry(url, maxRetries = 2) {
+  let lastErr;
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      return await fetchHtml(url);
+    } catch (err) {
+      lastErr = err;
+      if (i < maxRetries - 1) await new Promise((r) => setTimeout(r, 2000));
+    }
+  }
+  throw lastErr;
+}
+
+function makeAbsoluteUrl(url) {
+  if (!url) return '';
+  if (url.startsWith('//')) return 'https:' + url;
+  if (url.startsWith('/')) return TRANSFERMARKT_BASE + url;
+  if (url.startsWith('http')) return url;
+  return url;
+}
+
+function convertPosition(s) {
+  const map = {
+    'Goalkeeper': 'GK', 'Left Back': 'LB', 'Centre Back': 'CB', 'Right Back': 'RB',
+    'Defensive Midfield': 'DM', 'Central Midfield': 'CM', 'Attacking Midfield': 'AM',
+    'Right Winger': 'RW', 'Left Winger': 'LW', 'Centre Forward': 'CF', 'Second Striker': 'SS',
+    'Left Midfield': 'LM', 'Right Midfield': 'RM',
+  };
+  return map[s] || s || '';
+}
+
+// ─── Search ────────────────────────────────────────────────────────────────
+app.get('/api/transfermarkt/search', async (req, res) => {
+  try {
+    const q = (req.query.q || '').trim();
+    if (!q) {
+      return res.json({ players: [] });
+    }
+    const encoded = encodeURIComponent(q);
+    const url = `${TRANSFERMARKT_BASE}/schnellsuche/ergebnis/schnellsuche?query=${encoded}`;
+    const html = await fetchHtmlWithRetry(url);
+    const $ = cheerio.load(html);
+
+    const players = [];
+    const playerSection = $('div.box').filter((_, el) => {
+      return $(el).find('h2.content-box-headline').text().toLowerCase().includes('players');
+    }).first();
+
+    playerSection.find('table.items tr.odd, table.items tr.even').each((_, row) => {
+      try {
+        const $row = $(row);
+        const img = $row.find('img').first();
+        const playerImage = (img.attr('src') || '').replace('small', 'big');
+        const playerName = img.attr('alt') || '';
+        const link = $row.find('td.hauptlink a').attr('href') || '';
+        const tmProfile = link.includes('profil') ? TRANSFERMARKT_BASE + link : null;
+        if (!tmProfile) return;
+
+        const tds = $row.find('td.zentriert');
+        const playerPosition = tds.eq(0).text().trim() || '';
+        const currentClub = $row.find('td.zentriert a img').attr('title') || '';
+        const currentClubLogo = ($row.find('td.zentriert a img').attr('src') || '').replace('tiny', 'head');
+        const playerAge = tds.eq(2).text().trim() || '';
+        const natImg = tds.eq(3).find('img').first();
+        const nationality = natImg.attr('title') || natImg.attr('alt') || '';
+        const nationalityFlag = (natImg.attr('data-src') || natImg.attr('src') || '')
+          .replace('verysmall', 'head').replace('tiny', 'head');
+        const playerValue = $row.find('td.rechts.hauptlink').text().trim() || '';
+
+        players.push({
+          tmProfile,
+          playerImage: makeAbsoluteUrl(playerImage),
+          playerName,
+          playerPosition,
+          playerAge,
+          playerValue,
+          nationality,
+          nationalityFlag: makeAbsoluteUrl(nationalityFlag),
+          currentClub,
+          currentClubLogo: makeAbsoluteUrl(currentClubLogo),
+        });
+      } catch (e) {
+        // skip row
+      }
+    });
+
+    res.json({ players });
+  } catch (err) {
+    console.error('Search error:', err.message);
+    res.status(500).json({ error: err.message || 'Search failed' });
+  }
+});
+
+// ─── Player details ─────────────────────────────────────────────────────────
+app.get('/api/transfermarkt/player', async (req, res) => {
+  try {
+    let url = req.query.url || '';
+    url = url.trim();
+    if (!url) {
+      return res.status(400).json({ error: 'Missing url parameter' });
+    }
+    if (!url.startsWith('http')) {
+      url = url.startsWith('/') ? TRANSFERMARKT_BASE + url : TRANSFERMARKT_BASE + '/' + url;
+    }
+    const html = await fetchHtmlWithRetry(url);
+    const $ = cheerio.load(html);
+
+    const natEl = $('[itemprop=nationality] img').first();
+    const nationality = natEl.attr('title') || 'Unknown';
+    const nationalityFlag = (natEl.attr('src') || '')
+      .replace('verysmall', 'head').replace('tiny', 'head');
+
+    const height = $('[itemprop=height]').text().trim() || 'Unknown';
+    const marketValueBox = $('div[class*="data-header__box--small"]').text();
+    const marketValue = marketValueBox.substring(0, marketValueBox.indexOf('Last')).trim() || '';
+
+    const contractLabel = $('span.data-header__label').text();
+    const contractExpires = contractLabel.includes(':') ? contractLabel.split(':').pop().trim() : '';
+
+    let positions = [];
+    $('div.detail-position__box dd').each((_, el) => {
+      const p = $(el).text().replace(/-/g, ' ').trim();
+      positions.push(convertPosition(p) || p);
+    });
+    if (positions.length === 0) {
+      const fallback = $('ul.data-header__items').eq(1).text();
+      const afterColon = fallback.split(':').pop().trim();
+      if (afterColon) positions = [convertPosition(afterColon) || afterColon];
+    }
+
+    const clubLink = $('span.data-header__club a');
+    const clubName = clubLink.attr('title') || '';
+    const clubHref = clubLink.attr('href') || '';
+    const clubTmProfile = clubHref ? TRANSFERMARKT_BASE + clubHref : '';
+    const clubLogoEl = $('div.data-header__box--big img');
+    const clubLogo = (clubLogoEl.attr('srcset') || '').split('1x')[0]?.trim() || clubLogoEl.attr('src') || '';
+    const clubCountry = $('div.data-header__club-info span.data-header__label img').attr('title') || '';
+
+    const fullName = $('h1.data-header__headline').text().trim()
+      || $('div.data-header__headline-wrapper h1').text().trim()
+      || ($('meta[property="og:title"]').attr('content') || '').split(' - ')[0].trim()
+      || '';
+
+    const profileImage = $('div.data-header__profile-container img').first().attr('src')
+      || $('div.data-header__profile-container img').attr('src')
+      || '';
+
+    const ageEl = $('span[itemprop=birthDate]').first().text();
+    const age = ageEl ? (ageEl.match(/\((\d+)\)/) || [])[1] || ageEl.trim() : '';
+
+    const ribbon = $('div[class*="ribbon"]').first().text().toLowerCase();
+    const loanLink = $('a[title*="on loan from"]').attr('title') || '';
+    const isOnLoan = ribbon.includes('on loan') || ribbon.includes('leihe') || ribbon.includes('ausgeliehen') || loanLink.includes('on loan');
+    const onLoanFromClub = isOnLoan ? (loanLink.split('from')[1] || '').trim() : null;
+
+    let foot = '';
+    $('span.info-table__content--regular').each((_, el) => {
+      const t = $(el).text().toLowerCase();
+      if (t.includes('foot') || t.includes('preferred foot')) {
+        foot = $(el).next().text().trim() || '';
+        return false;
+      }
+    });
+
+    const result = {
+      tmProfile: url,
+      fullName,
+      height,
+      age,
+      positions,
+      profileImage: makeAbsoluteUrl(profileImage),
+      nationality,
+      nationalityFlag: makeAbsoluteUrl(nationalityFlag),
+      contractExpires,
+      marketValue,
+      currentClub: {
+        clubName,
+        clubLogo: makeAbsoluteUrl(clubLogo),
+        clubTmProfile,
+        clubCountry,
+      },
+      isOnLoan: !!isOnLoan,
+      onLoanFromClub: onLoanFromClub || null,
+      foot: foot || null,
+    };
+
+    res.json(result);
+  } catch (err) {
+    console.error('Player details error:', err.message);
+    res.status(500).json({ error: err.message || 'Failed to fetch player' });
+  }
+});
+
+// ─── Releases (latest transfers, free agents) ─────────────────────────────────
+const WITHOUT_CLUB = [
+  'without club', 'ohne verein', 'sans club', 'sin club', 'senza squadra',
+  'free agent', 'vereinslos', 'sem clube', 'geen club', 'bez klubu', 'klubsuz'
+];
+
+function isWithoutClub($, row) {
+  const rowText = $(row).text().toLowerCase();
+  const rowHtml = $(row).html().toLowerCase();
+  const combined = rowText + ' ' + rowHtml;
+  return WITHOUT_CLUB.some((w) => combined.includes(w));
+}
+
+app.get('/api/transfermarkt/releases', async (req, res) => {
+  try {
+    const minVal = parseInt(req.query.min, 10) || 0;
+    const maxVal = parseInt(req.query.max, 10) || 5000000;
+    const page = parseInt(req.query.page, 10) || 1;
+    const url = `${TRANSFERMARKT_BASE}/transfers/neuestetransfers/statistik?land_id=0&wettbewerb_id=alle&minMarktwert=${minVal}&maxMarktwert=${maxVal}&plus=1&page=${page}`;
+    const html = await fetchHtmlWithRetry(url);
+    const $ = cheerio.load(html);
+
+    const players = [];
+    $('table.items tr.odd, table.items tr.even').each((_, row) => {
+      if (!isWithoutClub($, row)) return;
+      try {
+        const tables = $(row).find('table.inline-table');
+        if (tables.length === 0) return;
+        const t0 = tables.eq(0);
+        const playerImage = (t0.find('img').attr('data-src') || t0.find('img').attr('src') || '').replace('medium', 'big');
+        const playerName = t0.find('img').attr('title') || '';
+        const playerUrl = t0.find('a').attr('href') || '';
+        const fullUrl = playerUrl.startsWith('http') ? playerUrl : TRANSFERMARKT_BASE + playerUrl;
+        const playerPosition = (t0.find('tr').eq(1).text() || '').replace(/-/g, ' ').trim();
+        const playerAge = $(row).find('td.zentriert').eq(0).text().trim() || '';
+        const transferDate = $(row).find('td.zentriert').eq(2).text().trim() || '';
+        const marketValue = $(row).find('td.rechts').eq(0).text().trim() || '';
+        const natImg = $(row).find('td.zentriert img[title]').first();
+        const playerNationality = natImg.attr('title') || natImg.attr('alt') || '';
+        const playerNationalityFlag = (natImg.attr('data-src') || natImg.attr('src') || '').replace('verysmall', 'head').replace('tiny', 'head');
+
+        players.push({
+          playerImage: makeAbsoluteUrl(playerImage),
+          playerName,
+          playerUrl: fullUrl,
+          playerPosition: convertPosition(playerPosition) || playerPosition,
+          playerAge,
+          playerNationality,
+          playerNationalityFlag: makeAbsoluteUrl(playerNationalityFlag),
+          transferDate,
+          marketValue,
+        });
+      } catch (e) {}
+    });
+
+    res.json({ players });
+  } catch (err) {
+    console.error('Releases error:', err.message);
+    res.status(500).json({ error: err.message || 'Failed to fetch releases' });
+  }
+});
+
+// ─── Teammates (games played together) ────────────────────────────────────────
+function extractPlayerIdFromUrl(url) {
+  if (!url || typeof url !== 'string') return null;
+  const parts = url.trim().split('/');
+  let spielerIdx = -1;
+  for (let i = parts.length - 1; i >= 0; i--) {
+    if (parts[i].toLowerCase() === 'spieler' || parts[i].toLowerCase() === 'player') {
+      spielerIdx = i;
+      break;
+    }
+  }
+  if (spielerIdx >= 0 && spielerIdx < parts.length - 1) {
+    const id = parts[spielerIdx + 1];
+    return /^\d+$/.test(id) ? id : null;
+  }
+  const last = parts[parts.length - 1];
+  return last && /^\d+$/.test(last) ? last : null;
+}
+
+function buildTeammatesUrl(profileUrl) {
+  if (!profileUrl || typeof profileUrl !== 'string') return null;
+  const url = profileUrl.trim().split('?')[0];
+  if (!url) return null;
+  const base = url
+    .replace(/\/profil\/spieler\//i, '/gemeinsameSpiele/spieler/')
+    .replace(/\/profile\/player\//i, '/gemeinsameSpiele/spieler/');
+  if (base !== url) {
+    return `${base}/plus/0/galerie/0?gegner=0&kriterium=0&wettbewerb=&liga=&verein=&pos=&status=1`;
+  }
+  const playerId = extractPlayerIdFromUrl(url);
+  if (!playerId) return null;
+  const slugMatch = url.match(/transfermarkt\.(?:com|co\.uk|de|es|fr|it|nl|pt|tr)\/([^/]+)/i);
+  const slug = slugMatch ? slugMatch[1] : 'spieler';
+  return `${TRANSFERMARKT_BASE}/${slug}/gemeinsameSpiele/spieler/${playerId}/plus/0/galerie/0?gegner=0&kriterium=0&wettbewerb=&liga=&verein=&pos=&status=1`;
+}
+
+app.get('/api/transfermarkt/teammates', async (req, res) => {
+  try {
+    let url = req.query.url || '';
+    url = url.trim();
+    if (!url) {
+      return res.status(400).json({ error: 'Missing url parameter' });
+    }
+    if (!url.startsWith('http')) {
+      url = url.startsWith('/') ? TRANSFERMARKT_BASE + url : TRANSFERMARKT_BASE + '/' + url;
+    }
+    const teammatesUrl = buildTeammatesUrl(url);
+    if (!teammatesUrl) {
+      return res.status(400).json({ error: 'Invalid player URL' });
+    }
+    const html = await fetchHtmlWithRetry(teammatesUrl);
+    const $ = cheerio.load(html);
+
+    const teammates = [];
+    const gegnerLinks = $('a[href*="/gegner/"]');
+    if (gegnerLinks.length > 0) {
+      gegnerLinks.each((_, el) => {
+        const href = $(el).attr('href') || '';
+        const match = href.match(/\/gegner\/(\d+)/);
+        if (!match || match[1] === '0') return;
+        const teammateId = match[1];
+        const matchesText = $(el).text().trim().replace(/,/g, '').replace(/\./g, '');
+        const matchesPlayedTogether = parseInt(matchesText, 10);
+        if (matchesPlayedTogether >= 1 && matchesPlayedTogether <= 2000) {
+          teammates.push({
+            tmProfileUrl: `${TRANSFERMARKT_BASE}/profil/spieler/${teammateId}`,
+            playerName: null,
+            position: null,
+            matchesPlayedTogether,
+            minutesTogether: null,
+          });
+        }
+      });
+    } else {
+      $('table.items tbody tr.odd, table.items tbody tr.even, table.items tr.odd, table.items tr.even').each((_, row) => {
+        try {
+          const playerLink = $(row).find('td.hauptlink a[href*="/profil/spieler/"], td.hauptlink a[href*="/profile/player/"], td a[href*="/profil/spieler/"], td a[href*="/profile/player/"]').first();
+          const href = playerLink.attr('href');
+          if (!href) return;
+          const tmProfileUrl = makeAbsoluteUrl(href);
+          const playerName = playerLink.attr('title') || playerLink.text().trim() || null;
+          const hauptlinkText = $(row).find('td.hauptlink').text().trim();
+          let position = null;
+          if (playerName && hauptlinkText) {
+            const after = hauptlinkText.split(playerName).pop?.()?.trim?.();
+            if (after && after.length >= 2 && after.length <= 30) position = convertPosition(after) || after;
+          }
+          const cells = $(row).find('td');
+          let matchesPlayedTogether = 0;
+          for (let i = 1; i <= Math.min(3, cells.length - 1); i++) {
+            const t = $(cells[i]).text().trim().replace(/,/g, '').replace(/\./g, '');
+            const n = parseInt(t, 10);
+            if (n >= 1 && n <= 2000) {
+              matchesPlayedTogether = n;
+              break;
+            }
+          }
+          if (matchesPlayedTogether > 0) {
+            teammates.push({
+              tmProfileUrl,
+              playerName,
+              position,
+              matchesPlayedTogether,
+              minutesTogether: null,
+            });
+          }
+        } catch (e) {}
+      });
+    }
+
+    res.json({ teammates: teammates.slice(0, 200) });
+  } catch (err) {
+    console.error('Teammates error:', err.message);
+    res.status(500).json({ error: err.message || 'Failed to fetch teammates' });
+  }
+});
+
+// ─── Health ──────────────────────────────────────────────────────────────────
+app.get('/health', (_, res) => {
+  res.json({ status: 'ok' });
+});
+
+// ─── Start ──────────────────────────────────────────────────────────────────
+app.listen(PORT, () => {
+  console.log(`MGSR Backend running at http://localhost:${PORT}`);
+});

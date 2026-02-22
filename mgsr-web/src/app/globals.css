@@ -1,0 +1,22 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --mgsr-dark: #0F1923;
+  --mgsr-card: #1A2736;
+  --mgsr-card-border: #253545;
+  --mgsr-teal: #4DB6AC;
+  --mgsr-teal-dim: rgba(77, 182, 172, 0.15);
+  --mgsr-text: #E8EAED;
+  --mgsr-muted: #8C999B;
+}
+
+body {
+  background-color: var(--mgsr-dark);
+  color: var(--mgsr-text);
+}
+
+[dir='rtl'] {
+  text-align: right;
+}
