@@ -1591,66 +1591,39 @@ private fun OnlinePlayerSuggestionRow(
                         }
                     }
 
-                    // Action buttons: Add to Shortlist + Open Transfermarkt
+                    // Action buttons: Add to shortlist (IconButton) + Open Transfermarkt (teal link)
                     if (suggestion.transfermarktUrl != null) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            // Add to Shortlist button
-                            Row(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .background(
-                                        if (isInShortlist) HomeGreenAccent.copy(alpha = 0.15f)
-                                        else HomeTealAccent.copy(alpha = 0.12f)
-                                    )
-                                    .clickWithNoRipple { onToggleShortlist() }
-                                    .padding(horizontal = 10.dp, vertical = 8.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.Center
+                            IconButton(
+                                onClick = { onToggleShortlist() },
+                                modifier = Modifier.size(36.dp)
                             ) {
                                 Icon(
                                     imageVector = if (isInShortlist) Icons.Default.Bookmark else Icons.Default.BookmarkAdd,
-                                    contentDescription = null,
-                                    tint = if (isInShortlist) HomeGreenAccent else HomeTealAccent,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                                Spacer(Modifier.width(6.dp))
-                                Text(
-                                    text = if (isInShortlist) stringResource(R.string.shortlist_in_shortlist)
-                                           else stringResource(R.string.shortlist_add_to_shortlist),
-                                    style = regularTextStyle(
-                                        if (isInShortlist) HomeGreenAccent else HomeTealAccent,
-                                        11.sp
-                                    ),
-                                    maxLines = 1
+                                    contentDescription = if (isInShortlist) stringResource(R.string.shortlist_in_shortlist) else stringResource(R.string.shortlist_add_to_shortlist),
+                                    tint = if (isInShortlist) HomeGreenAccent else HomeTextSecondary
                                 )
                             }
-
-                            // Open Transfermarkt button
-                            Row(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .background(HomeOrangeAccent.copy(alpha = 0.12f))
-                                    .clickWithNoRipple { onClick() }
-                                    .padding(horizontal = 10.dp, vertical = 8.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.Center
+                            TextButton(
+                                onClick = { onClick() },
+                                modifier = Modifier.height(36.dp),
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
+                                colors = ButtonDefaults.textButtonColors(contentColor = HomeTealAccent)
                             ) {
                                 Icon(
-                                    Icons.Default.OpenInNew,
+                                    Icons.Default.Link,
                                     contentDescription = null,
-                                    tint = HomeOrangeAccent,
+                                    tint = HomeTealAccent,
                                     modifier = Modifier.size(16.dp)
                                 )
                                 Spacer(Modifier.width(6.dp))
                                 Text(
-                                    text = "Transfermarkt",
-                                    style = regularTextStyle(HomeOrangeAccent, 11.sp),
-                                    maxLines = 1
+                                    text = stringResource(R.string.shortlist_open_tm),
+                                    style = regularTextStyle(HomeTealAccent, 13.sp)
                                 )
                             }
                         }

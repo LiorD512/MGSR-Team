@@ -116,6 +116,7 @@ abstract class IHomeScreenViewModel : ViewModel() {
     abstract fun deleteTask(task: AgentTask)
     abstract fun toggleTransferWindowGroup(confederation: Confederation)
     abstract fun toggleTeamOverview()
+    abstract fun refreshTransferWindows()
 }
 
 class HomeScreenViewModel(
@@ -513,6 +514,10 @@ class HomeScreenViewModel(
             if (confederation in expanded) expanded.remove(confederation) else expanded.add(confederation)
             current.copy(expandedConfederations = expanded)
         }
+    }
+
+    override fun refreshTransferWindows() {
+        loadTransferWindows()
     }
 
     private fun loadTransferWindows() {

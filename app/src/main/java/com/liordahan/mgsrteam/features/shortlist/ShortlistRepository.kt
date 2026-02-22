@@ -26,7 +26,10 @@ data class ShortlistEntry(
     val clubJoinedLogo: String? = null,
     val clubJoinedName: String? = null,
     val transferDate: String? = null,
-    val marketValue: String? = null
+    val marketValue: String? = null,
+    val addedByAgentId: String? = null,
+    val addedByAgentName: String? = null,
+    val addedByAgentHebrewName: String? = null
 ) {
     /** Converts to LatestTransferModel for display in ReleaseListItem-style UI. */
     fun toLatestTransferModel(): LatestTransferModel = LatestTransferModel(
@@ -94,7 +97,10 @@ class ShortlistRepository(
             clubJoinedLogo = map["clubJoinedLogo"] as? String,
             clubJoinedName = map["clubJoinedName"] as? String,
             transferDate = map["transferDate"] as? String,
-            marketValue = map["marketValue"] as? String
+            marketValue = map["marketValue"] as? String,
+            addedByAgentId = map["addedByAgentId"] as? String,
+            addedByAgentName = map["addedByAgentName"] as? String,
+            addedByAgentHebrewName = map["addedByAgentHebrewName"] as? String
         )
     }
 
@@ -123,6 +129,11 @@ class ShortlistRepository(
             release.clubJoinedName?.takeIf { it.isNotBlank() }?.let { entryMap["clubJoinedName"] = it }
             release.transferDate?.takeIf { it.isNotBlank() }?.let { entryMap["transferDate"] = it }
             release.marketValue?.takeIf { it.isNotBlank() }?.let { entryMap["marketValue"] = it }
+            getCurrentUserAccount()?.let { acc ->
+                acc.id?.let { entryMap["addedByAgentId"] = it }
+                acc.name?.takeIf { it.isNotBlank() }?.let { entryMap["addedByAgentName"] = it }
+                acc.hebrewName?.takeIf { it.isNotBlank() }?.let { entryMap["addedByAgentHebrewName"] = it }
+            }
             current.add(entryMap)
             docRef.set(mapOf("entries" to current)).await()
             writeFeedEventShortlist(
@@ -150,10 +161,16 @@ class ShortlistRepository(
             val snapshot = docRef.get().await()
             val current = snapshot.getEntriesList().toMutableList()
             if (current.any { (it["tmProfileUrl"] as? String) == url }) return
-            current.add(mapOf(
+            val urlEntryMap = mutableMapOf<String, Any>(
                 "tmProfileUrl" to url,
                 "addedAt" to System.currentTimeMillis()
-            ))
+            )
+            getCurrentUserAccount()?.let { acc ->
+                acc.id?.let { urlEntryMap["addedByAgentId"] = it }
+                acc.name?.takeIf { it.isNotBlank() }?.let { urlEntryMap["addedByAgentName"] = it }
+                acc.hebrewName?.takeIf { it.isNotBlank() }?.let { urlEntryMap["addedByAgentHebrewName"] = it }
+            }
+            current.add(urlEntryMap)
             docRef.set(mapOf("entries" to current)).await()
             writeFeedEventShortlist(playerName = null, playerImage = null, playerTmProfile = url, agentName = getCurrentUserAccountName())
         } finally {
@@ -161,13 +178,15 @@ class ShortlistRepository(
         }
     }
 
-    private suspend fun getCurrentUserAccountName(): String? {
+    private suspend fun getCurrentUserAccount(): Account? {
         val email = FirebaseAuth.getInstance().currentUser?.email ?: return null
         val snapshot = firebaseHandler.firebaseStore.collection(firebaseHandler.accountsTable).get().await()
         return snapshot.toObjects(Account::class.java)
             .firstOrNull { it.email?.equals(email, ignoreCase = true) == true }
-            ?.name
     }
+
+    private suspend fun getCurrentUserAccountName(): String? =
+        getCurrentUserAccount()?.name
 
     private fun writeFeedEventShortlist(
         playerName: String?,

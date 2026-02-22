@@ -109,6 +109,7 @@
     <string name="shortlist_added_week_ago">Added 1 week ago</string>
     <string name="shortlist_added_weeks_ago">Added %d weeks ago</string>
     <string name="shortlist_added_months_ago">Added %d months ago</string>
+    <string name="shortlist_added_by">Added by %1$s</string>
 
     <string name="contacts_screen_search_hint">Search by name, club or country</string>
     <string name="contacts_filter_all">All</string>

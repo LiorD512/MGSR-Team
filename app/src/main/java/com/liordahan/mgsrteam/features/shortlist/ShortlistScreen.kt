@@ -102,6 +102,7 @@ import com.liordahan.mgsrteam.ui.utils.boldTextStyle
 import com.liordahan.mgsrteam.ui.utils.clickWithNoRipple
 import com.liordahan.mgsrteam.ui.utils.regularTextStyle
 import com.liordahan.mgsrteam.utils.extractPlayerIdFromUrl
+import com.liordahan.mgsrteam.localization.LocaleManager
 import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.koinInject
 
@@ -125,6 +126,15 @@ private fun formatRelativeDate(addedAt: Long): String {
         weeks == 1 -> stringResource(R.string.shortlist_added_week_ago)
         weeks < 4 -> stringResource(R.string.shortlist_added_weeks_ago, weeks)
         else -> stringResource(R.string.shortlist_added_months_ago, days / 30)
+    }
+}
+
+/** Returns the agent display name for the shortlist entry, based on current language. */
+private fun ShortlistEntry.getAddedByDisplayName(context: Context): String? {
+    val isHebrew = LocaleManager.isHebrew(context)
+    return when {
+        isHebrew -> (addedByAgentHebrewName ?: addedByAgentName).takeIf { !it.isNullOrBlank() }
+        else -> (addedByAgentName ?: addedByAgentHebrewName).takeIf { !it.isNullOrBlank() }
     }
 }
 
@@ -243,7 +253,11 @@ fun ShortlistScreen(
         ) {
             ShortlistHeader(
                 onAddClick = { navController.navigate(Screens.addToShortlistRoute()) },
-                onBackClicked = { navController.popBackStack() }
+                onBackClicked = {
+                    if (!navController.popBackStack(Screens.DashboardScreen.route, false)) {
+                        navController.popBackStack()
+                    }
+                }
             )
 
             ShortlistStatsStrip(
@@ -649,6 +663,13 @@ private fun ShortlistCard(
                         style = regularTextStyle(HomeTextSecondary, 10.sp),
                         modifier = Modifier.padding(top = 2.dp)
                     )
+                    entry.getAddedByDisplayName(context)?.let { agentName ->
+                        Text(
+                            text = stringResource(R.string.shortlist_added_by, agentName),
+                            style = regularTextStyle(HomeTextSecondary, 9.sp),
+                            modifier = Modifier.padding(top = 2.dp)
+                        )
+                    }
                 }
             }
 
