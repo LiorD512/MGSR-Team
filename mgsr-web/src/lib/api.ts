@@ -1,6 +1,8 @@
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8080';
+// When empty, use same-origin API routes (Vercel). When set, use external backend (local dev).
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || '';
 
-async function fetchBackend(url: string, options?: RequestInit) {
+async function fetchBackend(path: string, options?: RequestInit) {
+  const url = BACKEND_URL ? `${BACKEND_URL}${path}` : path;
   try {
     const res = await fetch(url, options);
     if (!res.ok) {
@@ -64,7 +66,7 @@ export interface TransferWindow {
 }
 
 export async function getTransferWindows(): Promise<TransferWindow[]> {
-  const res = await fetchBackend(`${BACKEND_URL}/api/transfermarkt/transfer-windows`);
+  const res = await fetchBackend('/api/transfermarkt/transfer-windows');
   const data = await res.json();
   return data.windows || [];
 }
@@ -79,7 +81,7 @@ export interface ClubSearchResult {
 
 export async function searchClubs(query: string): Promise<ClubSearchResult[]> {
   const res = await fetchBackend(
-    `${BACKEND_URL}/api/transfermarkt/club-search?q=${encodeURIComponent(query)}`
+    `/api/transfermarkt/club-search?q=${encodeURIComponent(query)}`
   );
   const data = await res.json();
   return data.clubs || [];
@@ -87,7 +89,7 @@ export async function searchClubs(query: string): Promise<ClubSearchResult[]> {
 
 export async function searchPlayers(query: string): Promise<SearchPlayer[]> {
   const res = await fetchBackend(
-    `${BACKEND_URL}/api/transfermarkt/search?q=${encodeURIComponent(query)}`
+    `/api/transfermarkt/search?q=${encodeURIComponent(query)}`
   );
   const data = await res.json();
   return data.players || [];
@@ -95,7 +97,7 @@ export async function searchPlayers(query: string): Promise<SearchPlayer[]> {
 
 export async function getPlayerDetails(url: string): Promise<PlayerDetails> {
   const res = await fetchBackend(
-    `${BACKEND_URL}/api/transfermarkt/player?url=${encodeURIComponent(url)}`
+    `/api/transfermarkt/player?url=${encodeURIComponent(url)}`
   );
   return res.json();
 }
@@ -122,7 +124,7 @@ export interface TeammateInfo {
 
 export async function getTeammates(playerProfileUrl: string): Promise<TeammateInfo[]> {
   const res = await fetchBackend(
-    `${BACKEND_URL}/api/transfermarkt/teammates?url=${encodeURIComponent(playerProfileUrl)}`
+    `/api/transfermarkt/teammates?url=${encodeURIComponent(playerProfileUrl)}`
   );
   const data = await res.json();
   return data.teammates || [];
@@ -145,7 +147,7 @@ export function extractPlayerIdFromUrl(url: string | undefined): string | null {
 
 export async function getReleases(min = 0, max = 5000000, page = 1): Promise<ReleasePlayer[]> {
   const res = await fetchBackend(
-    `${BACKEND_URL}/api/transfermarkt/releases?min=${min}&max=${max}&page=${page}`
+    `/api/transfermarkt/releases?min=${min}&max=${max}&page=${page}`
   );
   const data = await res.json();
   return data.players || [];
@@ -243,7 +245,7 @@ export interface ContractFinishersResponse {
 }
 
 export async function getContractFinishers(): Promise<ContractFinishersResponse> {
-  const res = await fetchBackend(`${BACKEND_URL}/api/transfermarkt/contract-finishers`);
+  const res = await fetchBackend('/api/transfermarkt/contract-finishers');
   const data = await res.json();
   return {
     players: data.players || [],
@@ -266,7 +268,9 @@ export function streamContractFinishers(
   onBatch: (event: ContractFinisherStreamEvent) => void,
   onError?: (err: Error) => void
 ): () => void {
-  const url = `${BACKEND_URL}/api/transfermarkt/contract-finishers/stream`;
+  const url = BACKEND_URL
+    ? `${BACKEND_URL}/api/transfermarkt/contract-finishers/stream`
+    : '/api/transfermarkt/contract-finishers/stream';
   const es = new EventSource(url);
 
   es.onmessage = (e) => {

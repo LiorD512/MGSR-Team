@@ -481,7 +481,7 @@ export default function DashboardPage() {
                 {item.arrow ? (isRtl ? '←' : '→') : item.count}
               </p>
               <p className="text-sm text-mgsr-muted mt-1">{item.label}</p>
-              {item.badge !== undefined && item.badge > 0 && (
+              {'badge' in item && typeof item.badge === 'number' && item.badge > 0 && (
                 <span className="absolute top-3 end-3 text-xs font-medium text-amber-400 bg-amber-500/20 px-2 py-0.5 rounded-full">
                   {item.badge} {t('pending')}
                 </span>

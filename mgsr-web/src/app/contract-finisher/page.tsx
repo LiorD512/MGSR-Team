@@ -455,7 +455,7 @@ export default function ContractFinisherPage() {
   const positions = useMemo(() => {
     const fromData = new Set(players.map((p) => p.playerPosition).filter(Boolean) as string[]);
     const fromFirestore = firestorePositions.map((p) => p.name).filter(Boolean) as string[];
-    const merged = new Set([...fromFirestore, ...fromData]);
+    const merged = new Set([...fromFirestore, ...Array.from(fromData)]);
     return Array.from(merged)
       .filter((p) => !POSITION_EXCLUDED.has(p.toUpperCase()))
       .sort((a, b) => {
