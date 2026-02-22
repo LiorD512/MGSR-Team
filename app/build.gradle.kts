@@ -163,4 +163,8 @@ dependencies {
     // Glance for home screen widget
     implementation(libs.glance.appwidget)
     implementation(libs.glance.material3)
+
+    // Google Play In-App Update (mandatory update flow)
+    implementation(libs.play.app.update)
+    implementation(libs.play.app.update.ktx)
 }

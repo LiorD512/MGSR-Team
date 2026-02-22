@@ -13,6 +13,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import com.liordahan.mgsrteam.appupdate.InAppUpdateHelper
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.lifecycleScope
@@ -34,6 +35,13 @@ class MainActivity : AppCompatActivity() {
 
     private val viewModel: IMainViewModel by viewModel()
 
+    private lateinit var inAppUpdateHelper: InAppUpdateHelper
+
+    private val updateLauncher = registerForActivityResult(
+        ActivityResultContracts.StartIntentSenderForResult()
+    ) { result ->
+        inAppUpdateHelper.onUpdateFlowResult(result.resultCode)
+    }
 
     /** Updated from Compose when isReady; avoids accessing viewModel before it's safe. */
     @Volatile
@@ -51,6 +59,8 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         val splashScreen = installSplashScreen()
         super.onCreate(savedInstanceState)
+
+        inAppUpdateHelper = InAppUpdateHelper(this, updateLauncher)
 
         // Keep native splash until app is ready — avoids empty screen; matches Compose overlay
         splashScreen.setKeepOnScreenCondition { !isAppReady }
@@ -82,10 +92,14 @@ class MainActivity : AppCompatActivity() {
                 val isReady by viewModel.isReady.collectAsStateWithLifecycle(initialValue = false)
                 LaunchedEffect(isReady) {
                     if (isReady) {
-                        isAppReady = true
-                        // Re-process intent when UI is ready — handles cold start race where
-                        // onCreate handleDeepLink may run before ViewModel/Compose is fully ready
-                        handleDeepLink(intent)
+                        // Check for mandatory app update first — if update needed, splash stays
+                        // until user updates. If no update, proceed to show app.
+                        inAppUpdateHelper.checkForUpdate(onNoUpdateNeeded = {
+                            isAppReady = true
+                            // Re-process intent when UI is ready — handles cold start race where
+                            // onCreate handleDeepLink may run before ViewModel/Compose is fully ready
+                            handleDeepLink(intent)
+                        })
                     }
                 }
                 // Listen for new intents while app is running (share/deep link when already open)
