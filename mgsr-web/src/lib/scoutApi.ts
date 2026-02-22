@@ -1,10 +1,11 @@
 /**
  * Football scout server API - recruitment search for requests.
  * Matches Android ScoutApiClient.findPlayersForRequest.
+ * Uses /api/scout/recruitment proxy to avoid CORS when deployed on Vercel.
  */
 
-const SCOUT_BASE_URL =
-  process.env.NEXT_PUBLIC_SCOUT_SERVER_URL || 'https://football-scout-server-l38w.onrender.com';
+// Use proxy to avoid CORS when deployed (browser → Vercel → Render)
+const SCOUT_BASE_URL = '/api/scout';
 
 export interface ScoutPlayerSuggestion {
   name: string;
