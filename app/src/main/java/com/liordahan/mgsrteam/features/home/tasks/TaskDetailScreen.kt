@@ -75,6 +75,8 @@ import com.liordahan.mgsrteam.ui.theme.HomeTextPrimary
 import com.liordahan.mgsrteam.ui.theme.HomeTextSecondary
 import com.liordahan.mgsrteam.ui.theme.HomeBlueAccent
 import com.liordahan.mgsrteam.ui.theme.HomePurpleAccent
+import com.liordahan.mgsrteam.utils.datePickerMillisToLocalMidnight
+import com.liordahan.mgsrteam.utils.localMidnightToDatePickerMillis
 import com.liordahan.mgsrteam.ui.utils.boldTextStyle
 import com.liordahan.mgsrteam.ui.utils.regularTextStyle
 import org.koin.androidx.compose.koinViewModel
@@ -431,13 +433,13 @@ fun TaskDetailScreen(
     // Date picker
     if (showDatePicker) {
         val datePickerState = rememberDatePickerState(
-            initialSelectedDateMillis = if (editedDueDate > 0L) editedDueDate else null
+            initialSelectedDateMillis = if (editedDueDate > 0L) localMidnightToDatePickerMillis(editedDueDate) else null
         )
         DatePickerDialog(
             onDismissRequest = { showDatePicker = false },
             confirmButton = {
                 TextButton(onClick = {
-                    datePickerState.selectedDateMillis?.let { editedDueDate = it }
+                    datePickerState.selectedDateMillis?.let { editedDueDate = datePickerMillisToLocalMidnight(it) }
                     showDatePicker = false
                 }) {
                     Text(stringResource(R.string.ok), style = boldTextStyle(HomeTealAccent, 14.sp))

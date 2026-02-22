@@ -133,6 +133,8 @@ import com.liordahan.mgsrteam.ui.theme.HomeTextPrimary
 import com.liordahan.mgsrteam.ui.theme.HomeTextSecondary
 import com.liordahan.mgsrteam.ui.components.SkeletonDashboardLayout
 import com.liordahan.mgsrteam.ui.components.ToastManager
+import com.liordahan.mgsrteam.utils.datePickerMillisToLocalMidnight
+import com.liordahan.mgsrteam.utils.daysBetweenCalendarDays
 import com.liordahan.mgsrteam.ui.utils.boldTextStyle
 import com.liordahan.mgsrteam.ui.utils.clickWithNoRipple
 import com.liordahan.mgsrteam.ui.utils.regularTextStyle
@@ -156,6 +158,10 @@ fun DashboardScreen(
     val isHebrew = LocaleManager.isHebrew(context)
     var showLanguageDialog by remember { mutableStateOf(false) }
     var showAddTaskSheet by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        viewModel.refreshTransferWindows()
+    }
 
     if (state.isLoading) {
         SkeletonDashboardLayout(
@@ -2094,11 +2100,10 @@ private fun TasksSummaryWidget(
 ) {
     val allTasks = remember(agentTasks) { agentTasks.values.flatten() }
     val now = System.currentTimeMillis()
-    val dayMs = 24 * 60 * 60 * 1000L
 
     val incompleteTasks = allTasks.filter { !it.isCompleted }
-    val dueToday = incompleteTasks.count { it.dueDate > 0L && ((it.dueDate - now) / dayMs).toInt() == 0 }
-    val overdue = incompleteTasks.count { it.dueDate > 0L && it.dueDate < now }
+    val dueToday = incompleteTasks.count { it.dueDate > 0L && daysBetweenCalendarDays(it.dueDate, now) == 0 }
+    val overdue = incompleteTasks.count { it.dueDate > 0L && daysBetweenCalendarDays(it.dueDate, now) < 0 }
     val total = allTasks.size
 
     val urgentTasks = remember(incompleteTasks) {
@@ -2839,7 +2844,7 @@ private fun AddTaskDialog(
             onDismissRequest = { showDatePicker = false },
             confirmButton = {
                 TextButton(onClick = {
-                    datePickerState.selectedDateMillis?.let { selectedDate = it }
+                    datePickerState.selectedDateMillis?.let { selectedDate = datePickerMillisToLocalMidnight(it) }
                     showDatePicker = false
                 }) {
                     Text(stringResource(R.string.ok), style = boldTextStyle(HomeTealAccent, 14.sp))
@@ -2862,13 +2867,13 @@ private fun AddTaskDialog(
 private fun formatDueDate(epochMillis: Long): String {
     if (epochMillis <= 0L) return ""
     val now = System.currentTimeMillis()
-    val diffDays = ((epochMillis - now) / (24 * 60 * 60 * 1000)).toInt()
+    val diffDays = daysBetweenCalendarDays(epochMillis, now)
     return when {
         diffDays < -1 -> stringResource(R.string.due_overdue, -diffDays)
         diffDays == -1 -> stringResource(R.string.due_yesterday)
         diffDays == 0 -> stringResource(R.string.due_today)
         diffDays == 1 -> stringResource(R.string.due_tomorrow)
-        diffDays <= 7 -> stringResource(R.string.due_in_days, diffDays)
+        diffDays <= 7 -> SimpleDateFormat("EEEE", Locale.getDefault()).format(Date(epochMillis))
         else -> SimpleDateFormat("MMM d", Locale.getDefault()).format(Date(epochMillis))
     }
 }
@@ -2877,7 +2882,7 @@ private fun dueDateColor(epochMillis: Long, isCompleted: Boolean): Color {
     if (isCompleted) return HomeGreenAccent
     if (epochMillis <= 0L) return HomeTextSecondary
     val now = System.currentTimeMillis()
-    val diffDays = ((epochMillis - now) / (24 * 60 * 60 * 1000)).toInt()
+    val diffDays = daysBetweenCalendarDays(epochMillis, now)
     return when {
         diffDays < 0 -> HomeRedAccent
         diffDays <= 2 -> HomeOrangeAccent

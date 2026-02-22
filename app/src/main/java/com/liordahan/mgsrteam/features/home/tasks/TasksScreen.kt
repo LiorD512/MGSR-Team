@@ -88,6 +88,7 @@ import com.liordahan.mgsrteam.ui.theme.HomeTextPrimary
 import com.liordahan.mgsrteam.ui.theme.HomeTextSecondary
 import com.liordahan.mgsrteam.ui.theme.HomeBlueAccent
 import com.liordahan.mgsrteam.ui.theme.HomePurpleAccent
+import com.liordahan.mgsrteam.utils.daysBetweenCalendarDays
 import com.liordahan.mgsrteam.ui.utils.boldTextStyle
 import com.liordahan.mgsrteam.ui.utils.regularTextStyle
 import kotlinx.coroutines.launch
@@ -760,13 +761,13 @@ private fun priorityColor(priority: Int): Color = when (priority) {
 private fun formatDueDate(epochMillis: Long): String {
     if (epochMillis <= 0L) return ""
     val now = System.currentTimeMillis()
-    val diffDays = ((epochMillis - now) / (24 * 60 * 60 * 1000)).toInt()
+    val diffDays = daysBetweenCalendarDays(epochMillis, now)
     return when {
         diffDays < -1 -> stringResource(R.string.due_overdue, -diffDays)
         diffDays == -1 -> stringResource(R.string.due_yesterday)
         diffDays == 0 -> stringResource(R.string.due_today)
         diffDays == 1 -> stringResource(R.string.due_tomorrow)
-        diffDays <= 7 -> stringResource(R.string.due_in_days, diffDays)
+        diffDays <= 7 -> SimpleDateFormat("EEEE", Locale.getDefault()).format(Date(epochMillis))
         else -> SimpleDateFormat("MMM d", Locale.getDefault()).format(Date(epochMillis))
     }
 }
@@ -775,7 +776,7 @@ private fun dueDateColor(epochMillis: Long, isCompleted: Boolean): Color {
     if (isCompleted) return HomeGreenAccent
     if (epochMillis <= 0L) return HomeTextSecondary
     val now = System.currentTimeMillis()
-    val diffDays = ((epochMillis - now) / (24 * 60 * 60 * 1000)).toInt()
+    val diffDays = daysBetweenCalendarDays(epochMillis, now)
     return when {
         diffDays < 0 -> HomeRedAccent
         diffDays <= 2 -> HomeOrangeAccent
@@ -786,19 +787,18 @@ private fun dueDateColor(epochMillis: Long, isCompleted: Boolean): Color {
 
 private fun filterTasks(tasks: List<AgentTask>, filter: TaskTimeFilter): List<AgentTask> {
     val now = System.currentTimeMillis()
-    val dayMs = 24 * 60 * 60 * 1000L
     return when (filter) {
         TaskTimeFilter.ALL -> tasks
         TaskTimeFilter.TODAY -> tasks.filter { task ->
             !task.isCompleted && task.dueDate > 0L &&
-                ((task.dueDate - now) / dayMs).toInt() == 0
+                daysBetweenCalendarDays(task.dueDate, now) == 0
         }
         TaskTimeFilter.WEEK -> tasks.filter { task ->
             !task.isCompleted && task.dueDate > 0L &&
-                ((task.dueDate - now) / dayMs).toInt() in -100..7
+                daysBetweenCalendarDays(task.dueDate, now) in -100..7
         }
         TaskTimeFilter.OVERDUE -> tasks.filter { task ->
-            !task.isCompleted && task.dueDate > 0L && task.dueDate < now
+            !task.isCompleted && task.dueDate > 0L && daysBetweenCalendarDays(task.dueDate, now) < 0
         }
     }
 }
@@ -818,7 +818,6 @@ private fun groupTasksByDate(
     labels: TaskSectionLabels
 ): List<Pair<String, List<AgentTask>>> {
     val now = System.currentTimeMillis()
-    val dayMs = 24 * 60 * 60 * 1000L
 
     val incomplete = tasks.filter { !it.isCompleted }
     val completed = tasks.filter { it.isCompleted }
@@ -835,12 +834,13 @@ private fun groupTasksByDate(
     )
 
     incomplete.forEach { task ->
+        val diffDays = if (task.dueDate > 0L) daysBetweenCalendarDays(task.dueDate, now) else 0
         val key = when {
             task.dueDate <= 0L -> "nodate"
-            task.dueDate < now -> "overdue"
-            ((task.dueDate - now) / dayMs).toInt() == 0 -> "today"
-            ((task.dueDate - now) / dayMs).toInt() == 1 -> "tomorrow"
-            ((task.dueDate - now) / dayMs).toInt() <= 7 -> "week"
+            diffDays < 0 -> "overdue"
+            diffDays == 0 -> "today"
+            diffDays == 1 -> "tomorrow"
+            diffDays <= 7 -> "week"
             else -> "later"
         }
         buckets[key]?.tasks?.add(task)

@@ -63,6 +63,7 @@ import com.liordahan.mgsrteam.ui.theme.HomeTextPrimary
 import com.liordahan.mgsrteam.ui.theme.HomeTextSecondary
 import com.liordahan.mgsrteam.ui.theme.HomeBlueAccent
 import com.liordahan.mgsrteam.ui.theme.HomePurpleAccent
+import com.liordahan.mgsrteam.utils.datePickerMillisToLocalMidnight
 import com.liordahan.mgsrteam.ui.utils.boldTextStyle
 import com.liordahan.mgsrteam.ui.utils.regularTextStyle
 import java.text.SimpleDateFormat
@@ -344,7 +345,7 @@ fun AddTaskBottomSheet(
             onDismissRequest = { showDatePicker = false },
             confirmButton = {
                 TextButton(onClick = {
-                    datePickerState.selectedDateMillis?.let { dueDate = it }
+                    datePickerState.selectedDateMillis?.let { dueDate = datePickerMillisToLocalMidnight(it) }
                     showDatePicker = false
                 }) {
                     Text(stringResource(R.string.ok), style = boldTextStyle(HomeTealAccent, 14.sp))

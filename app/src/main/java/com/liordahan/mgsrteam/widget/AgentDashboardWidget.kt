@@ -33,6 +33,7 @@ import androidx.glance.unit.ColorProvider
 import androidx.compose.runtime.CompositionLocalProvider
 import com.liordahan.mgsrteam.MainActivity
 import com.liordahan.mgsrteam.R
+import com.liordahan.mgsrteam.utils.daysBetweenCalendarDays
 import com.liordahan.mgsrteam.firebase.MgsrFirebaseMessagingService
 import com.liordahan.mgsrteam.localization.LocaleManager
 import java.text.SimpleDateFormat
@@ -314,7 +315,7 @@ private fun TaskRow(context: android.content.Context, task: WidgetDataStore.Widg
         task.dueDate <= 0L -> R.color.widget_text_secondary
         else -> {
             val now = System.currentTimeMillis()
-            val diffDays = ((task.dueDate - now) / (24 * 60 * 60 * 1000)).toInt()
+            val diffDays = daysBetweenCalendarDays(task.dueDate, now)
             when {
                 diffDays < 0 -> R.color.widget_accent_red
                 diffDays <= 2 -> R.color.widget_accent_orange
@@ -353,13 +354,13 @@ private fun TaskRow(context: android.content.Context, task: WidgetDataStore.Widg
 private fun formatDueDateForWidget(context: android.content.Context, epochMillis: Long): String {
     if (epochMillis <= 0L) return ""
     val now = System.currentTimeMillis()
-    val diffDays = ((epochMillis - now) / (24 * 60 * 60 * 1000)).toInt()
+    val diffDays = daysBetweenCalendarDays(epochMillis, now)
     return when {
         diffDays < -1 -> context.getString(R.string.due_overdue, -diffDays)
         diffDays == -1 -> context.getString(R.string.due_yesterday)
         diffDays == 0 -> context.getString(R.string.due_today)
         diffDays == 1 -> context.getString(R.string.due_tomorrow)
-        diffDays <= 7 -> context.getString(R.string.due_in_days, diffDays)
+        diffDays <= 7 -> SimpleDateFormat("EEEE", Locale.getDefault()).format(Date(epochMillis))
         else -> SimpleDateFormat("MMM d", Locale.getDefault()).format(Date(epochMillis))
     }
 }
