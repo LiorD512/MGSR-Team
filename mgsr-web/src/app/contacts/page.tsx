@@ -49,9 +49,9 @@ function buildContactsGroupedByCountry(
     a === OTHER_LABEL ? 1 : b === OTHER_LABEL ? -1 : a.localeCompare(b, isRtl ? 'he' : 'en')
   );
   return sortedCountries.map((country) => {
-    const list = grouped[country].sort((a, b) =>
-      (a.contactType === 'AGENCY' ? a.agencyName : a.clubName || '').localeCompare(
-        b.contactType === 'AGENCY' ? b.agencyName : b.clubName || '',
+    const list = (grouped[country] ?? []).sort((a, b) =>
+      (a.contactType === 'AGENCY' ? (a.agencyName ?? '') : (a.clubName ?? '')).localeCompare(
+        b.contactType === 'AGENCY' ? (b.agencyName ?? '') : (b.clubName ?? ''),
         isRtl ? 'he' : 'en'
       )
     );
