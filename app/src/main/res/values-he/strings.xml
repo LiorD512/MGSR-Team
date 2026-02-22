@@ -545,7 +545,7 @@
     <string name="contact_role_board">דירקטור</string>
     <string name="contact_role_ceo">מנכ״ל</string>
     <string name="contact_role_president">נשיא</string>
-    <string name="contact_role_scout">סקאוט</string>
+    <string name="contact_role_scout">סקאוט / אנליסט</string>
     <string name="contact_role_agent">סוכן</string>
     <string name="contact_role_intermediary">מתווך</string>
     <string name="contact_role_agency_dir">מנהל סוכנות</string>

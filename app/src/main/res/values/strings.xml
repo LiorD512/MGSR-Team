@@ -569,7 +569,7 @@
     <string name="contact_role_board">Board</string>
     <string name="contact_role_ceo">CEO</string>
     <string name="contact_role_president">President</string>
-    <string name="contact_role_scout">Scout</string>
+    <string name="contact_role_scout">Scout / Analyst</string>
     <string name="contact_role_agent">Agent</string>
     <string name="contact_role_intermediary">Intermediary</string>
     <string name="contact_role_agency_dir">Agency Dir</string>
