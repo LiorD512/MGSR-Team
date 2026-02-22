@@ -42,6 +42,7 @@ abstract class IRequestsViewModel : ViewModel() {
     abstract val onlinePlayersLoading: StateFlow<Boolean>
     abstract val onlinePlayersResult: StateFlow<List<AiHelperService.SimilarPlayerSuggestion>>
     abstract fun findPlayersOnlineForRequest(request: Request, languageCode: String)
+    abstract fun refreshPlayersOnlineForRequest(request: Request, languageCode: String)
     abstract fun clearOnlinePlayersResult()
     abstract fun addRequest(
         club: ClubSearchModel,
@@ -75,6 +76,9 @@ class RequestsViewModel(
     private val _onlinePlayersResult = MutableStateFlow<List<AiHelperService.SimilarPlayerSuggestion>>(emptyList())
     override val onlinePlayersResult: StateFlow<List<AiHelperService.SimilarPlayerSuggestion>> = _onlinePlayersResult.asStateFlow()
     override val positions: StateFlow<List<Position>> = _positions.asStateFlow()
+
+    /** URLs of players already shown — excluded on refresh so user gets fresh results */
+    private var _excludedOnlineUrls = mutableSetOf<String>()
 
     private val _addRequestMessage = MutableStateFlow<String?>(null)
     private val _addRequestError = MutableStateFlow<String?>(null)
@@ -187,16 +191,29 @@ class RequestsViewModel(
     }
 
     override fun findPlayersOnlineForRequest(request: Request, languageCode: String) {
+        _excludedOnlineUrls.clear()
+        _findPlayersOnline(request, languageCode)
+    }
+
+    override fun refreshPlayersOnlineForRequest(request: Request, languageCode: String) {
+        // Collect current player URLs so the next search excludes them
+        val currentUrls = _onlinePlayersResult.value.mapNotNull { it.transfermarktUrl }
+        _excludedOnlineUrls.addAll(currentUrls)
+        _findPlayersOnline(request, languageCode)
+    }
+
+    private fun _findPlayersOnline(request: Request, languageCode: String) {
         viewModelScope.launch {
             _onlinePlayersLoading.value = true
             _onlinePlayersResult.value = emptyList()
             val rosterUrls = playersRepository.playersFlow().first()
                 .mapNotNull { it.tmProfile?.takeIf { url -> url.isNotBlank() } }.toSet()
-            aiHelperService.findPlayersForRequestAsFlow(request, rosterUrls, languageCode)
+            val allExcluded = rosterUrls + _excludedOnlineUrls
+            aiHelperService.findPlayersForRequestAsFlow(request, allExcluded, languageCode)
                 .catch { _onlinePlayersResult.value = emptyList() }
                 .collect { list ->
-                    _onlinePlayersResult.value = list
-                    if (list.size >= 12) _onlinePlayersLoading.value = false
+                    _onlinePlayersResult.value = list.take(10)
+                    if (list.size >= 10) _onlinePlayersLoading.value = false
                 }
             _onlinePlayersLoading.value = false
         }
@@ -204,5 +221,6 @@ class RequestsViewModel(
 
     override fun clearOnlinePlayersResult() {
         _onlinePlayersResult.value = emptyList()
+        _excludedOnlineUrls.clear()
     }
 }

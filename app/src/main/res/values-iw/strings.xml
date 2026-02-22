@@ -433,6 +433,9 @@
     <string name="requests_online_players_sheet_title">שחקנים מהשוק</string>
     <string name="requests_online_players_loading">הAI סקאוט מחפש שחקנים…</string>
     <string name="requests_online_players_empty">לא נמצאו שחקנים תואמים באינטרנט</string>
+    <string name="requests_online_match_score">התאמה: %d%%</string>
+    <string name="requests_online_refresh">הצג שחקנים אחרים</string>
+    <string name="requests_online_results_count">נמצאו %d שחקנים</string>
     <string name="requests_no_match">אין שחקנים במאגר התואמים לבקשה זו</string>
     <string name="requests_no_requests">אין בקשות עדיין</string>
     <string name="requests_empty_hint">הוסף בקשות ממועדונים כשהם מבקשים שחקנים. לחץ + להוספת הבקשה הראשונה.</string>
@@ -560,7 +563,7 @@
     <string name="contact_role_board">דירקטור</string>
     <string name="contact_role_ceo">מנכ״ל</string>
     <string name="contact_role_president">נשיא</string>
-    <string name="contact_role_scout">סקאוט</string>
+    <string name="contact_role_scout">סקאוט / אנליסט</string>
     <string name="contact_role_agent">סוכן</string>
     <string name="contact_role_intermediary">מתווך</string>
     <string name="contact_role_agency_dir">מנהל סוכנות</string>

@@ -30,7 +30,8 @@ import org.json.JSONObject
 
 /**
  * AI Helper service using Firebase AI (Gemini) to find similar players.
- * Transfermarkt URLs are verified by searching Transfermarkt - AI-generated URLs are not trusted.
+ * Now enhanced with a local scouting server for faster, data-driven results.
+ * Falls back to Gemini AI when the server is unavailable.
  *
  * Prerequisites: Enable Firebase AI Logic in Firebase Console:
  * https://console.firebase.google.com/project/_/ailogic
@@ -38,7 +39,8 @@ import org.json.JSONObject
 class AiHelperService(
     private val playerSearch: PlayerSearch,
     private val clubSquadValueFetcher: ClubSquadValueFetcher,
-    private val latestReleases: LatestReleases
+    private val latestReleases: LatestReleases,
+    private val scoutApiClient: com.liordahan.mgsrteam.features.scouting.ScoutApiClient? = null
 ) {
 
     companion object {
@@ -51,7 +53,16 @@ class AiHelperService(
         val age: String?,
         val marketValue: String?,
         val transfermarktUrl: String?,
-        val similarityReason: String?
+        val similarityReason: String?,
+        val playingStyle: String? = null,
+        val matchPercent: Int? = null,
+        val scoutAnalysis: String? = null,
+        val league: String? = null,
+        val club: String? = null,
+        val nationality: String? = null,
+        val height: String? = null,
+        val contractEnd: String? = null,
+        val foot: String? = null
     )
 
     /**
@@ -66,9 +77,36 @@ class AiHelperService(
     suspend fun findSimilarPlayers(
         player: Player,
         languageCode: String = "en",
-        options: SimilarPlayersOptions = SimilarPlayersOptions()
+        options: SimilarPlayersOptions = SimilarPlayersOptions(),
+        excludeNames: List<String> = emptyList()
     ): Result<List<SimilarPlayerSuggestion>> =
         withContext(Dispatchers.IO) {
+            // Try scouting server first (fast, data-driven)
+            val tmUrl = player.tmProfile?.takeIf { it.isNotBlank() }
+            Log.d(TAG, """┌── findSimilarPlayers ──
+                |│ Player: ${player.fullName}
+                |│ TM URL: $tmUrl
+                |│ Server available: ${scoutApiClient != null}
+                |│ Excluding: ${excludeNames.size} players
+                |└──────────────────────────────""".trimMargin())
+            if (scoutApiClient != null && tmUrl != null) {
+                val serverResult = scoutApiClient.findSimilarPlayers(tmUrl, lang = languageCode, excludeNames = excludeNames)
+                if (serverResult.isSuccess) {
+                    val results = serverResult.getOrDefault(emptyList())
+                    if (results.isNotEmpty()) {
+                        Log.d(TAG, "✅ findSimilarPlayers: SERVER returned ${results.size} results for ${player.fullName}")
+                        return@withContext Result.success(results)
+                    } else {
+                        Log.w(TAG, "⚠️ findSimilarPlayers: server returned EMPTY list, falling back to AI")
+                    }
+                } else {
+                    Log.w(TAG, "❌ findSimilarPlayers: server FAILED, falling back to AI", serverResult.exceptionOrNull())
+                }
+            } else {
+                Log.d(TAG, "⏭️ findSimilarPlayers: skipping server (client=${scoutApiClient != null}, tmUrl=$tmUrl)")
+            }
+
+            // Fallback to Gemini AI
             try {
                 val model = FirebaseAI.getInstance(backend = GenerativeBackend.googleAI()).generativeModel(
                     modelName = "gemini-2.5-flash",
@@ -159,6 +197,7 @@ class AiHelperService(
 
     /**
      * Finds players from the open market (Transfermarkt) that match a club request.
+     * Server path: Tries the scouting server first for data-driven results.
      * FAST path: For "Free/Free loan" requests, uses Transfermarkt LatestReleases (free agents) directly — no AI.
      * AI path: For other requests, uses Gemini + parallel verification with rate-limited TM fetches.
      */
@@ -168,6 +207,23 @@ class AiHelperService(
         languageCode: String = "en"
     ): Result<List<SimilarPlayerSuggestion>> =
         withContext(Dispatchers.IO) {
+            // Try scouting server first
+            if (scoutApiClient != null) {
+                Log.d(TAG, "┌── findPlayersForRequest: trying SERVER for ${request.clubName}")
+                val serverResult = tryServerForRequest(request, excludeTmProfileUrls, languageCode)
+                if (serverResult != null && serverResult.isNotEmpty()) {
+                    val filtered = serverResult.filter { s ->
+                        s.transfermarktUrl == null || s.transfermarktUrl !in excludeTmProfileUrls
+                    }
+                    Log.d(TAG, "✅ findPlayersForRequest: SERVER returned ${serverResult.size} results (${filtered.size} after filtering) for ${request.clubName}")
+                    return@withContext Result.success(filtered.take(10))
+                } else {
+                    Log.w(TAG, "❌ findPlayersForRequest: server returned ${serverResult?.size ?: "null"}, falling back to AI")
+                }
+            } else {
+                Log.d(TAG, "⏭️ findPlayersForRequest: no server client, using AI path")
+            }
+
             try {
                 val positionGroups = request.position?.let { getPositionGroupsFromCode(it) } ?: emptySet()
                 Log.d(TAG, """
@@ -266,7 +322,7 @@ class AiHelperService(
 
     /**
      * Same as findPlayersForRequest but emits results progressively.
-     * User sees first matches in ~3–5s instead of waiting for all.
+     * Tries scouting server first (instant results), falls back to AI path.
      */
     fun findPlayersForRequestAsFlow(
         request: Request,
@@ -274,6 +330,24 @@ class AiHelperService(
         languageCode: String = "en"
     ): Flow<List<SimilarPlayerSuggestion>> = channelFlow {
         withContext(Dispatchers.IO) {
+            // Try scouting server first (instant results)
+            if (scoutApiClient != null) {
+                Log.d(TAG, "┌── findPlayersForRequestAsFlow: trying SERVER for ${request.clubName}")
+                val serverResult = tryServerForRequest(request, excludeTmProfileUrls, languageCode)
+                if (serverResult != null && serverResult.isNotEmpty()) {
+                    val filtered = serverResult.filter { s ->
+                        s.transfermarktUrl == null || s.transfermarktUrl !in excludeTmProfileUrls
+                    }.take(10)
+                    Log.d(TAG, "✅ findPlayersForRequestAsFlow: SERVER returned ${serverResult.size} results (${filtered.size} after filtering)")
+                    send(filtered)
+                    return@withContext
+                } else {
+                    Log.w(TAG, "❌ findPlayersForRequestAsFlow: server returned ${serverResult?.size ?: "null"}, falling back to AI")
+                }
+            } else {
+                Log.d(TAG, "⏭️ findPlayersForRequestAsFlow: no server client, using AI path")
+            }
+
             val positionGroups = request.position?.let { getPositionGroupsFromCode(it) } ?: emptySet()
             // FAST PATH: Free/Free loan
             if (request.transferFee?.trim()?.lowercase() == "free/free loan" && positionGroups.isNotEmpty()) {
@@ -608,6 +682,49 @@ class AiHelperService(
     }
 
     /**
+     * Try the scouting server to find players matching a request.
+     * Returns null if the server is unavailable or returns no results.
+     */
+    private suspend fun tryServerForRequest(request: Request, excludeUrls: Set<String> = emptySet(), lang: String = "en"): List<SimilarPlayerSuggestion>? {
+        val api = scoutApiClient ?: return null
+        return try {
+            Log.d(TAG, """┌── tryServerForRequest ──
+                |│ Club: ${request.clubName} (${request.clubCountry})
+                |│ Club TM: ${request.clubTmProfile}
+                |│ Position: ${request.position}
+                |│ Age: ${request.minAge} - ${request.maxAge}
+                |│ Foot: ${request.dominateFoot}
+                |│ Transfer Fee: ${request.transferFee}
+                |│ Notes: ${request.notes}
+                |│ Exclude URLs: ${excludeUrls.size}
+                |│ Lang: $lang
+                |└──────────────────────────────""".trimMargin())
+            val result = api.findPlayersForRequest(
+                position = request.position,
+                ageMin = request.minAge,
+                ageMax = request.maxAge,
+                foot = request.dominateFoot?.takeIf { it.isNotBlank() && it.lowercase() != "doesn't matter" },
+                notes = request.notes,
+                transferFee = request.transferFee,
+                excludeUrls = excludeUrls,
+                lang = lang,
+                sortBy = "score",
+                limit = 15,
+                // Club context for professional scouting
+                clubUrl = request.clubTmProfile,
+                clubName = request.clubName,
+                clubCountry = request.clubCountry,
+            )
+            val players = result.getOrNull()
+            Log.d(TAG, "tryServerForRequest result: ${players?.size ?: "null"} players")
+            players
+        } catch (e: Exception) {
+            Log.w(TAG, "tryServerForRequest failed", e)
+            null
+        }
+    }
+
+    /**
      * Returns acceptable position CODES for a request (used with positionsOverlap).
      * CF ≠ CB: Center Forward must NOT match Center Back. Same position role only.
      */
@@ -722,7 +839,6 @@ class AiHelperService(
     ): Result<String> =
         withContext(Dispatchers.IO) {
             try {
-                // Use same config pattern as findSimilarPlayers (which works); avoid maxOutputTokens to use model default
                 val model = FirebaseAI.getInstance(backend = GenerativeBackend.googleAI()).generativeModel(
                     modelName = "gemini-2.5-flash",
                     generationConfig = generationConfig {
@@ -764,7 +880,7 @@ class AiHelperService(
                     
                     Note: If a field is missing above (e.g. no contract, no description), do not invent it. Work with what is provided.
                     
-                    Write the report in $outputLanguage. Use clear section headers where appropriate. Be specific about what the data shows. Avoid generic fluff. Your verdict should be actionable. Never fabricate facts.
+                    Write the report in $outputLanguage. Use clear numbered section headers (e.g. "1. Executive Summary", "2. Technical Profile"). Do NOT use markdown asterisks (**bold**) or hashtags — use plain text only. Be specific about what the data shows. Avoid generic fluff. Your verdict should be actionable. Never fabricate facts.
                 """.trimIndent()
                 val response = model.generateContent(prompt)
                 val text = response.text?.trim()

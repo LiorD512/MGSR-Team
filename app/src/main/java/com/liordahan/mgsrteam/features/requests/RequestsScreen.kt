@@ -1,6 +1,7 @@
 package com.liordahan.mgsrteam.features.requests
 
 import android.Manifest
+import android.content.Context
 import android.content.Intent
 import android.media.MediaRecorder
 import android.net.Uri
@@ -29,6 +30,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -66,7 +68,9 @@ import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkAdd
 import androidx.compose.material.icons.filled.Link
+import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.filled.People
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Stop
@@ -124,6 +128,7 @@ import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -139,6 +144,7 @@ import com.liordahan.mgsrteam.features.requests.models.DominateFootOptions
 import com.liordahan.mgsrteam.features.requests.voice.RequestVoiceAnalyzer
 import com.liordahan.mgsrteam.features.requests.voice.RequestVoiceRecorder
 import com.liordahan.mgsrteam.features.requests.models.PositionDisplayNames
+import com.liordahan.mgsrteam.localization.CountryNameTranslator
 import com.liordahan.mgsrteam.features.requests.models.Request
 import com.liordahan.mgsrteam.features.requests.models.SalaryRangeOptions
 import com.liordahan.mgsrteam.features.requests.models.TransferFeeOptions
@@ -166,6 +172,7 @@ import com.liordahan.mgsrteam.ui.utils.boldTextStyle
 import com.liordahan.mgsrteam.ui.utils.clickWithNoRipple
 import com.liordahan.mgsrteam.ui.utils.regularTextStyle
 import android.view.HapticFeedbackConstants
+import androidx.compose.foundation.layout.offset
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
@@ -234,7 +241,7 @@ fun RequestsScreen(
                     onAddClick = { showAddSheet = true },
                     onBackClick = { navController.popBackStack() },
                     onShareClick = {
-                        val text = formatRequestsForShare(state.requestsByPositionCountry)
+                        val text = formatRequestsForShare(context, state.requestsByPositionCountry)
                         val intent = Intent(Intent.ACTION_SEND).apply {
                             type = "text/plain"
                             putExtra(Intent.EXTRA_TEXT, text)
@@ -291,7 +298,8 @@ fun RequestsScreen(
                                             } else {
                                                 expandedPositions + position
                                             }
-                                        }
+                                        },
+                                        context = context
                                     )
                                 }
                                 if (isPositionExpanded) {
@@ -310,7 +318,8 @@ fun RequestsScreen(
                                                     } else {
                                                         expandedCountryKeys + countryKey
                                                     }
-                                                }
+                                                },
+                                                context = context
                                             )
                                         }
                                         if (isCountryExpanded) {
@@ -390,6 +399,9 @@ fun RequestsScreen(
                                                     },
                                                     onTryAgainSearch = {
                                                         viewModel.findPlayersOnlineForRequest(request, LocaleManager.getSavedLanguage(context))
+                                                    },
+                                                    onRefreshSearch = {
+                                                        viewModel.refreshPlayersOnlineForRequest(request, LocaleManager.getSavedLanguage(context))
                                                     },
                                                     onEdit = { /* Edit flow - can be implemented later */ },
                                                     onDelete = { requestToDelete = request }
@@ -546,9 +558,10 @@ private fun PositionExpandableCard(
     position: String,
     count: Int,
     isExpanded: Boolean,
-    onToggleExpand: () -> Unit
+    onToggleExpand: () -> Unit,
+    context: Context
 ) {
-    val longName = PositionDisplayNames.toLongName(position)
+    val displayName = PositionDisplayNames.getDisplayName(context, position)
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -581,7 +594,7 @@ private fun PositionExpandableCard(
                 Text(position, style = boldTextStyle(HomeTealAccent, 11.sp))
             }
             Spacer(Modifier.width(12.dp))
-            Text(longName, style = boldTextStyle(HomeTextPrimary, 15.sp))
+            Text(displayName, style = boldTextStyle(HomeTextPrimary, 15.sp))
             Spacer(Modifier.weight(1f))
             Text(
                 "($count)",
@@ -605,8 +618,10 @@ private fun CountryExpandableRow(
     countryFlag: String?,
     count: Int,
     isExpanded: Boolean,
-    onToggleExpand: () -> Unit
+    onToggleExpand: () -> Unit,
+    context: Context
 ) {
+    val displayCountry = CountryNameTranslator.getDisplayName(context, country)
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -638,14 +653,14 @@ private fun CountryExpandableRow(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    country.take(1).uppercase(),
+                    displayCountry.take(1).uppercase(),
                     style = boldTextStyle(HomeTextSecondary, 10.sp)
                 )
             }
             Spacer(Modifier.width(8.dp))
         }
         Text(
-            country,
+            displayCountry,
             style = boldTextStyle(HomeTextPrimary, 14.sp)
         )
         Spacer(Modifier.weight(1f))
@@ -689,6 +704,7 @@ private fun RequestCard(
     onOpenTransfermarkt: (String) -> Unit,
     onToggleShortlist: (AiHelperService.SimilarPlayerSuggestion) -> Unit,
     onTryAgainSearch: () -> Unit,
+    onRefreshSearch: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
@@ -1052,6 +1068,19 @@ private fun RequestCard(
                             modifier = Modifier.fillMaxWidth(),
                             verticalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
+                            // Results count header
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(bottom = 4.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    stringResource(R.string.requests_online_results_count, onlinePlayers.size),
+                                    style = regularTextStyle(HomeTextSecondary, 11.sp)
+                                )
+                            }
                             onlinePlayers.forEach { suggestion ->
                                 val url = suggestion.transfermarktUrl
                                 val isInShortlist = url != null && (url in shortlistUrls || url in justAddedUrls)
@@ -1064,15 +1093,23 @@ private fun RequestCard(
                                     onToggleShortlist = { onToggleShortlist(suggestion) }
                                 )
                             }
-                            Spacer(Modifier.height(8.dp))
+                            Spacer(Modifier.height(4.dp))
+                            // Refresh button — replaces results with a different batch
                             TextButton(
-                                onClick = onTryAgainSearch,
+                                onClick = onRefreshSearch,
                                 modifier = Modifier.fillMaxWidth(),
                                 colors = ButtonDefaults.textButtonColors(contentColor = HomeTealAccent)
                             ) {
+                                Icon(
+                                    Icons.Default.Refresh,
+                                    contentDescription = null,
+                                    tint = HomeTealAccent,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(Modifier.width(6.dp))
                                 Text(
-                                    stringResource(R.string.contacts_try_again),
-                                    style = regularTextStyle(HomeTealAccent, 12.sp)
+                                    stringResource(R.string.requests_online_refresh),
+                                    style = regularTextStyle(HomeTealAccent, 13.sp)
                                 )
                             }
                         }
@@ -1126,6 +1163,9 @@ private fun MatchingPlayerRow(
     player: Player,
     onClick: () -> Unit
 ) {
+    val context = LocalContext.current
+    val posDisplay = player.positions?.firstOrNull()?.takeIf { it.isNotBlank() }
+        ?.let { PositionDisplayNames.getDisplayName(context, it) } ?: "-"
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -1166,7 +1206,7 @@ private fun MatchingPlayerRow(
                 style = boldTextStyle(HomeTextPrimary, 14.sp)
             )
             Text(
-                "${player.age ?: "-"} • ${player.positions?.firstOrNull()?.takeIf { it.isNotBlank() } ?: "-"} • ${player.marketValue ?: "-"}",
+                "${player.age ?: "-"} • $posDisplay • ${player.marketValue ?: "-"}",
                 style = regularTextStyle(HomeTextSecondary, 11.sp),
                 modifier = Modifier.padding(top = 2.dp)
             )
@@ -1193,7 +1233,8 @@ private fun RequestOnlinePlayersBottomSheet(
     onOpenTransfermarkt: (String) -> Unit,
     onToggleShortlist: (AiHelperService.SimilarPlayerSuggestion) -> Unit
 ) {
-    val positionName = PositionDisplayNames.toLongName(request.position ?: "")
+    val context = LocalContext.current
+    val positionName = PositionDisplayNames.getDisplayName(context, request.position)
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
@@ -1310,72 +1351,321 @@ private fun OnlinePlayerSuggestionRow(
     onClick: () -> Unit,
     onToggleShortlist: () -> Unit
 ) {
+    val ctx = LocalContext.current
+    val layoutDirection = ctx.resources.configuration.layoutDirection
+    val isRtl = layoutDirection == android.util.LayoutDirection.RTL
+    var isExpanded by remember { mutableStateOf(false) }
+
     Box(modifier = Modifier.fillMaxWidth()) {
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(10.dp))
+                .clip(RoundedCornerShape(12.dp))
                 .background(HomeDarkBackground)
-                .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(10.dp))
-                .clickWithNoRipple { onClick() }
-                .padding(horizontal = 12.dp, vertical = 14.dp),
-            verticalAlignment = Alignment.Top
+                .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(12.dp))
         ) {
-            Box(
+            // ── Collapsed header: Score + Name/Info + Expand arrow ──
+            Row(
                 modifier = Modifier
-                    .size(44.dp)
-                    .clip(CircleShape)
-                    .background(HomeDarkCardBorder),
-                contentAlignment = Alignment.Center
+                    .fillMaxWidth()
+                    .clickWithNoRipple { isExpanded = !isExpanded }
+                    .padding(12.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    (suggestion.name.take(2)).uppercase(),
-                    style = boldTextStyle(HomeTextSecondary, 13.sp)
+                // Match score circle
+                suggestion.matchPercent?.let { pct ->
+                    val scoreColor = when {
+                        pct >= 75 -> HomeGreenAccent
+                        pct >= 55 -> HomeTealAccent
+                        else -> HomeOrangeAccent
+                    }
+                    Box(
+                        modifier = Modifier
+                            .size(44.dp)
+                            .clip(CircleShape)
+                            .background(scoreColor.copy(alpha = 0.15f))
+                            .border(2.dp, scoreColor, CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                "$pct",
+                                style = boldTextStyle(scoreColor, 15.sp)
+                            )
+                            Text(
+                                "%",
+                                style = regularTextStyle(scoreColor, 8.sp),
+                                modifier = Modifier.offset(y = (-2).dp)
+                            )
+                        }
+                    }
+                } ?: run {
+                    // No score — show initials
+                    Box(
+                        modifier = Modifier
+                            .size(44.dp)
+                            .clip(CircleShape)
+                            .background(HomeDarkCardBorder),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            suggestion.name.take(2).uppercase(),
+                            style = boldTextStyle(HomeTextSecondary, 13.sp)
+                        )
+                    }
+                }
+
+                Spacer(Modifier.width(12.dp))
+
+                // Name + concise details
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(3.dp)
+                ) {
+                    // Player name
+                    Text(
+                        suggestion.name,
+                        style = boldTextStyle(HomeTextPrimary, 15.sp),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    // Age · Position · Market Value
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        val posDisplay = suggestion.position?.let {
+                            PositionDisplayNames.getDisplayName(ctx, it)
+                        }
+                        val infoText = buildString {
+                            suggestion.age?.let { append(it) }
+                            posDisplay?.let { pos ->
+                                if (isNotBlank()) append(" · ")
+                                append(pos)
+                            }
+                        }
+                        if (infoText.isNotBlank()) {
+                            Text(
+                                infoText,
+                                style = regularTextStyle(HomeTextSecondary, 12.sp),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                        suggestion.marketValue?.takeIf { it.isNotBlank() }?.let { mv ->
+                            if (infoText.isNotBlank()) {
+                                Text("·", style = regularTextStyle(HomeTextSecondary, 12.sp))
+                            }
+                            Text(mv, style = boldTextStyle(HomeGreenAccent, 12.sp))
+                        }
+                    }
+                    // League + Playing style preview
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        suggestion.league?.let { leagueName ->
+                            Text(
+                                text = leagueName,
+                                style = regularTextStyle(HomeTextSecondary, 11.sp),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .background(HomeDarkCardBorder.copy(alpha = 0.5f))
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
+                        suggestion.playingStyle?.takeIf { it.isNotBlank() }?.let { style ->
+                            Text(
+                                text = style,
+                                style = boldTextStyle(HomeTealAccent, 10.sp),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .background(HomeTealAccent.copy(alpha = 0.10f))
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
+                }
+
+                // Expand/collapse arrow
+                Icon(
+                    Icons.Default.ExpandMore,
+                    contentDescription = if (isExpanded) "Collapse" else "Expand",
+                    tint = HomeTextSecondary,
+                    modifier = Modifier
+                        .size(22.dp)
+                        .graphicsLayer { rotationZ = if (isExpanded) 180f else 0f }
                 )
             }
-            Spacer(Modifier.width(12.dp))
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .align(Alignment.Top),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                Text(
-                    suggestion.name,
-                    style = boldTextStyle(HomeTextPrimary, 14.sp)
-                )
-                Text(
-                    "${suggestion.age ?: "-"} • ${suggestion.position ?: "-"} • ${suggestion.marketValue ?: "-"}",
-                    style = regularTextStyle(HomeTextSecondary, 12.sp)
-                )
-                suggestion.similarityReason?.takeIf { it.isNotBlank() }?.let { reason ->
-                    Text(
-                        reason,
-                        style = regularTextStyle(HomeTextSecondary, 12.sp),
-                        modifier = Modifier.padding(top = 2.dp),
-                        lineHeight = 18.sp
-                    )
+
+            // ── Expanded section: scout narrative + details + actions ──
+            AnimatedVisibility(visible = isExpanded) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 12.dp, end = 12.dp, bottom = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    // Scout narrative card
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(HomeDarkCard.copy(alpha = 0.6f))
+                            .border(1.dp, HomeDarkCardBorder.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
+                            .padding(10.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        // Scout analysis narrative text
+                        suggestion.scoutAnalysis?.takeIf { it.isNotBlank() }?.let { analysis ->
+                            Text(
+                                text = analysis,
+                                style = regularTextStyle(HomeTextPrimary, 12.sp),
+                                lineHeight = 19.sp,
+                                textAlign = if (isRtl) TextAlign.Right else TextAlign.Start
+                            )
+                        }
+
+                        // Quick-info row: foot + height + nationality (compact chips)
+                        val quickInfo = buildList {
+                            suggestion.foot?.let { f ->
+                                val footLabel = when (f.lowercase()) {
+                                    "right" -> if (isRtl) "🦶 ימין" else "🦶 Right"
+                                    "left" -> if (isRtl) "🦶 שמאל" else "🦶 Left"
+                                    "both" -> if (isRtl) "🦶 דו-רגלי" else "🦶 Both"
+                                    else -> "🦶 $f"
+                                }
+                                add(footLabel)
+                            }
+                            suggestion.height?.let { add("📏 $it") }
+                            suggestion.nationality?.let { add("🌍 $it") }
+                            suggestion.contractEnd?.let { c ->
+                                val label = if (isRtl) "📋 עד $c" else "📋 Until $c"
+                                add(label)
+                            }
+                        }
+                        if (quickInfo.isNotEmpty()) {
+                            // Divider if we had narrative text above
+                            if (!suggestion.scoutAnalysis.isNullOrBlank()) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(1.dp)
+                                        .background(HomeDarkCardBorder.copy(alpha = 0.4f))
+                                )
+                            }
+                            // Flow layout for quick info chips
+                            @OptIn(ExperimentalLayoutApi::class)
+                            FlowRow(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                quickInfo.forEach { info ->
+                                    Text(
+                                        text = info,
+                                        style = regularTextStyle(HomeTextSecondary, 11.sp),
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(4.dp))
+                                            .background(HomeDarkBackground.copy(alpha = 0.6f))
+                                            .padding(horizontal = 6.dp, vertical = 3.dp)
+                                    )
+                                }
+                            }
+                        }
+
+                        // Fallback: show raw similarity reason if nothing else
+                        if (suggestion.scoutAnalysis.isNullOrBlank() && quickInfo.isEmpty()) {
+                            suggestion.similarityReason?.takeIf { it.isNotBlank() }?.let { reason ->
+                                Text(
+                                    text = reason,
+                                    style = regularTextStyle(HomeTextSecondary, 12.sp),
+                                    lineHeight = 18.sp,
+                                    textAlign = if (isRtl) TextAlign.Right else TextAlign.Start
+                                )
+                            }
+                        }
+                    }
+
+                    // Action buttons: Add to Shortlist + Open Transfermarkt
+                    if (suggestion.transfermarktUrl != null) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            // Add to Shortlist button
+                            Row(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(
+                                        if (isInShortlist) HomeGreenAccent.copy(alpha = 0.15f)
+                                        else HomeTealAccent.copy(alpha = 0.12f)
+                                    )
+                                    .clickWithNoRipple { onToggleShortlist() }
+                                    .padding(horizontal = 10.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                Icon(
+                                    imageVector = if (isInShortlist) Icons.Default.Bookmark else Icons.Default.BookmarkAdd,
+                                    contentDescription = null,
+                                    tint = if (isInShortlist) HomeGreenAccent else HomeTealAccent,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(Modifier.width(6.dp))
+                                Text(
+                                    text = if (isInShortlist) stringResource(R.string.shortlist_in_shortlist)
+                                           else stringResource(R.string.shortlist_add_to_shortlist),
+                                    style = regularTextStyle(
+                                        if (isInShortlist) HomeGreenAccent else HomeTealAccent,
+                                        11.sp
+                                    ),
+                                    maxLines = 1
+                                )
+                            }
+
+                            // Open Transfermarkt button
+                            Row(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(HomeOrangeAccent.copy(alpha = 0.12f))
+                                    .clickWithNoRipple { onClick() }
+                                    .padding(horizontal = 10.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                Icon(
+                                    Icons.Default.OpenInNew,
+                                    contentDescription = null,
+                                    tint = HomeOrangeAccent,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(Modifier.width(6.dp))
+                                Text(
+                                    text = "Transfermarkt",
+                                    style = regularTextStyle(HomeOrangeAccent, 11.sp),
+                                    maxLines = 1
+                                )
+                            }
+                        }
+                    }
                 }
             }
-            Spacer(Modifier.width(8.dp))
-            IconButton(
-                onClick = onToggleShortlist,
-                modifier = Modifier.size(48.dp)
-            ) {
-                Icon(
-                    imageVector = if (isInShortlist) Icons.Default.Bookmark else Icons.Default.BookmarkAdd,
-                    contentDescription = if (isInShortlist) stringResource(R.string.shortlist_in_shortlist) else stringResource(R.string.shortlist_add_to_shortlist),
-                    tint = if (isInShortlist) HomeGreenAccent else HomeTextSecondary,
-                    modifier = Modifier.size(22.dp)
-                )
-            }
         }
+
+        // Loading overlay for shortlist pending
         if (isShortlistPending) {
             Box(
                 modifier = Modifier
                     .matchParentSize()
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.5f)),
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color.Black.copy(alpha = 0.5f)),
                 contentAlignment = Alignment.Center
             ) {
                 CircularProgressIndicator(
@@ -1396,7 +1686,8 @@ private fun RequestMatchingPlayersBottomSheet(
     onDismiss: () -> Unit,
     onPlayerClick: (Player) -> Unit
 ) {
-    val positionName = PositionDisplayNames.toLongName(request.position ?: "")
+    val context = LocalContext.current
+    val positionName = PositionDisplayNames.getDisplayName(context, request.position)
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
@@ -1524,18 +1815,19 @@ private fun formatDate(timestamp: Long?): String {
     return SimpleDateFormat("MMM d, yyyy", Locale.getDefault()).format(Date(timestamp))
 }
 
-private fun formatRequestsForShare(requestsByPositionCountry: Map<String, Map<String, List<Request>>>): String {
+private fun formatRequestsForShare(context: Context, requestsByPositionCountry: Map<String, Map<String, List<Request>>>): String {
     if (requestsByPositionCountry.isEmpty()) return "No requests at the moment."
     val sb = StringBuilder()
     sb.appendLine("MGSR Team – Player Requests")
     sb.appendLine("─────────────────────────")
     sb.appendLine()
     requestsByPositionCountry.forEach { (position, countries) ->
-        val longName = PositionDisplayNames.toLongName(position)
-        sb.appendLine("$longName ($position)")
+        val positionDisplay = PositionDisplayNames.getDisplayName(context, position)
+        sb.appendLine("$positionDisplay ($position)")
         countries.forEach { (country, requests) ->
+            val countryDisplay = CountryNameTranslator.getDisplayName(context, country)
             requests.forEach { req ->
-                sb.appendLine("  • ${req.clubName ?: "Unknown"}${if (!country.isNullOrBlank() && country != "Other") " ($country)" else ""}")
+                sb.appendLine("  • ${req.clubName ?: "Unknown"}${if (!country.isNullOrBlank() && country != "Other") " ($countryDisplay)" else ""}")
                 val ageInfo = when {
                     req.ageDoesntMatter == true -> "Age: Any"
                     req.minAge != null && req.maxAge != null && req.minAge > 0 && req.maxAge > 0 ->
@@ -2016,6 +2308,7 @@ private fun AddRequestStep1ClubContent(
     onSelectContact: (Contact) -> Unit,
     clubSearchFocusRequester: FocusRequester
 ) {
+    val context = LocalContext.current
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -2090,7 +2383,7 @@ private fun AddRequestStep1ClubContent(
                 Column(Modifier.weight(1f)) {
                     Text(club.clubName ?: "", style = boldTextStyle(HomeTextPrimary, 12.sp))
                     club.clubCountry?.let { c ->
-                        Text(c, style = regularTextStyle(HomeTextSecondary, 11.sp))
+                        Text(CountryNameTranslator.getDisplayName(context, c), style = regularTextStyle(HomeTextSecondary, 11.sp))
                     }
                 }
                 TextButton(onClick = onChangeClub) {
@@ -2148,6 +2441,7 @@ private fun AddRequestStep2PositionContent(
     selectedPosition: String?,
     onSelectPosition: (String) -> Unit
 ) {
+    val context = LocalContext.current
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -2166,8 +2460,7 @@ private fun AddRequestStep2PositionContent(
                 ) {
                     rowItems.forEach { pos ->
                         val posName = pos.name ?: ""
-                        val displayName = PositionDisplayNames.toLongName(posName).lowercase()
-                            .split(" ").joinToString(" ") { it.replaceFirstChar { c -> c.uppercase() } }
+                        val displayName = PositionDisplayNames.getDisplayName(context, posName)
                         val isSelected = selectedPosition == posName
                         Text(
                             text = displayName,
@@ -2556,6 +2849,7 @@ private fun AddRequestRecordingContent(
 
 @Composable
 private fun ClubSearchResultRow(club: ClubSearchModel, onClick: () -> Unit) {
+    val context = LocalContext.current
     Card(
         modifier = Modifier.fillMaxWidth().clickWithNoRipple(onClick),
         shape = RoundedCornerShape(12.dp),
@@ -2578,7 +2872,7 @@ private fun ClubSearchResultRow(club: ClubSearchModel, onClick: () -> Unit) {
             Column(Modifier.weight(1f)) {
                 Text(club.clubName ?: "", style = boldTextStyle(HomeTextPrimary, 14.sp))
                 club.clubCountry?.let { country ->
-                    Text(country, style = regularTextStyle(HomeTextSecondary, 12.sp))
+                    Text(CountryNameTranslator.getDisplayName(context, country), style = regularTextStyle(HomeTextSecondary, 12.sp))
                 }
             }
         }
