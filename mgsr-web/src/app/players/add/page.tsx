@@ -174,7 +174,7 @@ export default function AddPlayerPage() {
           }
         });
 
-        const playerToSave = {
+        const playerToSave: Record<string, unknown> = {
           tmProfile: selectedPlayer.tmProfile,
           fullName: selectedPlayer.fullName,
           height: selectedPlayer.height,
@@ -192,19 +192,27 @@ export default function AddPlayerPage() {
           isOnLoan: selectedPlayer.isOnLoan || false,
           onLoanFromClub: selectedPlayer.onLoanFromClub,
           foot: selectedPlayer.foot,
-          playerPhoneNumber: playerPhone.trim() || undefined,
-          agentPhoneNumber: agentPhone.trim() || undefined,
         };
+        const pPhone = playerPhone.trim();
+        const aPhone = agentPhone.trim();
+        if (pPhone) playerToSave.playerPhoneNumber = pPhone;
+        if (aPhone) playerToSave.agentPhoneNumber = aPhone;
 
-        await addDoc(collection(db, 'Players'), playerToSave);
-        await addDoc(collection(db, 'FeedEvents'), {
+        // Firestore rejects undefined; remove any undefined values
+        const sanitized = Object.fromEntries(
+          Object.entries(playerToSave).filter(([, v]) => v !== undefined)
+        );
+
+        await addDoc(collection(db, 'Players'), sanitized);
+        const feedEvent: Record<string, unknown> = {
           type: 'PLAYER_ADDED',
-          playerName: playerToSave.fullName,
-          playerImage: playerToSave.profileImage,
+          playerName: playerToSave.fullName ?? null,
+          playerImage: playerToSave.profileImage ?? null,
           playerTmProfile: playerToSave.tmProfile,
           timestamp: Date.now(),
           agentName,
-        });
+        };
+        await addDoc(collection(db, 'FeedEvents'), feedEvent);
 
         if (fromShortlist) {
           const shortlistRef = doc(db, 'Shortlists', user.uid);
