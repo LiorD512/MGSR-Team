@@ -13,7 +13,9 @@ async function fetchBackend(path: string, options?: RequestInit) {
   } catch (err) {
     if (err instanceof TypeError && err.message === 'Failed to fetch') {
       throw new Error(
-        'Cannot reach backend. Make sure it is running: cd mgsr-backend && npm run dev'
+        BACKEND_URL
+          ? 'Cannot reach backend. Run: cd mgsr-backend && npm run dev'
+          : 'Cannot reach API. Try refreshing, or remove NEXT_PUBLIC_BACKEND_URL from .env.local to use built-in routes.'
       );
     }
     throw err;

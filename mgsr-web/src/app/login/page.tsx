@@ -36,7 +36,7 @@ export default function LoginPage() {
   return (
     <div
       dir={isRtl ? 'rtl' : 'ltr'}
-      className="min-h-screen bg-mgsr-dark flex items-center justify-center p-4 relative overflow-hidden"
+      className="min-h-screen min-h-[100dvh] bg-mgsr-dark flex items-center justify-center p-4 relative overflow-hidden"
     >
       {/* Language toggle - RTL: button on left */}
       <button

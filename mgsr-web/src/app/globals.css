@@ -12,9 +12,15 @@
   --mgsr-muted: #8C999B;
 }
 
+html {
+  overflow-x: hidden;
+}
+
 body {
   background-color: var(--mgsr-dark);
   color: var(--mgsr-text);
+  overflow-x: hidden;
+  -webkit-tap-highlight-color: transparent;
 }
 
 [dir='rtl'] {

@@ -474,7 +474,7 @@ export default function DashboardPage() {
             <Link
               key={item.href}
               href={item.href}
-              className="group relative p-5 bg-mgsr-card/80 border border-mgsr-border rounded-2xl hover:border-mgsr-teal/40 hover:bg-mgsr-card transition-all duration-300 animate-slide-up"
+              className="group relative p-4 sm:p-5 bg-mgsr-card/80 border border-mgsr-border rounded-2xl hover:border-mgsr-teal/40 hover:bg-mgsr-card transition-all duration-300 animate-slide-up min-h-[80px] flex flex-col justify-center"
               style={{ animationDelay: `${i * 50}ms` }}
             >
               <p className="text-3xl font-bold text-mgsr-teal font-display">
