@@ -439,7 +439,7 @@
     <string name="requests_online_players_loading">AI Scout searching…</string>
     <string name="requests_online_players_empty">No matching players found online</string>
     <string name="requests_online_match_score">Match: %d%%</string>
-    <string name="requests_online_refresh">Show 10 more</string>
+    <string name="requests_online_refresh">Show different players</string>
     <string name="requests_online_results_count">%d players found</string>
     <string name="requests_no_match">No roster players match this request</string>
     <string name="requests_no_requests">No requests yet</string>

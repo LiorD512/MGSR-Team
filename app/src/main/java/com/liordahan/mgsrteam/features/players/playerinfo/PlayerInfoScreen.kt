@@ -52,6 +52,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.PersonAddAlt
 import androidx.compose.material.icons.filled.Link
+import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.VerifiedUser
 import androidx.compose.material.icons.filled.Whatsapp
@@ -1967,17 +1968,6 @@ private fun SimilarPlayerSuggestionRow(
             if (suggestion.transfermarktUrl != null) {
                 Spacer(Modifier.width(8.dp))
             }
-            onAddToShortlistClick?.let { onAdd ->
-                Icon(
-                    imageVector = if (isInShortlist) Icons.Default.Bookmark else Icons.Default.BookmarkAdd,
-                    contentDescription = if (isInShortlist) stringResource(R.string.shortlist_in_shortlist) else stringResource(R.string.shortlist_add_to_shortlist),
-                    modifier = Modifier
-                        .size(20.dp)
-                        .clickWithNoRipple { onAdd() },
-                    tint = if (isInShortlist) HomeGreenAccent else HomeTextSecondary
-                )
-                Spacer(Modifier.width(8.dp))
-            }
             Icon(
                 Icons.Default.ExpandMore,
                 contentDescription = if (isExpanded) "Collapse" else "Expand",
@@ -2148,29 +2138,71 @@ private fun SimilarPlayerSuggestionRow(
                     )
                 }
 
-                // Transfermarkt profile link at the bottom
+                // Action buttons: Add to Shortlist + Open Transfermarkt
                 if (suggestion.transfermarktUrl != null) {
-                    Spacer(modifier = Modifier.height(2.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
                     Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(6.dp))
-                            .clickWithNoRipple { onTmLinkClick() }
-                            .padding(vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.End
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Icon(
-                            Icons.Default.Link,
-                            contentDescription = null,
-                            modifier = Modifier.size(14.dp),
-                            tint = HomeTealAccent.copy(alpha = 0.7f)
-                        )
-                        Spacer(Modifier.width(4.dp))
-                        Text(
-                            text = "Transfermarkt",
-                            style = regularTextStyle(HomeTealAccent.copy(alpha = 0.7f), 11.sp),
-                        )
+                        // Add to Shortlist button
+                        onAddToShortlistClick?.let { onAdd ->
+                            Row(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(
+                                        if (isInShortlist) HomeGreenAccent.copy(alpha = 0.15f)
+                                        else HomeTealAccent.copy(alpha = 0.12f)
+                                    )
+                                    .clickWithNoRipple { onAdd() }
+                                    .padding(horizontal = 10.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                Icon(
+                                    imageVector = if (isInShortlist) Icons.Default.Bookmark else Icons.Default.BookmarkAdd,
+                                    contentDescription = null,
+                                    tint = if (isInShortlist) HomeGreenAccent else HomeTealAccent,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(Modifier.width(6.dp))
+                                Text(
+                                    text = if (isInShortlist) stringResource(R.string.shortlist_in_shortlist)
+                                           else stringResource(R.string.shortlist_add_to_shortlist),
+                                    style = regularTextStyle(
+                                        if (isInShortlist) HomeGreenAccent else HomeTealAccent,
+                                        11.sp
+                                    ),
+                                    maxLines = 1
+                                )
+                            }
+                        }
+
+                        // Open Transfermarkt button
+                        Row(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(HomeOrangeAccent.copy(alpha = 0.12f))
+                                .clickWithNoRipple { onTmLinkClick() }
+                                .padding(horizontal = 10.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                Icons.Default.OpenInNew,
+                                contentDescription = null,
+                                tint = HomeOrangeAccent,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(Modifier.width(6.dp))
+                            Text(
+                                text = stringResource(R.string.contacts_open_transfermarkt),
+                                style = regularTextStyle(HomeOrangeAccent, 11.sp),
+                                maxLines = 1
+                            )
+                        }
                     }
                 }
             }

@@ -56,7 +56,13 @@ class AiHelperService(
         val similarityReason: String?,
         val playingStyle: String? = null,
         val matchPercent: Int? = null,
-        val scoutAnalysis: String? = null
+        val scoutAnalysis: String? = null,
+        val league: String? = null,
+        val club: String? = null,
+        val nationality: String? = null,
+        val height: String? = null,
+        val contractEnd: String? = null,
+        val foot: String? = null
     )
 
     /**

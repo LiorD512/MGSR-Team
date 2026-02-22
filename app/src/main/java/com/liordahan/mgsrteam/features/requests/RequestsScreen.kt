@@ -67,7 +67,9 @@ import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkAdd
 import androidx.compose.material.icons.filled.Link
+import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.filled.People
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Stop
@@ -125,6 +127,7 @@ import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -1090,14 +1093,14 @@ private fun RequestCard(
                                 )
                             }
                             Spacer(Modifier.height(4.dp))
-                            // Refresh button — shows 10 more
+                            // Refresh button — replaces results with a different batch
                             TextButton(
                                 onClick = onRefreshSearch,
                                 modifier = Modifier.fillMaxWidth(),
                                 colors = ButtonDefaults.textButtonColors(contentColor = HomeTealAccent)
                             ) {
                                 Icon(
-                                    Icons.Default.SwapHoriz,
+                                    Icons.Default.Refresh,
                                     contentDescription = null,
                                     tint = HomeTealAccent,
                                     modifier = Modifier.size(16.dp)
@@ -1350,6 +1353,7 @@ private fun OnlinePlayerSuggestionRow(
     val ctx = LocalContext.current
     val layoutDirection = ctx.resources.configuration.layoutDirection
     val isRtl = layoutDirection == android.util.LayoutDirection.RTL
+    var isExpanded by remember { mutableStateOf(false) }
 
     Box(modifier = Modifier.fillMaxWidth()) {
         Column(
@@ -1358,12 +1362,13 @@ private fun OnlinePlayerSuggestionRow(
                 .clip(RoundedCornerShape(12.dp))
                 .background(HomeDarkBackground)
                 .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(12.dp))
-                .clickWithNoRipple { onClick() }
-                .padding(12.dp)
         ) {
-            // Top row: Score circle + Name/Info + Bookmark
+            // ── Collapsed header: Score + Name/Info + Expand arrow ──
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickWithNoRipple { isExpanded = !isExpanded }
+                    .padding(12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 // Match score circle
@@ -1375,7 +1380,7 @@ private fun OnlinePlayerSuggestionRow(
                     }
                     Box(
                         modifier = Modifier
-                            .size(46.dp)
+                            .size(44.dp)
                             .clip(CircleShape)
                             .background(scoreColor.copy(alpha = 0.15f))
                             .border(2.dp, scoreColor, CircleShape),
@@ -1384,11 +1389,11 @@ private fun OnlinePlayerSuggestionRow(
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(
                                 "$pct",
-                                style = boldTextStyle(scoreColor, 16.sp)
+                                style = boldTextStyle(scoreColor, 15.sp)
                             )
                             Text(
                                 "%",
-                                style = regularTextStyle(scoreColor, 9.sp),
+                                style = regularTextStyle(scoreColor, 8.sp),
                                 modifier = Modifier.offset(y = (-2).dp)
                             )
                         }
@@ -1397,95 +1402,277 @@ private fun OnlinePlayerSuggestionRow(
                     // No score — show initials
                     Box(
                         modifier = Modifier
-                            .size(46.dp)
+                            .size(44.dp)
                             .clip(CircleShape)
                             .background(HomeDarkCardBorder),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            (suggestion.name.take(2)).uppercase(),
-                            style = boldTextStyle(HomeTextSecondary, 14.sp)
+                            suggestion.name.take(2).uppercase(),
+                            style = boldTextStyle(HomeTextSecondary, 13.sp)
                         )
                     }
                 }
 
                 Spacer(Modifier.width(12.dp))
 
-                // Name + details
+                // Name + concise details
                 Column(
                     modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.spacedBy(3.dp)
                 ) {
+                    // Player name
                     Text(
                         suggestion.name,
-                        style = boldTextStyle(HomeTextPrimary, 15.sp)
+                        style = boldTextStyle(HomeTextPrimary, 15.sp),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
-                    // Age · Position · Value
+                    // Age · Position · Market Value
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        suggestion.age?.let { age ->
-                            Text(age, style = regularTextStyle(HomeTextSecondary, 12.sp))
-                            Text("·", style = regularTextStyle(HomeTextSecondary, 12.sp))
+                        val posDisplay = suggestion.position?.let {
+                            PositionDisplayNames.getDisplayName(ctx, it)
                         }
-                        suggestion.position?.let { pos ->
-                            Text(PositionDisplayNames.getDisplayName(ctx, pos), style = regularTextStyle(HomeTextSecondary, 12.sp))
-                            Text("·", style = regularTextStyle(HomeTextSecondary, 12.sp))
+                        val infoText = buildString {
+                            suggestion.age?.let { append(it) }
+                            posDisplay?.let { pos ->
+                                if (isNotBlank()) append(" · ")
+                                append(pos)
+                            }
                         }
-                        suggestion.marketValue?.let { mv ->
+                        if (infoText.isNotBlank()) {
+                            Text(
+                                infoText,
+                                style = regularTextStyle(HomeTextSecondary, 12.sp),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                        suggestion.marketValue?.takeIf { it.isNotBlank() }?.let { mv ->
+                            if (infoText.isNotBlank()) {
+                                Text("·", style = regularTextStyle(HomeTextSecondary, 12.sp))
+                            }
                             Text(mv, style = boldTextStyle(HomeGreenAccent, 12.sp))
+                        }
+                    }
+                    // League + Playing style preview
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        suggestion.league?.let { leagueName ->
+                            Text(
+                                text = leagueName,
+                                style = regularTextStyle(HomeTextSecondary, 11.sp),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .background(HomeDarkCardBorder.copy(alpha = 0.5f))
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
+                        suggestion.playingStyle?.takeIf { it.isNotBlank() }?.let { style ->
+                            Text(
+                                text = style,
+                                style = boldTextStyle(HomeTealAccent, 10.sp),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .background(HomeTealAccent.copy(alpha = 0.10f))
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
                         }
                     }
                 }
 
-                // Bookmark button
-                IconButton(
-                    onClick = onToggleShortlist,
-                    modifier = Modifier.size(40.dp)
-                ) {
-                    Icon(
-                        imageVector = if (isInShortlist) Icons.Default.Bookmark else Icons.Default.BookmarkAdd,
-                        contentDescription = if (isInShortlist) stringResource(R.string.shortlist_in_shortlist) else stringResource(R.string.shortlist_add_to_shortlist),
-                        tint = if (isInShortlist) HomeGreenAccent else HomeTextSecondary,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-            }
-
-            // Playing style badge
-            suggestion.playingStyle?.takeIf { it.isNotBlank() }?.let { style ->
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    text = style,
-                    style = boldTextStyle(HomeTealAccent, 11.sp),
+                // Expand/collapse arrow
+                Icon(
+                    Icons.Default.ExpandMore,
+                    contentDescription = if (isExpanded) "Collapse" else "Expand",
+                    tint = HomeTextSecondary,
                     modifier = Modifier
-                        .clip(RoundedCornerShape(6.dp))
-                        .background(HomeTealAccent.copy(alpha = 0.12f))
-                        .padding(horizontal = 8.dp, vertical = 3.dp)
+                        .size(22.dp)
+                        .graphicsLayer { rotationZ = if (isExpanded) 180f else 0f }
                 )
             }
 
-            // Explanation / scout analysis section
-            val explanationText = suggestion.scoutAnalysis?.takeIf { it.isNotBlank() }
-                ?: suggestion.similarityReason?.takeIf { it.isNotBlank() }
-            explanationText?.let { text ->
-                Spacer(Modifier.height(8.dp))
-                Row(
+            // ── Expanded section: detailed info + actions ──
+            AnimatedVisibility(visible = isExpanded) {
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(HomeDarkCard.copy(alpha = 0.6f))
-                        .padding(horizontal = 10.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.Top
+                        .padding(start = 12.dp, end = 12.dp, bottom = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Text(
-                        text = text,
-                        style = regularTextStyle(HomeTextSecondary, 12.sp),
-                        lineHeight = 18.sp,
-                        modifier = Modifier.weight(1f),
-                        textAlign = if (isRtl) TextAlign.Right else TextAlign.Start
-                    )
+                    // Player details card
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(HomeDarkCard.copy(alpha = 0.6f))
+                            .border(1.dp, HomeDarkCardBorder.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
+                            .padding(10.dp),
+                        verticalArrangement = Arrangement.spacedBy(5.dp)
+                    ) {
+                        // Server explanation (structured scout analysis)
+                        suggestion.scoutAnalysis?.takeIf { it.isNotBlank() }?.let { analysis ->
+                            val parts = analysis.split(" · ").filter { it.isNotBlank() }
+                            parts.forEach { part ->
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.padding(vertical = 1.dp)
+                                ) {
+                                    val icon = when {
+                                        part.contains("/90") || part.contains("%") || part.contains("pct", ignoreCase = true) -> "📊"
+                                        part.contains("contract", ignoreCase = true) || part.contains("חוזה") -> "📋"
+                                        part.contains("height", ignoreCase = true) || part.contains("גובה") -> "📏"
+                                        else -> "⚡"
+                                    }
+                                    Text(
+                                        "$icon ",
+                                        style = regularTextStyle(HomeTextSecondary, 12.sp)
+                                    )
+                                    Text(
+                                        part,
+                                        style = regularTextStyle(HomeTextPrimary, 12.sp),
+                                        lineHeight = 18.sp
+                                    )
+                                }
+                            }
+                        }
+
+                        // Physical & contract details (built from fields when no/sparse server explanation)
+                        val detailItems = buildList {
+                            suggestion.foot?.let { f ->
+                                val footLabel = when (f.lowercase()) {
+                                    "right" -> if (isRtl) "ימין" else "Right foot"
+                                    "left" -> if (isRtl) "שמאל" else "Left foot"
+                                    "both" -> if (isRtl) "דו-רגלי" else "Both feet"
+                                    else -> f
+                                }
+                                add("🦶" to footLabel)
+                            }
+                            suggestion.height?.let { h ->
+                                add("📏" to h)
+                            }
+                            suggestion.nationality?.let { n ->
+                                // Already formatted with " · " for dual nationality
+                                add("🌍" to n)
+                            }
+                            suggestion.contractEnd?.let { c ->
+                                val contractLabel = if (isRtl) "חוזה עד $c" else "Contract until $c"
+                                add("📋" to contractLabel)
+                            }
+                        }
+
+                        // Only show detail items that aren't already covered by scoutAnalysis
+                        val analysisText = suggestion.scoutAnalysis?.lowercase() ?: ""
+                        detailItems.forEach { (icon, text) ->
+                            // Skip if already mentioned in scout analysis
+                            val isRedundant = when (icon) {
+                                "📋" -> analysisText.contains("contract") || analysisText.contains("חוזה")
+                                "📏" -> analysisText.contains("height") || analysisText.contains("גובה") || analysisText.contains(text.lowercase())
+                                else -> false
+                            }
+                            if (!isRedundant) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.padding(vertical = 1.dp)
+                                ) {
+                                    Text(
+                                        "$icon ",
+                                        style = regularTextStyle(HomeTextSecondary, 12.sp)
+                                    )
+                                    Text(
+                                        text,
+                                        style = regularTextStyle(HomeTextPrimary, 12.sp)
+                                    )
+                                }
+                            }
+                        }
+
+                        // Fallback: show raw similarity reason if nothing else
+                        if (suggestion.scoutAnalysis.isNullOrBlank() && detailItems.isEmpty()) {
+                            suggestion.similarityReason?.takeIf { it.isNotBlank() }?.let { reason ->
+                                Text(
+                                    text = reason,
+                                    style = regularTextStyle(HomeTextSecondary, 12.sp),
+                                    lineHeight = 18.sp,
+                                    textAlign = if (isRtl) TextAlign.Right else TextAlign.Start
+                                )
+                            }
+                        }
+                    }
+
+                    // Action buttons: Add to Shortlist + Open Transfermarkt
+                    if (suggestion.transfermarktUrl != null) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            // Add to Shortlist button
+                            Row(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(
+                                        if (isInShortlist) HomeGreenAccent.copy(alpha = 0.15f)
+                                        else HomeTealAccent.copy(alpha = 0.12f)
+                                    )
+                                    .clickWithNoRipple { onToggleShortlist() }
+                                    .padding(horizontal = 10.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                Icon(
+                                    imageVector = if (isInShortlist) Icons.Default.Bookmark else Icons.Default.BookmarkAdd,
+                                    contentDescription = null,
+                                    tint = if (isInShortlist) HomeGreenAccent else HomeTealAccent,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(Modifier.width(6.dp))
+                                Text(
+                                    text = if (isInShortlist) stringResource(R.string.shortlist_in_shortlist)
+                                           else stringResource(R.string.shortlist_add_to_shortlist),
+                                    style = regularTextStyle(
+                                        if (isInShortlist) HomeGreenAccent else HomeTealAccent,
+                                        11.sp
+                                    ),
+                                    maxLines = 1
+                                )
+                            }
+
+                            // Open Transfermarkt button
+                            Row(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(HomeOrangeAccent.copy(alpha = 0.12f))
+                                    .clickWithNoRipple { onClick() }
+                                    .padding(horizontal = 10.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                Icon(
+                                    Icons.Default.OpenInNew,
+                                    contentDescription = null,
+                                    tint = HomeOrangeAccent,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(Modifier.width(6.dp))
+                                Text(
+                                    text = "Transfermarkt",
+                                    style = regularTextStyle(HomeOrangeAccent, 11.sp),
+                                    maxLines = 1
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }
