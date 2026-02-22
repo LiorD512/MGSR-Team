@@ -133,7 +133,7 @@ export default function PlayersPage() {
             {filtered.map((p, i) => (
               <Link
                 key={p.id}
-                href={`/players/${p.id}`}
+                href={`/players/${p.id}?from=/players`}
                 className="group flex items-center gap-4 p-4 bg-mgsr-card border border-mgsr-border rounded-xl hover:border-mgsr-teal/40 hover:bg-mgsr-card/80 transition-all duration-300 animate-fade-in"
                 style={{ animationDelay: `${i * 30}ms` }}
               >

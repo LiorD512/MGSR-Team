@@ -230,3 +230,60 @@ export async function getReleasesAllRanges(
 
   return all;
 }
+
+// ─── Contract Finishers (contracts expiring in next transfer window) ─────────────
+export interface ContractFinisherPlayer extends ReleasePlayer {
+  clubJoinedLogo?: string;
+  clubJoinedName?: string;
+}
+
+export interface ContractFinishersResponse {
+  players: ContractFinisherPlayer[];
+  windowLabel: 'Summer' | 'Winter';
+}
+
+export async function getContractFinishers(): Promise<ContractFinishersResponse> {
+  const res = await fetchBackend(`${BACKEND_URL}/api/transfermarkt/contract-finishers`);
+  const data = await res.json();
+  return {
+    players: data.players || [],
+    windowLabel: data.windowLabel || 'Summer',
+  };
+}
+
+export type ContractFinisherStreamEvent = {
+  players: ContractFinisherPlayer[];
+  windowLabel?: string;
+  isLoading?: boolean;
+  error?: string;
+};
+
+/**
+ * Stream contract finishers via SSE – results appear as they load (like the app).
+ * Calls onBatch with accumulated players after each batch; onDone when finished.
+ */
+export function streamContractFinishers(
+  onBatch: (event: ContractFinisherStreamEvent) => void,
+  onError?: (err: Error) => void
+): () => void {
+  const url = `${BACKEND_URL}/api/transfermarkt/contract-finishers/stream`;
+  const es = new EventSource(url);
+
+  es.onmessage = (e) => {
+    try {
+      const data = JSON.parse(e.data) as ContractFinisherStreamEvent;
+      onBatch(data);
+      if (data.isLoading === false) es.close();
+    } catch (err) {
+      onError?.(err instanceof Error ? err : new Error(String(err)));
+      es.close();
+    }
+  };
+
+  es.onerror = () => {
+    es.close();
+    onError?.(new Error('Stream connection failed'));
+  };
+
+  return () => es.close();
+}

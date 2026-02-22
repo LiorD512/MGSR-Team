@@ -13,6 +13,7 @@ import { matchRequestToPlayers, type RosterPlayer } from '@/lib/requestMatcher';
 import { findPlayersForRequest, type ScoutPlayerSuggestion } from '@/lib/scoutApi';
 import { getPlayerDetails } from '@/lib/api';
 import { getScreenCache, setScreenCache } from '@/lib/screenCache';
+import { toWhatsAppUrl } from '@/lib/whatsapp';
 import AddRequestSheet from './AddRequestSheet';
 
 interface Request {
@@ -481,6 +482,17 @@ export default function RequestsPage() {
                                           {r.contactName && (
                                             <p className="text-sm text-mgsr-teal">{r.contactName}</p>
                                           )}
+                                          {r.contactPhoneNumber && (
+                                            <a
+                                              href={toWhatsAppUrl(r.contactPhoneNumber) ?? `tel:${r.contactPhoneNumber}`}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              className="text-sm text-mgsr-teal hover:underline inline-flex items-center gap-1"
+                                              dir="ltr"
+                                            >
+                                              {r.contactPhoneNumber}
+                                            </a>
+                                          )}
                                           <div className="flex flex-wrap gap-2 mt-1">
                                             {r.salaryRange && (
                                               <span className="text-xs px-2 py-0.5 rounded bg-mgsr-teal/20 text-mgsr-teal">
@@ -503,7 +515,7 @@ export default function RequestsPage() {
                                               </span>
                                             )}
                                             {r.notes && (
-                                              <span className="text-xs px-2 py-0.5 rounded bg-mgsr-teal/20 text-mgsr-teal line-clamp-1">
+                                              <span className="text-xs px-2 py-0.5 rounded bg-mgsr-teal/20 text-mgsr-teal line-clamp-1" dir={lang === 'he' ? 'rtl' : 'ltr'}>
                                                 {t('requests_notes_label')}: {r.notes.slice(0, 60)}{r.notes.length > 60 ? '…' : ''}
                                               </span>
                                             )}
@@ -546,7 +558,7 @@ export default function RequestsPage() {
                                             {matchingPlayers.map((player) => (
                                               <Link
                                                 key={player.id}
-                                                href={`/players/${player.id}`}
+                                                href={`/players/${player.id}?from=/requests`}
                                                 className="flex items-center gap-3 p-2 rounded-lg hover:bg-mgsr-teal/10 transition"
                                               >
                                                 <img
@@ -613,7 +625,13 @@ export default function RequestsPage() {
                                                     key={url}
                                                     className="flex items-center gap-3 p-2 rounded-lg hover:bg-mgsr-teal/10 transition"
                                                   >
-                                                    <div className="flex-1 min-w-0">
+                                                    <a
+                                                      href={url}
+                                                      target="_blank"
+                                                      rel="noopener noreferrer"
+                                                      className="flex-1 min-w-0 hover:underline"
+                                                      onClick={(e) => e.stopPropagation()}
+                                                    >
                                                       <p className="font-medium text-mgsr-text text-sm truncate">{s.name || '—'}</p>
                                                       <p className="text-xs text-mgsr-muted truncate">
                                                         {s.position || '—'} • {s.age ?? '—'} {t('players_age')} • {s.marketValue || '—'}
@@ -621,7 +639,7 @@ export default function RequestsPage() {
                                                           <> • {t('requests_online_match_score').replace('{pct}', String(s.matchPercent))}</>
                                                         )}
                                                       </p>
-                                                    </div>
+                                                    </a>
                                                     {isInShortlist ? (
                                                       <div className="flex items-center gap-2 px-2.5 py-1 rounded-full bg-amber-500/15 border border-amber-500/30 shrink-0">
                                                         <svg className="w-4 h-4 text-amber-400 shrink-0" fill="currentColor" viewBox="0 0 24 24">

@@ -363,6 +363,7 @@ export default function AddRequestSheet({ open, onClose, onSaved }: AddRequestSh
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder={t('requests_notes_placeholder')}
                 rows={4}
+                dir={isHebrew ? 'rtl' : 'ltr'}
                 className="w-full px-4 py-3 rounded-xl bg-mgsr-dark border border-mgsr-border text-mgsr-text placeholder-mgsr-muted focus:outline-none focus:border-mgsr-teal resize-none"
               />
             </>
