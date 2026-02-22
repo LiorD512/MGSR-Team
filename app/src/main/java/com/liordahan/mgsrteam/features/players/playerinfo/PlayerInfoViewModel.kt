@@ -14,6 +14,7 @@ import com.liordahan.mgsrteam.features.players.playerinfo.ai.ScoutReportOptions
 import com.liordahan.mgsrteam.features.players.playerinfo.ai.SimilarPlayersOptions
 import com.liordahan.mgsrteam.features.players.playerinfo.documents.DocumentDetectionService
 import com.liordahan.mgsrteam.features.players.playerinfo.documents.DocumentType
+import com.liordahan.mgsrteam.features.players.playerinfo.documents.PdfFlattener
 import com.liordahan.mgsrteam.features.players.playerinfo.matchingrequests.MatchingRequestUiState
 import com.liordahan.mgsrteam.features.players.playerinfo.matchingrequests.PlayerOffer
 import com.liordahan.mgsrteam.features.players.playerinfo.matchingrequests.IPlayerOffersRepository
@@ -585,11 +586,16 @@ class PlayerInfoViewModel(
                 val docExpiresAt = detection.mandateExpiresAt ?: expiresAt
                 val createdBy = getCurrentUserName()
                 val uploadedBy = if (detection.documentType == DocumentType.MANDATE) createdBy else null
+                // Flatten PDFs so annotations (signatures, stamps) are visible in all viewers
+                val isPdf = mimeType?.lowercase() == "application/pdf" || name.lowercase().endsWith(".pdf")
+                val bytesToUpload = if (isPdf) {
+                    withContext(Dispatchers.IO) { PdfFlattener.flatten(bytes) }
+                } else bytes
                 val result = documentsRepository.uploadDocument(
                     tmProfile,
                     detection.documentType,
                     detection.suggestedName,
-                    bytes,
+                    bytesToUpload,
                     docExpiresAt,
                     uploadedBy = uploadedBy
                 )
