@@ -6,6 +6,8 @@ import { db } from '@/lib/firebase';
 import { searchClubs, type ClubSearchResult } from '@/lib/api';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getCountryDisplayName } from '@/lib/countryTranslations';
+import { useAuth } from '@/contexts/AuthContext';
+import { getCurrentAccountForShortlist } from '@/lib/accounts';
 
 const CLUB_REQUESTS_COLLECTION = 'ClubRequests';
 
@@ -26,6 +28,7 @@ interface AddRequestSheetProps {
 
 export default function AddRequestSheet({ open, onClose, onSaved }: AddRequestSheetProps) {
   const { t, isRtl, lang } = useLanguage();
+  const { user } = useAuth();
   const isHebrew = lang === 'he';
 
   const [step, setStep] = useState(0);
@@ -77,6 +80,7 @@ export default function AddRequestSheet({ open, onClose, onSaved }: AddRequestSh
     setSaving(true);
     setError(null);
     try {
+      const createdAt = Date.now();
       await addDoc(collection(db, CLUB_REQUESTS_COLLECTION), {
         clubTmProfile: selectedClub.clubTmProfile || '',
         clubName: selectedClub.clubName || '',
@@ -95,9 +99,20 @@ export default function AddRequestSheet({ open, onClose, onSaved }: AddRequestSh
         salaryRange: selectedSalary,
         transferFee: selectedFee,
         dominateFoot: selectedFoot === 'any' ? '' : selectedFoot,
-        createdAt: Date.now(),
+        createdAt,
         status: 'pending',
       });
+      const agentName = user ? (await getCurrentAccountForShortlist(user)).name ?? null : null;
+      const feedEvent: Record<string, unknown> = {
+        type: 'REQUEST_ADDED',
+        playerName: selectedClub.clubName ?? null,
+        playerImage: selectedClub.clubLogo ?? null,
+        playerTmProfile: selectedClub.clubTmProfile ?? null,
+        newValue: selectedPosition,
+        timestamp: createdAt,
+        agentName,
+      };
+      await addDoc(collection(db, 'FeedEvents'), feedEvent);
       onSaved();
       onClose();
     } catch (err) {

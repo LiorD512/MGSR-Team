@@ -236,18 +236,29 @@ export default function DashboardPage() {
 
   useEffect(() => {
     let cancelled = false;
-    setTransferWindowsLoading(true);
-    getTransferWindows()
-      .then((windows) => {
-        if (!cancelled) setTransferWindows(windows);
-      })
-      .catch(() => {
-        if (!cancelled) setTransferWindows([]);
-      })
-      .finally(() => {
-        if (!cancelled) setTransferWindowsLoading(false);
-      });
-    return () => { cancelled = true; };
+    const load = () => {
+      if (cancelled) return;
+      setTransferWindowsLoading(true);
+      getTransferWindows()
+        .then((windows) => {
+          if (!cancelled) setTransferWindows(windows);
+        })
+        .catch(() => {
+          if (!cancelled) setTransferWindows([]);
+        })
+        .finally(() => {
+          if (!cancelled) setTransferWindowsLoading(false);
+        });
+    };
+    load();
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') load();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      cancelled = true;
+      document.removeEventListener('visibilitychange', onVisible);
+    };
   }, []);
 
   const PRIORITY_COUNTRY_CODES = new Set(['il', 'gb-eng', 'de', 'es', 'it', 'fr']);

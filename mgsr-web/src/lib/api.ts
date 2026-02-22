@@ -68,7 +68,9 @@ export interface TransferWindow {
 }
 
 export async function getTransferWindows(): Promise<TransferWindow[]> {
-  const res = await fetchBackend('/api/transfermarkt/transfer-windows');
+  const res = await fetchBackend('/api/transfermarkt/transfer-windows', {
+    cache: 'no-store',
+  });
   const data = await res.json();
   return data.windows || [];
 }
