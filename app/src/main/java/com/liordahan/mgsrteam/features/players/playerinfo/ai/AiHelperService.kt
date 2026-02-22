@@ -689,7 +689,8 @@ class AiHelperService(
         val api = scoutApiClient ?: return null
         return try {
             Log.d(TAG, """┌── tryServerForRequest ──
-                |│ Club: ${request.clubName}
+                |│ Club: ${request.clubName} (${request.clubCountry})
+                |│ Club TM: ${request.clubTmProfile}
                 |│ Position: ${request.position}
                 |│ Age: ${request.minAge} - ${request.maxAge}
                 |│ Foot: ${request.dominateFoot}
@@ -708,7 +709,11 @@ class AiHelperService(
                 excludeUrls = excludeUrls,
                 lang = lang,
                 sortBy = "score",
-                limit = 15
+                limit = 15,
+                // Club context for professional scouting
+                clubUrl = request.clubTmProfile,
+                clubName = request.clubName,
+                clubCountry = request.clubCountry,
             )
             val players = result.getOrNull()
             Log.d(TAG, "tryServerForRequest result: ${players?.size ?: "null"} players")

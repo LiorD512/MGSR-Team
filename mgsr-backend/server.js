@@ -143,6 +143,64 @@ app.get('/api/transfermarkt/search', async (req, res) => {
   }
 });
 
+// ─── Club search (for Add Request) ───────────────────────────────────────────
+app.get('/api/transfermarkt/club-search', async (req, res) => {
+  try {
+    const q = (req.query.q || '').trim();
+    if (q.length < 2) {
+      return res.json({ clubs: [] });
+    }
+    const encoded = encodeURIComponent(q);
+    const url = `${TRANSFERMARKT_BASE}/schnellsuche/ergebnis/schnellsuche?query=${encoded}`;
+    const html = await fetchHtmlWithRetry(url);
+    const $ = cheerio.load(html);
+
+    const clubs = [];
+    const clubSection = $('div.box').filter((_, el) => {
+      const headline = $(el).find('h2.content-box-headline').text().toLowerCase();
+      return headline.includes('verein') || headline.includes('club') || headline.includes('clubs');
+    }).first();
+
+    if (!clubSection.length) {
+      return res.json({ clubs: [] });
+    }
+    clubSection.find('table.items tr.odd, table.items tr.even').each((_, row) => {
+      try {
+        const $row = $(row);
+        const clubImg = $row.find('img').first();
+        const clubLogo = (clubImg.attr('src') || '').replace('tiny', 'head').replace('small', 'head');
+        const mainLink = $row.find('td.hauptlink a').first();
+        const href = mainLink.attr('href') || '';
+        const clubTmProfile = href ? (href.startsWith('http') ? href : TRANSFERMARKT_BASE + href) : null;
+        const clubName = mainLink.text().trim() || clubImg.attr('alt') || clubImg.attr('title') || $row.find('td.hauptlink').text().trim();
+        if (!clubName) return;
+
+        const tds = $row.find('td.zentriert');
+        const lastTdImg = tds.last().find('img').first();
+        const countryImg = lastTdImg.length ? lastTdImg : $row.find('td.zentriert img').last();
+        const clubCountry = countryImg.attr('title') || countryImg.attr('alt') || tds.last().text().trim() || '';
+        const clubCountryFlag = (countryImg.attr('data-src') || countryImg.attr('src') || '')
+          .replace('tiny', 'head').replace('verysmall', 'head');
+
+        clubs.push({
+          clubName: clubName.trim(),
+          clubLogo: makeAbsoluteUrl(clubLogo),
+          clubTmProfile,
+          clubCountry: clubCountry.trim() || null,
+          clubCountryFlag: clubCountryFlag ? makeAbsoluteUrl(clubCountryFlag) : null,
+        });
+      } catch (e) {
+        // skip row
+      }
+    });
+
+    res.json({ clubs });
+  } catch (err) {
+    console.error('Club search error:', err.message);
+    res.status(500).json({ error: err.message || 'Club search failed' });
+  }
+});
+
 // ─── Player details ─────────────────────────────────────────────────────────
 app.get('/api/transfermarkt/player', async (req, res) => {
   try {
@@ -419,6 +477,102 @@ app.get('/api/transfermarkt/teammates', async (req, res) => {
   } catch (err) {
     console.error('Teammates error:', err.message);
     res.status(500).json({ error: err.message || 'Failed to fetch teammates' });
+  }
+});
+
+// ─── Transfer Windows (open worldwide) ────────────────────────────────────────
+// Static fallback: Transfermarkt loads the table via JS, so we use known closing dates.
+// Format: [countryName, countryCode, month, day] — confederation derived from code.
+const PRIORITY_COUNTRY_CODES = new Set(['il', 'gb-eng', 'de', 'es', 'it', 'fr']);
+const COUNTRY_TO_CONF = {
+  'gb-eng': 'UEFA', de: 'UEFA', es: 'UEFA', it: 'UEFA', fr: 'UEFA', nl: 'UEFA', pt: 'UEFA',
+  be: 'UEFA', tr: 'UEFA', ru: 'UEFA', il: 'UEFA', 'gb-sct': 'UEFA', gr: 'UEFA', at: 'UEFA',
+  ch: 'UEFA', pl: 'UEFA', ua: 'UEFA', cz: 'UEFA', dk: 'UEFA', se: 'UEFA', no: 'UEFA',
+  ro: 'UEFA', bg: 'UEFA', hr: 'UEFA', rs: 'UEFA', hu: 'UEFA', sk: 'UEFA', si: 'UEFA',
+  cy: 'UEFA', fi: 'UEFA', is: 'UEFA', ba: 'UEFA', mk: 'UEFA', al: 'UEFA', me: 'UEFA',
+  lu: 'UEFA', mt: 'UEFA', ie: 'UEFA', 'gb-wls': 'UEFA', 'gb-nir': 'UEFA', by: 'UEFA',
+  ge: 'UEFA', am: 'UEFA', az: 'UEFA', kz: 'UEFA', md: 'UEFA', lt: 'UEFA', ee: 'UEFA',
+  lv: 'UEFA', xk: 'UEFA', ad: 'UEFA', fo: 'UEFA', li: 'UEFA', sm: 'UEFA', gi: 'UEFA',
+  sa: 'AFC', ae: 'AFC', qa: 'AFC', cn: 'AFC', jp: 'AFC', kr: 'AFC', ir: 'AFC', in: 'AFC',
+  au: 'AFC', th: 'AFC', my: 'AFC', vn: 'AFC', id: 'AFC', uz: 'AFC', iq: 'AFC', kw: 'AFC',
+  om: 'AFC', bh: 'AFC', jo: 'AFC', sy: 'AFC', lb: 'AFC', ph: 'AFC', sg: 'AFC', hk: 'AFC',
+  tw: 'AFC', bd: 'AFC', np: 'AFC', lk: 'AFC', ps: 'AFC', ye: 'AFC', tj: 'AFC', tm: 'AFC',
+  kg: 'AFC', mm: 'AFC', mv: 'AFC', af: 'AFC',
+  br: 'CONMEBOL', ar: 'CONMEBOL', co: 'CONMEBOL', cl: 'CONMEBOL', pe: 'CONMEBOL',
+  ec: 'CONMEBOL', uy: 'CONMEBOL', py: 'CONMEBOL', bo: 'CONMEBOL', ve: 'CONMEBOL',
+  mx: 'CONCACAF', us: 'CONCACAF', ca: 'CONCACAF', cr: 'CONCACAF', hn: 'CONCACAF',
+  pa: 'CONCACAF', jm: 'CONCACAF', tt: 'CONCACAF', gt: 'CONCACAF', sv: 'CONCACAF',
+  ni: 'CONCACAF', cu: 'CONCACAF', do: 'CONCACAF', ht: 'CONCACAF', cw: 'CONCACAF', sr: 'CONCACAF',
+  eg: 'CAF', ma: 'CAF', tn: 'CAF', za: 'CAF', ng: 'CAF', dz: 'CAF', gh: 'CAF', sn: 'CAF',
+  ci: 'CAF', cm: 'CAF', ke: 'CAF', zw: 'CAF', zm: 'CAF', ao: 'CAF', cd: 'CAF', ml: 'CAF',
+  tz: 'CAF', et: 'CAF', ly: 'CAF', sd: 'CAF', ug: 'CAF', tg: 'CAF', bj: 'CAF', bf: 'CAF',
+  ne: 'CAF', gn: 'CAF', mg: 'CAF', mu: 'CAF', bw: 'CAF', na: 'CAF', mz: 'CAF', rw: 'CAF',
+  nz: 'OFC', fj: 'OFC', pg: 'OFC', sb: 'OFC',
+};
+const WINTER_MD = [
+  ['England', 'gb-eng', 2, 3], ['Germany', 'de', 2, 3], ['Spain', 'es', 2, 3], ['Italy', 'it', 2, 3],
+  ['France', 'fr', 2, 3], ['Netherlands', 'nl', 2, 3], ['Portugal', 'pt', 2, 3], ['Belgium', 'be', 2, 3],
+  ['Turkey', 'tr', 2, 7], ['Russia', 'ru', 2, 21], ['Israel', 'il', 2, 3], ['Scotland', 'gb-sct', 2, 3],
+  ['Greece', 'gr', 2, 3], ['Austria', 'at', 2, 3], ['Switzerland', 'ch', 2, 3], ['Poland', 'pl', 2, 28],
+  ['Ukraine', 'ua', 2, 28], ['Czech Republic', 'cz', 2, 28], ['Denmark', 'dk', 2, 3], ['Sweden', 'se', 3, 31],
+  ['Norway', 'no', 3, 31], ['Romania', 'ro', 2, 28], ['Croatia', 'hr', 2, 17], ['Serbia', 'rs', 2, 28],
+  ['Hungary', 'hu', 2, 28], ['Saudi Arabia', 'sa', 2, 18], ['UAE', 'ae', 2, 18], ['Qatar', 'qa', 1, 31],
+  ['China', 'cn', 2, 28], ['Japan', 'jp', 3, 14], ['South Korea', 'kr', 3, 14], ['Australia', 'au', 2, 14],
+  ['Brazil', 'br', 4, 7], ['Argentina', 'ar', 2, 19], ['Colombia', 'co', 2, 28], ['Mexico', 'mx', 2, 7],
+  ['United States', 'us', 3, 26], ['Canada', 'ca', 3, 26], ['Egypt', 'eg', 2, 28], ['Morocco', 'ma', 2, 28],
+  ['South Africa', 'za', 2, 28], ['Nigeria', 'ng', 2, 28], ['New Zealand', 'nz', 3, 31],
+];
+const SUMMER_MD = [
+  ['England', 'gb-eng', 9, 1], ['Germany', 'de', 9, 1], ['Spain', 'es', 9, 1], ['Italy', 'it', 8, 31],
+  ['France', 'fr', 9, 1], ['Netherlands', 'nl', 9, 1], ['Portugal', 'pt', 9, 22], ['Belgium', 'be', 9, 1],
+  ['Turkey', 'tr', 9, 8], ['Russia', 'ru', 9, 1], ['Israel', 'il', 9, 1], ['Scotland', 'gb-sct', 9, 1],
+  ['Greece', 'gr', 9, 1], ['Austria', 'at', 9, 1], ['Switzerland', 'ch', 9, 1], ['Poland', 'pl', 9, 1],
+  ['Ukraine', 'ua', 9, 1], ['Czech Republic', 'cz', 9, 1], ['Denmark', 'dk', 9, 1], ['Sweden', 'se', 8, 31],
+  ['Norway', 'no', 8, 31], ['Romania', 'ro', 9, 8], ['Croatia', 'hr', 9, 1], ['Serbia', 'rs', 9, 1],
+  ['Hungary', 'hu', 9, 1], ['Saudi Arabia', 'sa', 9, 15], ['UAE', 'ae', 9, 15], ['Qatar', 'qa', 9, 15],
+  ['China', 'cn', 7, 31], ['Japan', 'jp', 8, 28], ['South Korea', 'kr', 8, 28], ['Australia', 'au', 10, 15],
+  ['Brazil', 'br', 8, 4], ['Argentina', 'ar', 8, 31], ['Colombia', 'co', 8, 31], ['Mexico', 'mx', 9, 8],
+  ['United States', 'us', 9, 2], ['Canada', 'ca', 9, 2], ['Egypt', 'eg', 9, 15], ['Morocco', 'ma', 9, 15],
+  ['South Africa', 'za', 9, 1], ['Nigeria', 'ng', 9, 1], ['New Zealand', 'nz', 8, 31],
+];
+
+function buildTransferWindows() {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = today.getMonth() + 1;
+  const list = (month >= 1 && month <= 4) || month >= 10
+    ? WINTER_MD.map(([name, code, m, d]) => {
+        const closeYear = month >= 10 ? year + 1 : year;
+        const closing = new Date(closeYear, m - 1, d);
+        return [name, code, closing];
+      })
+    : SUMMER_MD.map(([name, code, m, d]) => {
+        const closing = new Date(year, m - 1, d);
+        return [name, code, closing];
+      });
+  const result = [];
+  for (const [countryName, countryCode, closing] of list) {
+    const daysLeft = Math.ceil((closing - today) / (1000 * 60 * 60 * 24));
+    if (daysLeft < 0) continue;
+    const conf = COUNTRY_TO_CONF[countryCode] || 'UEFA';
+    result.push({
+      countryName,
+      countryCode,
+      flagUrl: `https://flagcdn.com/w40/${countryCode}.png`,
+      confederation: conf,
+      daysLeft,
+    });
+  }
+  return result.sort((a, b) => a.daysLeft - b.daysLeft);
+}
+
+app.get('/api/transfermarkt/transfer-windows', async (req, res) => {
+  try {
+    const windows = buildTransferWindows();
+    res.json({ windows });
+  } catch (err) {
+    console.error('Transfer windows error:', err.message);
+    res.status(500).json({ error: err.message || 'Failed to fetch transfer windows' });
   }
 });
 

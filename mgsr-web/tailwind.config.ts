@@ -19,10 +19,6 @@ const config: Config = {
           red: '#E53935',
         },
       },
-      animation: {
-        'fade-in': 'fadeIn 0.5s ease-out forwards',
-        'slide-up': 'slideUp 0.5s ease-out forwards',
-      },
       keyframes: {
         fadeIn: {
           '0%': { opacity: '0' },
@@ -32,6 +28,15 @@ const config: Config = {
           '0%': { opacity: '0', transform: 'translateY(12px)' },
           '100%': { opacity: '1', transform: 'translateY(0)' },
         },
+        searchResultIn: {
+          '0%': { opacity: '0', transform: 'translateY(-8px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+      },
+      animation: {
+        'fade-in': 'fadeIn 0.5s ease-out forwards',
+        'slide-up': 'slideUp 0.5s ease-out forwards',
+        'search-result-in': 'searchResultIn 0.4s ease-out both',
       },
     },
   },

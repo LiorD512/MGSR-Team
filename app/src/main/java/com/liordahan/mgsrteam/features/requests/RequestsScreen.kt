@@ -30,6 +30,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -1501,7 +1502,7 @@ private fun OnlinePlayerSuggestionRow(
                 )
             }
 
-            // ── Expanded section: detailed info + actions ──
+            // ── Expanded section: scout narrative + details + actions ──
             AnimatedVisibility(visible = isExpanded) {
                 Column(
                     modifier = Modifier
@@ -1509,7 +1510,7 @@ private fun OnlinePlayerSuggestionRow(
                         .padding(start = 12.dp, end = 12.dp, bottom = 12.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    // Player details card
+                    // Scout narrative card
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -1517,87 +1518,68 @@ private fun OnlinePlayerSuggestionRow(
                             .background(HomeDarkCard.copy(alpha = 0.6f))
                             .border(1.dp, HomeDarkCardBorder.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
                             .padding(10.dp),
-                        verticalArrangement = Arrangement.spacedBy(5.dp)
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        // Server explanation (structured scout analysis)
+                        // Scout analysis narrative text
                         suggestion.scoutAnalysis?.takeIf { it.isNotBlank() }?.let { analysis ->
-                            val parts = analysis.split(" · ").filter { it.isNotBlank() }
-                            parts.forEach { part ->
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier.padding(vertical = 1.dp)
-                                ) {
-                                    val icon = when {
-                                        part.contains("/90") || part.contains("%") || part.contains("pct", ignoreCase = true) -> "📊"
-                                        part.contains("contract", ignoreCase = true) || part.contains("חוזה") -> "📋"
-                                        part.contains("height", ignoreCase = true) || part.contains("גובה") -> "📏"
-                                        else -> "⚡"
-                                    }
-                                    Text(
-                                        "$icon ",
-                                        style = regularTextStyle(HomeTextSecondary, 12.sp)
-                                    )
-                                    Text(
-                                        part,
-                                        style = regularTextStyle(HomeTextPrimary, 12.sp),
-                                        lineHeight = 18.sp
-                                    )
-                                }
-                            }
+                            Text(
+                                text = analysis,
+                                style = regularTextStyle(HomeTextPrimary, 12.sp),
+                                lineHeight = 19.sp,
+                                textAlign = if (isRtl) TextAlign.Right else TextAlign.Start
+                            )
                         }
 
-                        // Physical & contract details (built from fields when no/sparse server explanation)
-                        val detailItems = buildList {
+                        // Quick-info row: foot + height + nationality (compact chips)
+                        val quickInfo = buildList {
                             suggestion.foot?.let { f ->
                                 val footLabel = when (f.lowercase()) {
-                                    "right" -> if (isRtl) "ימין" else "Right foot"
-                                    "left" -> if (isRtl) "שמאל" else "Left foot"
-                                    "both" -> if (isRtl) "דו-רגלי" else "Both feet"
-                                    else -> f
+                                    "right" -> if (isRtl) "🦶 ימין" else "🦶 Right"
+                                    "left" -> if (isRtl) "🦶 שמאל" else "🦶 Left"
+                                    "both" -> if (isRtl) "🦶 דו-רגלי" else "🦶 Both"
+                                    else -> "🦶 $f"
                                 }
-                                add("🦶" to footLabel)
+                                add(footLabel)
                             }
-                            suggestion.height?.let { h ->
-                                add("📏" to h)
-                            }
-                            suggestion.nationality?.let { n ->
-                                // Already formatted with " · " for dual nationality
-                                add("🌍" to n)
-                            }
+                            suggestion.height?.let { add("📏 $it") }
+                            suggestion.nationality?.let { add("🌍 $it") }
                             suggestion.contractEnd?.let { c ->
-                                val contractLabel = if (isRtl) "חוזה עד $c" else "Contract until $c"
-                                add("📋" to contractLabel)
+                                val label = if (isRtl) "📋 עד $c" else "📋 Until $c"
+                                add(label)
                             }
                         }
-
-                        // Only show detail items that aren't already covered by scoutAnalysis
-                        val analysisText = suggestion.scoutAnalysis?.lowercase() ?: ""
-                        detailItems.forEach { (icon, text) ->
-                            // Skip if already mentioned in scout analysis
-                            val isRedundant = when (icon) {
-                                "📋" -> analysisText.contains("contract") || analysisText.contains("חוזה")
-                                "📏" -> analysisText.contains("height") || analysisText.contains("גובה") || analysisText.contains(text.lowercase())
-                                else -> false
+                        if (quickInfo.isNotEmpty()) {
+                            // Divider if we had narrative text above
+                            if (!suggestion.scoutAnalysis.isNullOrBlank()) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(1.dp)
+                                        .background(HomeDarkCardBorder.copy(alpha = 0.4f))
+                                )
                             }
-                            if (!isRedundant) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier.padding(vertical = 1.dp)
-                                ) {
+                            // Flow layout for quick info chips
+                            @OptIn(ExperimentalLayoutApi::class)
+                            FlowRow(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                quickInfo.forEach { info ->
                                     Text(
-                                        "$icon ",
-                                        style = regularTextStyle(HomeTextSecondary, 12.sp)
-                                    )
-                                    Text(
-                                        text,
-                                        style = regularTextStyle(HomeTextPrimary, 12.sp)
+                                        text = info,
+                                        style = regularTextStyle(HomeTextSecondary, 11.sp),
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(4.dp))
+                                            .background(HomeDarkBackground.copy(alpha = 0.6f))
+                                            .padding(horizontal = 6.dp, vertical = 3.dp)
                                     )
                                 }
                             }
                         }
 
                         // Fallback: show raw similarity reason if nothing else
-                        if (suggestion.scoutAnalysis.isNullOrBlank() && detailItems.isEmpty()) {
+                        if (suggestion.scoutAnalysis.isNullOrBlank() && quickInfo.isEmpty()) {
                             suggestion.similarityReason?.takeIf { it.isNotBlank() }?.let { reason ->
                                 Text(
                                     text = reason,

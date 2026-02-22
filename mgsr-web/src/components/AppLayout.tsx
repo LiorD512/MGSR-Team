@@ -24,9 +24,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <div dir={isRtl ? 'rtl' : 'ltr'} className="min-h-screen bg-mgsr-dark flex">
       <aside className={`w-56 bg-mgsr-card flex flex-col ${isRtl ? 'border-l border-mgsr-border' : 'border-r border-mgsr-border'}`}>
-        <div className="p-4 border-b border-mgsr-border">
-          <h1 className="text-xl font-bold text-mgsr-teal font-display">MGSR Team</h1>
-        </div>
+        <Link href="/dashboard" className="p-4 border-b border-mgsr-border flex items-center gap-3">
+          <img src="/logo.svg" alt="MGSR" className="w-10 h-10 shrink-0" />
+          <span className="text-xl font-bold text-mgsr-teal font-display">MGSR Team</span>
+        </Link>
         <nav className="flex-1 p-4 space-y-1">
           {navItems.map((item) => (
             <Link

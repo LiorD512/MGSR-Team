@@ -53,6 +53,38 @@ export interface PlayerDetails {
   foot?: string;
 }
 
+export type Confederation = 'PRIORITY' | 'UEFA' | 'CONMEBOL' | 'CONCACAF' | 'AFC' | 'CAF' | 'OFC';
+
+export interface TransferWindow {
+  countryName: string;
+  countryCode: string;
+  flagUrl?: string;
+  confederation: Confederation;
+  daysLeft: number | null;
+}
+
+export async function getTransferWindows(): Promise<TransferWindow[]> {
+  const res = await fetchBackend(`${BACKEND_URL}/api/transfermarkt/transfer-windows`);
+  const data = await res.json();
+  return data.windows || [];
+}
+
+export interface ClubSearchResult {
+  clubName?: string;
+  clubLogo?: string;
+  clubTmProfile?: string;
+  clubCountry?: string;
+  clubCountryFlag?: string;
+}
+
+export async function searchClubs(query: string): Promise<ClubSearchResult[]> {
+  const res = await fetchBackend(
+    `${BACKEND_URL}/api/transfermarkt/club-search?q=${encodeURIComponent(query)}`
+  );
+  const data = await res.json();
+  return data.clubs || [];
+}
+
 export async function searchPlayers(query: string): Promise<SearchPlayer[]> {
   const res = await fetchBackend(
     `${BACKEND_URL}/api/transfermarkt/search?q=${encodeURIComponent(query)}`

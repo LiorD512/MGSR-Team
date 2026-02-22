@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import { getScreenCache, setScreenCache } from '@/lib/screenCache';
 import { useLanguage, translateType } from '@/contexts/LanguageContext';
 import {
   collection,
@@ -15,6 +16,7 @@ import {
 import { db } from '@/lib/firebase';
 import AppLayout from '@/components/AppLayout';
 import Link from 'next/link';
+import { getTransferWindows, type TransferWindow } from '@/lib/api';
 import {
   AreaChart,
   Area,
@@ -123,21 +125,36 @@ const formatTime = (
 const getDisplayName = (account: Account, isRtl: boolean) =>
   isRtl ? account.hebrewName || account.name || account.email || '—' : account.name || account.hebrewName || account.email || '—';
 
+interface DashboardCache {
+  events: FeedEvent[];
+  players: { id: string }[];
+  contacts: { id: string }[];
+  requests: { id: string; status?: string }[];
+  tasks: AgentTask[];
+  shortlistCount: number;
+  accounts: Account[];
+  currentAccount: Account | null;
+}
+
 export default function DashboardPage() {
   const { user, loading } = useAuth();
   const { lang, setLang, t, isRtl } = useLanguage();
   const router = useRouter();
-  const [events, setEvents] = useState<FeedEvent[]>([]);
-  const [eventsLoading, setEventsLoading] = useState(true);
-  const [players, setPlayers] = useState<{ id: string }[]>([]);
-  const [contacts, setContacts] = useState<{ id: string }[]>([]);
+  const cached = user ? getScreenCache<DashboardCache>('dashboard', user.uid) : undefined;
+  const [events, setEvents] = useState<FeedEvent[]>(cached?.events ?? []);
+  const [eventsLoading, setEventsLoading] = useState(cached === undefined);
+  const [players, setPlayers] = useState<{ id: string }[]>(cached?.players ?? []);
+  const [contacts, setContacts] = useState<{ id: string }[]>(cached?.contacts ?? []);
   const [requests, setRequests] = useState<{ id: string; status?: string }[]>(
-    []
+    cached?.requests ?? []
   );
-  const [tasks, setTasks] = useState<AgentTask[]>([]);
-  const [shortlistCount, setShortlistCount] = useState(0);
-  const [accounts, setAccounts] = useState<Account[]>([]);
-  const [currentAccount, setCurrentAccount] = useState<Account | null>(null);
+  const [tasks, setTasks] = useState<AgentTask[]>(cached?.tasks ?? []);
+  const [shortlistCount, setShortlistCount] = useState(cached?.shortlistCount ?? 0);
+  const [accounts, setAccounts] = useState<Account[]>(cached?.accounts ?? []);
+  const [currentAccount, setCurrentAccount] = useState<Account | null>(cached?.currentAccount ?? null);
+  const [transferWindows, setTransferWindows] = useState<TransferWindow[]>([]);
+  const [transferWindowsLoading, setTransferWindowsLoading] = useState(false);
+  const [expandedConfederations, setExpandedConfederations] = useState<Set<string>>(new Set(['PRIORITY']));
 
   useEffect(() => {
     if (!loading && !user) router.replace('/login');
@@ -186,7 +203,7 @@ export default function DashboardPage() {
   }, []);
 
   useEffect(() => {
-    const unsub = onSnapshot(collection(db, 'Requests'), (snap) => {
+    const unsub = onSnapshot(collection(db, 'ClubRequests'), (snap) => {
       setRequests(
         snap.docs.map((d) => ({
           id: d.id,
@@ -216,6 +233,74 @@ export default function DashboardPage() {
     );
     return () => unsub();
   }, [user]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setTransferWindowsLoading(true);
+    getTransferWindows()
+      .then((windows) => {
+        if (!cancelled) setTransferWindows(windows);
+      })
+      .catch(() => {
+        if (!cancelled) setTransferWindows([]);
+      })
+      .finally(() => {
+        if (!cancelled) setTransferWindowsLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, []);
+
+  const PRIORITY_COUNTRY_CODES = new Set(['il', 'gb-eng', 'de', 'es', 'it', 'fr']);
+  const transferWindowGroups = useMemo(() => {
+    const priority = transferWindows
+      .filter((w) => PRIORITY_COUNTRY_CODES.has(w.countryCode))
+      .sort((a, b) => (a.daysLeft ?? 999) - (b.daysLeft ?? 999));
+    const rest = transferWindows
+      .filter((w) => !PRIORITY_COUNTRY_CODES.has(w.countryCode))
+      .reduce<Record<string, TransferWindow[]>>((acc, w) => {
+        const conf = w.confederation || 'UEFA';
+        if (!acc[conf]) acc[conf] = [];
+        acc[conf].push(w);
+        return acc;
+      }, {});
+    Object.keys(rest).forEach((k) => {
+      rest[k].sort((a, b) => (a.daysLeft ?? 999) - (b.daysLeft ?? 999));
+    });
+    const confOrder = ['UEFA', 'CONMEBOL', 'CONCACAF', 'AFC', 'CAF', 'OFC'];
+    const groups: Record<string, TransferWindow[]> = {};
+    if (priority.length > 0) groups.PRIORITY = priority;
+    confOrder.forEach((c) => {
+      if (rest[c]?.length) groups[c] = rest[c];
+    });
+    return groups;
+  }, [transferWindows]);
+
+  const toggleTransferWindowGroup = (conf: string) => {
+    setExpandedConfederations((prev) => {
+      const next = new Set(prev);
+      if (next.has(conf)) next.delete(conf);
+      else next.add(conf);
+      return next;
+    });
+  };
+
+  useEffect(() => {
+    if (!user) return;
+    setScreenCache<DashboardCache>(
+      'dashboard',
+      {
+        events,
+        players,
+        contacts,
+        requests,
+        tasks,
+        shortlistCount,
+        accounts,
+        currentAccount,
+      },
+      user.uid
+    );
+  }, [user?.uid, events, players, contacts, requests, tasks, shortlistCount, accounts, currentAccount]);
 
   const userName =
     currentAccount
@@ -328,8 +413,6 @@ export default function DashboardPage() {
     return Object.entries(byAgent).map(([id, data]) => ({ id, ...data }));
   }, [accounts, tasks, isRtl]);
 
-  const pendingRequests = requests.filter((r) => r.status !== 'fulfilled');
-
   if (loading || !user) {
     return (
       <div className="min-h-screen bg-mgsr-dark flex items-center justify-center">
@@ -378,12 +461,7 @@ export default function DashboardPage() {
           {[
             { href: '/players', count: players.length, label: t('players') },
             { href: '/contacts', count: contacts.length, label: t('contacts') },
-            {
-              href: '/requests',
-              count: requests.length,
-              label: t('requests'),
-              badge: pendingRequests.length,
-            },
+            { href: '/requests', count: requests.length, label: t('requests') },
             {
               href: '/tasks',
               count: tasks.filter((t) => !t.isCompleted).length,
@@ -573,6 +651,190 @@ export default function DashboardPage() {
               <p className="text-sm text-mgsr-muted">{t('no_agent_activity')}</p>
             )}
           </div>
+        </div>
+
+        {/* Transfer Windows — Open worldwide (app-like design) */}
+        <div className="mb-10">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-mgsr-text font-display">
+              {t('transfer_windows_title')}
+            </h2>
+            {transferWindows.length > 0 && (
+              <span className="px-2.5 py-1 rounded-lg bg-mgsr-teal/15 text-mgsr-teal text-sm font-semibold">
+                {transferWindows.length}
+              </span>
+            )}
+          </div>
+          <div className="w-10 h-0.5 rounded-full bg-mgsr-teal mb-4" />
+          {transferWindowsLoading ? (
+            <div className="flex items-center gap-3 py-8 text-mgsr-muted">
+              <div className="w-4 h-4 border-2 border-mgsr-teal/40 border-t-mgsr-teal rounded-full animate-spin" />
+              <span className="text-sm">{t('loading')}</span>
+            </div>
+          ) : Object.keys(transferWindowGroups).length === 0 ? (
+            <div className="py-8 px-6 rounded-2xl bg-mgsr-card/40 border border-mgsr-border text-center text-mgsr-muted">
+              {t('transfer_windows_empty')}
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {Object.entries(transferWindowGroups).map(([conf, windows]) => {
+                const isExpanded = expandedConfederations.has(conf);
+                const closingSoonCount = windows.filter(
+                  (w) => (w.daysLeft ?? 999) <= 7
+                ).length;
+                const confLabel =
+                  conf === 'PRIORITY'
+                    ? t('transfer_windows_group_priority')
+                    : conf === 'UEFA'
+                      ? t('transfer_windows_group_uefa')
+                      : conf === 'CONMEBOL'
+                        ? t('transfer_windows_group_conmebol')
+                        : conf === 'CONCACAF'
+                          ? t('transfer_windows_group_concacaf')
+                          : conf === 'AFC'
+                            ? t('transfer_windows_group_afc')
+                            : conf === 'CAF'
+                              ? t('transfer_windows_group_caf')
+                              : conf === 'OFC'
+                                ? t('transfer_windows_group_ofc')
+                                : conf;
+                const accentColor =
+                  conf === 'PRIORITY'
+                    ? '#4DB6AC'
+                    : conf === 'UEFA'
+                      ? '#5C6BC0'
+                      : conf === 'CONMEBOL'
+                        ? '#66BB6A'
+                        : conf === 'CONCACAF'
+                          ? '#FF7043'
+                          : conf === 'AFC'
+                            ? '#AB47BC'
+                            : conf === 'CAF'
+                              ? '#FDD835'
+                              : '#8C999B';
+                return (
+                  <div
+                    key={conf}
+                    className="rounded-xl overflow-hidden"
+                    style={{
+                      backgroundColor: `${accentColor}14`,
+                      borderColor: `${accentColor}30`,
+                      borderWidth: 1,
+                    }}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => toggleTransferWindowGroup(conf)}
+                      className="w-full flex items-center gap-3 px-4 py-3 text-start hover:opacity-90 transition"
+                    >
+                      {conf === 'PRIORITY' && (
+                        <span className="text-base" style={{ color: accentColor }}>
+                          ★
+                        </span>
+                      )}
+                      <span className="flex-1 font-semibold text-mgsr-text">
+                        {confLabel}
+                      </span>
+                      {closingSoonCount > 0 && !isExpanded && (
+                        <span className="px-2 py-0.5 rounded-md bg-red-500/15 text-red-400 text-xs font-semibold">
+                          {t('transfer_windows_closing_soon').replace(
+                            '{n}',
+                            String(closingSoonCount)
+                          )}
+                        </span>
+                      )}
+                      <span
+                        className="px-2 py-0.5 rounded-md text-xs font-semibold"
+                        style={{
+                          backgroundColor: `${accentColor}25`,
+                          color: accentColor,
+                        }}
+                      >
+                        {windows.length}
+                      </span>
+                      <span
+                        className={`inline-flex text-mgsr-muted transition-transform duration-200 ${
+                          isExpanded ? 'rotate-180' : ''
+                        }`}
+                      >
+                        <svg
+                          width="20"
+                          height="20"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                        >
+                          <polyline points="6 9 12 15 18 9" />
+                        </svg>
+                      </span>
+                    </button>
+                    {isExpanded && (
+                      <div className="px-4 pb-3 pt-0 space-y-1.5">
+                        {windows.map((w) => {
+                          const isClosingSoon =
+                            (w.daysLeft ?? 999) <= 7;
+                          const daysColor =
+                            isClosingSoon
+                              ? '#E53935'
+                              : (w.daysLeft ?? 999) <= 14
+                                ? '#FF7043'
+                                : '#4DB6AC';
+                          return (
+                            <div
+                              key={w.countryCode + w.countryName}
+                              className="flex items-center justify-between px-3 py-2.5 rounded-lg bg-mgsr-dark/60 border border-mgsr-border/50"
+                              style={{
+                                borderColor: isClosingSoon
+                                  ? 'rgba(229, 57, 53, 0.3)'
+                                  : undefined,
+                              }}
+                            >
+                              <div className="flex items-center gap-3 min-w-0">
+                                {w.flagUrl && (
+                                  <img
+                                    src={w.flagUrl}
+                                    alt=""
+                                    className="w-6 h-6 rounded-full object-cover shrink-0"
+                                  />
+                                )}
+                                <span className="font-medium text-mgsr-text truncate">
+                                  {w.countryName}
+                                </span>
+                              </div>
+                              {w.daysLeft != null ? (
+                                <span
+                                  className={`shrink-0 text-sm font-medium ${
+                                    isClosingSoon
+                                      ? 'px-2 py-0.5 rounded-md bg-red-500/15 text-red-400'
+                                      : ''
+                                  }`}
+                                  style={
+                                    !isClosingSoon
+                                      ? { color: daysColor }
+                                      : undefined
+                                  }
+                                >
+                                  {t('transfer_windows_days_left').replace(
+                                    '{n}',
+                                    String(w.daysLeft)
+                                  )}
+                                </span>
+                              ) : (
+                                <span className="text-sm text-mgsr-muted shrink-0">
+                                  {t('transfer_windows_open')}
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* Quick actions */}

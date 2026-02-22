@@ -3,6 +3,8 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
+    "prebuild": "node scripts/convert-logo.js",
+    "predev": "node scripts/convert-logo.js",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",

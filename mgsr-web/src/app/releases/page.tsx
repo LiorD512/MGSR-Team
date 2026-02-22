@@ -21,6 +21,7 @@ import {
 } from '@/lib/releases';
 import AppLayout from '@/components/AppLayout';
 import Link from 'next/link';
+import { getScreenCache, setScreenCache } from '@/lib/screenCache';
 
 const VALUE_PRESETS = [
   { min: 0, max: 50000000, label: 'All', labelHe: 'הכל', isAll: true },
@@ -288,24 +289,37 @@ function ReleaseCard({
   );
 }
 
+interface ReleasesCache {
+  players: ReleasePlayer[];
+  preset: number;
+  search: string;
+  positionFilter: string | null;
+  ageFilter: AgeFilter;
+  rosterPlayers: RosterPlayer[];
+  shortlistUrls: string[];
+}
+
 export default function ReleasesPage() {
   const { user, loading } = useAuth();
   const { t, isRtl } = useLanguage();
   const router = useRouter();
-  const [players, setPlayers] = useState<ReleasePlayer[]>([]);
-  const [loadingList, setLoadingList] = useState(false);
+  const cached = user ? getScreenCache<ReleasesCache>('releases', user.uid) : undefined;
+  const [players, setPlayers] = useState<ReleasePlayer[]>(cached?.players ?? []);
+  const [loadingList, setLoadingList] = useState(cached === undefined);
   const [error, setError] = useState('');
-  const [preset, setPreset] = useState(0);
+  const [preset, setPreset] = useState(cached?.preset ?? 0);
   const [addingUrl, setAddingUrl] = useState<string | null>(null);
-  const [search, setSearch] = useState('');
-  const [positionFilter, setPositionFilter] = useState<string | null>(null);
-  const [ageFilter, setAgeFilter] = useState<AgeFilter>('all');
+  const [search, setSearch] = useState(cached?.search ?? '');
+  const [positionFilter, setPositionFilter] = useState<string | null>(cached?.positionFilter ?? null);
+  const [ageFilter, setAgeFilter] = useState<AgeFilter>(cached?.ageFilter ?? 'all');
   const [firestorePositions, setFirestorePositions] = useState<{ name?: string; hebrewName?: string }[]>([]);
-  const [rosterPlayers, setRosterPlayers] = useState<RosterPlayer[]>([]);
+  const [rosterPlayers, setRosterPlayers] = useState<RosterPlayer[]>(cached?.rosterPlayers ?? []);
   const [teammatesCache, setTeammatesCache] = useState<Record<string, RosterTeammateMatch[]>>({});
   const [loadingTeammatesUrl, setLoadingTeammatesUrl] = useState<string | null>(null);
   const [expandedTeammatesUrl, setExpandedTeammatesUrl] = useState<string | null>(null);
-  const [shortlistUrls, setShortlistUrls] = useState<Set<string>>(new Set());
+  const [shortlistUrls, setShortlistUrls] = useState<Set<string>>(
+    () => new Set(cached?.shortlistUrls ?? [])
+  );
 
   useEffect(() => {
     getDocs(collection(db, 'Positions'))
@@ -359,13 +373,30 @@ export default function ReleasesPage() {
   }, [preset, t]);
 
   useEffect(() => {
-    const cached = sessionCache[preset];
-    if (cached) {
-      setPlayers(cached);
+    const sessionCached = sessionCache[preset];
+    if (sessionCached) {
+      setPlayers(sessionCached);
+      setLoadingList(false);
     } else {
       loadReleases();
     }
   }, [preset, loadReleases]);
+
+  useEffect(() => {
+    setScreenCache<ReleasesCache>(
+      'releases',
+      {
+        players,
+        preset,
+        search,
+        positionFilter,
+        ageFilter,
+        rosterPlayers,
+        shortlistUrls: Array.from(shortlistUrls),
+      },
+      user?.uid ?? undefined
+    );
+  }, [players, preset, search, positionFilter, ageFilter, rosterPlayers, shortlistUrls, user?.uid]);
 
   const addToShortlist = useCallback(
     async (player: ReleasePlayer) => {
@@ -373,18 +404,18 @@ export default function ReleasesPage() {
       setAddingUrl(player.playerUrl);
       try {
         const docRef = doc(db, 'Shortlists', user.uid);
-        const entry = {
+        const entry: Record<string, unknown> = {
           tmProfileUrl: player.playerUrl,
           addedAt: Date.now(),
-          playerImage: player.playerImage,
-          playerName: player.playerName,
-          playerPosition: player.playerPosition,
-          playerAge: player.playerAge,
-          playerNationality: player.playerNationality,
-          playerNationalityFlag: player.playerNationalityFlag,
+          playerImage: player.playerImage ?? null,
+          playerName: player.playerName ?? null,
+          playerPosition: player.playerPosition ?? null,
+          playerAge: player.playerAge ?? null,
+          playerNationality: player.playerNationality ?? null,
+          playerNationalityFlag: player.playerNationalityFlag ?? null,
           clubJoinedName: null,
-          transferDate: player.transferDate,
-          marketValue: player.marketValue,
+          transferDate: player.transferDate ?? null,
+          marketValue: player.marketValue ?? null,
         };
         const snap = await getDoc(docRef);
         const current = (snap.data()?.entries as Record<string, unknown>[]) || [];

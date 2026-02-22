@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { doc, onSnapshot, updateDoc, arrayRemove } from 'firebase/firestore';
+import { getScreenCache, setScreenCache } from '@/lib/screenCache';
+import { doc, onSnapshot, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import AppLayout from '@/components/AppLayout';
 import Link from 'next/link';
@@ -26,8 +27,9 @@ export default function ShortlistPage() {
   const { user, loading } = useAuth();
   const { t, isRtl } = useLanguage();
   const router = useRouter();
-  const [entries, setEntries] = useState<ShortlistEntry[]>([]);
-  const [loadingList, setLoadingList] = useState(true);
+  const cached = user ? getScreenCache<ShortlistEntry[]>('shortlist', user.uid) : undefined;
+  const [entries, setEntries] = useState<ShortlistEntry[]>(cached ?? []);
+  const [loadingList, setLoadingList] = useState(cached === undefined);
   const [removingUrl, setRemovingUrl] = useState<string | null>(null);
 
   useEffect(() => {
@@ -40,33 +42,44 @@ export default function ShortlistPage() {
     const unsub = onSnapshot(docRef, (snap) => {
       const data = snap.data();
       const list = (data?.entries as Record<string, unknown>[]) || [];
-      setEntries(
-        list.map((e) => ({
-          tmProfileUrl: e.tmProfileUrl as string,
-          addedAt: e.addedAt as number,
-          playerImage: e.playerImage as string,
-          playerName: e.playerName as string,
-          playerPosition: e.playerPosition as string,
-          playerAge: e.playerAge as string,
-          playerNationality: e.playerNationality as string,
-          clubJoinedName: e.clubJoinedName as string,
-          transferDate: e.transferDate as string,
-          marketValue: e.marketValue as string,
-        }))
-      );
+      const mapped = list.map((e) => ({
+        tmProfileUrl: e.tmProfileUrl as string,
+        addedAt: e.addedAt as number,
+        playerImage: e.playerImage as string,
+        playerName: e.playerName as string,
+        playerPosition: e.playerPosition as string,
+        playerAge: e.playerAge as string,
+        playerNationality: e.playerNationality as string,
+        clubJoinedName: e.clubJoinedName as string,
+        transferDate: e.transferDate as string,
+        marketValue: e.marketValue as string,
+      }));
+      setEntries(mapped);
       setLoadingList(false);
+      setScreenCache('shortlist', mapped, user.uid);
     });
     return () => unsub();
   }, [user]);
+
+  const sanitizeForFirestore = (obj: Record<string, unknown>): Record<string, unknown> => {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(obj)) {
+      out[k] = v === undefined ? null : v;
+    }
+    return out;
+  };
 
   const removeFromShortlist = async (entry: ShortlistEntry) => {
     if (!user) return;
     setRemovingUrl(entry.tmProfileUrl);
     try {
       const docRef = doc(db, 'Shortlists', user.uid);
-      await updateDoc(docRef, {
-        entries: arrayRemove(entry),
-      });
+      const snap = await getDoc(docRef);
+      const current = (snap.data()?.entries as Record<string, unknown>[]) || [];
+      const filtered = current
+        .filter((e) => e.tmProfileUrl !== entry.tmProfileUrl)
+        .map((e) => sanitizeForFirestore(e));
+      await setDoc(docRef, { entries: filtered }, { merge: true });
     } finally {
       setRemovingUrl(null);
     }
@@ -146,7 +159,7 @@ export default function ShortlistPage() {
                 style={{ animationDelay: `${i * 40}ms` }}
               >
                 <Link
-                  href={`/players/add?url=${encodeURIComponent(entry.tmProfileUrl)}`}
+                  href={`/players/add?url=${encodeURIComponent(entry.tmProfileUrl)}&from=shortlist`}
                   className="flex items-center gap-4 flex-1 min-w-0"
                 >
                   <img

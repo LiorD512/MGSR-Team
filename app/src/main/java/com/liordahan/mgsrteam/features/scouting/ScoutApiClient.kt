@@ -71,7 +71,7 @@ class ScoutApiClient(private val baseUrl: String = DEFAULT_BASE_URL) {
 
     /**
      * Find players matching request criteria (position, age, foot, value).
-     * Calls /recruitment with filters.
+     * Calls /recruitment with filters + club context for professional scouting.
      * Returns results mapped to the existing SimilarPlayerSuggestion type.
      */
     suspend fun findPlayersForRequest(
@@ -85,7 +85,11 @@ class ScoutApiClient(private val baseUrl: String = DEFAULT_BASE_URL) {
         excludeUrls: Set<String> = emptySet(),
         lang: String = "en",
         sortBy: String = "score",
-        limit: Int = 15
+        limit: Int = 15,
+        // Club context for professional scouting
+        clubUrl: String? = null,
+        clubName: String? = null,
+        clubCountry: String? = null,
     ): Result<List<AiHelperService.SimilarPlayerSuggestion>> = runCatching {
         val params = buildList {
             position?.let { add("position=${encode(it)}") }
@@ -98,6 +102,10 @@ class ScoutApiClient(private val baseUrl: String = DEFAULT_BASE_URL) {
             if (excludeUrls.isNotEmpty()) {
                 add("exclude_urls=${encode(excludeUrls.joinToString(","))}")
             }
+            // Club context params
+            clubUrl?.takeIf { it.isNotBlank() }?.let { add("club_url=${encode(it)}") }
+            clubName?.takeIf { it.isNotBlank() }?.let { add("club_name=${encode(it)}") }
+            clubCountry?.takeIf { it.isNotBlank() }?.let { add("club_country=${encode(it)}") }
             add("lang=$lang")
             add("sort_by=$sortBy")
             add("limit=$limit")
@@ -108,9 +116,9 @@ class ScoutApiClient(private val baseUrl: String = DEFAULT_BASE_URL) {
             |│ position: $position
             |│ ageMin: $ageMin, ageMax: $ageMax
             |│ foot: $foot
-            |│ valueMax: $valueMax
             |│ notes: $notes
             |│ transferFee: $transferFee
+            |│ club: $clubName ($clubCountry) | URL: $clubUrl
             |│ lang: $lang, sortBy: $sortBy, limit: $limit
             |└──────────────────────────────""".trimMargin())
         val json = fetch(url)

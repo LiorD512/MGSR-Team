@@ -1,0 +1,101 @@
+/**
+ * Football scout server API - recruitment search for requests.
+ * Matches Android ScoutApiClient.findPlayersForRequest.
+ */
+
+const SCOUT_BASE_URL =
+  process.env.NEXT_PUBLIC_SCOUT_SERVER_URL || 'https://football-scout-server-l38w.onrender.com';
+
+export interface ScoutPlayerSuggestion {
+  name: string;
+  position: string;
+  age: string;
+  marketValue: string;
+  transfermarktUrl: string | null;
+  similarityReason?: string;
+  playingStyle?: string;
+  matchPercent?: number;
+  scoutAnalysis?: string;
+  league?: string;
+  club?: string;
+  nationality?: string;
+  height?: string;
+  contractEnd?: string;
+  foot?: string;
+}
+
+interface RecruitmentParams {
+  position?: string;
+  ageMin?: number;
+  ageMax?: number;
+  foot?: string;
+  notes?: string;
+  transferFee?: string;
+  excludeUrls?: string[];
+  lang?: string;
+  clubUrl?: string;
+  clubName?: string;
+  clubCountry?: string;
+}
+
+function buildUrl(params: RecruitmentParams): string {
+  const search = new URLSearchParams();
+  if (params.position) search.set('position', params.position);
+  if (params.ageMin != null) search.set('age_min', String(params.ageMin));
+  if (params.ageMax != null) search.set('age_max', String(params.ageMax));
+  if (params.foot) search.set('foot', params.foot);
+  if (params.notes?.trim()) search.set('notes', params.notes.trim());
+  if (params.transferFee?.trim()) search.set('transfer_fee', params.transferFee.trim());
+  if (params.excludeUrls?.length) search.set('exclude_urls', params.excludeUrls.join(','));
+  if (params.clubUrl?.trim()) search.set('club_url', params.clubUrl.trim());
+  if (params.clubName?.trim()) search.set('club_name', params.clubName.trim());
+  if (params.clubCountry?.trim()) search.set('club_country', params.clubCountry.trim());
+  search.set('lang', params.lang || 'en');
+  search.set('sort_by', 'score');
+  search.set('limit', '15');
+  return `${SCOUT_BASE_URL}/recruitment?${search.toString()}`;
+}
+
+function parseResult(p: Record<string, unknown>): ScoutPlayerSuggestion {
+  const scoutingScore = (p.scouting_score as number) ?? 0;
+  const smartScore = (p.smart_score as number) ?? 0;
+  const simScore = (p.similarity_score as number) ?? 0;
+  const effectiveScore =
+    smartScore > 0 ? Math.round(smartScore) : simScore > 0 ? Math.round(simScore * 100) : scoutingScore > 0 ? Math.round(scoutingScore) : undefined;
+
+  const playingStyle = (p.playing_style as string)?.trim() || undefined;
+  const serverExplanation = (p.explanation as string)?.trim() || undefined;
+  const reason = [playingStyle, effectiveScore != null ? `Match: ${effectiveScore}%` : null].filter(Boolean).join(' · ') || undefined;
+
+  return {
+    name: (p.name as string) || '',
+    position: (p.position as string) || '',
+    age: (p.age as string) || '',
+    marketValue: (p.market_value as string) || '',
+    transfermarktUrl: (p.url as string) || null,
+    similarityReason: reason || undefined,
+    playingStyle,
+    matchPercent: effectiveScore ?? undefined,
+    scoutAnalysis: serverExplanation,
+    league: (p.league as string) || undefined,
+    club: (p.club as string) || undefined,
+    nationality: (p.citizenship as string) || undefined,
+    height: (p.height as string) || undefined,
+    contractEnd: (p.contract as string) || undefined,
+    foot: (p.foot as string) || undefined,
+  };
+}
+
+export async function findPlayersForRequest(
+  params: RecruitmentParams
+): Promise<ScoutPlayerSuggestion[]> {
+  const url = buildUrl(params);
+  const res = await fetch(url, {
+    headers: { Accept: 'application/json' },
+    signal: AbortSignal.timeout(60000),
+  });
+  if (!res.ok) throw new Error(`Scout API: ${res.status}`);
+  const json = (await res.json()) as { results?: Record<string, unknown>[] };
+  const arr = json.results ?? [];
+  return arr.map((p) => parseResult(p as Record<string, unknown>));
+}

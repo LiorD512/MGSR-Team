@@ -4,6 +4,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { getScreenCache, setScreenCache } from '@/lib/screenCache';
 import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import AppLayout from '@/components/AppLayout';
@@ -21,13 +22,19 @@ interface Player {
   createdAt?: number;
 }
 
+interface PlayersCache {
+  players: Player[];
+  search: string;
+}
+
 export default function PlayersPage() {
   const { user, loading } = useAuth();
   const { t, isRtl } = useLanguage();
   const router = useRouter();
-  const [players, setPlayers] = useState<Player[]>([]);
-  const [playersLoading, setPlayersLoading] = useState(true);
-  const [search, setSearch] = useState('');
+  const cached = getScreenCache<PlayersCache>('players');
+  const [players, setPlayers] = useState<Player[]>(cached?.players ?? []);
+  const [playersLoading, setPlayersLoading] = useState(cached === undefined);
+  const [search, setSearch] = useState(cached?.search ?? '');
 
   useEffect(() => {
     if (!loading && !user) router.replace('/login');
@@ -39,13 +46,16 @@ export default function PlayersPage() {
       orderBy('createdAt', 'desc')
     );
     const unsub = onSnapshot(q, (snap) => {
-      setPlayers(
-        snap.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Player))
-      );
+      const list = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Player));
+      setPlayers(list);
       setPlayersLoading(false);
     });
     return () => unsub();
   }, []);
+
+  useEffect(() => {
+    setScreenCache<PlayersCache>('players', { players, search });
+  }, [players, search]);
 
   const filtered = useMemo(() => {
     if (!search.trim()) return players;

@@ -4,6 +4,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { getScreenCache, setScreenCache } from '@/lib/screenCache';
 import {
   collection,
   onSnapshot,
@@ -52,14 +53,21 @@ const PRIORITY_COLORS = {
 const getDisplayName = (a: Account, isRtl: boolean) =>
   isRtl ? a.hebrewName || a.name || a.email || '—' : a.name || a.hebrewName || a.email || '—';
 
+interface TasksCache {
+  tasks: AgentTask[];
+  accounts: Account[];
+  filter: 'all' | 'mine';
+}
+
 export default function TasksPage() {
   const { user, loading } = useAuth();
   const { lang, setLang, t, isRtl } = useLanguage();
   const router = useRouter();
-  const [tasks, setTasks] = useState<AgentTask[]>([]);
-  const [accounts, setAccounts] = useState<Account[]>([]);
-  const [loadingList, setLoadingList] = useState(true);
-  const [filter, setFilter] = useState<'all' | 'mine'>('all');
+  const cached = getScreenCache<TasksCache>('tasks');
+  const [tasks, setTasks] = useState<AgentTask[]>(cached?.tasks ?? []);
+  const [accounts, setAccounts] = useState<Account[]>(cached?.accounts ?? []);
+  const [loadingList, setLoadingList] = useState(cached === undefined);
+  const [filter, setFilter] = useState<'all' | 'mine'>(cached?.filter ?? 'all');
   const [showAdd, setShowAdd] = useState(false);
   const [addTitle, setAddTitle] = useState('');
   const [addNotes, setAddNotes] = useState('');
@@ -93,6 +101,10 @@ export default function TasksPage() {
     });
     return () => unsub();
   }, [user, addAgentId]);
+
+  useEffect(() => {
+    setScreenCache<TasksCache>('tasks', { tasks, accounts, filter });
+  }, [tasks, accounts, filter]);
 
   const myAgentIds = useMemo(() => {
     if (!user) return new Set<string>();

@@ -4,6 +4,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { getScreenCache, setScreenCache } from '@/lib/screenCache';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import AppLayout from '@/components/AppLayout';
@@ -23,14 +24,21 @@ interface Contact {
   agencyUrl?: string;
 }
 
+interface ContactsCache {
+  contacts: Contact[];
+  filter: 'all' | 'club' | 'agency';
+  search: string;
+}
+
 export default function ContactsPage() {
   const { user, loading } = useAuth();
   const { t, isRtl } = useLanguage();
   const router = useRouter();
-  const [contacts, setContacts] = useState<Contact[]>([]);
-  const [loadingList, setLoadingList] = useState(true);
-  const [filter, setFilter] = useState<'all' | 'club' | 'agency'>('all');
-  const [search, setSearch] = useState('');
+  const cached = getScreenCache<ContactsCache>('contacts');
+  const [contacts, setContacts] = useState<Contact[]>(cached?.contacts ?? []);
+  const [loadingList, setLoadingList] = useState(cached === undefined);
+  const [filter, setFilter] = useState<'all' | 'club' | 'agency'>(cached?.filter ?? 'all');
+  const [search, setSearch] = useState(cached?.search ?? '');
 
   useEffect(() => {
     if (!loading && !user) router.replace('/login');
@@ -46,6 +54,10 @@ export default function ContactsPage() {
     });
     return () => unsub();
   }, []);
+
+  useEffect(() => {
+    setScreenCache<ContactsCache>('contacts', { contacts, filter, search });
+  }, [contacts, filter, search]);
 
   const filtered = useMemo(() => {
     let list = contacts;

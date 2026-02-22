@@ -14,3 +14,10 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+# Web & Backend
+node_modules/
+.env.local
+.env*.local
+.next/
+out/
