@@ -16,6 +16,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { searchPlayers, getPlayerDetails, SearchPlayer, PlayerDetails } from '@/lib/api';
+import { getCurrentAccountForShortlist } from '@/lib/accounts';
 import AppLayout from '@/components/AppLayout';
 import Link from 'next/link';
 
@@ -139,6 +140,7 @@ export default function AddPlayerPage() {
           setSaving(false);
           return;
         }
+        const account = await getCurrentAccountForShortlist(user);
         const entry: Record<string, unknown> = {
           tmProfileUrl: selectedPlayer.tmProfile,
           addedAt: Date.now(),
@@ -150,8 +152,20 @@ export default function AddPlayerPage() {
           playerNationalityFlag: selectedPlayer.nationalityFlag ?? null,
           clubJoinedName: selectedPlayer.currentClub?.clubName ?? null,
           marketValue: selectedPlayer.marketValue ?? null,
+          addedByAgentId: account.id,
+          addedByAgentName: account.name ?? null,
+          addedByAgentHebrewName: account.hebrewName ?? null,
         };
         await setDoc(docRef, { entries: [...current, entry] }, { merge: true });
+        const shortlistFeedEvent: Record<string, unknown> = {
+          type: 'SHORTLIST_ADDED',
+          playerName: selectedPlayer.fullName ?? null,
+          playerImage: selectedPlayer.profileImage ?? null,
+          playerTmProfile: selectedPlayer.tmProfile,
+          timestamp: Date.now(),
+          agentName: account.name ?? null,
+        };
+        await addDoc(collection(db, 'FeedEvents'), shortlistFeedEvent);
         router.push(fromReleases ? '/releases' : '/shortlist');
       } else {
         const playersRef = collection(db, 'Players');
@@ -227,6 +241,15 @@ export default function AddPlayerPage() {
             .filter((e) => e.tmProfileUrl !== selectedPlayer.tmProfile)
             .map(sanitize);
           await setDoc(shortlistRef, { entries: filtered }, { merge: true });
+          const removedFeedEvent: Record<string, unknown> = {
+            type: 'SHORTLIST_REMOVED',
+            playerName: selectedPlayer.fullName ?? null,
+            playerImage: selectedPlayer.profileImage ?? null,
+            playerTmProfile: selectedPlayer.tmProfile,
+            timestamp: Date.now(),
+            agentName,
+          };
+          await addDoc(collection(db, 'FeedEvents'), removedFeedEvent);
         }
 
         router.push(fromReleases ? '/releases' : fromShortlist ? '/shortlist' : '/players');

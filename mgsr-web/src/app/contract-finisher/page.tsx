@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { doc, getDoc, setDoc, collection, getDocs, query, orderBy, onSnapshot } from 'firebase/firestore';
+import { doc, getDoc, setDoc, collection, getDocs, query, orderBy, onSnapshot, addDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { getTeammates, extractPlayerIdFromUrl, type ContractFinisherPlayer } from '@/lib/api';
 import { subscribe, loadContractFinishers, getContractFinisherState } from '@/lib/contractFinisherStore';
@@ -13,6 +13,7 @@ import { getConfederation } from '@/lib/nationToConfederation';
 import type { Confederation } from '@/lib/api';
 import AppLayout from '@/components/AppLayout';
 import Link from 'next/link';
+import { getCurrentAccountForShortlist } from '@/lib/accounts';
 import { getScreenCache, setScreenCache } from '@/lib/screenCache';
 
 const VALUE_FILTERS = [
@@ -398,6 +399,7 @@ export default function ContractFinisherPage() {
       setAddingUrl(player.playerUrl);
       try {
         const docRef = doc(db, 'Shortlists', user.uid);
+        const account = await getCurrentAccountForShortlist(user);
         const entry: Record<string, unknown> = {
           tmProfileUrl: player.playerUrl,
           addedAt: Date.now(),
@@ -410,12 +412,24 @@ export default function ContractFinisherPage() {
           clubJoinedName: player.clubJoinedName ?? null,
           transferDate: player.transferDate ?? null,
           marketValue: player.marketValue ?? null,
+          addedByAgentId: account.id,
+          addedByAgentName: account.name ?? null,
+          addedByAgentHebrewName: account.hebrewName ?? null,
         };
         const snap = await getDoc(docRef);
         const current = (snap.data()?.entries as Record<string, unknown>[]) || [];
         const exists = current.some((e) => e.tmProfileUrl === player.playerUrl);
         if (!exists) {
           await setDoc(docRef, { entries: [...current, entry] }, { merge: true });
+          const feedEvent: Record<string, unknown> = {
+            type: 'SHORTLIST_ADDED',
+            playerName: entry.playerName ?? null,
+            playerImage: entry.playerImage ?? null,
+            playerTmProfile: player.playerUrl,
+            timestamp: Date.now(),
+            agentName: account.name ?? null,
+          };
+          await addDoc(collection(db, 'FeedEvents'), feedEvent);
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to add');

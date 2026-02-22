@@ -5,8 +5,9 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getScreenCache, setScreenCache } from '@/lib/screenCache';
-import { doc, onSnapshot, getDoc, setDoc } from 'firebase/firestore';
+import { doc, onSnapshot, getDoc, setDoc, collection, addDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { getCurrentAccountForShortlist } from '@/lib/accounts';
 import AppLayout from '@/components/AppLayout';
 import Link from 'next/link';
 
@@ -21,6 +22,9 @@ interface ShortlistEntry {
   clubJoinedName?: string;
   transferDate?: string;
   marketValue?: string;
+  addedByAgentId?: string;
+  addedByAgentName?: string;
+  addedByAgentHebrewName?: string;
 }
 
 export default function ShortlistPage() {
@@ -53,6 +57,9 @@ export default function ShortlistPage() {
         clubJoinedName: e.clubJoinedName as string,
         transferDate: e.transferDate as string,
         marketValue: e.marketValue as string,
+        addedByAgentId: e.addedByAgentId as string,
+        addedByAgentName: e.addedByAgentName as string,
+        addedByAgentHebrewName: e.addedByAgentHebrewName as string,
       }));
       setEntries(mapped);
       setLoadingList(false);
@@ -80,12 +87,41 @@ export default function ShortlistPage() {
         .filter((e) => e.tmProfileUrl !== entry.tmProfileUrl)
         .map((e) => sanitizeForFirestore(e));
       await setDoc(docRef, { entries: filtered }, { merge: true });
+      const account = await getCurrentAccountForShortlist(user);
+      const feedEvent: Record<string, unknown> = {
+        type: 'SHORTLIST_REMOVED',
+        playerName: entry.playerName ?? null,
+        playerImage: entry.playerImage ?? null,
+        playerTmProfile: entry.tmProfileUrl,
+        timestamp: Date.now(),
+        agentName: account.name ?? null,
+      };
+      await addDoc(collection(db, 'FeedEvents'), feedEvent);
     } finally {
       setRemovingUrl(null);
     }
   };
 
   const sorted = [...entries].sort((a, b) => (b.addedAt || 0) - (a.addedAt || 0));
+
+  const formatAddedDate = (addedAt?: number) => {
+    if (!addedAt) return '';
+    const now = Date.now();
+    const diff = now - addedAt;
+    const days = Math.floor(diff / (24 * 60 * 60 * 1000));
+    const weeks = Math.floor(days / 7);
+    if (days < 1) return t('shortlist_added_today');
+    if (days === 1) return t('shortlist_added_yesterday');
+    if (days < 7) return t('shortlist_added_days_ago').replace('{n}', String(days));
+    if (weeks === 1) return t('shortlist_added_week_ago');
+    if (weeks < 4) return t('shortlist_added_weeks_ago').replace('{n}', String(weeks));
+    return t('shortlist_added_months_ago').replace('{n}', String(Math.floor(days / 30)));
+  };
+
+  const getAgentDisplayName = (entry: ShortlistEntry) =>
+    isRtl
+      ? entry.addedByAgentHebrewName || entry.addedByAgentName || '—'
+      : entry.addedByAgentName || entry.addedByAgentHebrewName || '—';
 
   if (loading || !user) {
     return (
@@ -175,6 +211,14 @@ export default function ShortlistPage() {
                       {entry.playerPosition} • {entry.clubJoinedName || '—'}{' '}
                       {entry.playerAge && `• ${entry.playerAge} ${t('players_age')}`}
                     </p>
+                    <p className="text-xs text-mgsr-muted/80 mt-1">
+                      {t('shortlist_added_by')} {getAgentDisplayName(entry)}
+                    </p>
+                    {entry.addedAt && (
+                      <p className="text-xs text-mgsr-muted/70 mt-0.5">
+                        {formatAddedDate(entry.addedAt)}
+                      </p>
+                    )}
                   </div>
                   <span className="font-semibold text-mgsr-teal shrink-0">{entry.marketValue || '—'}</span>
                 </Link>

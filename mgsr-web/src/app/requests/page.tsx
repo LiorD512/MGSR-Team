@@ -5,13 +5,14 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { collection, onSnapshot, doc, deleteDoc, getDoc, setDoc, query, orderBy } from 'firebase/firestore';
+import { collection, onSnapshot, doc, deleteDoc, getDoc, setDoc, query, orderBy, addDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import AppLayout from '@/components/AppLayout';
 import { getCountryDisplayName } from '@/lib/countryTranslations';
 import { matchRequestToPlayers, type RosterPlayer } from '@/lib/requestMatcher';
 import { findPlayersForRequest, type ScoutPlayerSuggestion } from '@/lib/scoutApi';
 import { getPlayerDetails } from '@/lib/api';
+import { getCurrentAccountForShortlist } from '@/lib/accounts';
 import { getScreenCache, setScreenCache } from '@/lib/screenCache';
 import { toWhatsAppUrl } from '@/lib/whatsapp';
 import AddRequestSheet from './AddRequestSheet';
@@ -261,6 +262,12 @@ export default function RequestsPage() {
         const current = (snap.data()?.entries as Record<string, unknown>[]) || [];
         const exists = current.some((e) => e.tmProfileUrl === url);
         if (!exists) {
+          const account = await getCurrentAccountForShortlist(user);
+          const agentFields = {
+            addedByAgentId: account.id,
+            addedByAgentName: account.name ?? null,
+            addedByAgentHebrewName: account.hebrewName ?? null,
+          };
           let entry: Record<string, unknown>;
           try {
             const details = await getPlayerDetails(url);
@@ -275,6 +282,7 @@ export default function RequestsPage() {
               playerNationalityFlag: details.nationalityFlag ?? null,
               clubJoinedName: details.currentClub?.clubName ?? null,
               marketValue: details.marketValue ?? null,
+              ...agentFields,
             };
           } catch {
             entry = {
@@ -286,9 +294,19 @@ export default function RequestsPage() {
               playerNationality: s.nationality ?? null,
               clubJoinedName: s.club ?? null,
               marketValue: s.marketValue ?? null,
+              ...agentFields,
             };
           }
           await setDoc(docRef, { entries: [...current, entry] }, { merge: true });
+          const feedEvent: Record<string, unknown> = {
+            type: 'SHORTLIST_ADDED',
+            playerName: entry.playerName ?? null,
+            playerImage: entry.playerImage ?? null,
+            playerTmProfile: url,
+            timestamp: Date.now(),
+            agentName: account.name ?? null,
+          };
+          await addDoc(collection(db, 'FeedEvents'), feedEvent);
         }
       } catch (err) {
         console.error('Add to shortlist error:', err);
@@ -304,6 +322,17 @@ export default function RequestsPage() {
     if (!r.id) return;
     setDeleting(true);
     try {
+      const agentName = user ? (await getCurrentAccountForShortlist(user)).name ?? null : null;
+      const feedEvent: Record<string, unknown> = {
+        type: 'REQUEST_DELETED',
+        playerName: r.clubName ?? null,
+        playerImage: r.clubLogo ?? null,
+        playerTmProfile: r.clubTmProfile ?? null,
+        newValue: r.position ?? null,
+        timestamp: Date.now(),
+        agentName,
+      };
+      await addDoc(collection(db, 'FeedEvents'), feedEvent);
       await deleteDoc(doc(db, CLUB_REQUESTS_COLLECTION, r.id));
       setDeleteConfirm(null);
     } catch (err) {
