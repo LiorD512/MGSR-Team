@@ -27,7 +27,6 @@ import {
   ResponsiveContainer,
   BarChart,
   Bar,
-  LabelList,
 } from 'recharts';
 import { parseMarketValue, parseAge } from '@/lib/releases';
 import { useIsMobile } from '@/hooks/useMediaQuery';
@@ -781,39 +780,54 @@ export default function DashboardPage() {
                 <h3 className="text-sm font-semibold text-mgsr-text mb-3 md:mb-4 font-display">
                   {t('roster_analytics_position')}
                 </h3>
-                <div className={isMobile ? 'h-56' : 'h-48'}>
+                <div className={isMobile ? 'min-h-[140px]' : 'h-48'}>
                   {positionByGroup.length > 0 ? (
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart
-                        data={positionByGroup}
-                        margin={isMobile ? { left: 8, right: 8, top: 12, bottom: 24 } : { left: 8, right: 12, top: 8, bottom: 24 }}
-                        {...(isMobile && { barCategoryGap: '15%', barSize: 36 })}
-                      >
-                        <XAxis
-                          dataKey="name"
-                          stroke="#8C999B"
-                          fontSize={11}
-                          tickLine={false}
-                          axisLine={false}
-                          tick={{ fill: '#E8EAED' }}
-                          interval={0}
-                        />
-                        <YAxis stroke="#8C999B" fontSize={11} allowDecimals={false} tickLine={false} axisLine={false} width={isMobile ? 28 : undefined} />
-                        <Tooltip
-                          contentStyle={{
-                            backgroundColor: '#1A2736',
-                            border: '1px solid #253545',
-                            borderRadius: '12px',
-                            padding: '10px 14px',
-                          }}
-                        />
-                        <Bar dataKey="value" fill="#4DB6AC" radius={[4, 4, 0, 0]}>
-                          {isMobile && <LabelList dataKey="value" position="top" fill="#E8EAED" fontSize={11} />}
-                        </Bar>
-                      </BarChart>
-                    </ResponsiveContainer>
+                    isMobile ? (
+                      <div className="space-y-3">
+                        {(() => {
+                          const maxVal = Math.max(...positionByGroup.map((d) => d.value), 1);
+                          return positionByGroup.map((item) => (
+                            <div key={item.name} className="space-y-1.5">
+                              <div className="flex items-center justify-between gap-2 min-w-0">
+                                <span className="text-sm text-mgsr-text font-medium truncate min-w-0">
+                                  {item.name}
+                                </span>
+                                <span className="text-sm font-semibold text-mgsr-text tabular-nums shrink-0">
+                                  {item.value}
+                                </span>
+                              </div>
+                              <div className="h-6 bg-mgsr-dark rounded-lg overflow-hidden">
+                                <div
+                                  className="h-full rounded-lg bg-[#4DB6AC] transition-all duration-500"
+                                  style={{ width: `${Math.max((item.value / maxVal) * 100, 8)}%` }}
+                                />
+                              </div>
+                            </div>
+                          ));
+                        })()}
+                      </div>
+                    ) : (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart
+                          data={positionByGroup}
+                          margin={{ left: 8, right: 12, top: 8, bottom: 24 }}
+                        >
+                          <XAxis dataKey="name" stroke="#8C999B" fontSize={11} tickLine={false} axisLine={false} tick={{ fill: '#E8EAED' }} interval={0} />
+                          <YAxis stroke="#8C999B" fontSize={11} allowDecimals={false} tickLine={false} axisLine={false} />
+                          <Tooltip
+                            contentStyle={{
+                              backgroundColor: '#1A2736',
+                              border: '1px solid #253545',
+                              borderRadius: '12px',
+                              padding: '10px 14px',
+                            }}
+                          />
+                          <Bar dataKey="value" fill="#4DB6AC" radius={[4, 4, 0, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    )
                   ) : (
-                    <div className="h-full flex items-center justify-center text-mgsr-muted text-sm">
+                    <div className="h-full flex items-center justify-center text-mgsr-muted text-sm min-h-[80px]">
                       —
                     </div>
                   )}
@@ -825,31 +839,54 @@ export default function DashboardPage() {
                 <h3 className="text-sm font-semibold text-mgsr-text mb-3 md:mb-4 font-display">
                   {t('roster_analytics_age')}
                 </h3>
-                <div className={isMobile ? 'h-56' : 'h-48'}>
+                <div className={isMobile ? 'min-h-[140px]' : 'h-48'}>
                   {ageByGroup.length > 0 ? (
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart
-                        data={ageByGroup}
-                        margin={isMobile ? { left: 8, right: 8, top: 12, bottom: 24 } : { left: 8, right: 12, top: 8, bottom: 24 }}
-                        {...(isMobile && { barCategoryGap: '15%', barSize: 36 })}
-                      >
-                        <XAxis dataKey="name" stroke="#8C999B" fontSize={11} tickLine={false} axisLine={false} tick={{ fill: '#E8EAED' }} />
-                        <YAxis stroke="#8C999B" fontSize={11} allowDecimals={false} tickLine={false} axisLine={false} />
-                        <Tooltip
-                          contentStyle={{
-                            backgroundColor: '#1A2736',
-                            border: '1px solid #253545',
-                            borderRadius: '12px',
-                            padding: '10px 14px',
-                          }}
-                        />
-                        <Bar dataKey="count" fill="#5C6BC0" radius={[4, 4, 0, 0]}>
-                          {isMobile && <LabelList dataKey="count" position="top" fill="#E8EAED" fontSize={11} />}
-                        </Bar>
-                      </BarChart>
-                    </ResponsiveContainer>
+                    isMobile ? (
+                      <div className="space-y-3">
+                        {(() => {
+                          const maxCount = Math.max(...ageByGroup.map((d) => d.count), 1);
+                          return ageByGroup.map((item) => (
+                            <div key={item.name} className="space-y-1.5">
+                              <div className="flex items-center justify-between gap-2 min-w-0">
+                                <span className="text-sm text-mgsr-text font-medium truncate min-w-0">
+                                  {item.name}
+                                </span>
+                                <span className="text-sm font-semibold text-mgsr-text tabular-nums shrink-0">
+                                  {item.count}
+                                </span>
+                              </div>
+                              <div className="h-6 bg-mgsr-dark rounded-lg overflow-hidden">
+                                <div
+                                  className="h-full rounded-lg bg-[#5C6BC0] transition-all duration-500"
+                                  style={{ width: `${Math.max((item.count / maxCount) * 100, 8)}%` }}
+                                />
+                              </div>
+                            </div>
+                          ));
+                        })()}
+                      </div>
+                    ) : (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart
+                          data={ageByGroup}
+                          margin={{ left: 8, right: 12, top: 8, bottom: 24 }}
+                        >
+                          <XAxis dataKey="name" stroke="#8C999B" fontSize={11} tickLine={false} axisLine={false} tick={{ fill: '#E8EAED' }} />
+                          <YAxis stroke="#8C999B" fontSize={11} allowDecimals={false} tickLine={false} axisLine={false} />
+                          <Tooltip
+                            contentStyle={{
+                              backgroundColor: '#1A2736',
+                              border: '1px solid #253545',
+                              borderRadius: '12px',
+                              padding: '10px 14px',
+                            }}
+                          />
+                          <Bar dataKey="count" fill="#5C6BC0" radius={[4, 4, 0, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    )
                   ) : (
-                    <div className="h-full flex items-center justify-center text-mgsr-muted text-sm">
+                    <div className="h-full flex items-center justify-center text-mgsr-muted text-sm min-h-[80px]">
                       —
                     </div>
                   )}
@@ -861,31 +898,54 @@ export default function DashboardPage() {
                 <h3 className="text-sm font-semibold text-mgsr-text mb-3 md:mb-4 font-display">
                   {t('roster_analytics_value')}
                 </h3>
-                <div className={isMobile ? 'h-56' : 'h-48'}>
+                <div className={isMobile ? 'min-h-[140px]' : 'h-48'}>
                   {valueByRange.length > 0 ? (
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart
-                        data={valueByRange}
-                        margin={isMobile ? { left: 8, right: 8, top: 12, bottom: 24 } : { left: 8, right: 12, top: 8, bottom: 24 }}
-                        {...(isMobile && { barCategoryGap: '15%', barSize: 36 })}
-                      >
-                        <XAxis dataKey="name" stroke="#8C999B" fontSize={10} tickLine={false} axisLine={false} tick={{ fill: '#E8EAED' }} />
-                        <YAxis stroke="#8C999B" fontSize={11} allowDecimals={false} tickLine={false} axisLine={false} />
-                        <Tooltip
-                          contentStyle={{
-                            backgroundColor: '#1A2736',
-                            border: '1px solid #253545',
-                            borderRadius: '12px',
-                            padding: '10px 14px',
-                          }}
-                        />
-                        <Bar dataKey="count" fill="#FF7043" radius={[4, 4, 0, 0]}>
-                          {isMobile && <LabelList dataKey="count" position="top" fill="#E8EAED" fontSize={11} />}
-                        </Bar>
-                      </BarChart>
-                    </ResponsiveContainer>
+                    isMobile ? (
+                      <div className="space-y-3">
+                        {(() => {
+                          const maxCount = Math.max(...valueByRange.map((d) => d.count), 1);
+                          return valueByRange.map((item) => (
+                            <div key={item.name} className="space-y-1.5">
+                              <div className="flex items-center justify-between gap-2 min-w-0">
+                                <span className="text-sm text-mgsr-text font-medium truncate min-w-0">
+                                  {item.name}
+                                </span>
+                                <span className="text-sm font-semibold text-mgsr-text tabular-nums shrink-0">
+                                  {item.count}
+                                </span>
+                              </div>
+                              <div className="h-6 bg-mgsr-dark rounded-lg overflow-hidden">
+                                <div
+                                  className="h-full rounded-lg bg-[#FF7043] transition-all duration-500"
+                                  style={{ width: `${Math.max((item.count / maxCount) * 100, 8)}%` }}
+                                />
+                              </div>
+                            </div>
+                          ));
+                        })()}
+                      </div>
+                    ) : (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart
+                          data={valueByRange}
+                          margin={{ left: 8, right: 12, top: 8, bottom: 24 }}
+                        >
+                          <XAxis dataKey="name" stroke="#8C999B" fontSize={10} tickLine={false} axisLine={false} tick={{ fill: '#E8EAED' }} />
+                          <YAxis stroke="#8C999B" fontSize={11} allowDecimals={false} tickLine={false} axisLine={false} />
+                          <Tooltip
+                            contentStyle={{
+                              backgroundColor: '#1A2736',
+                              border: '1px solid #253545',
+                              borderRadius: '12px',
+                              padding: '10px 14px',
+                            }}
+                          />
+                          <Bar dataKey="count" fill="#FF7043" radius={[4, 4, 0, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    )
                   ) : (
-                    <div className="h-full flex items-center justify-center text-mgsr-muted text-sm">
+                    <div className="h-full flex items-center justify-center text-mgsr-muted text-sm min-h-[80px]">
                       —
                     </div>
                   )}
@@ -897,31 +957,54 @@ export default function DashboardPage() {
                 <h3 className="text-sm font-semibold text-mgsr-text mb-3 md:mb-4 font-display">
                   {t('roster_analytics_contracts')}
                 </h3>
-                <div className={isMobile ? 'h-56' : 'h-48'}>
+                <div className={isMobile ? 'min-h-[120px]' : 'h-48'}>
                   {contractByMonth.length > 0 ? (
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart
-                        data={contractByMonth}
-                        margin={isMobile ? { left: 8, right: 8, top: 12, bottom: 24 } : { left: 8, right: 12, top: 8, bottom: 24 }}
-                        {...(isMobile && { barCategoryGap: '12%', barSize: 28 })}
-                      >
-                        <XAxis dataKey="month" stroke="#8C999B" fontSize={11} tickLine={false} axisLine={false} tick={{ fill: '#E8EAED' }} />
-                        <YAxis stroke="#8C999B" fontSize={11} allowDecimals={false} tickLine={false} axisLine={false} />
-                        <Tooltip
-                          contentStyle={{
-                            backgroundColor: '#1A2736',
-                            border: '1px solid #253545',
-                            borderRadius: '12px',
-                            padding: '10px 14px',
-                          }}
-                        />
-                        <Bar dataKey="count" fill="#EC407A" radius={[4, 4, 0, 0]}>
-                          {isMobile && <LabelList dataKey="count" position="top" fill="#E8EAED" fontSize={11} />}
-                        </Bar>
-                      </BarChart>
-                    </ResponsiveContainer>
+                    isMobile ? (
+                      <div className="space-y-3">
+                        {(() => {
+                          const maxCount = Math.max(...contractByMonth.map((d) => d.count), 1);
+                          return contractByMonth.map((item) => (
+                            <div key={item.month} className="space-y-1.5">
+                              <div className="flex items-center justify-between gap-2 min-w-0">
+                                <span className="text-sm text-mgsr-text font-medium truncate min-w-0">
+                                  {item.month}
+                                </span>
+                                <span className="text-sm font-semibold text-mgsr-text tabular-nums shrink-0">
+                                  {item.count}
+                                </span>
+                              </div>
+                              <div className="h-6 bg-mgsr-dark rounded-lg overflow-hidden">
+                                <div
+                                  className="h-full rounded-lg bg-[#EC407A] transition-all duration-500"
+                                  style={{ width: `${Math.max((item.count / maxCount) * 100, 8)}%` }}
+                                />
+                              </div>
+                            </div>
+                          ));
+                        })()}
+                      </div>
+                    ) : (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart
+                          data={contractByMonth}
+                          margin={{ left: 8, right: 12, top: 8, bottom: 24 }}
+                        >
+                          <XAxis dataKey="month" stroke="#8C999B" fontSize={11} tickLine={false} axisLine={false} tick={{ fill: '#E8EAED' }} />
+                          <YAxis stroke="#8C999B" fontSize={11} allowDecimals={false} tickLine={false} axisLine={false} />
+                          <Tooltip
+                            contentStyle={{
+                              backgroundColor: '#1A2736',
+                              border: '1px solid #253545',
+                              borderRadius: '12px',
+                              padding: '10px 14px',
+                            }}
+                          />
+                          <Bar dataKey="count" fill="#EC407A" radius={[4, 4, 0, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    )
                   ) : (
-                    <div className="h-full flex items-center justify-center text-mgsr-muted text-sm">
+                    <div className="h-full flex items-center justify-center text-mgsr-muted text-sm min-h-[80px]">
                       —
                     </div>
                   )}
@@ -935,34 +1018,62 @@ export default function DashboardPage() {
                 </h3>
                 <div className="min-h-[120px] flex flex-col justify-center">
                   {mandateData.length > 0 ? (
-                    <div className="space-y-4">
-                      {mandateData.map((entry, i) => {
-                        const pct = rosterPlayers.length > 0
-                          ? Math.round((entry.value / rosterPlayers.length) * 100)
-                          : 0;
-                        return (
-                          <div key={entry.name} className="space-y-1.5">
-                            <div className="flex items-center justify-between text-sm">
-                              <span className="text-mgsr-text font-medium truncate">
-                                {entry.name}
-                              </span>
-                              <span className="text-mgsr-muted shrink-0 ms-2">
-                                {entry.value} {pct > 0 && `(${pct}%)`}
+                    isMobile ? (
+                      <div className="grid grid-cols-2 gap-3">
+                        {mandateData.map((entry) => {
+                          const pct = rosterPlayers.length > 0
+                            ? Math.round((entry.value / rosterPlayers.length) * 100)
+                            : 0;
+                          return (
+                            <div
+                              key={entry.name}
+                              className="relative overflow-hidden rounded-xl border border-mgsr-border/80 p-4 transition-all duration-300"
+                              style={{
+                                backgroundColor: `${entry.color}12`,
+                                borderColor: `${entry.color}40`,
+                              }}
+                            >
+                              <p className="text-2xl font-bold font-display tabular-nums" style={{ color: entry.color }}>
+                                {entry.value}
+                              </p>
+                              <p className="text-xs text-mgsr-muted mt-0.5 truncate">{entry.name}</p>
+                              <span className="absolute top-3 end-3 text-[10px] font-semibold opacity-70" style={{ color: entry.color }}>
+                                {pct}%
                               </span>
                             </div>
-                            <div className="h-2 bg-mgsr-dark rounded-full overflow-hidden">
-                              <div
-                                className="h-full rounded-full transition-all duration-500"
-                                style={{
-                                  width: `${Math.max(pct, 2)}%`,
-                                  backgroundColor: entry.color,
-                                }}
-                              />
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {mandateData.map((entry) => {
+                          const pct = rosterPlayers.length > 0
+                            ? Math.round((entry.value / rosterPlayers.length) * 100)
+                            : 0;
+                          return (
+                            <div key={entry.name} className="space-y-1.5">
+                              <div className="flex items-center justify-between text-sm">
+                                <span className="text-mgsr-text font-medium truncate">
+                                  {entry.name}
+                                </span>
+                                <span className="text-mgsr-muted shrink-0 ms-2">
+                                  {entry.value} {pct > 0 && `(${pct}%)`}
+                                </span>
+                              </div>
+                              <div className="h-2 bg-mgsr-dark rounded-full overflow-hidden">
+                                <div
+                                  className="h-full rounded-full transition-all duration-500"
+                                  style={{
+                                    width: `${Math.max(pct, 2)}%`,
+                                    backgroundColor: entry.color,
+                                  }}
+                                />
+                              </div>
                             </div>
-                          </div>
-                        );
-                      })}
-                    </div>
+                          );
+                        })}
+                      </div>
+                    )
                   ) : (
                     <div className="py-8 flex items-center justify-center text-mgsr-muted text-sm">
                       —
