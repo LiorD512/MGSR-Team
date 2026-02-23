@@ -67,6 +67,16 @@ function getPositionDisplayName(position: string | undefined, isHebrew: boolean)
   return isHebrew ? entry.he : entry.en;
 }
 
+/** Split scout analysis text into readable bullet points (by sentence) */
+function parseScoutAnalysisBullets(text: string | undefined): string[] {
+  if (!text?.trim()) return [];
+  return text
+    .split(/\.\s+/)
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0)
+    .map((s) => (s.endsWith('.') ? s : s + '.'));
+}
+
 /** Shorten scout position (e.g. "Attack - Centre-Forward" → "CF") for compact display */
 function shortenScoutPosition(pos: string | undefined): string {
   if (!pos?.trim()) return '—';
@@ -768,9 +778,18 @@ export default function RequestsPage() {
                                                               )}
                                                             </div>
                                                           )}
-                                                          {s.scoutAnalysis && (
-                                                            <p className="leading-relaxed">{s.scoutAnalysis}</p>
-                                                          )}
+                                                          {s.scoutAnalysis && (() => {
+                                                            const bullets = parseScoutAnalysisBullets(s.scoutAnalysis);
+                                                            return bullets.length > 0 ? (
+                                                              <ul className="list-disc list-outside ps-4 space-y-1.5 leading-relaxed">
+                                                                {bullets.map((b, i) => (
+                                                                  <li key={i}>{b}</li>
+                                                                ))}
+                                                              </ul>
+                                                            ) : (
+                                                              <p className="leading-relaxed">{s.scoutAnalysis}</p>
+                                                            );
+                                                          })()}
                                                         </div>
                                                       </details>
                                                     )}
