@@ -378,7 +378,7 @@ fun RequestsScreen(
                                                                     justAddedUrls = justAddedUrls - url
                                                                     ToastManager.showInfo(context.getString(R.string.shortlist_remove))
                                                                 } else {
-                                                                    val added = shortlistRepository.addToShortlist(
+                                                                    when (shortlistRepository.addToShortlist(
                                                                         LatestTransferModel(
                                                                             playerName = suggestion.name,
                                                                             playerUrl = url,
@@ -386,12 +386,16 @@ fun RequestsScreen(
                                                                             playerAge = suggestion.age,
                                                                             marketValue = suggestion.marketValue
                                                                         )
-                                                                    )
-                                                                    if (added) {
-                                                                        justAddedUrls = justAddedUrls + url
-                                                                        ToastManager.showSuccess(context.getString(R.string.shortlist_added))
-                                                                    } else {
-                                                                        ToastManager.showInfo(context.getString(R.string.add_player_already_in_shortlist))
+                                                                    )) {
+                                                                        is com.liordahan.mgsrteam.features.shortlist.ShortlistRepository.AddToShortlistResult.Added -> {
+                                                                            justAddedUrls = justAddedUrls + url
+                                                                            ToastManager.showSuccess(context.getString(R.string.shortlist_added))
+                                                                        }
+                                                                        is com.liordahan.mgsrteam.features.shortlist.ShortlistRepository.AddToShortlistResult.AlreadyInShortlist ->
+                                                                            ToastManager.showInfo(context.getString(R.string.add_player_already_in_shortlist))
+                                                                        is com.liordahan.mgsrteam.features.shortlist.ShortlistRepository.AddToShortlistResult.AlreadyInRoster ->
+                                                                            ToastManager.showInfo(context.getString(R.string.add_player_already_in_roster))
+                                                                        else -> {}
                                                                     }
                                                                 }
                                                             }

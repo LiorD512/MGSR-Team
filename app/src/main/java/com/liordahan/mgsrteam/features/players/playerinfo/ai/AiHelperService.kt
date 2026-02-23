@@ -695,6 +695,7 @@ class AiHelperService(
                 |│ Age: ${request.minAge} - ${request.maxAge}
                 |│ Foot: ${request.dominateFoot}
                 |│ Transfer Fee: ${request.transferFee}
+                |│ Salary Range: ${request.salaryRange}
                 |│ Notes: ${request.notes}
                 |│ Exclude URLs: ${excludeUrls.size}
                 |│ Lang: $lang
@@ -706,6 +707,8 @@ class AiHelperService(
                 foot = request.dominateFoot?.takeIf { it.isNotBlank() && it.lowercase() != "doesn't matter" },
                 notes = request.notes,
                 transferFee = request.transferFee,
+                salaryRange = request.salaryRange,
+                requestId = request.id,
                 excludeUrls = excludeUrls,
                 lang = lang,
                 sortBy = "score",

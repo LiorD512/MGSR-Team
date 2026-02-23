@@ -235,6 +235,8 @@ export default function RequestsPage() {
         foot: r.dominateFoot && r.dominateFoot !== 'any' ? r.dominateFoot : undefined,
         notes: r.notes || undefined,
         transferFee: r.transferFee || undefined,
+        salaryRange: r.salaryRange || undefined,
+        requestId: r.id || undefined,
         lang: lang === 'he' ? 'he' : 'en',
         clubUrl: r.clubTmProfile || undefined,
         clubName: r.clubName || undefined,

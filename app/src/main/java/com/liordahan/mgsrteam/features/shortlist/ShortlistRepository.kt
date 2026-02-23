@@ -60,10 +60,11 @@ class ShortlistRepository(
     /** URLs currently being added or removed. Use for loading overlay on list items. */
     fun getShortlistPendingUrlsFlow(): Flow<Set<String>> = _shortlistPendingUrls.asStateFlow()
 
+    /** Shared shortlist document ID - all agents see the same shortlist (matches web). */
+    private val sharedShortlistDocId = "team"
+
     private fun shortlistDocRef() =
-        store.collection(firebaseHandler.shortlistsTable).document(
-            FirebaseAuth.getInstance().currentUser?.uid ?: "anonymous"
-        )
+        store.collection(firebaseHandler.shortlistsTable).document(sharedShortlistDocId)
 
     @Suppress("UNCHECKED_CAST")
     private fun DocumentSnapshot?.getEntriesList(): List<Map<String, Any>> =
@@ -104,17 +105,28 @@ class ShortlistRepository(
         )
     }
 
+    sealed class AddToShortlistResult {
+        object Added : AddToShortlistResult()
+        object AlreadyInShortlist : AddToShortlistResult()
+        object AlreadyInRoster : AddToShortlistResult()
+    }
+
     /**
-     * Adds a player to shortlist. Returns true if added, false if already in shortlist.
+     * Adds a player to shortlist.
      */
-    suspend fun addToShortlist(release: LatestTransferModel): Boolean {
-        val url = release.playerUrl ?: return false
+    suspend fun addToShortlist(release: LatestTransferModel): AddToShortlistResult {
+        val url = release.playerUrl ?: return AddToShortlistResult.AlreadyInShortlist
         _shortlistPendingUrls.value = _shortlistPendingUrls.value + url
         return try {
+            val rosterSnapshot = firebaseHandler.firebaseStore.collection(firebaseHandler.playersTable)
+                .whereEqualTo("tmProfile", url)
+                .get()
+                .await()
+            if (!rosterSnapshot.isEmpty) return AddToShortlistResult.AlreadyInRoster
             val docRef = shortlistDocRef()
             val snapshot = docRef.get().await()
             val current = snapshot.getEntriesList().toMutableList()
-            if (current.any { (it["tmProfileUrl"] as? String) == url }) return false
+            if (current.any { (it["tmProfileUrl"] as? String) == url }) return AddToShortlistResult.AlreadyInShortlist
             val entryMap = mutableMapOf<String, Any>(
                 "tmProfileUrl" to url,
                 "addedAt" to System.currentTimeMillis()
@@ -142,7 +154,7 @@ class ShortlistRepository(
                 playerTmProfile = url,
                 agentName = getCurrentUserAccountName()
             )
-            true
+            AddToShortlistResult.Added
         } finally {
             _shortlistPendingUrls.value = _shortlistPendingUrls.value - url
         }
@@ -151,16 +163,22 @@ class ShortlistRepository(
     /**
      * Add a player to shortlist by URL only (e.g. from manual paste).
      * Stores minimal data; display will show Profile #ID until enriched from other sources.
+     * Returns AddToShortlistResult.
      */
-    suspend fun addToShortlist(tmProfileUrl: String) {
-        val url = tmProfileUrl.trim().takeIf { it.isNotBlank() } ?: return
-        if (!url.contains("transfermarkt", ignoreCase = true)) return
+    suspend fun addToShortlistByUrl(tmProfileUrl: String): AddToShortlistResult {
+        val url = tmProfileUrl.trim().takeIf { it.isNotBlank() } ?: return AddToShortlistResult.AlreadyInShortlist
+        if (!url.contains("transfermarkt", ignoreCase = true)) return AddToShortlistResult.AlreadyInShortlist
         _shortlistPendingUrls.value = _shortlistPendingUrls.value + url
-        try {
+        return try {
+            val rosterSnapshot = firebaseHandler.firebaseStore.collection(firebaseHandler.playersTable)
+                .whereEqualTo("tmProfile", url)
+                .get()
+                .await()
+            if (!rosterSnapshot.isEmpty) return AddToShortlistResult.AlreadyInRoster
             val docRef = shortlistDocRef()
             val snapshot = docRef.get().await()
             val current = snapshot.getEntriesList().toMutableList()
-            if (current.any { (it["tmProfileUrl"] as? String) == url }) return
+            if (current.any { (it["tmProfileUrl"] as? String) == url }) return AddToShortlistResult.AlreadyInShortlist
             val urlEntryMap = mutableMapOf<String, Any>(
                 "tmProfileUrl" to url,
                 "addedAt" to System.currentTimeMillis()
@@ -173,9 +191,16 @@ class ShortlistRepository(
             current.add(urlEntryMap)
             docRef.set(mapOf("entries" to current)).await()
             writeFeedEventShortlist(playerName = null, playerImage = null, playerTmProfile = url, agentName = getCurrentUserAccountName())
+            AddToShortlistResult.Added
         } finally {
             _shortlistPendingUrls.value = _shortlistPendingUrls.value - url
         }
+    }
+
+    /** @deprecated Use addToShortlistByUrl for result. Kept for backward compatibility. */
+    @Deprecated("Use addToShortlistByUrl", ReplaceWith("addToShortlistByUrl(tmProfileUrl)"))
+    suspend fun addToShortlist(tmProfileUrl: String) {
+        addToShortlistByUrl(tmProfileUrl)
     }
 
     private suspend fun getCurrentUserAccount(): Account? {

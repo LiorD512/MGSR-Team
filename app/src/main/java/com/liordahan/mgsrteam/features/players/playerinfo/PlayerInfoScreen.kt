@@ -1711,10 +1711,13 @@ private fun PlayerInfoAiHelperSection(
                                                         playerAge = suggestion.age,
                                                         marketValue = suggestion.marketValue
                                                     )
-                                                    if (shortlistRepository.addToShortlist(model)) {
-                                                        justAddedUrls = justAddedUrls + urlVal
-                                                    } else {
-                                                        ToastManager.showSuccess(context.getString(R.string.add_player_already_in_shortlist))
+                                                    when (shortlistRepository.addToShortlist(model)) {
+                                                        is com.liordahan.mgsrteam.features.shortlist.ShortlistRepository.AddToShortlistResult.Added ->
+                                                            justAddedUrls = justAddedUrls + urlVal
+                                                        is com.liordahan.mgsrteam.features.shortlist.ShortlistRepository.AddToShortlistResult.AlreadyInShortlist ->
+                                                            ToastManager.showInfo(context.getString(R.string.add_player_already_in_shortlist))
+                                                        is com.liordahan.mgsrteam.features.shortlist.ShortlistRepository.AddToShortlistResult.AlreadyInRoster ->
+                                                            ToastManager.showInfo(context.getString(R.string.add_player_already_in_roster))
                                                     }
                                                 }
                                             }

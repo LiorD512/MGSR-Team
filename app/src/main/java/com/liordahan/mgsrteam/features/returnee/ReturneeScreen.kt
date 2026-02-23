@@ -298,8 +298,13 @@ fun ReturneeScreen(
                                     shortlistRepository.removeFromShortlist(url)
                                     justAddedUrls = justAddedUrls - url
                                 } else {
-                                    shortlistRepository.addToShortlist(r)
-                                    justAddedUrls = justAddedUrls + url
+                                    when (shortlistRepository.addToShortlist(r)) {
+                                        is com.liordahan.mgsrteam.features.shortlist.ShortlistRepository.AddToShortlistResult.Added ->
+                                            justAddedUrls = justAddedUrls + url
+                                        is com.liordahan.mgsrteam.features.shortlist.ShortlistRepository.AddToShortlistResult.AlreadyInRoster ->
+                                            com.liordahan.mgsrteam.ui.components.ToastManager.showInfo(context.getString(R.string.add_player_already_in_roster))
+                                        else -> {}
+                                    }
                                 }
                             }
                         },
