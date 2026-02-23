@@ -17,7 +17,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Full history needed for pull --rebase
+          fetch-depth: 0
+          persist-credentials: true
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -36,47 +37,7 @@ jobs:
         run: cd mgsr-backend && node scripts/scrape-transfer-windows.js
 
       - name: Commit and push
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -e
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git remote set-url origin https://x-access-token:$GH_TOKEN@github.com/${{ github.repository }}.git
-          if git diff --quiet mgsr-web/public/transfer-windows.json; then
-            echo "No changes to transfer-windows.json"
-          else
-            echo "=== DEBUG: Initial state (before fetch) ==="
-            git branch -a
-            git log --oneline -3
-            echo "origin/${{ github.ref_name }}:" && git rev-parse origin/${{ github.ref_name }} 2>/dev/null || echo "(not yet fetched)"
-
-            cp mgsr-web/public/transfer-windows.json /tmp/transfer-windows.json
-            git fetch origin
-            echo "=== DEBUG: After fetch ==="
-            git log --oneline origin/${{ github.ref_name }} -3
-
-            git reset --hard origin/${{ github.ref_name }}
-            cp /tmp/transfer-windows.json mgsr-web/public/transfer-windows.json
-            git add mgsr-web/public/transfer-windows.json
-            git commit -m "chore: update transfer windows [skip ci]"
-            echo "=== DEBUG: After commit ==="
-            git log --oneline -3
-
-            git fetch origin
-            echo "=== DEBUG: After second fetch (before rebase) ==="
-            echo "Local HEAD:" && git rev-parse HEAD
-            echo "origin/${{ github.ref_name }}:" && git rev-parse origin/${{ github.ref_name }}
-            git log --oneline -3
-            git log --oneline origin/${{ github.ref_name }} -3
-
-            git rebase origin/${{ github.ref_name }} -X theirs
-            echo "=== DEBUG: After rebase (before push) ==="
-            git log --oneline -5
-            echo "Can we fast-forward? (should be empty if we're ahead):"
-            git rev-list origin/${{ github.ref_name }}..HEAD
-            echo "Commits on remote we don't have (should be empty):"
-            git rev-list HEAD..origin/${{ github.ref_name }}
-
-            git push origin HEAD:${{ github.ref_name }}
-          fi
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore: update transfer windows [skip ci]"
+          file_pattern: mgsr-web/public/transfer-windows.json
