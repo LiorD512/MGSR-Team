@@ -22,6 +22,7 @@
 
 # ── Suppress R8 warnings for missing optional dependencies ────────────────
 -dontwarn com.gemalto.jp2.JP2Decoder
+-dontwarn com.gemalto.jp2.JP2Encoder
 
 # ── Preserve attributes needed for reflection-based deserialization ───────
 -keepattributes Signature
