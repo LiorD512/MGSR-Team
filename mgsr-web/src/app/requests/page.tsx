@@ -12,7 +12,7 @@ import { getCountryDisplayName } from '@/lib/countryTranslations';
 import { matchRequestToPlayers, type RosterPlayer } from '@/lib/requestMatcher';
 import { findPlayersForRequest, type ScoutPlayerSuggestion } from '@/lib/scoutApi';
 import { getPlayerDetails } from '@/lib/api';
-import { getCurrentAccountForShortlist } from '@/lib/accounts';
+import { getCurrentAccountForShortlist, useShortlistDocId, SHARED_SHORTLIST_DOC_ID } from '@/lib/accounts';
 import { getScreenCache, setScreenCache } from '@/lib/screenCache';
 import { toWhatsAppUrl } from '@/lib/whatsapp';
 import AddRequestSheet from './AddRequestSheet';
@@ -130,15 +130,16 @@ export default function RequestsPage() {
     if (!loading && !user) router.replace('/login');
   }, [user, loading, router]);
 
+  const shortlistDocId = useShortlistDocId(user ?? null);
   useEffect(() => {
-    if (!user) return;
-    const docRef = doc(db, 'Shortlists', user.uid);
+    if (!user || !shortlistDocId) return;
+    const docRef = doc(db, 'Shortlists', shortlistDocId);
     const unsub = onSnapshot(docRef, (snap) => {
       const entries = (snap.data()?.entries as { tmProfileUrl?: string }[]) || [];
       setShortlistUrls(new Set(entries.map((e) => e.tmProfileUrl).filter((u): u is string => !!u)));
     });
     return () => unsub();
-  }, [user]);
+  }, [user, shortlistDocId]);
 
   useEffect(() => {
     const unsub = onSnapshot(collection(db, CLUB_REQUESTS_COLLECTION), (snap) => {
@@ -257,12 +258,17 @@ export default function RequestsPage() {
       setShortlistError(null);
       setAddingToShortlistUrl(url);
       try {
-        const docRef = doc(db, 'Shortlists', user.uid);
+        const account = await getCurrentAccountForShortlist(user);
+        const docRef = doc(db, 'Shortlists', SHARED_SHORTLIST_DOC_ID);
+        const rosterExists = players.some((p) => p.tmProfile === url);
+        if (rosterExists) {
+          setShortlistError(t('shortlist_player_in_roster'));
+          return;
+        }
         const snap = await getDoc(docRef);
         const current = (snap.data()?.entries as Record<string, unknown>[]) || [];
         const exists = current.some((e) => e.tmProfileUrl === url);
         if (!exists) {
-          const account = await getCurrentAccountForShortlist(user);
           const agentFields = {
             addedByAgentId: account.id,
             addedByAgentName: account.name ?? null,
@@ -315,7 +321,7 @@ export default function RequestsPage() {
         setAddingToShortlistUrl(null);
       }
     },
-    [user]
+    [user, players, t]
   );
 
   const handleDelete = async (r: Request) => {

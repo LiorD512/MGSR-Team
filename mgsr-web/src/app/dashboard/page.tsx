@@ -29,6 +29,7 @@ import {
   Bar,
 } from 'recharts';
 import { parseMarketValue, parseAge } from '@/lib/releases';
+import { useShortlistDocId, SHARED_SHORTLIST_DOC_ID } from '@/lib/accounts';
 import { useIsMobile } from '@/hooks/useMediaQuery';
 
 interface FeedEvent {
@@ -194,6 +195,7 @@ export default function DashboardPage() {
   const [transferWindows, setTransferWindows] = useState<TransferWindow[]>([]);
   const [transferWindowsLoading, setTransferWindowsLoading] = useState(false);
   const [expandedConfederations, setExpandedConfederations] = useState<Set<string>>(new Set(['PRIORITY']));
+  const shortlistDocId = useShortlistDocId(user ?? null);
 
   useEffect(() => {
     if (!loading && !user) router.replace('/login');
@@ -263,9 +265,9 @@ export default function DashboardPage() {
   }, []);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !shortlistDocId) return;
     const unsub = onSnapshot(
-      doc(db, 'Shortlists', user.uid),
+      doc(db, 'Shortlists', SHARED_SHORTLIST_DOC_ID),
       (snap) => {
         const entries = (snap.data()?.entries as unknown[]) || [];
         setShortlistCount(entries.length);
@@ -273,7 +275,7 @@ export default function DashboardPage() {
       () => setShortlistCount(0)
     );
     return () => unsub();
-  }, [user]);
+  }, [user, shortlistDocId]);
 
   useEffect(() => {
     let cancelled = false;

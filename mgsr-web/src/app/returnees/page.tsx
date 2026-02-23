@@ -9,7 +9,7 @@ import { db } from '@/lib/firebase';
 import { getTeammates, extractPlayerIdFromUrl, type ReturneePlayer } from '@/lib/api';
 import AppLayout from '@/components/AppLayout';
 import Link from 'next/link';
-import { getCurrentAccountForShortlist } from '@/lib/accounts';
+import { getCurrentAccountForShortlist, useShortlistDocId, SHARED_SHORTLIST_DOC_ID } from '@/lib/accounts';
 import {
   subscribeReturnees,
   getReturneesState,
@@ -301,6 +301,7 @@ export default function ReturneesPage() {
   const [loadingList, setLoadingList] = useState(st.isLoading);
   const [error, setError] = useState<string | null>(st.error);
   const [addingUrl, setAddingUrl] = useState<string | null>(null);
+  const [addError, setAddError] = useState<string | null>(null);
   const [positionFilter, setPositionFilter] = useState<string | null>(null);
   const [rosterPlayers, setRosterPlayers] = useState<RosterPlayer[]>([]);
   const [teammatesCache, setTeammatesCache] = useState<Record<string, RosterTeammateMatch[]>>({});
@@ -335,15 +336,16 @@ export default function ReturneesPage() {
     return () => unsub();
   }, []);
 
+  const shortlistDocId = useShortlistDocId(user ?? null);
   useEffect(() => {
-    if (!user) return;
-    const docRef = doc(db, 'Shortlists', user.uid);
+    if (!user || !shortlistDocId) return;
+    const docRef = doc(db, 'Shortlists', shortlistDocId);
     const unsub = onSnapshot(docRef, (snap) => {
       const entries = (snap.data()?.entries as { tmProfileUrl?: string }[]) || [];
       setShortlistUrls(new Set(entries.map((e) => e.tmProfileUrl).filter((u): u is string => !!u)));
     });
     return () => unsub();
-  }, [user]);
+  }, [user, shortlistDocId]);
 
   useEffect(() => {
     if (!loading && !user) router.replace('/login');
@@ -354,8 +356,14 @@ export default function ReturneesPage() {
       if (!user || !player.playerUrl) return;
       setAddingUrl(player.playerUrl);
       try {
-        const docRef = doc(db, 'Shortlists', user.uid);
         const account = await getCurrentAccountForShortlist(user);
+        const docRef = doc(db, 'Shortlists', SHARED_SHORTLIST_DOC_ID);
+        const rosterExists = rosterPlayers.some((p) => p.tmProfile === player.playerUrl);
+        if (rosterExists) {
+          setAddError(t('shortlist_player_in_roster'));
+          setAddingUrl(null);
+          return;
+        }
         const entry: Record<string, unknown> = {
           tmProfileUrl: player.playerUrl,
           addedAt: Date.now(),
@@ -390,8 +398,15 @@ export default function ReturneesPage() {
         setAddingUrl(null);
       }
     },
-    [user]
+    [user, rosterPlayers, t]
   );
+
+  useEffect(() => {
+    if (addError) {
+      const id = setTimeout(() => setAddError(null), 4000);
+      return () => clearTimeout(id);
+    }
+  }, [addError]);
 
   const fetchTeammates = useCallback(async (playerUrl: string) => {
     setLoadingTeammatesUrl(playerUrl);
@@ -441,6 +456,9 @@ export default function ReturneesPage() {
               {t('returnee_title')}
             </h1>
             <p className="text-mgsr-muted mt-1 text-sm">{t('returnee_subtitle')}</p>
+            {addError && (
+              <p className="text-mgsr-red text-sm mt-2">{addError}</p>
+            )}
           </div>
           {(players.length > 0 || !loadingList) && (
             <button

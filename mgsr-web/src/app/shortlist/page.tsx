@@ -5,9 +5,9 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getScreenCache, setScreenCache } from '@/lib/screenCache';
-import { doc, onSnapshot, getDoc, setDoc, collection, addDoc } from 'firebase/firestore';
+import { doc, onSnapshot, getDoc, setDoc, collection, addDoc, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { getCurrentAccountForShortlist } from '@/lib/accounts';
+import { getCurrentAccountForShortlist, useShortlistDocId, SHARED_SHORTLIST_DOC_ID } from '@/lib/accounts';
 import AppLayout from '@/components/AppLayout';
 import Link from 'next/link';
 
@@ -31,6 +31,7 @@ export default function ShortlistPage() {
   const { user, loading } = useAuth();
   const { t, isRtl } = useLanguage();
   const router = useRouter();
+  const shortlistDocId = useShortlistDocId(user ?? null);
   const cached = user ? getScreenCache<ShortlistEntry[]>('shortlist', user.uid) : undefined;
   const [entries, setEntries] = useState<ShortlistEntry[]>(cached ?? []);
   const [loadingList, setLoadingList] = useState(cached === undefined);
@@ -41,9 +42,37 @@ export default function ShortlistPage() {
   }, [user, loading, router]);
 
   useEffect(() => {
-    if (!user) return;
-    const docRef = doc(db, 'Shortlists', user.uid);
-    const unsub = onSnapshot(docRef, (snap) => {
+    if (!user || !shortlistDocId) return;
+    const teamRef = doc(db, 'Shortlists', SHARED_SHORTLIST_DOC_ID);
+
+    const migrateFromLegacy = async () => {
+      const teamSnap = await getDoc(teamRef);
+      const teamEntries = (teamSnap.data()?.entries as Record<string, unknown>[]) || [];
+      if (teamEntries.length > 0) return;
+      const allSnap = await getDocs(collection(db, 'Shortlists'));
+      const allEntries: Record<string, unknown>[] = [];
+      const seen = new Set<string>();
+      for (const d of allSnap.docs) {
+        if (d.id === SHARED_SHORTLIST_DOC_ID) continue;
+        const list = (d.data()?.entries as Record<string, unknown>[]) || [];
+        for (const e of list) {
+          const url = e.tmProfileUrl as string;
+          if (url && !seen.has(url)) {
+            seen.add(url);
+            allEntries.push(e);
+          }
+        }
+      }
+      if (allEntries.length > 0) {
+        const sanitize = (x: Record<string, unknown>) =>
+          Object.fromEntries(Object.entries(x).map(([k, v]) => [k, v === undefined ? null : v]));
+        await setDoc(teamRef, { entries: allEntries.map(sanitize) }, { merge: true });
+      }
+    };
+
+    migrateFromLegacy();
+
+    const unsub = onSnapshot(teamRef, (snap) => {
       const data = snap.data();
       const list = (data?.entries as Record<string, unknown>[]) || [];
       const mapped = list.map((e) => ({
@@ -66,7 +95,7 @@ export default function ShortlistPage() {
       setScreenCache('shortlist', mapped, user.uid);
     });
     return () => unsub();
-  }, [user]);
+  }, [user, shortlistDocId]);
 
   const sanitizeForFirestore = (obj: Record<string, unknown>): Record<string, unknown> => {
     const out: Record<string, unknown> = {};
@@ -77,10 +106,10 @@ export default function ShortlistPage() {
   };
 
   const removeFromShortlist = async (entry: ShortlistEntry) => {
-    if (!user) return;
+    if (!user || !shortlistDocId) return;
     setRemovingUrl(entry.tmProfileUrl);
     try {
-      const docRef = doc(db, 'Shortlists', user.uid);
+      const docRef = doc(db, 'Shortlists', SHARED_SHORTLIST_DOC_ID);
       const snap = await getDoc(docRef);
       const current = (snap.data()?.entries as Record<string, unknown>[]) || [];
       const filtered = current

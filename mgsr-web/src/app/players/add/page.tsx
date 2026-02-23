@@ -16,7 +16,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { searchPlayers, getPlayerDetails, SearchPlayer, PlayerDetails } from '@/lib/api';
-import { getCurrentAccountForShortlist } from '@/lib/accounts';
+import { getCurrentAccountForShortlist, SHARED_SHORTLIST_DOC_ID } from '@/lib/accounts';
 import AppLayout from '@/components/AppLayout';
 import Link from 'next/link';
 
@@ -131,7 +131,16 @@ export default function AddPlayerPage() {
     setSaving(true);
     try {
       if (forShortlist) {
-        const docRef = doc(db, 'Shortlists', user.uid);
+        const account = await getCurrentAccountForShortlist(user);
+        const docRef = doc(db, 'Shortlists', SHARED_SHORTLIST_DOC_ID);
+        const rosterExists = await getDocs(
+          query(collection(db, 'Players'), where('tmProfile', '==', selectedPlayer.tmProfile))
+        );
+        if (!rosterExists.empty) {
+          setError(t('shortlist_player_in_roster'));
+          setSaving(false);
+          return;
+        }
         const snap = await getDoc(docRef);
         const current = (snap.data()?.entries as Record<string, unknown>[]) || [];
         const exists = current.some((e) => e.tmProfileUrl === selectedPlayer.tmProfile);
@@ -140,7 +149,6 @@ export default function AddPlayerPage() {
           setSaving(false);
           return;
         }
-        const account = await getCurrentAccountForShortlist(user);
         const entry: Record<string, unknown> = {
           tmProfileUrl: selectedPlayer.tmProfile,
           addedAt: Date.now(),
@@ -229,7 +237,7 @@ export default function AddPlayerPage() {
         await addDoc(collection(db, 'FeedEvents'), feedEvent);
 
         if (fromShortlist) {
-          const shortlistRef = doc(db, 'Shortlists', user.uid);
+          const shortlistRef = doc(db, 'Shortlists', SHARED_SHORTLIST_DOC_ID);
           const shortlistSnap = await getDoc(shortlistRef);
           const entries = (shortlistSnap.data()?.entries as Record<string, unknown>[]) || [];
           const sanitize = (e: Record<string, unknown>) => {
