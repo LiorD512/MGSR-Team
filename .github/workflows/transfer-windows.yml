@@ -52,5 +52,7 @@ jobs:
             cp /tmp/transfer-windows.json mgsr-web/public/transfer-windows.json
             git add mgsr-web/public/transfer-windows.json
             git commit -m "chore: update transfer windows [skip ci]"
+            git fetch origin
+            git rebase origin/${{ github.ref_name }} -X theirs
             git push origin HEAD:${{ github.ref_name }}
           fi
