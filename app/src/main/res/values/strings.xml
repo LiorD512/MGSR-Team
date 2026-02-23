@@ -628,6 +628,7 @@
     <string name="add_player_label_agent_number">Agent Number</string>
     <string name="add_player_tap_to_select">Tap to select</string>
     <string name="add_player_already_in_shortlist">Player is already in your shortlist</string>
+    <string name="add_player_already_in_roster">Player is already in roster</string>
 
     <!-- Player Info Screen -->
     <string name="player_info_title">Player Info</string>

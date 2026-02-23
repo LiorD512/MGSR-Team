@@ -166,11 +166,13 @@ fun AddFromLinkBottomSheet(
                                         clubJoinedName = player.currentClub?.clubName,
                                         marketValue = player.marketValue
                                     )
-                                    val added = shortlistRepository.addToShortlist(release)
-                                    if (added) {
-                                        ToastManager.showSuccess(context.getString(R.string.shortlist_added))
-                                    } else {
-                                        ToastManager.showInfo(context.getString(R.string.add_player_already_in_shortlist))
+                                    when (shortlistRepository.addToShortlist(release)) {
+                                        is com.liordahan.mgsrteam.features.shortlist.ShortlistRepository.AddToShortlistResult.Added ->
+                                            ToastManager.showSuccess(context.getString(R.string.shortlist_added))
+                                        is com.liordahan.mgsrteam.features.shortlist.ShortlistRepository.AddToShortlistResult.AlreadyInShortlist ->
+                                            ToastManager.showInfo(context.getString(R.string.add_player_already_in_shortlist))
+                                        is com.liordahan.mgsrteam.features.shortlist.ShortlistRepository.AddToShortlistResult.AlreadyInRoster ->
+                                            ToastManager.showInfo(context.getString(R.string.add_player_already_in_roster))
                                     }
                                     addPlayerViewModel.resetAfterAdd()
                                     onDismiss()

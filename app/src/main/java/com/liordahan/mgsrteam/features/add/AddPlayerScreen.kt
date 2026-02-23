@@ -501,6 +501,7 @@ fun AddToShortlistBottomSheetContent(
     val scope = rememberCoroutineScope()
     var errorMessage by remember { mutableStateOf<String?>(null) }
     val alreadyInShortlistMsg = stringResource(R.string.add_player_already_in_shortlist)
+    val alreadyInRosterMsg = stringResource(R.string.add_player_already_in_roster)
 
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
@@ -575,12 +576,15 @@ fun AddToShortlistBottomSheetContent(
                             marketValue = player.marketValue
                         )
                         scope.launch {
-                            val added = shortlistRepository.addToShortlist(release)
-                            if (added) {
-                                viewModel.resetAfterAdd()
-                                onAdded()
-                            } else {
-                                errorMessage = alreadyInShortlistMsg
+                            when (shortlistRepository.addToShortlist(release)) {
+                                is ShortlistRepository.AddToShortlistResult.Added -> {
+                                    viewModel.resetAfterAdd()
+                                    onAdded()
+                                }
+                                is ShortlistRepository.AddToShortlistResult.AlreadyInShortlist ->
+                                    errorMessage = alreadyInShortlistMsg
+                                is ShortlistRepository.AddToShortlistResult.AlreadyInRoster ->
+                                    errorMessage = alreadyInRosterMsg
                             }
                         }
                     }

@@ -82,6 +82,8 @@ class ScoutApiClient(private val baseUrl: String = DEFAULT_BASE_URL) {
         valueMax: Double? = null,
         notes: String? = null,
         transferFee: String? = null,
+        salaryRange: String? = null,
+        requestId: String? = null,
         excludeUrls: Set<String> = emptySet(),
         lang: String = "en",
         sortBy: String = "score",
@@ -99,6 +101,8 @@ class ScoutApiClient(private val baseUrl: String = DEFAULT_BASE_URL) {
             valueMax?.let { add("value_max=$it") }
             notes?.takeIf { it.isNotBlank() }?.let { add("notes=${encode(it)}") }
             transferFee?.takeIf { it.isNotBlank() }?.let { add("transfer_fee=${encode(it)}") }
+            salaryRange?.takeIf { it.isNotBlank() }?.let { add("salary_range=${encode(it)}") }
+            requestId?.takeIf { it.isNotBlank() }?.let { add("request_id=${encode(it)}") }
             if (excludeUrls.isNotEmpty()) {
                 add("exclude_urls=${encode(excludeUrls.joinToString(","))}")
             }
@@ -118,6 +122,8 @@ class ScoutApiClient(private val baseUrl: String = DEFAULT_BASE_URL) {
             |│ foot: $foot
             |│ notes: $notes
             |│ transferFee: $transferFee
+            |│ salaryRange: $salaryRange
+            |│ requestId: $requestId
             |│ club: $clubName ($clubCountry) | URL: $clubUrl
             |│ lang: $lang, sortBy: $sortBy, limit: $limit
             |└──────────────────────────────""".trimMargin())
