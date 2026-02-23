@@ -15,9 +15,11 @@ import {
 } from '@/lib/api';
 import {
   sortByMarketValue,
+  sortReleases,
   getUniquePositions,
   filterByAge,
   type AgeFilter,
+  type SortBy,
 } from '@/lib/releases';
 import AppLayout from '@/components/AppLayout';
 import Link from 'next/link';
@@ -290,12 +292,19 @@ function ReleaseCard({
   );
 }
 
+const SORT_OPTIONS: { value: SortBy; labelKey: string }[] = [
+  { value: 'value', labelKey: 'releases_sort_value' },
+  { value: 'date', labelKey: 'releases_sort_date' },
+  { value: 'age', labelKey: 'releases_sort_age' },
+];
+
 interface ReleasesCache {
   players: ReleasePlayer[];
   preset: number;
   search: string;
   positionFilter: string | null;
   ageFilter: AgeFilter;
+  sortBy: SortBy;
   rosterPlayers: RosterPlayer[];
   shortlistUrls: string[];
 }
@@ -313,6 +322,7 @@ export default function ReleasesPage() {
   const [search, setSearch] = useState(cached?.search ?? '');
   const [positionFilter, setPositionFilter] = useState<string | null>(cached?.positionFilter ?? null);
   const [ageFilter, setAgeFilter] = useState<AgeFilter>(cached?.ageFilter ?? 'all');
+  const [sortBy, setSortBy] = useState<SortBy>(cached?.sortBy ?? 'value');
   const [firestorePositions, setFirestorePositions] = useState<{ name?: string; hebrewName?: string }[]>([]);
   const [rosterPlayers, setRosterPlayers] = useState<RosterPlayer[]>(cached?.rosterPlayers ?? []);
   const [teammatesCache, setTeammatesCache] = useState<Record<string, RosterTeammateMatch[]>>({});
@@ -386,6 +396,7 @@ export default function ReleasesPage() {
             search,
             positionFilter,
             ageFilter,
+            sortBy,
             rosterPlayers,
             shortlistUrls: Array.from(shortlistUrls),
           },
@@ -402,7 +413,7 @@ export default function ReleasesPage() {
         setLoadingList(false);
       }
     }
-  }, [preset, t, user?.uid, search, positionFilter, ageFilter, rosterPlayers, shortlistUrls]);
+  }, [preset, t, user?.uid, search, positionFilter, ageFilter, sortBy, rosterPlayers, shortlistUrls]);
 
   useEffect(() => {
     const sessionCached = sessionCache[preset];
@@ -423,12 +434,13 @@ export default function ReleasesPage() {
         search,
         positionFilter,
         ageFilter,
+        sortBy,
         rosterPlayers,
         shortlistUrls: Array.from(shortlistUrls),
       },
       user?.uid ?? undefined
     );
-  }, [players, preset, search, positionFilter, ageFilter, rosterPlayers, shortlistUrls, user?.uid]);
+  }, [players, preset, search, positionFilter, ageFilter, sortBy, rosterPlayers, shortlistUrls, user?.uid]);
 
   const addToShortlist = useCallback(
     async (player: ReleasePlayer) => {
@@ -544,6 +556,11 @@ export default function ReleasesPage() {
     return result;
   }, [players, search, positionFilter, ageFilter]);
 
+  const sortedPlayers = useMemo(
+    () => sortReleases(filteredPlayers, sortBy),
+    [filteredPlayers, sortBy]
+  );
+
   const hasActiveFilters = search.trim() || positionFilter || ageFilter !== 'all';
 
   if (loading || !user) {
@@ -616,6 +633,22 @@ export default function ReleasesPage() {
               <span className="text-sm text-mgsr-muted">
                 {t('releases_stats_showing')}: <strong className="text-mgsr-teal">{filteredPlayers.length}</strong>
               </span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-mgsr-muted">{t('releases_sort')}:</span>
+                {SORT_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.value}
+                    onClick={() => setSortBy(opt.value)}
+                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${
+                      sortBy === opt.value
+                        ? 'bg-mgsr-teal text-mgsr-dark'
+                        : 'bg-mgsr-card border border-mgsr-border text-mgsr-muted hover:text-mgsr-text'
+                    }`}
+                  >
+                    {t(opt.labelKey)}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* Search + filters */}
@@ -675,13 +708,13 @@ export default function ReleasesPage() {
               </div>
             </div>
 
-            {filteredPlayers.length === 0 ? (
+            {sortedPlayers.length === 0 ? (
               <div className="p-12 bg-mgsr-card/50 border border-mgsr-border rounded-xl text-center text-mgsr-muted">
                 {hasActiveFilters ? t('search_no_results') : t('releases_empty')}
               </div>
             ) : (
               <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
-                {filteredPlayers.map((p) => (
+                {sortedPlayers.map((p) => (
                   <ReleaseCard
                     key={p.playerUrl}
                     player={p}

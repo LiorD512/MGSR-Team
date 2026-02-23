@@ -18,6 +18,43 @@ export function sortByMarketValue(players: ReleasePlayer[]): ReleasePlayer[] {
   return [...players].sort((a, b) => parseMarketValue(b.marketValue) - parseMarketValue(a.marketValue));
 }
 
+/** Parse release date string (DD/MM/YYYY) to timestamp for sorting. */
+function parseReleaseDate(dateStr: string | undefined): number {
+  if (!dateStr) return 0;
+  const parts = dateStr.trim().split(/[/.-]/);
+  if (parts.length !== 3) return 0;
+  const [d, m, y] = parts.map((p) => parseInt(p, 10));
+  if (Number.isNaN(d) || Number.isNaN(m) || Number.isNaN(y)) return 0;
+  return new Date(y, m - 1, d).getTime();
+}
+
+/** Sort players by release date descending (newest first). */
+export function sortByReleaseDate(players: ReleasePlayer[]): ReleasePlayer[] {
+  return [...players].sort((a, b) => parseReleaseDate(b.transferDate) - parseReleaseDate(a.transferDate));
+}
+
+/** Sort players by age ascending (youngest first). */
+export function sortByAge(players: ReleasePlayer[]): ReleasePlayer[] {
+  return [...players].sort((a, b) => {
+    const ageA = parseAge(a.playerAge) ?? 999;
+    const ageB = parseAge(b.playerAge) ?? 999;
+    return ageA - ageB;
+  });
+}
+
+export type SortBy = 'value' | 'date' | 'age';
+
+export function sortReleases(players: ReleasePlayer[], sortBy: SortBy): ReleasePlayer[] {
+  switch (sortBy) {
+    case 'date':
+      return sortByReleaseDate(players);
+    case 'age':
+      return sortByAge(players);
+    default:
+      return sortByMarketValue(players);
+  }
+}
+
 /** Extract unique positions from players for filter options. */
 export function getUniquePositions(players: ReleasePlayer[]): string[] {
   const set = new Set<string>();

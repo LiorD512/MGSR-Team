@@ -1,3 +1,5 @@
+import { parseMarketValue } from '@/lib/releases';
+
 // When empty, use same-origin API routes (Vercel). When set, use external backend (local dev).
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || '';
 
@@ -179,8 +181,8 @@ export const RELEASE_RANGES: { min: number; max: number }[] = [
 
 /**
  * Fetches all pages for a value range.
- * Stops when a page returns 0 players (past last page). Max 15 pages.
- * Note: Backend filters to "without club" only, so each page may have few items.
+ * vertragslosespieler returns 50 players/page; filter by value client-side.
+ * Stops when a page returns 0 raw players (past last page). Max 25 pages.
  */
 export async function getReleasesAllPages(
   min: number,
@@ -189,19 +191,20 @@ export async function getReleasesAllPages(
 ): Promise<ReleasePlayer[]> {
   const seen = new Set<string>();
   const all: ReleasePlayer[] = [];
-  const maxPages = 15;
+  const maxPages = 25;
 
   for (let page = 1; page <= maxPages; page++) {
-    const list = await getReleases(min, max, page);
-    for (const p of list) {
-      if (p.playerUrl && !seen.has(p.playerUrl)) {
+    const raw = await getReleases(min, max, page);
+    for (const p of raw) {
+      const v = parseMarketValue(p.marketValue);
+      if (v >= min && v <= max && p.playerUrl && !seen.has(p.playerUrl)) {
         seen.add(p.playerUrl);
         all.push(p);
       }
     }
     onProgress?.(page, all.length);
 
-    if (list.length === 0) break;
+    if (raw.length === 0) break;
     if (page < maxPages) await delay(300);
   }
 
@@ -211,30 +214,15 @@ export async function getReleasesAllPages(
 export type ReleasesProgress = { range: number; totalRanges: number; total: number };
 
 /**
- * Fetches releases from all narrow value ranges (same strategy as the app).
- * Yields more complete results than a single broad 0–50M range.
+ * Fetches all free agents (for "All" preset).
+ * Single pass over pages - much faster than 11 separate ranges.
  */
 export async function getReleasesAllRanges(
   onProgress?: (progress: ReleasesProgress) => void
 ): Promise<ReleasePlayer[]> {
-  const seen = new Set<string>();
-  const all: ReleasePlayer[] = [];
-  const totalRanges = RELEASE_RANGES.length;
-
-  for (let i = 0; i < totalRanges; i++) {
-    const { min, max } = RELEASE_RANGES[i];
-    const list = await getReleasesAllPages(min, max);
-    for (const p of list) {
-      if (p.playerUrl && !seen.has(p.playerUrl)) {
-        seen.add(p.playerUrl);
-        all.push(p);
-      }
-    }
-    onProgress?.({ range: i + 1, totalRanges, total: all.length });
-    if (i < totalRanges - 1) await delay(500);
-  }
-
-  return all;
+  return getReleasesAllPages(0, 50000000, (page, total) => {
+    onProgress?.({ range: page, totalRanges: 25, total });
+  });
 }
 
 // ─── Contract Finishers (contracts expiring in next transfer window) ─────────────
