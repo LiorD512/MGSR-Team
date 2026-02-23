@@ -1,12 +1,13 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getScreenCache, setScreenCache } from '@/lib/screenCache';
 import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { getCurrentAccountForShortlist } from '@/lib/accounts';
 import AppLayout from '@/components/AppLayout';
 import Link from 'next/link';
 
@@ -20,11 +21,64 @@ interface Player {
   age?: string;
   tmProfile?: string;
   createdAt?: number;
+  contractExpired?: string;
+  haveMandate?: boolean;
+  agentInChargeName?: string;
+  agentInChargeId?: string;
+  isOnLoan?: boolean;
+  onLoanFromClub?: string;
+  foot?: string;
+  notes?: string;
+  noteList?: { notes?: string; createBy?: string; createdAt?: number }[];
 }
 
 interface PlayersCache {
   players: Player[];
   search: string;
+  positionFilter: string | null;
+  freeAgents: boolean;
+  contractExpiring: boolean;
+  withMandate: boolean;
+  myPlayersOnly: boolean;
+  loanPlayersOnly: boolean;
+  withNotes: boolean;
+  footFilter: 'left' | 'right' | null;
+}
+
+const POSITION_GROUPS = ['GK', 'DEF', 'MID', 'FWD'] as const;
+const POSITION_CODES: Record<string, Set<string>> = {
+  GK: new Set(['GK']),
+  DEF: new Set(['CB', 'RB', 'LB']),
+  MID: new Set(['CM', 'DM', 'AM']),
+  FWD: new Set(['ST', 'CF', 'LW', 'RW', 'SS', 'AM']),
+};
+
+function isContractExpiringWithin6Months(contractExpired: string | undefined): boolean {
+  if (!contractExpired || contractExpired === '-') return false;
+  const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  let date: Date | null = null;
+  const m1 = contractExpired.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/); // dd.MM.yyyy
+  if (m1) {
+    date = new Date(parseInt(m1[3]!, 10), parseInt(m1[2]!, 10) - 1, parseInt(m1[1]!, 10));
+  } else {
+    const m2 = contractExpired.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/); // dd/MM/yyyy
+    if (m2) {
+      date = new Date(parseInt(m2[3]!, 10), parseInt(m2[2]!, 10) - 1, parseInt(m2[1]!, 10));
+    } else {
+      const m3 = contractExpired.match(/^(\w{3})\s+(\d{1,2}),\s+(\d{4})$/); // MMM d, yyyy
+      if (m3) {
+        const monthIndex = monthNames.indexOf(m3[1]!);
+        if (monthIndex >= 0) {
+          date = new Date(parseInt(m3[3]!, 10), monthIndex, parseInt(m3[2]!, 10));
+        }
+      }
+    }
+  }
+  if (!date || isNaN(date.getTime())) return false;
+  const now = new Date();
+  const threshold = new Date(now);
+  threshold.setMonth(threshold.getMonth() + 6);
+  return date >= now && date <= threshold;
 }
 
 export default function PlayersPage() {
@@ -35,10 +89,26 @@ export default function PlayersPage() {
   const [players, setPlayers] = useState<Player[]>(cached?.players ?? []);
   const [playersLoading, setPlayersLoading] = useState(cached === undefined);
   const [search, setSearch] = useState(cached?.search ?? '');
+  const [positionFilter, setPositionFilter] = useState<string | null>(cached?.positionFilter ?? null);
+  const [freeAgents, setFreeAgents] = useState(cached?.freeAgents ?? false);
+  const [contractExpiring, setContractExpiring] = useState(cached?.contractExpiring ?? false);
+  const [withMandate, setWithMandate] = useState(cached?.withMandate ?? false);
+  const [myPlayersOnly, setMyPlayersOnly] = useState(cached?.myPlayersOnly ?? false);
+  const [loanPlayersOnly, setLoanPlayersOnly] = useState(cached?.loanPlayersOnly ?? false);
+  const [withNotes, setWithNotes] = useState(cached?.withNotes ?? false);
+  const [footFilter, setFootFilter] = useState<'left' | 'right' | null>(cached?.footFilter ?? null);
+  const [currentAccountName, setCurrentAccountName] = useState<string | null>(null);
 
   useEffect(() => {
     if (!loading && !user) router.replace('/login');
   }, [user, loading, router]);
+
+  useEffect(() => {
+    if (!user) return;
+    getCurrentAccountForShortlist(user).then((acc) => {
+      setCurrentAccountName(acc.name ?? null);
+    });
+  }, [user]);
 
   useEffect(() => {
     const q = query(
@@ -46,7 +116,14 @@ export default function PlayersPage() {
       orderBy('createdAt', 'desc')
     );
     const unsub = onSnapshot(q, (snap) => {
-      const list = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Player));
+      const list = snap.docs.map((doc) => {
+        const d = doc.data();
+        return {
+          id: doc.id,
+          ...d,
+          isOnLoan: d.onLoan ?? d.isOnLoan ?? false,
+        } as Player;
+      });
       setPlayers(list);
       setPlayersLoading(false);
     });
@@ -54,19 +131,121 @@ export default function PlayersPage() {
   }, []);
 
   useEffect(() => {
-    setScreenCache<PlayersCache>('players', { players, search });
-  }, [players, search]);
+    setScreenCache<PlayersCache>('players', {
+      players,
+      search,
+      positionFilter,
+      freeAgents,
+      contractExpiring,
+      withMandate,
+      myPlayersOnly,
+      loanPlayersOnly,
+      withNotes,
+      footFilter,
+    });
+  }, [players, search, positionFilter, freeAgents, contractExpiring, withMandate, myPlayersOnly, loanPlayersOnly, withNotes, footFilter]);
 
   const filtered = useMemo(() => {
-    if (!search.trim()) return players;
-    const q = search.toLowerCase().trim();
-    return players.filter(
-      (p) =>
-        p.fullName?.toLowerCase().includes(q) ||
-        p.positions?.some((pos) => pos?.toLowerCase().includes(q)) ||
-        p.currentClub?.clubName?.toLowerCase().includes(q)
-    );
-  }, [players, search]);
+    let result = players;
+
+    // Search
+    if (search.trim()) {
+      const q = search.toLowerCase().trim();
+      result = result.filter(
+        (p) =>
+          p.fullName?.toLowerCase().includes(q) ||
+          p.positions?.some((pos) => pos?.toLowerCase().includes(q)) ||
+          p.currentClub?.clubName?.toLowerCase().includes(q)
+      );
+    }
+
+    // Position
+    if (positionFilter && POSITION_CODES[positionFilter]) {
+      const codes = POSITION_CODES[positionFilter];
+      result = result.filter((p) =>
+        p.positions?.some((pos) => pos && codes.has(pos.toUpperCase()))
+      );
+    }
+
+    // Free agents / Contract expiring (OR when both selected)
+    if (freeAgents || contractExpiring) {
+      result = result.filter((p) => {
+        const clubName = p.currentClub?.clubName;
+        const isFree = clubName?.toLowerCase() === 'without club';
+        const isExpiring = isContractExpiringWithin6Months(p.contractExpired);
+        if (freeAgents && contractExpiring) return isFree || isExpiring;
+        if (freeAgents) return isFree;
+        return isExpiring;
+      });
+    }
+
+    // With mandate
+    if (withMandate) {
+      result = result.filter((p) => p.haveMandate === true);
+    }
+
+    // My players only
+    if (myPlayersOnly && currentAccountName) {
+      result = result.filter(
+        (p) => p.agentInChargeName?.toLowerCase() === currentAccountName.toLowerCase()
+      );
+    }
+
+    // Loan players only
+    if (loanPlayersOnly) {
+      result = result.filter((p) => p.isOnLoan === true);
+    }
+
+    // With notes
+    if (withNotes) {
+      result = result.filter(
+        (p) =>
+          (p.notes && p.notes.trim().length > 0) ||
+          (p.noteList && p.noteList.length > 0)
+      );
+    }
+
+    // Foot
+    if (footFilter) {
+      const footLower = footFilter.toLowerCase();
+      result = result.filter((p) => p.foot?.toLowerCase() === footLower);
+    }
+
+    return result;
+  }, [
+    players,
+    search,
+    positionFilter,
+    freeAgents,
+    contractExpiring,
+    withMandate,
+    myPlayersOnly,
+    loanPlayersOnly,
+    withNotes,
+    footFilter,
+    currentAccountName,
+  ]);
+
+  const hasActiveFilters =
+    !!positionFilter ||
+    freeAgents ||
+    contractExpiring ||
+    withMandate ||
+    myPlayersOnly ||
+    loanPlayersOnly ||
+    withNotes ||
+    !!footFilter;
+
+  const clearFilters = useCallback(() => {
+    setPositionFilter(null);
+    setFreeAgents(false);
+    setContractExpiring(false);
+    setWithMandate(false);
+    setMyPlayersOnly(false);
+    setLoanPlayersOnly(false);
+    setWithNotes(false);
+    setFootFilter(null);
+  }, []);
 
   if (loading || !user) {
     return (
@@ -87,6 +266,9 @@ export default function PlayersPage() {
             </h1>
             <p className="text-mgsr-muted mt-1 text-sm">
               {players.length} {t('players')}
+              {filtered.length !== players.length && (
+                <span className="text-mgsr-teal">{` → ${filtered.length}`}</span>
+              )}
             </p>
           </div>
           <Link
@@ -99,7 +281,7 @@ export default function PlayersPage() {
         </div>
 
         {/* Search */}
-        <div className="mb-6">
+        <div className="mb-4">
           <input
             type="text"
             value={search}
@@ -109,23 +291,141 @@ export default function PlayersPage() {
           />
         </div>
 
+        {/* Filters */}
+        <div className="mb-6 space-y-4">
+          <div className="flex flex-wrap items-center gap-2">
+            {POSITION_GROUPS.map((pos) => (
+              <button
+                key={pos}
+                onClick={() => setPositionFilter(positionFilter === pos ? null : pos)}
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 ${
+                  positionFilter === pos
+                    ? 'bg-mgsr-teal text-mgsr-dark shadow-sm shadow-mgsr-teal/25'
+                    : 'bg-mgsr-card border border-mgsr-border text-mgsr-muted hover:text-mgsr-text hover:border-mgsr-teal/40'
+                }`}
+              >
+                {t(`players_filter_position_${pos.toLowerCase()}`)}
+              </button>
+            ))}
+          </div>
+          <div className="flex flex-wrap gap-2 overflow-x-auto pb-1 -mx-1">
+            <button
+              onClick={() => setFreeAgents((v) => !v)}
+              className={`shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 ${
+                freeAgents
+                  ? 'bg-mgsr-teal text-mgsr-dark shadow-sm shadow-mgsr-teal/25'
+                  : 'bg-mgsr-card border border-mgsr-border text-mgsr-muted hover:text-mgsr-text hover:border-mgsr-teal/40'
+              }`}
+            >
+              {t('players_filter_free_agents')}
+            </button>
+            <button
+              onClick={() => setContractExpiring((v) => !v)}
+              className={`shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 ${
+                contractExpiring
+                  ? 'bg-mgsr-teal text-mgsr-dark shadow-sm shadow-mgsr-teal/25'
+                  : 'bg-mgsr-card border border-mgsr-border text-mgsr-muted hover:text-mgsr-text hover:border-mgsr-teal/40'
+              }`}
+            >
+              {t('players_filter_contract_expiring')}
+            </button>
+            <button
+              onClick={() => setWithMandate((v) => !v)}
+              className={`shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 ${
+                withMandate
+                  ? 'bg-mgsr-teal text-mgsr-dark shadow-sm shadow-mgsr-teal/25'
+                  : 'bg-mgsr-card border border-mgsr-border text-mgsr-muted hover:text-mgsr-text hover:border-mgsr-teal/40'
+              }`}
+            >
+              {t('players_filter_with_mandate')}
+            </button>
+            <button
+              onClick={() => setMyPlayersOnly((v) => !v)}
+              disabled={!currentAccountName}
+              className={`shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${
+                myPlayersOnly
+                  ? 'bg-mgsr-teal text-mgsr-dark shadow-sm shadow-mgsr-teal/25'
+                  : 'bg-mgsr-card border border-mgsr-border text-mgsr-muted hover:text-mgsr-text hover:border-mgsr-teal/40'
+              }`}
+            >
+              {t('players_filter_my_players_only')}
+            </button>
+            <button
+              onClick={() => setLoanPlayersOnly((v) => !v)}
+              className={`shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 ${
+                loanPlayersOnly
+                  ? 'bg-mgsr-teal text-mgsr-dark shadow-sm shadow-mgsr-teal/25'
+                  : 'bg-mgsr-card border border-mgsr-border text-mgsr-muted hover:text-mgsr-text hover:border-mgsr-teal/40'
+              }`}
+            >
+              {t('players_filter_loan_players_only')}
+            </button>
+            <button
+              onClick={() => setWithNotes((v) => !v)}
+              className={`shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 ${
+                withNotes
+                  ? 'bg-mgsr-teal text-mgsr-dark shadow-sm shadow-mgsr-teal/25'
+                  : 'bg-mgsr-card border border-mgsr-border text-mgsr-muted hover:text-mgsr-text hover:border-mgsr-teal/40'
+              }`}
+            >
+              {t('players_filter_with_notes')}
+            </button>
+            <button
+              onClick={() => setFootFilter((v) => (v === 'left' ? null : 'left'))}
+              className={`shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 ${
+                footFilter === 'left'
+                  ? 'bg-mgsr-teal text-mgsr-dark shadow-sm shadow-mgsr-teal/25'
+                  : 'bg-mgsr-card border border-mgsr-border text-mgsr-muted hover:text-mgsr-text hover:border-mgsr-teal/40'
+              }`}
+            >
+              {t('players_filter_foot_left')}
+            </button>
+            <button
+              onClick={() => setFootFilter((v) => (v === 'right' ? null : 'right'))}
+              className={`shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 ${
+                footFilter === 'right'
+                  ? 'bg-mgsr-teal text-mgsr-dark shadow-sm shadow-mgsr-teal/25'
+                  : 'bg-mgsr-card border border-mgsr-border text-mgsr-muted hover:text-mgsr-text hover:border-mgsr-teal/40'
+              }`}
+            >
+              {t('players_filter_foot_right')}
+            </button>
+            {hasActiveFilters && (
+              <button
+                onClick={clearFilters}
+                className="shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium text-mgsr-muted hover:text-mgsr-red border border-mgsr-border hover:border-mgsr-red/50 transition-all"
+              >
+                {t('players_filter_clear')}
+              </button>
+            )}
+          </div>
+        </div>
+
         {playersLoading ? (
-          <div className="flex items-center justify-center py-20">
+          <div className="flex flex-col items-center justify-center py-20 gap-3">
             <div className="animate-pulse text-mgsr-muted">{t('players_loading')}</div>
           </div>
         ) : filtered.length === 0 ? (
           <div className="relative overflow-hidden p-16 bg-mgsr-card/50 border border-mgsr-border rounded-2xl text-center">
             <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(77,182,172,0.06)_0%,transparent_70%)]" />
             <p className="text-mgsr-muted text-lg mb-4 relative">
-              {search.trim() ? t('search_no_results') : t('players_empty')}
+              {search.trim() || hasActiveFilters ? t('search_no_results') : t('players_empty')}
             </p>
-            {!search.trim() && (
+            {!search.trim() && !hasActiveFilters && (
               <Link
                 href="/players/add"
                 className="inline-block px-6 py-3 rounded-xl bg-mgsr-teal text-mgsr-dark font-semibold hover:bg-mgsr-teal/90 transition relative"
               >
                 {t('players_empty_hint')}
               </Link>
+            )}
+            {hasActiveFilters && (
+              <button
+                onClick={clearFilters}
+                className="mt-4 inline-block px-6 py-3 rounded-xl border border-mgsr-border text-mgsr-muted hover:text-mgsr-text hover:border-mgsr-teal/40 transition relative"
+              >
+                {t('players_filter_clear')}
+              </button>
             )}
           </div>
         ) : (
