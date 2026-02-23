@@ -16,7 +16,12 @@ export async function GET(request: NextRequest) {
       signal: AbortSignal.timeout(60000),
     });
     const data = await res.json();
-    return NextResponse.json(data);
+    return NextResponse.json(data, {
+      headers: {
+        'Cache-Control': 'no-store, no-cache, must-revalidate',
+        'Pragma': 'no-cache',
+      },
+    });
   } catch (err) {
     console.error('Scout proxy error:', err);
     return NextResponse.json(
