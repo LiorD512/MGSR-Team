@@ -348,7 +348,14 @@ export default function PlayerInfoPage() {
           <StatCard label={t('player_info_foot')} value={translateFoot(merged.foot)} />
           <StatCard label={t('player_info_contract')} value={merged.contractExpired} />
           <StatCard label={t('player_info_salary')} value={player.salaryRange} />
-          <StatCard label={t('player_info_transfer_fee')} value={player.transferFee} />
+          <StatCard
+            label={t('player_info_transfer_fee')}
+            value={
+              player.transferFee?.toLowerCase() === 'free/free loan'
+                ? t('requests_fee_free_loan')
+                : player.transferFee
+            }
+          />
         </div>
 
         {/* Two-column content */}

@@ -530,7 +530,7 @@ const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     requests_phone: 'טלפון',
     requests_salary: 'שכר',
     requests_fee: 'דמי העברה',
-    requests_fee_free_loan: 'חופשי/השאלה בחינם',
+    requests_fee_free_loan: 'חופשי / השאלה בחינם',
     requests_age_range: 'גיל',
     requests_foot: 'רגל',
     requests_add_title: 'הוסף בקשה',
