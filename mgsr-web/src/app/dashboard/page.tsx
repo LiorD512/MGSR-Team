@@ -25,7 +25,10 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
+  BarChart,
+  Bar,
 } from 'recharts';
+import { parseMarketValue, parseAge } from '@/lib/releases';
 
 interface FeedEvent {
   id: string;
@@ -52,6 +55,38 @@ interface AgentTask {
   agentId?: string;
   agentName?: string;
   isCompleted?: boolean;
+}
+
+interface RosteredPlayer {
+  id: string;
+  positions?: string[];
+  age?: string;
+  marketValue?: string;
+  contractExpired?: string;
+  haveMandate?: boolean;
+}
+
+const POSITION_GROUPS = ['GK', 'DEF', 'MID', 'FWD'] as const;
+const POSITION_CODES: Record<string, Set<string>> = {
+  GK: new Set(['GK']),
+  DEF: new Set(['CB', 'RB', 'LB']),
+  MID: new Set(['CM', 'DM', 'AM']),
+  FWD: new Set(['ST', 'CF', 'LW', 'RW', 'SS', 'AM']),
+};
+
+function parseContractDate(str: string | undefined): Date | null {
+  if (!str || str === '-') return null;
+  const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const m1 = str.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);
+  if (m1) return new Date(parseInt(m1[3]!, 10), parseInt(m1[2]!, 10) - 1, parseInt(m1[1]!, 10));
+  const m2 = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (m2) return new Date(parseInt(m2[3]!, 10), parseInt(m2[2]!, 10) - 1, parseInt(m2[1]!, 10));
+  const m3 = str.match(/^(\w{3})\s+(\d{1,2}),\s+(\d{4})$/);
+  if (m3) {
+    const mi = monthNames.indexOf(m3[1]!);
+    if (mi >= 0) return new Date(parseInt(m3[3]!, 10), mi, parseInt(m3[2]!, 10));
+  }
+  return null;
 }
 
 const CHART_COLORS = [
@@ -128,6 +163,7 @@ const getDisplayName = (account: Account, isRtl: boolean) =>
 interface DashboardCache {
   events: FeedEvent[];
   players: { id: string }[];
+  rosterPlayers: RosteredPlayer[];
   contacts: { id: string }[];
   requests: { id: string; status?: string }[];
   tasks: AgentTask[];
@@ -144,6 +180,7 @@ export default function DashboardPage() {
   const [events, setEvents] = useState<FeedEvent[]>(cached?.events ?? []);
   const [eventsLoading, setEventsLoading] = useState(cached === undefined);
   const [players, setPlayers] = useState<{ id: string }[]>(cached?.players ?? []);
+  const [rosterPlayers, setRosterPlayers] = useState<RosteredPlayer[]>(cached?.rosterPlayers ?? []);
   const [contacts, setContacts] = useState<{ id: string }[]>(cached?.contacts ?? []);
   const [requests, setRequests] = useState<{ id: string; status?: string }[]>(
     cached?.requests ?? []
@@ -190,7 +227,9 @@ export default function DashboardPage() {
 
   useEffect(() => {
     const unsub = onSnapshot(collection(db, 'Players'), (snap) => {
-      setPlayers(snap.docs.map((d) => ({ id: d.id })));
+      const list = snap.docs.map((d) => ({ id: d.id, ...d.data() } as RosteredPlayer));
+      setPlayers(list.map((p) => ({ id: p.id })));
+      setRosterPlayers(list);
     });
     return () => unsub();
   }, []);
@@ -302,6 +341,7 @@ export default function DashboardPage() {
       {
         events,
         players,
+        rosterPlayers,
         contacts,
         requests,
         tasks,
@@ -311,7 +351,7 @@ export default function DashboardPage() {
       },
       user.uid
     );
-  }, [user?.uid, events, players, contacts, requests, tasks, shortlistCount, accounts, currentAccount]);
+  }, [user?.uid, events, players, rosterPlayers, contacts, requests, tasks, shortlistCount, accounts, currentAccount]);
 
   const userName =
     currentAccount
@@ -423,6 +463,111 @@ export default function DashboardPage() {
     });
     return Object.entries(byAgent).map(([id, data]) => ({ id, ...data }));
   }, [accounts, tasks, isRtl]);
+
+  const positionByGroup = useMemo(() => {
+    const counts: Record<string, number> = { GK: 0, DEF: 0, MID: 0, FWD: 0 };
+    rosterPlayers.forEach((p) => {
+      const positions = p.positions?.filter(Boolean) ?? [];
+      const matched = new Set<string>();
+      for (const pos of positions) {
+        const up = pos?.toUpperCase();
+        for (const [group, codes] of Object.entries(POSITION_CODES)) {
+          if (up && codes.has(up)) {
+            matched.add(group);
+            break;
+          }
+        }
+      }
+      matched.forEach((g) => { counts[g] = (counts[g] ?? 0) + 1; });
+    });
+    return POSITION_GROUPS.map((g) => ({
+      name: t(`players_filter_position_${g.toLowerCase()}`),
+      value: counts[g] ?? 0,
+    })).filter((d) => d.value > 0);
+  }, [rosterPlayers, t]);
+
+  const ageByGroup = useMemo(() => {
+    const buckets: Record<string, number> = {
+      u21: 0,
+      '22-25': 0,
+      '26-29': 0,
+      '30+': 0,
+    };
+    rosterPlayers.forEach((p) => {
+      const age = parseAge(p.age);
+      if (age === null) return;
+      if (age < 22) buckets.u21++;
+      else if (age <= 25) buckets['22-25']++;
+      else if (age <= 29) buckets['26-29']++;
+      else buckets['30+']++;
+    });
+    return [
+      { name: t('roster_analytics_age_u21'), count: buckets.u21 },
+      { name: t('roster_analytics_age_22_25'), count: buckets['22-25'] },
+      { name: t('roster_analytics_age_26_29'), count: buckets['26-29'] },
+      { name: t('roster_analytics_age_30_plus'), count: buckets['30+'] },
+    ].filter((d) => d.count > 0);
+  }, [rosterPlayers, t]);
+
+  const valueByRange = useMemo(() => {
+    const buckets: Record<string, number> = {
+      unknown: 0,
+      '0-500k': 0,
+      '500k-1m': 0,
+      '1m-5m': 0,
+      '5m+': 0,
+    };
+    rosterPlayers.forEach((p) => {
+      const v = parseMarketValue(p.marketValue);
+      if (v <= 0) buckets.unknown++;
+      else if (v < 500_000) buckets['0-500k']++;
+      else if (v < 1_000_000) buckets['500k-1m']++;
+      else if (v < 5_000_000) buckets['1m-5m']++;
+      else buckets['5m+']++;
+    });
+    const labels: Record<string, string> = {
+      unknown: t('roster_analytics_value_unknown'),
+      '0-500k': t('roster_analytics_value_0_500k'),
+      '500k-1m': t('roster_analytics_value_500k_1m'),
+      '1m-5m': t('roster_analytics_value_1m_5m'),
+      '5m+': t('roster_analytics_value_5m_plus'),
+    };
+    return Object.entries(buckets)
+      .filter(([, c]) => c > 0)
+      .map(([key, count]) => ({ name: labels[key], count }));
+  }, [rosterPlayers, t]);
+
+  const contractByMonth = useMemo(() => {
+    const now = new Date();
+    const byMonth: Record<string, number> = {};
+    for (let i = 0; i < 12; i++) {
+      const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+      byMonth[d.toISOString().slice(0, 7)] = 0;
+    }
+    rosterPlayers.forEach((p) => {
+      const date = parseContractDate(p.contractExpired);
+      if (!date || date < now) return;
+      const key = date.toISOString().slice(0, 7);
+      if (byMonth[key] !== undefined) byMonth[key]++;
+    });
+    const locale = isRtl ? 'he-IL' : 'en-US';
+    return Object.entries(byMonth)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .filter(([, c]) => c > 0)
+      .map(([month, count]) => ({
+        month: new Date(month + '-01').toLocaleDateString(locale, { month: 'short', year: '2-digit' }),
+        count,
+      }));
+  }, [rosterPlayers, isRtl]);
+
+  const mandateData = useMemo(() => {
+    const withM = rosterPlayers.filter((p) => p.haveMandate === true).length;
+    const without = rosterPlayers.length - withM;
+    return [
+      { name: t('roster_analytics_with_mandate'), value: withM, color: '#66BB6A' },
+      { name: t('roster_analytics_without_mandate'), value: without, color: '#8D6E63' },
+    ].filter((d) => d.value > 0);
+  }, [rosterPlayers, t]);
 
   if (loading || !user) {
     return (
@@ -610,6 +755,197 @@ export default function DashboardPage() {
             </div>
           </div>
         </div>
+
+        {/* Roster Analytics */}
+        {rosterPlayers.length > 0 && (
+          <div className="mb-10">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-mgsr-text font-display">
+                {t('roster_analytics_title')}
+              </h2>
+              <Link
+                href="/players"
+                className="text-sm font-medium text-mgsr-teal hover:text-mgsr-teal/80 transition flex items-center gap-1"
+              >
+                {t('players')}
+                <span aria-hidden>{isRtl ? '←' : '→'}</span>
+              </Link>
+            </div>
+            <div className="w-10 h-0.5 rounded-full bg-mgsr-teal mb-4" />
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+              {/* Position distribution */}
+              <div className="p-6 bg-mgsr-card/60 border border-mgsr-border rounded-2xl backdrop-blur-sm">
+                <h3 className="text-sm font-semibold text-mgsr-text mb-4 font-display">
+                  {t('roster_analytics_position')}
+                </h3>
+                <div className="h-48">
+                  {positionByGroup.length > 0 ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={positionByGroup} margin={{ left: 8, right: 12, top: 8, bottom: 24 }}>
+                        <XAxis
+                          dataKey="name"
+                          stroke="#8C999B"
+                          fontSize={11}
+                          tickLine={false}
+                          axisLine={false}
+                          tick={{ fill: '#E8EAED' }}
+                          interval={0}
+                        />
+                        <YAxis stroke="#8C999B" fontSize={11} allowDecimals={false} tickLine={false} axisLine={false} width={28} />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: '#1A2736',
+                            border: '1px solid #253545',
+                            borderRadius: '12px',
+                            padding: '10px 14px',
+                          }}
+                        />
+                        <Bar dataKey="value" fill="#4DB6AC" radius={[4, 4, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="h-full flex items-center justify-center text-mgsr-muted text-sm">
+                      —
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Age distribution */}
+              <div className="p-6 bg-mgsr-card/60 border border-mgsr-border rounded-2xl backdrop-blur-sm">
+                <h3 className="text-sm font-semibold text-mgsr-text mb-4 font-display">
+                  {t('roster_analytics_age')}
+                </h3>
+                <div className="h-48">
+                  {ageByGroup.length > 0 ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={ageByGroup} margin={{ left: 8, right: 12, top: 8, bottom: 24 }}>
+                        <XAxis dataKey="name" stroke="#8C999B" fontSize={11} tickLine={false} axisLine={false} />
+                        <YAxis stroke="#8C999B" fontSize={11} allowDecimals={false} tickLine={false} axisLine={false} />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: '#1A2736',
+                            border: '1px solid #253545',
+                            borderRadius: '12px',
+                            padding: '10px 14px',
+                          }}
+                        />
+                        <Bar dataKey="count" fill="#5C6BC0" radius={[4, 4, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="h-full flex items-center justify-center text-mgsr-muted text-sm">
+                      —
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Market value distribution */}
+              <div className="p-6 bg-mgsr-card/60 border border-mgsr-border rounded-2xl backdrop-blur-sm">
+                <h3 className="text-sm font-semibold text-mgsr-text mb-4 font-display">
+                  {t('roster_analytics_value')}
+                </h3>
+                <div className="h-48">
+                  {valueByRange.length > 0 ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={valueByRange} margin={{ left: 8, right: 12, top: 8, bottom: 24 }}>
+                        <XAxis dataKey="name" stroke="#8C999B" fontSize={10} tickLine={false} axisLine={false} />
+                        <YAxis stroke="#8C999B" fontSize={11} allowDecimals={false} tickLine={false} axisLine={false} />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: '#1A2736',
+                            border: '1px solid #253545',
+                            borderRadius: '12px',
+                            padding: '10px 14px',
+                          }}
+                        />
+                        <Bar dataKey="count" fill="#FF7043" radius={[4, 4, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="h-full flex items-center justify-center text-mgsr-muted text-sm">
+                      —
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Contracts expiring */}
+              <div className="p-6 bg-mgsr-card/60 border border-mgsr-border rounded-2xl backdrop-blur-sm md:col-span-2">
+                <h3 className="text-sm font-semibold text-mgsr-text mb-4 font-display">
+                  {t('roster_analytics_contracts')}
+                </h3>
+                <div className="h-48">
+                  {contractByMonth.length > 0 ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={contractByMonth} margin={{ left: 8, right: 12, top: 8, bottom: 24 }}>
+                        <XAxis dataKey="month" stroke="#8C999B" fontSize={11} tickLine={false} axisLine={false} />
+                        <YAxis stroke="#8C999B" fontSize={11} allowDecimals={false} tickLine={false} axisLine={false} />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: '#1A2736',
+                            border: '1px solid #253545',
+                            borderRadius: '12px',
+                            padding: '10px 14px',
+                          }}
+                        />
+                        <Bar dataKey="count" fill="#EC407A" radius={[4, 4, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="h-full flex items-center justify-center text-mgsr-muted text-sm">
+                      —
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Mandate status */}
+              <div className="p-6 bg-mgsr-card/60 border border-mgsr-border rounded-2xl backdrop-blur-sm">
+                <h3 className="text-sm font-semibold text-mgsr-text mb-4 font-display">
+                  {t('roster_analytics_mandates')}
+                </h3>
+                <div className="min-h-[120px] flex flex-col justify-center">
+                  {mandateData.length > 0 ? (
+                    <div className="space-y-4">
+                      {mandateData.map((entry, i) => {
+                        const pct = rosterPlayers.length > 0
+                          ? Math.round((entry.value / rosterPlayers.length) * 100)
+                          : 0;
+                        return (
+                          <div key={entry.name} className="space-y-1.5">
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="text-mgsr-text font-medium truncate">
+                                {entry.name}
+                              </span>
+                              <span className="text-mgsr-muted shrink-0 ms-2">
+                                {entry.value} {pct > 0 && `(${pct}%)`}
+                              </span>
+                            </div>
+                            <div className="h-2 bg-mgsr-dark rounded-full overflow-hidden">
+                              <div
+                                className="h-full rounded-full transition-all duration-500"
+                                style={{
+                                  width: `${Math.max(pct, 2)}%`,
+                                  backgroundColor: entry.color,
+                                }}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="py-8 flex items-center justify-center text-mgsr-muted text-sm">
+                      —
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Staff & This week */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-10">
