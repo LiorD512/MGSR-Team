@@ -62,8 +62,15 @@ class AiHelperService(
         val nationality: String? = null,
         val height: String? = null,
         val contractEnd: String? = null,
-        val foot: String? = null
-    )
+        val foot: String? = null,
+        val scoreBreakdown: ScoreBreakdown? = null
+    ) {
+        data class ScoreBreakdown(
+            val clubFit: Int?,
+            val realism: Int?,
+            val noteFit: Int?
+        )
+    }
 
     /**
      * Result of AI hidden gem analysis for a player.

@@ -1433,7 +1433,7 @@ private fun OnlinePlayerSuggestionRow(
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
-                    // Age · Position · Market Value
+                    // Age · Position · Market Value (Hebrew: בן 24, English: 24 yrs)
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(4.dp)
@@ -1441,8 +1441,11 @@ private fun OnlinePlayerSuggestionRow(
                         val posDisplay = suggestion.position?.let {
                             PositionDisplayNames.getDisplayName(ctx, it)
                         }
+                        val ageDisplay = suggestion.age?.takeIf { it.isNotBlank() }?.let { age ->
+                            ctx.getString(R.string.players_age_format, age)
+                        }
                         val infoText = buildString {
-                            suggestion.age?.let { append(it) }
+                            ageDisplay?.let { append(it) }
                             posDisplay?.let { pos ->
                                 if (isNotBlank()) append(" · ")
                                 append(pos)
@@ -1514,6 +1517,42 @@ private fun OnlinePlayerSuggestionRow(
                         .padding(start = 12.dp, end = 12.dp, bottom = 12.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
+                    // Score breakdown (Club fit, Budget realism, Note fit) — FlowRow wraps on narrow screens
+                    suggestion.scoreBreakdown?.let { breakdown ->
+                        val hasAny = breakdown.clubFit != null || breakdown.realism != null || breakdown.noteFit != null
+                        if (hasAny) {
+                            @OptIn(ExperimentalLayoutApi::class)
+                            FlowRow(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Text(
+                                    stringResource(R.string.requests_scout_why_match),
+                                    style = boldTextStyle(HomeTextSecondary, 11.sp)
+                                )
+                                breakdown.clubFit?.let { v ->
+                                    Text(
+                                        "${stringResource(R.string.requests_scout_club_fit)}: $v%",
+                                        style = regularTextStyle(HomeTextSecondary, 11.sp)
+                                    )
+                                }
+                                breakdown.realism?.let { v ->
+                                    Text(
+                                        "${stringResource(R.string.requests_scout_budget_realism)}: $v%",
+                                        style = regularTextStyle(HomeTextSecondary, 11.sp)
+                                    )
+                                }
+                                breakdown.noteFit?.let { v ->
+                                    Text(
+                                        "${stringResource(R.string.requests_scout_note_fit)}: $v%",
+                                        style = regularTextStyle(HomeTextSecondary, 11.sp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+
                     // Scout narrative card
                     Column(
                         modifier = Modifier
@@ -1530,7 +1569,8 @@ private fun OnlinePlayerSuggestionRow(
                                 text = analysis,
                                 style = regularTextStyle(HomeTextPrimary, 12.sp),
                                 lineHeight = 19.sp,
-                                textAlign = if (isRtl) TextAlign.Right else TextAlign.Start
+                                textAlign = if (isRtl) TextAlign.Right else TextAlign.Start,
+                                modifier = Modifier.fillMaxWidth()
                             )
                         }
 
@@ -1589,7 +1629,8 @@ private fun OnlinePlayerSuggestionRow(
                                     text = reason,
                                     style = regularTextStyle(HomeTextSecondary, 12.sp),
                                     lineHeight = 18.sp,
-                                    textAlign = if (isRtl) TextAlign.Right else TextAlign.Start
+                                    textAlign = if (isRtl) TextAlign.Right else TextAlign.Start,
+                                    modifier = Modifier.fillMaxWidth()
                                 )
                             }
                         }

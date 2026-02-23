@@ -418,6 +418,11 @@
     <string name="requests_online_players_sheet_title">שחקנים מהשוק</string>
     <string name="requests_online_players_loading">הAI סקאוט מחפש שחקנים…</string>
     <string name="requests_online_players_empty">לא נמצאו שחקנים תואמים באינטרנט</string>
+    <string name="requests_online_match_score">התאמה: %d%%</string>
+    <string name="requests_scout_why_match">למה התאמה?</string>
+    <string name="requests_scout_club_fit">התאמה מועדונית</string>
+    <string name="requests_scout_budget_realism">ריאליזם תקציבי</string>
+    <string name="requests_scout_note_fit">התאמה להערות</string>
     <string name="requests_no_match">אין שחקנים במאגר התואמים לבקשה זו</string>
     <string name="requests_no_requests">אין בקשות עדיין</string>
     <string name="requests_empty_hint">הוסף בקשות ממועדונים כשהם מבקשים שחקנים. לחץ + להוספת הבקשה הראשונה.</string>

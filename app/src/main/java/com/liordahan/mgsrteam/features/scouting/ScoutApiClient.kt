@@ -321,6 +321,9 @@ class ScoutApiClient(private val baseUrl: String = DEFAULT_BASE_URL) {
 
             val playingStyle = p.optString("playing_style", "").takeIf { it.isNotBlank() }
             val serverExplanation = p.optString("explanation", "").takeIf { it.isNotBlank() }
+            val clubFit = p.optInt("club_fit_score", -1).takeIf { it >= 0 }
+            val realism = p.optInt("realism_score", -1).takeIf { it >= 0 }
+            val noteFit = p.optInt("note_fit_score", -1).takeIf { it >= 0 }
             val effectiveScore = when {
                 smartScore > 0 -> smartScore.toInt()
                 simScore > 0 -> (simScore * 100).toInt()
@@ -328,11 +331,15 @@ class ScoutApiClient(private val baseUrl: String = DEFAULT_BASE_URL) {
                 else -> null
             }
 
-            // Use server explanation if available; otherwise keep null —
-            // the UI will build its own contextual display from individual fields.
-            val scoutAnalysis = serverExplanation
+            val scoreBreakdown = if (clubFit != null || realism != null || noteFit != null) {
+                AiHelperService.SimilarPlayerSuggestion.ScoreBreakdown(
+                    clubFit = clubFit,
+                    realism = realism,
+                    noteFit = noteFit
+                )
+            } else null
 
-            // Compact reason for fallback display
+            val scoutAnalysis = serverExplanation
             val reason = buildString {
                 if (playingStyle != null) append(playingStyle)
                 if (effectiveScore != null) {
@@ -356,7 +363,8 @@ class ScoutApiClient(private val baseUrl: String = DEFAULT_BASE_URL) {
                 nationality = nationality,
                 height = height,
                 contractEnd = contract,
-                foot = foot
+                foot = foot,
+                scoreBreakdown = scoreBreakdown
             )
         }
     }
