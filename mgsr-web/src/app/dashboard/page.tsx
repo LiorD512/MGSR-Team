@@ -1300,9 +1300,33 @@ export default function DashboardPage() {
           </div>
           <div className="w-10 h-0.5 rounded-full bg-mgsr-teal mb-4" />
           {transferWindowsLoading ? (
-            <div className="flex items-center gap-3 py-8 text-mgsr-muted">
-              <div className="w-4 h-4 border-2 border-mgsr-teal/40 border-t-mgsr-teal rounded-full animate-spin" />
-              <span className="text-sm">{t('loading')}</span>
+            <div className="space-y-2 animate-pulse">
+              {[1, 2, 3, 4].map((i) => (
+                <div
+                  key={i}
+                  className="rounded-xl overflow-hidden bg-mgsr-card/30 border border-mgsr-border/50"
+                >
+                  <div className="flex items-center gap-3 px-4 py-3">
+                    <div className="h-4 w-4 rounded bg-mgsr-muted/40" />
+                    <div className="h-4 flex-1 max-w-[140px] rounded bg-mgsr-muted/40" />
+                    <div className="h-5 w-8 rounded-md bg-mgsr-muted/40" />
+                  </div>
+                  <div className="px-4 pb-3 pt-0 space-y-1.5">
+                    {[1, 2, 3, 4, 5].map((j) => (
+                      <div
+                        key={j}
+                        className="flex items-center justify-between px-3 py-2.5 rounded-lg bg-mgsr-dark/40 border border-mgsr-border/30"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-6 h-6 rounded-full bg-mgsr-muted/40 shrink-0" />
+                          <div className="h-4 w-24 rounded bg-mgsr-muted/40" />
+                        </div>
+                        <div className="h-4 w-16 rounded bg-mgsr-muted/40 shrink-0" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
             </div>
           ) : Object.keys(transferWindowGroups).length === 0 ? (
             <div className="py-8 px-6 rounded-2xl bg-mgsr-card/40 border border-mgsr-border text-center text-mgsr-muted">
@@ -1448,10 +1472,12 @@ export default function DashboardPage() {
                                       : undefined
                                   }
                                 >
-                                  {t('transfer_windows_days_left').replace(
-                                    '{n}',
-                                    String(w.daysLeft)
-                                  )}
+                                  {w.daysLeft === 0
+                                    ? t('transfer_windows_today')
+                                    : t('transfer_windows_days_left').replace(
+                                        '{n}',
+                                        String(w.daysLeft)
+                                      )}
                                 </span>
                               ) : (
                                 <span className="text-sm text-mgsr-muted shrink-0">

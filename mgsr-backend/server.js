@@ -3,6 +3,7 @@ const cors = require('cors');
 const cheerio = require('cheerio');
 const https = require('https');
 const { URL } = require('url');
+const { chromium } = require('playwright');
 
 const app = express();
 const PORT = process.env.PORT || 8080;
@@ -763,8 +764,13 @@ app.get('/api/transfermarkt/teammates', async (req, res) => {
 });
 
 // ─── Transfer Windows (open worldwide) ────────────────────────────────────────
-// Static fallback: Transfermarkt loads the table via JS, so we use known closing dates.
-// Format: [countryName, countryCode, month, day] — confederation derived from code.
+// Scrapes Transfermarkt with Playwright (table is JS-rendered). Falls back to static list on failure.
+// Cache: 1 hour to limit requests to Transfermarkt.
+const TRANSFER_WINDOW_URL = TRANSFERMARKT_BASE + '/statistik/transferfenster?status=open';
+const TRANSFER_WINDOW_CACHE_MS = 60 * 60 * 1000; // 1 hour
+let transferWindowCache = null;
+let transferWindowCacheTime = 0;
+
 const PRIORITY_COUNTRY_CODES = new Set(['il', 'gb-eng', 'de', 'es', 'it', 'fr']);
 const COUNTRY_TO_CONF = {
   'gb-eng': 'UEFA', de: 'UEFA', es: 'UEFA', it: 'UEFA', fr: 'UEFA', nl: 'UEFA', pt: 'UEFA',
@@ -790,6 +796,38 @@ const COUNTRY_TO_CONF = {
   tz: 'CAF', et: 'CAF', ly: 'CAF', sd: 'CAF', ug: 'CAF', tg: 'CAF', bj: 'CAF', bf: 'CAF',
   ne: 'CAF', gn: 'CAF', mg: 'CAF', mu: 'CAF', bw: 'CAF', na: 'CAF', mz: 'CAF', rw: 'CAF',
   nz: 'OFC', fj: 'OFC', pg: 'OFC', sb: 'OFC',
+};
+// Map country names (from Transfermarkt) to codes for confederation + flag
+const NAME_TO_CODE = {
+  England: 'gb-eng', Germany: 'de', Spain: 'es', Italy: 'it', France: 'fr', Netherlands: 'nl',
+  Portugal: 'pt', Belgium: 'be', Turkey: 'tr', Russia: 'ru', Israel: 'il', Scotland: 'gb-sct',
+  Greece: 'gr', Austria: 'at', Switzerland: 'ch', Poland: 'pl', Ukraine: 'ua', 'Czech Republic': 'cz',
+  Denmark: 'dk', Sweden: 'se', Norway: 'no', Romania: 'ro', Croatia: 'hr', Serbia: 'rs',
+  Hungary: 'hu', 'Saudi Arabia': 'sa', UAE: 'ae', 'United Arab Emirates': 'ae', Qatar: 'qa',
+  China: 'cn', Japan: 'jp', 'South Korea': 'kr', 'Korea Republic': 'kr', Korea: 'kr', Australia: 'au', Brazil: 'br', Argentina: 'ar',
+  Colombia: 'co', Mexico: 'mx', 'United States': 'us', Canada: 'ca', Egypt: 'eg', Morocco: 'ma',
+  'South Africa': 'za', Nigeria: 'ng', 'New Zealand': 'nz', Bulgaria: 'bg', Slovakia: 'sk',
+  Slovenia: 'si', Cyprus: 'cy', Finland: 'fi', Iceland: 'is', 'Bosnia-Herzegovina': 'ba',
+  'North Macedonia': 'mk', Albania: 'al', Montenegro: 'me', Luxembourg: 'lu', Malta: 'mt',
+  Ireland: 'ie', Wales: 'gb-wls', 'Northern Ireland': 'gb-nir', Belarus: 'by', Georgia: 'ge',
+  Armenia: 'am', Azerbaijan: 'az', Kazakhstan: 'kz', Moldova: 'md', Lithuania: 'lt',
+  Estonia: 'ee', Latvia: 'lv', Kosovo: 'xk', Andorra: 'ad', 'Faroe Islands': 'fo',
+  Liechtenstein: 'li', 'San Marino': 'sm', Gibraltar: 'gi', Iran: 'ir', India: 'in',
+  Thailand: 'th', Malaysia: 'my', Vietnam: 'vn', Indonesia: 'id', Uzbekistan: 'uz',
+  Iraq: 'iq', Kuwait: 'kw', Oman: 'om', Bahrain: 'bh', Jordan: 'jo', Syria: 'sy',
+  Lebanon: 'lb', Philippines: 'ph', Singapore: 'sg', 'Hong Kong': 'hk', 'Chinese Taipei': 'tw',
+  Bangladesh: 'bd', Nepal: 'np', 'Sri Lanka': 'lk', Palestine: 'ps', Yemen: 'ye',
+  Tajikistan: 'tj', Turkmenistan: 'tm', Kyrgyzstan: 'kg', Myanmar: 'mm', Maldives: 'mv',
+  Afghanistan: 'af', Chile: 'cl', Peru: 'pe', Ecuador: 'ec', Uruguay: 'uy', Paraguay: 'py',
+  Bolivia: 'bo', Venezuela: 've', 'Costa Rica': 'cr', Honduras: 'hn', Panama: 'pa',
+  Jamaica: 'jm', 'Trinidad and Tobago': 'tt', Guatemala: 'gt', 'El Salvador': 'sv',
+  Nicaragua: 'ni', Cuba: 'cu', 'Dominican Republic': 'do', Haiti: 'ht', 'Curaçao': 'cw',
+  Suriname: 'sr', Tunisia: 'tn', Algeria: 'dz', Ghana: 'gh', Senegal: 'sn', 'Ivory Coast': 'ci',
+  Cameroon: 'cm', Kenya: 'ke', Zimbabwe: 'zw', Zambia: 'zm', Angola: 'ao', 'DR Congo': 'cd',
+  Mali: 'ml', Tanzania: 'tz', Ethiopia: 'et', Libya: 'ly', Sudan: 'sd', Uganda: 'ug',
+  Togo: 'tg', Benin: 'bj', 'Burkina Faso': 'bf', Niger: 'ne', Guinea: 'gn', Madagascar: 'mg',
+  Mauritius: 'mu', Botswana: 'bw', Namibia: 'na', Mozambique: 'mz', Rwanda: 'rw',
+  Fiji: 'fj', 'Papua New Guinea': 'pg', 'Solomon Islands': 'sb',
 };
 const WINTER_MD = [
   ['England', 'gb-eng', 2, 3], ['Germany', 'de', 2, 3], ['Spain', 'es', 2, 3], ['Italy', 'it', 2, 3],
@@ -848,8 +886,108 @@ function buildTransferWindows() {
   return result.sort((a, b) => a.daysLeft - b.daysLeft);
 }
 
+async function scrapeTransferWindowsWithPlaywright() {
+  let browser;
+  try {
+    browser = await chromium.launch({
+      headless: true,
+      args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    });
+    const page = await browser.newPage({
+      userAgent: getRandomUserAgent(),
+      extraHTTPHeaders: { 'Accept-Language': 'en-US,en;q=0.9' },
+    });
+    await page.setViewportSize({ width: 1920, height: 3000 });
+    await page.goto(TRANSFER_WINDOW_URL, { waitUntil: 'networkidle', timeout: 20000 });
+    await page.waitForSelector('table.transfer-window tbody tr', { timeout: 10000 }).catch(() => null);
+
+    // Click "More countries" repeatedly to load ALL open windows (button is below fold, use JS click)
+    for (let i = 0; i < 20; i++) {
+      const prevRows = await page.$$eval('table.transfer-window tbody tr', (r) => r.length);
+      const clicked = await page.evaluate(() => {
+        const b = document.querySelector('button.transfer-window__toggle-button-countries');
+        if (!b || b.textContent?.trim() !== 'More countries') return false;
+        b.scrollIntoView({ block: 'center' });
+        b.click();
+        return true;
+      });
+      if (!clicked) break;
+      await new Promise((r) => setTimeout(r, 2000));
+      const newRows = await page.$$eval('table.transfer-window tbody tr', (r) => r.length);
+      if (newRows <= prevRows) break;
+    }
+
+    const html = await page.content();
+    await browser.close();
+    browser = null;
+
+    const $ = cheerio.load(html);
+    const rows = $('table.transfer-window tbody tr');
+    if (rows.length === 0) return null;
+
+    const windows = [];
+    const seen = new Set();
+    let currentCountry = '';
+    let currentCountryImg = '';
+
+    rows.each((_, row) => {
+      const $row = $(row);
+      const cells = $row.find('td');
+      if (cells.length === 1) {
+        currentCountry = cells.eq(0).text().trim();
+        const img = cells.eq(0).find('img');
+        currentCountryImg = img.attr('data-src') || img.attr('src') || '';
+        if (currentCountryImg && !currentCountryImg.startsWith('http')) {
+          currentCountryImg = currentCountryImg.startsWith('//') ? 'https:' + currentCountryImg : TRANSFERMARKT_BASE + currentCountryImg;
+        }
+        return;
+      }
+      if (cells.length !== 4 || !currentCountry || currentCountry.length < 2) return;
+
+      const status = cells.eq(3).text().trim();
+      let daysLeft = null;
+      const daysMatch = status.match(/(\d+)\s*(?:more\s+)?days?/i) || status.match(/open\s+for\s+(\d+)/i);
+      if (daysMatch) daysLeft = parseInt(daysMatch[1], 10);
+      if (status.includes('closes in') && !daysMatch) daysLeft = 0;
+
+      const countryCode = NAME_TO_CODE[currentCountry] || '';
+      const code = countryCode || currentCountry.toLowerCase().replace(/\s+/g, '-').slice(0, 12);
+      if (seen.has(code)) return;
+      seen.add(code);
+
+      const conf = COUNTRY_TO_CONF[countryCode] || 'UEFA';
+      windows.push({
+        countryName: currentCountry.trim(),
+        countryCode: countryCode || code,
+        flagUrl: currentCountryImg || `https://flagcdn.com/w40/${countryCode || code}.png`,
+        confederation: conf,
+        daysLeft,
+      });
+    });
+
+    if (windows.length === 0) return null;
+    return windows.sort((a, b) => (a.daysLeft ?? 999) - (b.daysLeft ?? 999));
+  } catch (err) {
+    console.error('Transfer window scrape error:', err.message);
+    if (browser) await browser.close().catch(() => {});
+    return null;
+  }
+}
+
 app.get('/api/transfermarkt/transfer-windows', async (req, res) => {
   try {
+    const now = Date.now();
+    if (transferWindowCache && now - transferWindowCacheTime < TRANSFER_WINDOW_CACHE_MS) {
+      return res.json({ windows: transferWindowCache });
+    }
+
+    const scraped = await scrapeTransferWindowsWithPlaywright();
+    if (scraped && scraped.length > 0) {
+      transferWindowCache = scraped;
+      transferWindowCacheTime = now;
+      return res.json({ windows: scraped });
+    }
+
     const windows = buildTransferWindows();
     res.json({ windows });
   } catch (err) {
