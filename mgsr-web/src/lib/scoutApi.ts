@@ -113,7 +113,7 @@ export async function findPlayersForRequest(
   const res = await fetch(url, {
     headers: { Accept: 'application/json' },
     cache: 'no-store',
-    signal: AbortSignal.timeout(60000),
+    signal: AbortSignal.timeout(120000), // 2 min: Render cold start + recruitment search
   });
   if (!res.ok) {
     const errBody = (await res.json().catch(() => ({}))) as { error?: string };
