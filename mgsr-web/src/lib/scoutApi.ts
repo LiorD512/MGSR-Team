@@ -32,8 +32,10 @@ interface RecruitmentParams {
   foot?: string;
   notes?: string;
   transferFee?: string;
+  salaryRange?: string;
   excludeUrls?: string[];
   lang?: string;
+  requestId?: string;
   clubUrl?: string;
   clubName?: string;
   clubCountry?: string;
@@ -47,7 +49,9 @@ function buildUrl(params: RecruitmentParams): string {
   if (params.foot) search.set('foot', params.foot);
   if (params.notes?.trim()) search.set('notes', params.notes.trim());
   if (params.transferFee?.trim()) search.set('transfer_fee', params.transferFee.trim());
+  if (params.salaryRange?.trim()) search.set('salary_range', params.salaryRange.trim());
   if (params.excludeUrls?.length) search.set('exclude_urls', params.excludeUrls.join(','));
+  if (params.requestId) search.set('request_id', params.requestId);
   if (params.clubUrl?.trim()) search.set('club_url', params.clubUrl.trim());
   if (params.clubName?.trim()) search.set('club_name', params.clubName.trim());
   if (params.clubCountry?.trim()) search.set('club_country', params.clubCountry.trim());
