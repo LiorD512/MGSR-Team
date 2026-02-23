@@ -1090,3 +1090,350 @@ function buildTransferWindows(): Record<string, unknown>[] {
 export function handleTransferWindows() {
   return { windows: buildTransferWindows() };
 }
+
+// ─── Returnees (players returning from loan) ─────────────────────────────────
+const SAISON_ID_REGEX = /\/saison_id\/\d+/;
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function extractTeamTransferUrls($: any): string[] {
+  const urls: string[] = [];
+  $('table.items tbody tr').each((_: number, row: cheerio.Element) => {
+    const linkEl = $(row).find('td:nth-child(2) a[href]').first();
+    const href = linkEl.attr('href') || '';
+    if (!href.includes('/startseite/verein/')) return;
+    const transferPath = href
+      .replace('/startseite/', '/transfers/')
+      .replace(SAISON_ID_REGEX, '');
+    urls.push(TRANSFERMARKT_BASE + transferPath);
+  });
+  return Array.from(new Set(urls));
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function parseReturneeRow(
+  $: any,
+  row: cheerio.Element,
+  departureUrls: Set<string>,
+  teamClub: { clubJoinedName: string | null; clubJoinedLogo: string | null }
+): Record<string, unknown> | null {
+  const rowText = $(row).text();
+  const isLoanReturn =
+    rowText.includes('End of loan') ||
+    rowText.includes('Loan return') ||
+    rowText.includes('end of loan');
+
+  if (!isLoanReturn) return null;
+
+  const img = $(row).find('img').first();
+  const imageUrl = (img.attr('data-src') || img.attr('src') || '').replace('tiny', 'big');
+
+  const nameEl = $(row).find('td.hauptlink a').first();
+  const playerName = nameEl.text().trim() || img.attr('title') || '';
+  const playerHref = nameEl.attr('href') || '';
+  const playerUrl = playerHref ? (playerHref.startsWith('http') ? playerHref : TRANSFERMARKT_BASE + playerHref) : null;
+
+  if (playerUrl && departureUrls.has(playerUrl)) return null;
+
+  const tds = $(row).find('td');
+  const age = tds.eq(5).text().trim() || null;
+  const posText = (tds.eq(4).text() || '').replace(/-/g, ' ').trim();
+  const playerPosition = convertPosition(posText) || posText || null;
+
+  let marketValue: string | null = null;
+  $(row)
+    .find('td')
+    .each((_: number, td: cheerio.Element) => {
+      const t = $(td).text().trim();
+      if (t.includes('€') && !t.toLowerCase().includes('loan') && !t.includes('End of loan') && !t.includes('Loan return')) {
+        marketValue = t;
+        return false;
+      }
+    });
+  if (!marketValue) {
+    $(row)
+      .find('td.rechts')
+      .each((_: number, td: cheerio.Element) => {
+        const t = $(td).text().trim();
+        if (t.includes('€')) {
+          marketValue = t;
+          return false;
+        }
+      });
+  }
+
+  let transferDate: string | null = null;
+  const rowHtml = $(row).html() || '';
+  const dateInTitle = rowHtml.match(/date:\s*(\d{1,2}[./]\d{1,2}[./]\d{2,4})/i);
+  if (dateInTitle) {
+    transferDate = dateInTitle[1];
+  }
+  if (!transferDate) {
+    const zentriert = $(row).find('td.zentriert');
+    for (let i = 0; i < Math.min(zentriert.length, 5); i++) {
+      const t = $(zentriert[i]).text().trim();
+      if (/^\d{1,2}[./]\d{1,2}[./]\d{2,4}$/.test(t) || /^\d{4}-\d{2}-\d{2}$/.test(t)) {
+        transferDate = t;
+        break;
+      }
+    }
+  }
+  if (!transferDate) {
+    $(row)
+      .find('td')
+      .each((_: number, td: cheerio.Element) => {
+        const t = $(td).text().trim();
+        if (/^\d{1,2}[./]\d{1,2}[./]\d{2,4}$/.test(t) || /^\d{4}-\d{2}-\d{2}$/.test(t)) {
+          transferDate = t;
+          return false;
+        }
+      });
+  }
+
+  const natImg =
+    $(row).find('td.zentriert img[title]').first()[0] ||
+    $(row)
+      .find('td img[alt]')
+      .filter((_: number, el: cheerio.Element) => {
+        const alt = $(el).attr('alt') || '';
+        return alt.length >= 2 && alt.length <= 50;
+      })
+      .first()[0];
+  const playerNationality = natImg ? ($(natImg).attr('title') || $(natImg).attr('alt') || '').trim() || null : null;
+  const flagSrc = natImg ? $(natImg).attr('data-src') || $(natImg).attr('src') || '' : '';
+  const playerNationalityFlag = flagSrc
+    ? makeAbsoluteUrl(flagSrc).replace(/verysmall|tiny/g, 'head')
+    : null;
+
+  return {
+    playerImage: imageUrl ? makeAbsoluteUrl(imageUrl) : null,
+    playerName: playerName || null,
+    playerUrl,
+    playerAge: age,
+    playerPosition,
+    playerNationality,
+    playerNationalityFlag,
+    marketValue: marketValue || null,
+    transferDate,
+    clubJoinedName: teamClub.clubJoinedName,
+    clubJoinedLogo: teamClub.clubJoinedLogo,
+  };
+}
+
+const TEAM_FETCH_CONCURRENCY = 10;
+
+async function scrapeTeamReturnees(
+  teamUrl: string
+): Promise<Record<string, unknown>[]> {
+  const teamHtml = await fetchHtmlWithRetry(teamUrl);
+  const $team = cheerio.load(teamHtml);
+  const tables = $team('table.items');
+
+  let clubJoinedName: string | null = null;
+  let clubJoinedLogo: string | null = null;
+  const clubSection = $team('span.data-header__club, div.data-header__club').first();
+  if (clubSection.length) {
+    const clubLink = clubSection.find('a[href*="/startseite/verein/"]').first();
+    clubJoinedName = (clubLink.attr('title') || clubLink.text() || '').trim() || null;
+    const clubImg = clubSection.find('img').first();
+    const clubLogoRaw = clubImg.attr('data-src') || clubImg.attr('src') || '';
+    clubJoinedLogo = clubLogoRaw ? makeAbsoluteUrl(clubLogoRaw) : null;
+  }
+  if (!clubJoinedName) {
+    clubJoinedName = $team('h1.data-header__headline, div.data-header__headline-wrapper h1').first().text().trim() || null;
+  }
+  if (!clubJoinedName) {
+    const mainHeadline = $team('.main .content-box-headline, .box-headline, h1').first().text().trim();
+    if (mainHeadline && !mainHeadline.toLowerCase().includes('transfer')) {
+      clubJoinedName = mainHeadline;
+    }
+  }
+
+  const teamClub = { clubJoinedName, clubJoinedLogo };
+
+  const arrivalsTbody = tables.eq(0).find('tbody');
+  const departureTbody = tables.eq(1).find('tbody');
+
+  const departureUrls = new Set<string>();
+  departureTbody.find('tr').each((_: number, r: cheerio.Element) => {
+    const href = $team(r).find('td.hauptlink a').attr('href') || '';
+    if (href) departureUrls.add(TRANSFERMARKT_BASE + href);
+  });
+
+  const teamPlayers: Record<string, unknown>[] = [];
+  arrivalsTbody.find('tr').each((_: number, row: cheerio.Element) => {
+    const p = parseReturneeRow($team, row, departureUrls, teamClub);
+    if (p && p.playerUrl) teamPlayers.push(p);
+  });
+  return teamPlayers;
+}
+
+export async function handleReturnees(leagueUrl: string): Promise<{ players: Record<string, unknown>[] }> {
+  const html = await fetchHtmlWithRetry(leagueUrl);
+  const $ = cheerio.load(html);
+
+  const teamUrls = extractTeamTransferUrls($);
+  const all: Record<string, unknown>[] = [];
+  const seen = new Set<string>();
+
+  for (let i = 0; i < teamUrls.length; i += TEAM_FETCH_CONCURRENCY) {
+    const chunk = teamUrls.slice(i, i + TEAM_FETCH_CONCURRENCY);
+    const results = await Promise.all(
+      chunk.map((url) =>
+        scrapeTeamReturnees(url).catch(() => [] as Record<string, unknown>[])
+      )
+    );
+    for (const teamPlayers of results) {
+      for (const p of teamPlayers) {
+        const url = p.playerUrl as string;
+        if (url && !seen.has(url)) {
+          seen.add(url);
+          all.push(p);
+        }
+      }
+    }
+  }
+
+  const ENRICH_CONCURRENCY = 5;
+  for (let i = 0; i < all.length; i += ENRICH_CONCURRENCY) {
+    const chunk = all.slice(i, i + ENRICH_CONCURRENCY);
+    await Promise.all(
+      chunk.map(async (p) => {
+        const url = p.playerUrl as string;
+        if (!url) return;
+        try {
+          const enriched = await enrichReturneeFromProfile(p);
+          if (enriched) {
+            Object.assign(p, enriched);
+          }
+        } catch {
+          // keep original
+        }
+      })
+    );
+    if (i + ENRICH_CONCURRENCY < all.length) {
+      await new Promise((r) => setTimeout(r, 100));
+    }
+  }
+
+  all.sort(
+    (a, b) =>
+      parseMarketValueCF((b.marketValue as string) || '') - parseMarketValueCF((a.marketValue as string) || '')
+  );
+  return { players: all };
+}
+
+const RETURN_DATE_REGEX = /date:\s*(\d{1,2}[./]\d{1,2}[./]\d{2,4})/i;
+
+async function enrichReturneeFromProfile(
+  p: Record<string, unknown>
+): Promise<Partial<Record<string, unknown>> | null> {
+  const url = p.playerUrl as string;
+  if (!url) return null;
+  const html = await fetchHtmlWithRetry(url);
+  const $ = cheerio.load(html);
+
+  const result: Partial<Record<string, unknown>> = {};
+
+  // Transfer date: from ribbon title (e.g. "Returnee date: 01/07/2025")
+  const ribbon = $('div.data-header_ribbon, div.data-header__ribbon').first();
+  const ribbonTitle = ribbon.find('a').attr('title') || ribbon.text() || '';
+  const dateMatch = ribbonTitle.match(RETURN_DATE_REGEX);
+  if (dateMatch) {
+    result.transferDate = dateMatch[1];
+  }
+
+  // Market value: always in profile header, regardless of ribbon
+  const mvBox = $('div[class*="data-header__box--small"]').text();
+  const lastIdx = mvBox.toLowerCase().indexOf('last');
+  const marketValue = (lastIdx >= 0 ? mvBox.substring(0, lastIdx) : mvBox).trim();
+  if (marketValue && marketValue.includes('€')) {
+    result.marketValue = marketValue;
+  }
+
+  // Club: from profile header
+  const clubSection = $('span.data-header__club, div.data-header__club').first();
+  if (clubSection.length) {
+    const clubLink = clubSection.find('a[href*="/startseite/verein/"]').first();
+    const clubName = (clubLink.attr('title') || clubLink.text() || '').trim();
+    if (clubName) result.clubJoinedName = clubName;
+    const clubImg = clubSection.find('img').first();
+    const clubLogoRaw = clubImg.attr('data-src') || clubImg.attr('src') || '';
+    if (clubLogoRaw) result.clubJoinedLogo = makeAbsoluteUrl(clubLogoRaw);
+  }
+
+  return Object.keys(result).length ? result : null;
+}
+
+const RETURNEES_STREAM_LEAGUES = [
+  'https://www.transfermarkt.com/jupiler-pro-league/startseite/wettbewerb/BE1',
+  'https://www.transfermarkt.com/eredivisie/startseite/wettbewerb/NL1',
+  'https://www.transfermarkt.com/liga-portugal/startseite/wettbewerb/PO1',
+  'https://www.transfermarkt.com/super-liga-srbije/startseite/wettbewerb/SER1',
+  'https://www.transfermarkt.com/super-league-1/startseite/wettbewerb/GR1',
+  'https://www.transfermarkt.com/allsvenskan/startseite/wettbewerb/SE1',
+  'https://www.transfermarkt.com/pko-bp-ekstraklasa/startseite/wettbewerb/PL1',
+  'https://www.transfermarkt.com/premier-liga/startseite/wettbewerb/UKR1',
+  'https://www.transfermarkt.com/liga-portugal-2/startseite/wettbewerb/PO2',
+  'https://www.transfermarkt.com/super-lig/startseite/wettbewerb/TR1',
+  'https://www.transfermarkt.com/super-league/startseite/wettbewerb/C1',
+  'https://www.transfermarkt.com/bundesliga/startseite/wettbewerb/A1',
+  'https://www.transfermarkt.com/chance-liga/startseite/wettbewerb/TS1',
+  'https://www.transfermarkt.com/superliga/startseite/wettbewerb/RO1',
+  'https://www.transfermarkt.com/efbet-liga/startseite/wettbewerb/BU1',
+  'https://www.transfermarkt.com/nemzeti-bajnoksag/startseite/wettbewerb/UNG1',
+  'https://www.transfermarkt.com/cyprus-league/startseite/wettbewerb/ZYP1',
+  'https://www.transfermarkt.com/nike-liga/startseite/wettbewerb/SLO1',
+  'https://www.transfermarkt.com/premyer-liqa/startseite/wettbewerb/AZ1',
+  'https://www.transfermarkt.com/championship/startseite/wettbewerb/GB2',
+  'https://www.transfermarkt.com/serie-a/startseite/wettbewerb/IT1',
+  'https://www.transfermarkt.com/serie-b/startseite/wettbewerb/IT2',
+  'https://www.transfermarkt.com/2-bundesliga/startseite/wettbewerb/L2',
+  'https://www.transfermarkt.com/laliga/startseite/wettbewerb/ES1',
+  'https://www.transfermarkt.com/laliga2/startseite/wettbewerb/ES2',
+  'https://www.transfermarkt.com/ligue-2/startseite/wettbewerb/FR2',
+  'https://www.transfermarkt.com/1-lig/startseite/wettbewerb/TR2',
+];
+
+const LEAGUE_PARALLEL = 2;
+
+export async function* handleReturneesStream(): AsyncGenerator<{
+  players: Record<string, unknown>[];
+  loadedLeagues: number;
+  totalLeagues: number;
+  isLoading: boolean;
+  error?: string;
+}> {
+  const total = RETURNEES_STREAM_LEAGUES.length;
+  const seen = new Set<string>();
+  const all: Record<string, unknown>[] = [];
+
+  yield { players: [], loadedLeagues: 0, totalLeagues: total, isLoading: true };
+
+  for (let i = 0; i < total; i += LEAGUE_PARALLEL) {
+    const chunk = RETURNEES_STREAM_LEAGUES.slice(i, i + LEAGUE_PARALLEL);
+    const results = await Promise.all(
+      chunk.map((url) => handleReturnees(url).catch(() => ({ players: [] as Record<string, unknown>[] })))
+    );
+    for (const { players } of results) {
+      for (const p of players) {
+        const url = p.playerUrl as string;
+        if (url && !seen.has(url)) {
+          seen.add(url);
+          all.push(p);
+        }
+      }
+    }
+    const sorted = [...all].sort(
+      (a, b) =>
+        parseMarketValueCF((b.marketValue as string) || '') - parseMarketValueCF((a.marketValue as string) || '')
+    );
+    const loadedCount = Math.min(i + LEAGUE_PARALLEL, total);
+    yield { players: sorted, loadedLeagues: loadedCount, totalLeagues: total, isLoading: loadedCount < total };
+  }
+
+  const sorted = [...all].sort(
+    (a, b) =>
+      parseMarketValueCF((b.marketValue as string) || '') - parseMarketValueCF((a.marketValue as string) || '')
+  );
+  yield { players: sorted, loadedLeagues: total, totalLeagues: total, isLoading: false };
+}

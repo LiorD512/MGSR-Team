@@ -144,12 +144,18 @@ export default function ShortlistPage() {
               {entries.length} {t('players')}
             </p>
           </div>
-          <div className="flex gap-3">
+          <div className="flex flex-wrap gap-3">
             <Link
               href="/releases"
               className="inline-flex items-center justify-center px-4 py-2.5 rounded-xl bg-mgsr-card border border-mgsr-border text-mgsr-text font-medium hover:border-mgsr-teal/50 hover:text-mgsr-teal transition"
             >
               {t('shortlist_browse_releases')}
+            </Link>
+            <Link
+              href="/returnees"
+              className="inline-flex items-center justify-center px-4 py-2.5 rounded-xl bg-mgsr-card border border-mgsr-border text-mgsr-text font-medium hover:border-purple-500/50 hover:text-purple-400 transition"
+            >
+              {t('shortlist_browse_returnees')}
             </Link>
             <Link
               href="/players/add?shortlist=1"
@@ -176,6 +182,12 @@ export default function ShortlistPage() {
                 className="inline-block px-5 py-2.5 rounded-xl bg-mgsr-teal text-mgsr-dark font-semibold hover:bg-mgsr-teal/90 transition"
               >
                 {t('shortlist_browse_releases')}
+              </Link>
+              <Link
+                href="/returnees"
+                className="inline-block px-5 py-2.5 rounded-xl bg-purple-500 text-white font-semibold hover:bg-purple-600 transition"
+              >
+                {t('shortlist_browse_returnees')}
               </Link>
               <span className="text-mgsr-muted self-center">{t('common_or')}</span>
               <Link

@@ -627,6 +627,7 @@ export default function DashboardPage() {
             },
             { href: '/shortlist', count: shortlistCount, label: t('shortlist') },
             { href: '/releases', count: null, label: t('releases'), arrow: true },
+            { href: '/returnees', count: null, label: t('nav_returnee'), arrow: true },
             { href: '/contract-finisher', count: null, label: t('nav_contract_finisher'), arrow: true },
           ].map((item, i) => (
             <Link
@@ -1329,6 +1330,7 @@ export default function DashboardPage() {
             { href: '/players/add', label: t('add_player') },
             { href: '/shortlist', label: t('shortlist') },
             { href: '/releases', label: t('releases') },
+            { href: '/returnees', label: t('nav_returnee') },
             { href: '/contract-finisher', label: t('nav_contract_finisher') },
             { href: '/tasks', label: t('tasks') },
             { href: '/requests', label: t('requests') },
