@@ -2,17 +2,17 @@ package com.liordahan.mgsrteam.transfermarket
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import org.json.JSONObject
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
 import java.time.LocalDate
 
 /**
- * Fetches and parses open transfer windows worldwide from Transfermarkt.
- * Source: https://www.transfermarkt.com/statistik/transferfenster?status=open
+ * Fetches open transfer windows worldwide.
+ * Primary source: GitHub Actions scraped JSON (updated daily).
+ * Fallback: static list when fetch fails.
  *
- * Note: Transfermarkt loads the transfer window table via JavaScript (tm-transfer-window component),
- * so Jsoup cannot parse it. We use a static fallback list of known winter 2025 transfer windows
- * with closing dates, and compute days left from today.
+ * JSON URL: raw GitHub file from daily workflow scrape.
  */
 
 enum class Confederation(val displayName: String, val order: Int) {
@@ -411,25 +411,57 @@ class TransferWindows {
 
     companion object {
         private const val TRANSFER_WINDOW_URL = "$TRANSFERMARKT_BASE_URL/statistik/transferfenster?status=open"
+        private const val GITHUB_JSON_URL =
+            "https://raw.githubusercontent.com/LiorD512/MGSR-Team/main/mgsr-web/public/transfer-windows.json"
+        private const val MAX_JSON_AGE_MS = 48L * 60 * 60 * 1000 // 48 hours
     }
 
     suspend fun fetchOpenTransferWindows(): TransfermarktResult<List<TransferWindow>> =
         withContext(Dispatchers.IO) {
-            val scraped = try {
-                val doc = TransfermarktHttp.fetchDocument(TRANSFER_WINDOW_URL)
-                parseTransferWindowTable(doc)
+            val fromGitHub = try {
+                fetchFromGitHubJson()
             } catch (_: Exception) {
-                emptyList()
+                null
             }
 
-            val result = if (scraped.isNotEmpty()) {
-                scraped
-            } else {
-                buildStaticOpenWindows()
+            val result = when {
+                fromGitHub != null && fromGitHub.isNotEmpty() -> fromGitHub
+                else -> buildStaticOpenWindows()
             }
 
             TransfermarktResult.Success(result)
         }
+
+    private suspend fun fetchFromGitHubJson(): List<TransferWindow>? {
+        val json = TransfermarktHttp.fetchString(GITHUB_JSON_URL)
+        val obj = JSONObject(json)
+        val updatedAt = obj.optString("updatedAt", "")
+        if (updatedAt.isNotBlank()) {
+            val parsed = java.time.Instant.parse(updatedAt).toEpochMilli()
+            if (System.currentTimeMillis() - parsed > MAX_JSON_AGE_MS) return null
+        }
+        val arr = obj.getJSONArray("windows") ?: return null
+        val list = mutableListOf<TransferWindow>()
+        for (i in 0 until arr.length()) {
+            val item = arr.getJSONObject(i)
+            val confStr = item.optString("confederation", "UEFA")
+            val conf = try {
+                Confederation.valueOf(confStr)
+            } catch (_: Exception) {
+                Confederation.UEFA
+            }
+            list.add(
+                TransferWindow(
+                    countryName = item.optString("countryName", ""),
+                    flagUrl = item.optString("flagUrl").takeIf { it.isNotBlank() },
+                    countryCode = item.optString("countryCode", ""),
+                    confederation = conf,
+                    daysLeft = if (item.has("daysLeft") && !item.isNull("daysLeft")) item.getInt("daysLeft") else null
+                )
+            )
+        }
+        return if (list.isEmpty()) null else list.sortedBy { it.daysLeft ?: 999 }
+    }
 
     private fun buildStaticOpenWindows(): List<TransferWindow> {
         val today = LocalDate.now()

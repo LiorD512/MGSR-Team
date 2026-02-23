@@ -46,6 +46,10 @@ internal object TransfermarktHttp {
         return Jsoup.parse(html, url)
     }
 
+    /** Fetches raw string (e.g. JSON). Suspends without blocking an IO thread. */
+    suspend fun fetchString(url: String, userAgent: String = getRandomUserAgent()): String =
+        executeRequest(url, userAgent)
+
     /**
      * Fetches a page and returns both the parsed [Document] and the raw HTML string.
      * Use when raw HTML is needed for regex-based parsing (avoids expensive `doc.html()` re-serialization).
