@@ -113,6 +113,32 @@ export default function ContactsPage() {
   const displayOrg = (c: Contact) =>
     c.contactType === 'AGENCY' ? c.agencyName : c.clubName;
 
+  const getRoleDisplayLabel = (role: string | undefined): string | null => {
+    if (!role?.trim()) return null;
+    const normalized = role.trim().toUpperCase().replace(/\s+/g, '_');
+    const keyMap: Record<string, string> = {
+      UNKNOWN: 'contact_role_other',
+      COACH: 'contact_role_coach',
+      ASSISTANT_COACH: 'contact_role_asst_coach',
+      SPORT_DIRECTOR: 'contact_role_sport_dir',
+      CEO: 'contact_role_ceo',
+      BOARD_MEMBER: 'contact_role_board',
+      PRESIDENT: 'contact_role_president',
+      SCOUT: 'contact_role_scout',
+      AGENT: 'contact_role_agent',
+      INTERMEDIARY: 'contact_role_intermediary',
+      AGENCY_DIRECTOR: 'contact_role_agency_dir',
+    };
+    const key = keyMap[normalized];
+    return key ? t(key) : null;
+  };
+
+  const getContactRoleOrType = (c: Contact): string => {
+    const roleLabel = getRoleDisplayLabel(c.role);
+    if (roleLabel) return roleLabel;
+    return c.contactType === 'AGENCY' ? t('contact_type_agency') : t('contact_type_club');
+  };
+
   const groupedByCountry = useMemo(
     () => buildContactsGroupedByCountry(filtered, isRtl),
     [filtered, isRtl]
@@ -216,8 +242,19 @@ export default function ContactsPage() {
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-mgsr-text truncate">{c.name || 'Unknown'}</p>
-                        <p className="text-sm text-mgsr-muted truncate">
+                        <div className="flex flex-wrap items-center gap-2 gap-y-1">
+                          <p className="font-semibold text-mgsr-text truncate">{c.name || 'Unknown'}</p>
+                          <span
+                            className={`text-xs px-2 py-0.5 rounded-md shrink-0 ${
+                              c.contactType === 'AGENCY'
+                                ? 'bg-blue-500/20 text-blue-400'
+                                : 'bg-mgsr-teal/20 text-mgsr-teal'
+                            }`}
+                          >
+                            {getContactRoleOrType(c)}
+                          </span>
+                        </div>
+                        <p className="text-sm text-mgsr-muted truncate mt-0.5">
                           {displayOrg(c) || '—'}
                         </p>
                         {c.phoneNumber && (
@@ -232,9 +269,6 @@ export default function ContactsPage() {
                           </a>
                         )}
                       </div>
-                      <span className="text-xs px-2.5 py-1 rounded-lg bg-mgsr-teal/20 text-mgsr-teal shrink-0">
-                        {c.contactType === 'AGENCY' ? t('contact_type_agency') : t('contact_type_club')}
-                      </span>
                     </div>
                   ))}
                 </div>
