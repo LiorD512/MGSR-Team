@@ -767,7 +767,7 @@ app.get('/api/transfermarkt/teammates', async (req, res) => {
 // Scrapes Transfermarkt with Playwright (table is JS-rendered). Falls back to static list on failure.
 // Cache: 1 hour to limit requests to Transfermarkt.
 const TRANSFER_WINDOW_URL = TRANSFERMARKT_BASE + '/statistik/transferfenster?status=open';
-const TRANSFER_WINDOW_CACHE_MS = 60 * 60 * 1000; // 1 hour
+const TRANSFER_WINDOW_CACHE_MS = 24 * 60 * 60 * 1000; // 24 hours
 let transferWindowCache = null;
 let transferWindowCacheTime = 0;
 
