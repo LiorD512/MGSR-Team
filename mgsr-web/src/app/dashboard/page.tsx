@@ -420,12 +420,12 @@ export default function DashboardPage() {
     [events, startOfToday]
   );
 
-  const topAgentsToday = useMemo(() => {
+  const topAgentsThisWeek = useMemo(() => {
     const byAccountId: Record<string, { account: Account; count: number }> = {};
     accounts.forEach((a) => {
       byAccountId[a.id] = { account: a, count: 0 };
     });
-    eventsToday.forEach((e) => {
+    eventsThisWeek.forEach((e) => {
       const agentName = e.agentName?.trim();
       if (!agentName) return;
       const matched = accounts.find(
@@ -445,7 +445,7 @@ export default function DashboardPage() {
         count,
       }))
       .sort((a, b) => b.count - a.count);
-  }, [accounts, eventsToday, isRtl, t]);
+  }, [accounts, eventsThisWeek, isRtl, t]);
 
   const staffWithTasks = useMemo(() => {
     const pending = tasks.filter((t) => !t.isCompleted);
@@ -1118,9 +1118,9 @@ export default function DashboardPage() {
             <h3 className="text-sm font-semibold text-mgsr-text mb-4 font-display">
               {t('top_agents_this_week')}
             </h3>
-            {topAgentsToday.length > 0 ? (
+            {topAgentsThisWeek.length > 0 ? (
               <div className="space-y-3">
-                {topAgentsToday.map((agent) => (
+                {topAgentsThisWeek.map((agent) => (
                   <div
                     key={agent.id}
                     className="flex items-center justify-between py-2 border-b border-mgsr-border/80 last:border-0"

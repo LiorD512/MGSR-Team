@@ -11,6 +11,7 @@ import {
   updateDoc,
   addDoc,
   doc,
+  deleteDoc,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import AppLayout from '@/components/AppLayout';
@@ -75,6 +76,13 @@ export default function TasksPage() {
   const [addPriority, setAddPriority] = useState(0);
   const [addAgentId, setAddAgentId] = useState('');
   const [addSaving, setAddSaving] = useState(false);
+  const [editTaskId, setEditTaskId] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editNotes, setEditNotes] = useState('');
+  const [editDueDate, setEditDueDate] = useState('');
+  const [editPriority, setEditPriority] = useState(0);
+  const [editAgentId, setEditAgentId] = useState('');
+  const [editSaving, setEditSaving] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) router.replace('/login');
@@ -209,6 +217,41 @@ export default function TasksPage() {
       isCompleted: !task.isCompleted,
       completedAt: task.isCompleted ? 0 : Date.now(),
     });
+  };
+
+  const deleteTask = async (task: AgentTask) => {
+    if (!confirm(t('tasks_delete_confirm'))) return;
+    await deleteDoc(doc(db, 'AgentTasks', task.id));
+  };
+
+  const openEditTask = (task: AgentTask) => {
+    setEditTaskId(task.id);
+    setEditTitle(task.title || '');
+    setEditNotes(task.notes || '');
+    setEditDueDate(task.dueDate ? new Date(task.dueDate).toISOString().slice(0, 10) : '');
+    setEditPriority((task.priority ?? 0) as 0 | 1 | 2);
+    setEditAgentId(task.agentId || user?.uid || accounts[0]?.id || '');
+  };
+
+  const updateTask = async () => {
+    if (!editTaskId || !editTitle.trim()) return;
+    setEditSaving(true);
+    try {
+      const selected = accounts.find((a) => a.id === editAgentId);
+      const agentName = selected ? getDisplayName(selected, isRtl) : '';
+      const dueTs = editDueDate ? new Date(editDueDate).getTime() : 0;
+      await updateDoc(doc(db, 'AgentTasks', editTaskId), {
+        title: editTitle.trim(),
+        notes: editNotes.trim() || '',
+        dueDate: dueTs,
+        priority: editPriority,
+        agentId: editAgentId || undefined,
+        agentName: agentName || undefined,
+      });
+      setEditTaskId(null);
+    } finally {
+      setEditSaving(false);
+    }
   };
 
   const createTask = async () => {
@@ -494,6 +537,26 @@ export default function TasksPage() {
                                 </span>
                               </div>
                             </div>
+                            <div className="flex items-center gap-1 shrink-0 opacity-70 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                              <button
+                                onClick={(e) => { e.stopPropagation(); openEditTask(task); }}
+                                className="p-2 rounded-lg text-mgsr-muted hover:text-mgsr-teal hover:bg-mgsr-teal/10 transition"
+                                title={t('tasks_edit')}
+                              >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                </svg>
+                              </button>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); deleteTask(task); }}
+                                className="p-2 rounded-lg text-mgsr-muted hover:text-mgsr-red hover:bg-mgsr-red/10 transition"
+                                title={t('tasks_delete')}
+                              >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                              </button>
+                            </div>
                           </div>
                         );
                       })}
@@ -568,7 +631,7 @@ export default function TasksPage() {
                         return (
                           <div
                             key={task.id}
-                            className={`group relative p-4 rounded-xl border transition-all duration-200 hover:shadow-lg ${
+                            className={`group relative flex items-start gap-3 p-4 rounded-xl border transition-all duration-200 hover:shadow-lg ${
                               task.isCompleted
                                 ? 'bg-mgsr-card/30 border-mgsr-border/50 opacity-75'
                                 : 'bg-mgsr-card/80 border-mgsr-border hover:border-mgsr-teal/30'
@@ -583,51 +646,69 @@ export default function TasksPage() {
                                 opacity: task.isCompleted ? 0.4 : 0.9,
                               }}
                             />
-                            <div className="flex items-start gap-3">
-                              <button
-                                onClick={() => toggleComplete(task)}
-                                className={`shrink-0 w-6 h-6 rounded-md border-2 flex items-center justify-center transition ${
-                                  task.isCompleted
-                                    ? 'border-mgsr-teal bg-mgsr-teal'
-                                    : 'border-mgsr-muted hover:border-mgsr-teal'
+                            <button
+                              onClick={() => toggleComplete(task)}
+                              className={`shrink-0 w-6 h-6 rounded-md border-2 flex items-center justify-center transition ${
+                                task.isCompleted
+                                  ? 'border-mgsr-teal bg-mgsr-teal'
+                                  : 'border-mgsr-muted hover:border-mgsr-teal'
+                              }`}
+                            >
+                              {task.isCompleted && (
+                                <span className="text-mgsr-dark text-xs font-bold">✓</span>
+                              )}
+                            </button>
+                            <div className="flex-1 min-w-0">
+                              <p
+                                className={`font-medium ${
+                                  task.isCompleted ? 'line-through text-mgsr-muted' : 'text-mgsr-text'
                                 }`}
                               >
-                                {task.isCompleted && (
-                                  <span className="text-mgsr-dark text-xs font-bold">✓</span>
-                                )}
-                              </button>
-                              <div className="flex-1 min-w-0">
-                                <p
-                                  className={`font-medium ${
-                                    task.isCompleted ? 'line-through text-mgsr-muted' : 'text-mgsr-text'
+                                {task.title || '—'}
+                              </p>
+                              {task.notes && (
+                                <p className="text-sm text-mgsr-muted mt-1 line-clamp-2">{task.notes}</p>
+                              )}
+                              <div className="flex flex-wrap gap-2 mt-2">
+                                <span
+                                  className="text-[10px] px-2 py-0.5 rounded font-medium"
+                                  style={{
+                                    backgroundColor: priority.bg,
+                                    color: priority.accent,
+                                  }}
+                                >
+                                  {t(`tasks_priority_${priority.label}`)}
+                                </span>
+                                <span
+                                  className={`text-[10px] px-2 py-0.5 rounded ${
+                                    overdue && !task.isCompleted
+                                      ? 'bg-mgsr-red/20 text-mgsr-red'
+                                      : 'bg-mgsr-dark/50 text-mgsr-muted'
                                   }`}
                                 >
-                                  {task.title || '—'}
-                                </p>
-                                {task.notes && (
-                                  <p className="text-sm text-mgsr-muted mt-1 line-clamp-2">{task.notes}</p>
-                                )}
-                                <div className="flex flex-wrap gap-2 mt-2">
-                                  <span
-                                    className="text-[10px] px-2 py-0.5 rounded font-medium"
-                                    style={{
-                                      backgroundColor: priority.bg,
-                                      color: priority.accent,
-                                    }}
-                                  >
-                                    {t(`tasks_priority_${priority.label}`)}
-                                  </span>
-                                  <span
-                                    className={`text-[10px] px-2 py-0.5 rounded ${
-                                      overdue && !task.isCompleted
-                                        ? 'bg-mgsr-red/20 text-mgsr-red'
-                                        : 'bg-mgsr-dark/50 text-mgsr-muted'
-                                    }`}
-                                  >
-                                    {formatDue(task.dueDate)}
-                                  </span>
-                                </div>
+                                  {formatDue(task.dueDate)}
+                                </span>
                               </div>
+                            </div>
+                            <div className="flex items-center gap-1 shrink-0 opacity-70 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                              <button
+                                onClick={(e) => { e.stopPropagation(); openEditTask(task); }}
+                                className="p-1.5 rounded-lg text-mgsr-muted hover:text-mgsr-teal hover:bg-mgsr-teal/10 transition"
+                                title={t('tasks_edit')}
+                              >
+                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                </svg>
+                              </button>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); deleteTask(task); }}
+                                className="p-1.5 rounded-lg text-mgsr-muted hover:text-mgsr-red hover:bg-mgsr-red/10 transition"
+                                title={t('tasks_delete')}
+                              >
+                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                              </button>
                             </div>
                           </div>
                         );
@@ -751,6 +832,123 @@ export default function TasksPage() {
                   className="flex-1 py-3 rounded-xl bg-mgsr-teal text-mgsr-dark font-semibold hover:bg-mgsr-teal/90 transition disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {addSaving ? '...' : t('tasks_create')}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Edit task modal */}
+        {editTaskId && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-fade-in"
+            onClick={() => !editSaving && setEditTaskId(null)}
+          >
+            <div
+              className="w-full max-w-md rounded-2xl border border-mgsr-border bg-mgsr-card shadow-2xl animate-slide-up"
+              onClick={(e) => e.stopPropagation()}
+              dir={isRtl ? 'rtl' : 'ltr'}
+            >
+              <div className="p-6 border-b border-mgsr-border">
+                <h2 className="text-xl font-bold text-mgsr-text font-display">
+                  {t('tasks_edit')}
+                </h2>
+              </div>
+              <div className="p-6 space-y-5">
+                <div>
+                  <label className="block text-sm font-medium text-mgsr-muted mb-2">
+                    {t('tasks_what_needs_done')}
+                  </label>
+                  <input
+                    type="text"
+                    value={editTitle}
+                    onChange={(e) => setEditTitle(e.target.value)}
+                    placeholder={t('tasks_what_needs_done')}
+                    className="w-full px-4 py-3 rounded-xl bg-mgsr-dark border border-mgsr-border text-mgsr-text placeholder-mgsr-muted/60 focus:border-mgsr-teal focus:outline-none"
+                    autoFocus
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-mgsr-muted mb-2">
+                    {t('tasks_due_date')}
+                  </label>
+                  <input
+                    type="date"
+                    value={editDueDate}
+                    onChange={(e) => setEditDueDate(e.target.value)}
+                    className="w-full px-4 py-3 rounded-xl bg-mgsr-dark border border-mgsr-border text-mgsr-text focus:border-mgsr-teal focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-mgsr-muted mb-2">
+                    {t('tasks_priority')}
+                  </label>
+                  <div className="flex gap-2">
+                    {([0, 1, 2] as const).map((p) => (
+                      <button
+                        key={p}
+                        onClick={() => setEditPriority(p)}
+                        className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition ${
+                          editPriority === p ? 'border-2' : 'border border-mgsr-border bg-mgsr-dark/50 text-mgsr-muted hover:text-mgsr-text'
+                        }`}
+                        style={
+                          editPriority === p
+                            ? {
+                                borderColor: PRIORITY_COLORS[p].accent,
+                                backgroundColor: PRIORITY_COLORS[p].bg,
+                                color: PRIORITY_COLORS[p].accent,
+                              }
+                            : {}
+                        }
+                      >
+                        {t(`tasks_priority_${['low', 'medium', 'high'][p]}`)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-mgsr-muted mb-2">
+                    {t('tasks_assign_to')}
+                  </label>
+                  <select
+                    value={editAgentId}
+                    onChange={(e) => setEditAgentId(e.target.value)}
+                    className="w-full px-4 py-3 rounded-xl bg-mgsr-dark border border-mgsr-border text-mgsr-text focus:border-mgsr-teal focus:outline-none"
+                  >
+                    {accounts.map((a) => (
+                      <option key={a.id} value={a.id}>
+                        {getDisplayName(a, isRtl)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-mgsr-muted mb-2">
+                    {t('tasks_notes_hint')}
+                  </label>
+                  <textarea
+                    value={editNotes}
+                    onChange={(e) => setEditNotes(e.target.value)}
+                    placeholder={t('tasks_notes_hint')}
+                    rows={3}
+                    className="w-full px-4 py-3 rounded-xl bg-mgsr-dark border border-mgsr-border text-mgsr-text placeholder-mgsr-muted/60 focus:border-mgsr-teal focus:outline-none resize-none"
+                  />
+                </div>
+              </div>
+              <div className="p-6 pt-0 flex gap-3">
+                <button
+                  onClick={() => setEditTaskId(null)}
+                  disabled={editSaving}
+                  className="flex-1 py-3 rounded-xl border border-mgsr-border text-mgsr-muted hover:text-mgsr-text hover:border-mgsr-border/80 transition disabled:opacity-50"
+                >
+                  {t('tasks_cancel')}
+                </button>
+                <button
+                  onClick={updateTask}
+                  disabled={editSaving || !editTitle.trim()}
+                  className="flex-1 py-3 rounded-xl bg-mgsr-teal text-mgsr-dark font-semibold hover:bg-mgsr-teal/90 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {editSaving ? '...' : t('tasks_save')}
                 </button>
               </div>
             </div>
