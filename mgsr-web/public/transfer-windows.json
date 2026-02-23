@@ -170,9 +170,9 @@
     },
     {
       "countryName": "Korea, South",
-      "countryCode": "korea,-south",
+      "countryCode": "kr",
       "flagUrl": "https://tmssl.akamaized.net/images/flagge/originals/87.png",
-      "confederation": "UEFA",
+      "confederation": "AFC",
       "daysLeft": 32
     },
     {
@@ -211,5 +211,5 @@
       "daysLeft": 53
     }
   ],
-  "updatedAt": "2026-02-23T14:48:40.725Z"
+  "updatedAt": "2026-02-23T14:50:13.167Z"
 }

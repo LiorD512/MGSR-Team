@@ -44,7 +44,7 @@ const NAME_TO_CODE = {
   Greece: 'gr', Austria: 'at', Switzerland: 'ch', Poland: 'pl', Ukraine: 'ua', 'Czech Republic': 'cz',
   Denmark: 'dk', Sweden: 'se', Norway: 'no', Romania: 'ro', Croatia: 'hr', Serbia: 'rs',
   Hungary: 'hu', 'Saudi Arabia': 'sa', UAE: 'ae', 'United Arab Emirates': 'ae', Qatar: 'qa',
-  China: 'cn', Japan: 'jp', 'South Korea': 'kr', 'Korea Republic': 'kr', Korea: 'kr', Australia: 'au',
+  China: 'cn', Japan: 'jp', 'South Korea': 'kr', 'Korea, South': 'kr', 'Korea Republic': 'kr', Korea: 'kr', Australia: 'au',
   Brazil: 'br', Argentina: 'ar', Colombia: 'co', Mexico: 'mx', 'United States': 'us', Canada: 'ca',
   Egypt: 'eg', Morocco: 'ma', 'South Africa': 'za', Nigeria: 'ng', 'New Zealand': 'nz',
   Bulgaria: 'bg', Slovakia: 'sk', Slovenia: 'si', Cyprus: 'cy', Finland: 'fi', Iceland: 'is',
@@ -124,12 +124,18 @@ async function scrape() {
     if (daysMatch) daysLeft = parseInt(daysMatch[1], 10);
     if (status.includes('closes in') && !daysMatch) daysLeft = 0;
 
-    const countryCode = NAME_TO_CODE[currentCountry] || '';
-    const code = countryCode || currentCountry.toLowerCase().replace(/\s+/g, '-').slice(0, 12);
+    let countryCode = NAME_TO_CODE[currentCountry] || '';
+    if (!countryCode && /korea.*south|south.*korea|korea\s*republic/i.test(currentCountry)) {
+      countryCode = 'kr';
+    }
+    const code = countryCode || currentCountry.toLowerCase().replace(/\s+/g, '-').replace(/,/g, '').slice(0, 12);
     if (seen.has(code)) return;
     seen.add(code);
 
-    const conf = COUNTRY_TO_CONF[countryCode] || 'UEFA';
+    let conf = COUNTRY_TO_CONF[countryCode] || 'UEFA';
+    if (conf === 'UEFA' && /korea.*south|south.*korea|korea\s*republic/i.test(currentCountry)) {
+      conf = 'AFC';
+    }
     windows.push({
       countryName: currentCountry.trim(),
       countryCode: countryCode || code,
