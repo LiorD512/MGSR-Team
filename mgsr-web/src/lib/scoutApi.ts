@@ -58,6 +58,7 @@ function buildUrl(params: RecruitmentParams): string {
   search.set('lang', params.lang || 'en');
   search.set('sort_by', 'score');
   search.set('limit', '15');
+  search.set('_t', String(Date.now()));
   return `${SCOUT_BASE_URL}/recruitment?${search.toString()}`;
 }
 
