@@ -43,13 +43,13 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git remote set-url origin https://x-access-token:$GH_TOKEN@github.com/${{ github.repository }}.git
-          git add mgsr-web/public/transfer-windows.json
-          if git diff --staged --quiet; then
-            echo "No changes"
+          if git diff --quiet mgsr-web/public/transfer-windows.json; then
+            echo "No changes to transfer-windows.json"
           else
-            git stash push -m "scraped" -- mgsr-web/public/transfer-windows.json
-            git pull --rebase origin ${{ github.ref_name }}
-            git stash pop
+            cp mgsr-web/public/transfer-windows.json /tmp/transfer-windows.json
+            git fetch origin
+            git reset --hard origin/${{ github.ref_name }}
+            cp /tmp/transfer-windows.json mgsr-web/public/transfer-windows.json
             git add mgsr-web/public/transfer-windows.json
             git commit -m "chore: update transfer windows [skip ci]"
             git push origin HEAD:${{ github.ref_name }}
