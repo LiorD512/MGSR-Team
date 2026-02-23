@@ -27,6 +27,7 @@ import {
   ResponsiveContainer,
   BarChart,
   Bar,
+  LabelList,
 } from 'recharts';
 import { parseMarketValue, parseAge } from '@/lib/releases';
 
@@ -772,16 +773,16 @@ export default function DashboardPage() {
               </Link>
             </div>
             <div className="w-10 h-0.5 rounded-full bg-mgsr-teal mb-4" />
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6">
               {/* Position distribution */}
-              <div className="p-6 bg-mgsr-card/60 border border-mgsr-border rounded-2xl backdrop-blur-sm">
-                <h3 className="text-sm font-semibold text-mgsr-text mb-4 font-display">
+              <div className="p-4 md:p-6 bg-mgsr-card/60 border border-mgsr-border rounded-2xl backdrop-blur-sm">
+                <h3 className="text-sm font-semibold text-mgsr-text mb-3 md:mb-4 font-display">
                   {t('roster_analytics_position')}
                 </h3>
-                <div className="h-48">
+                <div className="h-56 md:h-48">
                   {positionByGroup.length > 0 ? (
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={positionByGroup} margin={{ left: 8, right: 12, top: 8, bottom: 24 }}>
+                      <BarChart data={positionByGroup} margin={{ left: 8, right: 8, top: 12, bottom: 24 }} barCategoryGap="15%" barSize={36}>
                         <XAxis
                           dataKey="name"
                           stroke="#8C999B"
@@ -800,7 +801,9 @@ export default function DashboardPage() {
                             padding: '10px 14px',
                           }}
                         />
-                        <Bar dataKey="value" fill="#4DB6AC" radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="value" fill="#4DB6AC" radius={[4, 4, 0, 0]}>
+                          <LabelList dataKey="value" position="top" fill="#E8EAED" fontSize={11} />
+                        </Bar>
                       </BarChart>
                     </ResponsiveContainer>
                   ) : (
@@ -812,15 +815,15 @@ export default function DashboardPage() {
               </div>
 
               {/* Age distribution */}
-              <div className="p-6 bg-mgsr-card/60 border border-mgsr-border rounded-2xl backdrop-blur-sm">
-                <h3 className="text-sm font-semibold text-mgsr-text mb-4 font-display">
+              <div className="p-4 md:p-6 bg-mgsr-card/60 border border-mgsr-border rounded-2xl backdrop-blur-sm">
+                <h3 className="text-sm font-semibold text-mgsr-text mb-3 md:mb-4 font-display">
                   {t('roster_analytics_age')}
                 </h3>
-                <div className="h-48">
+                <div className="h-56 md:h-48">
                   {ageByGroup.length > 0 ? (
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={ageByGroup} margin={{ left: 8, right: 12, top: 8, bottom: 24 }}>
-                        <XAxis dataKey="name" stroke="#8C999B" fontSize={11} tickLine={false} axisLine={false} />
+                      <BarChart data={ageByGroup} margin={{ left: 8, right: 8, top: 12, bottom: 24 }} barCategoryGap="15%" barSize={36}>
+                        <XAxis dataKey="name" stroke="#8C999B" fontSize={11} tickLine={false} axisLine={false} tick={{ fill: '#E8EAED' }} />
                         <YAxis stroke="#8C999B" fontSize={11} allowDecimals={false} tickLine={false} axisLine={false} />
                         <Tooltip
                           contentStyle={{
@@ -830,7 +833,9 @@ export default function DashboardPage() {
                             padding: '10px 14px',
                           }}
                         />
-                        <Bar dataKey="count" fill="#5C6BC0" radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="count" fill="#5C6BC0" radius={[4, 4, 0, 0]}>
+                          <LabelList dataKey="count" position="top" fill="#E8EAED" fontSize={11} />
+                        </Bar>
                       </BarChart>
                     </ResponsiveContainer>
                   ) : (
@@ -842,15 +847,15 @@ export default function DashboardPage() {
               </div>
 
               {/* Market value distribution */}
-              <div className="p-6 bg-mgsr-card/60 border border-mgsr-border rounded-2xl backdrop-blur-sm">
-                <h3 className="text-sm font-semibold text-mgsr-text mb-4 font-display">
+              <div className="p-4 md:p-6 bg-mgsr-card/60 border border-mgsr-border rounded-2xl backdrop-blur-sm">
+                <h3 className="text-sm font-semibold text-mgsr-text mb-3 md:mb-4 font-display">
                   {t('roster_analytics_value')}
                 </h3>
-                <div className="h-48">
+                <div className="h-56 md:h-48">
                   {valueByRange.length > 0 ? (
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={valueByRange} margin={{ left: 8, right: 12, top: 8, bottom: 24 }}>
-                        <XAxis dataKey="name" stroke="#8C999B" fontSize={10} tickLine={false} axisLine={false} />
+                      <BarChart data={valueByRange} margin={{ left: 8, right: 8, top: 12, bottom: 24 }} barCategoryGap="15%" barSize={36}>
+                        <XAxis dataKey="name" stroke="#8C999B" fontSize={10} tickLine={false} axisLine={false} tick={{ fill: '#E8EAED' }} />
                         <YAxis stroke="#8C999B" fontSize={11} allowDecimals={false} tickLine={false} axisLine={false} />
                         <Tooltip
                           contentStyle={{
@@ -860,7 +865,9 @@ export default function DashboardPage() {
                             padding: '10px 14px',
                           }}
                         />
-                        <Bar dataKey="count" fill="#FF7043" radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="count" fill="#FF7043" radius={[4, 4, 0, 0]}>
+                          <LabelList dataKey="count" position="top" fill="#E8EAED" fontSize={11} />
+                        </Bar>
                       </BarChart>
                     </ResponsiveContainer>
                   ) : (
@@ -872,15 +879,15 @@ export default function DashboardPage() {
               </div>
 
               {/* Contracts expiring */}
-              <div className="p-6 bg-mgsr-card/60 border border-mgsr-border rounded-2xl backdrop-blur-sm md:col-span-2">
-                <h3 className="text-sm font-semibold text-mgsr-text mb-4 font-display">
+              <div className="p-4 md:p-6 bg-mgsr-card/60 border border-mgsr-border rounded-2xl backdrop-blur-sm md:col-span-2">
+                <h3 className="text-sm font-semibold text-mgsr-text mb-3 md:mb-4 font-display">
                   {t('roster_analytics_contracts')}
                 </h3>
-                <div className="h-48">
+                <div className="h-56 md:h-48">
                   {contractByMonth.length > 0 ? (
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={contractByMonth} margin={{ left: 8, right: 12, top: 8, bottom: 24 }}>
-                        <XAxis dataKey="month" stroke="#8C999B" fontSize={11} tickLine={false} axisLine={false} />
+                      <BarChart data={contractByMonth} margin={{ left: 8, right: 8, top: 12, bottom: 24 }} barCategoryGap="12%" barSize={28}>
+                        <XAxis dataKey="month" stroke="#8C999B" fontSize={11} tickLine={false} axisLine={false} tick={{ fill: '#E8EAED' }} />
                         <YAxis stroke="#8C999B" fontSize={11} allowDecimals={false} tickLine={false} axisLine={false} />
                         <Tooltip
                           contentStyle={{
@@ -890,7 +897,9 @@ export default function DashboardPage() {
                             padding: '10px 14px',
                           }}
                         />
-                        <Bar dataKey="count" fill="#EC407A" radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="count" fill="#EC407A" radius={[4, 4, 0, 0]}>
+                          <LabelList dataKey="count" position="top" fill="#E8EAED" fontSize={11} />
+                        </Bar>
                       </BarChart>
                     </ResponsiveContainer>
                   ) : (
@@ -902,8 +911,8 @@ export default function DashboardPage() {
               </div>
 
               {/* Mandate status */}
-              <div className="p-6 bg-mgsr-card/60 border border-mgsr-border rounded-2xl backdrop-blur-sm">
-                <h3 className="text-sm font-semibold text-mgsr-text mb-4 font-display">
+              <div className="p-4 md:p-6 bg-mgsr-card/60 border border-mgsr-border rounded-2xl backdrop-blur-sm">
+                <h3 className="text-sm font-semibold text-mgsr-text mb-3 md:mb-4 font-display">
                   {t('roster_analytics_mandates')}
                 </h3>
                 <div className="min-h-[120px] flex flex-col justify-center">
