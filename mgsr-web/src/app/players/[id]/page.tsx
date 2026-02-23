@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -10,6 +10,18 @@ import { getPlayerDetails, PlayerDetails } from '@/lib/api';
 import AppLayout from '@/components/AppLayout';
 import Link from 'next/link';
 import { toWhatsAppUrl } from '@/lib/whatsapp';
+import { parseMarketValue } from '@/lib/releases';
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Area,
+  AreaChart,
+} from 'recharts';
 
 interface Player {
   id: string;
@@ -203,6 +215,44 @@ export default function PlayerInfoPage() {
 
   const displayName = isRtl && player?.fullNameHe ? player.fullNameHe : (merged.fullName || 'Unknown');
 
+  const valueChartData = useMemo(() => {
+    const raw = player?.marketValueHistory || [];
+    const locale = isRtl ? 'he-IL' : 'en-US';
+    let points = raw
+      .filter((e) => e.value && e.date)
+      .map((e) => ({
+        date: e.date!,
+        dateLabel: new Date(e.date!).toLocaleDateString(locale, {
+          month: 'short',
+          year: '2-digit',
+          day: 'numeric',
+        }),
+        value: e.value!,
+        valueNum: parseMarketValue(e.value),
+      }))
+      .sort((a, b) => a.date - b.date);
+    const currentValue = merged.marketValue || player?.marketValue;
+    if (currentValue && points.length > 0) {
+      const lastPoint = points[points.length - 1];
+      if (lastPoint.value !== currentValue) {
+        points = [...points, {
+          date: Date.now(),
+          dateLabel: new Date().toLocaleDateString(locale, { month: 'short', year: '2-digit', day: 'numeric' }),
+          value: currentValue,
+          valueNum: parseMarketValue(currentValue),
+        }];
+      }
+    } else if (currentValue && points.length === 0) {
+      points = [{
+        date: Date.now(),
+        dateLabel: new Date().toLocaleDateString(locale, { month: 'short', year: '2-digit', day: 'numeric' }),
+        value: currentValue,
+        valueNum: parseMarketValue(currentValue),
+      }];
+    }
+    return points;
+  }, [player?.marketValueHistory, player?.marketValue, merged.marketValue, isRtl]);
+
   if (loading || !user) {
     return (
       <div className="min-h-screen bg-mgsr-dark flex items-center justify-center">
@@ -240,7 +290,6 @@ export default function PlayerInfoPage() {
 
   const notes = player.noteList || [];
   const sortedNotes = [...notes].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-  const valueHistory = (player.marketValueHistory || []).slice(0, 6);
 
   return (
     <AppLayout>
@@ -502,26 +551,66 @@ export default function PlayerInfoPage() {
 
           {/* Right column - Value history + Notes */}
           <div className="lg:col-span-2 space-y-8">
-            {/* Value history */}
-            {valueHistory.length > 0 && (
-              <div>
+            {/* Market value trend */}
+            {valueChartData.length > 0 && (
+              <div className="p-5 rounded-xl bg-mgsr-card border border-mgsr-border">
                 <h2 className="text-lg font-display font-semibold text-mgsr-text mb-4">
                   {t('player_info_value_history')}
                 </h2>
-                <div className="flex flex-wrap gap-2">
-                  {valueHistory.map((entry, i) => (
-                    <div
-                      key={i}
-                      className="px-3 py-2 rounded-lg bg-mgsr-card border border-mgsr-border text-sm"
-                    >
-                      <span className="text-mgsr-teal font-medium">{entry.value}</span>
-                      {entry.date && (
-                        <span className="text-mgsr-muted text-xs ml-2">
-                          {new Date(entry.date).toLocaleDateString()}
-                        </span>
-                      )}
-                    </div>
-                  ))}
+                <div className="h-48 md:h-56">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={valueChartData} margin={{ left: 8, right: 8, top: 8, bottom: 24 }}>
+                      <defs>
+                        <linearGradient id="valueGradient" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#4DB6AC" stopOpacity={0.35} />
+                          <stop offset="95%" stopColor="#4DB6AC" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#253545" vertical={false} />
+                      <XAxis
+                        dataKey="dateLabel"
+                        stroke="#8C999B"
+                        fontSize={11}
+                        tickLine={false}
+                        axisLine={false}
+                        tick={{ fill: '#E8EAED' }}
+                      />
+                      <YAxis
+                        stroke="#8C999B"
+                        fontSize={11}
+                        tickLine={false}
+                        axisLine={false}
+                        tickFormatter={(v) => {
+                          if (v >= 1_000_000) return `€${(v / 1_000_000).toFixed(1)}m`;
+                          if (v >= 1_000) return `€${(v / 1_000).toFixed(0)}k`;
+                          return `€${v}`;
+                        }}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: '#1A2736',
+                          border: '1px solid #253545',
+                          borderRadius: '12px',
+                          padding: '10px 14px',
+                        }}
+                        formatter={(value: number | undefined, _name: unknown, props: unknown) => {
+                          const payload = (props as { payload?: { value?: string } })?.payload;
+                          const display = payload?.value ?? (value != null
+                            ? (value >= 1_000_000 ? `€${(value / 1_000_000).toFixed(1)}m` : value >= 1_000 ? `€${(value / 1_000).toFixed(0)}k` : `€${value}`)
+                            : '—');
+                          return [display, t('players_value')];
+                        }}
+                        labelFormatter={(label) => label}
+                      />
+                      <Area
+                        type="monotone"
+                        dataKey="valueNum"
+                        stroke="#4DB6AC"
+                        strokeWidth={2}
+                        fill="url(#valueGradient)"
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
                 </div>
               </div>
             )}

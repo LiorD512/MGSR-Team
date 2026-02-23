@@ -30,6 +30,7 @@ import {
   LabelList,
 } from 'recharts';
 import { parseMarketValue, parseAge } from '@/lib/releases';
+import { useIsMobile } from '@/hooks/useMediaQuery';
 
 interface FeedEvent {
   id: string;
@@ -176,6 +177,7 @@ interface DashboardCache {
 export default function DashboardPage() {
   const { user, loading } = useAuth();
   const { lang, setLang, t, isRtl } = useLanguage();
+  const isMobile = useIsMobile();
   const router = useRouter();
   const cached = user ? getScreenCache<DashboardCache>('dashboard', user.uid) : undefined;
   const [events, setEvents] = useState<FeedEvent[]>(cached?.events ?? []);
@@ -779,10 +781,14 @@ export default function DashboardPage() {
                 <h3 className="text-sm font-semibold text-mgsr-text mb-3 md:mb-4 font-display">
                   {t('roster_analytics_position')}
                 </h3>
-                <div className="h-56 md:h-48">
+                <div className={isMobile ? 'h-56' : 'h-48'}>
                   {positionByGroup.length > 0 ? (
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={positionByGroup} margin={{ left: 8, right: 8, top: 12, bottom: 24 }} barCategoryGap="15%" barSize={36}>
+                      <BarChart
+                        data={positionByGroup}
+                        margin={isMobile ? { left: 8, right: 8, top: 12, bottom: 24 } : { left: 8, right: 12, top: 8, bottom: 24 }}
+                        {...(isMobile && { barCategoryGap: '15%', barSize: 36 })}
+                      >
                         <XAxis
                           dataKey="name"
                           stroke="#8C999B"
@@ -792,7 +798,7 @@ export default function DashboardPage() {
                           tick={{ fill: '#E8EAED' }}
                           interval={0}
                         />
-                        <YAxis stroke="#8C999B" fontSize={11} allowDecimals={false} tickLine={false} axisLine={false} width={28} />
+                        <YAxis stroke="#8C999B" fontSize={11} allowDecimals={false} tickLine={false} axisLine={false} width={isMobile ? 28 : undefined} />
                         <Tooltip
                           contentStyle={{
                             backgroundColor: '#1A2736',
@@ -802,7 +808,7 @@ export default function DashboardPage() {
                           }}
                         />
                         <Bar dataKey="value" fill="#4DB6AC" radius={[4, 4, 0, 0]}>
-                          <LabelList dataKey="value" position="top" fill="#E8EAED" fontSize={11} />
+                          {isMobile && <LabelList dataKey="value" position="top" fill="#E8EAED" fontSize={11} />}
                         </Bar>
                       </BarChart>
                     </ResponsiveContainer>
@@ -819,10 +825,14 @@ export default function DashboardPage() {
                 <h3 className="text-sm font-semibold text-mgsr-text mb-3 md:mb-4 font-display">
                   {t('roster_analytics_age')}
                 </h3>
-                <div className="h-56 md:h-48">
+                <div className={isMobile ? 'h-56' : 'h-48'}>
                   {ageByGroup.length > 0 ? (
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={ageByGroup} margin={{ left: 8, right: 8, top: 12, bottom: 24 }} barCategoryGap="15%" barSize={36}>
+                      <BarChart
+                        data={ageByGroup}
+                        margin={isMobile ? { left: 8, right: 8, top: 12, bottom: 24 } : { left: 8, right: 12, top: 8, bottom: 24 }}
+                        {...(isMobile && { barCategoryGap: '15%', barSize: 36 })}
+                      >
                         <XAxis dataKey="name" stroke="#8C999B" fontSize={11} tickLine={false} axisLine={false} tick={{ fill: '#E8EAED' }} />
                         <YAxis stroke="#8C999B" fontSize={11} allowDecimals={false} tickLine={false} axisLine={false} />
                         <Tooltip
@@ -834,7 +844,7 @@ export default function DashboardPage() {
                           }}
                         />
                         <Bar dataKey="count" fill="#5C6BC0" radius={[4, 4, 0, 0]}>
-                          <LabelList dataKey="count" position="top" fill="#E8EAED" fontSize={11} />
+                          {isMobile && <LabelList dataKey="count" position="top" fill="#E8EAED" fontSize={11} />}
                         </Bar>
                       </BarChart>
                     </ResponsiveContainer>
@@ -851,10 +861,14 @@ export default function DashboardPage() {
                 <h3 className="text-sm font-semibold text-mgsr-text mb-3 md:mb-4 font-display">
                   {t('roster_analytics_value')}
                 </h3>
-                <div className="h-56 md:h-48">
+                <div className={isMobile ? 'h-56' : 'h-48'}>
                   {valueByRange.length > 0 ? (
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={valueByRange} margin={{ left: 8, right: 8, top: 12, bottom: 24 }} barCategoryGap="15%" barSize={36}>
+                      <BarChart
+                        data={valueByRange}
+                        margin={isMobile ? { left: 8, right: 8, top: 12, bottom: 24 } : { left: 8, right: 12, top: 8, bottom: 24 }}
+                        {...(isMobile && { barCategoryGap: '15%', barSize: 36 })}
+                      >
                         <XAxis dataKey="name" stroke="#8C999B" fontSize={10} tickLine={false} axisLine={false} tick={{ fill: '#E8EAED' }} />
                         <YAxis stroke="#8C999B" fontSize={11} allowDecimals={false} tickLine={false} axisLine={false} />
                         <Tooltip
@@ -866,7 +880,7 @@ export default function DashboardPage() {
                           }}
                         />
                         <Bar dataKey="count" fill="#FF7043" radius={[4, 4, 0, 0]}>
-                          <LabelList dataKey="count" position="top" fill="#E8EAED" fontSize={11} />
+                          {isMobile && <LabelList dataKey="count" position="top" fill="#E8EAED" fontSize={11} />}
                         </Bar>
                       </BarChart>
                     </ResponsiveContainer>
@@ -883,10 +897,14 @@ export default function DashboardPage() {
                 <h3 className="text-sm font-semibold text-mgsr-text mb-3 md:mb-4 font-display">
                   {t('roster_analytics_contracts')}
                 </h3>
-                <div className="h-56 md:h-48">
+                <div className={isMobile ? 'h-56' : 'h-48'}>
                   {contractByMonth.length > 0 ? (
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={contractByMonth} margin={{ left: 8, right: 8, top: 12, bottom: 24 }} barCategoryGap="12%" barSize={28}>
+                      <BarChart
+                        data={contractByMonth}
+                        margin={isMobile ? { left: 8, right: 8, top: 12, bottom: 24 } : { left: 8, right: 12, top: 8, bottom: 24 }}
+                        {...(isMobile && { barCategoryGap: '12%', barSize: 28 })}
+                      >
                         <XAxis dataKey="month" stroke="#8C999B" fontSize={11} tickLine={false} axisLine={false} tick={{ fill: '#E8EAED' }} />
                         <YAxis stroke="#8C999B" fontSize={11} allowDecimals={false} tickLine={false} axisLine={false} />
                         <Tooltip
@@ -898,7 +916,7 @@ export default function DashboardPage() {
                           }}
                         />
                         <Bar dataKey="count" fill="#EC407A" radius={[4, 4, 0, 0]}>
-                          <LabelList dataKey="count" position="top" fill="#E8EAED" fontSize={11} />
+                          {isMobile && <LabelList dataKey="count" position="top" fill="#E8EAED" fontSize={11} />}
                         </Bar>
                       </BarChart>
                     </ResponsiveContainer>
