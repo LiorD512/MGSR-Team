@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Leading Agencies — Mock UI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600&family=Syne:wght@500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --mgsr-dark: #0F1923;
+      --mgsr-card: #1A2736;
+      --mgsr-border: #253545;
+      --mgsr-teal: #4DB6AC;
+      --mgsr-text: #E8EAED;
+      --mgsr-muted: #8C999B;
+      --chart-1: #4DB6AC;
+      --chart-2: #5C6BC0;
+      --chart-3: #FF7043;
+      --chart-4: #66BB6A;
+      --chart-5: #EC407A;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: 'Outfit', system-ui, sans-serif;
+      background: var(--mgsr-dark);
+      color: var(--mgsr-text);
+      min-height: 100vh;
+      padding: 2rem;
+    }
+
+    .font-display { font-family: 'Syne', system-ui, sans-serif; }
+
+    /* Mock dashboard context */
+    .mock-context {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    .mock-badge {
+      display: inline-block;
+      padding: 0.25rem 0.5rem;
+      background: rgba(77, 182, 172, 0.15);
+      color: var(--mgsr-teal);
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      border-radius: 6px;
+      margin-bottom: 1rem;
+    }
+
+    /* Leading Agencies card */
+    .agencies-card {
+      background: rgba(26, 39, 54, 0.6);
+      border: 1px solid var(--mgsr-border);
+      border-radius: 1rem;
+      padding: 1.5rem;
+      backdrop-filter: blur(8px);
+      max-width: 480px;
+    }
+
+    .agencies-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1.25rem;
+    }
+    .agencies-title {
+      font-family: 'Syne', system-ui, sans-serif;
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--mgsr-text);
+    }
+    .agencies-link {
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: var(--mgsr-teal);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+      transition: opacity 0.2s;
+    }
+    .agencies-link:hover { opacity: 0.85; }
+
+    .agency-row {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.75rem 0;
+      border-bottom: 1px solid rgba(37, 53, 69, 0.8);
+      transition: background 0.2s;
+    }
+    .agency-row:last-child { border-bottom: none; }
+    .agency-row:hover { background: rgba(77, 182, 172, 0.04); }
+
+    .agency-rank {
+      width: 1.75rem;
+      height: 1.75rem;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Syne', system-ui, sans-serif;
+      font-size: 0.75rem;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+    .agency-rank-1 { background: rgba(77, 182, 172, 0.25); color: var(--mgsr-teal); }
+    .agency-rank-2 { background: rgba(92, 107, 192, 0.25); color: #8B9CF7; }
+    .agency-rank-3 { background: rgba(255, 112, 67, 0.25); color: #FFA07A; }
+    .agency-rank-4 { background: rgba(102, 187, 106, 0.25); color: #81C784; }
+    .agency-rank-5 { background: rgba(236, 64, 122, 0.25); color: #F48FB1; }
+
+    .agency-info {
+      flex: 1;
+      min-width: 0;
+    }
+    .agency-name {
+      font-weight: 600;
+      font-size: 0.9rem;
+      color: var(--mgsr-text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .agency-meta {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-top: 0.2rem;
+    }
+    .agency-country {
+      font-size: 0.7rem;
+      color: var(--mgsr-muted);
+    }
+    .agency-badge {
+      font-size: 0.65rem;
+      padding: 0.15rem 0.4rem;
+      background: rgba(77, 182, 172, 0.15);
+      color: var(--mgsr-teal);
+      border-radius: 4px;
+      font-weight: 600;
+    }
+
+    .agency-count {
+      flex-shrink: 0;
+      font-family: 'Syne', system-ui, sans-serif;
+      font-weight: 700;
+      font-size: 1rem;
+      color: var(--mgsr-teal);
+    }
+    .agency-count-label {
+      font-size: 0.7rem;
+      color: var(--mgsr-muted);
+      font-weight: 500;
+    }
+
+    /* Bar visualization */
+    .agency-bar-wrap {
+      margin-top: 0.35rem;
+      height: 4px;
+      background: var(--mgsr-dark);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    .agency-bar {
+      height: 100%;
+      border-radius: 2px;
+      transition: width 0.5s ease-out;
+    }
+
+    /* Empty state */
+    .agencies-empty {
+      padding: 2rem;
+      text-align: center;
+      color: var(--mgsr-muted);
+      font-size: 0.9rem;
+    }
+
+    /* Layout: two-column preview */
+    .preview-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2rem;
+      padding: 2rem 0;
+    }
+    @media (max-width: 900px) {
+      .preview-grid { grid-template-columns: 1fr; }
+    }
+
+    .preview-panel h3 {
+      font-family: 'Syne', system-ui, sans-serif;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--mgsr-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 1rem;
+    }
+
+    /* Alternative layout: compact list */
+    .agencies-compact .agency-row {
+      padding: 0.5rem 0;
+    }
+    .agencies-compact .agency-rank {
+      width: 1.5rem;
+      height: 1.5rem;
+      font-size: 0.7rem;
+    }
+    .agencies-compact .agency-rank-label { display: none; }
+  </style>
+</head>
+<body>
+  <div class="mock-context">
+    <div class="mock-badge">Mock UI — Leading Agencies Analysis</div>
+
+    <div class="preview-grid">
+      <!-- Default: Full card with bars -->
+      <div class="preview-panel">
+        <h3>Option A — With bars</h3>
+        <div class="agencies-card">
+          <div class="agencies-header">
+            <span class="agencies-title">Leading Agencies</span>
+            <a href="#" class="agencies-link">
+              Contacts
+              <span aria-hidden>→</span>
+            </a>
+          </div>
+          <div class="agency-list">
+            <div class="agency-row">
+              <span class="agency-rank agency-rank-1">1</span>
+              <div class="agency-info">
+                <div class="agency-name">CAA Stellar</div>
+                <div class="agency-meta">
+                  <span class="agency-country">🇮🇱 Israel</span>
+                  <span class="agency-badge">In contact</span>
+                </div>
+                <div class="agency-bar-wrap">
+                  <div class="agency-bar" style="width: 100%; background: var(--chart-1);"></div>
+                </div>
+              </div>
+              <div class="agency-count-wrap">
+                <div class="agency-count">24</div>
+                <div class="agency-count-label">players</div>
+              </div>
+            </div>
+            <div class="agency-row">
+              <span class="agency-rank agency-rank-2">2</span>
+              <div class="agency-info">
+                <div class="agency-name">Wasserman Media Group</div>
+                <div class="agency-meta">
+                  <span class="agency-country">🇺🇸 USA</span>
+                  <span class="agency-badge">In contact</span>
+                </div>
+                <div class="agency-bar-wrap">
+                  <div class="agency-bar" style="width: 75%; background: var(--chart-2);"></div>
+                </div>
+              </div>
+              <div class="agency-count-wrap">
+                <div class="agency-count">18</div>
+                <div class="agency-count-label">players</div>
+              </div>
+            </div>
+            <div class="agency-row">
+              <span class="agency-rank agency-rank-3">3</span>
+              <div class="agency-info">
+                <div class="agency-name">CAA Base</div>
+                <div class="agency-meta">
+                  <span class="agency-country">🇮🇱 Israel</span>
+                  <span class="agency-badge">In contact</span>
+                </div>
+                <div class="agency-bar-wrap">
+                  <div class="agency-bar" style="width: 58%; background: var(--chart-3);"></div>
+                </div>
+              </div>
+              <div class="agency-count-wrap">
+                <div class="agency-count">14</div>
+                <div class="agency-count-label">players</div>
+              </div>
+            </div>
+            <div class="agency-row">
+              <span class="agency-rank agency-rank-4">4</span>
+              <div class="agency-info">
+                <div class="agency-name">Roc Nation Sports</div>
+                <div class="agency-meta">
+                  <span class="agency-country">🇺🇸 USA</span>
+                  <span class="agency-badge">In contact</span>
+                </div>
+                <div class="agency-bar-wrap">
+                  <div class="agency-bar" style="width: 42%; background: var(--chart-4);"></div>
+                </div>
+              </div>
+              <div class="agency-count-wrap">
+                <div class="agency-count">10</div>
+                <div class="agency-count-label">players</div>
+              </div>
+            </div>
+            <div class="agency-row">
+              <span class="agency-rank agency-rank-5">5</span>
+              <div class="agency-info">
+                <div class="agency-name">2SAgency</div>
+                <div class="agency-meta">
+                  <span class="agency-country">🇫🇷 France</span>
+                  <span class="agency-badge">In contact</span>
+                </div>
+                <div class="agency-bar-wrap">
+                  <div class="agency-bar" style="width: 33%; background: var(--chart-5);"></div>
+                </div>
+              </div>
+              <div class="agency-count-wrap">
+                <div class="agency-count">8</div>
+                <div class="agency-count-label">players</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Option B: Compact (like Top Agents) -->
+      <div class="preview-panel">
+        <h3>Option B — Compact (matches Top Agents)</h3>
+        <div class="agencies-card agencies-compact">
+          <div class="agencies-header">
+            <span class="agencies-title">Leading Agencies</span>
+            <a href="#" class="agencies-link">
+              Contacts
+              <span aria-hidden>→</span>
+            </a>
+          </div>
+          <div class="agency-list">
+            <div class="agency-row">
+              <span class="agency-rank agency-rank-1">1</span>
+              <div class="agency-info">
+                <div class="agency-name">CAA Stellar</div>
+                <div class="agency-meta">
+                  <span class="agency-country">Israel</span>
+                  <span class="agency-badge">In contact</span>
+                </div>
+              </div>
+              <span class="agency-count">24</span>
+            </div>
+            <div class="agency-row">
+              <span class="agency-rank agency-rank-2">2</span>
+              <div class="agency-info">
+                <div class="agency-name">Wasserman Media Group</div>
+                <div class="agency-meta">
+                  <span class="agency-country">USA</span>
+                  <span class="agency-badge">In contact</span>
+                </div>
+              </div>
+              <span class="agency-count">18</span>
+            </div>
+            <div class="agency-row">
+              <span class="agency-rank agency-rank-3">3</span>
+              <div class="agency-info">
+                <div class="agency-name">CAA Base</div>
+                <div class="agency-meta">
+                  <span class="agency-country">Israel</span>
+                  <span class="agency-badge">In contact</span>
+                </div>
+              </div>
+              <span class="agency-count">14</span>
+            </div>
+            <div class="agency-row">
+              <span class="agency-rank agency-rank-4">4</span>
+              <div class="agency-info">
+                <div class="agency-name">Roc Nation Sports</div>
+                <div class="agency-meta">
+                  <span class="agency-country">USA</span>
+                  <span class="agency-badge">In contact</span>
+                </div>
+              </div>
+              <span class="agency-count">10</span>
+            </div>
+            <div class="agency-row">
+              <span class="agency-rank agency-rank-5">5</span>
+              <div class="agency-info">
+                <div class="agency-name">2SAgency</div>
+                <div class="agency-meta">
+                  <span class="agency-country">France</span>
+                  <span class="agency-badge">In contact</span>
+                </div>
+              </div>
+              <span class="agency-count">8</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Empty state -->
+    <div class="preview-panel" style="margin-top: 2rem;">
+      <h3>Empty state (no agencies with players)</h3>
+      <div class="agencies-card">
+        <div class="agencies-header">
+          <span class="agencies-title">Leading Agencies</span>
+          <a href="#" class="agencies-link">
+            Contacts
+            <span aria-hidden>→</span>
+          </a>
+        </div>
+        <div class="agencies-empty">
+          No agencies with players yet. Add agency contacts and link players to their agencies.
+        </div>
+      </div>
+    </div>
+
+    <!-- Behavior notes -->
+    <div style="margin-top: 3rem; padding: 1.5rem; background: var(--mgsr-card); border: 1px solid var(--mgsr-border); border-radius: 1rem; max-width: 600px;">
+      <h3 style="font-family: 'Syne', sans-serif; font-size: 0.85rem; color: var(--mgsr-teal); margin-bottom: 0.75rem;">Behavior & logic</h3>
+      <ul style="font-size: 0.85rem; color: var(--mgsr-muted); line-height: 1.7; margin: 0; padding-left: 1.25rem;">
+        <li>Only agencies that exist in <strong>Contacts</strong> (contactType = AGENCY) are considered.</li>
+        <li>Count players whose <code>agency</code> field matches the contact's <code>agencyName</code> (case-insensitive).</li>
+        <li>Show top 5 by player count. "In contact" badge = agency is in your contacts.</li>
+        <li>Link to Contacts page for full list. Optional: click agency row → filter contacts by that agency.</li>
+      </ul>
+    </div>
+  </div>
+</body>
+</html>
