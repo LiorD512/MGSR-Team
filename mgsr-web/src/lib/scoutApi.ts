@@ -97,6 +97,7 @@ export async function findPlayersForRequest(
   const url = buildUrl(params);
   const res = await fetch(url, {
     headers: { Accept: 'application/json' },
+    cache: 'no-store',
     signal: AbortSignal.timeout(60000),
   });
   if (!res.ok) throw new Error(`Scout API: ${res.status}`);
