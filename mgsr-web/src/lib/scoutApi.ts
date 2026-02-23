@@ -17,6 +17,12 @@ export interface ScoutPlayerSuggestion {
   playingStyle?: string;
   matchPercent?: number;
   scoutAnalysis?: string;
+  /** Score breakdown: why this player matched (for testing/debug) */
+  scoreBreakdown?: {
+    clubFit?: number;
+    realism?: number;
+    noteFit?: number;
+  };
   league?: string;
   club?: string;
   nationality?: string;
@@ -73,6 +79,10 @@ function parseResult(p: Record<string, unknown>): ScoutPlayerSuggestion {
   const serverExplanation = (p.explanation as string)?.trim() || undefined;
   const reason = [playingStyle, effectiveScore != null ? `Match: ${effectiveScore}%` : null].filter(Boolean).join(' · ') || undefined;
 
+  const clubFit = (p.club_fit_score as number) ?? undefined;
+  const realism = (p.realism_score as number) ?? undefined;
+  const noteFit = (p.note_fit_score as number) ?? undefined;
+
   return {
     name: (p.name as string) || '',
     position: (p.position as string) || '',
@@ -83,6 +93,10 @@ function parseResult(p: Record<string, unknown>): ScoutPlayerSuggestion {
     playingStyle,
     matchPercent: effectiveScore ?? undefined,
     scoutAnalysis: serverExplanation,
+    scoreBreakdown:
+      clubFit != null || realism != null || noteFit != null
+        ? { clubFit, realism, noteFit }
+        : undefined,
     league: (p.league as string) || undefined,
     club: (p.club as string) || undefined,
     nationality: (p.citizenship as string) || undefined,
@@ -101,7 +115,11 @@ export async function findPlayersForRequest(
     cache: 'no-store',
     signal: AbortSignal.timeout(60000),
   });
-  if (!res.ok) throw new Error(`Scout API: ${res.status}`);
+  if (!res.ok) {
+    const errBody = (await res.json().catch(() => ({}))) as { error?: string };
+    const msg = errBody?.error || `Scout API: ${res.status}`;
+    throw new Error(msg);
+  }
   const json = (await res.json()) as { results?: Record<string, unknown>[] };
   const arr = json.results ?? [];
   return arr.map((p) => parseResult(p as Record<string, unknown>));

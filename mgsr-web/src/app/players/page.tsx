@@ -460,7 +460,7 @@ export default function PlayersPage() {
                   </p>
                   <p className="text-sm text-mgsr-muted truncate">
                     {p.positions?.filter(Boolean).join(', ') || '—'} • {p.currentClub?.clubName || t('no_club')}{' '}
-                    {p.age && `• ${p.age} ${t('players_age')}`}
+                    {p.age && `• ${t('players_age_display').replace('{age}', p.age)}`}
                   </p>
                 </div>
                 <div className={`text-right shrink-0 ${isRtl ? 'text-left' : ''}`}>

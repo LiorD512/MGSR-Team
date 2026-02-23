@@ -250,7 +250,7 @@ export default function ShortlistPage() {
                     </p>
                     <p className="text-sm text-mgsr-muted truncate">
                       {entry.playerPosition} • {entry.clubJoinedName || '—'}{' '}
-                      {entry.playerAge && `• ${entry.playerAge} ${t('players_age')}`}
+                      {entry.playerAge && `• ${t('players_age_display').replace('{age}', entry.playerAge)}`}
                     </p>
                     <p className="text-xs text-mgsr-muted/80 mt-1">
                       {t('shortlist_added_by')} {getAgentDisplayName(entry)}

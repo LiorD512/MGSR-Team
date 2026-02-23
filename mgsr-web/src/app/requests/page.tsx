@@ -67,6 +67,24 @@ function getPositionDisplayName(position: string | undefined, isHebrew: boolean)
   return isHebrew ? entry.he : entry.en;
 }
 
+/** Shorten scout position (e.g. "Attack - Centre-Forward" → "CF") for compact display */
+function shortenScoutPosition(pos: string | undefined): string {
+  if (!pos?.trim()) return '—';
+  const p = pos.trim();
+  if (p.includes('Centre-Forward') || p.includes('Center-Forward')) return 'CF';
+  if (p.includes('Second Striker')) return 'SS';
+  if (p.includes('Centre-Back') || p.includes('Center-Back')) return 'CB';
+  if (p.includes('Left-Back')) return 'LB';
+  if (p.includes('Right-Back')) return 'RB';
+  if (p.includes('Defensive Midfield')) return 'DM';
+  if (p.includes('Central Midfield')) return 'CM';
+  if (p.includes('Attacking Midfield')) return 'AM';
+  if (p.includes('Left Wing') || p.includes('Left Winger')) return 'LW';
+  if (p.includes('Right Wing') || p.includes('Right Winger')) return 'RW';
+  if (p.includes('Goalkeeper')) return 'GK';
+  return p.split(' - ').pop() || p;
+}
+
 function footLabel(foot?: string, t: (k: string) => string = (k) => k): string {
   if (!foot) return '';
   if (foot === 'left') return t('player_info_foot_left');
@@ -123,6 +141,7 @@ export default function RequestsPage() {
     () => new Set(cached?.shortlistUrls ?? [])
   );
   const [shortlistError, setShortlistError] = useState<string | null>(null);
+  const [scoutErrorByRequestId, setScoutErrorByRequestId] = useState<Record<string, string>>({});
 
   const isHebrew = lang === 'he';
 
@@ -227,6 +246,7 @@ export default function RequestsPage() {
     if (!r.id) return;
     setScoutLoadingRequestId(r.id);
     setScoutExpandedRequestId(r.id);
+    setScoutErrorByRequestId((prev) => ({ ...prev, [r.id!]: '' }));
     try {
       const results = await findPlayersForRequest({
         position: r.position || undefined,
@@ -244,7 +264,9 @@ export default function RequestsPage() {
       });
       setScoutResultsByRequestId((prev) => ({ ...prev, [r.id!]: results }));
     } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
       console.error('Scout API error:', err);
+      setScoutErrorByRequestId((prev) => ({ ...prev, [r.id!]: msg }));
       setScoutResultsByRequestId((prev) => ({ ...prev, [r.id!]: [] }));
     } finally {
       setScoutLoadingRequestId(null);
@@ -609,7 +631,7 @@ export default function RequestsPage() {
                                                 <div className="flex-1 min-w-0">
                                                   <p className="font-medium text-mgsr-text text-sm truncate">{player.fullName || '—'}</p>
                                                   <p className="text-xs text-mgsr-muted truncate">
-                                                    {player.positions?.filter(Boolean).join(', ') || '—'} • {player.age || '—'} {t('players_age')} • {player.marketValue || '—'}
+                                                    {player.positions?.filter(Boolean).join(', ') || '—'} • {(player.age ? t('players_age_display').replace('{age}', player.age) : '—')} • {player.marketValue || '—'}
                                                   </p>
                                                 </div>
                                                 {player.currentClub?.clubLogo && (
@@ -648,35 +670,49 @@ export default function RequestsPage() {
                                             {shortlistError && (
                                               <p className="text-sm text-red-400 px-2 py-1">{shortlistError}</p>
                                             )}
-                                            {scoutResultsByRequestId[r.id!]?.length === 0 ? (
+                                            {scoutErrorByRequestId[r.id!] && (
+                                              <p className="text-sm text-red-400 px-2 py-1" title={scoutErrorByRequestId[r.id!]}>
+                                                {lang === 'he' ? 'שגיאת סקאוט:' : 'Scout error:'} {scoutErrorByRequestId[r.id!]}
+                                              </p>
+                                            )}
+                                            {scoutResultsByRequestId[r.id!]?.length === 0 && !scoutErrorByRequestId[r.id!] ? (
                                               <p className="text-sm text-mgsr-muted px-2 py-3">{t('requests_online_players_empty')}</p>
-                                            ) : (
+                                            ) : scoutResultsByRequestId[r.id!]?.length === 0 ? null : (
                                               (scoutResultsByRequestId[r.id!] ?? [])
                                                 .filter((s) => s.transfermarktUrl)
                                                 .map((s) => {
                                                 const url = s.transfermarktUrl!;
                                                 const isAdding = addingToShortlistUrl === url;
                                                 const isInShortlist = shortlistUrls.has(url);
+                                                const hasAnalysis = s.scoutAnalysis || s.scoreBreakdown;
                                                 return (
                                                   <div
                                                     key={url}
-                                                    className="flex items-center gap-3 p-2 rounded-lg hover:bg-mgsr-teal/10 transition"
+                                                    className="flex flex-col gap-1 p-2 rounded-lg hover:bg-mgsr-teal/10 transition"
                                                   >
-                                                    <a
-                                                      href={url}
-                                                      target="_blank"
-                                                      rel="noopener noreferrer"
-                                                      className="flex-1 min-w-0 hover:underline"
-                                                      onClick={(e) => e.stopPropagation()}
-                                                    >
-                                                      <p className="font-medium text-mgsr-text text-sm truncate">{s.name || '—'}</p>
-                                                      <p className="text-xs text-mgsr-muted truncate">
-                                                        {s.position || '—'} • {s.age ?? '—'} {t('players_age')} • {s.marketValue || '—'}
-                                                        {s.matchPercent != null && (
-                                                          <> • {t('requests_online_match_score').replace('{pct}', String(s.matchPercent))}</>
-                                                        )}
-                                                      </p>
-                                                    </a>
+                                                    <div className="flex items-center gap-3">
+                                                      <a
+                                                        href={url}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="flex-1 min-w-0 hover:underline"
+                                                        onClick={(e) => e.stopPropagation()}
+                                                      >
+                                                        <p className="font-medium text-mgsr-text text-sm truncate">{s.name || '—'}</p>
+                                                        <p className="text-xs text-mgsr-muted truncate">
+                                                          {(s.age ? t('players_age_display').replace('{age}', s.age) : '—')}
+                                                          <span className="mx-1.5">·</span>
+                                                          {shortenScoutPosition(s.position)}
+                                                          <span className="mx-1.5">·</span>
+                                                          {s.marketValue || '—'}
+                                                          {s.matchPercent != null && (
+                                                            <>
+                                                              <span className="mx-1.5">·</span>
+                                                              {t('requests_online_match_score').replace('{pct}', String(s.matchPercent))}
+                                                            </>
+                                                          )}
+                                                        </p>
+                                                      </a>
                                                     {isInShortlist ? (
                                                       <div className="flex items-center gap-2 px-2.5 py-1 rounded-full bg-amber-500/15 border border-amber-500/30 shrink-0">
                                                         <svg className="w-4 h-4 text-amber-400 shrink-0" fill="currentColor" viewBox="0 0 24 24">
@@ -710,6 +746,33 @@ export default function RequestsPage() {
                                                           {isAdding ? t('shortlist_adding') : t('shortlist_add')}
                                                         </span>
                                                       </button>
+                                                    )}
+                                                    </div>
+                                                    {hasAnalysis && (
+                                                      <details className="group/details mt-1">
+                                                        <summary className="text-xs text-mgsr-muted cursor-pointer hover:text-mgsr-teal/80 list-none flex items-center gap-1">
+                                                          <span className="group-open/details:rotate-90 transition-transform inline-block">▶</span>
+                                                          {lang === 'he' ? 'למה התאמה?' : 'Why this match?'}
+                                                        </summary>
+                                                        <div className="mt-2 pl-4 space-y-2 text-xs text-mgsr-muted border-l border-mgsr-border/50">
+                                                          {s.scoreBreakdown && (s.scoreBreakdown.clubFit != null || s.scoreBreakdown.realism != null || s.scoreBreakdown.noteFit != null) && (
+                                                            <div className="flex flex-wrap gap-x-4 gap-y-0.5">
+                                                              {s.scoreBreakdown.clubFit != null && (
+                                                                <span>{lang === 'he' ? 'התאמה מועדונית' : 'Club fit'}: {s.scoreBreakdown.clubFit}%</span>
+                                                              )}
+                                                              {s.scoreBreakdown.realism != null && (
+                                                                <span>{lang === 'he' ? 'ריאליזם תקציבי' : 'Budget realism'}: {s.scoreBreakdown.realism}%</span>
+                                                              )}
+                                                              {s.scoreBreakdown.noteFit != null && (
+                                                                <span>{lang === 'he' ? 'התאמה להערות' : 'Note fit'}: {s.scoreBreakdown.noteFit}%</span>
+                                                              )}
+                                                            </div>
+                                                          )}
+                                                          {s.scoutAnalysis && (
+                                                            <p className="leading-relaxed">{s.scoutAnalysis}</p>
+                                                          )}
+                                                        </div>
+                                                      </details>
                                                     )}
                                                   </div>
                                                 );

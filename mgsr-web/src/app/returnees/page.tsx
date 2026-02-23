@@ -168,7 +168,7 @@ function ReturneeCard({
             <div className="flex items-center gap-2 mt-2">
               {player.playerAge && (
                 <span className="text-xs px-2 py-0.5 rounded-md bg-mgsr-card border border-mgsr-border text-mgsr-muted">
-                  {player.playerAge} {t('players_age')}
+                  {t('players_age_display').replace('{age}', player.playerAge)}
                 </span>
               )}
               {player.playerNationality && (
@@ -273,7 +273,7 @@ function ReturneeCard({
                         {match.player.fullName || 'Unknown'}
                       </p>
                       <p className="text-xs text-mgsr-muted truncate">
-                        {match.player.positions?.filter(Boolean).join(', ') || '—'} • {match.player.age || '—'} {t('players_age')} • {match.player.marketValue || '—'}
+                        {match.player.positions?.filter(Boolean).join(', ') || '—'} • {(match.player.age ? t('players_age_display').replace('{age}', match.player.age) : '—')} • {match.player.marketValue || '—'}
                       </p>
                     </div>
                     <span className="text-xs font-medium text-purple-400 shrink-0 px-2 py-0.5 rounded-md bg-purple-500/15">
