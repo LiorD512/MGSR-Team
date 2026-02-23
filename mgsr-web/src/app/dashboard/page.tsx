@@ -31,6 +31,7 @@ import {
 import { parseMarketValue, parseAge } from '@/lib/releases';
 import { useShortlistDocId, SHARED_SHORTLIST_DOC_ID } from '@/lib/accounts';
 import { useIsMobile } from '@/hooks/useMediaQuery';
+import { getCountryDisplayName } from '@/lib/countryTranslations';
 
 interface FeedEvent {
   id: string;
@@ -66,6 +67,16 @@ interface RosteredPlayer {
   marketValue?: string;
   contractExpired?: string;
   haveMandate?: boolean;
+  agency?: string;
+}
+
+interface ContactFull {
+  id: string;
+  name?: string;
+  contactType?: string;
+  agencyName?: string;
+  agencyCountry?: string;
+  agencyUrl?: string;
 }
 
 const POSITION_GROUPS = ['GK', 'DEF', 'MID', 'FWD'] as const;
@@ -166,7 +177,7 @@ interface DashboardCache {
   events: FeedEvent[];
   players: { id: string }[];
   rosterPlayers: RosteredPlayer[];
-  contacts: { id: string }[];
+  contacts: ContactFull[];
   requests: { id: string; status?: string }[];
   tasks: AgentTask[];
   shortlistCount: number;
@@ -184,7 +195,7 @@ export default function DashboardPage() {
   const [eventsLoading, setEventsLoading] = useState(cached === undefined);
   const [players, setPlayers] = useState<{ id: string }[]>(cached?.players ?? []);
   const [rosterPlayers, setRosterPlayers] = useState<RosteredPlayer[]>(cached?.rosterPlayers ?? []);
-  const [contacts, setContacts] = useState<{ id: string }[]>(cached?.contacts ?? []);
+  const [contacts, setContacts] = useState<ContactFull[]>(cached?.contacts ?? []);
   const [requests, setRequests] = useState<{ id: string; status?: string }[]>(
     cached?.requests ?? []
   );
@@ -240,7 +251,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     const unsub = onSnapshot(collection(db, 'Contacts'), (snap) => {
-      setContacts(snap.docs.map((d) => ({ id: d.id })));
+      setContacts(snap.docs.map((d) => ({ id: d.id, ...d.data() } as ContactFull)));
     });
     return () => unsub();
   }, []);
@@ -447,7 +458,52 @@ export default function DashboardPage() {
         count,
       }))
       .sort((a, b) => b.count - a.count);
-  }, [accounts, eventsThisWeek, isRtl, t]);
+  }, [accounts, eventsThisWeek, isRtl]);
+
+  const leadingAgencies = useMemo(() => {
+    const agencyContacts = contacts.filter(
+      (c) => c.contactType === 'AGENCY' && (c.agencyName?.trim() ?? '').length > 0
+    );
+    const byAgency = new Map<
+      string,
+      { agencyName: string; agencyCountry?: string; contactNames: string[] }
+    >();
+    for (const c of agencyContacts) {
+      const agencyName = c.agencyName!.trim();
+      const key = agencyName.toLowerCase();
+      const contactName = c.name?.trim();
+      if (!byAgency.has(key)) {
+        byAgency.set(key, {
+          agencyName,
+          agencyCountry: c.agencyCountry?.trim() || undefined,
+          contactNames: contactName ? [contactName] : [],
+        });
+      } else {
+        const entry = byAgency.get(key)!;
+        if (contactName && !entry.contactNames.includes(contactName)) {
+          entry.contactNames.push(contactName);
+        }
+      }
+    }
+    const counts: { agencyName: string; agencyCountry?: string; contactNames: string[]; count: number }[] = [];
+    for (const [key, entry] of Array.from(byAgency.entries())) {
+      const count = rosterPlayers.filter((p) => {
+        const playerAgency = (p.agency?.trim() ?? '').toLowerCase();
+        return playerAgency.length > 0 && playerAgency === key;
+      }).length;
+      counts.push({ ...entry, count });
+    }
+    const withPlayers = counts.filter((x) => x.count > 0);
+    const maxCount = Math.max(...withPlayers.map((x) => x.count), 1);
+    return withPlayers
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5)
+      .map((item, i) => ({
+        ...item,
+        barPct: maxCount > 0 ? (item.count / maxCount) * 100 : 0,
+        color: CHART_COLORS[i % CHART_COLORS.length],
+      }));
+  }, [contacts, rosterPlayers]);
 
   const staffWithTasks = useMemo(() => {
     const pending = tasks.filter((t) => !t.isCompleted);
@@ -1088,9 +1144,9 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* Staff & This week */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-10">
-          <div className="p-6 bg-mgsr-card/60 border border-mgsr-border rounded-2xl backdrop-blur-sm">
+        {/* Staff, Top agents & Leading agencies */}
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6 mb-10">
+          <div className="p-4 md:p-6 bg-mgsr-card/60 border border-mgsr-border rounded-2xl backdrop-blur-sm">
             <h3 className="text-sm font-semibold text-mgsr-text mb-4 font-display">
               {t('staff_tasks')}
             </h3>
@@ -1116,7 +1172,7 @@ export default function DashboardPage() {
             )}
           </div>
 
-          <div className="p-6 bg-mgsr-card/60 border border-mgsr-border rounded-2xl backdrop-blur-sm">
+          <div className="p-4 md:p-6 bg-mgsr-card/60 border border-mgsr-border rounded-2xl backdrop-blur-sm">
             <h3 className="text-sm font-semibold text-mgsr-text mb-4 font-display">
               {t('top_agents_this_week')}
             </h3>
@@ -1138,6 +1194,80 @@ export default function DashboardPage() {
               </div>
             ) : (
               <p className="text-sm text-mgsr-muted">{t('no_agent_activity')}</p>
+            )}
+          </div>
+
+          {/* Leading Agencies */}
+          <div className="p-4 md:p-6 bg-mgsr-card/60 border border-mgsr-border rounded-2xl backdrop-blur-sm">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-semibold text-mgsr-text font-display">
+                {t('leading_agencies_title')}
+              </h3>
+              <Link
+                href="/contacts"
+                className="text-xs font-medium text-mgsr-teal hover:text-mgsr-teal/80 transition flex items-center gap-1 shrink-0"
+              >
+                {t('contacts')}
+                <span aria-hidden>{isRtl ? '←' : '→'}</span>
+              </Link>
+            </div>
+            {leadingAgencies.length > 0 ? (
+              <div className="space-y-3">
+                {leadingAgencies.map((agency, i) => (
+                  <div
+                    key={`${agency.agencyName}-${i}`}
+                    className="flex items-start gap-2 sm:gap-3 py-2 border-b border-mgsr-border/80 last:border-0 min-w-0"
+                  >
+                    <span
+                      className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg flex items-center justify-center text-xs font-bold font-display shrink-0 flex-shrink-0"
+                      style={{
+                        backgroundColor: `${agency.color}40`,
+                        color: agency.color,
+                      }}
+                    >
+                      {i + 1}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-mgsr-text truncate">
+                        {agency.agencyName}
+                      </p>
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5 min-w-0">
+                        {agency.agencyCountry && (
+                          <span className="text-xs text-mgsr-muted shrink-0">
+                            {getCountryDisplayName(agency.agencyCountry, isRtl)}
+                          </span>
+                        )}
+                        {agency.contactNames.length > 0 && (
+                          <span className="text-[10px] sm:text-xs px-1.5 py-0.5 rounded bg-mgsr-teal/15 text-mgsr-teal font-medium truncate min-w-0">
+                            {agency.contactNames.join(', ')}
+                          </span>
+                        )}
+                      </div>
+                      <div className="mt-1.5 h-1 bg-mgsr-dark rounded-full overflow-hidden">
+                        <div
+                          className="h-full rounded-full transition-all duration-500"
+                          style={{
+                            width: `${Math.max(agency.barPct, 4)}%`,
+                            backgroundColor: agency.color,
+                          }}
+                        />
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0 flex-shrink-0">
+                      <p className="text-sm font-bold text-mgsr-teal font-display tabular-nums">
+                        {agency.count}
+                      </p>
+                      <p className="text-[10px] text-mgsr-muted">
+                        {t('leading_agencies_players')}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-mgsr-muted py-4">
+                {t('leading_agencies_empty')}
+              </p>
             )}
           </div>
         </div>
