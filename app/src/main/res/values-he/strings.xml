@@ -53,6 +53,7 @@
     <string name="players_filter_with_mandate">עם מנדט</string>
     <string name="players_filter_my_players_only">השחקנים שלי בלבד</string>
     <string name="players_filter_loan_players_only">שחקנים בהשאלה בלבד</string>
+    <string name="players_filter_without_registered_agent">ללא סוכן רשום</string>
     <string name="players_expiring_soon_count">%d חוזים מסתיימים בקרוב</string>
     <string name="players_expiring_action_needed">נדרש טיפול לפני סיום החוזה</string>
     <string name="players_with_mandate_count">%d שחקנים עם מנדט</string>
@@ -692,6 +693,12 @@
     <string name="player_info_add_document">הוסף מסמך</string>
     <string name="player_info_notes">הערות</string>
     <string name="player_info_add_note">הוסף הערה</string>
+    <string name="player_tasks_section">משימות קשורות לשחקן</string>
+    <string name="player_tasks_add">הוסף משימה</string>
+    <string name="player_tasks_empty">אין עדיין משימות לשחקן זה</string>
+    <string name="player_tasks_choose_template">בחר טמפלט (מומלץ)</string>
+    <string name="player_tasks_created_by">נוצר ע״י</string>
+    <string name="tasks_linked_player">שחקן מקושר</string>
     <string name="player_info_note_placeholder">הוסף הערה חדשה…</string>
     <string name="player_info_record_note">הקלט הערה</string>
     <string name="player_info_recording">מאזין…</string>

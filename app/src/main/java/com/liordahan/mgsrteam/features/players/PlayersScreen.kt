@@ -28,6 +28,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -251,6 +252,7 @@ fun PlayersScreen(
                 withMandateSelected = playersState.quickFilterWithMandate,
                 myPlayersOnlySelected = playersState.quickFilterMyPlayersOnly,
                 loanPlayersOnlySelected = playersState.quickFilterLoanPlayersOnly,
+                withoutRegisteredAgentSelected = playersState.quickFilterWithoutRegisteredAgent,
                 withNotesOnlySelected = playersState.isWithNotesChecked,
                 footFilterOption = playersState.footFilterOption,
                 onFreeAgentsClick = { viewModel.toggleQuickFilterFreeAgents() },
@@ -258,6 +260,7 @@ fun PlayersScreen(
                 onWithMandateClick = { viewModel.toggleQuickFilterWithMandate() },
                 onMyPlayersOnlyClick = { viewModel.toggleQuickFilterMyPlayersOnly() },
                 onLoanPlayersOnlyClick = { viewModel.toggleQuickFilterLoanPlayersOnly() },
+                onWithoutRegisteredAgentClick = { viewModel.toggleQuickFilterWithoutRegisteredAgent() },
                 onWithNotesOnlyClick = { viewModel.toggleQuickFilterWithNotesOnly() },
                 onFootFilterClick = { viewModel.setFootFilterOption(it) }
             )
@@ -318,10 +321,12 @@ fun PlayersScreen(
                         }
 
                         // Player Cards
-                        items(
+                        itemsIndexed(
                             items = playersState.visibleList,
-                            key = { it.tmProfile ?: (it.fullName ?: "p-${it.hashCode()}") }
-                        ) { player ->
+                            key = { index: Int, player: Player ->
+                                "${player.tmProfile ?: (player.fullName ?: "p-${player.hashCode()}")}-$index"
+                            }
+                        ) { _: Int, player: Player ->
                             PlayerCardVariantA(
                                 player = player,
                                 allAccounts = playersState.allAccounts,
@@ -752,6 +757,7 @@ private fun QuickFilterChips(
     withMandateSelected: Boolean,
     myPlayersOnlySelected: Boolean,
     loanPlayersOnlySelected: Boolean,
+    withoutRegisteredAgentSelected: Boolean,
     withNotesOnlySelected: Boolean,
     footFilterOption: FootFilterOption,
     onFreeAgentsClick: () -> Unit,
@@ -759,6 +765,7 @@ private fun QuickFilterChips(
     onWithMandateClick: () -> Unit,
     onMyPlayersOnlyClick: () -> Unit,
     onLoanPlayersOnlyClick: () -> Unit,
+    onWithoutRegisteredAgentClick: () -> Unit,
     onWithNotesOnlyClick: () -> Unit,
     onFootFilterClick: (FootFilterOption) -> Unit
 ) {
@@ -800,6 +807,13 @@ private fun QuickFilterChips(
                 label = stringResource(R.string.players_filter_loan_players_only),
                 isSelected = loanPlayersOnlySelected,
                 onClick = onLoanPlayersOnlyClick
+            )
+        }
+        item(key = "without_registered_agent") {
+            QuickFilterChip(
+                label = stringResource(R.string.players_filter_without_registered_agent),
+                isSelected = withoutRegisteredAgentSelected,
+                onClick = onWithoutRegisteredAgentClick
             )
         }
         item(key = "with_notes") {

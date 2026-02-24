@@ -19,6 +19,7 @@ interface IFilterRepository {
     val quickFilterWithMandate: StateFlow<Boolean>
     val quickFilterMyPlayersOnly: StateFlow<Boolean>
     val quickFilterLoanPlayersOnly: StateFlow<Boolean>
+    val quickFilterWithoutRegisteredAgent: StateFlow<Boolean>
     val footFilterOption: StateFlow<FootFilterOption>
 
     fun addPositionFilter(position: Position)
@@ -34,6 +35,7 @@ interface IFilterRepository {
     fun toggleQuickFilterWithMandate()
     fun toggleQuickFilterMyPlayersOnly()
     fun toggleQuickFilterLoanPlayersOnly()
+    fun toggleWithoutRegisteredAgent()
     fun toggleQuickFilterWithNotesOnly()
     fun setFootFilterOption(option: FootFilterOption)
 }
@@ -66,6 +68,9 @@ class FilterRepository : IFilterRepository {
 
     private val _quickFilterLoanPlayersOnly = MutableStateFlow(false)
     override val quickFilterLoanPlayersOnly: StateFlow<Boolean> = _quickFilterLoanPlayersOnly
+
+    private val _quickFilterWithoutRegisteredAgent = MutableStateFlow(false)
+    override val quickFilterWithoutRegisteredAgent: StateFlow<Boolean> = _quickFilterWithoutRegisteredAgent
 
     private val _footFilterOption = MutableStateFlow(FootFilterOption.NONE)
     override val footFilterOption: StateFlow<FootFilterOption> = _footFilterOption
@@ -121,6 +126,7 @@ class FilterRepository : IFilterRepository {
         _quickFilterWithMandate.update { false }
         _quickFilterMyPlayersOnly.update { false }
         _quickFilterLoanPlayersOnly.update { false }
+        _quickFilterWithoutRegisteredAgent.update { false }
         _footFilterOption.update { FootFilterOption.NONE }
     }
 
@@ -148,6 +154,10 @@ class FilterRepository : IFilterRepository {
 
     override fun toggleQuickFilterLoanPlayersOnly() {
         _quickFilterLoanPlayersOnly.update { !it }
+    }
+
+    override fun toggleWithoutRegisteredAgent() {
+        _quickFilterWithoutRegisteredAgent.update { !it }
     }
 
     override fun toggleQuickFilterWithNotesOnly() {

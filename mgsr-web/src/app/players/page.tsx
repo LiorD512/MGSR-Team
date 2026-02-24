@@ -30,6 +30,7 @@ interface Player {
   foot?: string;
   notes?: string;
   noteList?: { notes?: string; createBy?: string; createdAt?: number }[];
+  agency?: string;
 }
 
 interface PlayersCache {
@@ -41,6 +42,7 @@ interface PlayersCache {
   withMandate: boolean;
   myPlayersOnly: boolean;
   loanPlayersOnly: boolean;
+  withoutRegisteredAgent: boolean;
   withNotes: boolean;
   footFilter: 'left' | 'right' | null;
 }
@@ -95,6 +97,7 @@ export default function PlayersPage() {
   const [withMandate, setWithMandate] = useState(cached?.withMandate ?? false);
   const [myPlayersOnly, setMyPlayersOnly] = useState(cached?.myPlayersOnly ?? false);
   const [loanPlayersOnly, setLoanPlayersOnly] = useState(cached?.loanPlayersOnly ?? false);
+  const [withoutRegisteredAgent, setWithoutRegisteredAgent] = useState(cached?.withoutRegisteredAgent ?? false);
   const [withNotes, setWithNotes] = useState(cached?.withNotes ?? false);
   const [footFilter, setFootFilter] = useState<'left' | 'right' | null>(cached?.footFilter ?? null);
   const [currentAccountName, setCurrentAccountName] = useState<string | null>(null);
@@ -140,10 +143,11 @@ export default function PlayersPage() {
       withMandate,
       myPlayersOnly,
       loanPlayersOnly,
+      withoutRegisteredAgent,
       withNotes,
       footFilter,
     });
-  }, [players, search, positionFilter, freeAgents, contractExpiring, withMandate, myPlayersOnly, loanPlayersOnly, withNotes, footFilter]);
+  }, [players, search, positionFilter, freeAgents, contractExpiring, withMandate, myPlayersOnly, loanPlayersOnly, withoutRegisteredAgent, withNotes, footFilter]);
 
   const filtered = useMemo(() => {
     let result = players;
@@ -196,6 +200,15 @@ export default function PlayersPage() {
       result = result.filter((p) => p.isOnLoan === true);
     }
 
+    // Without registered agent (agency is relatives, no agent, or blank/null)
+    if (withoutRegisteredAgent) {
+      const noAgentValues = ['relatives', 'no agent', 'without agent', 'ohne berater', 'sans agent'];
+      result = result.filter((p) => {
+        const agency = p.agency?.trim()?.toLowerCase();
+        return !agency || noAgentValues.some((v) => agency === v || agency.includes(v));
+      });
+    }
+
     // With notes
     if (withNotes) {
       result = result.filter(
@@ -221,6 +234,7 @@ export default function PlayersPage() {
     withMandate,
     myPlayersOnly,
     loanPlayersOnly,
+    withoutRegisteredAgent,
     withNotes,
     footFilter,
     currentAccountName,
@@ -233,6 +247,7 @@ export default function PlayersPage() {
     withMandate ||
     myPlayersOnly ||
     loanPlayersOnly ||
+    withoutRegisteredAgent ||
     withNotes ||
     !!footFilter;
 
@@ -243,6 +258,7 @@ export default function PlayersPage() {
     setWithMandate(false);
     setMyPlayersOnly(false);
     setLoanPlayersOnly(false);
+    setWithoutRegisteredAgent(false);
     setWithNotes(false);
     setFootFilter(null);
   }, []);
@@ -359,6 +375,16 @@ export default function PlayersPage() {
               }`}
             >
               {t('players_filter_loan_players_only')}
+            </button>
+            <button
+              onClick={() => setWithoutRegisteredAgent((v) => !v)}
+              className={`shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 ${
+                withoutRegisteredAgent
+                  ? 'bg-mgsr-teal text-mgsr-dark shadow-sm shadow-mgsr-teal/25'
+                  : 'bg-mgsr-card border border-mgsr-border text-mgsr-muted hover:text-mgsr-text hover:border-mgsr-teal/40'
+              }`}
+            >
+              {t('players_filter_without_registered_agent')}
             </button>
             <button
               onClick={() => setWithNotes((v) => !v)}

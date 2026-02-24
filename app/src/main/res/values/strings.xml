@@ -53,6 +53,7 @@
     <string name="players_filter_with_mandate">With Mandate</string>
     <string name="players_filter_my_players_only">My Players Only</string>
     <string name="players_filter_loan_players_only">Loan Players Only</string>
+    <string name="players_filter_without_registered_agent">Without Registered Agent</string>
     <string name="players_expiring_soon_count">%d Contracts Expiring Soon</string>
     <string name="players_expiring_action_needed">Action needed before contract ends</string>
     <string name="players_with_mandate_count">%d Players with Mandate</string>
@@ -715,6 +716,12 @@
     <string name="player_info_add_document">Add document</string>
     <string name="player_info_notes">Notes</string>
     <string name="player_info_add_note">Add note</string>
+    <string name="player_tasks_section">Player-related tasks</string>
+    <string name="player_tasks_add">Add task</string>
+    <string name="player_tasks_empty">No tasks for this player yet</string>
+    <string name="player_tasks_choose_template">Choose template (recommended)</string>
+    <string name="player_tasks_created_by">Created by</string>
+    <string name="tasks_linked_player">Linked player</string>
     <string name="player_info_note_placeholder">Add a new note…</string>
     <string name="player_info_save_note">Save Note</string>
     <string name="player_info_no_notes_title">No notes yet</string>

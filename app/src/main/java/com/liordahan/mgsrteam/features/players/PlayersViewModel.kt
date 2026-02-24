@@ -68,6 +68,7 @@ data class PlayersUiState(
     val quickFilterWithMandate: Boolean = false,
     val quickFilterMyPlayersOnly: Boolean = false,
     val quickFilterLoanPlayersOnly: Boolean = false,
+    val quickFilterWithoutRegisteredAgent: Boolean = false,
     val footFilterOption: FootFilterOption = FootFilterOption.NONE,
     val currentUserName: String? = null
 )
@@ -83,6 +84,7 @@ abstract class IPlayersViewModel : ViewModel() {
     abstract fun toggleQuickFilterWithMandate()
     abstract fun toggleQuickFilterMyPlayersOnly()
     abstract fun toggleQuickFilterLoanPlayersOnly()
+    abstract fun toggleQuickFilterWithoutRegisteredAgent()
     /** Apply "My Players Only" filter only when first landing from dashboard. Never re-apply on back. */
     abstract fun applyInitialMyPlayersOnlyIfNeeded(initialMyPlayersOnly: Boolean)
     abstract fun toggleQuickFilterWithNotesOnly()
@@ -149,6 +151,7 @@ class PlayersViewModel(
             launch { quickFilterUseCase.quickFilterWithMandate.collect { v -> _inputState.update { it.copy(quickFilterWithMandate = v) } } }
             launch { quickFilterUseCase.quickFilterMyPlayersOnly.collect { v -> _inputState.update { it.copy(quickFilterMyPlayersOnly = v) } } }
             launch { quickFilterUseCase.quickFilterLoanPlayersOnly.collect { v -> _inputState.update { it.copy(quickFilterLoanPlayersOnly = v) } } }
+            launch { quickFilterUseCase.quickFilterWithoutRegisteredAgent.collect { v -> _inputState.update { it.copy(quickFilterWithoutRegisteredAgent = v) } } }
         }
     }
 
@@ -168,6 +171,7 @@ class PlayersViewModel(
             ?.filterPlayersByWithMandate(state.quickFilterWithMandate, mandateMap)
             ?.filterPlayersByMyPlayersOnly(state.quickFilterMyPlayersOnly, state.currentUserName)
             ?.filterPlayersByLoanPlayers(state.quickFilterLoanPlayersOnly)
+            ?.filterPlayersByWithoutRegisteredAgent(state.quickFilterWithoutRegisteredAgent)
             ?.filterPlayersByFoot(state.footFilterOption)
             ?.filterByNotes(state.isWithNotesChecked)
             ?.filterPlayersByNameOrByNote(query)
@@ -279,6 +283,7 @@ class PlayersViewModel(
     override fun toggleQuickFilterWithMandate() = quickFilterUseCase.toggleWithMandate()
     override fun toggleQuickFilterMyPlayersOnly() = quickFilterUseCase.toggleMyPlayersOnly()
     override fun toggleQuickFilterLoanPlayersOnly() = quickFilterUseCase.toggleLoanPlayersOnly()
+    override fun toggleQuickFilterWithoutRegisteredAgent() = quickFilterUseCase.toggleWithoutRegisteredAgent()
     override fun toggleQuickFilterWithNotesOnly() = quickFilterUseCase.toggleWithNotesOnly()
     override fun setFootFilterOption(option: FootFilterOption) = setFootFilterOptionUseCase(option)
 
@@ -407,6 +412,16 @@ class PlayersViewModel(
 
     private fun List<Player>?.filterPlayersByLoanPlayers(enabled: Boolean): List<Player>? {
         return if (!enabled) this else this?.filter { it.isOnLoan }
+    }
+
+    /** Players where agency is relatives, no agent, or blank/null (Transfermarkt values for no registered agent). */
+    private fun List<Player>?.filterPlayersByWithoutRegisteredAgent(enabled: Boolean): List<Player>? {
+        if (!enabled) return this
+        val noAgentValues = setOf("relatives", "no agent", "without agent", "ohne berater", "sans agent")
+        return this?.filter { player ->
+            val agency = player.agency?.trim()?.lowercase()
+            agency.isNullOrBlank() || noAgentValues.any { agency == it || agency.contains(it) }
+        }
     }
 
     private fun List<Player>?.filterPlayersByFoot(footFilterOption: FootFilterOption): List<Player>? {
