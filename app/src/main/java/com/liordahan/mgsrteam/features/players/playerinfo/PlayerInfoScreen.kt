@@ -14,6 +14,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -49,6 +50,7 @@ import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.PersonAddAlt
 import androidx.compose.material.icons.filled.Link
@@ -62,6 +64,8 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -110,6 +114,7 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -126,6 +131,9 @@ import coil.compose.AsyncImage
 import com.liordahan.mgsrteam.R
 import com.liordahan.mgsrteam.features.add.getPhoneNumberFromContactUri
 import com.liordahan.mgsrteam.features.players.models.NotesModel
+import com.liordahan.mgsrteam.features.home.models.AgentTask
+import com.liordahan.mgsrteam.features.home.tasks.AddPlayerTaskBottomSheet
+import com.liordahan.mgsrteam.features.home.tasks.PlayerTaskContext
 import com.liordahan.mgsrteam.features.players.playerinfo.notes.AddNoteBottomSheet
 import com.liordahan.mgsrteam.features.players.playerinfo.notes.AllNotesScreen
 import com.liordahan.mgsrteam.features.players.playerinfo.notes.NotesSection
@@ -277,6 +285,10 @@ fun PlayerInfoScreen(
     var showSalaryTransferFeeSheet by remember { mutableStateOf(false) }
     var showAddNoteSheet by remember { mutableStateOf(false) }
     var showAllNotes by remember { mutableStateOf(false) }
+    var showAddPlayerTaskSheet by remember { mutableStateOf(false) }
+    var playerTasksList by remember { mutableStateOf<List<AgentTask>>(emptyList()) }
+    var playerDocumentId by remember { mutableStateOf<String?>(null) }
+    var allAccounts by remember { mutableStateOf<List<com.liordahan.mgsrteam.features.login.models.Account>>(emptyList()) }
     var documentsList by remember { mutableStateOf<List<PlayerDocument>>(emptyList()) }
     var docToDelete by remember { mutableStateOf<PlayerDocument?>(null) }
     var isUploadingDocument by remember { mutableStateOf(false) }
@@ -333,6 +345,24 @@ fun PlayerInfoScreen(
             launch {
                 viewModel.documentsFlow.collect {
                     documentsList = it
+                }
+            }
+
+            launch {
+                viewModel.playerTasksFlow.collect {
+                    playerTasksList = it
+                }
+            }
+
+            launch {
+                viewModel.playerDocumentIdFlow.collect {
+                    playerDocumentId = it
+                }
+            }
+
+            launch {
+                viewModel.allAccountsFlow.collect {
+                    allAccounts = it
                 }
             }
 
@@ -404,6 +434,29 @@ fun PlayerInfoScreen(
                 onDeleteNote = { viewModel.onDeleteNoteClicked(it) }
             )
             return@Scaffold
+        }
+        if (showAddPlayerTaskSheet && playerToPresent != null && playerDocumentId != null) {
+            val player = playerToPresent!!
+            val docId = playerDocumentId!!
+            val playerName = player.fullName ?: ""
+            val preselectedIndex = allAccounts.indexOfFirst { it.email.equals(com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.email, true) }.takeIf { it >= 0 } ?: 0
+            AddPlayerTaskBottomSheet(
+                accounts = allAccounts,
+                playerContext = PlayerTaskContext(
+                    playerId = docId,
+                    playerName = playerName,
+                    playerTmProfile = player.tmProfile,
+                    playerImage = player.profileImage,
+                    playerClub = player.currentClub?.clubName,
+                    playerPosition = player.positions?.filterNotNull()?.joinToString(" • ")
+                ),
+                preselectedAgentIndex = preselectedIndex,
+                onDismiss = { showAddPlayerTaskSheet = false },
+                onConfirm = { agentId, agentName, title, dueDate, priority, notes, pId, pName, pTmProfile, templateId ->
+                    viewModel.addPlayerTask(agentId, agentName, title, dueDate, priority, notes, pId, pName, pTmProfile, templateId)
+                    showAddPlayerTaskSheet = false
+                }
+            )
         }
         if (docToDelete != null) {
             DeleteDocumentDialog(
@@ -727,6 +780,14 @@ fun PlayerInfoScreen(
                 isUploading = isUploadingDocument,
                 onAddDocument = { documentPickerLauncher.launch("*/*") },
                 onDeleteDocument = { docToDelete = it }
+            )
+
+            PlayerInfoSectionHeader(stringResource(R.string.player_tasks_section))
+            PlayerTasksSection(
+                tasks = playerTasksList,
+                onAddTaskClick = { showAddPlayerTaskSheet = true },
+                onToggleComplete = { viewModel.togglePlayerTaskCompleted(it) },
+                onTaskClick = { navController.navigate(Screens.TasksScreen.route) }
             )
 
             PlayerInfoSectionHeader(stringResource(R.string.player_info_notes))
@@ -2241,6 +2302,100 @@ private fun AiHelperActionItem(
                 tint = HomeTextSecondary,
                 modifier = Modifier.size(22.dp)
             )
+        }
+    }
+}
+
+@Composable
+private fun PlayerTasksSection(
+    tasks: List<AgentTask>,
+    onAddTaskClick: () -> Unit,
+    onToggleComplete: (AgentTask) -> Unit,
+    onTaskClick: () -> Unit
+) {
+    val context = LocalContext.current
+    Card(
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = HomeDarkCard),
+        border = BorderStroke(1.dp, HomeDarkCardBorder)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = stringResource(R.string.player_tasks_section),
+                    style = boldTextStyle(HomeTextPrimary, 16.sp)
+                )
+                TextButton(onClick = onAddTaskClick) {
+                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp), tint = HomeTealAccent)
+                    Spacer(Modifier.width(4.dp))
+                    Text(
+                        text = stringResource(R.string.player_tasks_add),
+                        style = boldTextStyle(HomeTealAccent, 14.sp)
+                    )
+                }
+            }
+            Spacer(Modifier.height(12.dp))
+            if (tasks.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(HomeDarkBackground)
+                        .clickable(onClick = onAddTaskClick)
+                        .padding(24.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = stringResource(R.string.player_tasks_empty),
+                        style = regularTextStyle(HomeTextSecondary, 14.sp)
+                    )
+                }
+            } else {
+                tasks.forEach { task ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(HomeDarkBackground)
+                            .clickable(onClick = onTaskClick)
+                            .padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Checkbox(
+                            checked = task.isCompleted,
+                            onCheckedChange = { onToggleComplete(task) },
+                            colors = CheckboxDefaults.colors(checkedColor = HomeTealAccent, uncheckedColor = HomeTextSecondary)
+                        )
+                        Spacer(Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = task.title.ifEmpty { "—" },
+                                style = if (task.isCompleted) regularTextStyle(HomeTextSecondary, 14.sp).copy(textDecoration = TextDecoration.LineThrough) else boldTextStyle(HomeTextPrimary, 14.sp)
+                            )
+                            if (task.agentName.isNotBlank() || task.dueDate > 0) {
+                                Spacer(Modifier.height(2.dp))
+                                Text(
+                                    text = buildString {
+                                        if (task.agentName.isNotBlank()) append(context.getString(R.string.player_tasks_created_by) + " " + task.agentName)
+                                        if (task.agentName.isNotBlank() && task.dueDate > 0) append(" • ")
+                                        if (task.dueDate > 0) append(SimpleDateFormat("MMM d, yyyy", Locale.getDefault()).format(Date(task.dueDate)))
+                                    },
+                                    style = regularTextStyle(HomeTextSecondary, 12.sp)
+                                )
+                            }
+                        }
+                        IconButton(onClick = onTaskClick) {
+                            Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null, tint = HomeTextSecondary, modifier = Modifier.size(20.dp))
+                        }
+                    }
+                    Spacer(Modifier.height(8.dp))
+                }
+            }
         }
     }
 }

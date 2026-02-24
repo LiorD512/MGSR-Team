@@ -5,6 +5,7 @@ import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { doc, collection, query, where, onSnapshot, updateDoc, addDoc, deleteDoc, deleteField } from 'firebase/firestore';
+import AddPlayerTaskModal from '@/components/AddPlayerTaskModal';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '@/lib/firebase';
 import { getPlayerDetails, PlayerDetails } from '@/lib/api';
@@ -123,7 +124,9 @@ export default function PlayerInfoPage() {
           ? 'player_info_back_contract_finisher'
           : fromPath === '/shadow-teams'
             ? 'player_info_back_shadow_teams'
-            : 'player_info_back_players';
+            : fromPath === '/tasks'
+              ? 'player_info_back_tasks'
+              : 'player_info_back_players';
   const [player, setPlayer] = useState<Player | null>(null);
   const [liveData, setLiveData] = useState<PlayerDetails | null>(null);
   const [documents, setDocuments] = useState<PlayerDocument[]>([]);
@@ -139,6 +142,8 @@ export default function PlayerInfoPage() {
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [docToDelete, setDocToDelete] = useState<PlayerDocument | null>(null);
   const [mandateToggling, setMandateToggling] = useState(false);
+  const [showAddTaskModal, setShowAddTaskModal] = useState(false);
+  const [playerTasks, setPlayerTasks] = useState<{ id: string; title?: string; notes?: string; dueDate?: number; isCompleted?: boolean; agentName?: string; createdAt?: number }[]>([]);
   const prevValidMandateCountRef = useRef<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -210,6 +215,21 @@ export default function PlayerInfoPage() {
     });
     return () => unsub();
   }, [player?.tmProfile, id]);
+
+  useEffect(() => {
+    if (!id) return;
+    const q = query(
+      collection(db, 'AgentTasks'),
+      where('playerId', '==', id)
+    );
+    const unsub = onSnapshot(q, (snap) => {
+      const list = snap.docs
+        .map((d) => ({ id: d.id, ...d.data() } as { id: string; title?: string; notes?: string; dueDate?: number; isCompleted?: boolean; agentName?: string; createdAt?: number }))
+        .sort((a, b) => (a.dueDate || 0) - (b.dueDate || 0));
+      setPlayerTasks(list);
+    });
+    return () => unsub();
+  }, [id]);
 
   const getCurrentUserName = useCallback((): string | undefined => {
     if (!user?.email) return undefined;
@@ -1105,6 +1125,80 @@ export default function PlayerInfoPage() {
               </div>
             )}
 
+            {/* Player-related tasks */}
+            <div>
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+                <h2 className="text-lg font-display font-semibold text-mgsr-text">
+                  {t('player_tasks_section')}
+                </h2>
+                <button
+                  onClick={() => setShowAddTaskModal(true)}
+                  className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-mgsr-teal/20 text-mgsr-teal hover:bg-mgsr-teal/30 transition font-medium text-sm shrink-0"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  {t('player_tasks_add')}
+                </button>
+              </div>
+              {playerTasks.length === 0 ? (
+                <div
+                  onClick={() => setShowAddTaskModal(true)}
+                  className="p-8 bg-mgsr-card/50 border border-mgsr-border rounded-xl text-center text-mgsr-muted cursor-pointer hover:border-mgsr-teal/30 hover:bg-mgsr-card/70 transition"
+                >
+                  {t('player_tasks_empty')}
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {playerTasks.map((task) => (
+                    <div
+                      key={task.id}
+                      className="flex items-center gap-4 p-4 bg-mgsr-card border border-mgsr-border rounded-xl hover:border-mgsr-teal/30 transition group"
+                    >
+                      <button
+                        type="button"
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          try {
+                            await updateDoc(doc(db, 'AgentTasks', task.id), {
+                              isCompleted: !task.isCompleted,
+                              completedAt: task.isCompleted ? 0 : Date.now(),
+                            });
+                          } catch {
+                            // ignore
+                          }
+                        }}
+                        className={`shrink-0 w-6 h-6 rounded-lg border-2 flex items-center justify-center transition ${
+                          task.isCompleted ? 'border-mgsr-teal bg-mgsr-teal' : 'border-mgsr-muted group-hover:border-mgsr-teal cursor-pointer'
+                        }`}
+                      >
+                        {task.isCompleted && <span className="text-mgsr-dark text-xs font-bold">✓</span>}
+                      </button>
+                      <div className="flex-1 min-w-0">
+                        <p className={`font-medium ${task.isCompleted ? 'line-through text-mgsr-muted' : 'text-mgsr-text'}`}>
+                          {task.title || '—'}
+                        </p>
+                        <p className="text-sm text-mgsr-muted mt-0.5">
+                          {task.agentName && `${t('player_tasks_created_by')} ${task.agentName}`}
+                          {task.agentName && task.dueDate && ' • '}
+                          {task.dueDate && new Date(task.dueDate).toLocaleDateString(isRtl ? 'he-IL' : 'en-US', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        </p>
+                      </div>
+                      <Link
+                        href="/tasks"
+                        className="shrink-0 p-2 rounded-lg text-mgsr-muted hover:text-mgsr-teal hover:bg-mgsr-teal/10 transition"
+                        title={t('tasks_title')}
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                        </svg>
+                      </Link>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
             {/* Notes */}
             <div>
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
@@ -1272,6 +1366,27 @@ export default function PlayerInfoPage() {
           </div>
         </div>
       )}
+
+      {/* Add Player Task Modal */}
+      <AddPlayerTaskModal
+        open={showAddTaskModal}
+        onClose={() => setShowAddTaskModal(false)}
+        playerContext={
+          player
+            ? {
+                playerId: id,
+                playerName: isRtl ? (player.fullNameHe || player.fullName) || '—' : (player.fullName || player.fullNameHe) || '—',
+                playerTmProfile: player.tmProfile,
+                playerImage: merged.profileImage,
+                playerClub: merged.currentClub?.clubName,
+                playerPosition: merged.positions?.filter(Boolean).join(' • '),
+              }
+            : undefined
+        }
+        accounts={accounts}
+        currentUserId={user?.uid || ''}
+        getDisplayName={(a, rtl) => (rtl ? a.hebrewName || a.name || a.email || '—' : a.name || a.hebrewName || a.email || '—')}
+      />
 
       {/* Delete Note Confirmation */}
       {deleteConfirmNote && (

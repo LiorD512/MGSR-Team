@@ -111,7 +111,7 @@ abstract class IHomeScreenViewModel : ViewModel() {
     abstract fun toggleFeedExpanded()
     abstract fun toggleAgentExpanded(agentId: String)
     abstract fun toggleTaskCompleted(task: AgentTask)
-    abstract fun addTask(agentId: String, agentName: String, title: String, dueDate: Long, priority: Int = 0, notes: String = "")
+    abstract fun addTask(agentId: String, agentName: String, title: String, dueDate: Long, priority: Int = 0, notes: String = "", playerId: String = "", playerName: String = "", playerTmProfile: String = "", templateId: String = "")
     abstract fun updateTask(task: AgentTask)
     abstract fun deleteTask(task: AgentTask)
     abstract fun toggleTransferWindowGroup(confederation: Confederation)
@@ -422,7 +422,7 @@ class HomeScreenViewModel(
         }
     }
 
-    override fun addTask(agentId: String, agentName: String, title: String, dueDate: Long, priority: Int, notes: String) {
+    override fun addTask(agentId: String, agentName: String, title: String, dueDate: Long, priority: Int, notes: String, playerId: String, playerName: String, playerTmProfile: String, templateId: String) {
         viewModelScope.launch {
             val currentAccount = _state.value.currentUserAccount
             val createdByAgentId = currentAccount?.id ?: ""
@@ -437,7 +437,11 @@ class HomeScreenViewModel(
                 priority = priority,
                 notes = notes,
                 createdByAgentId = createdByAgentId,
-                createdByAgentName = createdByAgentName
+                createdByAgentName = createdByAgentName,
+                playerId = playerId,
+                playerName = playerName,
+                playerTmProfile = playerTmProfile,
+                templateId = templateId
             )
             // Optimistic update: add to state and sync widget immediately (before Firestore)
             _state.update { state ->

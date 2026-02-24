@@ -21,6 +21,7 @@ import com.liordahan.mgsrteam.features.players.playerinfo.matchingrequests.IPlay
 import com.liordahan.mgsrteam.features.players.playerinfo.documents.PlayerDocument
 import com.liordahan.mgsrteam.features.players.playerinfo.documents.PlayerDocumentsRepository
 import com.liordahan.mgsrteam.features.players.playerinfo.notes.NoteParser
+import com.liordahan.mgsrteam.features.home.models.AgentTask
 import com.liordahan.mgsrteam.features.requests.RequestMatcher
 import com.liordahan.mgsrteam.features.requests.repository.IRequestsRepository
 import com.liordahan.mgsrteam.features.home.models.FeedEvent
@@ -82,7 +83,11 @@ abstract class IPlayerInfoViewModel : ViewModel() {
     abstract fun consumeUpdateResult()
     abstract val matchingRequestsFlow: StateFlow<List<MatchingRequestUiState>>
     abstract val allAccountsFlow: StateFlow<List<Account>>
+    abstract val playerDocumentIdFlow: StateFlow<String?>
+    abstract val playerTasksFlow: Flow<List<com.liordahan.mgsrteam.features.home.models.AgentTask>>
     abstract fun markPlayerAsOffered(player: Player, request: com.liordahan.mgsrteam.features.requests.models.Request, clubFeedback: String?)
+    abstract fun addPlayerTask(agentId: String, agentName: String, title: String, dueDate: Long, priority: Int, notes: String, playerId: String, playerName: String, playerTmProfile: String, templateId: String)
+    abstract fun togglePlayerTaskCompleted(task: com.liordahan.mgsrteam.features.home.models.AgentTask)
     abstract fun updateClubFeedback(offerId: String, clubFeedback: String?)
 }
 
@@ -225,18 +230,81 @@ class PlayerInfoViewModel(
         playerListenerRegistration?.remove()
     }
 
+    private val _playerDocumentIdFlow = MutableStateFlow<String?>(null)
+    override val playerDocumentIdFlow: StateFlow<String?> = _playerDocumentIdFlow
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    override val playerTasksFlow: Flow<List<AgentTask>> = _playerDocumentIdFlow.flatMapLatest { docId ->
+        if (docId.isNullOrBlank()) flowOf(emptyList())
+        else callbackFlow {
+            val listener = firebaseHandler.firebaseStore.collection(firebaseHandler.agentTasksTable)
+                .whereEqualTo("playerId", docId)
+                .addSnapshotListener { snapshot, _ ->
+                    if (snapshot != null) {
+                        val tasks = snapshot.documents.mapNotNull { doc ->
+                            doc.toObject(AgentTask::class.java)?.copy(id = doc.id)
+                        }.sortedBy { it.dueDate }
+                        trySend(tasks)
+                    }
+                }
+            awaitClose { listener.remove() }
+        }
+    }
+
+    override fun addPlayerTask(agentId: String, agentName: String, title: String, dueDate: Long, priority: Int, notes: String, playerId: String, playerName: String, playerTmProfile: String, templateId: String) {
+        viewModelScope.launch {
+            val currentAccount = allAccountsFlow.value.firstOrNull {
+                it.email.equals(firebaseHandler.firebaseAuth.currentUser?.email, true)
+            }
+            val createdByAgentId = currentAccount?.id ?: ""
+            val createdByAgentName = currentAccount?.getDisplayName(appContext) ?: ""
+            val newTask = AgentTask(
+                agentId = agentId,
+                agentName = agentName,
+                title = title,
+                isCompleted = false,
+                dueDate = dueDate,
+                createdAt = System.currentTimeMillis(),
+                priority = priority,
+                notes = notes,
+                createdByAgentId = createdByAgentId,
+                createdByAgentName = createdByAgentName,
+                playerId = playerId,
+                playerName = playerName,
+                playerTmProfile = playerTmProfile,
+                templateId = templateId
+            )
+            firebaseHandler.firebaseStore.collection(firebaseHandler.agentTasksTable).add(newTask).await()
+        }
+    }
+
+    override fun togglePlayerTaskCompleted(task: AgentTask) {
+        if (task.id.isBlank()) return
+        viewModelScope.launch {
+            val nowCompleted = !task.isCompleted
+            val data = mapOf(
+                "isCompleted" to nowCompleted,
+                "completedAt" to if (nowCompleted) System.currentTimeMillis() else 0L
+            )
+            firebaseHandler.firebaseStore.collection(firebaseHandler.agentTasksTable)
+                .document(task.id).update(data).await()
+        }
+    }
+
     override fun getPlayerInfo(playerId: String) {
         _scoutReportFlow.update { null }
         _hiddenGemFlow.update { null }
+        _playerDocumentIdFlow.update { null }
         playerListenerRegistration?.remove()
         playerListenerRegistration = firebaseHandler.firebaseStore.collection(firebaseHandler.playersTable)
             .whereEqualTo("tmProfile", playerId).addSnapshotListener { value, error ->
                 if (error != null) {
                     //
                 } else {
-                    val player = value?.documents?.firstOrNull()?.toObject(Player::class.java)
-                        ?: return@addSnapshotListener
+                    val doc = value?.documents?.firstOrNull() ?: return@addSnapshotListener
+                    val player = doc.toObject(Player::class.java) ?: return@addSnapshotListener
                     _playerInfoFlow.update { player }
+                    _playerDocumentIdFlow.update { doc.id }
                 }
             }
     }

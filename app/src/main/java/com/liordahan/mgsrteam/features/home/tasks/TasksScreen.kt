@@ -228,6 +228,7 @@ fun TasksScreen(
                                     SwipeableTaskRow(
                                         task = task,
                                         showAgent = true,
+                                        navController = navController,
                                         onToggle = { viewModel.toggleTaskCompleted(task) },
                                         onDelete = {
                                             viewModel.deleteTask(task)
@@ -241,7 +242,8 @@ fun TasksScreen(
                                                     viewModel.addTask(
                                                         task.agentId, task.agentName,
                                                         task.title, task.dueDate,
-                                                        task.priority, task.notes
+                                                        task.priority, task.notes,
+                                                        task.playerId, task.playerName, task.playerTmProfile, task.templateId
                                                     )
                                                 }
                                             }
@@ -300,6 +302,7 @@ fun TasksScreen(
                                     SwipeableTaskRow(
                                         task = task,
                                         showAgent = false,
+                                        navController = navController,
                                         onToggle = { viewModel.toggleTaskCompleted(task) },
                                         onDelete = {
                                             viewModel.deleteTask(task)
@@ -313,7 +316,8 @@ fun TasksScreen(
                                                     viewModel.addTask(
                                                         task.agentId, task.agentName,
                                                         task.title, task.dueDate,
-                                                        task.priority, task.notes
+                                                        task.priority, task.notes,
+                                                        task.playerId, task.playerName, task.playerTmProfile, task.templateId
                                                     )
                                                 }
                                             }
@@ -565,6 +569,7 @@ private fun AgentProgressBar(
 private fun SwipeableTaskRow(
     task: AgentTask,
     showAgent: Boolean,
+    navController: NavController,
     onToggle: () -> Unit,
     onDelete: () -> Unit,
     onClick: () -> Unit
@@ -635,6 +640,7 @@ private fun SwipeableTaskRow(
         TaskRowCard(
             task = task,
             showAgent = showAgent,
+            navController = navController,
             onToggle = onToggle,
             onClick = onClick
         )
@@ -647,6 +653,7 @@ private fun SwipeableTaskRow(
 private fun TaskRowCard(
     task: AgentTask,
     showAgent: Boolean,
+    navController: NavController,
     onToggle: () -> Unit,
     onClick: () -> Unit
 ) {
@@ -706,6 +713,24 @@ private fun TaskRowCard(
                         style = regularTextStyle(HomeTextSecondary, 11.sp),
                         maxLines = 1
                     )
+                }
+                if (task.playerName.isNotBlank() && task.playerTmProfile.isNotBlank()) {
+                    Spacer(Modifier.height(4.dp))
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(HomeTealAccent.copy(alpha = 0.2f))
+                            .clickable {
+                                navController.navigate("${Screens.PlayerInfoScreen.route}/${android.net.Uri.encode(task.playerTmProfile)}")
+                            }
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        Text(
+                            text = task.playerName,
+                            style = boldTextStyle(HomeTealAccent, 11.sp),
+                            maxLines = 1
+                        )
+                    }
                 }
             }
 

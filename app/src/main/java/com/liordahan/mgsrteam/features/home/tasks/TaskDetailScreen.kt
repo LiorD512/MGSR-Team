@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -26,6 +27,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -235,6 +237,52 @@ fun TaskDetailScreen(
                         value = displayAgentName,
                         onClick = { showAgentPicker = !showAgentPicker }
                     )
+
+                    // Linked player (when task has player context)
+                    if (task.playerName.isNotBlank() && task.playerTmProfile.isNotBlank()) {
+                        Spacer(Modifier.height(12.dp))
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(1.dp)
+                                .background(HomeDarkCardBorder)
+                        )
+                        Spacer(Modifier.height(12.dp))
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    navController.navigate("${com.liordahan.mgsrteam.navigation.Screens.PlayerInfoScreen.route}/${android.net.Uri.encode(task.playerTmProfile)}")
+                                }
+                                .padding(vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                Icons.Default.Person,
+                                contentDescription = null,
+                                tint = HomeTealAccent,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(Modifier.width(12.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = stringResource(R.string.tasks_linked_player),
+                                    style = regularTextStyle(HomeTextSecondary, 11.sp)
+                                )
+                                Spacer(Modifier.height(2.dp))
+                                Text(
+                                    text = task.playerName,
+                                    style = regularTextStyle(HomeTealAccent, 14.sp)
+                                )
+                            }
+                            Icon(
+                                Icons.AutoMirrored.Filled.OpenInNew,
+                                contentDescription = null,
+                                tint = HomeTealAccent,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    }
 
                     if (showAgentPicker) {
                         Spacer(Modifier.height(8.dp))

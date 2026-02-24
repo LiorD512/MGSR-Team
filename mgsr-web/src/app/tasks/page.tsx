@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getScreenCache, setScreenCache } from '@/lib/screenCache';
@@ -25,6 +26,10 @@ interface AgentTask {
   priority?: number;
   agentId?: string;
   agentName?: string;
+  playerId?: string;
+  playerName?: string;
+  playerTmProfile?: string;
+  templateId?: string;
 }
 
 interface Account {
@@ -535,6 +540,15 @@ export default function TasksPage() {
                                 >
                                   {formatDue(task.dueDate)}
                                 </span>
+                                {task.playerId && task.playerName && (
+                                  <Link
+                                    href={`/players/${task.playerId}?from=/tasks`}
+                                    className="text-xs px-2.5 py-1 rounded-lg bg-mgsr-teal/20 text-mgsr-teal font-medium hover:bg-mgsr-teal/30 transition"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    {task.playerName}
+                                  </Link>
+                                )}
                               </div>
                             </div>
                             <div className="flex items-center gap-1 shrink-0 opacity-70 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
@@ -688,6 +702,15 @@ export default function TasksPage() {
                                 >
                                   {formatDue(task.dueDate)}
                                 </span>
+                                {task.playerId && task.playerName && (
+                                  <Link
+                                    href={`/players/${task.playerId}?from=/tasks`}
+                                    className="text-[10px] px-2 py-0.5 rounded bg-mgsr-teal/20 text-mgsr-teal font-medium hover:bg-mgsr-teal/30 transition"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    {task.playerName}
+                                  </Link>
+                                )}
                               </div>
                             </div>
                             <div className="flex items-center gap-1 shrink-0 opacity-70 md:opacity-0 md:group-hover:opacity-100 transition-opacity">

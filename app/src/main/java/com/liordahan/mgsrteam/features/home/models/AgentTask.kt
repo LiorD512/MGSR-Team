@@ -29,5 +29,13 @@ data class AgentTask(
     val createdByAgentId: String = "",
     val createdByAgentName: String = "",
     @get:PropertyName("remindersSent") @set:PropertyName("remindersSent")
-    var remindersSent: List<Int> = emptyList()
+    var remindersSent: List<Int> = emptyList(),
+    /** Firestore document ID of the linked player (from Players collection). */
+    val playerId: String = "",
+    /** Display name of the linked player. */
+    val playerName: String = "",
+    /** TM profile URL for navigation (Android uses this). */
+    val playerTmProfile: String = "",
+    /** Optional template ID when created from player page. */
+    val templateId: String = ""
 )

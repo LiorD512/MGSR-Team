@@ -299,6 +299,7 @@ fun DashboardScreen(
                 TasksSummaryWidget(
                     agentTasks = state.agentTasks,
                     accounts = state.allAccounts,
+                    navController = navController,
                     onViewAllClick = { navController.navigate(Screens.TasksScreen.route) },
                     onAddTaskClick = { showAddTaskSheet = true },
                     onTaskClick = { task ->
@@ -1491,6 +1492,7 @@ private fun MyAgentHubSection(
                     overview.upcomingTasks.forEach { task ->
                         HubTaskRow(
                             task = task,
+                            navController = navController,
                             onToggle = { onTaskToggle(task) },
                             onClick = { navController.navigate(Screens.taskDetailRoute(task.id)) }
                         )
@@ -1647,7 +1649,12 @@ private fun HubStatItem(value: String, label: String, color: Color) {
 }
 
 @Composable
-private fun HubTaskRow(task: AgentTask, onToggle: () -> Unit, onClick: () -> Unit) {
+private fun HubTaskRow(
+    task: AgentTask,
+    navController: NavController,
+    onToggle: () -> Unit,
+    onClick: () -> Unit
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -1666,14 +1673,33 @@ private fun HubTaskRow(task: AgentTask, onToggle: () -> Unit, onClick: () -> Uni
             modifier = Modifier.size(20.dp)
         )
         Spacer(Modifier.width(10.dp))
-        Text(
-            text = task.title,
-            style = regularTextStyle(HomeTextPrimary, 13.sp),
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f),
-            textDecoration = if (task.isCompleted) TextDecoration.LineThrough else TextDecoration.None
-        )
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = task.title,
+                style = regularTextStyle(HomeTextPrimary, 13.sp),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                textDecoration = if (task.isCompleted) TextDecoration.LineThrough else TextDecoration.None
+            )
+            if (task.playerName.isNotBlank() && task.playerTmProfile.isNotBlank()) {
+                Spacer(Modifier.height(2.dp))
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(HomeTealAccent.copy(alpha = 0.2f))
+                        .clickable {
+                            navController.navigate("${Screens.PlayerInfoScreen.route}/${android.net.Uri.encode(task.playerTmProfile)}")
+                        }
+                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                ) {
+                    Text(
+                        text = task.playerName,
+                        style = boldTextStyle(HomeTealAccent, 10.sp),
+                        maxLines = 1
+                    )
+                }
+            }
+        }
         if (task.dueDate > 0) {
             Spacer(Modifier.width(8.dp))
             val dueDateText = formatDueDate(task.dueDate)
@@ -2093,6 +2119,7 @@ private fun TransferWindowRow(
 private fun TasksSummaryWidget(
     agentTasks: Map<String, List<AgentTask>>,
     accounts: List<Account>,
+    navController: NavController,
     onViewAllClick: () -> Unit,
     onAddTaskClick: () -> Unit,
     onTaskClick: (AgentTask) -> Unit,
@@ -2219,6 +2246,24 @@ private fun TasksSummaryWidget(
                                         style = regularTextStyle(HomeTextSecondary, 10.sp),
                                         maxLines = 1
                                     )
+                                }
+                                if (task.playerName.isNotBlank() && task.playerTmProfile.isNotBlank()) {
+                                    Spacer(Modifier.height(4.dp))
+                                    Box(
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(6.dp))
+                                            .background(HomeTealAccent.copy(alpha = 0.2f))
+                                            .clickable {
+                                                navController.navigate("${Screens.PlayerInfoScreen.route}/${android.net.Uri.encode(task.playerTmProfile)}")
+                                            }
+                                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                                    ) {
+                                        Text(
+                                            text = task.playerName,
+                                            style = boldTextStyle(HomeTealAccent, 10.sp),
+                                            maxLines = 1
+                                        )
+                                    }
                                 }
                             }
                             if (task.dueDate > 0L) {
