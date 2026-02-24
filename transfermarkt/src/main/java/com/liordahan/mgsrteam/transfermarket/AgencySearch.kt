@@ -48,30 +48,19 @@ class AgencySearch {
                         ?: rows.firstOrNull { row ->
                             row.agency.agencyUrl?.let { isPersonInAgencyStaff(personName, it) } == true
                         }?.agency
-                        ?: rows.first().agency
+                        // Don't blindly fall back to first result — return null if no match
                 }
             }
         }
 
     /**
      * Fetches an agency page and checks if the person name appears in the Staff section.
-     * Falls back to raw HTML contains check if structured parsing finds nothing.
+     * Uses structured parsing only — no raw HTML fallback to avoid false positives.
      */
     suspend fun isPersonInAgencyStaff(personName: String, agencyUrl: String): Boolean =
         withContext(Dispatchers.IO) {
             val staffNames = fetchAgencyPageStaffNames(agencyUrl)
-            if (staffNames.any { namesMatch(personName, it) }) return@withContext true
-            try {
-                val (_, html) = TransfermarktHttp.fetchDocumentWithHtml(agencyUrl)
-                val words = personName.trim().split(Regex("\\s+")).filter { it.length > 1 }
-                if (words.size >= 2) {
-                    html.contains(words.last(), ignoreCase = true) && html.contains(words.first(), ignoreCase = true)
-                } else {
-                    html.contains(personName.trim(), ignoreCase = true)
-                }
-            } catch (e: Exception) {
-                false
-            }
+            staffNames.any { namesMatch(personName, it) }
         }
 
     private fun namesMatch(a: String, b: String): Boolean {
@@ -151,31 +140,27 @@ class AgencySearch {
 
     /**
      * Returns agency rows (agency + agent names from same row) for person name search.
-     * Used to pick the correct agency when multiple match (e.g. Boris Laval -> 2SAgency).
+     * Single fetch — parses both agency models and agent names in one pass.
      */
     private suspend fun getAgencyRowsByPersonName(personName: String): List<AgencyRow>? =
         withContext(Dispatchers.IO) {
-            when (val results = getAgencySearchResults(personName)) {
-                is TransfermarktResult.Success -> {
-                    if (results.data.isEmpty()) return@withContext emptyList()
-                    try {
-                        val encodedQuery = URLEncoder.encode(personName.trim(), StandardCharsets.UTF_8.toString())
-                        val searchUrl = "$TRANSFERMARKT_BASE_URL/schnellsuche/ergebnis/schnellsuche?query=$encodedQuery"
-                        val doc = TransfermarktHttp.fetchDocument(searchUrl)
-                        val agentSection = doc.select("div.box").firstOrNull {
-                            val h = it.select("h2.content-box-headline").text()
-                            h.contains("agent", ignoreCase = true) || h.contains("berater", ignoreCase = true)
-                        } ?: return@withContext results.data.map { AgencyRow(it, emptyList()) }
+            try {
+                val encodedQuery = URLEncoder.encode(personName.trim(), StandardCharsets.UTF_8.toString())
+                val searchUrl = "$TRANSFERMARKT_BASE_URL/schnellsuche/ergebnis/schnellsuche?query=$encodedQuery"
+                val doc = TransfermarktHttp.fetchDocument(searchUrl)
 
-                        agentSection.select("table.items tr.odd, table.items tr.even")
-                            .mapNotNull { row -> parseAgencyRowWithAgents(row) }
-                            .takeIf { it.isNotEmpty() }
-                            ?: results.data.map { AgencyRow(it, emptyList()) }
-                    } catch (e: Exception) {
-                        results.data.map { AgencyRow(it, emptyList()) }
-                    }
-                }
-                is TransfermarktResult.Failed -> null
+                val agentSection = doc.select("div.box").firstOrNull {
+                    val h = it.select("h2.content-box-headline").text()
+                    h.contains("agent", ignoreCase = true) || h.contains("berater", ignoreCase = true) ||
+                        h.contains("agencies", ignoreCase = true)
+                } ?: return@withContext emptyList()
+
+                agentSection.select("table.items tr.odd, table.items tr.even")
+                    .mapNotNull { row -> parseAgencyRowWithAgents(row) }
+                    .takeIf { it.isNotEmpty() }
+                    ?: emptyList()
+            } catch (e: Exception) {
+                null // null = network/parse error, empty = no results
             }
         }
 

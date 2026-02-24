@@ -1766,12 +1766,15 @@ private fun AddEditContactBottomSheet(
     }
 
     androidx.compose.runtime.LaunchedEffect(pickedName, selectedContactType, isEdit, retryAgencyDiscoveryTrigger) {
-        if (isEdit || selectedContactType != ContactType.AGENCY) return@LaunchedEffect
+        // Skip initial run in edit (agency already set) but allow retry
+        if (isEdit && retryAgencyDiscoveryTrigger == 0) return@LaunchedEffect
+        if (selectedContactType != ContactType.AGENCY) return@LaunchedEffect
         val name = pickedName.trim()
         if (name.length < 2) return@LaunchedEffect
         try {
             isDiscoveringAgency = true
             discoveryError = null
+            showManualAgencySearch = false
             agencyDiscovery.discoverAgencyForPerson(name)
                 .onSuccess { discovered ->
                     discovered?.let {
@@ -2039,6 +2042,7 @@ private fun AddEditContactBottomSheet(
                                 selectedAgency = it
                                 agencyName = it.agencyName ?: agencySearchQuery
                                 agencyUrl = it.agencyUrl ?: ""
+                                showManualAgencySearch = false
                             },
                             onNotCorrectAgency = {
                                 showManualAgencySearch = true
@@ -2050,6 +2054,9 @@ private fun AddEditContactBottomSheet(
                             onTryAgain = {
                                 showManualAgencySearch = false
                                 discoveryError = null
+                                agencyName = ""
+                                agencyUrl = ""
+                                selectedAgency = null
                                 retryAgencyDiscoveryTrigger++
                             }
                         )
@@ -2743,6 +2750,7 @@ private fun Step1AgencyContent(
     onNotCorrectAgency: () -> Unit,
     onTryAgain: () -> Unit
 ) {
+    val context = LocalContext.current
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -2836,6 +2844,14 @@ private fun Step1AgencyContent(
                         .clip(RoundedCornerShape(10.dp))
                         .background(HomeDarkBackground)
                         .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(10.dp))
+                        .clickWithNoRipple {
+                            if (agencyUrl.isNotBlank()) {
+                                try {
+                                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(agencyUrl))
+                                    context.startActivity(intent)
+                                } catch (_: ActivityNotFoundException) { }
+                            }
+                        }
                         .padding(12.dp)
                 ) {
                     Row(
@@ -2980,61 +2996,6 @@ private fun Step1AgencyContent(
                             agency = agencyItem,
                             onClick = { onSelectAgency(agencyItem) }
                         )
-                    }
-                }
-            }
-        }
-        selectedAgency?.let { agency ->
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(HomeDarkBackground)
-                    .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(10.dp))
-                    .padding(12.dp)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Business,
-                        contentDescription = null,
-                        tint = HomeBlueAccent,
-                        modifier = Modifier.size(28.dp)
-                    )
-                    Spacer(Modifier.width(10.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = agency.agencyName ?: "",
-                            style = boldTextStyle(HomeTextPrimary, 12.sp),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        Text(
-                            text = stringResource(R.string.contacts_agency_found_on_tm),
-                            style = regularTextStyle(HomeTextSecondary, 11.sp)
-                        )
-                    }
-                }
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 12.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    TextButton(
-                        onClick = onNotCorrectAgency,
-                        modifier = Modifier.height(48.dp)
-                    ) {
-                        Text(stringResource(R.string.contacts_agency_not_correct), style = regularTextStyle(HomeTealAccent, 12.sp))
-                    }
-                    TextButton(
-                        onClick = onTryAgain,
-                        modifier = Modifier.height(48.dp)
-                    ) {
-                        Text(stringResource(R.string.contacts_try_again), style = regularTextStyle(HomeTealAccent, 12.sp))
                     }
                 }
             }
