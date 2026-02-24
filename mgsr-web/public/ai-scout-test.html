@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="he">
+<head>
+  <meta charset="utf-8">
+  <title>AI Scout - בדיקת API</title>
+  <style>
+    body { font-family: system-ui; max-width: 600px; margin: 2rem auto; padding: 1rem; background: #1a1a1a; color: #eee; }
+    button { padding: 0.75rem 1.5rem; background: #0d9488; color: #fff; border: none; border-radius: 8px; cursor: pointer; font-size: 1rem; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    pre { background: #222; padding: 1rem; border-radius: 8px; overflow-x: auto; font-size: 12px; white-space: pre-wrap; }
+    .status { margin: 1rem 0; padding: 0.5rem; border-radius: 4px; }
+    .ok { background: #065f46; color: #6ee7b7; }
+    .err { background: #7f1d1d; color: #fca5a5; }
+    .loading { color: #fbbf24; }
+  </style>
+</head>
+<body>
+  <h1>AI Scout – בדיקת API</h1>
+  <p>פתח דף זה ב־<code>http://localhost:3000/ai-scout-test.html</code> (אחרי <code>npm run dev</code>)</p>
+  <p><strong>אם אין תגובה:</strong> וודא שהטרמינל מציג "Ready" ואפשר לפתוח <a href="http://localhost:3000" style="color:#6ee7b7">localhost:3000</a></p>
+  
+  <button id="btnPing" onclick="runPing()">1. Ping (מיידי)</button>
+  <button id="btnDemo" onclick="runDemo()">2. דמו (מיידי – נתונים מזויפים)</button>
+  <button id="btn" onclick="runTest()">3. חיפוש אמיתי (עד 2 דקות – Scout server)</button>
+  <div id="status"></div>
+  <pre id="output"></pre>
+
+  <script>
+    async function runPing() {
+      const status = document.getElementById('status');
+      const output = document.getElementById('output');
+      status.className = 'status loading';
+      status.textContent = 'שולח ping...';
+      output.textContent = '';
+      try {
+        const res = await fetch('/api/scout/ping');
+        const data = await res.json();
+        status.className = 'status ok';
+        status.textContent = res.ok ? 'Ping הצליח – השרת מגיב' : 'Ping נכשל: ' + res.status;
+        output.textContent = JSON.stringify(data, null, 2);
+      } catch (err) {
+        status.className = 'status err';
+        status.textContent = 'שגיאה: ' + err.message + ' – אולי השרת לא רץ? הרץ: npm run dev';
+        output.textContent = String(err);
+      }
+    }
+
+    async function runDemo() {
+      const btn = document.getElementById('btnDemo');
+      const status = document.getElementById('status');
+      const output = document.getElementById('output');
+      btn.disabled = true;
+      status.className = 'status loading';
+      status.textContent = 'שולח בקשת דמו...';
+      output.textContent = '';
+      try {
+        const start = Date.now();
+        const res = await fetch('/api/scout/search', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query: '4 חלוצים עד גיל 28', lang: 'he', demo: true }),
+        });
+        const data = await res.json();
+        const elapsed = ((Date.now() - start) / 1000).toFixed(1);
+        status.className = 'status ok';
+        status.textContent = 'דמו הצליח (' + elapsed + 's) – ' + (data.results?.length ?? 0) + ' תוצאות';
+        output.textContent = JSON.stringify(data, null, 2);
+      } catch (err) {
+        status.className = 'status err';
+        status.textContent = 'שגיאה: ' + err.message;
+        output.textContent = String(err);
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    async function runTest() {
+      const btn = document.getElementById('btn');
+      const status = document.getElementById('status');
+      const output = document.getElementById('output');
+      
+      btn.disabled = true;
+      status.className = 'status loading';
+      status.textContent = 'שולח בקשה... (עד 2 דקות – Scout server עלול להיות איטי)';
+      output.textContent = '';
+
+      const query = 'תמצא לי 4 חלוצים עד גיל 28 שכבשו לפחות 5 שערים ומתאימים לשוק הישראלי';
+      
+      try {
+        const start = Date.now();
+        const res = await fetch('/api/scout/search', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query, lang: 'he', initial: true, demo: false }),
+        });
+        const elapsed = ((Date.now() - start) / 1000).toFixed(1);
+        const data = await res.json();
+
+        if (res.ok) {
+          status.className = 'status ok';
+          status.textContent = `הצלחה (${elapsed}s) – ${data.results?.length ?? 0} תוצאות`;
+          output.textContent = JSON.stringify(data, null, 2);
+        } else {
+          status.className = 'status err';
+          status.textContent = `שגיאה ${res.status} (${elapsed}s)`;
+          output.textContent = JSON.stringify(data, null, 2);
+        }
+      } catch (err) {
+        status.className = 'status err';
+        status.textContent = 'שגיאה: ' + err.message;
+        output.textContent = String(err);
+      } finally {
+        btn.disabled = false;
+      }
+    }
+  </script>
+</body>
+</html>

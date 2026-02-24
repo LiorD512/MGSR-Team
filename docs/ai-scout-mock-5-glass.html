@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AI Scout — Glass</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+      --glass: rgba(30, 41, 59, 0.5);
+      --glass-border: rgba(148, 163, 184, 0.1);
+      --accent: #22d3ee;
+      --accent-dim: rgba(34, 211, 238, 0.15);
+      --text: #f1f5f9;
+      --muted: #94a3b8;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Outfit', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      line-height: 1.6;
+      position: relative;
+      overflow-x: hidden;
+    }
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: 
+        radial-gradient(ellipse 80% 50% at 20% 20%, rgba(34, 211, 238, 0.08) 0%, transparent 50%),
+        radial-gradient(ellipse 60% 40% at 80% 80%, rgba(34, 211, 238, 0.05) 0%, transparent 50%);
+      pointer-events: none;
+    }
+
+    .page {
+      max-width: 880px;
+      margin: 0 auto;
+      padding: 2.5rem 1.5rem;
+      position: relative;
+      z-index: 1;
+    }
+
+    .glass-panel {
+      background: var(--glass);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid var(--glass-border);
+      border-radius: 20px;
+      padding: 2rem;
+      margin-bottom: 1.5rem;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+    }
+
+    .header {
+      margin-bottom: 1.75rem;
+    }
+    .header h1 {
+      font-size: 1.75rem;
+      font-weight: 600;
+      color: var(--text);
+      letter-spacing: -0.02em;
+    }
+    .header .sub {
+      font-size: 0.95rem;
+      color: var(--muted);
+      margin-top: 0.35rem;
+      font-weight: 400;
+    }
+
+    .search-wrap {
+      margin-bottom: 1.25rem;
+    }
+    .search-wrap textarea {
+      width: 100%;
+      min-height: 100px;
+      padding: 1.25rem 1.5rem;
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid var(--glass-border);
+      border-radius: 14px;
+      color: var(--text);
+      font-family: 'Outfit', sans-serif;
+      font-size: 1rem;
+      line-height: 1.6;
+      resize: vertical;
+      transition: all 0.3s ease;
+    }
+    .search-wrap textarea::placeholder { color: var(--muted); }
+    .search-wrap textarea:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-dim);
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+    .btn-search {
+      padding: 0.65rem 1.5rem;
+      background: var(--accent);
+      color: #0f172a;
+      border: none;
+      font-family: 'Outfit', sans-serif;
+      font-size: 0.95rem;
+      font-weight: 600;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    .btn-search:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 8px 24px rgba(34, 211, 238, 0.3);
+    }
+    .demo-toggle {
+      font-size: 0.9rem;
+      color: var(--muted);
+      cursor: pointer;
+    }
+
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-top: 1rem;
+    }
+    .chip {
+      padding: 0.45rem 1rem;
+      background: rgba(148, 163, 184, 0.08);
+      border: 1px solid var(--glass-border);
+      border-radius: 10px;
+      color: var(--muted);
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: all 0.25s ease;
+    }
+    .chip:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: var(--accent-dim);
+    }
+
+    .interpretation-glass {
+      margin: 1.5rem 0;
+      padding: 1.25rem 1.5rem;
+      background: var(--accent-dim);
+      border: 1px solid rgba(34, 211, 238, 0.25);
+      border-radius: 14px;
+      font-size: 0.95rem;
+      line-height: 1.6;
+    }
+    .interpretation-glass .label {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 0.5rem;
+    }
+
+    .results-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1rem;
+    }
+    .results-header h2 {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+    .btn-load {
+      padding: 0.45rem 1rem;
+      background: var(--accent-dim);
+      border: 1px solid var(--accent);
+      color: var(--accent);
+      font-size: 0.85rem;
+      font-weight: 500;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.25s;
+    }
+    .btn-load:hover { background: var(--accent); color: #0f172a; }
+
+    .player-card-glass {
+      display: flex;
+      align-items: flex-start;
+      gap: 1.25rem;
+      padding: 1.25rem 1.5rem;
+      background: rgba(15, 23, 42, 0.4);
+      border: 1px solid var(--glass-border);
+      border-radius: 14px;
+      margin-bottom: 0.75rem;
+      transition: all 0.25s ease;
+    }
+    .player-card-glass:hover {
+      border-color: rgba(34, 211, 238, 0.3);
+      background: rgba(34, 211, 238, 0.05);
+    }
+    .player-card-glass:last-child { margin-bottom: 0; }
+    .player-avatar {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, var(--accent) 0%, #06b6d4 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Outfit', sans-serif;
+      font-size: 1rem;
+      font-weight: 700;
+      color: #0f172a;
+      flex-shrink: 0;
+    }
+    .player-info { flex: 1; min-width: 0; }
+    .player-name {
+      font-size: 1.05rem;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 0.25rem;
+    }
+    .player-meta {
+      font-size: 0.85rem;
+      color: var(--muted);
+      margin-bottom: 0.5rem;
+    }
+    .player-analysis {
+      font-size: 0.85rem;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+    .match-pill {
+      flex-shrink: 0;
+      padding: 0.4rem 0.9rem;
+      background: var(--accent-dim);
+      border: 1px solid var(--accent);
+      color: var(--accent);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.9rem;
+      font-weight: 600;
+      border-radius: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="glass-panel">
+      <header class="header">
+        <h1>AI Scout</h1>
+        <p class="sub">Natural language player search — describe what you need in plain English</p>
+      </header>
+
+      <div class="search-wrap">
+        <textarea placeholder="e.g. find me 20 strikers up to 26 years old that are very fast and with at least 5 goals last season">find me 20 strikers up to 26 years old that are very fast and with at least 5 goals last season</textarea>
+        <div class="actions">
+          <label class="demo-toggle">
+            <input type="checkbox"> Demo mode (instant mock results)
+          </label>
+          <button class="btn-search">Search</button>
+        </div>
+      </div>
+
+      <div class="chips">
+        <button class="chip">young left wingers under 23 with pace</button>
+        <button class="chip">experienced center backs over 28</button>
+        <button class="chip">10 strikers fast with good dribble</button>
+      </div>
+
+      <div class="interpretation-glass">
+        <p class="label">AI interpretation</p>
+        <p>Position: CF, SS. Age: ≤26. Attributes: pace, speed. Stats: ≥5 goals last season. Limit: 20 players.</p>
+      </div>
+
+      <div class="results-header">
+        <h2>5 results</h2>
+        <button class="btn-load">Load all 20</button>
+      </div>
+
+      <div class="player-card-glass">
+        <div class="player-avatar">VO</div>
+        <div class="player-info">
+          <p class="player-name">Victor Osimhen</p>
+          <p class="player-meta">24 · CF · €120M · Napoli</p>
+          <p class="player-analysis">Elite pace and finishing. 26 goals in Serie A 22/23. Strong in transition, suits high-press systems.</p>
+        </div>
+        <span class="match-pill">94%</span>
+      </div>
+      <div class="player-card-glass">
+        <div class="player-avatar">JD</div>
+        <div class="player-info">
+          <p class="player-name">Jonathan David</p>
+          <p class="player-meta">23 · CF · €45M · Lille</p>
+          <p class="player-analysis">Quick, clinical finisher. 24 goals in Ligue 1. Good movement off the ball.</p>
+        </div>
+        <span class="match-pill">91%</span>
+      </div>
+      <div class="player-card-glass">
+        <div class="player-avatar">EF</div>
+        <div class="player-info">
+          <p class="player-name">Evan Ferguson</p>
+          <p class="player-meta">19 · CF · €35M · Brighton</p>
+          <p class="player-analysis">Rapid development. 6 goals in 19 PL apps. Physical presence, excellent hold-up play.</p>
+        </div>
+        <span class="match-pill">88%</span>
+      </div>
+      <div class="player-card-glass">
+        <div class="player-avatar">RH</div>
+        <div class="player-info">
+          <p class="player-name">Rasmus Højlund</p>
+          <p class="player-meta">20 · CF · €65M · Man United</p>
+          <p class="player-analysis">Explosive pace, strong in behind. 10 goals in UCL. Room to grow.</p>
+        </div>
+        <span class="match-pill">87%</span>
+      </div>
+      <div class="player-card-glass">
+        <div class="player-avatar">BŠ</div>
+        <div class="player-info">
+          <p class="player-name">Benjamin Šeško</p>
+          <p class="player-meta">20 · CF · €40M · RB Leipzig</p>
+          <p class="player-analysis">Tall, fast target man. 14 goals in Bundesliga. Great aerial threat.</p>
+        </div>
+        <span class="match-pill">85%</span>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

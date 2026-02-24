@@ -68,6 +68,8 @@ interface RosteredPlayer {
   contractExpired?: string;
   haveMandate?: boolean;
   agency?: string;
+  agencyUrl?: string;
+  linkedContactId?: string;
 }
 
 interface ContactFull {
@@ -475,52 +477,47 @@ export default function DashboardPage() {
   }, [accounts, eventsThisWeek, isRtl]);
 
   const leadingAgencies = useMemo(() => {
-    // Build from roster players first – include ALL agencies that have players
-    const byAgency = new Map<
-      string,
-      { agencyName: string; agencyCountry?: string; contactNames: string[] }
-    >();
-    for (const p of rosterPlayers) {
-      const raw = p.agency?.trim() ?? '';
-      if (raw.length === 0) continue;
-      const key = raw.toLowerCase();
-      if (!byAgency.has(key)) {
-        byAgency.set(key, {
-          agencyName: raw,
-          agencyCountry: undefined,
-          contactNames: [],
-        });
-      }
-    }
-    // Enrich with contact data when available
     const agencyContacts = contacts.filter(
       (c) => c.contactType === 'AGENCY' && (c.agencyName?.trim() ?? '').length > 0
     );
+    const byAgency = new Map<
+      string,
+      { agencyName: string; agencyCountry?: string; contactNames: string[]; contactIds: string[]; agencyUrls: string[] }
+    >();
     for (const c of agencyContacts) {
       const agencyName = c.agencyName!.trim();
       const key = agencyName.toLowerCase();
       const contactName = c.name?.trim();
+      const agencyUrl = c.agencyUrl?.trim();
       if (!byAgency.has(key)) {
         byAgency.set(key, {
           agencyName,
           agencyCountry: c.agencyCountry?.trim() || undefined,
           contactNames: contactName ? [contactName] : [],
+          contactIds: [c.id],
+          agencyUrls: agencyUrl ? [agencyUrl] : [],
         });
       } else {
         const entry = byAgency.get(key)!;
-        if (c.agencyCountry?.trim()) entry.agencyCountry = c.agencyCountry!.trim();
         if (contactName && !entry.contactNames.includes(contactName)) {
           entry.contactNames.push(contactName);
+        }
+        entry.contactIds.push(c.id);
+        if (agencyUrl && !entry.agencyUrls.includes(agencyUrl)) {
+          entry.agencyUrls.push(agencyUrl);
         }
       }
     }
     const counts: { agencyName: string; agencyCountry?: string; contactNames: string[]; count: number }[] = [];
     for (const [key, entry] of Array.from(byAgency.entries())) {
       const count = rosterPlayers.filter((p) => {
+        if (entry.contactIds.includes(p.linkedContactId ?? '')) return true;
+        const playerUrl = p.agencyUrl?.trim();
+        if (playerUrl && entry.agencyUrls.includes(playerUrl)) return true;
         const playerAgency = (p.agency?.trim() ?? '').toLowerCase();
         return playerAgency.length > 0 && playerAgency === key;
       }).length;
-      counts.push({ ...entry, count });
+      counts.push({ agencyName: entry.agencyName, agencyCountry: entry.agencyCountry, contactNames: entry.contactNames, count });
     }
     const withPlayers = counts.filter((x) => x.count > 0);
     const maxCount = Math.max(...withPlayers.map((x) => x.count), 1);

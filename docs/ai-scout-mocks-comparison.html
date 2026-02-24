@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AI Scout — Design Variants</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Outfit:wght@400;500;600&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --mgsr-dark: #0F1923;
+      --mgsr-card: #1A2736;
+      --mgsr-border: #253545;
+      --mgsr-teal: #4DB6AC;
+      --mgsr-text: #E8EAED;
+      --mgsr-muted: #8C999B;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Outfit', sans-serif; background: var(--mgsr-dark); color: var(--mgsr-text); min-height: 100vh; line-height: 1.5; }
+    .font-display { font-family: 'Syne', sans-serif; }
+
+    .app-shell { display: flex; min-height: 100vh; }
+    .sidebar {
+      width: 224px; flex-shrink: 0; background: var(--mgsr-card); border-right: 1px solid var(--mgsr-border);
+      display: flex; flex-direction: column;
+    }
+    .sidebar-logo {
+      padding: 1rem; border-bottom: 1px solid var(--mgsr-border);
+      display: flex; align-items: center; gap: 0.75rem;
+    }
+    .sidebar-logo span { font-family: 'Syne', sans-serif; font-size: 1.25rem; font-weight: 700; color: var(--mgsr-teal); }
+    .sidebar-nav { flex: 1; padding: 1rem; }
+    .sidebar-nav a {
+      display: block; padding: 0.75rem 1rem; border-radius: 0.5rem; color: var(--mgsr-muted);
+      font-size: 0.9rem; text-decoration: none; margin-bottom: 0.25rem; transition: all 0.2s;
+    }
+    .sidebar-nav a:hover { color: var(--mgsr-text); background: var(--mgsr-dark); }
+    .sidebar-nav a.active { background: rgba(77, 182, 172, 0.2); color: var(--mgsr-teal); }
+    .main-content { flex: 1; overflow: auto; padding: 1.5rem; position: relative; }
+
+    .variant-nav {
+      display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1.5rem; padding-bottom: 1rem;
+      border-bottom: 1px solid var(--mgsr-border);
+    }
+    .variant-btn {
+      padding: 0.5rem 1rem; background: transparent; border: 1px solid transparent;
+      color: var(--mgsr-muted); font-size: 0.85rem; font-weight: 500; cursor: pointer;
+      border-radius: 0.5rem; transition: all 0.2s;
+    }
+    .variant-btn:hover { color: var(--mgsr-text); }
+    .variant-btn.active { color: var(--mgsr-teal); border-color: var(--mgsr-teal); }
+    .variant-panel { display: none; }
+    .variant-panel.active { display: block; }
+
+    /* ═══════════════════════════════════════════════════════════════
+       Variant A: HERO COMMAND — Search as the star
+       Large input, gradient glow, match rings on cards
+       ═══════════════════════════════════════════════════════════════ */
+    .v-a .content {
+      max-width: 52rem; margin: 0 auto;
+      position: relative;
+    }
+    .v-a .main-content::before {
+      content: '';
+      position: absolute; top: -20%; left: -10%; width: 50%; height: 60%;
+      background: radial-gradient(ellipse, rgba(77, 182, 172, 0.08) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .v-a .hero {
+      margin-bottom: 2.5rem;
+    }
+    .v-a .hero h1 {
+      font-family: 'Syne', sans-serif; font-size: 2.5rem; font-weight: 800; color: var(--mgsr-text);
+      letter-spacing: -0.03em; line-height: 1.1; margin-bottom: 0.5rem;
+    }
+    .v-a .hero .sub {
+      font-size: 1rem; color: var(--mgsr-muted); margin-bottom: 2rem;
+    }
+    .v-a .search-hero {
+      position: relative;
+      padding: 1.5rem; border-radius: 1.25rem;
+      background: linear-gradient(135deg, rgba(26, 39, 54, 0.9) 0%, rgba(15, 25, 35, 0.95) 100%);
+      border: 1px solid rgba(77, 182, 172, 0.2);
+      box-shadow: 0 4px 24px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.03);
+    }
+    .v-a .search-hero::after {
+      content: ''; position: absolute; inset: -1px; border-radius: 1.25rem;
+      padding: 1px; background: linear-gradient(135deg, rgba(77, 182, 172, 0.3) 0%, transparent 50%, transparent 100%);
+      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite: xor; mask-composite: exclude;
+      pointer-events: none;
+    }
+    .v-a .search-hero textarea {
+      width: 100%; min-height: 100px; padding: 1.25rem 1.5rem;
+      background: rgba(15, 25, 35, 0.6); border: 1px solid var(--mgsr-border);
+      border-radius: 0.75rem; color: var(--mgsr-text); font-size: 1rem; line-height: 1.6;
+      resize: vertical; transition: all 0.3s ease;
+    }
+    .v-a .search-hero textarea::placeholder { color: var(--mgsr-muted); }
+    .v-a .search-hero textarea:focus {
+      outline: none; border-color: var(--mgsr-teal);
+      box-shadow: 0 0 0 3px rgba(77, 182, 172, 0.2);
+    }
+    .v-a .search-row {
+      display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-top: 1rem;
+    }
+    .v-a .btn-search {
+      padding: 0.75rem 1.75rem; border-radius: 0.75rem; background: var(--mgsr-teal);
+      color: var(--mgsr-dark); border: none; font-weight: 600; font-size: 0.95rem;
+      cursor: pointer; transition: all 0.2s;
+    }
+    .v-a .btn-search:hover {
+      background: #5fc9c0; transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(77, 182, 172, 0.4);
+    }
+    .v-a .chips { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1rem; }
+    .v-a .chip {
+      padding: 0.35rem 0.75rem; border-radius: 0.5rem;
+      background: rgba(77, 182, 172, 0.08); border: 1px solid rgba(77, 182, 172, 0.2);
+      color: var(--mgsr-muted); font-size: 0.8rem; cursor: pointer; transition: all 0.2s;
+    }
+    .v-a .chip:hover { color: var(--mgsr-teal); border-color: var(--mgsr-teal); background: rgba(77, 182, 172, 0.15); }
+    .v-a .interpretation {
+      margin: 1.5rem 0; padding: 1rem 1.25rem;
+      background: rgba(77, 182, 172, 0.08); border-left: 3px solid var(--mgsr-teal);
+      border-radius: 0 0.5rem 0.5rem 0; font-size: 0.9rem; line-height: 1.5;
+    }
+    .v-a .interpretation .label { font-weight: 600; color: var(--mgsr-teal); margin-bottom: 0.35rem; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; }
+    .v-a .results-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 1rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--mgsr-border);
+    }
+    .v-a .results-header .count { font-weight: 600; font-size: 0.95rem; }
+    .v-a .btn-load {
+      padding: 0.4rem 1rem; border-radius: 0.5rem; background: rgba(77, 182, 172, 0.15);
+      border: 1px solid rgba(77, 182, 172, 0.4); color: var(--mgsr-teal);
+      font-size: 0.8rem; font-weight: 500; cursor: pointer; transition: all 0.2s;
+    }
+    .v-a .btn-load:hover { background: rgba(77, 182, 172, 0.25); }
+    .v-a .player-card {
+      display: flex; align-items: flex-start; gap: 1.25rem;
+      padding: 1.25rem 1.5rem; margin-bottom: 0.75rem;
+      background: var(--mgsr-card); border: 1px solid var(--mgsr-border);
+      border-radius: 1rem; transition: all 0.25s ease;
+    }
+    .v-a .player-card:hover {
+      border-color: rgba(77, 182, 172, 0.3);
+      box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+    }
+    .v-a .player-card:last-child { margin-bottom: 0; }
+    .v-a .match-ring {
+      width: 48px; height: 48px; flex-shrink: 0;
+      border-radius: 50%;
+      background: conic-gradient(var(--mgsr-teal) 0deg calc(var(--pct) * 3.6deg), var(--mgsr-border) calc(var(--pct) * 3.6deg) 360deg);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .v-a .match-ring-inner {
+      width: 38px; height: 38px; border-radius: 50%; background: var(--mgsr-card);
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'Syne', sans-serif; font-size: 0.85rem; font-weight: 700; color: var(--mgsr-teal);
+    }
+    .v-a .player-info { flex: 1; min-width: 0; }
+    .v-a .player-name { font-weight: 600; font-size: 1.05rem; color: var(--mgsr-text); margin-bottom: 0.25rem; }
+    .v-a .player-meta { font-size: 0.85rem; color: var(--mgsr-muted); margin-bottom: 0.4rem; }
+    .v-a .player-analysis { font-size: 0.8rem; color: var(--mgsr-muted); line-height: 1.5; opacity: 0.95; }
+
+    /* ═══════════════════════════════════════════════════════════════
+       Variant B: SCOUT DOSSIER — Editorial, premium report feel
+       Serif accents, clean cards, subtle pitch texture
+       ═══════════════════════════════════════════════════════════════ */
+    .v-b .content { max-width: 54rem; margin: 0 auto; }
+    .v-b .main-content {
+      background-image: repeating-linear-gradient(
+        0deg, transparent, transparent 40px,
+        rgba(37, 53, 69, 0.15) 40px,
+        rgba(37, 53, 69, 0.15) 41px
+      );
+    }
+    .v-b .masthead {
+      margin-bottom: 2rem; padding-bottom: 1.5rem; border-bottom: 1px solid var(--mgsr-border);
+    }
+    .v-b .masthead .eyebrow {
+      font-family: 'Instrument Serif', serif; font-size: 0.9rem; font-style: italic;
+      color: var(--mgsr-teal); margin-bottom: 0.35rem;
+    }
+    .v-b .masthead h1 {
+      font-family: 'Instrument Serif', serif; font-size: 2.75rem; font-weight: 400;
+      color: var(--mgsr-text); line-height: 1.15; letter-spacing: -0.02em;
+    }
+    .v-b .masthead .sub {
+      font-family: 'Instrument Serif', serif; font-style: italic; font-size: 1.05rem;
+      color: var(--mgsr-muted); margin-top: 0.75rem;
+    }
+    .v-b .search-block {
+      padding: 1.5rem; background: var(--mgsr-card); border: 1px solid var(--mgsr-border);
+      border-radius: 1rem; margin-bottom: 1.5rem;
+    }
+    .v-b .search-block textarea {
+      width: 100%; min-height: 90px; padding: 1.25rem;
+      background: var(--mgsr-dark); border: 1px solid var(--mgsr-border);
+      border-radius: 0.75rem; color: var(--mgsr-text); font-family: 'Outfit', sans-serif;
+      font-size: 1rem; line-height: 1.6; resize: vertical;
+    }
+    .v-b .search-block textarea:focus { outline: none; border-color: var(--mgsr-teal); }
+    .v-b .search-block .btn-search {
+      margin-top: 1rem; padding: 0.7rem 1.5rem; border-radius: 0.5rem;
+      background: var(--mgsr-teal); color: var(--mgsr-dark); border: none;
+      font-weight: 600; font-size: 0.9rem; cursor: pointer;
+    }
+    .v-b .search-block .btn-search:hover { background: #5fc9c0; }
+    .v-b .chips { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1rem; }
+    .v-b .chip {
+      padding: 0.4rem 0.9rem; border-radius: 0.5rem;
+      background: transparent; border: 1px solid var(--mgsr-border);
+      color: var(--mgsr-muted); font-size: 0.8rem; cursor: pointer;
+    }
+    .v-b .chip:hover { color: var(--mgsr-teal); border-color: var(--mgsr-teal); }
+    .v-b .interpretation {
+      margin: 1.5rem 0; padding: 1.25rem 1.5rem;
+      background: rgba(77, 182, 172, 0.06); border-left: 4px solid var(--mgsr-teal);
+      font-family: 'Instrument Serif', serif; font-style: italic; font-size: 1rem;
+      color: var(--mgsr-text); line-height: 1.6;
+    }
+    .v-b .interpretation .label {
+      font-family: 'Outfit', sans-serif; font-style: normal; font-size: 0.75rem;
+      font-weight: 600; color: var(--mgsr-teal); text-transform: uppercase;
+      letter-spacing: 0.1em; margin-bottom: 0.5rem;
+    }
+    .v-b .results-section h2 {
+      font-family: 'Instrument Serif', serif; font-size: 1.5rem; font-weight: 400;
+      color: var(--mgsr-text); margin-bottom: 1rem;
+    }
+    .v-b .player-card {
+      padding: 1.25rem 0; border-bottom: 1px solid var(--mgsr-border);
+    }
+    .v-b .player-card:last-child { border-bottom: none; }
+    .v-b .player-number {
+      font-family: 'Instrument Serif', serif; font-size: 1.5rem;
+      color: var(--mgsr-teal); opacity: 0.6; margin-bottom: 0.25rem;
+    }
+    .v-b .player-name {
+      font-family: 'Instrument Serif', serif; font-size: 1.35rem; color: var(--mgsr-text);
+      margin-bottom: 0.35rem;
+    }
+    .v-b .player-meta { font-size: 0.9rem; color: var(--mgsr-muted); margin-bottom: 0.5rem; }
+    .v-b .player-analysis {
+      font-size: 0.9rem; color: var(--mgsr-muted); line-height: 1.55;
+    }
+    .v-b .match-badge {
+      display: inline-block; padding: 0.2rem 0.55rem; margin-left: 0.5rem;
+      background: rgba(77, 182, 172, 0.2); color: var(--mgsr-teal);
+      font-size: 0.8rem; font-weight: 600; border-radius: 0.25rem;
+    }
+    .v-b .results-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+    .v-b .btn-load {
+      padding: 0.4rem 1rem; border-radius: 0.5rem; background: transparent;
+      border: 1px solid var(--mgsr-teal); color: var(--mgsr-teal);
+      font-size: 0.8rem; font-weight: 500; cursor: pointer;
+    }
+    .v-b .btn-load:hover { background: rgba(77, 182, 172, 0.15); }
+
+    /* ═══════════════════════════════════════════════════════════════
+       Variant C: BOLD MINIMAL — Maximum impact, minimal chrome
+       One huge input, ultra-clean results
+       ═══════════════════════════════════════════════════════════════ */
+    .v-c .content { max-width: 44rem; margin: 0 auto; }
+    .v-c .hero {
+      text-align: center; margin-bottom: 2.5rem;
+    }
+    .v-c .hero h1 {
+      font-family: 'Syne', sans-serif; font-size: 2.25rem; font-weight: 800;
+      color: var(--mgsr-text); letter-spacing: -0.04em; line-height: 1.1;
+    }
+    .v-c .hero .sub { font-size: 0.95rem; color: var(--mgsr-muted); margin-top: 0.5rem; }
+    .v-c .search-hero {
+      margin-bottom: 1.5rem;
+    }
+    .v-c .search-hero textarea {
+      width: 100%; min-height: 120px; padding: 1.5rem 1.75rem;
+      background: var(--mgsr-card); border: 2px solid var(--mgsr-border);
+      border-radius: 1rem; color: var(--mgsr-text); font-size: 1.05rem;
+      line-height: 1.6; resize: vertical; transition: all 0.2s;
+    }
+    .v-c .search-hero textarea::placeholder { color: var(--mgsr-muted); }
+    .v-c .search-hero textarea:focus {
+      outline: none; border-color: var(--mgsr-teal);
+      box-shadow: 0 0 0 4px rgba(77, 182, 172, 0.15);
+    }
+    .v-c .search-actions { display: flex; justify-content: center; margin-top: 1rem; }
+    .v-c .btn-search {
+      padding: 0.85rem 2.5rem; border-radius: 0.75rem; background: var(--mgsr-teal);
+      color: var(--mgsr-dark); border: none; font-weight: 700; font-size: 1rem;
+      cursor: pointer; transition: all 0.2s;
+    }
+    .v-c .btn-search:hover { background: #5fc9c0; transform: scale(1.02); }
+    .v-c .chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.5rem; margin-top: 1rem; }
+    .v-c .chip {
+      padding: 0.4rem 0.85rem; border-radius: 2rem;
+      background: transparent; border: 1px solid var(--mgsr-border);
+      color: var(--mgsr-muted); font-size: 0.8rem; cursor: pointer;
+    }
+    .v-c .chip:hover { color: var(--mgsr-teal); border-color: var(--mgsr-teal); }
+    .v-c .interpretation {
+      margin: 1.5rem 0; padding: 1rem 1.25rem;
+      background: rgba(77, 182, 172, 0.08); border-radius: 0.75rem;
+      font-size: 0.9rem; color: var(--mgsr-text); line-height: 1.5;
+    }
+    .v-c .interpretation .label { font-weight: 600; color: var(--mgsr-teal); margin-bottom: 0.35rem; font-size: 0.75rem; text-transform: uppercase; }
+    .v-c .results-header { display: flex; justify-content: space-between; margin-bottom: 1rem; }
+    .v-c .btn-load {
+      padding: 0.4rem 1rem; border-radius: 0.5rem; background: rgba(77, 182, 172, 0.15);
+      color: var(--mgsr-teal); border: none; font-size: 0.8rem; font-weight: 500; cursor: pointer;
+    }
+    .v-c .player-row {
+      padding: 1.25rem 0; border-bottom: 1px solid var(--mgsr-border);
+      transition: background 0.2s;
+    }
+    .v-c .player-row:hover { background: rgba(77, 182, 172, 0.04); }
+    .v-c .player-row:last-child { border-bottom: none; }
+    .v-c .player-name { font-weight: 600; font-size: 1.05rem; margin-bottom: 0.2rem; }
+    .v-c .player-meta { font-size: 0.85rem; color: var(--mgsr-muted); margin-bottom: 0.35rem; }
+    .v-c .player-analysis { font-size: 0.8rem; color: var(--mgsr-muted); line-height: 1.5; }
+    .v-c .match-pill {
+      float: right; padding: 0.25rem 0.6rem; border-radius: 0.375rem;
+      background: var(--mgsr-teal); color: var(--mgsr-dark);
+      font-size: 0.8rem; font-weight: 700;
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="sidebar-logo">
+        <div style="width:40px;height:40px;background:var(--mgsr-teal);border-radius:8px;opacity:0.9;"></div>
+        <span class="font-display">MGSR Team</span>
+      </div>
+      <nav class="sidebar-nav">
+        <a href="#">Dashboard</a>
+        <a href="#">Tasks</a>
+        <a href="#">Players</a>
+        <a href="#">Add Player</a>
+        <a href="#" class="active">AI Scout</a>
+        <a href="#">Shortlist</a>
+        <a href="#">Shadow Teams</a>
+        <a href="#">Contacts</a>
+        <a href="#">Requests</a>
+      </nav>
+    </aside>
+
+    <div class="main-content">
+      <div class="variant-nav">
+        <button class="variant-btn active" data-variant="a">A. Hero Command</button>
+        <button class="variant-btn" data-variant="b">B. Scout Dossier</button>
+        <button class="variant-btn" data-variant="c">C. Bold Minimal</button>
+      </div>
+
+      <!-- Variant A: Hero Command -->
+      <div class="variant-panel v-a active" data-panel="a">
+        <div class="content">
+          <div class="hero">
+            <h1 class="font-display">Find your next signing</h1>
+            <p class="sub">Describe the player you need in plain language. AI searches thousands of profiles to find the best matches.</p>
+          </div>
+          <div class="search-hero">
+            <textarea placeholder="e.g. 20 strikers up to 26, very fast, at least 5 goals last season">find me 20 strikers up to 26 years old that are very fast and with at least 5 goals last season</textarea>
+            <div class="search-row">
+              <div class="chips">
+                <button class="chip">young left wingers under 23 with pace</button>
+                <button class="chip">experienced center backs over 28</button>
+                <button class="chip">10 strikers fast with good dribble</button>
+              </div>
+              <button class="btn-search">Search</button>
+            </div>
+          </div>
+          <div class="interpretation">
+            <p class="label">How we interpreted your request</p>
+            <p>Position: CF, SS. Age: ≤26. Attributes: pace, speed. Stats: ≥5 goals last season. Limit: 20 players.</p>
+          </div>
+          <div class="results-header">
+            <span class="count">5 of 20 results</span>
+            <button class="btn-load">Load all 20</button>
+          </div>
+          <div class="player-card" style="--pct: 94">
+            <div class="match-ring" style="--pct: 94"><div class="match-ring-inner">94%</div></div>
+            <div class="player-info">
+              <p class="player-name">Victor Osimhen</p>
+              <p class="player-meta">24 · CF · €120M · Napoli</p>
+              <p class="player-analysis">Elite pace and finishing. 26 goals in Serie A 22/23. Strong in transition, suits high-press systems.</p>
+            </div>
+          </div>
+          <div class="player-card" style="--pct: 91">
+            <div class="match-ring" style="--pct: 91"><div class="match-ring-inner">91%</div></div>
+            <div class="player-info">
+              <p class="player-name">Jonathan David</p>
+              <p class="player-meta">23 · CF · €45M · Lille</p>
+              <p class="player-analysis">Quick, clinical finisher. 24 goals in Ligue 1. Good movement off the ball.</p>
+            </div>
+          </div>
+          <div class="player-card" style="--pct: 88">
+            <div class="match-ring" style="--pct: 88"><div class="match-ring-inner">88%</div></div>
+            <div class="player-info">
+              <p class="player-name">Evan Ferguson</p>
+              <p class="player-meta">19 · CF · €35M · Brighton</p>
+              <p class="player-analysis">Rapid development. 6 goals in 19 PL apps. Physical presence, excellent hold-up play.</p>
+            </div>
+          </div>
+          <div class="player-card" style="--pct: 87">
+            <div class="match-ring" style="--pct: 87"><div class="match-ring-inner">87%</div></div>
+            <div class="player-info">
+              <p class="player-name">Rasmus Højlund</p>
+              <p class="player-meta">20 · CF · €65M · Man United</p>
+              <p class="player-analysis">Explosive pace, strong in behind. 10 goals in UCL. Room to grow.</p>
+            </div>
+          </div>
+          <div class="player-card" style="--pct: 85">
+            <div class="match-ring" style="--pct: 85"><div class="match-ring-inner">85%</div></div>
+            <div class="player-info">
+              <p class="player-name">Benjamin Šeško</p>
+              <p class="player-meta">20 · CF · €40M · RB Leipzig</p>
+              <p class="player-analysis">Tall, fast target man. 14 goals in Bundesliga. Great aerial threat.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Variant B: Scout Dossier -->
+      <div class="variant-panel v-b" data-panel="b">
+        <div class="content">
+          <div class="masthead">
+            <p class="eyebrow">Recruitment Intelligence</p>
+            <h1>AI Scout</h1>
+            <p class="sub">Describe the player you need. Our AI finds the best matches from thousands of profiles.</p>
+          </div>
+          <div class="search-block">
+            <textarea placeholder="e.g. find me 20 strikers up to 26 years old that are very fast and with at least 5 goals last season">find me 20 strikers up to 26 years old that are very fast and with at least 5 goals last season</textarea>
+            <div class="chips">
+              <button class="chip">young left wingers under 23 with pace</button>
+              <button class="chip">experienced center backs over 28</button>
+              <button class="chip">10 strikers fast with good dribble</button>
+            </div>
+            <button class="btn-search">Search</button>
+          </div>
+          <div class="interpretation">
+            <p class="label">How we interpreted your request</p>
+            <p>Position: CF, SS. Age: ≤26. Attributes: pace, speed. Stats: ≥5 goals last season. Limit: 20 players.</p>
+          </div>
+          <div class="results-section">
+            <div class="results-header">
+              <h2>5 of 20 results</h2>
+              <button class="btn-load">Load all 20</button>
+            </div>
+            <div class="player-card">
+              <p class="player-number">01</p>
+              <p class="player-name">Victor Osimhen <span class="match-badge">94%</span></p>
+              <p class="player-meta">24 · CF · €120M · Napoli</p>
+              <p class="player-analysis">Elite pace and finishing. 26 goals in Serie A 22/23. Strong in transition, suits high-press systems.</p>
+            </div>
+            <div class="player-card">
+              <p class="player-number">02</p>
+              <p class="player-name">Jonathan David <span class="match-badge">91%</span></p>
+              <p class="player-meta">23 · CF · €45M · Lille</p>
+              <p class="player-analysis">Quick, clinical finisher. 24 goals in Ligue 1. Good movement off the ball.</p>
+            </div>
+            <div class="player-card">
+              <p class="player-number">03</p>
+              <p class="player-name">Evan Ferguson <span class="match-badge">88%</span></p>
+              <p class="player-meta">19 · CF · €35M · Brighton</p>
+              <p class="player-analysis">Rapid development. 6 goals in 19 PL apps. Physical presence, excellent hold-up play.</p>
+            </div>
+            <div class="player-card">
+              <p class="player-number">04</p>
+              <p class="player-name">Rasmus Højlund <span class="match-badge">87%</span></p>
+              <p class="player-meta">20 · CF · €65M · Man United</p>
+              <p class="player-analysis">Explosive pace, strong in behind. 10 goals in UCL. Room to grow.</p>
+            </div>
+            <div class="player-card">
+              <p class="player-number">05</p>
+              <p class="player-name">Benjamin Šeško <span class="match-badge">85%</span></p>
+              <p class="player-meta">20 · CF · €40M · RB Leipzig</p>
+              <p class="player-analysis">Tall, fast target man. 14 goals in Bundesliga. Great aerial threat.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Variant C: Bold Minimal -->
+      <div class="variant-panel v-c" data-panel="c">
+        <div class="content">
+          <div class="hero">
+            <h1 class="font-display">AI Scout</h1>
+            <p class="sub">Describe your ideal player. AI finds the best matches.</p>
+          </div>
+          <div class="search-hero">
+            <textarea placeholder="e.g. 20 strikers up to 26, very fast, at least 5 goals last season">find me 20 strikers up to 26 years old that are very fast and with at least 5 goals last season</textarea>
+            <div class="search-actions">
+              <button class="btn-search">Search</button>
+            </div>
+            <div class="chips">
+              <button class="chip">young left wingers under 23</button>
+              <button class="chip">experienced center backs over 28</button>
+              <button class="chip">10 strikers fast with dribble</button>
+            </div>
+          </div>
+          <div class="interpretation">
+            <p class="label">Interpretation</p>
+            <p>Position: CF, SS. Age: ≤26. Pace, speed. ≥5 goals. Limit: 20.</p>
+          </div>
+          <div class="results-header">
+            <span class="count">5 of 20</span>
+            <button class="btn-load">Load all 20</button>
+          </div>
+          <div class="player-row">
+            <p class="player-name">Victor Osimhen <span class="match-pill">94%</span></p>
+            <p class="player-meta">24 · CF · €120M · Napoli</p>
+            <p class="player-analysis">Elite pace and finishing. 26 goals in Serie A 22/23. Strong in transition, suits high-press systems.</p>
+          </div>
+          <div class="player-row">
+            <p class="player-name">Jonathan David <span class="match-pill">91%</span></p>
+            <p class="player-meta">23 · CF · €45M · Lille</p>
+            <p class="player-analysis">Quick, clinical finisher. 24 goals in Ligue 1. Good movement off the ball.</p>
+          </div>
+          <div class="player-row">
+            <p class="player-name">Evan Ferguson <span class="match-pill">88%</span></p>
+            <p class="player-meta">19 · CF · €35M · Brighton</p>
+            <p class="player-analysis">Rapid development. 6 goals in 19 PL apps. Physical presence, excellent hold-up play.</p>
+          </div>
+          <div class="player-row">
+            <p class="player-name">Rasmus Højlund <span class="match-pill">87%</span></p>
+            <p class="player-meta">20 · CF · €65M · Man United</p>
+            <p class="player-analysis">Explosive pace, strong in behind. 10 goals in UCL. Room to grow.</p>
+          </div>
+          <div class="player-row">
+            <p class="player-name">Benjamin Šeško <span class="match-pill">85%</span></p>
+            <p class="player-meta">20 · CF · €40M · RB Leipzig</p>
+            <p class="player-analysis">Tall, fast target man. 14 goals in Bundesliga. Great aerial threat.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    document.querySelectorAll('.variant-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const v = btn.dataset.variant;
+        document.querySelectorAll('.variant-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.variant-panel').forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+        document.querySelector(`.variant-panel[data-panel="${v}"]`).classList.add('active');
+      });
+    });
+  </script>
+</body>
+</html>
