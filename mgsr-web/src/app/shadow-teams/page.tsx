@@ -255,8 +255,10 @@ export default function ShadowTeamsPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogSlot, setDialogSlot] = useState<{ index: number } | null>(null);
   const [menuOpenIndex, setMenuOpenIndex] = useState<number | null>(null);
+  const [formationMenuOpen, setFormationMenuOpen] = useState(false);
   const [slotsLoading, setSlotsLoading] = useState(false);
   const selectedAccountIdRef = useRef(selectedAccountId);
+  const formationMenuRef = useRef<HTMLDivElement>(null);
   selectedAccountIdRef.current = selectedAccountId;
 
   const currentAccountId = useMemo(() => {
@@ -322,6 +324,17 @@ export default function ShadowTeamsPage() {
       }, delay);
     });
   }, [selectedAccountId]);
+
+  useEffect(() => {
+    if (!formationMenuOpen) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (formationMenuRef.current && !formationMenuRef.current.contains(e.target as Node)) {
+        setFormationMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [formationMenuOpen]);
 
   const saveShadowTeam = useCallback(
     (newSlots: PositionSlot[], newFormationId: string) => {
@@ -428,26 +441,26 @@ export default function ShadowTeamsPage() {
 
   return (
     <AppLayout>
-      <div className="max-w-[720px] mx-auto px-4 py-12 sm:py-16">
+      <div className="max-w-[720px] mx-auto px-3 sm:px-4 py-6 sm:py-12 md:py-16">
         {/* Premium header */}
-        <header className="mb-12">
-          <h1 className="font-serif text-[2rem] sm:text-[2.25rem] font-normal text-mgsr-text tracking-tight">
+        <header className="mb-6 sm:mb-12">
+          <h1 className="font-serif text-[1.5rem] sm:text-[2rem] md:text-[2.25rem] font-normal text-mgsr-text tracking-tight">
             {t('shadow_teams_title')}
           </h1>
-          <p className="font-premium text-[0.9rem] text-[#6b7d8a] mt-1.5">
+          <p className="font-premium text-[0.8rem] sm:text-[0.9rem] text-[#6b7d8a] mt-1">
             {t('shadow_teams_subtitle')}
           </p>
         </header>
 
         {/* Toolbar — agent pills + formation */}
-        <div className="flex flex-wrap items-center justify-between gap-6 mb-8">
+        <div className="flex flex-wrap items-center justify-between gap-4 sm:gap-6 mb-5 sm:mb-8">
           <div className="flex gap-2 overflow-x-auto pb-1">
             {accounts.map((acc) => (
               <button
                 key={acc.id}
                 type="button"
                 onClick={() => setSelectedAccountId(acc.id)}
-                className={`px-4 py-2.5 rounded-full font-premium text-sm font-medium transition-all duration-250 whitespace-nowrap flex items-center gap-1.5 ${
+                className={`px-3 py-2 sm:px-4 sm:py-2.5 rounded-full font-premium text-xs sm:text-sm font-medium transition-all duration-250 whitespace-nowrap flex items-center gap-1.5 ${
                   selectedAccountId === acc.id
                     ? 'bg-mgsr-teal/10 border border-mgsr-teal text-mgsr-teal'
                     : 'border border-mgsr-teal/25 text-[#6b7d8a] hover:border-mgsr-teal hover:text-mgsr-teal'
@@ -455,33 +468,58 @@ export default function ShadowTeamsPage() {
               >
                 {getDisplayName(acc, isRtl)}
                 {acc.id === currentAccountId && (
-                  <span className="text-[10px] opacity-80">({t('shadow_teams_you')})</span>
+                  <span className="text-[9px] sm:text-[10px] opacity-80">({t('shadow_teams_you')})</span>
                 )}
               </button>
             ))}
           </div>
           {isOwnTeam && (
-            <div className="flex items-center gap-2">
-              <label className="font-premium text-[0.8rem] text-[#6b7d8a] font-medium">
+            <div className="relative flex items-center gap-2" ref={formationMenuRef}>
+              <label className="font-premium text-[0.75rem] sm:text-[0.8rem] text-[#6b7d8a] font-medium">
                 {t('shadow_teams_formation')}
               </label>
-              <select
-                value={formationId}
-                onChange={(e) => handleFormationChange(e.target.value)}
-                className="px-4 py-2.5 rounded-full bg-mgsr-card/60 border border-mgsr-teal/20 text-mgsr-text font-premium text-sm focus:outline-none focus:ring-2 focus:ring-mgsr-teal/30 focus:border-mgsr-teal/40 transition-colors"
+              <button
+                type="button"
+                onClick={() => setFormationMenuOpen((o) => !o)}
+                className="min-h-[40px] sm:min-h-[48px] min-w-[100px] sm:min-w-[120px] px-3 sm:px-4 py-2 sm:py-2.5 rounded-full bg-mgsr-card/60 border border-mgsr-teal/20 text-mgsr-text font-premium text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-mgsr-teal/30 focus:border-mgsr-teal/40 transition-colors flex items-center justify-between gap-2"
               >
-                {FORMATIONS.map((f) => (
-                  <option key={f.id} value={f.id}>
-                    {f.label}
-                  </option>
-                ))}
-              </select>
+                <span>{formationId}</span>
+                <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              {formationMenuOpen && (
+                <div className="absolute top-full mt-2 left-0 right-0 min-w-[180px] sm:min-w-[200px] max-h-[70vh] overflow-y-auto py-1.5 sm:py-2 rounded-xl bg-mgsr-card border border-mgsr-border shadow-xl z-50">
+                  {FORMATIONS.map((f) => (
+                    <button
+                      key={f.id}
+                      type="button"
+                      onClick={() => {
+                        handleFormationChange(f.id);
+                        setFormationMenuOpen(false);
+                      }}
+                      className={`w-full min-h-[44px] sm:min-h-[52px] px-4 sm:px-5 py-2.5 sm:py-3 text-left font-premium text-base sm:text-lg flex items-center justify-between transition-colors ${
+                        formationId === f.id
+                          ? 'bg-mgsr-teal/15 text-mgsr-teal'
+                          : 'text-mgsr-text hover:bg-mgsr-teal/10'
+                      }`}
+                    >
+                      {f.label}
+                      {formationId === f.id && (
+                        <svg className="w-4 h-4 sm:w-5 sm:h-5 text-mgsr-teal shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>
 
         {/* Pitch — unchanged */}
-        <div className="shadow-teams-pitch rounded-2xl overflow-hidden bg-mgsr-card border border-mgsr-teal/10 shadow-[0_4px_24px_rgba(0,0,0,0.2)] relative">
+        <div className="shadow-teams-pitch rounded-xl sm:rounded-2xl overflow-hidden bg-mgsr-card border border-mgsr-teal/10 shadow-[0_4px_24px_rgba(0,0,0,0.2)] relative">
           <style>{`.shadow-teams-pitch [class*="c1ae8d3x"] { visibility: hidden; }`}</style>
           <SoccerLineUp
             size="responsive"
@@ -532,7 +570,7 @@ export default function ShadowTeamsPage() {
           </div>
         </div>
 
-        <p className="font-premium text-sm text-[#6b7d8a] mt-6 text-center opacity-90">
+        <p className="font-premium text-xs sm:text-sm text-[#6b7d8a] mt-4 sm:mt-6 text-center opacity-90">
           {t('shadow_teams_hint')}
         </p>
       </div>
@@ -578,8 +616,8 @@ function SlotCircle({
   onCloseMenu,
   t,
 }: SlotCircleProps) {
-  const dim = size === 'sm' ? 'w-10 h-10' : 'w-[56px] h-[56px]';
-  const plusSize = size === 'sm' ? 'text-lg' : 'text-xl';
+  const dim = size === 'sm' ? 'w-10 h-10' : 'w-[38px] h-[38px] sm:w-[44px] sm:h-[44px] md:w-[56px] md:h-[56px]';
+  const plusSize = size === 'sm' ? 'text-base' : 'text-base sm:text-lg md:text-xl';
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -611,7 +649,7 @@ function SlotCircle({
       </button>
       {player && (
         <span
-          className="text-xs font-semibold text-mgsr-teal text-center max-w-[90px] block leading-tight"
+          className="text-[9px] sm:text-[10px] md:text-xs font-semibold text-mgsr-teal text-center max-w-[70px] sm:max-w-[80px] md:max-w-[90px] block leading-tight"
           style={{ textShadow: '0 0 2px rgba(0,0,0,0.9), 0 1px 3px rgba(0,0,0,0.8)' }}
         >
           {player.fullName}

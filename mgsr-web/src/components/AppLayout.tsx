@@ -10,14 +10,13 @@ const navItems = [
   { href: '/dashboard', labelKey: 'nav_dashboard' },
   { href: '/tasks', labelKey: 'nav_tasks' },
   { href: '/players', labelKey: 'nav_players' },
-  { href: '/players/add', labelKey: 'nav_add_player' },
-  { href: '/ai-scout', labelKey: 'nav_ai_scout' },
   { href: '/shortlist', labelKey: 'nav_shortlist' },
   { href: '/shadow-teams', labelKey: 'nav_shadow_teams' },
-  { href: '/contacts', labelKey: 'nav_contacts' },
   { href: '/releases', labelKey: 'nav_releases' },
-  { href: '/returnees', labelKey: 'nav_returnee' },
   { href: '/contract-finisher', labelKey: 'nav_contract_finisher' },
+  { href: '/returnees', labelKey: 'nav_returnee' },
+  { href: '/ai-scout', labelKey: 'nav_ai_scout' },
+  { href: '/contacts', labelKey: 'nav_contacts' },
   { href: '/requests', labelKey: 'nav_requests' },
 ];
 

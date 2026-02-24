@@ -333,7 +333,7 @@ export default function PlayerInfoPage() {
           setPlayer((p) => (p ? { ...p, passportDetails } : null));
         }
 
-        // 5. Feed event for mandate
+        // 5. Feed event for mandate (exactly like Android)
         if (docType === 'MANDATE') {
           await addDoc(collection(db, 'FeedEvents'), {
             type: 'MANDATE_UPLOADED',
@@ -341,7 +341,7 @@ export default function PlayerInfoPage() {
             playerImage: player.profileImage,
             playerTmProfile: tmProfile,
             agentName: createdBy,
-            mandateExpiryAt: mandateExpiresAt,
+            ...(mandateExpiresAt != null && { mandateExpiryAt: mandateExpiresAt }),
             timestamp: Date.now(),
           });
         }
@@ -384,7 +384,7 @@ export default function PlayerInfoPage() {
           playerImage: player.profileImage,
           playerTmProfile: player.tmProfile,
           agentName: createdBy,
-          mandateExpiryAt: mandateExpiryAt ?? null,
+          ...(mandateExpiryAt != null && { mandateExpiryAt }),
           timestamp: Date.now(),
         });
       } catch {
@@ -845,23 +845,46 @@ export default function PlayerInfoPage() {
               </div>
             )}
 
-            {/* Mandate */}
-            {player.haveMandate !== undefined && (
-              <div className="p-5 rounded-xl bg-mgsr-card border border-mgsr-border">
-                <h3 className="text-sm font-semibold text-mgsr-muted uppercase tracking-wider mb-3">
-                  {t('player_info_mandate')}
-                </h3>
-                <span
-                  className={`inline-block px-3 py-1 rounded-lg text-sm font-medium ${
-                    player.haveMandate
-                      ? 'bg-mgsr-teal/20 text-mgsr-teal'
-                      : 'bg-mgsr-muted/20 text-mgsr-muted'
-                  }`}
-                >
-                  {player.haveMandate ? t('player_info_mandate_active') : t('player_info_mandate_inactive')}
-                </span>
+            {/* Mandate switch (like Android) */}
+            <div className="p-5 rounded-xl bg-mgsr-card border border-mgsr-border">
+              <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0 flex-1">
+                  <h3 className="text-sm font-semibold text-mgsr-muted uppercase tracking-wider mb-1">
+                    {t('player_info_mandate')}
+                  </h3>
+                  {player.haveMandate && (() => {
+                    const valid = documents.filter(
+                      (d) =>
+                        (d.type ?? '').toUpperCase() === 'MANDATE' &&
+                        !d.expired &&
+                        (d.expiresAt == null || d.expiresAt >= Date.now())
+                    );
+                    const maxExp = Math.max(0, ...valid.map((d) => d.expiresAt ?? 0));
+                    if (maxExp <= 0) return null;
+                    const d = new Date(maxExp);
+                    const str = `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+                    return (
+                      <p className="text-xs text-mgsr-muted mt-0.5" dir="ltr">
+                        {t('player_info_mandate_expires').replace('%s', str)}
+                      </p>
+                    );
+                  })()}
+                </div>
+                <div className="shrink-0 overflow-hidden rounded-full">
+                  <button
+                    role="switch"
+                    aria-checked={player.haveMandate ?? false}
+                    disabled={mandateToggling}
+                    onClick={() => handleMandateToggle(!(player.haveMandate ?? false))}
+                    className={`relative flex h-7 w-12 shrink-0 cursor-pointer items-center rounded-full border-0 px-0.5 transition-colors focus:outline-none focus:ring-2 focus:ring-mgsr-teal focus:ring-offset-2 focus:ring-offset-mgsr-dark disabled:opacity-50 disabled:cursor-not-allowed ${
+                      player.haveMandate ? 'bg-mgsr-teal justify-end' : 'bg-mgsr-muted/50 justify-start'
+                    }`}
+                  >
+                    <span className="pointer-events-none block h-5 w-5 shrink-0 rounded-full bg-white shadow" />
+                  </button>
+                </div>
               </div>
-            )}
+            </div>
 
             {/* Agency */}
             {(player.agency || player.agencyUrl) && (

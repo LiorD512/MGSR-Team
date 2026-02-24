@@ -47,10 +47,10 @@ export default function AiScoutPage() {
     if (!loading && !user) router.replace('/login');
   }, [user, loading, router]);
 
-  // Warm scout server on page load (reduces cold start when user searches)
   useEffect(() => {
     if (user) fetch('/api/scout/warm').catch(() => {});
   }, [user]);
+
   const [results, setResults] = useState<ScoutPlayerSuggestion[]>([]);
   const [interpretation, setInterpretation] = useState<string | null>(null);
   const [leagueInfo, setLeagueInfo] = useState<{
@@ -65,9 +65,9 @@ export default function AiScoutPage() {
   const [connectionTest, setConnectionTest] = useState<{ ok: boolean; msg: string } | null>(null);
   const [hasMore, setHasMore] = useState(false);
   const [requestedTotal, setRequestedTotal] = useState<number | null>(null);
-  const [demoMode, setDemoMode] = useState(false);
   const [seenUrls, setSeenUrls] = useState<string[]>([]);
   const [searchingOther, setSearchingOther] = useState(false);
+  const [lastSearchedQuery, setLastSearchedQuery] = useState<string | null>(null);
 
   const runConnectionTest = async () => {
     setConnectionTest(null);
@@ -97,24 +97,22 @@ export default function AiScoutPage() {
     setRequestedTotal(null);
     setSeenUrls([]);
     try {
-      // Progressive: first request gets 5 results (faster). Demo mode = instant mock data.
-      const data = await aiScoutSearch(q, lang, true, demoMode);
+      const data = await aiScoutSearch(q, lang, true, false);
       setResults(data.players);
       setInterpretation(data.interpretation ?? null);
       setLeagueInfo(data.leagueInfo ?? null);
       setHasMore(data.hasMore ?? false);
       setRequestedTotal(data.requestedTotal ?? null);
-      // Track seen player URLs for "Search Other Options"
       const urls = data.players
         .map((p) => p.transfermarktUrl)
         .filter((u): u is string => !!u);
       setSeenUrls(urls);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      setError(msg);
+      setError(err instanceof Error ? err.message : String(err));
       setResults([]);
     } finally {
       setSearching(false);
+      setLastSearchedQuery(q);
     }
   };
 
@@ -124,18 +122,16 @@ export default function AiScoutPage() {
     setLoadingMore(true);
     setError(null);
     try {
-      const data = await aiScoutSearch(q, lang, false, demoMode);
+      const data = await aiScoutSearch(q, lang, false, false);
       setResults(data.players);
       setInterpretation(data.interpretation ?? null);
       setHasMore(false);
-      // Accumulate all URLs from the full result set
       const urls = data.players
         .map((p) => p.transfermarktUrl)
         .filter((u): u is string => !!u);
       setSeenUrls(urls);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      setError(msg);
+      setError(err instanceof Error ? err.message : String(err));
     } finally {
       setLoadingMore(false);
     }
@@ -154,21 +150,18 @@ export default function AiScoutPage() {
     setSearchingOther(true);
     setError(null);
     try {
-      // Send all previously seen URLs so server excludes them
-      const data = await aiScoutSearch(q, lang, false, demoMode, seenUrls);
+      const data = await aiScoutSearch(q, lang, false, false, seenUrls);
       setResults(data.players);
       setInterpretation(data.interpretation ?? null);
       setLeagueInfo(data.leagueInfo ?? null);
       setHasMore(data.hasMore ?? false);
       setRequestedTotal(data.requestedTotal ?? null);
-      // Accumulate new URLs into seenUrls (keep old ones too)
       const newUrls = data.players
         .map((p) => p.transfermarktUrl)
         .filter((u): u is string => !!u);
       setSeenUrls((prev) => [...prev, ...newUrls.filter((u) => !prev.includes(u))]);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      setError(msg);
+      setError(err instanceof Error ? err.message : String(err));
     } finally {
       setSearchingOther(false);
     }
@@ -182,265 +175,255 @@ export default function AiScoutPage() {
     );
   }
 
+  const examples = lang === 'he' ? EXAMPLE_QUERIES_HE : EXAMPLE_QUERIES_EN;
+
   return (
     <AppLayout>
-      <div dir={isRtl ? 'rtl' : 'ltr'} className="max-w-4xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-display font-bold text-mgsr-text tracking-tight">
-            {t('ai_scout_title')}
-          </h1>
-          <p className="text-mgsr-muted mt-1 text-sm">
-            {t('ai_scout_subtitle')}
-          </p>
-        </div>
-
-        {/* Search */}
-        <div className="rounded-2xl border border-mgsr-border bg-mgsr-card p-4 md:p-6 mb-6">
-          <label htmlFor="ai-scout-query" className="sr-only">
-            {t('ai_scout_placeholder')}
-          </label>
-          <textarea
-            id="ai-scout-query"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder={t('ai_scout_placeholder')}
-            rows={3}
-            dir="auto"
-            className="w-full px-4 py-3 rounded-xl bg-mgsr-dark border border-mgsr-border text-mgsr-text placeholder:text-mgsr-muted focus:outline-none focus:ring-2 focus:ring-mgsr-teal/50 focus:border-mgsr-teal resize-none"
-            disabled={searching}
-          />
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-4">
-            <label className="flex items-center gap-2 text-xs text-mgsr-muted cursor-pointer">
-              <input
-                type="checkbox"
-                checked={demoMode}
-                onChange={(e) => setDemoMode(e.target.checked)}
-                className="rounded"
-              />
-              {lang === 'he' ? 'מצב דמו (תוצאות מיידיות לבדיקה)' : 'Demo mode (instant results for testing)'}
-            </label>
-            <button
-              type="button"
-              onClick={handleSearch}
-              disabled={searching || !query.trim()}
-              className="shrink-0 px-6 py-2.5 rounded-xl bg-mgsr-teal text-mgsr-dark font-semibold hover:bg-mgsr-teal/90 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-            >
-              {searching ? (
-                <>
-                  <span className="w-4 h-4 border-2 border-mgsr-dark/30 border-t-mgsr-dark rounded-full animate-spin shrink-0" />
-                  {t('ai_scout_searching')} — {t('ai_scout_searching_hint')}
-                </>
-              ) : (
-                t('ai_scout_search')
-              )}
-            </button>
-          </div>
-        </div>
-
-        {/* Example queries */}
-        <div className="mb-6">
-          <p className="text-sm text-mgsr-muted mb-2">{t('ai_scout_examples')}</p>
-          <div className="flex flex-wrap gap-2">
-            {(lang === 'he' ? EXAMPLE_QUERIES_HE : EXAMPLE_QUERIES_EN).map((ex) => (
-              <button
-                key={ex}
-                type="button"
-                onClick={() => setQuery(ex)}
-                className="text-xs px-3 py-1.5 rounded-lg bg-mgsr-card border border-mgsr-border text-mgsr-muted hover:text-mgsr-teal hover:border-mgsr-teal/50 transition"
-              >
-                {ex}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Error */}
-        {error && (
-          <div className="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
-            <p>{error}</p>
-            <div className="mt-2 flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => fetch('/api/scout/warm').then(() => setError(null))}
-                className="text-xs underline hover:no-underline"
-              >
-                {lang === 'he' ? 'הפעל שרת (warm) ונסה שוב' : 'Warm server & retry'}
-              </button>
-              <button
-                type="button"
-                onClick={runConnectionTest}
-                className="text-xs underline hover:no-underline"
-              >
-                {lang === 'he' ? 'בדוק חיבור' : 'Test connection'}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Connection test result */}
-        {connectionTest && (
+      <div dir={isRtl ? 'rtl' : 'ltr'} className="relative">
+        {/* Hero Command: radial gradient backdrop */}
+        <div
+          className="absolute inset-0 pointer-events-none overflow-hidden"
+          aria-hidden
+        >
           <div
-            className={`mb-6 p-4 rounded-xl border text-sm ${
-              connectionTest.ok
-                ? 'bg-green-500/10 border-green-500/30 text-green-400'
-                : 'bg-amber-500/10 border-amber-500/30 text-amber-400'
-            }`}
-          >
-            {connectionTest.msg}
-          </div>
-        )}
+            className="absolute -top-20 -left-[10%] w-[50%] h-[60%] opacity-100"
+            style={{
+              background: 'radial-gradient(ellipse, rgba(77, 182, 172, 0.08) 0%, transparent 70%)',
+            }}
+          />
+        </div>
 
-        {/* League market info - shown when filtering by league */}
-        {leagueInfo && (
-          <div className="mb-6 p-4 rounded-xl bg-amber-500/15 border-2 border-amber-500/50 shadow-lg">
-            <p className="text-base font-bold text-amber-400 mb-2">
-              {lang === 'he' ? 'ממוצע ערך שוק בליגה שביקשת' : 'League market average (used for filter)'}
-            </p>
-            <p className="text-sm text-mgsr-text" dir={lang === 'he' ? 'rtl' : 'ltr'}>
-              {lang === 'he' ? (
-                <>
-                  <strong>{leagueInfo.leagueName}</strong>: ממוצע €{(leagueInfo.avgEuro / 1000).toFixed(0)}k
-                  {' '}(רק שחקנים עם שווי). טווח סינון: €{(leagueInfo.minEuro / 1000).toFixed(0)}k – €{(leagueInfo.maxEuro / 1000).toFixed(0)}k (50%–200%).
-                </>
-              ) : (
-                <>
-                  <strong>{leagueInfo.leagueName}</strong>: avg €{(leagueInfo.avgEuro / 1000).toFixed(0)}k
-                  {' '}(players with value only). Filter range: €{(leagueInfo.minEuro / 1000).toFixed(0)}k – €{(leagueInfo.maxEuro / 1000).toFixed(0)}k (50%–200%).
-                </>
-              )}
+        <div className="relative max-w-[52rem] mx-auto">
+          {/* Hero */}
+          <div className="mb-10">
+            <h1 className="text-3xl md:text-4xl font-display font-extrabold text-mgsr-text tracking-tight">
+              {t('ai_scout_title')}
+            </h1>
+            <p className="text-sm md:text-base text-mgsr-muted mt-1">
+              {t('ai_scout_subtitle')}
             </p>
           </div>
-        )}
 
-        {/* AI interpretation - show even with 0 results so user sees how query was parsed */}
-        {interpretation && (
-          <div className="mb-6 p-4 rounded-xl bg-mgsr-teal/10 border border-mgsr-teal/30">
-            <p className="text-sm font-medium text-mgsr-teal mb-1">{t('ai_scout_interpretation')}</p>
-            <p className="text-sm text-mgsr-text" dir={lang === 'he' ? 'rtl' : 'ltr'}>
-              {interpretation}
-            </p>
-          </div>
-        )}
-
-        {/* Results */}
-        {results.length > 0 && (
-          <div className="rounded-2xl border border-mgsr-border overflow-hidden bg-mgsr-card">
-            <div className="px-4 py-3 border-b border-mgsr-border bg-mgsr-dark/30 flex items-center justify-between gap-2">
-              <p className="font-semibold text-mgsr-text">
-                {t('ai_scout_results_count').replace('{count}', String(results.length))}
-              </p>
-              <div className="flex items-center gap-2">
-                {hasMore && requestedTotal != null && (
-                  <button
-                    type="button"
-                    onClick={handleLoadMore}
-                    disabled={loadingMore}
-                    className="text-sm px-3 py-1.5 rounded-lg bg-mgsr-teal/20 text-mgsr-teal hover:bg-mgsr-teal/30 transition disabled:opacity-50"
-                  >
-                    {loadingMore
-                      ? (lang === 'he' ? 'טוען...' : 'Loading...')
-                      : lang === 'he'
-                        ? `הרחב ל־${requestedTotal} שחקנים`
-                        : `Load all ${requestedTotal} players`}
-                  </button>
-                )}
+          {/* Search */}
+          <div className="mb-8">
+            <div className="rounded-2xl border border-mgsr-border bg-mgsr-card p-4 md:p-6">
+              <label htmlFor="ai-scout-query" className="sr-only">
+                {t('ai_scout_placeholder')}
+              </label>
+              <textarea
+                id="ai-scout-query"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder={t('ai_scout_placeholder')}
+                rows={3}
+                dir={isRtl ? 'rtl' : 'ltr'}
+                className="w-full px-4 py-3 rounded-xl bg-mgsr-dark border border-mgsr-border text-mgsr-text placeholder:text-mgsr-muted focus:outline-none focus:ring-2 focus:ring-mgsr-teal/30 focus:border-mgsr-teal resize-none"
+                disabled={searching}
+              />
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mt-4">
+                <div className="flex flex-wrap gap-2">
+                  {examples.map((ex) => (
+                    <button
+                      key={ex}
+                      type="button"
+                      onClick={() => setQuery(ex)}
+                      disabled={searching}
+                      dir={isRtl ? 'rtl' : 'ltr'}
+                      className="px-3 py-1.5 rounded-lg text-xs border border-mgsr-border text-mgsr-muted hover:text-mgsr-teal hover:border-mgsr-teal/50 transition disabled:opacity-50"
+                    >
+                      {ex}
+                    </button>
+                  ))}
+                </div>
                 <button
                   type="button"
-                  onClick={handleSearchOtherOptions}
-                  disabled={searchingOther}
-                  className="text-sm px-3 py-1.5 rounded-lg bg-amber-500/20 text-amber-400 hover:bg-amber-500/30 transition disabled:opacity-50 flex items-center gap-1.5"
+                  onClick={handleSearch}
+                  disabled={searching || !query.trim()}
+                  className="shrink-0 px-6 py-2.5 rounded-xl bg-mgsr-teal text-mgsr-dark font-semibold hover:bg-mgsr-teal/90 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 min-w-[120px]"
                 >
-                  {searchingOther ? (
+                  {searching ? (
                     <>
-                      <span className="w-3.5 h-3.5 border-2 border-amber-400/30 border-t-amber-400 rounded-full animate-spin shrink-0" />
-                      {lang === 'he' ? 'מחפש...' : 'Searching...'}
+                      <span className="w-4 h-4 border-2 border-mgsr-dark/30 border-t-mgsr-dark rounded-full animate-spin shrink-0" />
+                      {t('ai_scout_searching')}
                     </>
                   ) : (
-                    lang === 'he' ? 'חפש אפשרויות נוספות' : 'Search other options'
+                    t('ai_scout_search')
                   )}
                 </button>
               </div>
             </div>
-            <div className="divide-y divide-mgsr-border">
-              {results.map((s) => {
-                const url = s.transfermarktUrl;
-                return (
-                  <div
-                    key={url || s.name}
-                    className="flex flex-col gap-1 p-4 hover:bg-mgsr-dark/20 transition"
-                  >
-                    <div className="flex items-start gap-3">
-                      {s.transfermarktUrl ? (
-                        <a
-                          href={s.transfermarktUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex-1 min-w-0 hover:underline"
-                        >
-                          <p className="font-medium text-mgsr-text truncate">{s.name || '—'}</p>
-                          <p className="text-sm text-mgsr-muted truncate">
-                            {s.age ? t('players_age_display').replace('{age}', s.age) : '—'}
-                            <span className="mx-1.5">·</span>
-                            {shortenPosition(s.position)}
-                            <span className="mx-1.5">·</span>
-                            {s.marketValue || '—'}
-                            {s.club && (
-                              <>
-                                <span className="mx-1.5">·</span>
-                                {s.club}
-                              </>
-                            )}
-                            {s.matchPercent != null && (
-                              <>
-                                <span className="mx-1.5">·</span>
-                                {t('requests_online_match_score').replace('{pct}', String(s.matchPercent))}
-                              </>
-                            )}
-                          </p>
-                        </a>
-                      ) : (
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-mgsr-text truncate">{s.name || '—'}</p>
-                          <p className="text-sm text-mgsr-muted truncate">
-                            {s.age ? t('players_age_display').replace('{age}', s.age) : '—'}
-                            <span className="mx-1.5">·</span>
-                            {shortenPosition(s.position)}
-                            <span className="mx-1.5">·</span>
-                            {s.marketValue || '—'}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                    {s.scoutAnalysis && (
-                      <div className="text-xs text-mgsr-muted mt-1.5 space-y-0.5" dir={lang === 'he' ? 'rtl' : 'ltr'}>
-                        {s.scoutAnalysis.split('\n').map((line, i) => (
-                          <p key={i} className={i === 0 ? 'font-medium text-mgsr-text/80' : ''}>
-                            {line}
-                          </p>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
           </div>
-        )}
 
-        {!searching && results.length === 0 && !error && query.trim() && (
-          <div className="p-8 rounded-2xl bg-mgsr-card/50 border border-mgsr-border text-center">
-            <p className="text-mgsr-muted">{t('ai_scout_no_results')}</p>
-            <button
-              type="button"
-              onClick={runConnectionTest}
-              className="mt-3 text-sm text-mgsr-teal hover:underline"
+          {/* Error */}
+          {error && (
+            <div className="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
+              <p>{error}</p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => fetch('/api/scout/warm').then(() => setError(null))}
+                  className="text-xs underline hover:no-underline"
+                >
+                  {lang === 'he' ? 'הפעל שרת (warm) ונסה שוב' : 'Warm server & retry'}
+                </button>
+                <button type="button" onClick={runConnectionTest} className="text-xs underline hover:no-underline">
+                  {lang === 'he' ? 'בדוק חיבור' : 'Test connection'}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {connectionTest && (
+            <div
+              className={`mb-6 p-4 rounded-xl border text-sm ${
+                connectionTest.ok
+                  ? 'bg-green-500/10 border-green-500/30 text-green-400'
+                  : 'bg-amber-500/10 border-amber-500/30 text-amber-400'
+              }`}
             >
-              {lang === 'he' ? 'בדוק חיבור לשרת השחקנים' : 'Test scout server connection'}
-            </button>
-          </div>
-        )}
+              {connectionTest.msg}
+            </div>
+          )}
+
+          {/* League info */}
+          {leagueInfo && (
+            <div className="mb-6 p-4 rounded-xl bg-amber-500/15 border-2 border-amber-500/50 shadow-lg">
+              <p className="text-base font-bold text-amber-400 mb-2">
+                {lang === 'he' ? 'ממוצע ערך שוק בליגה שביקשת' : 'League market average (used for filter)'}
+              </p>
+              <p className="text-sm text-mgsr-text" dir={lang === 'he' ? 'rtl' : 'ltr'}>
+                {lang === 'he' ? (
+                  <>
+                    <strong>{leagueInfo.leagueName}</strong>: ממוצע €{(leagueInfo.avgEuro / 1000).toFixed(0)}k
+                    {' '}(רק שחקנים עם שווי). טווח סינון: €{(leagueInfo.minEuro / 1000).toFixed(0)}k – €{(leagueInfo.maxEuro / 1000).toFixed(0)}k (50%–200%).
+                  </>
+                ) : (
+                  <>
+                    <strong>{leagueInfo.leagueName}</strong>: avg €{(leagueInfo.avgEuro / 1000).toFixed(0)}k
+                    {' '}(players with value only). Filter range: €{(leagueInfo.minEuro / 1000).toFixed(0)}k – €{(leagueInfo.maxEuro / 1000).toFixed(0)}k (50%–200%).
+                  </>
+                )}
+              </p>
+            </div>
+          )}
+
+          {/* Results */}
+          {results.length > 0 && (
+            <>
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-4 pb-3 border-b border-mgsr-border">
+                <p className="font-semibold text-mgsr-text">
+                  {hasMore && requestedTotal != null
+                    ? t('ai_scout_results_of').replace('{count}', String(results.length)).replace('{total}', String(requestedTotal))
+                    : t('ai_scout_results_count').replace('{count}', String(results.length))}
+                </p>
+                <div className="flex items-center gap-2">
+                  {hasMore && requestedTotal != null && (
+                    <button
+                      type="button"
+                      onClick={handleLoadMore}
+                      disabled={loadingMore}
+                      className="px-4 py-2 rounded-lg text-sm bg-mgsr-teal/15 border border-mgsr-teal/40 text-mgsr-teal hover:bg-mgsr-teal/25 transition disabled:opacity-50"
+                    >
+                      {loadingMore
+                        ? (lang === 'he' ? 'טוען...' : 'Loading...')
+                        : lang === 'he'
+                          ? `הרחב ל־${requestedTotal} שחקנים`
+                          : `Load all ${requestedTotal} players`}
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={handleSearchOtherOptions}
+                    disabled={searchingOther}
+                    className="px-3 py-2 rounded-lg text-sm bg-amber-500/20 text-amber-400 hover:bg-amber-500/30 transition disabled:opacity-50 flex items-center gap-1.5"
+                  >
+                    {searchingOther ? (
+                      <>
+                        <span className="w-3.5 h-3.5 border-2 border-amber-400/30 border-t-amber-400 rounded-full animate-spin shrink-0" />
+                        {lang === 'he' ? 'מחפש...' : 'Searching...'}
+                      </>
+                    ) : (
+                      lang === 'he' ? 'חפש אפשרויות נוספות' : 'Search other options'
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                {results.map((s) => {
+                  const url = s.transfermarktUrl;
+                  const pct = s.matchPercent ?? 0;
+                  const content = (
+                    <div className="flex items-start gap-5 p-5 rounded-2xl bg-mgsr-card border border-mgsr-border hover:border-mgsr-teal/30 hover:shadow-lg hover:shadow-black/20 transition-all duration-250">
+                      {/* Match ring */}
+                      <div
+                        className="w-12 h-12 shrink-0 rounded-full flex items-center justify-center"
+                        style={{
+                          background: `conic-gradient(#4DB6AC 0deg ${pct * 3.6}deg, #253545 ${pct * 3.6}deg 360deg)`,
+                        }}
+                      >
+                        <div className="w-[38px] h-[38px] rounded-full bg-mgsr-card flex items-center justify-center">
+                          <span className="font-display font-bold text-sm text-mgsr-teal">{pct}%</span>
+                        </div>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        {url ? (
+                          <a
+                            href={url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="block hover:underline"
+                          >
+                            <p className="font-semibold text-mgsr-text truncate">{s.name || '—'}</p>
+                          </a>
+                        ) : (
+                          <p className="font-semibold text-mgsr-text truncate">{s.name || '—'}</p>
+                        )}
+                        <p className="text-sm text-mgsr-muted mt-0.5">
+                          {s.age ? t('players_age_display').replace('{age}', s.age) : '—'}
+                          <span className="mx-1.5">·</span>
+                          {shortenPosition(s.position)}
+                          <span className="mx-1.5">·</span>
+                          {s.marketValue || '—'}
+                          {s.club && (
+                            <>
+                              <span className="mx-1.5">·</span>
+                              {s.club}
+                            </>
+                          )}
+                        </p>
+                        {s.scoutAnalysis && (
+                          <div className="text-xs text-mgsr-muted mt-2 space-y-0.5" dir={lang === 'he' ? 'rtl' : 'ltr'}>
+                            {s.scoutAnalysis.split('\n').map((line, i) => (
+                              <p key={i} className={i === 0 ? 'font-medium text-mgsr-text/80' : ''}>
+                                {line}
+                              </p>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                  return <div key={url || s.name}>{content}</div>;
+                })}
+              </div>
+            </>
+          )}
+
+          {!searching && results.length === 0 && !error && lastSearchedQuery && query.trim() === lastSearchedQuery && (
+            <div className="p-8 rounded-2xl bg-mgsr-card/50 border border-mgsr-border text-center">
+              <p className="text-mgsr-muted">{t('ai_scout_no_results')}</p>
+              <button
+                type="button"
+                onClick={runConnectionTest}
+                className="mt-3 text-sm text-mgsr-teal hover:underline"
+              >
+                {lang === 'he' ? 'בדוק חיבור לשרת השחקנים' : 'Test scout server connection'}
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </AppLayout>
   );

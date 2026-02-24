@@ -1511,7 +1511,6 @@ export default function DashboardPage() {
         {/* Quick actions */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-10">
           {[
-            { href: '/players/add', label: t('add_player') },
             { href: '/shortlist', label: t('shortlist') },
             { href: '/releases', label: t('releases') },
             { href: '/returnees', label: t('nav_returnee') },
