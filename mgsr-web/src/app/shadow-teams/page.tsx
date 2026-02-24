@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import SoccerLineUp, { type Team, type Player } from 'react-soccer-lineup';
-import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
+import { collection, doc, getDoc, setDoc, query, orderBy, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -19,7 +19,6 @@ interface ShadowPlayer {
 
 interface PositionSlot {
   starter: ShadowPlayer | null;
-  substitute: ShadowPlayer | null;
 }
 
 interface RosterPlayer {
@@ -27,6 +26,21 @@ interface RosterPlayer {
   fullName?: string;
   profileImage?: string;
   positions?: string[];
+}
+
+interface Account {
+  id: string;
+  name?: string;
+  hebrewName?: string;
+  email?: string;
+}
+
+const SHADOW_TEAMS_COLLECTION = 'ShadowTeams';
+
+function getDisplayName(account: Account, isRtl: boolean): string {
+  return isRtl
+    ? account.hebrewName || account.name || account.email || '—'
+    : account.name || account.hebrewName || account.email || '—';
 }
 
 /** Position codes that map to formation slots (including LWB→LB, RWB→RB, ST→CF) */
@@ -60,7 +74,7 @@ function playerMatchesPosition(player: RosterPlayer, positionCode: string): bool
 }
 
 function createEmptySlots(count: number): PositionSlot[] {
-  return Array.from({ length: count }, () => ({ starter: null, substitute: null }));
+  return Array.from({ length: count }, () => ({ starter: null }));
 }
 
 function toLineupPlayer(
@@ -90,7 +104,7 @@ function slotsToSquad(
   onPlayerClick: (id: string) => void,
   onEmptyClick: (index: number) => void
 ): Team['squad'] {
-  const p = (i: number) => slots[i] ?? { starter: null, substitute: null };
+  const p = (i: number) => slots[i] ?? { starter: null };
   const toP = (i: number) => toLineupPlayer(p(i), i, onPlayerClick, onEmptyClick);
 
   switch (formationId) {
@@ -231,17 +245,43 @@ function PlayerSelectDialog({
 
 export default function ShadowTeamsPage() {
   const { user, loading } = useAuth();
-  const { t } = useLanguage();
+  const { t, isRtl } = useLanguage();
   const router = useRouter();
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
   const [formationId, setFormationId] = useState('4-3-3');
   const [slots, setSlots] = useState<PositionSlot[]>(() => createEmptySlots(11));
   const [rosterPlayers, setRosterPlayers] = useState<RosterPlayer[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [dialogSlot, setDialogSlot] = useState<{ index: number; role: 'starter' | 'substitute' } | null>(null);
+  const [dialogSlot, setDialogSlot] = useState<{ index: number } | null>(null);
+  const [menuOpenIndex, setMenuOpenIndex] = useState<number | null>(null);
+  const selectedAccountIdRef = useRef(selectedAccountId);
+  selectedAccountIdRef.current = selectedAccountId;
+
+  const currentAccountId = useMemo(() => {
+    if (!user) return null;
+    const byUid = accounts.find((a) => a.id === user.uid);
+    const byEmail = accounts.find((a) => a.email?.toLowerCase() === user.email?.toLowerCase());
+    return byUid?.id ?? byEmail?.id ?? user.uid;
+  }, [user, accounts]);
+
+  const isOwnTeam = selectedAccountId === currentAccountId;
 
   useEffect(() => {
     if (!loading && !user) router.replace('/login');
   }, [user, loading, router]);
+
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, 'Accounts'), (snap) => {
+      const list = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Account));
+      setAccounts(list);
+      if (list.length > 0) {
+        const me = list.find((a) => a.id === user?.uid || a.email?.toLowerCase() === user?.email?.toLowerCase());
+        setSelectedAccountId((prev) => prev || (me?.id ?? list[0]!.id));
+      }
+    });
+    return () => unsub();
+  }, [user]);
 
   useEffect(() => {
     const q = query(collection(db, 'Players'), orderBy('createdAt', 'desc'));
@@ -250,6 +290,38 @@ export default function ShadowTeamsPage() {
     });
     return () => unsub();
   }, []);
+
+  useEffect(() => {
+    if (!selectedAccountId) return;
+    setSlots(createEmptySlots(11));
+    setFormationId('4-3-3');
+    const docRef = doc(db, SHADOW_TEAMS_COLLECTION, selectedAccountId);
+    const loadingForId = selectedAccountId;
+    getDoc(docRef).then((snap) => {
+      if (selectedAccountIdRef.current !== loadingForId) return;
+      const data = snap.data();
+      if (data?.slots && Array.isArray(data.slots)) {
+        const loaded = (data.slots as { starter?: { id: string; fullName: string; profileImage?: string } | null }[]).map(
+          (s) => ({ starter: s.starter ?? null })
+        );
+        setSlots(loaded.length >= 11 ? loaded : [...loaded, ...createEmptySlots(11 - loaded.length)]);
+      }
+      if (data?.formationId) setFormationId(data.formationId);
+    });
+  }, [selectedAccountId]);
+
+  const saveShadowTeam = useCallback(
+    (newSlots: PositionSlot[], newFormationId: string) => {
+      if (!selectedAccountId || !isOwnTeam) return;
+      const docRef = doc(db, SHADOW_TEAMS_COLLECTION, selectedAccountId);
+      setDoc(docRef, {
+        formationId: newFormationId,
+        slots: newSlots.map((s) => ({ starter: s.starter })),
+        updatedAt: Date.now(),
+      });
+    },
+    [selectedAccountId, isOwnTeam]
+  );
 
   const formation = useMemo(
     () => FORMATIONS.find((f) => f.id === formationId) ?? FORMATIONS[0],
@@ -267,29 +339,53 @@ export default function ShadowTeamsPage() {
     ensureSlotsLength(formation.positions.length);
   }, [formation.positions.length, ensureSlotsLength]);
 
-  const openSelectDialog = useCallback((index: number, role: 'starter' | 'substitute') => {
-    setDialogSlot({ index, role });
+  const openSelectDialog = useCallback((index: number) => {
+    setDialogSlot({ index });
     setDialogOpen(true);
+    setMenuOpenIndex(null);
   }, []);
 
-  const handleSelectPlayer = useCallback((player: RosterPlayer) => {
-    if (!dialogSlot) return;
-    const { index, role } = dialogSlot;
-    setSlots((prev) => {
-      const next = [...prev];
-      const slot = next[index] ?? { starter: null, substitute: null };
-      const updated = { ...slot };
-      if (role === 'starter') {
-        updated.starter = { id: player.id, fullName: player.fullName ?? '', profileImage: player.profileImage };
-      } else {
-        updated.substitute = { id: player.id, fullName: player.fullName ?? '', profileImage: player.profileImage };
-      }
-      next[index] = updated;
-      return next;
-    });
-    setDialogOpen(false);
-    setDialogSlot(null);
-  }, [dialogSlot]);
+  const handleSelectPlayer = useCallback(
+    (player: RosterPlayer) => {
+      if (!dialogSlot) return;
+      const { index } = dialogSlot;
+      setSlots((prev) => {
+        const next = [...prev];
+        const slot = next[index] ?? { starter: null };
+        next[index] = { ...slot, starter: { id: player.id, fullName: player.fullName ?? '', profileImage: player.profileImage } };
+        saveShadowTeam(next, formationId);
+        return next;
+      });
+      setDialogOpen(false);
+      setDialogSlot(null);
+    },
+    [dialogSlot, formationId, saveShadowTeam]
+  );
+
+  const handleRemovePlayer = useCallback(
+    (index: number) => {
+      setSlots((prev) => {
+        const next = [...prev];
+        const slot = next[index] ?? { starter: null };
+        next[index] = { ...slot, starter: null };
+        saveShadowTeam(next, formationId);
+        return next;
+      });
+      setMenuOpenIndex(null);
+    },
+    [formationId, saveShadowTeam]
+  );
+
+  const handleFormationChange = useCallback(
+    (newFormationId: string) => {
+      setFormationId(newFormationId);
+      setSlots((prev) => {
+        saveShadowTeam(prev, newFormationId);
+        return prev;
+      });
+    },
+    [saveShadowTeam]
+  );
 
   const positionCode = dialogSlot != null ? formation.positions[dialogSlot.index]?.code ?? 'GK' : 'GK';
   const positionLabel = positionCode;
@@ -300,7 +396,7 @@ export default function ShadowTeamsPage() {
   );
 
   const handleEmptySlotClick = useCallback(
-    (index: number) => openSelectDialog(index, 'starter'),
+    (index: number) => openSelectDialog(index),
     [openSelectDialog]
   );
 
@@ -325,19 +421,42 @@ export default function ShadowTeamsPage() {
           <p className="text-mgsr-muted text-sm mt-0.5">{t('shadow_teams_subtitle')}</p>
         </header>
 
-        <div className="flex items-center gap-3 mb-4">
-          <label className="text-sm text-mgsr-muted">{t('shadow_teams_formation')}</label>
-          <select
-            value={formationId}
-            onChange={(e) => setFormationId(e.target.value)}
-            className="px-3 py-1.5 bg-mgsr-card border border-mgsr-border rounded-lg text-mgsr-text text-sm focus:outline-none focus:ring-2 focus:ring-mgsr-teal/50"
-          >
-            {FORMATIONS.map((f) => (
-              <option key={f.id} value={f.id}>
-                {f.label}
-              </option>
+        <div className="flex flex-wrap items-center gap-3 mb-4">
+          <div className="flex gap-1 p-1 bg-mgsr-dark rounded-lg border border-mgsr-border overflow-x-auto">
+            {accounts.map((acc) => (
+              <button
+                key={acc.id}
+                type="button"
+                onClick={() => setSelectedAccountId(acc.id)}
+                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors whitespace-nowrap flex items-center gap-1.5 ${
+                  selectedAccountId === acc.id
+                    ? 'bg-mgsr-teal text-mgsr-dark'
+                    : 'text-mgsr-muted hover:text-mgsr-text hover:bg-mgsr-teal/10'
+                }`}
+              >
+                {getDisplayName(acc, isRtl)}
+                {acc.id === currentAccountId && (
+                  <span className="text-[10px] opacity-80">({t('shadow_teams_you')})</span>
+                )}
+              </button>
             ))}
-          </select>
+          </div>
+          {isOwnTeam && (
+            <div className="flex items-center gap-2">
+              <label className="text-sm text-mgsr-muted">{t('shadow_teams_formation')}</label>
+              <select
+                value={formationId}
+                onChange={(e) => handleFormationChange(e.target.value)}
+                className="px-3 py-1.5 bg-mgsr-card border border-mgsr-border rounded-lg text-mgsr-text text-sm focus:outline-none focus:ring-2 focus:ring-mgsr-teal/50"
+              >
+                {FORMATIONS.map((f) => (
+                  <option key={f.id} value={f.id}>
+                    {f.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
 
         <div className="shadow-teams-pitch rounded-lg overflow-hidden bg-mgsr-card border border-mgsr-border relative">
@@ -356,35 +475,27 @@ export default function ShadowTeamsPage() {
               return (
                 <div
                   key={`overlay-${idx}`}
-                  className="absolute -translate-x-1/2 -translate-y-1/2 pointer-events-auto"
+                  className="absolute -translate-x-1/2 -translate-y-1/2 pointer-events-auto flex flex-col items-center"
                   style={{ left: `${pos.x}%`, top: `${pos.y}%` }}
                 >
                   <SlotCircle
                     player={starter}
                     size="md"
-                    onClick={() =>
-                      starter ? router.push(`/players/${starter.id}`) : openSelectDialog(idx, 'starter')
-                    }
-                  />
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        <div className="mt-4 p-4 bg-mgsr-card border border-mgsr-border rounded-lg">
-          <h3 className="text-sm font-semibold text-mgsr-teal mb-3">{t('shadow_teams_bench')}</h3>
-          <div className="flex flex-wrap gap-3">
-            {formation.positions.map((pos, idx) => {
-              const slot = slots[idx];
-              const sub = slot?.substitute ?? null;
-              return (
-                <div key={`bench-${idx}`} className="flex flex-col items-center gap-1">
-                  <span className="text-[10px] text-mgsr-muted font-medium">{pos.code}</span>
-                  <SlotCircle
-                    player={sub}
-                    size="sm"
-                    onClick={() => (sub ? router.push(`/players/${sub.id}`) : openSelectDialog(idx, 'substitute'))}
+                    canEdit={isOwnTeam}
+                    onClick={() => {
+                      if (starter) {
+                        if (isOwnTeam) setMenuOpenIndex((i) => (i === idx ? null : idx));
+                        else router.push(`/players/${starter.id}`);
+                      } else if (isOwnTeam) {
+                        openSelectDialog(idx);
+                      }
+                    }}
+                    onViewProfile={() => starter && router.push(`/players/${starter.id}`)}
+                    onChangePlayer={() => openSelectDialog(idx)}
+                    onRemove={() => handleRemovePlayer(idx)}
+                    menuOpen={menuOpenIndex === idx}
+                    onCloseMenu={() => setMenuOpenIndex(null)}
+                    t={t}
                   />
                 </div>
               );
@@ -414,28 +525,89 @@ export default function ShadowTeamsPage() {
 interface SlotCircleProps {
   player: ShadowPlayer | null;
   size?: 'md' | 'sm';
+  canEdit?: boolean;
   onClick: () => void;
+  onViewProfile?: () => void;
+  onChangePlayer?: () => void;
+  onRemove?: () => void;
+  menuOpen?: boolean;
+  onCloseMenu?: () => void;
+  t: (key: string) => string;
 }
 
-function SlotCircle({ player, size = 'md', onClick }: SlotCircleProps) {
-  const dim = size === 'sm' ? 'w-9 h-9' : 'w-[36px] h-[36px]';
-  const plusSize = size === 'sm' ? 'text-base' : 'text-lg';
+function SlotCircle({
+  player,
+  size = 'md',
+  canEdit = false,
+  onClick,
+  onViewProfile,
+  onChangePlayer,
+  onRemove,
+  menuOpen,
+  onCloseMenu,
+  t,
+}: SlotCircleProps) {
+  const dim = size === 'sm' ? 'w-10 h-10' : 'w-[48px] h-[48px]';
+  const plusSize = size === 'sm' ? 'text-lg' : 'text-xl';
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) onCloseMenu?.();
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [menuOpen, onCloseMenu]);
+
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`${dim} rounded-full flex items-center justify-center border-2 border-mgsr-teal bg-mgsr-teal/20 hover:scale-110 hover:shadow-[0_0_0_3px_rgba(77,182,172,0.5)] transition-all overflow-hidden shrink-0 cursor-pointer`}
-      title={player?.fullName}
-    >
-      {player ? (
-        <img
-          src={player.profileImage || 'https://via.placeholder.com/48?text=?'}
-          alt={player.fullName}
-          className="w-full h-full object-cover"
-        />
-      ) : (
-        <span className={`${plusSize} text-mgsr-teal font-light`}>+</span>
+    <div ref={ref} className="relative flex flex-col items-center gap-0.5">
+      <button
+        type="button"
+        onClick={onClick}
+        className={`${dim} rounded-full flex items-center justify-center border-2 border-mgsr-teal bg-mgsr-teal/20 hover:scale-110 hover:shadow-[0_0_0_3px_rgba(77,182,172,0.5)] transition-all overflow-hidden shrink-0 cursor-pointer`}
+        title={player?.fullName}
+      >
+        {player ? (
+          <img
+            src={player.profileImage || 'https://via.placeholder.com/48?text=?'}
+            alt={player.fullName}
+            className="w-full h-full object-cover"
+          />
+        ) : (
+          <span className={`${plusSize} text-mgsr-teal font-light`}>+</span>
+        )}
+      </button>
+      {player && (
+        <span className="text-[11px] text-mgsr-text font-medium text-center max-w-[90px] block leading-tight">
+          {player.fullName}
+        </span>
       )}
-    </button>
+      {menuOpen && player && canEdit && (
+        <div className="absolute top-full mt-1 left-1/2 -translate-x-1/2 z-20 min-w-[120px] py-1 bg-mgsr-card border border-mgsr-border rounded-lg shadow-lg">
+          <button
+            type="button"
+            onClick={() => { onViewProfile?.(); onCloseMenu?.(); }}
+            className="w-full px-3 py-1.5 text-left text-sm text-mgsr-text hover:bg-mgsr-teal/10"
+          >
+            {t('shadow_teams_view_player')}
+          </button>
+          <button
+            type="button"
+            onClick={() => { onChangePlayer?.(); }}
+            className="w-full px-3 py-1.5 text-left text-sm text-mgsr-text hover:bg-mgsr-teal/10"
+          >
+            {t('shadow_teams_change_player')}
+          </button>
+          <button
+            type="button"
+            onClick={() => { onRemove?.(); }}
+            className="w-full px-3 py-1.5 text-left text-sm text-red-400 hover:bg-red-500/10"
+          >
+            {t('shadow_teams_remove_player')}
+          </button>
+        </div>
+      )}
+    </div>
   );
 }
