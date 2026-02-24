@@ -12,7 +12,9 @@ export async function flattenPdf(bytes: ArrayBuffer): Promise<ArrayBuffer> {
     if (fields.length > 0) {
       form.flatten();
     }
-    return await doc.save({ useObjectStreams: false });
+    const result = await doc.save({ useObjectStreams: false });
+    const slice = result.buffer.slice(result.byteOffset, result.byteOffset + result.byteLength);
+    return slice as ArrayBuffer;
   } catch {
     return bytes;
   }

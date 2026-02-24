@@ -34,12 +34,12 @@ interface Account {
 }
 
 function buildValidLeagues(countryOnly: string[], clubs: { clubName: string; clubCountry: string }[]): string[] {
-  const countryEntries = [...new Set(countryOnly)].sort();
+  const countryEntries = Array.from(new Set(countryOnly)).sort();
   const clubEntries = clubs
     .filter((c) => c.clubName && c.clubCountry)
     .sort((a, b) => (a.clubCountry !== b.clubCountry ? a.clubCountry.localeCompare(b.clubCountry) : a.clubName.localeCompare(b.clubName)))
     .map((c) => `${c.clubName} - ${c.clubCountry}`);
-  return [...new Set([...countryEntries, ...clubEntries])];
+  return Array.from(new Set([...countryEntries, ...clubEntries]));
 }
 
 export default function GenerateMandatePage() {

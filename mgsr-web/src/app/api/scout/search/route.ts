@@ -25,7 +25,7 @@ const LEAGUE_NAMES: Record<string, string> = {
 /** Call freesearch proxy (Python) - returns full response or null on failure */
 async function fetchFreesearch(
   query: string,
-  lang: string,
+  lang: 'en' | 'he',
   initial: boolean
 ): Promise<NextResponse | null> {
   const parsed = parseFreeQuery(query, lang);

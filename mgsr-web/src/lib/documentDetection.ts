@@ -37,7 +37,7 @@ export function extractMandateExpiryFromText(text: string): number | null {
   );
   const searchLine = termLines[0];
   if (searchLine) {
-    const dates = [...searchLine.matchAll(dateRegex)];
+    const dates = Array.from(searchLine.matchAll(dateRegex));
     const target = dates.length >= 2 ? dates[dates.length - 1] : dates.length === 1 && /ends/i.test(searchLine) ? dates[0] : null;
     if (target) {
       const [, d, m, y] = target;
