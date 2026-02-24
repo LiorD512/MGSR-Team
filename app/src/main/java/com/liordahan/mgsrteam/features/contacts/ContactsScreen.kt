@@ -7,6 +7,7 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.provider.ContactsContract
 import android.content.ContentUris
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
@@ -14,6 +15,8 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
@@ -98,6 +101,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -2751,209 +2755,244 @@ private fun Step1AgencyContent(
     onTryAgain: () -> Unit
 ) {
     val context = LocalContext.current
+    val focusManager = LocalFocusManager.current
+    var isSearchFocused by remember { mutableStateOf(false) }
+
+    // When user selects an agency, collapse the search
+    LaunchedEffect(agencyName) {
+        if (agencyName.isNotBlank()) isSearchFocused = false
+    }
+
+    // Back press clears focus first; only closes bottom sheet when focus is already cleared
+    BackHandler(enabled = isSearchFocused) {
+        focusManager.clearFocus()
+    }
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            .clickWithNoRipple { if (isSearchFocused) focusManager.clearFocus() }
             .verticalScroll(rememberScrollState())
     ) {
-        Text(
-            text = stringResource(R.string.contacts_agency_import_only_hint),
-            style = regularTextStyle(HomeTextSecondary, 11.sp),
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 12.dp),
-            maxLines = 4,
-            overflow = TextOverflow.Ellipsis
-        )
-        OutlinedCard(
-            onClick = onPickContact,
-            shape = RoundedCornerShape(12.dp),
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.outlinedCardColors(containerColor = HomeBlueAccent.copy(alpha = 0.15f)),
-            border = BorderStroke(1.dp, HomeBlueAccent)
+        // ── Everything above search box: hides with animation when search is focused ──
+        AnimatedVisibility(
+            visible = !isSearchFocused,
+            enter = expandVertically(animationSpec = tween(300)) + fadeIn(tween(200)),
+            exit = shrinkVertically(animationSpec = tween(300)) + fadeOut(tween(150))
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(14.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Person,
-                    contentDescription = null,
-                    tint = HomeBlueAccent,
-                    modifier = Modifier.size(22.dp)
-                )
-                Spacer(Modifier.width(12.dp))
+            Column(modifier = Modifier.fillMaxWidth()) {
                 Text(
-                    text = stringResource(R.string.contacts_import),
-                    style = boldTextStyle(HomeBlueAccent, 14.sp)
-                )
-            }
-        }
-        if (pickedName.isNotBlank() || isEdit) {
-            Spacer(Modifier.height(12.dp))
-            AddContactTextField(
-                label = stringResource(R.string.contacts_label_name),
-                value = pickedName,
-                onValueChange = onNameChange,
-                placeholder = stringResource(R.string.contacts_placeholder_name),
-                readOnly = !isEdit,
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
-        if (isEdit) {
-            Spacer(Modifier.height(8.dp))
-            AddContactTextField(
-                label = stringResource(R.string.contacts_label_phone),
-                value = pickedPhone,
-                onValueChange = onPhoneChange,
-                placeholder = stringResource(R.string.contacts_placeholder_phone),
-                keyboardType = KeyboardType.Phone,
-                contentTextDirection = TextDirection.Ltr,
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
-        if (pickedName.isNotBlank() || isEdit) {
-            Spacer(Modifier.height(12.dp))
-            Text(
-                text = stringResource(R.string.contacts_agency_discovery_section),
-                style = regularTextStyle(HomeTextSecondary, 12.sp),
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
-        }
-        if (pickedName.isNotBlank() || isEdit) {
-            if (isDiscovering) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    CircularProgressIndicator(
-                        color = HomeBlueAccent,
-                        strokeWidth = 2.dp,
-                        modifier = Modifier.size(24.dp)
-                    )
-                    Spacer(Modifier.width(12.dp))
-                    Text(
-                        text = stringResource(R.string.contacts_agency_searching_web),
-                        style = regularTextStyle(HomeTextSecondary, 13.sp)
-                    )
-                }
-            } else if (agencyName.isNotBlank()) {
-                Column(
+                    text = stringResource(R.string.contacts_agency_import_only_hint),
+                    style = regularTextStyle(HomeTextSecondary, 11.sp),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(HomeDarkBackground)
-                        .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(10.dp))
-                        .clickWithNoRipple {
-                            if (agencyUrl.isNotBlank()) {
-                                try {
-                                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(agencyUrl))
-                                    context.startActivity(intent)
-                                } catch (_: ActivityNotFoundException) { }
-                            }
-                        }
-                        .padding(12.dp)
+                        .padding(bottom = 12.dp),
+                    maxLines = 4,
+                    overflow = TextOverflow.Ellipsis
+                )
+                OutlinedCard(
+                    onClick = onPickContact,
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.outlinedCardColors(containerColor = HomeBlueAccent.copy(alpha = 0.15f)),
+                    border = BorderStroke(1.dp, HomeBlueAccent)
                 ) {
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth().padding(14.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Business,
+                            imageVector = Icons.Default.Person,
                             contentDescription = null,
                             tint = HomeBlueAccent,
-                            modifier = Modifier.size(28.dp)
+                            modifier = Modifier.size(22.dp)
                         )
-                        Spacer(Modifier.width(10.dp))
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = agencyName,
-                                style = boldTextStyle(HomeTextPrimary, 14.sp),
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
+                        Spacer(Modifier.width(12.dp))
+                        Text(
+                            text = stringResource(R.string.contacts_import),
+                            style = boldTextStyle(HomeBlueAccent, 14.sp)
+                        )
+                    }
+                }
+                if (pickedName.isNotBlank() || isEdit) {
+                    Spacer(Modifier.height(12.dp))
+                    AddContactTextField(
+                        label = stringResource(R.string.contacts_label_name),
+                        value = pickedName,
+                        onValueChange = onNameChange,
+                        placeholder = stringResource(R.string.contacts_placeholder_name),
+                        readOnly = !isEdit,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+                if (isEdit) {
+                    Spacer(Modifier.height(8.dp))
+                    AddContactTextField(
+                        label = stringResource(R.string.contacts_label_phone),
+                        value = pickedPhone,
+                        onValueChange = onPhoneChange,
+                        placeholder = stringResource(R.string.contacts_placeholder_phone),
+                        keyboardType = KeyboardType.Phone,
+                        contentTextDirection = TextDirection.Ltr,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+                if (pickedName.isNotBlank() || isEdit) {
+                    Spacer(Modifier.height(12.dp))
+                    Text(
+                        text = stringResource(R.string.contacts_agency_discovery_section),
+                        style = regularTextStyle(HomeTextSecondary, 12.sp),
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                }
+                if (pickedName.isNotBlank() || isEdit) {
+                    if (isDiscovering) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            CircularProgressIndicator(
+                                color = HomeBlueAccent,
+                                strokeWidth = 2.dp,
+                                modifier = Modifier.size(24.dp)
                             )
-                            if (agencyUrl.isNotBlank()) {
-                                Text(
-                                    text = stringResource(R.string.contacts_agency_found_on_tm),
-                                    style = regularTextStyle(HomeTextSecondary, 11.sp)
+                            Spacer(Modifier.width(12.dp))
+                            Text(
+                                text = stringResource(R.string.contacts_agency_searching_web),
+                                style = regularTextStyle(HomeTextSecondary, 13.sp)
+                            )
+                        }
+                    } else if (agencyName.isNotBlank()) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(HomeDarkBackground)
+                                .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(10.dp))
+                                .clickWithNoRipple {
+                                    if (agencyUrl.isNotBlank()) {
+                                        try {
+                                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(agencyUrl))
+                                            context.startActivity(intent)
+                                        } catch (_: ActivityNotFoundException) { }
+                                    }
+                                }
+                                .padding(12.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Business,
+                                    contentDescription = null,
+                                    tint = HomeBlueAccent,
+                                    modifier = Modifier.size(28.dp)
                                 )
+                                Spacer(Modifier.width(10.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = agencyName,
+                                        style = boldTextStyle(HomeTextPrimary, 14.sp),
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                    if (agencyUrl.isNotBlank()) {
+                                        Text(
+                                            text = stringResource(R.string.contacts_agency_found_on_tm),
+                                            style = regularTextStyle(HomeTextSecondary, 11.sp)
+                                        )
+                                    }
+                                }
+                            }
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 12.dp),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                TextButton(
+                                    onClick = onNotCorrectAgency,
+                                    modifier = Modifier.height(48.dp)
+                                ) {
+                                    Text(stringResource(R.string.contacts_agency_not_correct), style = regularTextStyle(HomeTealAccent, 12.sp))
+                                }
+                                TextButton(
+                                    onClick = onTryAgain,
+                                    modifier = Modifier.height(48.dp)
+                                ) {
+                                    Text(stringResource(R.string.contacts_try_again), style = regularTextStyle(HomeTealAccent, 12.sp))
+                                }
                             }
                         }
                     }
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 12.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        TextButton(
-                            onClick = onNotCorrectAgency,
-                            modifier = Modifier.height(48.dp)
-                        ) {
-                            Text(stringResource(R.string.contacts_agency_not_correct), style = regularTextStyle(HomeTealAccent, 12.sp))
-                        }
+                }
+                if (pickedName.isNotBlank() || isEdit) {
+                    discoveryError?.let { err ->
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            text = err,
+                            style = regularTextStyle(HomeRedAccent, 11.sp)
+                        )
                         TextButton(
                             onClick = onTryAgain,
                             modifier = Modifier.height(48.dp)
                         ) {
-                            Text(stringResource(R.string.contacts_try_again), style = regularTextStyle(HomeTealAccent, 12.sp))
+                            Text(stringResource(R.string.contacts_try_again), style = regularTextStyle(HomeTealAccent, 13.sp))
+                        }
+                    }
+                    if (!isDiscovering && agencyName.isBlank() && selectedAgency == null && !showManualAgencySearch) {
+                        Spacer(Modifier.height(16.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            TextButton(
+                                onClick = onTryAgain,
+                                modifier = Modifier.height(48.dp)
+                            ) {
+                                Text(stringResource(R.string.contacts_try_again), style = regularTextStyle(HomeTealAccent, 14.sp))
+                            }
+                            TextButton(
+                                onClick = onNotCorrectAgency,
+                                modifier = Modifier.height(48.dp)
+                            ) {
+                                Text(stringResource(R.string.contacts_agency_search_manually), style = regularTextStyle(HomeTealAccent, 14.sp))
+                            }
                         }
                     }
                 }
             }
         }
-        if (pickedName.isNotBlank() || isEdit) {
-            discoveryError?.let { err ->
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    text = err,
-                    style = regularTextStyle(HomeRedAccent, 11.sp)
-                )
-                TextButton(
-                    onClick = onTryAgain,
-                    modifier = Modifier.height(48.dp)
-                ) {
-                    Text(stringResource(R.string.contacts_try_again), style = regularTextStyle(HomeTealAccent, 13.sp))
-                }
-            }
-            if (!isDiscovering && agencyName.isBlank() && selectedAgency == null && !showManualAgencySearch) {
-                Spacer(Modifier.height(16.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    TextButton(
-                        onClick = onTryAgain,
-                        modifier = Modifier.height(48.dp)
-                    ) {
-                        Text(stringResource(R.string.contacts_try_again), style = regularTextStyle(HomeTealAccent, 14.sp))
-                    }
-                    TextButton(
-                        onClick = onNotCorrectAgency,
-                        modifier = Modifier.height(48.dp)
-                    ) {
-                        Text(stringResource(R.string.contacts_agency_search_manually), style = regularTextStyle(HomeTealAccent, 14.sp))
-                    }
-                }
-            }
-        }
+
+        // ── Manual search section ──
         if (showManualAgencySearch) {
             LaunchedEffect(Unit) {
                 agencySearchFocusRequester.requestFocus()
                 keyboardController?.show()
             }
-            Spacer(Modifier.height(16.dp))
-            Text(
-                text = stringResource(R.string.contacts_agency_manual_fallback),
-                style = regularTextStyle(HomeTextSecondary, 11.sp),
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
+            Spacer(Modifier.height(if (isSearchFocused) 0.dp else 16.dp))
+
+            AnimatedVisibility(
+                visible = !isSearchFocused,
+                enter = expandVertically(tween(200)) + fadeIn(tween(150)),
+                exit = shrinkVertically(tween(200)) + fadeOut(tween(100))
+            ) {
+                Text(
+                    text = stringResource(R.string.contacts_agency_manual_fallback),
+                    style = regularTextStyle(HomeTextSecondary, 11.sp),
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+            }
             OutlinedTextField(
                 value = agencySearchQuery,
                 onValueChange = onAgencySearchChange,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .focusRequester(agencySearchFocusRequester),
+                    .focusRequester(agencySearchFocusRequester)
+                    .onFocusChanged { focusState ->
+                        isSearchFocused = focusState.isFocused
+                    },
                 placeholder = {
                     Text(
                         stringResource(R.string.contacts_agency_search_hint),
@@ -2984,7 +3023,7 @@ private fun Step1AgencyContent(
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .heightIn(max = 260.dp)
+                        .heightIn(max = if (isSearchFocused) 400.dp else 260.dp)
                         .padding(vertical = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
@@ -2994,7 +3033,10 @@ private fun Step1AgencyContent(
                     ) { agencyItem ->
                         AgencySearchResultRow(
                             agency = agencyItem,
-                            onClick = { onSelectAgency(agencyItem) }
+                            onClick = {
+                                focusManager.clearFocus()
+                                onSelectAgency(agencyItem)
+                            }
                         )
                     }
                 }
