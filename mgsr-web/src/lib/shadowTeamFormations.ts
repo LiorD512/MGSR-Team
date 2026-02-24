@@ -66,7 +66,7 @@ export const FORMATIONS: FormationDef[] = [
       { code: 'LW', x: 75, y: 62 },
       { code: 'AM', x: 50, y: 62 },
       { code: 'RW', x: 25, y: 62 },
-      { code: 'ST', x: 50, y: 84 },
+      { code: 'ST', x: 50, y: 74 },
     ],
   },
   {

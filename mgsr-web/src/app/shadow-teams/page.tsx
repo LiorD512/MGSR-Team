@@ -428,23 +428,29 @@ export default function ShadowTeamsPage() {
 
   return (
     <AppLayout>
-      <div className="max-w-4xl mx-auto">
-        <header className="mb-4">
-          <h1 className="text-xl font-display font-bold text-mgsr-text">{t('shadow_teams_title')}</h1>
-          <p className="text-mgsr-muted text-sm mt-0.5">{t('shadow_teams_subtitle')}</p>
+      <div className="max-w-[720px] mx-auto px-4 py-12 sm:py-16">
+        {/* Premium header */}
+        <header className="mb-12">
+          <h1 className="font-serif text-[2rem] sm:text-[2.25rem] font-normal text-mgsr-text tracking-tight">
+            {t('shadow_teams_title')}
+          </h1>
+          <p className="font-premium text-[0.9rem] text-[#6b7d8a] mt-1.5">
+            {t('shadow_teams_subtitle')}
+          </p>
         </header>
 
-        <div className="flex flex-wrap items-center gap-3 mb-4">
-          <div className="flex gap-1 p-1 bg-mgsr-dark rounded-lg border border-mgsr-border overflow-x-auto">
+        {/* Toolbar — agent pills + formation */}
+        <div className="flex flex-wrap items-center justify-between gap-6 mb-8">
+          <div className="flex gap-2 overflow-x-auto pb-1">
             {accounts.map((acc) => (
               <button
                 key={acc.id}
                 type="button"
                 onClick={() => setSelectedAccountId(acc.id)}
-                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors whitespace-nowrap flex items-center gap-1.5 ${
+                className={`px-4 py-2.5 rounded-full font-premium text-sm font-medium transition-all duration-250 whitespace-nowrap flex items-center gap-1.5 ${
                   selectedAccountId === acc.id
-                    ? 'bg-mgsr-teal text-mgsr-dark'
-                    : 'text-mgsr-muted hover:text-mgsr-text hover:bg-mgsr-teal/10'
+                    ? 'bg-mgsr-teal/10 border border-mgsr-teal text-mgsr-teal'
+                    : 'border border-mgsr-teal/25 text-[#6b7d8a] hover:border-mgsr-teal hover:text-mgsr-teal'
                 }`}
               >
                 {getDisplayName(acc, isRtl)}
@@ -456,11 +462,13 @@ export default function ShadowTeamsPage() {
           </div>
           {isOwnTeam && (
             <div className="flex items-center gap-2">
-              <label className="text-sm text-mgsr-muted">{t('shadow_teams_formation')}</label>
+              <label className="font-premium text-[0.8rem] text-[#6b7d8a] font-medium">
+                {t('shadow_teams_formation')}
+              </label>
               <select
                 value={formationId}
                 onChange={(e) => handleFormationChange(e.target.value)}
-                className="px-3 py-1.5 bg-mgsr-card border border-mgsr-border rounded-lg text-mgsr-text text-sm focus:outline-none focus:ring-2 focus:ring-mgsr-teal/50"
+                className="px-4 py-2.5 rounded-full bg-mgsr-card/60 border border-mgsr-teal/20 text-mgsr-text font-premium text-sm focus:outline-none focus:ring-2 focus:ring-mgsr-teal/30 focus:border-mgsr-teal/40 transition-colors"
               >
                 {FORMATIONS.map((f) => (
                   <option key={f.id} value={f.id}>
@@ -472,7 +480,8 @@ export default function ShadowTeamsPage() {
           )}
         </div>
 
-        <div className="shadow-teams-pitch rounded-lg overflow-hidden bg-mgsr-card border border-mgsr-border relative">
+        {/* Pitch — unchanged */}
+        <div className="shadow-teams-pitch rounded-2xl overflow-hidden bg-mgsr-card border border-mgsr-teal/10 shadow-[0_4px_24px_rgba(0,0,0,0.2)] relative">
           <style>{`.shadow-teams-pitch [class*="c1ae8d3x"] { visibility: hidden; }`}</style>
           <SoccerLineUp
             size="responsive"
@@ -523,7 +532,9 @@ export default function ShadowTeamsPage() {
           </div>
         </div>
 
-        <p className="text-mgsr-muted text-xs mt-3">{t('shadow_teams_hint')}</p>
+        <p className="font-premium text-sm text-[#6b7d8a] mt-6 text-center opacity-90">
+          {t('shadow_teams_hint')}
+        </p>
       </div>
 
       <PlayerSelectDialog
