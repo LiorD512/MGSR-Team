@@ -31,7 +31,7 @@ export interface ScoutPlayerSuggestion {
   foot?: string;
 }
 
-interface RecruitmentParams {
+export interface RecruitmentParams {
   position?: string;
   ageMin?: number;
   ageMax?: number;
@@ -45,6 +45,7 @@ interface RecruitmentParams {
   clubUrl?: string;
   clubName?: string;
   clubCountry?: string;
+  limit?: number;
 }
 
 function buildUrl(params: RecruitmentParams): string {
@@ -63,7 +64,7 @@ function buildUrl(params: RecruitmentParams): string {
   if (params.clubCountry?.trim()) search.set('club_country', params.clubCountry.trim());
   search.set('lang', params.lang || 'en');
   search.set('sort_by', 'score');
-  search.set('limit', '15');
+  search.set('limit', String(params.limit ?? 15));
   search.set('_t', String(Date.now()));
   return `${SCOUT_BASE_URL}/recruitment?${search.toString()}`;
 }
@@ -123,4 +124,66 @@ export async function findPlayersForRequest(
   const json = (await res.json()) as { results?: Record<string, unknown>[] };
   const arr = json.results ?? [];
   return arr.map((p) => parseResult(p as Record<string, unknown>));
+}
+
+export interface LeagueMarketInfo {
+  leagueName: string;
+  avgEuro: number;
+  minEuro: number;
+  maxEuro: number;
+}
+
+export interface AiScoutSearchResult {
+  players: ScoutPlayerSuggestion[];
+  interpretation?: string;
+  leagueInfo?: LeagueMarketInfo;
+  /** True when first batch (5) shown, more available */
+  hasMore?: boolean;
+  requestedTotal?: number;
+}
+
+/**
+ * AI Scout free-text search. Supports Hebrew and English queries.
+ * Progressive: pass initial=true for first 5 results (faster), then initial=false for full.
+ */
+export async function aiScoutSearch(
+  query: string,
+  lang?: 'en' | 'he',
+  initial?: boolean,
+  demo?: boolean,
+  excludeUrls?: string[]
+): Promise<AiScoutSearchResult> {
+  const res = await fetch('/api/scout/search', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify({
+      query: query.trim(),
+      lang: lang || 'en',
+      initial: initial === true,
+      demo: demo === true,
+      ...(excludeUrls?.length ? { excludeUrls } : {}),
+    }),
+    cache: 'no-store',
+    signal: AbortSignal.timeout(180000), // 3 min - scout server cold start
+  });
+  if (!res.ok) {
+    const errBody = (await res.json().catch(() => ({}))) as { error?: string };
+    const msg = errBody?.error || `AI Scout: ${res.status}`;
+    throw new Error(msg);
+  }
+  const json = (await res.json()) as {
+    results?: Record<string, unknown>[];
+    interpretation?: string;
+    leagueInfo?: LeagueMarketInfo;
+    hasMore?: boolean;
+    requestedTotal?: number;
+  };
+  const arr = json.results ?? [];
+  return {
+    players: arr.map((p) => parseResult(p as Record<string, unknown>)),
+    interpretation: json.interpretation,
+    leagueInfo: json.leagueInfo,
+    hasMore: json.hasMore,
+    requestedTotal: json.requestedTotal,
+  };
 }

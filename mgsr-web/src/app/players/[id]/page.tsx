@@ -1,17 +1,19 @@
 'use client';
 
-import { useEffect, useState, useMemo, useCallback } from 'react';
+import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { doc, collection, query, where, getDocs, onSnapshot, updateDoc, addDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { doc, collection, query, where, onSnapshot, updateDoc, addDoc, deleteDoc, deleteField } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { db, storage } from '@/lib/firebase';
 import { getPlayerDetails, PlayerDetails } from '@/lib/api';
 import AppLayout from '@/components/AppLayout';
 import Link from 'next/link';
 import { toWhatsAppUrl } from '@/lib/whatsapp';
 import { parseMarketValue } from '@/lib/releases';
 import { extractSalaryRange, extractFreeTransfer, type NoteModel } from '@/lib/noteParser';
+import { flattenPdf } from '@/lib/pdfFlatten';
 import {
   LineChart,
   Line,
@@ -54,6 +56,14 @@ interface Player {
   foot?: string;
   agency?: string;
   agencyUrl?: string;
+  passportDetails?: {
+    firstName?: string;
+    lastName?: string;
+    dateOfBirth?: string;
+    passportNumber?: string;
+    nationality?: string;
+    lastUpdatedAt?: number;
+  };
 }
 
 interface Account {
@@ -61,6 +71,7 @@ interface Account {
   name?: string;
   hebrewName?: string;
   email?: string;
+  fifaLicenseId?: string;
 }
 
 interface PlayerDocument {
@@ -110,7 +121,9 @@ export default function PlayerInfoPage() {
         ? 'player_info_back_releases'
         : fromPath === '/contract-finisher'
           ? 'player_info_back_contract_finisher'
-          : 'player_info_back_players';
+          : fromPath === '/shadow-teams'
+            ? 'player_info_back_shadow_teams'
+            : 'player_info_back_players';
   const [player, setPlayer] = useState<Player | null>(null);
   const [liveData, setLiveData] = useState<PlayerDetails | null>(null);
   const [documents, setDocuments] = useState<PlayerDocument[]>([]);
@@ -122,6 +135,12 @@ export default function PlayerInfoPage() {
   const [noteDraft, setNoteDraft] = useState('');
   const [noteSaving, setNoteSaving] = useState(false);
   const [deleteConfirmNote, setDeleteConfirmNote] = useState<NoteModel | null>(null);
+  const [uploadingDocument, setUploadingDocument] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [docToDelete, setDocToDelete] = useState<PlayerDocument | null>(null);
+  const [mandateToggling, setMandateToggling] = useState(false);
+  const prevValidMandateCountRef = useRef<number | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!loading && !user) router.replace('/login');
@@ -148,18 +167,249 @@ export default function PlayerInfoPage() {
   }, []);
 
   useEffect(() => {
-    if (!player?.tmProfile) return;
-    getDocs(
-      query(
-        collection(db, 'PlayerDocuments'),
-        where('playerTmProfile', '==', player.tmProfile)
-      )
-    ).then((snap) => {
-      setDocuments(
-        snap.docs.map((d) => ({ id: d.id, ...d.data() } as PlayerDocument))
+    if (!player?.tmProfile || !id) return;
+    const q = query(
+      collection(db, 'PlayerDocuments'),
+      where('playerTmProfile', '==', player.tmProfile)
+    );
+    const unsub = onSnapshot(q, async (snap) => {
+      const docs = snap.docs
+        .map((d) => ({ id: d.id, ...d.data() } as PlayerDocument))
+        .sort((a, b) => (b.uploadedAt ?? 0) - (a.uploadedAt ?? 0));
+      setDocuments(docs);
+
+      // Mark expired mandates (like Android PlayerInfoViewModel)
+      const now = Date.now();
+      const mandateDocs = docs.filter((d) => (d.type ?? '').toUpperCase() === 'MANDATE');
+      for (const m of mandateDocs) {
+        const expiresAt = m.expiresAt;
+        if (expiresAt != null && expiresAt < now && !m.expired) {
+          try {
+            await updateDoc(doc(db, 'PlayerDocuments', m.id), { expired: true });
+          } catch {
+            // ignore
+          }
+        }
+      }
+
+      // Auto-sync mandate switch: ON when valid mandate docs exist, OFF when none (like Android)
+      const validMandates = mandateDocs.filter(
+        (d) => !d.expired && (d.expiresAt == null || d.expiresAt >= now)
       );
+      const validCount = validMandates.length;
+      if (prevValidMandateCountRef.current != null && validCount !== prevValidMandateCountRef.current) {
+        const hasMandate = validCount > 0;
+        try {
+          await updateDoc(doc(db, 'Players', id), { haveMandate: hasMandate });
+          setPlayer((p) => (p ? { ...p, haveMandate: hasMandate } : null));
+        } catch {
+          // ignore
+        }
+      }
+      prevValidMandateCountRef.current = validCount;
     });
-  }, [player?.tmProfile]);
+    return () => unsub();
+  }, [player?.tmProfile, id]);
+
+  const getCurrentUserName = useCallback((): string | undefined => {
+    if (!user?.email) return undefined;
+    const account = accounts.find(
+      (a) => a.email?.toLowerCase() === user.email?.toLowerCase()
+    );
+    return isRtl ? (account?.hebrewName ?? account?.name) : (account?.name ?? account?.hebrewName);
+  }, [user?.email, accounts, isRtl]);
+
+  const handleUploadDocument = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file || !player?.tmProfile || !id) return;
+      e.target.value = '';
+      setUploadingDocument(true);
+      try {
+        const tmProfile = player.tmProfile;
+        const playerName = player.fullName ?? undefined;
+
+        // 1. Call detection API
+        const formData = new FormData();
+        formData.append('file', file);
+        if (playerName) formData.append('playerName', playerName);
+
+        const detectRes = await fetch('/api/documents/detect', {
+          method: 'POST',
+          body: formData,
+        });
+
+        let docType = 'OTHER';
+        let suggestedName = file.name;
+        let passportInfo: { firstName: string; lastName: string; dateOfBirth?: string; passportNumber?: string; nationality?: string } | undefined;
+        let mandateExpiresAt: number | undefined;
+
+        if (detectRes.ok) {
+          const detection = (await detectRes.json()) as {
+            documentType?: string;
+            suggestedName?: string;
+            passportInfo?: { firstName: string; lastName: string; dateOfBirth?: string; passportNumber?: string; nationality?: string };
+            mandateExpiresAt?: number;
+          };
+          docType = detection.documentType ?? 'OTHER';
+          suggestedName = detection.suggestedName ?? file.name;
+          passportInfo = detection.passportInfo;
+          mandateExpiresAt = detection.mandateExpiresAt;
+        }
+
+        // Ensure mandate has a proper filename (player signs on PDF, may upload with generic/empty name)
+        if (docType === 'MANDATE') {
+          if (!suggestedName?.trim()) {
+            const pName = ([player.passportDetails?.firstName, player.passportDetails?.lastName].filter(Boolean).join('_') || player.fullName?.replace(/\s+/g, '_') || 'player')
+              .replace(/[<>:"/\\|?*]/g, '_')
+              .slice(0, 60);
+            // Use actual file extension (pdf, png, jpg) - don't force .pdf
+            const ext = (file.name || '').match(/\.([a-zA-Z0-9]+)$/)?.[1]?.toLowerCase();
+            const extFromType = file.type === 'application/pdf' ? 'pdf' : file.type === 'image/png' ? 'png' : (file.type === 'image/jpeg' || file.type === 'image/jpg') ? 'jpg' : null;
+            const suffix = ext === 'pdf' || ext === 'png' || ext === 'jpg' || ext === 'jpeg' ? (ext === 'jpeg' ? '.jpg' : `.${ext}`) : (extFromType ? `.${extFromType}` : '.pdf');
+            suggestedName = `Mandate_${pName}${suffix}`;
+          }
+        } else if (!suggestedName?.trim()) {
+          const ext = (file.name || '').match(/\.([a-zA-Z0-9]+)$/)?.[1]?.toLowerCase();
+          const extFromType = file.type === 'application/pdf' ? 'pdf' : file.type === 'image/png' ? 'png' : (file.type === 'image/jpeg' || file.type === 'image/jpg') ? 'jpg' : null;
+          const suffix = ext ? (ext === 'jpeg' ? '.jpg' : `.${ext}`) : (extFromType ? `.${extFromType}` : '');
+          suggestedName = file.name || `Document_${Date.now()}${suffix}`;
+        }
+
+        // Block passport if player already has passport details (like Android)
+        if (docType === 'PASSPORT' && player.passportDetails) {
+          setUploadError('passport_already_exists');
+          setUploadingDocument(false);
+          setTimeout(() => setUploadError(null), 4000);
+          return;
+        }
+
+        // 2. Flatten PDF before upload (like Android)
+        let bytes = await file.arrayBuffer();
+        const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+        if (isPdf) {
+          bytes = await flattenPdf(bytes);
+        }
+
+        // 3. Upload to Storage
+        const safeProfile = (() => {
+          let h = 0;
+          for (let i = 0; i < tmProfile.length; i++) {
+            h = ((h << 5) - h + tmProfile.charCodeAt(i)) | 0;
+          }
+          return h.toString().replace('-', 'x');
+        })();
+        const storageFileName = `${crypto.randomUUID()}_${suggestedName}`;
+        const storageRef = ref(storage, `player_docs/${safeProfile}/${storageFileName}`);
+        await uploadBytes(storageRef, bytes);
+        const url = await getDownloadURL(storageRef);
+
+        const createdBy = getCurrentUserName() ?? undefined;
+        const uploadedBy = docType === 'MANDATE' ? createdBy : undefined;
+
+        const data: Record<string, unknown> = {
+          playerTmProfile: tmProfile,
+          type: docType,
+          name: suggestedName,
+          storageUrl: url,
+          uploadedAt: Date.now(),
+        };
+        if (mandateExpiresAt != null) data.expiresAt = mandateExpiresAt;
+        if (docType === 'MANDATE' && uploadedBy) data.uploadedBy = uploadedBy;
+
+        await addDoc(collection(db, 'PlayerDocuments'), data);
+
+        // 4. Save passport details to player (like Android)
+        if (docType === 'PASSPORT' && passportInfo) {
+          const passportDetails = {
+            firstName: passportInfo.firstName || undefined,
+            lastName: passportInfo.lastName || undefined,
+            dateOfBirth: passportInfo.dateOfBirth || undefined,
+            passportNumber: passportInfo.passportNumber || undefined,
+            nationality: passportInfo.nationality || undefined,
+            lastUpdatedAt: Date.now(),
+          };
+          await updateDoc(doc(db, 'Players', id), { passportDetails });
+          setPlayer((p) => (p ? { ...p, passportDetails } : null));
+        }
+
+        // 5. Feed event for mandate (exactly like Android)
+        if (docType === 'MANDATE') {
+          await addDoc(collection(db, 'FeedEvents'), {
+            type: 'MANDATE_UPLOADED',
+            playerName: player.fullName,
+            playerImage: player.profileImage,
+            playerTmProfile: tmProfile,
+            agentName: createdBy,
+            ...(mandateExpiresAt != null && { mandateExpiryAt: mandateExpiresAt }),
+            timestamp: Date.now(),
+          });
+        }
+      } catch (err) {
+        setUploadError(err instanceof Error ? err.message : 'upload_failed');
+        setTimeout(() => setUploadError(null), 4000);
+      } finally {
+        setUploadingDocument(false);
+      }
+    },
+    [player, id, getCurrentUserName]
+  );
+
+  const handleMandateToggle = useCallback(
+    async (hasMandate: boolean) => {
+      if (!player || !id) return;
+      setMandateToggling(true);
+      try {
+        await updateDoc(doc(db, 'Players', id), { haveMandate: hasMandate });
+        setPlayer((p) => (p ? { ...p, haveMandate: hasMandate } : null));
+
+        const createdBy = getCurrentUserName();
+        const mandateExpiryAt =
+          hasMandate && player.tmProfile
+            ? (() => {
+                const valid = documents.filter(
+                  (d) =>
+                    (d.type ?? '').toUpperCase() === 'MANDATE' &&
+                    !d.expired &&
+                    (d.expiresAt == null || d.expiresAt >= Date.now())
+                );
+                const maxExp = Math.max(0, ...valid.map((d) => d.expiresAt ?? 0));
+                return maxExp > 0 ? maxExp : undefined;
+              })()
+            : undefined;
+
+        await addDoc(collection(db, 'FeedEvents'), {
+          type: hasMandate ? 'MANDATE_SWITCHED_ON' : 'MANDATE_SWITCHED_OFF',
+          playerName: player.fullName,
+          playerImage: player.profileImage,
+          playerTmProfile: player.tmProfile,
+          agentName: createdBy,
+          ...(mandateExpiryAt != null && { mandateExpiryAt }),
+          timestamp: Date.now(),
+        });
+      } catch {
+        // revert on error
+        setPlayer((p) => (p ? { ...p, haveMandate: !hasMandate } : null));
+      } finally {
+        setMandateToggling(false);
+      }
+    },
+    [player, id, documents, getCurrentUserName]
+  );
+
+  const handleDeleteDocument = useCallback(
+    async (d: PlayerDocument) => {
+      if (!d.id || !id) return;
+      const isPassport = (d.type ?? '').toUpperCase() === 'PASSPORT';
+      await deleteDoc(doc(db, 'PlayerDocuments', d.id));
+      if (isPassport) {
+        await updateDoc(doc(db, 'Players', id), { passportDetails: deleteField() });
+        setPlayer((p) => (p ? { ...p, passportDetails: undefined } : null));
+      }
+      setDocToDelete(null);
+    },
+    [id]
+  );
 
   const refreshFromTransfermarkt = async () => {
     if (!player?.tmProfile) return;
@@ -219,14 +469,6 @@ export default function PlayerInfoPage() {
     );
     return account?.hebrewName || name;
   };
-
-  const getCurrentUserName = useCallback((): string | undefined => {
-    if (!user?.email) return undefined;
-    const account = accounts.find(
-      (a) => a.email?.toLowerCase() === user.email?.toLowerCase()
-    );
-    return isRtl ? (account?.hebrewName ?? account?.name) : (account?.name ?? account?.hebrewName);
-  }, [user?.email, accounts, isRtl]);
 
   const applyNoteListUpdate = useCallback(
     async (newNoteList: NoteModel[]) => {
@@ -603,23 +845,46 @@ export default function PlayerInfoPage() {
               </div>
             )}
 
-            {/* Mandate */}
-            {player.haveMandate !== undefined && (
-              <div className="p-5 rounded-xl bg-mgsr-card border border-mgsr-border">
-                <h3 className="text-sm font-semibold text-mgsr-muted uppercase tracking-wider mb-3">
-                  {t('player_info_mandate')}
-                </h3>
-                <span
-                  className={`inline-block px-3 py-1 rounded-lg text-sm font-medium ${
-                    player.haveMandate
-                      ? 'bg-mgsr-teal/20 text-mgsr-teal'
-                      : 'bg-mgsr-muted/20 text-mgsr-muted'
-                  }`}
-                >
-                  {player.haveMandate ? t('player_info_mandate_active') : t('player_info_mandate_inactive')}
-                </span>
+            {/* Mandate switch (like Android) */}
+            <div className="p-5 rounded-xl bg-mgsr-card border border-mgsr-border">
+              <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0 flex-1">
+                  <h3 className="text-sm font-semibold text-mgsr-muted uppercase tracking-wider mb-1">
+                    {t('player_info_mandate')}
+                  </h3>
+                  {player.haveMandate && (() => {
+                    const valid = documents.filter(
+                      (d) =>
+                        (d.type ?? '').toUpperCase() === 'MANDATE' &&
+                        !d.expired &&
+                        (d.expiresAt == null || d.expiresAt >= Date.now())
+                    );
+                    const maxExp = Math.max(0, ...valid.map((d) => d.expiresAt ?? 0));
+                    if (maxExp <= 0) return null;
+                    const d = new Date(maxExp);
+                    const str = `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+                    return (
+                      <p className="text-xs text-mgsr-muted mt-0.5" dir="ltr">
+                        {t('player_info_mandate_expires').replace('%s', str)}
+                      </p>
+                    );
+                  })()}
+                </div>
+                <div className="shrink-0 overflow-hidden rounded-full">
+                  <button
+                    role="switch"
+                    aria-checked={player.haveMandate ?? false}
+                    disabled={mandateToggling}
+                    onClick={() => handleMandateToggle(!(player.haveMandate ?? false))}
+                    className={`relative flex h-7 w-12 shrink-0 cursor-pointer items-center rounded-full border-0 px-0.5 transition-colors focus:outline-none focus:ring-2 focus:ring-mgsr-teal focus:ring-offset-2 focus:ring-offset-mgsr-dark disabled:opacity-50 disabled:cursor-not-allowed ${
+                      player.haveMandate ? 'bg-mgsr-teal justify-end' : 'bg-mgsr-muted/50 justify-start'
+                    }`}
+                  >
+                    <span className="pointer-events-none block h-5 w-5 shrink-0 rounded-full bg-white shadow" />
+                  </button>
+                </div>
               </div>
-            )}
+            </div>
 
             {/* Agency */}
             {(player.agency || player.agencyUrl) && (
@@ -643,26 +908,132 @@ export default function PlayerInfoPage() {
             )}
 
             {/* Documents */}
-            {documents.length > 0 && (
-              <div className="p-5 rounded-xl bg-mgsr-card border border-mgsr-border">
-                <h3 className="text-sm font-semibold text-mgsr-muted uppercase tracking-wider mb-3">
-                  {t('player_info_documents')}
-                </h3>
+            <div className="p-5 rounded-xl bg-mgsr-card border border-mgsr-border">
+              <h3 className="text-sm font-semibold text-mgsr-muted uppercase tracking-wider mb-3">
+                {t('player_info_documents')}
+              </h3>
+              {uploadError && (
+                <div className="py-2 px-3 rounded-lg bg-mgsr-red/20 text-mgsr-red text-sm mb-2">
+                  {uploadError === 'passport_already_exists' ? t('passport_already_exists') : uploadError === 'upload_failed' ? t('upload_failed') : uploadError}
+                </div>
+              )}
+              {uploadingDocument && (
+                <div className="flex items-center gap-3 py-3 text-sm text-mgsr-muted">
+                  <div className="w-5 h-5 border-2 border-mgsr-teal border-t-transparent rounded-full animate-spin" />
+                  {t('player_info_uploading')}
+                </div>
+              )}
+              {documents.length === 0 && !uploadingDocument ? (
+                <div className="py-6 text-center">
+                  <svg className="w-12 h-12 mx-auto text-mgsr-muted mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  <p className="text-mgsr-text font-medium mb-1">{t('player_info_no_documents')}</p>
+                  <p className="text-sm text-mgsr-muted mb-4">{t('player_info_documents_empty_subtitle')}</p>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".pdf,.jpg,.jpeg,.png,.heic,.webp,image/*,application/pdf"
+                    className="hidden"
+                    onChange={handleUploadDocument}
+                  />
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-mgsr-teal text-white font-medium text-sm hover:bg-mgsr-teal/90 transition"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                    {t('player_info_add_document')}
+                  </button>
+                </div>
+              ) : (
                 <div className="space-y-2">
                   {documents.map((d) => (
-                    <a
+                    <div
                       key={d.id}
-                      href={d.storageUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center justify-between py-2 border-b border-mgsr-border last:border-0 text-sm text-mgsr-teal hover:underline"
+                      className="flex items-center justify-between py-2 border-b border-mgsr-border last:border-0 text-sm text-mgsr-text"
                     >
-                      {d.name || d.type || 'Document'}
-                      {d.expired && (
-                        <span className="text-mgsr-red text-xs">{t('player_info_doc_expired')}</span>
-                      )}
-                    </a>
+                      <a
+                        href={d.storageUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex-1 min-w-0 truncate text-mgsr-teal hover:underline"
+                      >
+                        {d.name || d.type || 'Document'}
+                      </a>
+                      <div className="flex items-center gap-1 shrink-0">
+                        {d.expired && (
+                          <span className="text-mgsr-red text-xs">{t('player_info_doc_expired')}</span>
+                        )}
+                        <a
+                          href={d.storageUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="p-2 text-mgsr-teal hover:bg-mgsr-teal/10 rounded-lg transition"
+                          title={t('player_info_cd_open_link')}
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                          </svg>
+                        </a>
+                        <button
+                          onClick={() => setDocToDelete(d)}
+                          className="p-2 text-mgsr-muted hover:text-mgsr-red hover:bg-mgsr-red/10 rounded-lg transition"
+                          title={t('player_info_cd_delete_document')}
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
                   ))}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".pdf,.jpg,.jpeg,.png,.heic,.webp,image/*,application/pdf"
+                    className="hidden"
+                    onChange={handleUploadDocument}
+                  />
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploadingDocument}
+                    className="w-full mt-2 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-mgsr-teal/20 text-mgsr-teal hover:bg-mgsr-teal/30 transition font-medium text-sm disabled:opacity-50"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                    {t('player_info_add_document')}
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Delete document confirmation */}
+            {docToDelete && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60" onClick={() => setDocToDelete(null)}>
+                <div
+                  className="bg-mgsr-card border border-mgsr-border rounded-xl p-6 max-w-sm w-full shadow-xl"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <p className="text-mgsr-text font-medium mb-4">
+                    {t('player_info_delete_doc_confirm')} &quot;{docToDelete.name || docToDelete.type || 'document'}&quot;?
+                  </p>
+                  <div className="flex gap-3 justify-end">
+                    <button
+                      onClick={() => setDocToDelete(null)}
+                      className="px-4 py-2 rounded-lg text-mgsr-muted hover:bg-mgsr-muted/20 transition"
+                    >
+                      {t('player_info_note_cancel')}
+                    </button>
+                    <button
+                      onClick={() => handleDeleteDocument(docToDelete)}
+                      className="px-4 py-2 rounded-lg bg-mgsr-red/20 text-mgsr-red hover:bg-mgsr-red/30 transition font-medium"
+                    >
+                      {t('tasks_delete')}
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
@@ -820,6 +1191,35 @@ export default function PlayerInfoPage() {
             </div>
           </div>
         </div>
+
+        {/* Bottom bar - Generate mandate when passport exists */}
+        {(() => {
+          const hasPassportDetails = !!player?.passportDetails;
+          const hasValidMandate = documents.some(
+            (d) =>
+              (d.type ?? '').toUpperCase() === 'MANDATE' &&
+              !d.expired &&
+              (d.expiresAt == null || d.expiresAt >= Date.now())
+          );
+          return (
+            <div className="sticky bottom-0 left-0 right-0 mt-8 rounded-t-2xl border border-t border-mgsr-border bg-mgsr-card p-4">
+              <div className="flex items-center justify-center gap-8">
+                {hasPassportDetails && (
+                  <Link
+                    href={hasValidMandate ? '#' : `/players/${id}/generate-mandate`}
+                    className={`flex items-center gap-2 ${hasValidMandate ? 'cursor-default opacity-50' : 'text-mgsr-teal hover:underline'}`}
+                    onClick={(e) => hasValidMandate && e.preventDefault()}
+                  >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                    </svg>
+                    <span className="font-medium text-sm">{t('player_info_generate_mandate')}</span>
+                  </Link>
+                )}
+              </div>
+            </div>
+          );
+        })()}
       </div>
 
       {/* Note Add/Edit Modal */}

@@ -68,6 +68,8 @@ interface RosteredPlayer {
   contractExpired?: string;
   haveMandate?: boolean;
   agency?: string;
+  agencyUrl?: string;
+  linkedContactId?: string;
 }
 
 interface ContactFull {
@@ -480,32 +482,42 @@ export default function DashboardPage() {
     );
     const byAgency = new Map<
       string,
-      { agencyName: string; agencyCountry?: string; contactNames: string[] }
+      { agencyName: string; agencyCountry?: string; contactNames: string[]; contactIds: string[]; agencyUrls: string[] }
     >();
     for (const c of agencyContacts) {
       const agencyName = c.agencyName!.trim();
       const key = agencyName.toLowerCase();
       const contactName = c.name?.trim();
+      const agencyUrl = c.agencyUrl?.trim();
       if (!byAgency.has(key)) {
         byAgency.set(key, {
           agencyName,
           agencyCountry: c.agencyCountry?.trim() || undefined,
           contactNames: contactName ? [contactName] : [],
+          contactIds: [c.id],
+          agencyUrls: agencyUrl ? [agencyUrl] : [],
         });
       } else {
         const entry = byAgency.get(key)!;
         if (contactName && !entry.contactNames.includes(contactName)) {
           entry.contactNames.push(contactName);
         }
+        entry.contactIds.push(c.id);
+        if (agencyUrl && !entry.agencyUrls.includes(agencyUrl)) {
+          entry.agencyUrls.push(agencyUrl);
+        }
       }
     }
     const counts: { agencyName: string; agencyCountry?: string; contactNames: string[]; count: number }[] = [];
     for (const [key, entry] of Array.from(byAgency.entries())) {
       const count = rosterPlayers.filter((p) => {
+        if (entry.contactIds.includes(p.linkedContactId ?? '')) return true;
+        const playerUrl = p.agencyUrl?.trim();
+        if (playerUrl && entry.agencyUrls.includes(playerUrl)) return true;
         const playerAgency = (p.agency?.trim() ?? '').toLowerCase();
         return playerAgency.length > 0 && playerAgency === key;
       }).length;
-      counts.push({ ...entry, count });
+      counts.push({ agencyName: entry.agencyName, agencyCountry: entry.agencyCountry, contactNames: entry.contactNames, count });
     }
     const withPlayers = counts.filter((x) => x.count > 0);
     const maxCount = Math.max(...withPlayers.map((x) => x.count), 1);
@@ -1499,7 +1511,6 @@ export default function DashboardPage() {
         {/* Quick actions */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-10">
           {[
-            { href: '/players/add', label: t('add_player') },
             { href: '/shortlist', label: t('shortlist') },
             { href: '/releases', label: t('releases') },
             { href: '/returnees', label: t('nav_returnee') },

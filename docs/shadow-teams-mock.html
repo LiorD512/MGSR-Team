@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Shadow Teams — MGSR Mock v2</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700&family=Outfit:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --mgsr-dark: #0F1923;
+      --mgsr-card: #1A2736;
+      --mgsr-card-border: #253545;
+      --mgsr-teal: #4DB6AC;
+      --mgsr-teal-dim: rgba(77, 182, 172, 0.15);
+      --mgsr-text: #E8EAED;
+      --mgsr-muted: #8C999B;
+      --grass-dark: #2d5a27;
+      --grass-light: #3a7041;
+      --pitch-line: rgba(255,255,255,0.9);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Outfit', system-ui, sans-serif;
+      background: var(--mgsr-dark);
+      color: var(--mgsr-text);
+      min-height: 100vh;
+      line-height: 1.5;
+    }
+    .font-display { font-family: 'Syne', sans-serif; }
+
+    .tabs {
+      display: flex;
+      gap: 0.25rem;
+      padding: 0.75rem 1.5rem;
+      background: var(--mgsr-card);
+      border-bottom: 1px solid var(--mgsr-card-border);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    .tab {
+      padding: 0.5rem 1rem;
+      background: none;
+      border: none;
+      color: var(--mgsr-muted);
+      font-family: inherit;
+      font-size: 0.875rem;
+      cursor: pointer;
+      border-radius: 6px;
+      transition: all 0.2s;
+    }
+    .tab:hover { color: var(--mgsr-text); }
+    .tab.active { background: var(--mgsr-teal-dim); color: var(--mgsr-teal); font-weight: 600; }
+    .panel { display: none; padding: 1.5rem; max-width: 1100px; margin: 0 auto; }
+    .panel.active { display: block; }
+
+    .page-header { margin-bottom: 1.5rem; }
+    .page-header h1 { font-family: 'Syne', sans-serif; font-size: 1.5rem; font-weight: 700; color: var(--mgsr-text); }
+    .page-header .subtitle { color: var(--mgsr-muted); font-size: 0.85rem; margin-top: 0.2rem; }
+
+    .card {
+      background: var(--mgsr-card);
+      border: 1px solid var(--mgsr-card-border);
+      border-radius: 10px;
+      padding: 1.25rem;
+      margin-bottom: 1.25rem;
+    }
+    .card-title { font-size: 0.9rem; font-weight: 600; color: var(--mgsr-teal); margin-bottom: 0.75rem; }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.5rem 1rem;
+      border-radius: 6px;
+      font-family: inherit;
+      font-size: 0.9rem;
+      font-weight: 500;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s;
+    }
+    .btn-primary { background: var(--mgsr-teal); color: var(--mgsr-dark); }
+    .btn-primary:hover { background: #5fc9c0; }
+    .btn-secondary { background: var(--mgsr-teal-dim); color: var(--mgsr-teal); }
+    .btn-secondary:hover { background: rgba(77, 182, 172, 0.25); }
+
+    /* ═══════════════════════════════════════════════════════════════
+       REAL PITCH — grass stripes (FotMob, BuildLineup, iCoachFootball)
+       ═══════════════════════════════════════════════════════════════ */
+    .pitch-container {
+      position: relative;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.4);
+    }
+    .pitch {
+      aspect-ratio: 105/68;
+      max-height: 420px;
+      background: var(--grass-dark);
+      position: relative;
+      /* Grass stripes — like real broadcast pitch */
+      background-image: repeating-linear-gradient(
+        90deg,
+        var(--grass-dark) 0px,
+        var(--grass-dark) 20px,
+        var(--grass-light) 20px,
+        var(--grass-light) 40px
+      );
+    }
+    /* Pitch markings */
+    .pitch::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border: 2px solid var(--pitch-line);
+      border-radius: 0;
+      pointer-events: none;
+    }
+    .pitch .halfway { position: absolute; left: 50%; top: 0; bottom: 0; width: 2px; background: var(--pitch-line); }
+    .pitch .center-circle {
+      position: absolute;
+      left: 50%; top: 50%;
+      width: 18%;
+      aspect-ratio: 1;
+      border: 2px solid var(--pitch-line);
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+    }
+    .pitch .center-dot {
+      position: absolute;
+      left: 50%; top: 50%;
+      width: 6px; height: 6px;
+      background: var(--pitch-line);
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+    }
+    .pitch .penalty-l, .pitch .penalty-r {
+      position: absolute;
+      top: 50%;
+      width: 16%;
+      height: 40%;
+      border: 2px solid var(--pitch-line);
+      transform: translateY(-50%);
+    }
+    .pitch .penalty-l { left: 0; border-right: none; border-radius: 0 4px 4px 0; }
+    .pitch .penalty-r { right: 0; border-left: none; border-radius: 4px 0 0 4px; }
+    .pitch .box-l, .pitch .box-r {
+      position: absolute;
+      top: 50%;
+      width: 8%;
+      height: 22%;
+      border: 2px solid var(--pitch-line);
+      transform: translateY(-50%);
+    }
+    .pitch .box-l { left: 0; border-right: none; border-radius: 0 2px 2px 0; }
+    .pitch .box-r { right: 0; border-left: none; border-radius: 2px 0 0 2px; }
+
+    /* Player nodes — minimal circles (FotMob/BuildLineup style) */
+    .player-node {
+      position: absolute;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: 2px solid var(--mgsr-teal);
+      background: var(--mgsr-dark);
+      overflow: hidden;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+      z-index: 2;
+    }
+    .player-node:hover {
+      transform: scale(1.1);
+      box-shadow: 0 0 0 3px var(--mgsr-teal);
+    }
+    .player-node img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .player-node .num {
+      position: absolute;
+      bottom: -2px;
+      right: -2px;
+      width: 14px;
+      height: 14px;
+      background: var(--mgsr-teal);
+      color: var(--mgsr-dark);
+      font-size: 9px;
+      font-weight: 700;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .player-node.empty {
+      border-style: dashed;
+      border-color: var(--mgsr-muted);
+      background: rgba(255,255,255,0.08);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .player-node.empty::after {
+      content: '+';
+      font-size: 18px;
+      color: var(--mgsr-muted);
+      font-weight: 300;
+    }
+
+    /* Formation positions — 4-3-3 */
+    .formation-4-3-3 { position: absolute; inset: 0; }
+    .formation-4-3-3 .row { position: absolute; left: 50%; transform: translateX(-50%); display: flex; gap: 12%; justify-content: center; }
+    .formation-4-3-3 .row.gk { top: 8%; }
+    .formation-4-3-3 .row.def { top: 28%; }
+    .formation-4-3-3 .row.mid { top: 52%; }
+    .formation-4-3-3 .row.fwd { top: 78%; }
+    .formation-4-3-3 .row .slot { position: relative; }
+
+    /* Bench — subs below pitch */
+    .bench {
+      display: flex;
+      gap: 0.5rem;
+      padding: 0.75rem 1rem;
+      background: var(--mgsr-card);
+      border: 1px solid var(--mgsr-card-border);
+      border-top: none;
+      border-radius: 0 0 12px 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .bench-label {
+      font-size: 0.7rem;
+      font-weight: 600;
+      color: var(--mgsr-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      width: 100%;
+      margin-bottom: 0.25rem;
+    }
+    .bench-item {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.35rem 0.6rem;
+      background: var(--mgsr-dark);
+      border-radius: 6px;
+      font-size: 0.8rem;
+      cursor: pointer;
+    }
+    .bench-item:hover { background: var(--mgsr-teal-dim); }
+    .bench-item img { width: 24px; height: 24px; border-radius: 50%; object-fit: cover; }
+    .bench-item .pos { color: var(--mgsr-muted); font-size: 0.7rem; }
+    .bench-item.empty { color: var(--mgsr-muted); font-style: italic; }
+
+    /* Toolbar */
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+    }
+    .formation-select {
+      padding: 0.4rem 0.8rem;
+      background: var(--mgsr-card);
+      border: 1px solid var(--mgsr-card-border);
+      border-radius: 6px;
+      color: var(--mgsr-text);
+      font-size: 0.85rem;
+      cursor: pointer;
+    }
+    .formation-select option { background: var(--mgsr-card); }
+
+    /* Split layout — ProSoccerData / Wyscout style */
+    .split-layout {
+      display: grid;
+      grid-template-columns: 1fr 320px;
+      gap: 1.5rem;
+      align-items: start;
+    }
+    @media (max-width: 768px) { .split-layout { grid-template-columns: 1fr; } }
+
+    .pos-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    .pos-row {
+      display: grid;
+      grid-template-columns: 48px 1fr 1fr;
+      gap: 0.75rem;
+      align-items: center;
+      padding: 0.5rem 0.75rem;
+      background: var(--mgsr-dark);
+      border-radius: 6px;
+      border: 1px solid var(--mgsr-card-border);
+    }
+    .pos-row .code {
+      font-weight: 700;
+      color: var(--mgsr-teal);
+      font-size: 0.85rem;
+    }
+    .pos-row .slot {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.35rem 0.5rem;
+      background: var(--mgsr-card);
+      border-radius: 4px;
+      font-size: 0.8rem;
+      cursor: pointer;
+      border-right: 3px solid var(--mgsr-teal);
+    }
+    .pos-row .slot.sub { border-right-color: var(--mgsr-muted); }
+    .pos-row .slot.empty { color: var(--mgsr-muted); font-style: italic; }
+    .pos-row img { width: 26px; height: 26px; border-radius: 50%; object-fit: cover; }
+
+    /* Transfermarkt-style position cards */
+    .pos-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 0.75rem;
+    }
+    .pos-card {
+      background: var(--mgsr-card);
+      border: 1px solid var(--mgsr-card-border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .pos-card-header {
+      padding: 0.5rem 0.75rem;
+      background: var(--mgsr-dark);
+      font-weight: 600;
+      font-size: 0.85rem;
+      color: var(--mgsr-teal);
+    }
+    .pos-card-body { padding: 0.5rem; }
+    .pos-card-player {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.4rem 0;
+      border-bottom: 1px solid var(--mgsr-card-border);
+      font-size: 0.8rem;
+    }
+    .pos-card-player:last-child { border-bottom: none; }
+    .pos-card-player img { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; }
+    .pos-card-player .role { font-size: 0.65rem; color: var(--mgsr-muted); }
+    .pos-card-player .value { color: var(--mgsr-teal); font-weight: 500; }
+    .pos-card-player.empty { color: var(--mgsr-muted); font-style: italic; }
+
+    /* Empty state — refined */
+    .empty-state {
+      text-align: center;
+      padding: 3rem 2rem;
+      background: var(--mgsr-card);
+      border: 1px dashed var(--mgsr-card-border);
+      border-radius: 12px;
+    }
+    .empty-state .icon { font-size: 3rem; margin-bottom: 0.75rem; opacity: 0.4; }
+    .empty-state h3 { font-size: 1.1rem; margin-bottom: 0.4rem; }
+    .empty-state p { color: var(--mgsr-muted); font-size: 0.9rem; margin-bottom: 1.25rem; max-width: 360px; margin-left: auto; margin-right: auto; }
+
+    .mock-badge {
+      position: fixed;
+      bottom: 0.75rem;
+      left: 0.75rem;
+      padding: 0.35rem 0.65rem;
+      background: var(--mgsr-card);
+      border: 1px solid var(--mgsr-card-border);
+      border-radius: 4px;
+      font-size: 0.7rem;
+      color: var(--mgsr-muted);
+      z-index: 100;
+    }
+  </style>
+</head>
+<body>
+  <div class="tabs">
+    <button class="tab" data-panel="research">מחקר</button>
+    <button class="tab active" data-panel="pitch">תצוגת מגרש</button>
+    <button class="tab" data-panel="split">תצוגה מפוצלת</button>
+    <button class="tab" data-panel="positions">לפי עמדות</button>
+    <button class="tab" data-panel="empty">מצב ריק</button>
+  </div>
+
+  <!-- Research Summary -->
+  <section class="panel" id="research">
+    <div class="page-header">
+      <h1 class="font-display">ממצאי מחקר — Shadow Teams</h1>
+      <p class="subtitle">Wyscout, FotMob, Transfermarkt, BuildLineup, ProSoccerData</p>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Wyscout / ProSoccerData Shadow Team</div>
+      <ul style="font-size: 0.9rem; color: var(--mgsr-muted); line-height: 1.8; padding-right: 1rem;">
+        <li>מגרש פורמציה משמאל + טבלת שחקנים מימין עם פילטרים</li>
+        <li>Dropdown על כל עמדה — הקלדת שם → חיפוש → הוספה</li>
+        <li>מספר שחקנים לעמדה עם עדיפות</li>
+        <li>לחיצה על עמדה → פופאפ השוואת דירוגים</li>
+        <li>השוואת Shadow Teams זה מול זה</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <div class="card-title">FotMob Lineup Builder</div>
+      <ul style="font-size: 0.9rem; color: var(--mgsr-muted); line-height: 1.8; padding-right: 1rem;">
+        <li>מגרש עם פסי דשא (striped grass)</li>
+        <li>לחיצה על משבצת ריקה → חיפוש שחקן</li>
+        <li>בחירת פורמציה (4-3-3, 4-4-2, 4-2-3-1...)</li>
+        <li>מינימלי: עיגולים עם תמונה + מספר</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Transfermarkt — Squad by Position</div>
+      <ul style="font-size: 0.9rem; color: var(--mgsr-muted); line-height: 1.8; padding-right: 1rem;">
+        <li>קיבוץ לפי עמדה (GK, CB, LB, RB, DM, CM, AM, LW, RW, CF)</li>
+        <li>כרטיסים עם תמונה, שם, ערך שוק — בלי מגרש</li>
+        <li>תצוגה מפורטת: גיל, לאום, חוזה, ערך</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <div class="card-title">BuildLineup</div>
+      <ul style="font-size: 0.9rem; color: var(--mgsr-muted); line-height: 1.8; padding-right: 1rem;">
+        <li>פסי דשא (striped green), קווי מגרש לבנים</li>
+        <li>טאב Subs — הוספת מחליף לכל שחקן</li>
+        <li>מחליפים מוצגים מתחת למגרש (bench)</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <div class="card-title">המלצות עיצוב</div>
+      <ul style="font-size: 0.9rem; color: var(--mgsr-muted); line-height: 1.8; padding-right: 1rem;">
+        <li><strong>מגרש:</strong> דשא אמיתי (פסים), קווים לבנים — לא גרדיאנט כהה</li>
+        <li><strong>שחקנים על המגרש:</strong> עיגולים מינימליים (תמונה + מספר) — לא כרטיסים מלאים</li>
+        <li><strong>מחליפים:</strong> ספסל מתחת למגרש — כמו הרכב משחק</li>
+        <li><strong>פרטים:</strong> ב-hover/click — לא להעמיס על המגרש</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- Pitch View (FotMob/BuildLineup style) -->
+  <section class="panel active" id="pitch">
+    <div class="page-header">
+      <h1 class="font-display">Shadow Team — תצוגת מגרש</h1>
+      <p class="subtitle">לחיצה על עיגול לעריכה • מחליפים בספסל</p>
+    </div>
+
+    <div class="toolbar">
+      <select class="formation-select">
+        <option>4-3-3</option>
+        <option>4-4-2</option>
+        <option>4-2-3-1</option>
+        <option>3-5-2</option>
+      </select>
+      <span style="font-size: 0.8rem; color: var(--mgsr-muted);">חלון קיץ 2025</span>
+      <button class="btn btn-secondary">ערוך</button>
+    </div>
+
+    <div class="pitch-container">
+      <div class="pitch">
+        <div class="halfway"></div>
+        <div class="center-circle"></div>
+        <div class="center-dot"></div>
+        <div class="penalty-l"></div>
+        <div class="penalty-r"></div>
+        <div class="box-l"></div>
+        <div class="box-r"></div>
+
+        <div class="formation-4-3-3">
+          <div class="row gk">
+            <div class="slot"><div class="player-node"><img src="https://via.placeholder.com/36/1A2736/4DB6AC?text=1" alt=""><span class="num">1</span></div></div>
+          </div>
+          <div class="row def">
+            <div class="slot"><div class="player-node"><img src="https://via.placeholder.com/36/1A2736/4DB6AC?text=2" alt=""><span class="num">2</span></div></div>
+            <div class="slot"><div class="player-node"><img src="https://via.placeholder.com/36/1A2736/4DB6AC?text=3" alt=""><span class="num">3</span></div></div>
+            <div class="slot"><div class="player-node"><img src="https://via.placeholder.com/36/1A2736/4DB6AC?text=4" alt=""><span class="num">4</span></div></div>
+            <div class="slot"><div class="player-node"><img src="https://via.placeholder.com/36/1A2736/4DB6AC?text=5" alt=""><span class="num">5</span></div></div>
+          </div>
+          <div class="row mid">
+            <div class="slot"><div class="player-node"><img src="https://via.placeholder.com/36/1A2736/4DB6AC?text=6" alt=""><span class="num">6</span></div></div>
+            <div class="slot"><div class="player-node"><img src="https://via.placeholder.com/36/1A2736/4DB6AC?text=7" alt=""><span class="num">7</span></div></div>
+            <div class="slot"><div class="player-node"><img src="https://via.placeholder.com/36/1A2736/4DB6AC?text=8" alt=""><span class="num">8</span></div></div>
+          </div>
+          <div class="row fwd">
+            <div class="slot"><div class="player-node"><img src="https://via.placeholder.com/36/1A2736/4DB6AC?text=9" alt=""><span class="num">9</span></div></div>
+            <div class="slot"><div class="player-node"><img src="https://via.placeholder.com/36/1A2736/4DB6AC?text=10" alt=""><span class="num">10</span></div></div>
+            <div class="slot"><div class="player-node empty"></div></div>
+          </div>
+        </div>
+      </div>
+      <div class="bench">
+        <span class="bench-label">ספסל (מחליפים)</span>
+        <div class="bench-item"><img src="https://via.placeholder.com/24" alt=""> פרצ'נקו <span class="pos">GK</span></div>
+        <div class="bench-item"><img src="https://via.placeholder.com/24" alt=""> מיגל ויטור <span class="pos">CB</span></div>
+        <div class="bench-item"><img src="https://via.placeholder.com/24" alt=""> אורי דגן <span class="pos">LB</span></div>
+        <div class="bench-item"><img src="https://via.placeholder.com/24" alt=""> מוחמד קנאנה <span class="pos">CM</span></div>
+        <div class="bench-item"><img src="https://via.placeholder.com/24" alt=""> יונתן כהן <span class="pos">LW</span></div>
+        <div class="bench-item empty">+ הוסף מחליף</div>
+      </div>
+    </div>
+
+    <p style="margin-top: 1rem; font-size: 0.8rem; color: var(--mgsr-muted);">
+      💡 כמו FotMob: לחיצה על עיגול → חיפוש שחקן. פרטים (ערך, גיל) ב-tooltip או בפאנל צד.
+    </p>
+  </section>
+
+  <!-- Split View (ProSoccerData / Wyscout) -->
+  <section class="panel" id="split">
+    <div class="page-header">
+      <h1 class="font-display">תצוגה מפוצלת — Wyscout style</h1>
+      <p class="subtitle">מגרש + רשימת עמדות עם dropdown לחיפוש</p>
+    </div>
+
+    <div class="split-layout">
+      <div class="pitch-container">
+        <div class="pitch" style="max-height: 340px;">
+          <div class="halfway"></div>
+          <div class="center-circle"></div>
+          <div class="center-dot"></div>
+          <div class="penalty-l"></div>
+          <div class="penalty-r"></div>
+          <div class="box-l"></div>
+          <div class="box-r"></div>
+          <div class="formation-4-3-3">
+            <div class="row gk"><div class="slot"><div class="player-node"><img src="https://via.placeholder.com/36" alt=""><span class="num">1</span></div></div></div>
+            <div class="row def">
+              <div class="slot"><div class="player-node"><img src="https://via.placeholder.com/36" alt=""><span class="num">2</span></div></div>
+              <div class="slot"><div class="player-node"><img src="https://via.placeholder.com/36" alt=""><span class="num">3</span></div></div>
+              <div class="slot"><div class="player-node"><img src="https://via.placeholder.com/36" alt=""><span class="num">4</span></div></div>
+              <div class="slot"><div class="player-node"><img src="https://via.placeholder.com/36" alt=""><span class="num">5</span></div></div>
+            </div>
+            <div class="row mid">
+              <div class="slot"><div class="player-node"><img src="https://via.placeholder.com/36" alt=""><span class="num">6</span></div></div>
+              <div class="slot"><div class="player-node"><img src="https://via.placeholder.com/36" alt=""><span class="num">7</span></div></div>
+              <div class="slot"><div class="player-node"><img src="https://via.placeholder.com/36" alt=""><span class="num">8</span></div></div>
+            </div>
+            <div class="row fwd">
+              <div class="slot"><div class="player-node"><img src="https://via.placeholder.com/36" alt=""><span class="num">9</span></div></div>
+              <div class="slot"><div class="player-node"><img src="https://via.placeholder.com/36" alt=""><span class="num">10</span></div></div>
+              <div class="slot"><div class="player-node"><img src="https://via.placeholder.com/36" alt=""><span class="num">11</span></div></div>
+            </div>
+          </div>
+        </div>
+        <div class="bench" style="border-radius: 0;">
+          <span class="bench-label">ספסל</span>
+          <div class="bench-item"><img src="https://via.placeholder.com/24" alt=""> פרצ'נקו</div>
+          <div class="bench-item"><img src="https://via.placeholder.com/24" alt=""> ויטור</div>
+          <div class="bench-item"><img src="https://via.placeholder.com/24" alt=""> דגן</div>
+          <div class="bench-item"><img src="https://via.placeholder.com/24" alt=""> קנאנה</div>
+          <div class="bench-item"><img src="https://via.placeholder.com/24" alt=""> כהן</div>
+        </div>
+      </div>
+      <div class="card" style="margin-bottom: 0;">
+        <div class="card-title">עמדות — לחץ לעריכה</div>
+        <div class="pos-grid">
+          <div class="pos-row">
+            <span class="code">GK</span>
+            <div class="slot"><img src="https://via.placeholder.com/26" alt=""> אומר מרשיאנו — €3M</div>
+            <div class="slot sub"><img src="https://via.placeholder.com/26" alt=""> פרצ'נקו — €800K</div>
+          </div>
+          <div class="pos-row">
+            <span class="code">CB</span>
+            <div class="slot"><img src="https://via.placeholder.com/26" alt=""> שון גולדברג — €2M</div>
+            <div class="slot sub"><img src="https://via.placeholder.com/26" alt=""> מיגל ויטור — €1.2M</div>
+          </div>
+          <div class="pos-row">
+            <span class="code">CB</span>
+            <div class="slot"><img src="https://via.placeholder.com/26" alt=""> עומר דהרי — €1.8M</div>
+            <div class="slot sub"><img src="https://via.placeholder.com/26" alt=""> דניאל פרץ — €700K</div>
+          </div>
+          <div class="pos-row">
+            <span class="code">LB</span>
+            <div class="slot"><img src="https://via.placeholder.com/26" alt=""> רועי שירזי — €1.1M</div>
+            <div class="slot sub"><img src="https://via.placeholder.com/26" alt=""> אורי דגן — €500K</div>
+          </div>
+          <div class="pos-row">
+            <span class="code">RB</span>
+            <div class="slot"><img src="https://via.placeholder.com/26" alt=""> אלי דסה — €1.4M</div>
+            <div class="slot sub empty">+ מחליף</div>
+          </div>
+          <div class="pos-row">
+            <span class="code">DM</span>
+            <div class="slot"><img src="https://via.placeholder.com/26" alt=""> נדב נידם — €1.5M</div>
+            <div class="slot sub empty">+ מחליף</div>
+          </div>
+          <div class="pos-row">
+            <span class="code">CM</span>
+            <div class="slot"><img src="https://via.placeholder.com/26" alt=""> דור פרץ — €2.2M</div>
+            <div class="slot sub"><img src="https://via.placeholder.com/26" alt=""> מוחמד קנאנה — €900K</div>
+          </div>
+          <div class="pos-row">
+            <span class="code">AM</span>
+            <div class="slot"><img src="https://via.placeholder.com/26" alt=""> גיא מלול — €1.8M</div>
+            <div class="slot sub"><img src="https://via.placeholder.com/26" alt=""> עידן שמש — €600K</div>
+          </div>
+          <div class="pos-row">
+            <span class="code">LW</span>
+            <div class="slot"><img src="https://via.placeholder.com/26" alt=""> מנואל לוסאקה — €1.2M</div>
+            <div class="slot sub"><img src="https://via.placeholder.com/26" alt=""> יונתן כהן — €800K</div>
+          </div>
+          <div class="pos-row">
+            <span class="code">ST</span>
+            <div class="slot"><img src="https://via.placeholder.com/26" alt=""> עומרי גלזר — €2.5M</div>
+            <div class="slot sub"><img src="https://via.placeholder.com/26" alt=""> דור מיכה — €1.5M</div>
+          </div>
+          <div class="pos-row">
+            <span class="code">RW</span>
+            <div class="slot"><img src="https://via.placeholder.com/26" alt=""> אוסקר גלוך — €3M</div>
+            <div class="slot sub empty">+ מחליף</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Transfermarkt-style by position -->
+  <section class="panel" id="positions">
+    <div class="page-header">
+      <h1 class="font-display">לפי עמדות — Transfermarkt style</h1>
+      <p class="subtitle">קיבוץ לפי עמדה, כרטיסים עם ערך שוק</p>
+    </div>
+
+    <div class="pos-cards">
+      <div class="pos-card">
+        <div class="pos-card-header">GK</div>
+        <div class="pos-card-body">
+          <div class="pos-card-player"><img src="https://via.placeholder.com/28" alt=""><div><div>אומר מרשיאנו</div><div class="role value">€3M • 30</div></div></div>
+          <div class="pos-card-player"><img src="https://via.placeholder.com/28" alt=""><div><div>דניאל פרצ'נקו</div><div class="role value">€800K • 24</div></div></div>
+        </div>
+      </div>
+      <div class="pos-card">
+        <div class="pos-card-header">CB</div>
+        <div class="pos-card-body">
+          <div class="pos-card-player"><img src="https://via.placeholder.com/28" alt=""><div><div>שון גולדברג</div><div class="role value">€2M</div></div></div>
+          <div class="pos-card-player"><img src="https://via.placeholder.com/28" alt=""><div><div>עומר דהרי</div><div class="role value">€1.8M</div></div></div>
+          <div class="pos-card-player"><img src="https://via.placeholder.com/28" alt=""><div><div>מיגל ויטור</div><div class="role value">€1.2M</div></div></div>
+          <div class="pos-card-player"><img src="https://via.placeholder.com/28" alt=""><div><div>דניאל פרץ</div><div class="role value">€700K</div></div></div>
+        </div>
+      </div>
+      <div class="pos-card">
+        <div class="pos-card-header">LB</div>
+        <div class="pos-card-body">
+          <div class="pos-card-player"><img src="https://via.placeholder.com/28" alt=""><div><div>רועי שירזי</div><div class="role value">€1.1M</div></div></div>
+          <div class="pos-card-player"><img src="https://via.placeholder.com/28" alt=""><div><div>אורי דגן</div><div class="role value">€500K</div></div></div>
+        </div>
+      </div>
+      <div class="pos-card">
+        <div class="pos-card-header">RB</div>
+        <div class="pos-card-body">
+          <div class="pos-card-player"><img src="https://via.placeholder.com/28" alt=""><div><div>אלי דסה</div><div class="role value">€1.4M</div></div></div>
+          <div class="pos-card-player empty"><div>+ מחליף</div></div>
+        </div>
+      </div>
+      <div class="pos-card">
+        <div class="pos-card-header">DM</div>
+        <div class="pos-card-body">
+          <div class="pos-card-player"><img src="https://via.placeholder.com/28" alt=""><div><div>נדב נידם</div><div class="role value">€1.5M</div></div></div>
+          <div class="pos-card-player empty"><div>+ מחליף</div></div>
+        </div>
+      </div>
+      <div class="pos-card">
+        <div class="pos-card-header">CM</div>
+        <div class="pos-card-body">
+          <div class="pos-card-player"><img src="https://via.placeholder.com/28" alt=""><div><div>דור פרץ</div><div class="role value">€2.2M</div></div></div>
+          <div class="pos-card-player"><img src="https://via.placeholder.com/28" alt=""><div><div>מוחמד קנאנה</div><div class="role value">€900K</div></div></div>
+        </div>
+      </div>
+      <div class="pos-card">
+        <div class="pos-card-header">AM</div>
+        <div class="pos-card-body">
+          <div class="pos-card-player"><img src="https://via.placeholder.com/28" alt=""><div><div>גיא מלול</div><div class="role value">€1.8M</div></div></div>
+          <div class="pos-card-player"><img src="https://via.placeholder.com/28" alt=""><div><div>עידן שמש</div><div class="role value">€600K</div></div></div>
+        </div>
+      </div>
+      <div class="pos-card">
+        <div class="pos-card-header">LW</div>
+        <div class="pos-card-body">
+          <div class="pos-card-player"><img src="https://via.placeholder.com/28" alt=""><div><div>מנואל לוסאקה</div><div class="role value">€1.2M</div></div></div>
+          <div class="pos-card-player"><img src="https://via.placeholder.com/28" alt=""><div><div>יונתן כהן</div><div class="role value">€800K</div></div></div>
+        </div>
+      </div>
+      <div class="pos-card">
+        <div class="pos-card-header">RW</div>
+        <div class="pos-card-body">
+          <div class="pos-card-player"><img src="https://via.placeholder.com/28" alt=""><div><div>אוסקר גלוך</div><div class="role value">€3M</div></div></div>
+          <div class="pos-card-player empty"><div>+ מחליף</div></div>
+        </div>
+      </div>
+      <div class="pos-card">
+        <div class="pos-card-header">ST</div>
+        <div class="pos-card-body">
+          <div class="pos-card-player"><img src="https://via.placeholder.com/28" alt=""><div><div>עומרי גלזר</div><div class="role value">€2.5M</div></div></div>
+          <div class="pos-card-player"><img src="https://via.placeholder.com/28" alt=""><div><div>דור מיכה</div><div class="role value">€1.5M</div></div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Empty State -->
+  <section class="panel" id="empty">
+    <div class="page-header">
+      <h1 class="font-display">Shadow Teams</h1>
+      <p class="subtitle">השחקנים המועדפים שלך לחלון ההעברות הבא</p>
+    </div>
+    <div class="empty-state">
+      <div class="icon">⚽</div>
+      <h3>עדיין אין לך Shadow Team</h3>
+      <p>צור צוות וירטואלי עם פותח ומחליף לכל עמדה — כך תדע בדיוק מי השחקנים שאתה רוצה לרדוף אחריהם בחלון הבא.</p>
+      <button class="btn btn-primary">צור Shadow Team</button>
+    </div>
+  </section>
+
+  <div class="mock-badge">Mock v2 — מבוסס מחקר</div>
+
+  <script>
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+        tab.classList.add('active');
+        document.getElementById(tab.dataset.panel).classList.add('active');
+      });
+    });
+  </script>
+</body>
+</html>

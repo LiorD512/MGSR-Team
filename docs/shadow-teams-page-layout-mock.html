@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Shadow Teams — עיצוב הסביבה</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Playfair+Display:ital,wght@0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500;600&family=Archivo+Black&family=Sora:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --mgsr-dark: #0F1923;
+      --mgsr-card: #1A2736;
+      --mgsr-border: #253545;
+      --mgsr-teal: #4DB6AC;
+      --mgsr-text: #E8EAED;
+      --mgsr-muted: #8C999B;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--mgsr-dark);
+      color: var(--mgsr-text);
+      min-height: 100vh;
+      line-height: 1.5;
+    }
+
+    /* Layout switcher — minimal so it doesn't distract */
+    .layout-nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      display: flex;
+      gap: 0.5rem;
+      padding: 1rem 1.5rem;
+      background: rgba(15, 25, 35, 0.92);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid rgba(37, 53, 69, 0.6);
+    }
+    .layout-nav button {
+      padding: 0.5rem 1rem;
+      background: none;
+      border: 1px solid transparent;
+      color: var(--mgsr-muted);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.7rem;
+      font-weight: 500;
+      cursor: pointer;
+      border-radius: 6px;
+      transition: all 0.2s;
+    }
+    .layout-nav button:hover { color: var(--mgsr-text); }
+    .layout-nav button.active { color: var(--mgsr-teal); border-color: var(--mgsr-teal); }
+    .panel { display: none; padding: 2rem 1.5rem; max-width: 1100px; margin: 0 auto; }
+    .panel.active { display: block; }
+
+    /* ═══ PITCH PLACEHOLDER — לא נוגעים, נשאר כמו היום ═══ */
+    .pitch-slot {
+      border-radius: 12px;
+      overflow: hidden;
+      background: #1A2736;
+      border: 1px solid #253545;
+    }
+    .pitch-slot-inner {
+      aspect-ratio: 105/68;
+      background: linear-gradient(180deg, #1e4620 0%, #2e7d32 30%, #2e7d32 70%, #1e4620 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: rgba(255,255,255,0.25);
+      font-size: 0.85rem;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* ═══════════════════════════════════════════════════════════════════════
+       אופציה 1: TACTICAL BOARD — לוח טקטי של מאמן
+       Industrial, utilitarian, clipboard feel
+       ═══════════════════════════════════════════════════════════════════════ */
+    .opt1 {
+      --opt-bg: #0a0e14;
+      --opt-surface: #121a24;
+      --opt-border: #1e2a38;
+      --opt-accent: #4DB6AC;
+      --opt-muted: #5a6b7a;
+    }
+    .opt1 .page-wrap {
+      background: var(--opt-bg);
+      border: 2px solid var(--opt-border);
+      border-radius: 4px;
+      padding: 1.5rem 1.75rem;
+      position: relative;
+    }
+    .opt1 .page-wrap::before {
+      content: 'TACTICAL';
+      position: absolute;
+      top: 0.5rem;
+      left: 1rem;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.6rem;
+      font-weight: 600;
+      letter-spacing: 0.2em;
+      color: var(--opt-muted);
+      opacity: 0.6;
+    }
+    .opt1 .header-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-bottom: 1.25rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid var(--opt-border);
+    }
+    .opt1 h1 {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: var(--opt-accent);
+      letter-spacing: 0.02em;
+    }
+    .opt1 .subtitle {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem;
+      color: var(--opt-muted);
+      margin-top: 0.25rem;
+    }
+    .opt1 .controls {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+    .opt1 .agent-pills {
+      display: flex;
+      gap: 0.25rem;
+      padding: 0.2rem;
+      background: var(--opt-surface);
+      border: 1px solid var(--opt-border);
+      border-radius: 2px;
+    }
+    .opt1 .agent-pills button {
+      padding: 0.4rem 0.9rem;
+      border: none;
+      background: none;
+      color: var(--opt-muted);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .opt1 .agent-pills button:hover { color: #fff; }
+    .opt1 .agent-pills button.active { background: var(--opt-accent); color: #0a0e14; }
+    .opt1 .formation-select {
+      padding: 0.4rem 0.8rem;
+      background: var(--opt-surface);
+      border: 1px solid var(--opt-border);
+      border-radius: 2px;
+      color: var(--opt-accent);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem;
+      cursor: pointer;
+    }
+    .opt1 .hint {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.65rem;
+      color: var(--opt-muted);
+      margin-top: 0.75rem;
+      opacity: 0.8;
+    }
+
+    /* ═══════════════════════════════════════════════════════════════════════
+       אופציה 2: MATCHDAY PROGRAM — עיתון משחק
+       Editorial, magazine, premium print feel
+       ═══════════════════════════════════════════════════════════════════════ */
+    .opt2 {
+      --opt-bg: #0d1218;
+      --opt-accent: #4DB6AC;
+      --opt-muted: #7a8a96;
+    }
+    .opt2 .page-wrap {
+      padding: 0 0.5rem;
+    }
+    .opt2 .header-block {
+      text-align: center;
+      margin-bottom: 2.5rem;
+    }
+    .opt2 h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: 2.5rem;
+      font-weight: 700;
+      color: #fff;
+      letter-spacing: -0.02em;
+      line-height: 1.1;
+    }
+    .opt2 .subtitle {
+      font-family: 'Playfair Display', serif;
+      font-style: italic;
+      font-size: 1rem;
+      color: var(--opt-muted);
+      margin-top: 0.5rem;
+    }
+    .opt2 .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 1.5rem;
+      margin-bottom: 1.75rem;
+    }
+    .opt2 .agent-tabs {
+      display: flex;
+      gap: 0;
+      border-bottom: 2px solid rgba(77, 182, 172, 0.3);
+    }
+    .opt2 .agent-tabs button {
+      padding: 0.6rem 1.25rem;
+      border: none;
+      background: none;
+      color: var(--opt-muted);
+      font-family: 'Playfair Display', serif;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      position: relative;
+      transition: color 0.2s;
+    }
+    .opt2 .agent-tabs button:hover { color: #fff; }
+    .opt2 .agent-tabs button.active {
+      color: var(--opt-accent);
+    }
+    .opt2 .agent-tabs button.active::after {
+      content: '';
+      position: absolute;
+      bottom: -2px;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: var(--opt-accent);
+    }
+    .opt2 .formation-wrap {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .opt2 .formation-wrap span {
+      font-family: 'Playfair Display', serif;
+      font-size: 0.85rem;
+      color: var(--opt-muted);
+    }
+    .opt2 .formation-select {
+      padding: 0.5rem 1rem;
+      background: transparent;
+      border: 1px solid var(--opt-muted);
+      border-radius: 0;
+      color: #fff;
+      font-family: 'Playfair Display', serif;
+      font-size: 0.9rem;
+      cursor: pointer;
+    }
+    .opt2 .hint {
+      text-align: center;
+      font-family: 'Playfair Display', serif;
+      font-size: 0.8rem;
+      color: var(--opt-muted);
+      margin-top: 1.25rem;
+      font-style: italic;
+    }
+
+    /* ═══════════════════════════════════════════════════════════════════════
+       אופציה 3: RETRO BROADCAST — גרפיקת טלוויזיה
+       Bold, chunky, 90s TV graphics
+       ═══════════════════════════════════════════════════════════════════════ */
+    .opt3 {
+      --opt-accent: #4DB6AC;
+      --opt-yellow: #ffd54f;
+    }
+    .opt3 .page-wrap {
+      border: 4px solid var(--opt-accent);
+      border-radius: 0;
+      padding: 1.25rem 1.5rem;
+      background: linear-gradient(180deg, #0a0f14 0%, #0F1923 100%);
+      position: relative;
+      box-shadow: inset 0 0 60px rgba(77, 182, 172, 0.05);
+    }
+    .opt3 .page-wrap::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0,0,0,0.03) 2px,
+        rgba(0,0,0,0.03) 4px
+      );
+      pointer-events: none;
+    }
+    .opt3 .top-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 3px solid var(--opt-accent);
+    }
+    .opt3 h1 {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 2rem;
+      font-weight: 400;
+      color: #fff;
+      letter-spacing: 0.08em;
+    }
+    .opt3 .live-badge {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 0.9rem;
+      padding: 0.25rem 0.6rem;
+      background: var(--opt-accent);
+      color: #0F1923;
+      letter-spacing: 0.15em;
+    }
+    .opt3 .subtitle {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 0.85rem;
+      color: rgba(255,255,255,0.6);
+      letter-spacing: 0.1em;
+      margin-top: 0.25rem;
+    }
+    .opt3 .controls-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+    .opt3 .agent-chips {
+      display: flex;
+      gap: 0.5rem;
+    }
+    .opt3 .agent-chips button {
+      padding: 0.5rem 1rem;
+      border: 2px solid rgba(77, 182, 172, 0.5);
+      background: none;
+      color: rgba(255,255,255,0.7);
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 1rem;
+      letter-spacing: 0.05em;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .opt3 .agent-chips button:hover { border-color: var(--opt-accent); color: #fff; }
+    .opt3 .agent-chips button.active {
+      background: var(--opt-accent);
+      border-color: var(--opt-accent);
+      color: #0F1923;
+    }
+    .opt3 .formation-select {
+      padding: 0.5rem 1rem;
+      border: 2px solid rgba(77, 182, 172, 0.5);
+      background: transparent;
+      color: #fff;
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 1rem;
+      letter-spacing: 0.05em;
+      cursor: pointer;
+    }
+    .opt3 .hint {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 0.75rem;
+      color: rgba(255,255,255,0.5);
+      letter-spacing: 0.08em;
+      margin-top: 0.75rem;
+    }
+
+    /* ═══════════════════════════════════════════════════════════════════════
+       אופציה 4: PREMIUM REFINED — מינימליזם יוקרתי
+       Sophisticated, generous space, subtle luxury
+       ═══════════════════════════════════════════════════════════════════════ */
+    .opt4 {
+      --opt-accent: #4DB6AC;
+      --opt-muted: #6b7d8a;
+    }
+    .opt4 .page-wrap {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 3rem 0;
+    }
+    .opt4 .header-zone {
+      margin-bottom: 3rem;
+    }
+    .opt4 h1 {
+      font-family: 'Instrument Serif', serif;
+      font-size: 2.25rem;
+      font-weight: 400;
+      color: #fff;
+      letter-spacing: -0.01em;
+    }
+    .opt4 .subtitle {
+      font-family: 'Sora', sans-serif;
+      font-size: 0.9rem;
+      font-weight: 400;
+      color: var(--opt-muted);
+      margin-top: 0.4rem;
+    }
+    .opt4 .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+    .opt4 .agent-group {
+      display: flex;
+      gap: 0.5rem;
+    }
+    .opt4 .agent-group button {
+      padding: 0.55rem 1.1rem;
+      border: 1px solid rgba(77, 182, 172, 0.25);
+      background: transparent;
+      color: var(--opt-muted);
+      font-family: 'Sora', sans-serif;
+      font-size: 0.875rem;
+      font-weight: 500;
+      border-radius: 100px;
+      cursor: pointer;
+      transition: all 0.25s;
+    }
+    .opt4 .agent-group button:hover {
+      border-color: var(--opt-accent);
+      color: var(--opt-accent);
+    }
+    .opt4 .agent-group button.active {
+      background: rgba(77, 182, 172, 0.12);
+      border-color: var(--opt-accent);
+      color: var(--opt-accent);
+    }
+    .opt4 .formation-pill {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .opt4 .formation-pill label {
+      font-family: 'Sora', sans-serif;
+      font-size: 0.8rem;
+      color: var(--opt-muted);
+      font-weight: 500;
+    }
+    .opt4 .formation-select {
+      padding: 0.5rem 1rem;
+      background: rgba(26, 39, 54, 0.6);
+      border: 1px solid rgba(77, 182, 172, 0.2);
+      border-radius: 100px;
+      color: #fff;
+      font-family: 'Sora', sans-serif;
+      font-size: 0.875rem;
+      cursor: pointer;
+    }
+    .opt4 .pitch-slot {
+      border-radius: 16px;
+      border: 1px solid rgba(77, 182, 172, 0.12);
+      box-shadow: 0 4px 24px rgba(0,0,0,0.2);
+    }
+    .opt4 .hint {
+      font-family: 'Sora', sans-serif;
+      font-size: 0.8rem;
+      color: var(--opt-muted);
+      margin-top: 1.5rem;
+      text-align: center;
+      opacity: 0.9;
+    }
+
+    /* ═══════════════════════════════════════════════════════════════════════
+       אופציה 5: BRUTALIST — גאומטרי, בולד
+       Raw, geometric, high contrast
+       ═══════════════════════════════════════════════════════════════════════ */
+    .opt5 {
+      --opt-accent: #4DB6AC;
+    }
+    .opt5 .page-wrap {
+      border-left: 6px solid var(--opt-accent);
+      padding: 1rem 1.5rem 1rem 1.25rem;
+      background: #0a0e12;
+    }
+    .opt5 .header-stack {
+      margin-bottom: 1.5rem;
+    }
+    .opt5 h1 {
+      font-family: 'Archivo Black', sans-serif;
+      font-size: 1.75rem;
+      font-weight: 400;
+      color: #fff;
+      letter-spacing: -0.03em;
+      text-transform: uppercase;
+    }
+    .opt5 .subtitle {
+      font-family: 'Sora', sans-serif;
+      font-size: 0.8rem;
+      color: #5a6b7a;
+      margin-top: 0.35rem;
+    }
+    .opt5 .bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1.25rem;
+    }
+    .opt5 .agent-blocks {
+      display: flex;
+      gap: 0;
+    }
+    .opt5 .agent-blocks button {
+      padding: 0.6rem 1rem;
+      border: none;
+      border-right: 1px solid #1e2a38;
+      background: #121a24;
+      color: #5a6b7a;
+      font-family: 'Archivo Black', sans-serif;
+      font-size: 0.7rem;
+      letter-spacing: 0.05em;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .opt5 .agent-blocks button:first-child { border-radius: 4px 0 0 4px; }
+    .opt5 .agent-blocks button:last-child { border-radius: 0 4px 4px 0; border-right: none; }
+    .opt5 .agent-blocks button:hover { background: #1a2432; color: #fff; }
+    .opt5 .agent-blocks button.active {
+      background: var(--opt-accent);
+      color: #0a0e12;
+    }
+    .opt5 .formation-select {
+      padding: 0.5rem 1rem;
+      background: #121a24;
+      border: 2px solid #1e2a38;
+      border-radius: 0;
+      color: var(--opt-accent);
+      font-family: 'Archivo Black', sans-serif;
+      font-size: 0.8rem;
+      letter-spacing: 0.05em;
+      cursor: pointer;
+    }
+    .opt5 .pitch-slot {
+      border-radius: 0;
+      border: 2px solid #1e2a38;
+    }
+    .opt5 .hint {
+      font-family: 'Sora', sans-serif;
+      font-size: 0.7rem;
+      color: #5a6b7a;
+      margin-top: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+  </style>
+</head>
+<body>
+  <nav class="layout-nav">
+    <button class="active" data-panel="opt1">1. Tactical</button>
+    <button data-panel="opt2">2. Matchday</button>
+    <button data-panel="opt3">3. Broadcast</button>
+    <button data-panel="opt4">4. Premium</button>
+    <button data-panel="opt5">5. Brutalist</button>
+  </nav>
+
+  <!-- אופציה 1: TACTICAL BOARD -->
+  <section class="panel opt1 active" id="opt1">
+    <div class="page-wrap">
+      <div class="header-row">
+        <div>
+          <h1>קבוצת צללים</h1>
+          <p class="subtitle">השחקנים המועדפים שלך לחלון ההעברות הבא</p>
+        </div>
+        <div class="controls">
+          <div class="agent-pills">
+            <button class="active">ליאור</button>
+            <button>משה</button>
+            <button>דנה</button>
+          </div>
+          <select class="formation-select">
+            <option>4-3-3</option>
+            <option>4-4-2</option>
+            <option>4-2-3-1</option>
+            <option>3-5-2</option>
+          </select>
+        </div>
+      </div>
+      <div class="pitch-slot">
+        <div class="pitch-slot-inner">מגרש — ללא שינוי</div>
+      </div>
+      <p class="hint">החלף טאבים לראות את הקבוצות • הטאב שלך: הוסף, ערוך, הסר • אחרים: צפייה בפרופיל בלבד</p>
+    </div>
+  </section>
+
+  <!-- אופציה 2: MATCHDAY PROGRAM -->
+  <section class="panel opt2" id="opt2">
+    <div class="page-wrap">
+      <div class="header-block">
+        <h1>קבוצת צללים</h1>
+        <p class="subtitle">השחקנים המועדפים שלך לחלון ההעברות הבא</p>
+      </div>
+      <div class="toolbar">
+        <div class="agent-tabs">
+          <button class="active">ליאור</button>
+          <button>משה</button>
+          <button>דנה</button>
+        </div>
+        <div class="formation-wrap">
+          <span>מערך</span>
+          <select class="formation-select">
+            <option>4-3-3</option>
+            <option>4-4-2</option>
+            <option>4-2-3-1</option>
+            <option>3-5-2</option>
+          </select>
+        </div>
+      </div>
+      <div class="pitch-slot">
+        <div class="pitch-slot-inner">מגרש — ללא שינוי</div>
+      </div>
+      <p class="hint">החלף טאבים לראות את הקבוצות • הטאב שלך: הוסף, ערוך, הסר</p>
+    </div>
+  </section>
+
+  <!-- אופציה 3: RETRO BROADCAST -->
+  <section class="panel opt3" id="opt3">
+    <div class="page-wrap">
+      <div class="top-bar">
+        <div>
+          <h1>קבוצת צללים</h1>
+          <p class="subtitle">השחקנים המועדפים שלך לחלון ההעברות הבא</p>
+        </div>
+        <span class="live-badge">TEAM</span>
+      </div>
+      <div class="controls-row">
+        <div class="agent-chips">
+          <button class="active">ליאור</button>
+          <button>משה</button>
+          <button>דנה</button>
+        </div>
+        <select class="formation-select">
+          <option>4-3-3</option>
+          <option>4-4-2</option>
+          <option>4-2-3-1</option>
+          <option>3-5-2</option>
+        </select>
+      </div>
+      <div class="pitch-slot">
+        <div class="pitch-slot-inner">מגרש — ללא שינוי</div>
+      </div>
+      <p class="hint">החלף טאבים לראות את הקבוצות • הטאב שלך: הוסף, ערוך, הסר</p>
+    </div>
+  </section>
+
+  <!-- אופציה 4: PREMIUM REFINED -->
+  <section class="panel opt4" id="opt4">
+    <div class="page-wrap">
+      <div class="header-zone">
+        <h1>קבוצת צללים</h1>
+        <p class="subtitle">השחקנים המועדפים שלך לחלון ההעברות הבא</p>
+      </div>
+      <div class="toolbar">
+        <div class="agent-group">
+          <button class="active">ליאור</button>
+          <button>משה</button>
+          <button>דנה</button>
+        </div>
+        <div class="formation-pill">
+          <label>מערך</label>
+          <select class="formation-select">
+            <option>4-3-3</option>
+            <option>4-4-2</option>
+            <option>4-2-3-1</option>
+            <option>3-5-2</option>
+          </select>
+        </div>
+      </div>
+      <div class="pitch-slot">
+        <div class="pitch-slot-inner">מגרש — ללא שינוי</div>
+      </div>
+      <p class="hint">החלף טאבים לראות את הקבוצות • הטאב שלך: הוסף, ערוך, הסר • אחרים: צפייה בפרופיל בלבד</p>
+    </div>
+  </section>
+
+  <!-- אופציה 5: BRUTALIST -->
+  <section class="panel opt5" id="opt5">
+    <div class="page-wrap">
+      <div class="header-stack">
+        <h1>קבוצת צללים</h1>
+        <p class="subtitle">השחקנים המועדפים שלך לחלון ההעברות הבא</p>
+      </div>
+      <div class="bar">
+        <div class="agent-blocks">
+          <button class="active">ליאור</button>
+          <button>משה</button>
+          <button>דנה</button>
+        </div>
+        <select class="formation-select">
+          <option>4-3-3</option>
+          <option>4-4-2</option>
+          <option>4-2-3-1</option>
+          <option>3-5-2</option>
+        </select>
+      </div>
+      <div class="pitch-slot">
+        <div class="pitch-slot-inner">מגרש — ללא שינוי</div>
+      </div>
+      <p class="hint">החלף טאבים לראות את הקבוצות • הטאב שלך: הוסף, ערוך, הסר</p>
+    </div>
+  </section>
+
+  <script>
+    document.querySelectorAll('.layout-nav button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.layout-nav button').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById(btn.dataset.panel).classList.add('active');
+      });
+    });
+  </script>
+</body>
+</html>

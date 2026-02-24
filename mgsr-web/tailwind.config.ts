@@ -7,6 +7,8 @@ const config: Config = {
       fontFamily: {
         sans: ['var(--font-outfit)', 'system-ui', 'sans-serif'],
         display: ['var(--font-syne)', 'system-ui', 'sans-serif'],
+        serif: ['var(--font-instrument-serif)', 'Georgia', 'serif'],
+        premium: ['var(--font-sora)', 'var(--font-outfit)', 'system-ui', 'sans-serif'],
       },
       colors: {
         mgsr: {

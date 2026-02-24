@@ -84,6 +84,112 @@ export function extractPlayerIdFromUrl(url: string | undefined): string | null {
   return last && /^\d+$/.test(last) ? last : null;
 }
 
+/** Parse market value string to euros (number). Returns 0 for empty or "-". */
+function parseValueToEuros(s: string | undefined): number {
+  if (!s?.trim() || s.includes('-')) return 0;
+  const t = s.replace(/[€\s]/g, '').toLowerCase();
+  if (t.includes('k')) return (parseFloat(t.replace('k', '')) || 0) * 1000;
+  if (t.includes('m')) return (parseFloat(t.replace('m', '')) || 0) * 1_000_000;
+  return parseFloat(t) || 0;
+}
+
+/**
+ * League config: competition code -> slug for startseite URL.
+ * Used for getLeagueAvgMarketValue.
+ */
+const LEAGUE_SLUGS: Record<string, string> = {
+  ISR1: 'ligat-haal',
+  PL1: 'pko-bp-ekstraklasa',
+  GR1: 'super-league-1',
+  BE1: 'jupiler-pro-league',
+  NL1: 'eredivisie',
+  PO1: 'liga-portugal',
+  SER1: 'super-liga-srbije',
+  SE1: 'allsvenskan',
+  TR1: 'super-lig',
+  A1: 'bundesliga',
+  C1: 'super-league',
+  TS1: 'chance-liga',
+  RO1: 'superliga',
+  BU1: 'efbet-liga',
+  UNG1: 'nemzeti-bajnoksag',
+  ZYP1: 'cyprus-league',
+  SLO1: 'nike-liga',
+  GB1: 'premier-league',
+  GB2: 'championship',
+  IT1: 'serie-a',
+  ES1: 'laliga',
+  L2: '2-bundesliga',
+  FR1: 'ligue-1',
+};
+
+/**
+ * Get league average market value (ONLY players with market value; excludes players without value).
+ * Returns average in euros (number). Cached per league+season for 24h to avoid repeated scraping.
+ */
+const LEAGUE_AVG_CACHE = new Map<string, { avg: number; ts: number }>();
+const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+
+export async function getLeagueAvgMarketValue(
+  competitionCode: string,
+  seasonYear: number = 2025
+): Promise<number | null> {
+  const cacheKey = `${competitionCode}:${seasonYear}`;
+  const cached = LEAGUE_AVG_CACHE.get(cacheKey);
+  if (cached && Date.now() - cached.ts < CACHE_TTL_MS) return cached.avg;
+
+  const slug = LEAGUE_SLUGS[competitionCode] || competitionCode.toLowerCase();
+  const startseiteUrl = `${TRANSFERMARKT_BASE}/${slug}/startseite/wettbewerb/${competitionCode}/saison_id/${seasonYear}`;
+
+  try {
+    const html = await fetchHtmlWithRetry(startseiteUrl);
+    const $ = cheerio.load(html);
+
+    const kaderUrls: string[] = [];
+    $('table.items a[href*="/kader/"]').each((_, el) => {
+      const href = $(el).attr('href');
+      if (href) {
+        const full = href.startsWith('http') ? href : TRANSFERMARKT_BASE + href;
+        if (!kaderUrls.includes(full)) kaderUrls.push(full);
+      }
+    });
+
+    if (kaderUrls.length === 0) return null;
+
+    let totalValue = 0;
+    let playerCount = 0;
+
+    for (const url of kaderUrls) {
+      try {
+        await new Promise((r) => setTimeout(r, 200));
+        const kaderHtml = await fetchHtmlWithRetry(url);
+        const $k = cheerio.load(kaderHtml);
+
+        $k('table.items tbody tr.odd, table.items tbody tr.even, table.items tr.odd, table.items tr.even').each(
+          (_, kRow) => {
+            const valueCell = $k(kRow).find('td.rechts a[href*="marktwertverlauf"]').first();
+            const valueTxt = valueCell.text().trim() || valueCell.parent().text().trim();
+            const value = parseValueToEuros(valueTxt);
+            if (value > 0) {
+              totalValue += value;
+              playerCount++;
+            }
+          }
+        );
+      } catch {
+        // skip club on error
+      }
+    }
+
+    if (playerCount === 0) return null;
+    const avg = Math.round(totalValue / playerCount);
+    LEAGUE_AVG_CACHE.set(cacheKey, { avg, ts: Date.now() });
+    return avg;
+  } catch {
+    return null;
+  }
+}
+
 // ─── Search ─────────────────────────────────────────────────────────────────
 export async function handleSearch(q: string) {
   const query = q.trim();
@@ -294,6 +400,86 @@ export async function handlePlayer(urlParam: string) {
     onLoanFromClub: onLoanFromClub || null,
     foot: foot || null,
   };
+}
+
+/** Last season stats: goals, assists, appearances, minutes. Season 2024 = 2024/25. */
+export interface PlayerPerformanceStats {
+  season: string;
+  appearances: number;
+  goals: number;
+  assists: number;
+  minutes: number;
+  club?: string;
+}
+
+/**
+ * Scrape performance stats from Transfermarkt leistungsdaten page.
+ * Uses last completed season (2024 = 2024/25) by default.
+ */
+export async function getPlayerPerformanceStats(
+  profileUrl: string,
+  seasonYear: number = 2024
+): Promise<PlayerPerformanceStats | null> {
+  const id = extractPlayerIdFromUrl(profileUrl);
+  if (!id) return null;
+
+  const perfUrl = profileUrl
+    .replace(/\/profil\//, '/leistungsdaten/')
+    .replace(/\/player\//, '/leistungsdaten/');
+  const urlWithSeason = perfUrl.includes('saison')
+    ? perfUrl
+    : `${perfUrl.replace(/\/$/, '')}/saison/${seasonYear}`;
+
+  try {
+    const html = await fetchHtmlWithRetry(urlWithSeason);
+    const $ = cheerio.load(html);
+
+    let appearances = 0;
+    let goals = 0;
+    let assists = 0;
+    let minutes = 0;
+
+    const rows = $('table.items tbody tr, table.items tr');
+    rows.each((_, row) => {
+      const $row = $(row);
+      const firstCell = $row.find('td').first().text().trim().toLowerCase();
+      if (!firstCell.includes('total') && !firstCell.includes('gesamt')) return;
+
+      const tds = $row.find('td');
+      if (tds.length < 4) return;
+
+      const nums: number[] = [];
+      tds.slice(1).each((__, td) => {
+        const raw = $(td).text().trim();
+        const t = raw.replace(/['\s]/g, '').replace(/\./g, '').replace(/,/g, '');
+        const n = parseInt(t, 10);
+        if (!isNaN(n)) nums.push(n);
+      });
+
+      if (nums.length >= 3) {
+        appearances = nums[0] ?? 0;
+        goals = nums[1] ?? 0;
+        assists = nums[2] ?? 0;
+        const last = nums[nums.length - 1];
+        if (last != null && last > 100) minutes = last;
+        else if (nums.length >= 6) minutes = nums[5] ?? 0;
+        else if (nums.length >= 4) minutes = nums[3] ?? 0;
+      }
+      return false;
+    });
+
+    if (appearances === 0 && goals === 0 && assists === 0) return null;
+
+    return {
+      season: `${seasonYear}/${String(seasonYear + 1).slice(-2)}`,
+      appearances,
+      goals,
+      assists,
+      minutes,
+    };
+  } catch {
+    return null;
+  }
 }
 
 // ─── Releases (free agents from vertragslosespieler page) ─────────────────────
