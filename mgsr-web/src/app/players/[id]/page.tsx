@@ -110,7 +110,9 @@ export default function PlayerInfoPage() {
         ? 'player_info_back_releases'
         : fromPath === '/contract-finisher'
           ? 'player_info_back_contract_finisher'
-          : 'player_info_back_players';
+          : fromPath === '/shadow-teams'
+            ? 'player_info_back_shadow_teams'
+            : 'player_info_back_players';
   const [player, setPlayer] = useState<Player | null>(null);
   const [liveData, setLiveData] = useState<PlayerDetails | null>(null);
   const [documents, setDocuments] = useState<PlayerDocument[]>([]);

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import { useState, useMemo, useEffect, useLayoutEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import SoccerLineUp, { type Team, type Player } from 'react-soccer-lineup';
 import { collection, doc, getDoc, setDoc, query, orderBy, onSnapshot } from 'firebase/firestore';
@@ -255,6 +255,7 @@ export default function ShadowTeamsPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogSlot, setDialogSlot] = useState<{ index: number } | null>(null);
   const [menuOpenIndex, setMenuOpenIndex] = useState<number | null>(null);
+  const [slotsLoading, setSlotsLoading] = useState(false);
   const selectedAccountIdRef = useRef(selectedAccountId);
   selectedAccountIdRef.current = selectedAccountId;
 
@@ -291,22 +292,34 @@ export default function ShadowTeamsPage() {
     return () => unsub();
   }, []);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!selectedAccountId) return;
+    setSlotsLoading(true);
     setSlots(createEmptySlots(11));
     setFormationId('4-3-3');
+  }, [selectedAccountId]);
+
+  useEffect(() => {
+    if (!selectedAccountId) return;
     const docRef = doc(db, SHADOW_TEAMS_COLLECTION, selectedAccountId);
     const loadingForId = selectedAccountId;
+    const minLoadingMs = 500;
+    const startTime = Date.now();
     getDoc(docRef).then((snap) => {
-      if (selectedAccountIdRef.current !== loadingForId) return;
-      const data = snap.data();
-      if (data?.slots && Array.isArray(data.slots)) {
-        const loaded = (data.slots as { starter?: { id: string; fullName: string; profileImage?: string } | null }[]).map(
-          (s) => ({ starter: s.starter ?? null })
-        );
-        setSlots(loaded.length >= 11 ? loaded : [...loaded, ...createEmptySlots(11 - loaded.length)]);
-      }
-      if (data?.formationId) setFormationId(data.formationId);
+      const elapsed = Date.now() - startTime;
+      const delay = Math.max(0, minLoadingMs - elapsed);
+      setTimeout(() => {
+        if (selectedAccountIdRef.current !== loadingForId) return;
+        const data = snap.data();
+        if (data?.slots && Array.isArray(data.slots)) {
+          const loaded = (data.slots as { starter?: { id: string; fullName: string; profileImage?: string } | null }[]).map(
+            (s) => ({ starter: s.starter ?? null })
+          );
+          setSlots(loaded.length >= 11 ? loaded : [...loaded, ...createEmptySlots(11 - loaded.length)]);
+        }
+        if (data?.formationId) setFormationId(data.formationId);
+        setSlotsLoading(false);
+      }, delay);
     });
   }, [selectedAccountId]);
 
@@ -391,7 +404,7 @@ export default function ShadowTeamsPage() {
   const positionLabel = positionCode;
 
   const handlePlayerClick = useCallback(
-    (id: string) => router.push(`/players/${id}`),
+    (id: string) => router.push(`/players/${id}?from=/shadow-teams`),
     [router]
   );
 
@@ -472,11 +485,18 @@ export default function ShadowTeamsPage() {
             {formation.positions.map((pos, idx) => {
               const slot = slots[idx];
               const starter = slot?.starter ?? null;
+              const atCenter = !selectedAccountId || slotsLoading;
               return (
                 <div
                   key={`overlay-${idx}`}
-                  className="absolute -translate-x-1/2 -translate-y-1/2 pointer-events-auto flex flex-col items-center"
-                  style={{ left: `${pos.x}%`, top: `${pos.y}%` }}
+                  className={`absolute -translate-x-1/2 -translate-y-1/2 flex flex-col items-center ${slotsLoading ? 'pointer-events-none' : 'pointer-events-auto'}`}
+                  style={{
+                    left: atCenter ? '50%' : `${pos.x}%`,
+                    top: atCenter ? '50%' : `${pos.y}%`,
+                    transform: atCenter ? 'translate(-50%, -50%) scale(0.6)' : 'translate(-50%, -50%) scale(1)',
+                    transition: 'left 0.8s cubic-bezier(0.34, 1.56, 0.64, 1), top 0.8s cubic-bezier(0.34, 1.56, 0.64, 1), transform 0.8s cubic-bezier(0.34, 1.56, 0.64, 1)',
+                    transitionDelay: atCenter ? '0ms' : `${idx * 45}ms`,
+                  }}
                 >
                   <SlotCircle
                     player={starter}
@@ -485,12 +505,12 @@ export default function ShadowTeamsPage() {
                     onClick={() => {
                       if (starter) {
                         if (isOwnTeam) setMenuOpenIndex((i) => (i === idx ? null : idx));
-                        else router.push(`/players/${starter.id}`);
+                        else router.push(`/players/${starter.id}?from=/shadow-teams`);
                       } else if (isOwnTeam) {
                         openSelectDialog(idx);
                       }
                     }}
-                    onViewProfile={() => starter && router.push(`/players/${starter.id}`)}
+                    onViewProfile={() => starter && router.push(`/players/${starter.id}?from=/shadow-teams`)}
                     onChangePlayer={() => openSelectDialog(idx)}
                     onRemove={() => handleRemovePlayer(idx)}
                     menuOpen={menuOpenIndex === idx}
@@ -547,7 +567,7 @@ function SlotCircle({
   onCloseMenu,
   t,
 }: SlotCircleProps) {
-  const dim = size === 'sm' ? 'w-10 h-10' : 'w-[48px] h-[48px]';
+  const dim = size === 'sm' ? 'w-10 h-10' : 'w-[56px] h-[56px]';
   const plusSize = size === 'sm' ? 'text-lg' : 'text-xl';
   const ref = useRef<HTMLDivElement>(null);
 
@@ -565,7 +585,7 @@ function SlotCircle({
       <button
         type="button"
         onClick={onClick}
-        className={`${dim} rounded-full flex items-center justify-center border-2 border-mgsr-teal bg-mgsr-teal/20 hover:scale-110 hover:shadow-[0_0_0_3px_rgba(77,182,172,0.5)] transition-all overflow-hidden shrink-0 cursor-pointer`}
+        className={`${dim} rounded-full flex items-center justify-center border-2 border-mgsr-teal bg-mgsr-teal/20 hover:scale-110 hover:shadow-[0_0_0_3px_rgba(77,182,172,0.5)] transition-all duration-200 overflow-hidden shrink-0 cursor-pointer`}
         title={player?.fullName}
       >
         {player ? (
@@ -579,7 +599,10 @@ function SlotCircle({
         )}
       </button>
       {player && (
-        <span className="text-[11px] text-mgsr-text font-medium text-center max-w-[90px] block leading-tight">
+        <span
+          className="text-xs font-semibold text-mgsr-teal text-center max-w-[90px] block leading-tight"
+          style={{ textShadow: '0 0 2px rgba(0,0,0,0.9), 0 1px 3px rgba(0,0,0,0.8)' }}
+        >
           {player.fullName}
         </span>
       )}
