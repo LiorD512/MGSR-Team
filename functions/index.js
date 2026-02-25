@@ -170,6 +170,24 @@ exports.onNewAgentTask = onDocumentCreated(
   }
 );
 
+const TZ_ISRAEL = "Asia/Jerusalem";
+
+/**
+ * Returns days until due date using Israel timezone for day boundaries.
+ * Fixes the bug where tasks created on Android (local midnight) were missed
+ * because the previous logic used UTC, causing "due today" to appear as -1.
+ */
+function getDaysUntilDueIsrael(dueDateMs, nowMs) {
+  const oneDayMs = 24 * 60 * 60 * 1000;
+  const dueStr = new Date(dueDateMs).toLocaleDateString("en-CA", { timeZone: TZ_ISRAEL });
+  const nowStr = new Date(nowMs).toLocaleDateString("en-CA", { timeZone: TZ_ISRAEL });
+  const [dueY, dueM, dueD] = dueStr.split("-").map(Number);
+  const [nowY, nowM, nowD] = nowStr.split("-").map(Number);
+  const dueDateOnly = Date.UTC(dueY, dueM - 1, dueD);
+  const nowDateOnly = Date.UTC(nowY, nowM - 1, nowD);
+  return Math.round((dueDateOnly - nowDateOnly) / oneDayMs);
+}
+
 /**
  * Runs daily at 9:00 AM Israel time. Sends reminder push notifications for
  * incomplete tasks approaching their due date (7 days, 3 days, 1 day, day-of).
@@ -178,7 +196,6 @@ exports.onTaskRemindersScheduled = onSchedule(
   { schedule: "0 9 * * *", timeZone: "Asia/Jerusalem" },
   async () => {
     const now = Date.now();
-    const oneDayMs = 24 * 60 * 60 * 1000;
 
     const tasksSnap = await db
       .collection(AGENT_TASKS_COLLECTION)
@@ -193,9 +210,7 @@ exports.onTaskRemindersScheduled = onSchedule(
       if (dueDate <= 0) continue;
 
       const remindersSent = data.remindersSent || [];
-      const dueDateStart = Math.floor(dueDate / oneDayMs) * oneDayMs;
-      const nowStart = Math.floor(now / oneDayMs) * oneDayMs;
-      const daysUntilDue = Math.round((dueDateStart - nowStart) / oneDayMs);
+      const daysUntilDue = getDaysUntilDueIsrael(dueDate, now);
 
       let reminderDay = null;
       if (daysUntilDue === 7 && !remindersSent.includes(7)) reminderDay = 7;
@@ -221,12 +236,19 @@ exports.onTaskRemindersScheduled = onSchedule(
       let token;
       try {
         const accountSnap = await db.collection(ACCOUNTS_COLLECTION).doc(agentId).get();
+        if (!accountSnap.exists) {
+          console.warn(`Account not found for agentId ${agentId} — skipping task reminder for "${taskTitle}"`);
+          continue;
+        }
         token = accountSnap.data()?.fcmToken;
       } catch (e) {
         console.error(`Failed to fetch token for agent ${agentId}:`, e);
         continue;
       }
-      if (!token) continue;
+      if (!token) {
+        console.warn(`No FCM token for agent ${agentId} — skipping task reminder for "${taskTitle}"`);
+        continue;
+      }
 
       const dayText =
         daysLeft === 0 ? "today" : daysLeft === 1 ? "tomorrow" : `in ${daysLeft} days`;

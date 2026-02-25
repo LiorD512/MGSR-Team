@@ -1,13 +1,14 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getScreenCache, setScreenCache } from '@/lib/screenCache';
-import { doc, onSnapshot, getDoc, setDoc, collection, addDoc, getDocs } from 'firebase/firestore';
+import { doc, onSnapshot, getDoc, setDoc, collection, addDoc, getDocs, query, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { getCurrentAccountForShortlist, useShortlistDocId, SHARED_SHORTLIST_DOC_ID } from '@/lib/accounts';
+import { getTeammates, extractPlayerIdFromUrl } from '@/lib/api';
 import AppLayout from '@/components/AppLayout';
 import Link from 'next/link';
 
@@ -27,6 +28,22 @@ interface ShortlistEntry {
   addedByAgentHebrewName?: string;
 }
 
+interface RosterPlayer {
+  id: string;
+  fullName?: string;
+  profileImage?: string;
+  positions?: string[];
+  marketValue?: string;
+  currentClub?: { clubName?: string; clubLogo?: string };
+  age?: string;
+  tmProfile?: string;
+}
+
+interface RosterTeammateMatch {
+  player: RosterPlayer;
+  matchesPlayedTogether: number;
+}
+
 export default function ShortlistPage() {
   const { user, loading } = useAuth();
   const { t, isRtl } = useLanguage();
@@ -36,6 +53,10 @@ export default function ShortlistPage() {
   const [entries, setEntries] = useState<ShortlistEntry[]>(cached ?? []);
   const [loadingList, setLoadingList] = useState(cached === undefined);
   const [removingUrl, setRemovingUrl] = useState<string | null>(null);
+  const [rosterPlayers, setRosterPlayers] = useState<RosterPlayer[]>([]);
+  const [teammatesCache, setTeammatesCache] = useState<Record<string, RosterTeammateMatch[]>>({});
+  const [loadingTeammatesUrl, setLoadingTeammatesUrl] = useState<string | null>(null);
+  const [expandedTeammatesUrl, setExpandedTeammatesUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (!loading && !user) router.replace('/login');
@@ -96,6 +117,41 @@ export default function ShortlistPage() {
     });
     return () => unsub();
   }, [user, shortlistDocId]);
+
+  // Load roster players for teammates matching
+  useEffect(() => {
+    const q = query(collection(db, 'Players'), orderBy('createdAt', 'desc'));
+    const unsub = onSnapshot(q, (snap) => {
+      setRosterPlayers(snap.docs.map((d) => ({ id: d.id, ...d.data() } as RosterPlayer)));
+    });
+    return () => unsub();
+  }, []);
+
+  const fetchTeammates = useCallback(async (playerUrl: string) => {
+    setLoadingTeammatesUrl(playerUrl);
+    try {
+      const teammates = await getTeammates(playerUrl);
+      const rosterIds = new Set(rosterPlayers.map((p) => extractPlayerIdFromUrl(p.tmProfile)).filter(Boolean));
+      const matches: RosterTeammateMatch[] = teammates
+        .filter((t) => rosterIds.has(extractPlayerIdFromUrl(t.tmProfileUrl) ?? ''))
+        .map((t) => {
+          const id = extractPlayerIdFromUrl(t.tmProfileUrl);
+          const rosterPlayer = rosterPlayers.find((p) => extractPlayerIdFromUrl(p.tmProfile) === id);
+          return rosterPlayer ? { player: rosterPlayer, matchesPlayedTogether: t.matchesPlayedTogether } : null;
+        })
+        .filter((m): m is RosterTeammateMatch => m != null)
+        .sort((a, b) => b.matchesPlayedTogether - a.matchesPlayedTogether);
+      setTeammatesCache((prev) => ({ ...prev, [playerUrl]: matches }));
+    } catch {
+      setTeammatesCache((prev) => ({ ...prev, [playerUrl]: [] }));
+    } finally {
+      setLoadingTeammatesUrl(null);
+    }
+  }, [rosterPlayers]);
+
+  const toggleTeammates = useCallback((url: string) => {
+    setExpandedTeammatesUrl((prev) => (prev === url ? null : url));
+  }, []);
 
   const sanitizeForFirestore = (obj: Record<string, unknown>): Record<string, unknown> => {
     const out: Record<string, unknown> = {};
@@ -229,12 +285,19 @@ export default function ShortlistPage() {
           </div>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {sorted.map((entry, i) => (
+            {sorted.map((entry, i) => {
+              const playerUrl = entry.tmProfileUrl;
+              const rosterTeammates = playerUrl ? teammatesCache[playerUrl] : undefined;
+              const isLoadingTeammates = loadingTeammatesUrl === playerUrl;
+              const isExpanded = expandedTeammatesUrl === playerUrl;
+
+              return (
               <div
                 key={entry.tmProfileUrl}
-                className="group flex items-center gap-4 p-4 bg-mgsr-card border border-mgsr-border rounded-xl hover:border-mgsr-teal/30 transition-all duration-300 animate-fade-in"
+                className="group bg-mgsr-card border border-mgsr-border rounded-xl hover:border-mgsr-teal/30 transition-all duration-300 animate-fade-in"
                 style={{ animationDelay: `${i * 40}ms` }}
               >
+                <div className="flex items-center gap-4 p-4">
                 <Link
                   href={`/players/add?url=${encodeURIComponent(entry.tmProfileUrl)}&from=shortlist`}
                   className="flex items-center gap-4 flex-1 min-w-0"
@@ -273,8 +336,83 @@ export default function ShortlistPage() {
                 >
                   {removingUrl === entry.tmProfileUrl ? '...' : t('shortlist_remove')}
                 </button>
+                </div>
+
+                {/* Roster teammates section */}
+                <div className="px-4 pb-4">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!playerUrl) return;
+                      toggleTeammates(playerUrl);
+                      if (!(playerUrl in teammatesCache) && !loadingTeammatesUrl) {
+                        fetchTeammates(playerUrl);
+                      }
+                    }}
+                    className="w-full flex items-center gap-2 py-2.5 px-3 rounded-xl bg-mgsr-dark/60 border border-mgsr-border hover:border-mgsr-teal/30 transition-all text-left rtl:text-right"
+                  >
+                    <svg className="w-4 h-4 text-mgsr-teal shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                    </svg>
+                    <span className="text-sm text-mgsr-text flex-1">
+                      {isLoadingTeammates
+                        ? t('releases_roster_teammates_loading')
+                        : rosterTeammates != null
+                          ? t('releases_roster_teammates').replace('{count}', String(rosterTeammates.length))
+                          : t('releases_roster_teammates_tap')}
+                    </span>
+                    <svg
+                      className={`w-4 h-4 text-mgsr-muted shrink-0 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+
+                  {isExpanded && (
+                    <div className="mt-2 space-y-2">
+                      {isLoadingTeammates ? (
+                        <div className="py-6 flex justify-center">
+                          <div className="w-5 h-5 border-2 border-mgsr-teal/40 border-t-mgsr-teal rounded-full animate-spin" />
+                        </div>
+                      ) : rosterTeammates?.length === 0 ? (
+                        <p className="text-xs text-mgsr-muted py-3 px-3 rounded-lg bg-mgsr-dark/40 border border-mgsr-border/60">
+                          {t('releases_no_roster_teammates')}
+                        </p>
+                      ) : (
+                        rosterTeammates?.map((match) => (
+                          <Link
+                            key={match.player.id}
+                            href={`/players/${match.player.id}?from=/shortlist`}
+                            className="flex items-center gap-3 p-2.5 rounded-xl bg-mgsr-dark/50 border border-mgsr-border/80 hover:border-mgsr-teal/40 hover:bg-mgsr-dark/70 transition-all"
+                          >
+                            <img
+                              src={match.player.profileImage || 'https://via.placeholder.com/40'}
+                              alt=""
+                              className="w-9 h-9 rounded-full object-cover bg-mgsr-card ring-1 ring-mgsr-border"
+                            />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-mgsr-text truncate">
+                                {match.player.fullName || 'Unknown'}
+                              </p>
+                              <p className="text-xs text-mgsr-muted truncate">
+                                {match.player.positions?.filter(Boolean).join(', ') || '—'} • {(match.player.age ? t('players_age_display').replace('{age}', match.player.age) : '—')} • {match.player.marketValue || '—'}
+                              </p>
+                            </div>
+                            <span className="text-xs font-medium text-mgsr-teal shrink-0 px-2 py-0.5 rounded-md bg-mgsr-teal/15">
+                              {t('releases_games_together').replace('{n}', String(match.matchesPlayedTogether))}
+                            </span>
+                          </Link>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
