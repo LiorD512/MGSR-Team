@@ -1,10 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import AppLayout from '@/components/AppLayout';
+import FindNextTab from '@/components/FindNextTab';
 import { aiScoutSearch, type ScoutPlayerSuggestion } from '@/lib/scoutApi';
 
 function shortenPosition(pos: string | undefined): string {
@@ -41,7 +42,11 @@ export default function AiScoutPage() {
   const { user, loading } = useAuth();
   const { t, isRtl, lang } = useLanguage();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [query, setQuery] = useState('');
+  const [activeTab, setActiveTab] = useState<'scout' | 'find-next'>(
+    searchParams.get('tab') === 'find-next' ? 'find-next' : 'scout'
+  );
 
   useEffect(() => {
     if (!loading && !user) router.replace('/login');
@@ -179,6 +184,37 @@ export default function AiScoutPage() {
 
   return (
     <AppLayout>
+      {/* Tab bar */}
+      <div className="max-w-[52rem] mx-auto mb-6">
+        <div className="flex gap-1 p-1 rounded-xl bg-mgsr-card border border-mgsr-border">
+          <button
+            type="button"
+            onClick={() => setActiveTab('scout')}
+            className={`flex-1 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all ${
+              activeTab === 'scout'
+                ? 'bg-mgsr-teal/20 text-mgsr-teal border border-mgsr-teal/30'
+                : 'text-mgsr-muted hover:text-mgsr-text hover:bg-mgsr-card/80 border border-transparent'
+            }`}
+          >
+            {lang === 'he' ? '🔍 סקאוט AI' : '🔍 AI Scout'}
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('find-next')}
+            className={`flex-1 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all ${
+              activeTab === 'find-next'
+                ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30'
+                : 'text-mgsr-muted hover:text-mgsr-text hover:bg-mgsr-card/80 border border-transparent'
+            }`}
+          >
+            {lang === 'he' ? '🧠 מצא את הבא' : '🧠 Find The Next'}
+          </button>
+        </div>
+      </div>
+
+      {activeTab === 'find-next' ? (
+        <FindNextTab />
+      ) : (
       <div dir={isRtl ? 'rtl' : 'ltr'} className="relative">
         {/* Hero Command: radial gradient backdrop */}
         <div
@@ -425,6 +461,7 @@ export default function AiScoutPage() {
           )}
         </div>
       </div>
+      )}
     </AppLayout>
   );
 }

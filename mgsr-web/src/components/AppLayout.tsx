@@ -16,7 +16,6 @@ const navItems = [
   { href: '/contract-finisher', labelKey: 'nav_contract_finisher' },
   { href: '/returnees', labelKey: 'nav_returnee' },
   { href: '/ai-scout', labelKey: 'nav_ai_scout' },
-  { href: '/find-next', labelKey: 'nav_find_next' },
   { href: '/contacts', labelKey: 'nav_contacts' },
   { href: '/requests', labelKey: 'nav_requests' },
 ];
