@@ -161,6 +161,24 @@
     <string name="quick_action_requests">בקשות</string>
     <string name="quick_action_contract_finisher_summer">מסיימי חוזה - קיץ</string>
     <string name="quick_action_contract_finisher_winter">מסיימי חוזה - חורף</string>
+    <string name="quick_action_shadow_teams">קבוצת צללים</string>
+
+    <!-- Shadow Teams Screen -->
+    <string name="shadow_teams_title">קבוצת צללים</string>
+    <string name="shadow_teams_subtitle">צפה בצוותים של כל הסוכנים</string>
+    <string name="shadow_teams_subtitle_edit">צפה וערוך את קבוצת הצללים שלך</string>
+    <string name="shadow_teams_no_teams">אין עדיין קבוצות צללים</string>
+    <string name="shadow_teams_player_not_found">שחקן לא נמצא</string>
+    <string name="shadow_teams_you">אתה</string>
+    <string name="shadow_teams_formation">מערך</string>
+    <string name="shadow_teams_select_player">בחר שחקן</string>
+    <string name="shadow_teams_select_player_for">בחר שחקן ל-%1$s</string>
+    <string name="shadow_teams_search_player">חפש שחקן…</string>
+    <string name="shadow_teams_cancel">ביטול</string>
+    <string name="shadow_teams_change_player">החלף שחקן</string>
+    <string name="shadow_teams_remove">הסר</string>
+    <string name="shadow_teams_view_profile">צפה בפרופיל</string>
+    <string name="shadow_teams_no_players">אין שחקנים ברשימה</string>
 
     <!-- Contract Finisher Screen -->
     <string name="contract_finisher_title">מסיימי חוזה</string>

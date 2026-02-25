@@ -42,6 +42,7 @@ import com.liordahan.mgsrteam.features.releases.ReleasesScreen
 import com.liordahan.mgsrteam.features.requests.RequestsScreen
 import com.liordahan.mgsrteam.features.returnee.ReturneeScreen
 import com.liordahan.mgsrteam.features.add.IAddPlayerViewModel
+import com.liordahan.mgsrteam.features.shadowteams.ShadowTeamsScreen
 import com.liordahan.mgsrteam.features.shortlist.ShortlistScreen
 import com.liordahan.mgsrteam.BuildConfig
 import com.liordahan.mgsrteam.navigation.NavigationTransitions
@@ -310,6 +311,12 @@ fun HomeScreen(
                 route = Screens.RequestsScreen.route
             ) {
                 RequestsScreen(navController = navController)
+            }
+
+            composable(
+                route = Screens.ShadowTeamsScreen.route
+            ) {
+                ShadowTeamsScreen(navController = navController)
             }
         }
     }
