@@ -4,6 +4,8 @@ import android.net.Uri
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -20,6 +22,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -34,6 +37,9 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -46,6 +52,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -86,6 +94,8 @@ private val GrassDark = Color(0xFF2d5a27)
 private val GrassLight = Color(0xFF3a7041)
 private val PitchLine = Color.White.copy(alpha = 0.9f)
 
+private val FORMATIONS = listOf("4-3-3", "4-4-2", "4-2-3-1", "3-5-2")
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ShadowTeamsScreen(
@@ -93,9 +103,22 @@ fun ShadowTeamsScreen(
     viewModel: IShadowTeamsViewModel = koinViewModel()
 ) {
     val state by viewModel.uiState.collectAsState()
+    val rosterPlayers by viewModel.rosterPlayers.collectAsState()
     val context = LocalContext.current
     val isHebrew = LocaleManager.isHebrew(context)
     val scope = rememberCoroutineScope()
+
+    var selectSlotIndex by remember { mutableStateOf<Int?>(null) }
+    var menuSlotIndex by remember { mutableStateOf<Int?>(null) }
+
+    val positions = FormationDefinitions.getPositions(state.formationId)
+    val selectSlotPosition = selectSlotIndex?.let { positions.getOrNull(it) }
+    val selectPositionCode = selectSlotPosition?.code ?: "GK"
+    val selectPositionLabel = selectSlotPosition?.displayCode ?: "—"
+    val menuSlot = menuSlotIndex?.let { idx ->
+        state.slots.getOrNull(idx)?.starter?.let { st -> idx to st }
+    }
+    val menuPositionLabel = menuSlot?.let { (idx, _) -> positions.getOrNull(idx)?.displayCode ?: "—" } ?: "—"
 
     Scaffold(
         topBar = {
@@ -127,9 +150,11 @@ fun ShadowTeamsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
+                .verticalScroll(rememberScrollState())
         ) {
             Text(
-                text = stringResource(R.string.shadow_teams_subtitle),
+                text = if (state.isOwnTeam) stringResource(R.string.shadow_teams_subtitle_edit)
+                else stringResource(R.string.shadow_teams_subtitle),
                 style = regularTextStyle(HomeTextSecondary, 13.sp),
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
             )
@@ -153,6 +178,7 @@ fun ShadowTeamsScreen(
             ) {
                 items(state.accounts) { account ->
                     val isSelected = account.id == state.selectedAccountId
+                    val isYou = account.id == state.currentAccountId
                     val displayName = if (isHebrew) {
                         account.hebrewName ?: account.name ?: account.email ?: "—"
                     } else {
@@ -178,6 +204,13 @@ fun ShadowTeamsScreen(
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
+                        if (isYou == true) {
+                            Spacer(modifier = Modifier.fillMaxWidth(0.02f))
+                            Text(
+                                text = "(${stringResource(R.string.shadow_teams_you)})",
+                                style = regularTextStyle(HomeTextSecondary, 11.sp)
+                            )
+                        }
                     }
                 }
             }
@@ -186,7 +219,7 @@ fun ShadowTeamsScreen(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .weight(1f),
+                        .height(280.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     CircularProgressIndicator(
@@ -199,13 +232,15 @@ fun ShadowTeamsScreen(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .weight(1f),
+                        .aspectRatio(68f / 105f),
                     contentAlignment = Alignment.Center
                 ) {
                     ShadowTeamsPitch(
                         formationId = state.formationId,
                         slots = state.slots,
-                        onPlayerClick = { player ->
+                        slotsLoading = state.slotsLoading,
+                        isOwnTeam = state.isOwnTeam,
+                        onPlayerViewProfile = { player ->
                             scope.launch {
                                 val tmProfile = viewModel.getTmProfileForPlayer(player.id)
                                 if (tmProfile != null && tmProfile.isNotBlank()) {
@@ -216,7 +251,13 @@ fun ShadowTeamsScreen(
                                     ToastManager.showError(context.getString(R.string.shadow_teams_player_not_found))
                                 }
                             }
-                        }
+                        },
+                        onEmptySlotClick = if (state.isOwnTeam) {
+                            { idx -> selectSlotIndex = idx }
+                        } else null,
+                        onFilledSlotClick = if (state.isOwnTeam) {
+                            { idx -> menuSlotIndex = idx }
+                        } else null
                     )
                 }
             }
@@ -228,20 +269,95 @@ fun ShadowTeamsScreen(
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(HomeDarkCard)
-                        .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(8.dp))
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
-                ) {
-                    Text(
-                        text = state.formationId,
-                        style = boldTextStyle(HomeTealAccent, 14.sp)
-                    )
+                if (state.isOwnTeam) {
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        items(FORMATIONS) { formation ->
+                            val isSelected = formation == state.formationId
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(
+                                        if (isSelected) HomeTealAccent.copy(alpha = 0.25f)
+                                        else HomeDarkCard
+                                    )
+                                    .border(
+                                        1.dp,
+                                        if (isSelected) HomeTealAccent else HomeDarkCardBorder,
+                                        RoundedCornerShape(8.dp)
+                                    )
+                                    .clickable { viewModel.setFormation(formation) }
+                                    .padding(horizontal = 14.dp, vertical = 8.dp)
+                            ) {
+                                Text(
+                                    text = formation,
+                                    style = boldTextStyle(
+                                        if (isSelected) HomeTealAccent else HomeTextSecondary,
+                                        14.sp
+                                    )
+                                )
+                            }
+                        }
+                    }
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(HomeDarkCard)
+                            .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(8.dp))
+                            .padding(horizontal = 16.dp, vertical = 8.dp)
+                    ) {
+                        Text(
+                            text = state.formationId,
+                            style = boldTextStyle(HomeTealAccent, 14.sp)
+                        )
+                    }
                 }
             }
         }
+    }
+
+    if (selectSlotIndex != null) {
+        ShadowTeamsPlayerSelectBottomSheet(
+            positionCode = selectPositionCode,
+            positionLabel = selectPositionLabel,
+            players = rosterPlayers,
+            onDismiss = { selectSlotIndex = null },
+            onSelect = { pw ->
+                viewModel.setSlot(selectSlotIndex!!, pw)
+                selectSlotIndex = null
+            }
+        )
+    }
+
+    menuSlot?.let { (idx, player) ->
+        ShadowTeamsSlotMenuBottomSheet(
+            player = player,
+            positionLabel = menuPositionLabel,
+            onDismiss = { menuSlotIndex = null },
+            onViewProfile = {
+                scope.launch {
+                    val tmProfile = viewModel.getTmProfileForPlayer(player.id)
+                    if (tmProfile != null && tmProfile.isNotBlank()) {
+                        navController.navigate("${Screens.PlayerInfoScreen.route}/${Uri.encode(tmProfile)}") {
+                            launchSingleTop = true
+                        }
+                    } else {
+                        ToastManager.showError(context.getString(R.string.shadow_teams_player_not_found))
+                    }
+                }
+            },
+            onChangePlayer = {
+                menuSlotIndex = null
+                selectSlotIndex = idx
+            },
+            onRemove = {
+                viewModel.removeSlot(idx)
+                menuSlotIndex = null
+            }
+        )
     }
 }
 
@@ -249,7 +365,11 @@ fun ShadowTeamsScreen(
 private fun ShadowTeamsPitch(
     formationId: String,
     slots: List<PositionSlot>,
-    onPlayerClick: (ShadowPlayer) -> Unit
+    slotsLoading: Boolean,
+    isOwnTeam: Boolean,
+    onPlayerViewProfile: (ShadowPlayer) -> Unit,
+    onEmptySlotClick: ((Int) -> Unit)?,
+    onFilledSlotClick: ((Int) -> Unit)?
 ) {
     val positions = FormationDefinitions.getPositions(formationId)
     val density = LocalDensity.current
@@ -404,17 +524,38 @@ private fun ShadowTeamsPitch(
         positions.forEachIndexed { index, pos ->
             val slot = slots.getOrNull(index)
             val starter = slot?.starter
-            // Match web exactly: x=0 left, x=100 right; y=0 top (our goal), y=100 bottom
-            val xPx = (pos.x / 100f) * pitchWidthPx
-            val yPx = (pos.y / 100f) * pitchHeightPx
+            // When slotsLoading: center (50%, 50%), scale 0.6. When loaded: animate to position
+            val targetXPercent = if (slotsLoading) 0.5f else pos.x / 100f
+            val targetYPercent = if (slotsLoading) 0.5f else pos.y / 100f
+            val targetScale = if (slotsLoading) 0.6f else 1f
+            val animX = animateFloatAsState(
+                targetValue = targetXPercent,
+                animationSpec = tween(durationMillis = 800, delayMillis = index * 45, easing = FastOutSlowInEasing),
+                label = "posX"
+            )
+            val animY = animateFloatAsState(
+                targetValue = targetYPercent,
+                animationSpec = tween(durationMillis = 800, delayMillis = index * 45, easing = FastOutSlowInEasing),
+                label = "posY"
+            )
+            val animScale = animateFloatAsState(
+                targetValue = targetScale,
+                animationSpec = tween(durationMillis = 800, delayMillis = index * 45, easing = FastOutSlowInEasing),
+                label = "scale"
+            )
+            val xPx = animX.value * pitchWidthPx
+            val yPx = animY.value * pitchHeightPx
 
-            val clickModifier = if (starter != null) {
-                Modifier.clickable { onPlayerClick(starter) }
-            } else {
-                Modifier
+            val clickModifier = when {
+                slotsLoading -> Modifier
+                starter != null && isOwnTeam -> Modifier.clickable { onFilledSlotClick?.invoke(index) }
+                starter != null && !isOwnTeam -> Modifier.clickable { onPlayerViewProfile(starter) }
+                starter == null && isOwnTeam -> Modifier.clickable { onEmptySlotClick?.invoke(index) }
+                else -> Modifier
             }
             Column(
                 modifier = Modifier
+                    .width(48.dp)
                     .align(Alignment.TopStart)
                     .absoluteOffset(
                         x = with(density) { ((xPx - circleRadiusPx) / density.density).dp },
@@ -426,6 +567,11 @@ private fun ShadowTeamsPitch(
                 Box(
                     modifier = Modifier
                         .size(48.dp)
+                        .graphicsLayer(
+                            scaleX = animScale.value,
+                            scaleY = animScale.value,
+                            transformOrigin = TransformOrigin.Center
+                        )
                         .clip(CircleShape)
                         .background(HomeDarkCard)
                         .border(2.5.dp, HomeTealAccent, CircleShape)

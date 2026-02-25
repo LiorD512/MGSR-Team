@@ -72,14 +72,14 @@ object FormationDefinitions {
         ),
         "3-5-2" to listOf(
             FormationPosition("GK", 50f, 6f, "GK"),
-            FormationPosition("CB", 25f, 22f, "LCB"),
-            FormationPosition("CB", 50f, 22f, "CB"),
-            FormationPosition("CB", 75f, 22f, "RCB"),
-            FormationPosition("LWB", 88f, 48f, "LWB"),
-            FormationPosition("CM", 35f, 48f, "LCM"),
+            FormationPosition("CB", 20f, 22f, "LCB"),
+            FormationPosition("CB", 50f, 22f, "CB"),   // Central CB on same vertical line as GK (x=50)
+            FormationPosition("CB", 80f, 22f, "RCB"),
+            FormationPosition("LWB", 88f, 35f, "LWB"),  // Between defence (y=22) and midfield (y=48)
+            FormationPosition("CM", 25f, 48f, "LCM"),  // Exact same distance from CM: 25 units each side
             FormationPosition("CM", 50f, 48f, "CM"),
-            FormationPosition("CM", 65f, 48f, "RCM"),
-            FormationPosition("RWB", 12f, 48f, "RWB"),
+            FormationPosition("CM", 75f, 48f, "RCM"),
+            FormationPosition("RWB", 12f, 35f, "RWB"),  // Between defence (y=22) and midfield (y=48)
             FormationPosition("ST", 38f, 80f, "LST"),
             FormationPosition("ST", 62f, 80f, "RST")
         )

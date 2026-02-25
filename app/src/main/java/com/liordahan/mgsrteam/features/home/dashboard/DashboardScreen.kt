@@ -727,7 +727,7 @@ private fun QuickActionsRow(navController: NavController) {
             QuickActionChip(
                 icon = Icons.Default.SportsSoccer,
                 label = stringResource(R.string.quick_action_shadow_teams),
-                color = HomeTealAccent,
+                color = HomeGreenAccent,
                 onClick = {
                     navController.navigate(Screens.ShadowTeamsScreen.route) {
                         launchSingleTop = true
