@@ -7,6 +7,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { doc, getDoc, setDoc, collection, query, orderBy, onSnapshot, addDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { getTeammates, extractPlayerIdFromUrl, type ReturneePlayer } from '@/lib/api';
+import { parseMarketValue } from '@/lib/releases';
 import AppLayout from '@/components/AppLayout';
 import Link from 'next/link';
 import { getCurrentAccountForShortlist, useShortlistDocId, SHARED_SHORTLIST_DOC_ID } from '@/lib/accounts';
@@ -33,6 +34,14 @@ interface RosterTeammateMatch {
 }
 
 const POSITION_GROUPS = ['GK', 'DEF', 'MID', 'FWD'] as const;
+
+const MARKET_VALUE_FILTERS = [
+  { min: null as number | null, max: null as number | null, key: 'all' },
+  { min: 150000, max: 500000, key: '150k_500k' },
+  { min: 500000, max: 1000000, key: '500k_1m' },
+  { min: 1000000, max: 2000000, key: '1m_2m' },
+  { min: 2000000, max: 3000000, key: '2m_3m' },
+] as const;
 const POSITION_CODES: Record<string, Set<string>> = {
   GK: new Set(['GK']),
   DEF: new Set(['CB', 'RB', 'LB']),
@@ -303,6 +312,7 @@ export default function ReturneesPage() {
   const [addingUrl, setAddingUrl] = useState<string | null>(null);
   const [addError, setAddError] = useState<string | null>(null);
   const [positionFilter, setPositionFilter] = useState<string | null>(null);
+  const [valueFilter, setValueFilter] = useState<string>('all');
   const [rosterPlayers, setRosterPlayers] = useState<RosterPlayer[]>([]);
   const [teammatesCache, setTeammatesCache] = useState<Record<string, RosterTeammateMatch[]>>({});
   const [loadingTeammatesUrl, setLoadingTeammatesUrl] = useState<string | null>(null);
@@ -439,8 +449,18 @@ export default function ReturneesPage() {
     if (positionFilter) {
       result = result.filter((p) => getPositionGroup(p.playerPosition) === positionFilter);
     }
+    const valueF = MARKET_VALUE_FILTERS.find((v) => v.key === valueFilter);
+    if (valueF && (valueF.min != null || valueF.max != null)) {
+      result = result.filter((p) => {
+        const val = parseMarketValue(p.marketValue);
+        if (val <= 0) return false;
+        if (valueF.min != null && val < valueF.min) return false;
+        if (valueF.max != null && val > valueF.max) return false;
+        return true;
+      });
+    }
     return result;
-  }, [players, positionFilter]);
+  }, [players, positionFilter, valueFilter]);
 
   const shortlistedCount = useMemo(
     () => players.filter((p) => p.playerUrl && shortlistUrls.has(p.playerUrl)).length,
@@ -485,7 +505,7 @@ export default function ReturneesPage() {
         </div>
 
         {/* Position filter chips */}
-        <div className="flex flex-wrap gap-2 mb-6 overflow-x-auto pb-2">
+        <div className="flex flex-wrap gap-2 mb-3 overflow-x-auto pb-2">
           <button
             onClick={() => setPositionFilter(null)}
             className={`px-3 py-1.5 rounded-lg text-sm font-medium shrink-0 transition ${
@@ -517,6 +537,38 @@ export default function ReturneesPage() {
           })}
         </div>
 
+        {/* Market value filter chips */}
+        <div className="flex flex-wrap gap-2 mb-6 overflow-x-auto pb-2">
+          {MARKET_VALUE_FILTERS.map((v) => {
+            const count =
+              v.key === 'all'
+                ? players.length
+                : players.filter((p) => {
+                    const val = parseMarketValue(p.marketValue);
+                    if (val <= 0) return false;
+                    if (v.min != null && val < v.min) return false;
+                    if (v.max != null && val > v.max) return false;
+                    return true;
+                  }).length;
+            return (
+              <button
+                key={v.key}
+                onClick={() => setValueFilter(valueFilter === v.key ? 'all' : v.key)}
+                disabled={count === 0}
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium shrink-0 transition ${
+                  valueFilter === v.key
+                    ? 'bg-purple-500 text-white'
+                    : count === 0
+                      ? 'bg-transparent text-mgsr-muted/50 cursor-not-allowed'
+                      : 'bg-mgsr-card border border-mgsr-border text-mgsr-muted hover:text-mgsr-text'
+                }`}
+              >
+                {t(`contract_finisher_filter_value_${v.key}`)} {count > 0 ? count : ''}
+              </button>
+            );
+          })}
+        </div>
+
         {players.length === 0 && loadingList ? (
           <div className="flex items-center gap-3 py-6 px-4 rounded-xl bg-mgsr-card/50 border border-mgsr-border">
             <div className="w-6 h-6 border-2 border-purple-500/40 border-t-purple-500 rounded-full animate-spin shrink-0" />
@@ -543,7 +595,10 @@ export default function ReturneesPage() {
           <div className="p-12 bg-mgsr-card/50 border border-mgsr-border rounded-xl text-center text-mgsr-muted">
             {t('search_no_results')}
             <button
-              onClick={() => setPositionFilter(null)}
+              onClick={() => {
+                setPositionFilter(null);
+                setValueFilter('all');
+              }}
               className="block mt-3 text-purple-400 hover:underline"
             >
               {t('returnee_clear_filters')}
