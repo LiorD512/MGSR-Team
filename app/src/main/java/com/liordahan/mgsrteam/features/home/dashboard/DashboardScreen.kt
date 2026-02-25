@@ -54,6 +54,7 @@ import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.PersonOff
 import androidx.compose.material.icons.filled.RequestQuote
+import androidx.compose.material.icons.filled.SportsSoccer
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.filled.Warning
@@ -717,6 +718,18 @@ private fun QuickActionsRow(navController: NavController) {
                 color = HomePurpleAccent,
                 onClick = {
                     navController.navigate(Screens.RequestsScreen.route) {
+                        launchSingleTop = true
+                    }
+                }
+            )
+        }
+        item {
+            QuickActionChip(
+                icon = Icons.Default.SportsSoccer,
+                label = stringResource(R.string.quick_action_shadow_teams),
+                color = HomeTealAccent,
+                onClick = {
+                    navController.navigate(Screens.ShadowTeamsScreen.route) {
                         launchSingleTop = true
                     }
                 }

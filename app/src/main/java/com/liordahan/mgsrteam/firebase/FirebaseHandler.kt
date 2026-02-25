@@ -30,6 +30,7 @@ class FirebaseHandler {
 
     val feedEventsTable = "FeedEvents"
     val agentTasksTable = "AgentTasks"
+    val shadowTeamsTable = "ShadowTeams"
 
     val mandateDir = "mandates"
     val passportDir = "passports"

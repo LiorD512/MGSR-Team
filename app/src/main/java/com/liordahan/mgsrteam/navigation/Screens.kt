@@ -20,6 +20,7 @@ sealed class Screens(val route: String) {
     data object GenerateMandateScreen : Screens(ScreenName.GENERATE_MANDATE)
     data object TasksScreen : Screens(ScreenName.TASKS)
     data object TaskDetailScreen : Screens(ScreenName.TASK_DETAIL)
+    data object ShadowTeamsScreen : Screens(ScreenName.SHADOW_TEAMS)
 
     companion object {
         fun addPlayerWithTmProfileRoute(tmProfileUrl: String) = "${ScreenName.ADD_PLAYER}/$tmProfileUrl"
@@ -51,4 +52,5 @@ object ScreenName {
     const val GENERATE_MANDATE = "generate_mandate"
     const val TASKS = "tasks"
     const val TASK_DETAIL = "task_detail"
+    const val SHADOW_TEAMS = "shadow_teams"
 }
