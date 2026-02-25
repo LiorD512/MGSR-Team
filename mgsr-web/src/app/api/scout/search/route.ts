@@ -177,6 +177,8 @@ export async function POST(request: NextRequest) {
         limit: parsedHebrew?.limit ?? parsedMain.limit,
         minGoals: parsedHebrew?.minGoals ?? parsedMain.minGoals,
         transferFee: parsedHebrew?.transferFee || parsedMain.transferFee,
+        valueMin: parsedHebrew?.valueMin ?? parsedMain.valueMin,
+        valueMax: parsedHebrew?.valueMax ?? parsedMain.valueMax,
         // Combine notes from both parses (English translation often has richer keywords)
         notes: _mergeNotes(parsedHebrew?.notes, parsedMain.notes),
         // Keep Hebrew interpretation for Hebrew users
@@ -334,6 +336,8 @@ async function fetchScoutRecruitment(
     nationality?: string;
     notes?: string;
     transferFee?: string;
+    valueMin?: number;
+    valueMax?: number;
     salaryRange?: string;
     limit?: number;
     excludeUrls?: string[];
@@ -348,6 +352,8 @@ async function fetchScoutRecruitment(
   if (parsed.nationality?.trim()) params.set('nationality', parsed.nationality.trim());
   if (parsed.notes?.trim()) params.set('notes', parsed.notes.trim());
   if (parsed.transferFee?.trim()) params.set('transfer_fee', parsed.transferFee.trim());
+  if (parsed.valueMin != null) params.set('value_min', String(parsed.valueMin));
+  if (parsed.valueMax != null) params.set('value_max', String(parsed.valueMax));
   if (parsed.salaryRange?.trim()) params.set('salary_range', parsed.salaryRange.trim());
   if (parsed.excludeUrls?.length) params.set('exclude_urls', parsed.excludeUrls.join(','));
   params.set('lang', lang);

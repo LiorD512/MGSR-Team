@@ -13,6 +13,8 @@ export interface ParsedScoutParams {
   nationality?: string;
   notes?: string;
   transferFee?: string;
+  valueMin?: number;
+  valueMax?: number;
   salaryRange?: string;
   limit?: number;
   interpretation?: string;
@@ -126,6 +128,135 @@ function extractIsraeliMarket(query: string): { transferFee?: string; notes?: st
     transferFee: '300-600',
     notes: 'Israeli market fit, affordable, lower leagues',
   };
+}
+
+/**
+ * Detect the user's intent for value:
+ *   'up_to'  = "עד X", "under X", "max X" → hard max
+ *   'around' = "של X", "of X", just a number → approximate (range ±50%)
+ *   'above'  = "מעל X", "above X", "over X" → hard min
+ */
+type ValueIntent = 'up_to' | 'around' | 'above';
+
+function detectValueIntent(query: string): ValueIntent {
+  // Hebrew "up to" indicators: עד, מקסימום, לא יותר מ
+  if (/(?:עד|מקסימום|לא\s*יותר\s*מ)\s*(?:\d|מיליון|מליון|אלף|חצי)/i.test(query)) return 'up_to';
+  // Hebrew "above" indicators: מעל, מינימום, לפחות (near value words)
+  if (/(?:מעל|מינימום|לפחות)\s*(?:\d|מיליון|מליון|אלף|חצי)/i.test(query)) return 'above';
+  // English intent
+  if (/(?:under|up\s*to|max(?:imum)?|at\s*most|less\s*than|no\s*more\s*than)\s/i.test(query)) return 'up_to';
+  if (/(?:above|over|at\s*least|more\s*than|minimum)\s/i.test(query)) return 'above';
+  // Default: "של X" / "of X" / plain number = approximate
+  return 'around';
+}
+
+/**
+ * Extract market value / transfer fee from query.
+ * Parses Hebrew and English expressions like:
+ *   "שווי שוק של מיליון יורו" (value OF 1M → around 1M)
+ *   "שווי עד 500 אלף" (up to 500k → max 500k)
+ *   "שווי מעל 2 מיליון" (above 2M → min 2M)
+ *   "market value 1M", "worth under 500k", "budget 3 million"
+ * Returns { transferFee, valueMin, valueMax } based on detected intent.
+ */
+function extractMarketValue(query: string): { transferFee?: string; valueMin?: number; valueMax?: number } {
+  let valueEuro: number | undefined;
+
+  // Hebrew: X מיליון / מליון (with or without preceding number)
+  const heMillionMatch = query.match(
+    /(?:שווי|שוק|תקציב|ערך|עד|מעל|מקסימום|מינימום|לפחות)\s*(?:שוק\s*)?(?:של\s*)?(?:עד\s*)?(?:מעל\s*)?(\d+(?:[.,]\d+)?)\s*(?:מיליון|מליון)/i
+  );
+  if (heMillionMatch) {
+    valueEuro = parseFloat(heMillionMatch[1].replace(',', '.')) * 1_000_000;
+  }
+
+  // Hebrew: חצי מיליון
+  if (!valueEuro && /(?:שווי|שוק|תקציב|ערך|עד|מעל).*חצי\s*(?:מיליון|מליון)/i.test(query)) {
+    valueEuro = 500_000;
+  }
+
+  // Hebrew: "מיליון יורו/אירו" without a number prefix → 1 million
+  if (!valueEuro) {
+    const heSingleMillion = query.match(
+      /(?:שווי|שוק|תקציב|ערך|עד|מעל|בשווי|מקסימום)\s*(?:שוק\s*)?(?:של\s*)?(?:עד\s*)?(?:מעל\s*)?(?:מיליון|מליון)\s*(?:יורו|אירו|€|euro)?/i
+    );
+    if (heSingleMillion) {
+      valueEuro = 1_000_000;
+    }
+  }
+
+  // Hebrew: X אלף (thousands)
+  if (!valueEuro) {
+    const heThousandMatch = query.match(
+      /(?:שווי|שוק|תקציב|ערך|עד|מעל|מקסימום)\s*(?:שוק\s*)?(?:של\s*)?(?:עד\s*)?(?:מעל\s*)?(\d+)\s*(?:אלף|אלפים)/i
+    );
+    if (heThousandMatch) {
+      valueEuro = parseInt(heThousandMatch[1], 10) * 1_000;
+    }
+  }
+
+  // English: X million / Xm / X mil
+  if (!valueEuro) {
+    const enMillionMatch = query.match(
+      /(?:market\s*value|worth|budget|transfer\s*fee|value|max|up\s*to|under|over|above|around|about)\s*(?:of\s*)?(?:up\s*to\s*)?(?:around\s*)?(?:€|EUR?)?\s*(\d+(?:[.,]\d+)?)\s*(?:million|mil|m\b)/i
+    );
+    if (enMillionMatch) {
+      valueEuro = parseFloat(enMillionMatch[1].replace(',', '.')) * 1_000_000;
+    }
+  }
+
+  // English: Xk / X thousand
+  if (!valueEuro) {
+    const enThousandMatch = query.match(
+      /(?:market\s*value|worth|budget|transfer\s*fee|value|max|up\s*to|under|over|above|around|about)\s*(?:of\s*)?(?:up\s*to\s*)?(?:around\s*)?(?:€|EUR?)?\s*(\d+)\s*(?:k|thousand)\b/i
+    );
+    if (enThousandMatch) {
+      valueEuro = parseInt(enThousandMatch[1], 10) * 1_000;
+    }
+  }
+
+  // English: €1,000,000 or 1000000 (raw number ≥ 50000 near value keywords)
+  if (!valueEuro) {
+    const rawMatch = query.match(
+      /(?:market\s*value|worth|budget|transfer\s*fee|value)\s*(?:of\s*)?(?:up\s*to\s*)?€?\s*([\d,]+)/i
+    );
+    if (rawMatch) {
+      const raw = parseInt(rawMatch[1].replace(/,/g, ''), 10);
+      if (raw >= 50_000) valueEuro = raw;
+    }
+  }
+
+  if (!valueEuro) return {};
+
+  // Detect intent: "of X" (around), "up to X" (max), "above X" (min)
+  const intent = detectValueIntent(query);
+
+  // Map numeric value to server's transfer_fee label
+  let transferFee: string;
+  if (valueEuro <= 200_000) {
+    transferFee = '<200';
+  } else if (valueEuro <= 600_000) {
+    transferFee = '300-600';
+  } else if (valueEuro <= 900_000) {
+    transferFee = '700-900';
+  } else {
+    transferFee = '1m+';
+  }
+
+  // Build value range based on intent
+  let valueMin: number | undefined;
+  let valueMax: number | undefined;
+  if (intent === 'up_to') {
+    valueMax = valueEuro;
+  } else if (intent === 'above') {
+    valueMin = valueEuro;
+  } else {
+    // 'around': create a ±50% window so players near the target value are found
+    valueMin = Math.round(valueEuro * 0.5);
+    valueMax = Math.round(valueEuro * 1.5);
+  }
+
+  return { transferFee, valueMin, valueMax };
 }
 
 /**
@@ -253,6 +384,23 @@ function buildInterpretation(
     const n = natNames[parsed.nationality] || { en: parsed.nationality, he: parsed.nationality };
     parts.push(lang === 'he' ? n.he : n.en);
   }
+  if (parsed.transferFee || parsed.valueMax || parsed.valueMin) {
+    const fmtValue = (v: number) => v >= 1_000_000
+      ? `€${(v / 1_000_000).toFixed(v % 1_000_000 === 0 ? 0 : 1)}M`
+      : `€${Math.round(v / 1_000)}k`;
+    if (parsed.valueMin && parsed.valueMax) {
+      // Around / approximate: show range
+      parts.push(lang === 'he'
+        ? `שווי שוק ~${fmtValue(Math.round((parsed.valueMin + parsed.valueMax) / 2))} (${fmtValue(parsed.valueMin)}-${fmtValue(parsed.valueMax)})`
+        : `market value ~${fmtValue(Math.round((parsed.valueMin + parsed.valueMax) / 2))} (${fmtValue(parsed.valueMin)}-${fmtValue(parsed.valueMax)})`);
+    } else if (parsed.valueMax) {
+      parts.push(lang === 'he' ? `שווי שוק עד ${fmtValue(parsed.valueMax)}` : `market value up to ${fmtValue(parsed.valueMax)}`);
+    } else if (parsed.valueMin) {
+      parts.push(lang === 'he' ? `שווי שוק מעל ${fmtValue(parsed.valueMin)}` : `market value above ${fmtValue(parsed.valueMin)}`);
+    } else if (parsed.transferFee) {
+      parts.push(lang === 'he' ? `תקציב: ${parsed.transferFee}` : `budget: ${parsed.transferFee}`);
+    }
+  }
   if (parsed.notes) {
     parts.push(parsed.notes);
   }
@@ -281,12 +429,15 @@ export function parseFreeQuery(query: string, lang: 'en' | 'he' = 'en'): ParsedS
   const foot = extractFoot(q);
   const nationality = extractNationality(q);
   const limit = extractLimit(q) ?? 15;
-  const { transferFee, notes: israeliNotes } = extractIsraeliMarket(q);
+  const { transferFee: israeliFee, notes: israeliNotes } = extractIsraeliMarket(q);
+  const { transferFee: valueFee, valueMin, valueMax } = extractMarketValue(q);
+  // Israeli market fee takes priority if both match; otherwise use value-based fee
+  const transferFee = israeliFee || valueFee;
 
   const notes = extractNotes(q, minGoals, israeliNotes);
 
   const interpretation = buildInterpretation(
-    { position, ageMin, ageMax, foot, nationality, notes, transferFee, limit },
+    { position, ageMin, ageMax, foot, nationality, notes, transferFee, valueMin, valueMax, limit },
     lang
   );
 
@@ -299,6 +450,8 @@ export function parseFreeQuery(query: string, lang: 'en' | 'he' = 'en'): ParsedS
     nationality: nationality || undefined,
     notes: notes || undefined,
     transferFee: transferFee || undefined,
+    valueMin: valueMin || undefined,
+    valueMax: valueMax || undefined,
     limit: Math.min(25, Math.max(1, limit)),
     interpretation,
   };
