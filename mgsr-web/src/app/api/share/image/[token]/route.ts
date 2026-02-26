@@ -39,7 +39,17 @@ export async function GET(
     });
 
     if (!res.ok) {
-      return NextResponse.json({ error: 'Image fetch failed' }, { status: 502 });
+      const body = await res.text().catch(() => '');
+      console.error('[share/image] External fetch failed:', {
+        url: imageUrl,
+        status: res.status,
+        statusText: res.statusText,
+        body: body.slice(0, 200),
+      });
+      return NextResponse.json(
+        { error: 'Image fetch failed', status: res.status, url: imageUrl },
+        { status: 502 }
+      );
     }
 
     const contentType = res.headers.get('content-type') || 'image/jpeg';

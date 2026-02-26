@@ -7,6 +7,15 @@ import type { ShareData } from '@/app/p/[token]/types';
 
 export const dynamic = 'force-dynamic';
 
+function getImageHost(url: unknown): string | null {
+  if (typeof url !== 'string') return null;
+  try {
+    return new URL(url).host;
+  } catch {
+    return null;
+  }
+}
+
 export async function GET(
   _request: NextRequest,
   { params }: { params: { token: string } }
@@ -33,6 +42,7 @@ export async function GET(
           hasPlayer: !!data?.player,
           hasProfileImage: !!data?.player?.profileImage,
           playerKeys: data?.player ? Object.keys(data.player) : [],
+          imageHost: getImageHost(data?.player?.profileImage),
           diag: { ...diag, source: 'admin' },
         });
       }
@@ -54,6 +64,7 @@ export async function GET(
         hasPlayer: !!data?.player,
         hasProfileImage: !!data?.player?.profileImage,
         playerKeys: data?.player ? Object.keys(data.player) : [],
+        imageHost: getImageHost(data?.player?.profileImage),
         diag: { ...diag, source: 'client' },
       });
     }

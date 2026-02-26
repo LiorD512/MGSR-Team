@@ -34,13 +34,8 @@ export default async function OpenGraphImage({
     imageUrl.startsWith('http') &&
     !imageUrl.includes('undefined');
 
-  // Use our proxy - external URLs (Transfermarkt) may block direct fetches
-  const base =
-    process.env.NEXT_PUBLIC_APP_URL ||
-    (process.env.VERCEL_PROJECT_PRODUCTION_URL
-      ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
-      : 'https://mgsr-team.vercel.app');
-  const imgSrc = hasValidImage ? `${base}/api/share/image/${params.token}` : null;
+  // Use direct image URL - ImageResponse fetches it. Proxy (502) fails when Transfermarkt blocks.
+  const imgSrc = hasValidImage ? imageUrl : null;
 
   return new ImageResponse(
     (
