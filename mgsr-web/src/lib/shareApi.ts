@@ -5,6 +5,11 @@
 
 function getAppUrl(): string {
   if (process.env.NEXT_PUBLIC_APP_URL) return process.env.NEXT_PUBLIC_APP_URL;
+  // Use production URL so share links never point to preview (which may require auth)
+  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
+    const u = process.env.VERCEL_PROJECT_PRODUCTION_URL;
+    return u.startsWith('http') ? u : `https://${u}`;
+  }
   if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
   if (typeof window !== 'undefined') {
     const origin = window.location.origin;
