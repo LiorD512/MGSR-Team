@@ -660,6 +660,10 @@
     <string name="player_info_refresh_cd">רענן מ-Transfermarkt</string>
     <string name="player_info_share">שתף</string>
     <string name="player_info_share_error">לא ניתן ליצור לינק שיתוף. נסה שוב.</string>
+    <string name="player_info_share_language_title">שתף ב</string>
+    <string name="player_info_share_language_subtitle">בחר את שפת הדף המשותף</string>
+    <string name="player_info_share_language_hebrew">עברית</string>
+    <string name="player_info_share_language_english">English</string>
     <string name="player_info_generate_mandate">יצירת מנדט</string>
 
     <!-- Generate Mandate Wizard -->

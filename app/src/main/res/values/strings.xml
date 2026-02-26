@@ -661,6 +661,10 @@
     <string name="player_info_refresh_cd">Refresh from Transfermarkt</string>
     <string name="player_info_share">Share</string>
     <string name="player_info_share_error">Could not create share link. Please try again.</string>
+    <string name="player_info_share_language_title">Share in</string>
+    <string name="player_info_share_language_subtitle">Choose the language for the shared page</string>
+    <string name="player_info_share_language_hebrew">עברית</string>
+    <string name="player_info_share_language_english">English</string>
     <string name="player_info_generate_mandate">Generate mandate</string>
 
     <!-- Generate Mandate Wizard -->

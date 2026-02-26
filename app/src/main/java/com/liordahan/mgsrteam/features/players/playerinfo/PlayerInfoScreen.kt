@@ -283,6 +283,7 @@ fun PlayerInfoScreen(
 
     var showDeleteDialog by remember { mutableStateOf(false) }
     var showSalaryTransferFeeSheet by remember { mutableStateOf(false) }
+    var showShareLanguageSheet by remember { mutableStateOf(false) }
     var showAddNoteSheet by remember { mutableStateOf(false) }
     var showAllNotes by remember { mutableStateOf(false) }
     var showAddPlayerTaskSheet by remember { mutableStateOf(false) }
@@ -472,6 +473,33 @@ fun PlayerInfoScreen(
                 }
             )
         }
+        fun performShare(lang: String) {
+            val player = playerToPresent
+            val docId = playerDocumentId
+            if (player == null || docId == null) return
+            scope.launch {
+                viewModel.createShareUrl(player, docId, documentsList, scoutReport, lang)
+                    .onSuccess { url ->
+                        showShareLanguageSheet = false
+                        val shareText = "${player.fullName ?: ""}\n$url"
+                        val intent = Intent(Intent.ACTION_SEND).apply {
+                            type = "text/plain"
+                            putExtra(Intent.EXTRA_TEXT, shareText)
+                        }
+                        context.startActivity(Intent.createChooser(intent, context.getString(R.string.player_info_share_with)))
+                    }
+                    .onFailure {
+                        showShareLanguageSheet = false
+                        ToastManager.showError(context.getString(R.string.player_info_share_error))
+                    }
+            }
+        }
+        if (showShareLanguageSheet) {
+            ShareLanguageBottomSheet(
+                onDismiss = { showShareLanguageSheet = false },
+                onLangSelected = { performShare(it) }
+            )
+        }
         if (showSalaryTransferFeeSheet) {
             playerToPresent?.let { player ->
                 SalaryTransferFeeBottomSheet(
@@ -492,20 +520,7 @@ fun PlayerInfoScreen(
             val docId = playerDocumentId
             if (player == null || docId == null) return@shareAction
             com.liordahan.mgsrteam.analytics.AnalyticsHelper.logSharePlayer(player.tmProfile)
-            scope.launch {
-                viewModel.createShareUrl(player, docId, documentsList, scoutReport)
-                    .onSuccess { url ->
-                        val shareText = "${player.fullName ?: ""}\n$url"
-                        val intent = Intent(Intent.ACTION_SEND).apply {
-                            type = "text/plain"
-                            putExtra(Intent.EXTRA_TEXT, shareText)
-                        }
-                        context.startActivity(Intent.createChooser(intent, context.getString(R.string.player_info_share_with)))
-                    }
-                    .onFailure {
-                        ToastManager.showError(context.getString(R.string.player_info_share_error))
-                    }
-            }
+            showShareLanguageSheet = true
         }
 
         val isRefreshing = isRefreshingPlayer is UiResult.Loading
@@ -833,6 +848,67 @@ fun PlayerInfoScreen(
                     navController.navigate("${Screens.GenerateMandateScreen.route}/${Uri.encode(playerId)}")
                 }
             )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ShareLanguageBottomSheet(
+    onDismiss: () -> Unit,
+    onLangSelected: (lang: String) -> Unit
+) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
+        containerColor = HomeDarkCard,
+        properties = ModalBottomSheetProperties(
+            isAppearanceLightStatusBars = true,
+            isAppearanceLightNavigationBars = true
+        )
+    ) {
+        DarkSystemBarsForBottomSheet()
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
+                .padding(bottom = 32.dp)
+                .navigationBarsPadding()
+        ) {
+            Text(
+                text = stringResource(R.string.player_info_share_language_title),
+                style = boldTextStyle(HomeTextPrimary, 20.sp),
+                modifier = Modifier.padding(vertical = 8.dp)
+            )
+            HorizontalDivider(color = HomeDarkCardBorder, thickness = 1.dp)
+            Spacer(Modifier.height(16.dp))
+            Text(
+                text = stringResource(R.string.player_info_share_language_subtitle),
+                style = regularTextStyle(HomeTextSecondary, 14.sp),
+                modifier = Modifier.padding(bottom = 20.dp)
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Button(
+                    onClick = { onLangSelected("he") },
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.buttonColors(containerColor = HomeTealAccent.copy(alpha = 0.2f)),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text(stringResource(R.string.player_info_share_language_hebrew), style = boldTextStyle(HomeTealAccent, 16.sp))
+                }
+                Button(
+                    onClick = { onLangSelected("en") },
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.buttonColors(containerColor = HomeTealAccent.copy(alpha = 0.2f)),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text(stringResource(R.string.player_info_share_language_english), style = boldTextStyle(HomeTealAccent, 16.sp))
+                }
+            }
         }
     }
 }

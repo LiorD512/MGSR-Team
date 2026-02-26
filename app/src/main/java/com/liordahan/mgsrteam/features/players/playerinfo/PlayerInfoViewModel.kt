@@ -90,7 +90,7 @@ abstract class IPlayerInfoViewModel : ViewModel() {
     abstract fun addPlayerTask(agentId: String, agentName: String, title: String, dueDate: Long, priority: Int, notes: String, playerId: String, playerName: String, playerTmProfile: String, templateId: String)
     abstract fun togglePlayerTaskCompleted(task: com.liordahan.mgsrteam.features.home.models.AgentTask)
     abstract fun updateClubFeedback(offerId: String, clubFeedback: String?)
-    abstract suspend fun createShareUrl(player: Player, playerDocId: String, documents: List<PlayerDocument>, scoutReport: String?): Result<String>
+    abstract suspend fun createShareUrl(player: Player, playerDocId: String, documents: List<PlayerDocument>, scoutReport: String?, lang: String): Result<String>
 }
 
 
@@ -814,7 +814,8 @@ class PlayerInfoViewModel(
         player: Player,
         playerDocId: String,
         documents: List<PlayerDocument>,
-        scoutReport: String?
+        scoutReport: String?,
+        lang: String
     ): Result<String> = withContext(Dispatchers.IO) {
         try {
             val mandateDoc = documents
@@ -854,7 +855,8 @@ class PlayerInfoViewModel(
                 "sharerPhone" to player.getAgentPhoneNumber(),
                 "scoutReport" to (scoutReport?.takeIf { it.isNotBlank() }
                     ?: buildScoutSummary(player)),
-                "createdAt" to System.currentTimeMillis()
+                "createdAt" to System.currentTimeMillis(),
+                "lang" to (lang.takeIf { it in listOf("he", "en") } ?: "en")
             )
 
             val ref = firebaseHandler.firebaseStore
