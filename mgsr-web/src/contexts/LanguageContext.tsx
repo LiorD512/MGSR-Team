@@ -499,6 +499,15 @@ const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     shadow_teams_change_player: 'Change player',
     shadow_teams_remove_player: 'Remove',
     shadow_teams_you: 'You',
+    // Player Highlights
+    highlights_title: 'Highlights',
+    highlights_loading: 'Loading highlights...',
+    highlights_empty: 'No highlight videos found for this player',
+    highlights_recent_matches: 'Recent Match Highlights',
+    highlights_compilations: 'Player Highlights',
+    highlights_powered_by: 'Powered by YouTube & Scorebat',
+    highlights_updated: 'Updated',
+    highlights_views: 'views',
     // FM Intelligence Panel
     fm_tab_intelligence: 'FM Intelligence',
     fm_tab_position_fit: 'Position Fit',
@@ -1077,6 +1086,15 @@ const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     shadow_teams_change_player: 'החלף שחקן',
     shadow_teams_remove_player: 'הסר',
     shadow_teams_you: 'אתה',
+    // Player Highlights
+    highlights_title: 'הדגשות וידאו',
+    highlights_loading: 'טוען הדגשות...',
+    highlights_empty: 'לא נמצאו סרטוני הדגשות לשחקן זה',
+    highlights_recent_matches: 'הדגשות משחקים אחרונים',
+    highlights_compilations: 'הדגשות שחקן',
+    highlights_powered_by: 'מבוסס על YouTube ו-Scorebat',
+    highlights_updated: 'עודכן',
+    highlights_views: 'צפיות',
     // FM Intelligence Panel
     fm_tab_intelligence: 'תובנות FM',
     fm_tab_position_fit: 'התאמת עמדה',

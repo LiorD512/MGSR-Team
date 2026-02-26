@@ -18,6 +18,7 @@ import { extractSalaryRange, extractFreeTransfer, type NoteModel } from '@/lib/n
 import { flattenPdf } from '@/lib/pdfFlatten';
 import FmIntelligencePanel from '@/components/FmIntelligencePanel';
 import SimilarPlayersPanel from '@/components/SimilarPlayersPanel';
+import PlayerHighlightsPanel from '@/components/PlayerHighlightsPanel';
 import {
   LineChart,
   Line,
@@ -1208,6 +1209,16 @@ export default function PlayerInfoPage() {
             {/* Similar Players Panel */}
             {(merged.tmProfile || player?.tmProfile) && (
               <SimilarPlayersPanel playerUrl={merged.tmProfile || player?.tmProfile || ''} isRtl={isRtl} />
+            )}
+
+            {/* Player Highlights Panel */}
+            {(merged.fullName || player?.fullName) && (
+              <PlayerHighlightsPanel
+                playerName={merged.fullName || player?.fullName || ''}
+                teamName={merged.currentClub?.clubName || player?.currentClub?.clubName || ''}
+                position={merged.positions?.[0] || player?.positions?.[0] || ''}
+                isRtl={isRtl}
+              />
             )}
 
             {/* Market value trend */}

@@ -32,6 +32,7 @@ import { parseMarketValue, parseAge } from '@/lib/releases';
 import { useShortlistDocId, SHARED_SHORTLIST_DOC_ID } from '@/lib/accounts';
 import { useIsMobile } from '@/hooks/useMediaQuery';
 import { getCountryDisplayName } from '@/lib/countryTranslations';
+import { toWhatsAppUrl } from '@/lib/whatsapp';
 
 interface FeedEvent {
   id: string;
@@ -75,10 +76,16 @@ interface RosteredPlayer {
 interface ContactFull {
   id: string;
   name?: string;
+  phoneNumber?: string;
   contactType?: string;
   agencyName?: string;
   agencyCountry?: string;
   agencyUrl?: string;
+  clubName?: string;
+  clubCountry?: string;
+  clubCountryFlag?: string;
+  clubLogo?: string;
+  clubTmProfile?: string;
 }
 
 const POSITION_GROUPS = ['GK', 'DEF', 'MID', 'FWD'] as const;
@@ -222,6 +229,7 @@ export default function DashboardPage() {
   const [transferWindows, setTransferWindows] = useState<TransferWindow[]>([]);
   const [transferWindowsLoading, setTransferWindowsLoading] = useState(false);
   const [expandedConfederations, setExpandedConfederations] = useState<Set<string>>(new Set(['PRIORITY']));
+  const [expandedWindowCountries, setExpandedWindowCountries] = useState<Set<string>>(new Set());
   const shortlistDocId = useShortlistDocId(user ?? null);
 
   useEffect(() => {
@@ -364,6 +372,30 @@ export default function DashboardPage() {
       return next;
     });
   };
+
+  const toggleWindowCountry = (countryKey: string) => {
+    setExpandedWindowCountries((prev) => {
+      const next = new Set(prev);
+      if (next.has(countryKey)) next.delete(countryKey);
+      else next.add(countryKey);
+      return next;
+    });
+  };
+
+  const clubContactsByCountry = useMemo(() => {
+    const map: Record<string, ContactFull[]> = {};
+    for (const c of contacts) {
+      if (c.contactType !== 'CLUB' || !c.clubCountry) continue;
+      const key = c.clubCountry.trim().toLowerCase();
+      if (!map[key]) map[key] = [];
+      map[key].push(c);
+    }
+    // Sort each group by clubName
+    for (const key of Object.keys(map)) {
+      map[key].sort((a, b) => (a.clubName || '').localeCompare(b.clubName || ''));
+    }
+    return map;
+  }, [contacts]);
 
   useEffect(() => {
     if (!user) return;
@@ -1449,52 +1481,118 @@ export default function DashboardPage() {
                               : (w.daysLeft ?? 999) <= 14
                                 ? '#FF7043'
                                 : '#4DB6AC';
+                          const countryKey = w.countryCode + w.countryName;
+                          const matchingClubs = clubContactsByCountry[w.countryName.trim().toLowerCase()] || [];
+                          const isCountryExpanded = expandedWindowCountries.has(countryKey);
                           return (
-                            <div
-                              key={w.countryCode + w.countryName}
-                              className="flex items-center justify-between px-3 py-2.5 rounded-lg bg-mgsr-dark/60 border border-mgsr-border/50"
-                              style={{
-                                borderColor: isClosingSoon
-                                  ? 'rgba(229, 57, 53, 0.3)'
-                                  : undefined,
-                              }}
-                            >
-                              <div className="flex items-center gap-3 min-w-0">
-                                {w.flagUrl && (
-                                  <img
-                                    src={w.flagUrl}
-                                    alt=""
-                                    className="w-6 h-6 rounded-full object-cover shrink-0"
-                                  />
+                            <div key={countryKey}>
+                              <button
+                                type="button"
+                                onClick={() => { if (matchingClubs.length > 0) toggleWindowCountry(countryKey); }}
+                                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg bg-mgsr-dark/60 border border-mgsr-border/50 text-start transition ${matchingClubs.length > 0 ? 'hover:bg-mgsr-dark/80 cursor-pointer' : 'cursor-default'}`}
+                                style={{
+                                  borderColor: isClosingSoon
+                                    ? 'rgba(229, 57, 53, 0.3)'
+                                    : undefined,
+                                }}
+                              >
+                                <div className="flex items-center gap-3 min-w-0">
+                                  {w.flagUrl && (
+                                    <img
+                                      src={w.flagUrl}
+                                      alt=""
+                                      className="w-6 h-6 rounded-full object-cover shrink-0"
+                                    />
+                                  )}
+                                  <span className="font-medium text-mgsr-text truncate">
+                                    {w.countryName}
+                                  </span>
+                                  {matchingClubs.length > 0 && (
+                                    <span className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-mgsr-teal/15 text-mgsr-teal text-xs font-semibold">
+                                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                                      {matchingClubs.length}
+                                    </span>
+                                  )}
+                                  {matchingClubs.length > 0 && (
+                                    <span
+                                      className={`inline-flex text-mgsr-muted transition-transform duration-200 ${isCountryExpanded ? 'rotate-180' : ''}`}
+                                    >
+                                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                        <polyline points="6 9 12 15 18 9" />
+                                      </svg>
+                                    </span>
+                                  )}
+                                </div>
+                                {w.daysLeft != null ? (
+                                  <span
+                                    className={`shrink-0 text-sm font-medium ${
+                                      isClosingSoon
+                                        ? 'px-2 py-0.5 rounded-md bg-red-500/15 text-red-400'
+                                        : ''
+                                    }`}
+                                    style={
+                                      !isClosingSoon
+                                        ? { color: daysColor }
+                                        : undefined
+                                    }
+                                  >
+                                    {w.daysLeft === 0
+                                      ? t('transfer_windows_today')
+                                      : t('transfer_windows_days_left').replace(
+                                          '{n}',
+                                          String(w.daysLeft)
+                                        )}
+                                  </span>
+                                ) : (
+                                  <span className="text-sm text-mgsr-muted shrink-0">
+                                    {t('transfer_windows_open')}
+                                  </span>
                                 )}
-                                <span className="font-medium text-mgsr-text truncate">
-                                  {w.countryName}
-                                </span>
-                              </div>
-                              {w.daysLeft != null ? (
-                                <span
-                                  className={`shrink-0 text-sm font-medium ${
-                                    isClosingSoon
-                                      ? 'px-2 py-0.5 rounded-md bg-red-500/15 text-red-400'
-                                      : ''
-                                  }`}
-                                  style={
-                                    !isClosingSoon
-                                      ? { color: daysColor }
-                                      : undefined
-                                  }
-                                >
-                                  {w.daysLeft === 0
-                                    ? t('transfer_windows_today')
-                                    : t('transfer_windows_days_left').replace(
-                                        '{n}',
-                                        String(w.daysLeft)
-                                      )}
-                                </span>
-                              ) : (
-                                <span className="text-sm text-mgsr-muted shrink-0">
-                                  {t('transfer_windows_open')}
-                                </span>
+                              </button>
+                              {isCountryExpanded && matchingClubs.length > 0 && (
+                                <div className={`mt-1 mb-1 ${isRtl ? 'mr-6' : 'ml-6'} space-y-1`}>
+                                  {matchingClubs.map((contact) => {
+                                    const waUrl = toWhatsAppUrl(contact.phoneNumber);
+                                    return (
+                                      <div
+                                        key={contact.id}
+                                        className="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-mgsr-card/50 border border-mgsr-border/30"
+                                      >
+                                        {contact.clubLogo ? (
+                                          <img
+                                            src={contact.clubLogo}
+                                            alt=""
+                                            className="w-5 h-5 rounded object-contain shrink-0"
+                                          />
+                                        ) : (
+                                          <span className="w-5 h-5 rounded bg-mgsr-muted/20 shrink-0 flex items-center justify-center text-[10px] text-mgsr-muted">🏟</span>
+                                        )}
+                                        <div className="flex flex-col min-w-0 flex-1 leading-tight">
+                                          <span className="text-sm text-mgsr-text font-medium truncate">
+                                            {contact.name || '—'}
+                                          </span>
+                                          <span className="text-xs text-mgsr-muted truncate">
+                                            {contact.clubName || ''}
+                                          </span>
+                                        </div>
+                                        {waUrl && (
+                                          <a
+                                            href={waUrl}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            onClick={(e) => e.stopPropagation()}
+                                            className="shrink-0 p-1 rounded-md hover:bg-green-500/15 transition-colors"
+                                            title="WhatsApp"
+                                          >
+                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="#25D366">
+                                              <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                                            </svg>
+                                          </a>
+                                        )}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
                               )}
                             </div>
                           );
