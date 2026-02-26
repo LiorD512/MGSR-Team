@@ -216,3 +216,56 @@ export async function aiScoutSearch(
     requestedTotal: json.requestedTotal,
   };
 }
+
+// ========================
+// FM Intelligence API
+// ========================
+
+export interface FmAttribute {
+  name: string;
+  value: number;
+}
+
+export interface FmPositionFit {
+  [position: string]: number;
+}
+
+export interface FmIntelligenceData {
+  player_name: string;
+  ca: number;
+  pa: number;
+  potential_gap: number;
+  tier: string;
+  dimension_scores: Record<string, number>;
+  top_attributes: FmAttribute[];
+  weak_attributes: FmAttribute[];
+  all_attributes: Record<string, number>;
+  position_fit: FmPositionFit;
+  best_position: { position: string; fit: number };
+  foot: { left: number; right: number };
+  height_cm: number;
+  error?: string;
+}
+
+/**
+ * Fetch full FM intelligence report for a player.
+ * Returns dimension scores, position fit heatmap, top/weak attributes.
+ */
+export async function getFmIntelligence(
+  playerName: string
+): Promise<FmIntelligenceData | null> {
+  try {
+    const url = `${SCOUT_BASE_URL}/fm-intelligence?player_name=${encodeURIComponent(playerName)}`;
+    const res = await fetch(url, {
+      headers: { Accept: 'application/json' },
+      cache: 'no-store',
+      signal: AbortSignal.timeout(30000),
+    });
+    if (!res.ok) return null;
+    const data = (await res.json()) as FmIntelligenceData;
+    if (data.error) return null;
+    return data;
+  } catch {
+    return null;
+  }
+}
