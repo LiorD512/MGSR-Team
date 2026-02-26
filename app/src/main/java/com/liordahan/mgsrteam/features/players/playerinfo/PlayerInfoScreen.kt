@@ -487,10 +487,10 @@ fun PlayerInfoScreen(
             }
         }
 
-        val shareAction: () -> Unit = {
+        val shareAction: () -> Unit = shareAction@ {
             val player = playerToPresent
             val docId = playerDocumentId
-            if (player == null || docId == null) return@Unit
+            if (player == null || docId == null) return@shareAction
             com.liordahan.mgsrteam.analytics.AnalyticsHelper.logSharePlayer(player.tmProfile)
             scope.launch {
                 viewModel.createShareUrl(player, docId, documentsList, scoutReport)

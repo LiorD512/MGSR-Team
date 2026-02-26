@@ -10,6 +10,7 @@ import kotlinx.parcelize.Parcelize
 @Parcelize
 data class Player(
     val fullName: String? = null,
+    val fullNameHe: String? = null,
     val height: String? = null,
     val age: String? = null,
     val positions: List<String?>? = null,
