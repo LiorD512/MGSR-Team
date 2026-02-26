@@ -1,9 +1,18 @@
+import { headers } from 'next/headers';
 import { getShareData } from './getShareData';
 import SharedPlayerContent from './SharedPlayerContent';
 
-const APP_URL =
-  process.env.NEXT_PUBLIC_APP_URL ||
-  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
+function getBaseUrl(): string {
+  if (process.env.NEXT_PUBLIC_APP_URL) return process.env.NEXT_PUBLIC_APP_URL;
+  // VERCEL_PROJECT_PRODUCTION_URL = production domain (e.g. mgsr-team.vercel.app)
+  // Use for og:image so WhatsApp crawler can fetch (preview URLs return 401)
+  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
+    const u = process.env.VERCEL_PROJECT_PRODUCTION_URL;
+    return u.startsWith('http') ? u : `https://${u}`;
+  }
+  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
+  return 'http://localhost:3000';
+}
 
 export async function generateMetadata({
   params,
@@ -18,7 +27,20 @@ export async function generateMetadata({
   const desc =
     (data?.scoutReport?.slice(0, 200) ?? fallbackDesc) ||
     'Player profile shared via MGSR Team';
-  const url = `${APP_URL}/p/${params.token}`;
+
+  let baseUrl = getBaseUrl();
+  try {
+    const h = await headers();
+    const host = h.get('x-forwarded-host') || h.get('host');
+    const proto = h.get('x-forwarded-proto') || 'https';
+    if (host && !host.includes('localhost')) {
+      baseUrl = `${proto === 'https' ? 'https' : 'http'}://${host}`;
+    }
+  } catch {
+    // headers() may fail in some contexts
+  }
+
+  const url = `${baseUrl}/p/${params.token}`;
   const imageUrl = `${url}/opengraph-image`;
 
   return {
