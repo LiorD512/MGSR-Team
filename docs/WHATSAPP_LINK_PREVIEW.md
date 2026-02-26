@@ -32,3 +32,14 @@ Apply to Production (and Preview if you want).
 ## Cache
 
 WhatsApp caches previews. After fixing, old links may still show no image until cache expires. Test with a **new** share link.
+
+## Image proxy
+
+The app proxies player images via `/api/share/image/[token]` because:
+- Transfermarkt may block direct fetches from server IPs
+- ImageResponse fetches from our own API (same origin, no blocking)
+
+If you see "P" instead of the player photo:
+1. Ensure Firebase is configured (Admin or client SDK can read SharedPlayers)
+2. Check that the share doc in Firestore has `player.profileImage` set
+3. Test the proxy: `curl -I https://mgsr-team.vercel.app/api/share/image/YOUR_TOKEN`
