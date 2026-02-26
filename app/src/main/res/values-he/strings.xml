@@ -448,6 +448,7 @@
     <string name="requests_delete_title">מחק בקשה</string>
     <string name="requests_delete_confirm">למחוק בקשה עבור %1$s (%2$s)?</string>
     <string name="requests_add_title">הוסף בקשה</string>
+    <string name="requests_edit_title">ערוך בקשה</string>
     <string name="requests_add_subtitle">חפש מועדון ב-Transfermarkt, ואז בחר עמדה</string>
     <string name="requests_label_club">מועדון</string>
     <string name="requests_search_club">חפש מועדון…</string>

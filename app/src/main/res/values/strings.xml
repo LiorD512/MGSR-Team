@@ -471,6 +471,7 @@
     <string name="requests_delete_title">Delete request</string>
     <string name="requests_delete_confirm">Delete request for %1$s (%2$s)?</string>
     <string name="requests_add_title">Add Request</string>
+    <string name="requests_edit_title">Edit Request</string>
     <string name="requests_add_subtitle">Search club on Transfermarkt, then select position</string>
     <string name="requests_label_club">CLUB</string>
     <string name="requests_search_club">Search club…</string>

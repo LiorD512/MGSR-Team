@@ -58,6 +58,21 @@ abstract class IRequestsViewModel : ViewModel() {
         transferFee: String?,
         notes: String?
     )
+    abstract fun updateRequest(
+        existingRequest: Request,
+        club: ClubSearchModel,
+        position: String,
+        contactId: String?,
+        contactName: String?,
+        contactPhoneNumber: String?,
+        minAge: Int?,
+        maxAge: Int?,
+        ageDoesntMatter: Boolean,
+        dominateFoot: String?,
+        salaryRange: String?,
+        transferFee: String?,
+        notes: String?
+    )
     abstract fun deleteRequest(request: Request)
     abstract fun clearAddRequestMessage()
 }
@@ -175,6 +190,48 @@ class RequestsViewModel(
             requestsRepository.addRequest(request).fold(
                 onSuccess = { _addRequestMessage.value = "Request added" },
                 onFailure = { _addRequestError.value = it.message ?: "Failed to add request" }
+            )
+        }
+    }
+
+    override fun updateRequest(
+        existingRequest: Request,
+        club: ClubSearchModel,
+        position: String,
+        contactId: String?,
+        contactName: String?,
+        contactPhoneNumber: String?,
+        minAge: Int?,
+        maxAge: Int?,
+        ageDoesntMatter: Boolean,
+        dominateFoot: String?,
+        salaryRange: String?,
+        transferFee: String?,
+        notes: String?
+    ) {
+        viewModelScope.launch {
+            _addRequestError.value = null
+            val updatedRequest = existingRequest.copy(
+                clubTmProfile = club.clubTmProfile,
+                clubName = club.clubName,
+                clubLogo = club.clubLogo,
+                clubCountry = club.clubCountry,
+                clubCountryFlag = club.clubCountryFlag,
+                contactId = contactId,
+                contactName = contactName,
+                contactPhoneNumber = contactPhoneNumber,
+                position = position,
+                notes = notes?.takeIf { it.isNotBlank() },
+                minAge = minAge?.takeIf { it > 0 },
+                maxAge = maxAge?.takeIf { it > 0 },
+                ageDoesntMatter = ageDoesntMatter,
+                dominateFoot = dominateFoot?.takeIf { it.isNotBlank() },
+                salaryRange = salaryRange?.takeIf { it.isNotBlank() },
+                transferFee = transferFee?.takeIf { it.isNotBlank() }
+            )
+            requestsRepository.updateRequest(updatedRequest).fold(
+                onSuccess = { _addRequestMessage.value = "Request updated" },
+                onFailure = { _addRequestError.value = it.message ?: "Failed to update request" }
             )
         }
     }

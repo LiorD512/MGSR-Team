@@ -190,6 +190,7 @@ fun RequestsScreen(
     val state by viewModel.requestsState.collectAsStateWithLifecycle()
     val positions by viewModel.positions.collectAsStateWithLifecycle()
     var showAddSheet by remember { mutableStateOf(false) }
+    var requestToEdit by remember { mutableStateOf<Request?>(null) }
     var requestToDelete by remember { mutableStateOf<Request?>(null) }
     var onlineExpandedRequestId by remember { mutableStateOf<String?>(null) }
     var expandedRequestIds by remember { mutableStateOf(setOf<String>()) }
@@ -407,7 +408,10 @@ fun RequestsScreen(
                                                     onRefreshSearch = {
                                                         viewModel.refreshPlayersOnlineForRequest(request, LocaleManager.getSavedLanguage(context))
                                                     },
-                                                    onEdit = { /* Edit flow - can be implemented later */ },
+                                                    onEdit = {
+                                                        requestToEdit = request
+                                                        showAddSheet = true
+                                                    },
                                                     onDelete = { requestToDelete = request }
                                                 )
                                             }
@@ -423,27 +427,51 @@ fun RequestsScreen(
                 }
             }
 
-            if (showAddSheet) {
+            if (showAddSheet || requestToEdit != null) {
                 AddRequestBottomSheet(
                     modifier = Modifier.align(Alignment.BottomCenter),
                     positions = positions,
-                    onDismiss = { showAddSheet = false },
-                    onSave = { club, position, contactId, contactName, contactPhone, minAge, maxAge, ageDoesntMatter, dominateFoot, salaryRange, transferFee, notes ->
-                        viewModel.addRequest(
-                            club = club,
-                            position = position,
-                            contactId = contactId,
-                            contactName = contactName,
-                            contactPhoneNumber = contactPhone,
-                            minAge = minAge,
-                            maxAge = maxAge,
-                            ageDoesntMatter = ageDoesntMatter,
-                            dominateFoot = dominateFoot,
-                            salaryRange = salaryRange,
-                            transferFee = transferFee,
-                            notes = notes
-                        )
+                    initialRequest = requestToEdit,
+                    onDismiss = {
                         showAddSheet = false
+                        requestToEdit = null
+                    },
+                    onSave = { club, position, contactId, contactName, contactPhone, minAge, maxAge, ageDoesntMatter, dominateFoot, salaryRange, transferFee, notes ->
+                        val existing = requestToEdit
+                        if (existing != null) {
+                            viewModel.updateRequest(
+                                existingRequest = existing,
+                                club = club,
+                                position = position,
+                                contactId = contactId,
+                                contactName = contactName,
+                                contactPhoneNumber = contactPhone,
+                                minAge = minAge,
+                                maxAge = maxAge,
+                                ageDoesntMatter = ageDoesntMatter,
+                                dominateFoot = dominateFoot,
+                                salaryRange = salaryRange,
+                                transferFee = transferFee,
+                                notes = notes
+                            )
+                        } else {
+                            viewModel.addRequest(
+                                club = club,
+                                position = position,
+                                contactId = contactId,
+                                contactName = contactName,
+                                contactPhoneNumber = contactPhone,
+                                minAge = minAge,
+                                maxAge = maxAge,
+                                ageDoesntMatter = ageDoesntMatter,
+                                dominateFoot = dominateFoot,
+                                salaryRange = salaryRange,
+                                transferFee = transferFee,
+                                notes = notes
+                            )
+                        }
+                        showAddSheet = false
+                        requestToEdit = null
                     }
                 )
             }
@@ -1882,6 +1910,7 @@ private fun formatRequestsForShare(context: Context, requestsByPositionCountry: 
 private fun AddRequestBottomSheet(
     modifier: Modifier,
     positions: List<com.liordahan.mgsrteam.features.players.models.Position>,
+    initialRequest: Request? = null,
     onDismiss: () -> Unit,
     onSave: (
         club: ClubSearchModel,
@@ -1906,7 +1935,7 @@ private fun AddRequestBottomSheet(
     val context = LocalContext.current
     val view = LocalView.current
 
-    var showChoiceScreen by rememberSaveable { mutableStateOf(true) }
+    var showChoiceScreen by rememberSaveable(initialRequest) { mutableStateOf(initialRequest == null) }
     var isRecording by remember { mutableStateOf(false) }
     var recordingDuration by remember { mutableStateOf(0) }
     var isAnalyzing by remember { mutableStateOf(false) }
@@ -1937,19 +1966,48 @@ private fun AddRequestBottomSheet(
         }
     }
 
-    var clubSearchQuery by remember { mutableStateOf("") }
+    var clubSearchQuery by remember(initialRequest) { mutableStateOf(initialRequest?.clubName ?: "") }
     var clubSearchResults by remember { mutableStateOf<List<ClubSearchModel>>(emptyList()) }
     var isSearchingClubs by remember { mutableStateOf(false) }
-    var selectedClub by remember { mutableStateOf<ClubSearchModel?>(null) }
-    var selectedPosition by remember { mutableStateOf<String?>(null) }
+    var selectedClub by remember(initialRequest) {
+        mutableStateOf(
+            initialRequest?.let { req ->
+                ClubSearchModel(
+                    clubName = req.clubName,
+                    clubLogo = req.clubLogo,
+                    clubTmProfile = req.clubTmProfile,
+                    clubCountry = req.clubCountry,
+                    clubCountryFlag = req.clubCountryFlag
+                )
+            } ?: null
+        )
+    }
+    var selectedPosition by remember(initialRequest) { mutableStateOf<String?>(initialRequest?.position) }
     var selectedContact by remember { mutableStateOf<Contact?>(null) }
-    var ageDoesntMatter by remember { mutableStateOf(true) }
-    var minAge by remember { mutableStateOf("") }
-    var maxAge by remember { mutableStateOf("") }
-    var selectedDominateFoot by remember { mutableStateOf<String?>(DominateFootOptions.ANY) }
-    var selectedSalaryRange by remember { mutableStateOf<String?>(null) }
-    var selectedTransferFee by remember { mutableStateOf<String?>(null) }
-    var notes by remember { mutableStateOf("") }
+    var ageDoesntMatter by remember(initialRequest) { mutableStateOf(initialRequest?.ageDoesntMatter ?: true) }
+    var minAge by remember(initialRequest) { mutableStateOf(initialRequest?.minAge?.toString() ?: "") }
+    var maxAge by remember(initialRequest) { mutableStateOf(initialRequest?.maxAge?.toString() ?: "") }
+    var selectedDominateFoot by remember(initialRequest) {
+        mutableStateOf<String?>(
+            initialRequest?.dominateFoot?.takeIf { it.isNotBlank() } ?: DominateFootOptions.ANY
+        )
+    }
+    var selectedSalaryRange by remember(initialRequest) { mutableStateOf<String?>(initialRequest?.salaryRange) }
+    var selectedTransferFee by remember(initialRequest) { mutableStateOf<String?>(initialRequest?.transferFee) }
+    var notes by remember(initialRequest) { mutableStateOf(initialRequest?.notes ?: "") }
+
+    var contactInitializedFromRequest by remember { mutableStateOf(false) }
+    LaunchedEffect(initialRequest, contacts) {
+        if (initialRequest != null && !contactInitializedFromRequest) {
+            val match = contacts.firstOrNull { c ->
+                c.id == initialRequest.contactId ||
+                    (c.name?.equals(initialRequest.contactName, ignoreCase = true) == true &&
+                        c.phoneNumber == initialRequest.contactPhoneNumber)
+            }
+            if (match != null) selectedContact = match
+            contactInitializedFromRequest = true
+        }
+    }
 
     val filteredContacts = remember(contacts, selectedClub) {
         if (selectedClub == null) emptyList()
@@ -2051,7 +2109,7 @@ private fun AddRequestBottomSheet(
                         }
                     }
                     Text(
-                        text = stringResource(R.string.requests_add_title),
+                        text = if (initialRequest != null) stringResource(R.string.requests_edit_title) else stringResource(R.string.requests_add_title),
                         style = boldTextStyle(HomeTextPrimary, 20.sp)
                     )
                 }

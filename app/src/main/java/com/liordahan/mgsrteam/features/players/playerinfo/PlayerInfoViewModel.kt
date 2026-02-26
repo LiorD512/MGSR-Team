@@ -763,7 +763,7 @@ class PlayerInfoViewModel(
     }
 
     override fun generateScoutReport(player: Player, languageCode: String, options: ScoutReportOptions) {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             _isScoutReportLoading.update { true }
             _scoutReportFlow.update { null }
             aiHelperService.generateScoutReport(player, languageCode, options)

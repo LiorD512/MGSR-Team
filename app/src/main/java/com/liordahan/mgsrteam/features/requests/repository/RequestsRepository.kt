@@ -14,6 +14,7 @@ import kotlinx.coroutines.tasks.await
 interface IRequestsRepository {
     fun requestsFlow(): Flow<List<Request>>
     suspend fun addRequest(request: Request): Result<Unit>
+    suspend fun updateRequest(request: Request): Result<Unit>
     suspend fun deleteRequest(request: Request): Result<Unit>
 }
 
@@ -103,6 +104,35 @@ class RequestsRepository(
             .add(data)
             .await()
         writeFeedEventRequest(request, agentName)
+    }
+
+    override suspend fun updateRequest(request: Request): Result<Unit> = runCatching {
+        val requestId = request.id ?: return@runCatching
+        val data = mapOf(
+            "clubTmProfile" to (request.clubTmProfile ?: ""),
+            "clubName" to (request.clubName ?: ""),
+            "clubLogo" to (request.clubLogo ?: ""),
+            "clubCountry" to (request.clubCountry ?: ""),
+            "clubCountryFlag" to (request.clubCountryFlag ?: ""),
+            "contactId" to (request.contactId ?: ""),
+            "contactName" to (request.contactName ?: ""),
+            "contactPhoneNumber" to (request.contactPhoneNumber ?: ""),
+            "position" to (request.position ?: ""),
+            "quantity" to (request.quantity ?: 1),
+            "notes" to (request.notes ?: ""),
+            "minAge" to (request.minAge ?: 0),
+            "maxAge" to (request.maxAge ?: 0),
+            "ageDoesntMatter" to (request.ageDoesntMatter ?: true),
+            "salaryRange" to (request.salaryRange ?: ""),
+            "transferFee" to (request.transferFee ?: ""),
+            "dominateFoot" to (request.dominateFoot ?: ""),
+            "status" to (request.status ?: "pending")
+        )
+        firebaseHandler.firebaseStore
+            .collection(firebaseHandler.clubRequestsTable)
+            .document(requestId)
+            .update(data)
+            .await()
     }
 
     override suspend fun deleteRequest(request: Request): Result<Unit> = runCatching {
