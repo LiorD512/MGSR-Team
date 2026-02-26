@@ -151,8 +151,6 @@ export default function PlayerInfoPage() {
   const [shareError, setShareError] = useState<string | null>(null);
   const [showShareSetupModal, setShowShareSetupModal] = useState(false);
   const [pendingShareUrl, setPendingShareUrl] = useState<string | null>(null);
-  const [showShareLangModal, setShowShareLangModal] = useState(false);
-  const [shareLang, setShareLang] = useState<'he' | 'en'>('en');
   const prevValidMandateCountRef = useRef<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -493,7 +491,6 @@ export default function PlayerInfoPage() {
   const handleShare = useCallback(
     async (lang: 'he' | 'en') => {
       if (!player || !id || sharing) return;
-      setShowShareLangModal(false);
       setSharing(true);
       setShareError(null);
       try {
@@ -1440,8 +1437,7 @@ export default function PlayerInfoPage() {
                     type="button"
                     onClick={(e) => {
                       e.preventDefault();
-                      setShareLang(isRtl ? 'he' : 'en');
-                      setShowShareLangModal(true);
+                      handleShare(isRtl ? 'he' : 'en');
                     }}
                     disabled={sharing}
                     className="flex items-center gap-2 text-mgsr-teal hover:underline disabled:opacity-50"
@@ -1460,58 +1456,6 @@ export default function PlayerInfoPage() {
           );
         })()}
       </div>
-
-      {/* Share language modal - choose Hebrew or English for shared page */}
-      {showShareLangModal && (
-        <div
-          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
-          onClick={() => setShowShareLangModal(false)}
-        >
-          <div className="absolute inset-0 bg-black/60" aria-hidden />
-          <div
-            dir={isRtl ? 'rtl' : 'ltr'}
-            className="relative w-full max-w-md bg-mgsr-card border border-mgsr-border rounded-2xl shadow-2xl p-6"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 className="text-lg font-display font-semibold text-mgsr-text mb-3">
-              {isRtl ? 'בחר שפה לעמוד המשותף' : 'Choose language for shared page'}
-            </h3>
-            <div className="flex gap-3 mb-4">
-              <button
-                type="button"
-                onClick={() => handleShare('he')}
-                disabled={sharing}
-                className={`flex-1 px-4 py-3 rounded-xl border font-medium ${
-                  shareLang === 'he'
-                    ? 'bg-mgsr-teal/20 border-mgsr-teal text-mgsr-teal'
-                    : 'border-mgsr-border text-mgsr-text hover:bg-mgsr-card/80'
-                }`}
-              >
-                עברית
-              </button>
-              <button
-                type="button"
-                onClick={() => handleShare('en')}
-                disabled={sharing}
-                className={`flex-1 px-4 py-3 rounded-xl border font-medium ${
-                  shareLang === 'en'
-                    ? 'bg-mgsr-teal/20 border-mgsr-teal text-mgsr-teal'
-                    : 'border-mgsr-border text-mgsr-text hover:bg-mgsr-card/80'
-                }`}
-              >
-                English
-              </button>
-            </div>
-            <button
-              type="button"
-              onClick={() => setShowShareLangModal(false)}
-              className="w-full px-4 py-2.5 rounded-xl text-mgsr-muted hover:text-mgsr-text"
-            >
-              {isRtl ? 'ביטול' : 'Cancel'}
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* Share setup modal - when on localhost */}
       {showShareSetupModal && pendingShareUrl && (
