@@ -247,6 +247,43 @@ export interface FmIntelligenceData {
   error?: string;
 }
 
+// ========================
+// Similar Players API
+// ========================
+
+/**
+ * Find players similar to the given Transfermarkt profile URL.
+ * Mirrors Android ScoutApiClient.findSimilarPlayers.
+ */
+export async function findSimilarPlayers(
+  playerUrl: string,
+  lang: string = 'en',
+  excludeNames: string[] = []
+): Promise<ScoutPlayerSuggestion[]> {
+  const search = new URLSearchParams();
+  search.set('player_url', playerUrl);
+  search.set('lang', lang);
+  if (excludeNames.length > 0) {
+    search.set('exclude', excludeNames.join(','));
+  }
+  search.set('_t', String(Date.now()));
+
+  const url = `${SCOUT_BASE_URL}/similar-players?${search.toString()}`;
+  const res = await fetch(url, {
+    headers: { Accept: 'application/json' },
+    cache: 'no-store',
+    signal: AbortSignal.timeout(120000), // 2 min — cold start + similarity search
+  });
+  if (!res.ok) {
+    const errBody = (await res.json().catch(() => ({}))) as { error?: string };
+    const msg = errBody?.error || `Similar Players API: ${res.status}`;
+    throw new Error(msg);
+  }
+  const json = (await res.json()) as { results?: Record<string, unknown>[] };
+  const arr = json.results ?? [];
+  return arr.map((p) => parseResult(p as Record<string, unknown>));
+}
+
 /**
  * Fetch full FM intelligence report for a player.
  * Returns dimension scores, position fit heatmap, top/weak attributes.

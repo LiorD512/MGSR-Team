@@ -17,6 +17,7 @@ import { parseMarketValue } from '@/lib/releases';
 import { extractSalaryRange, extractFreeTransfer, type NoteModel } from '@/lib/noteParser';
 import { flattenPdf } from '@/lib/pdfFlatten';
 import FmIntelligencePanel from '@/components/FmIntelligencePanel';
+import SimilarPlayersPanel from '@/components/SimilarPlayersPanel';
 import {
   LineChart,
   Line,
@@ -1202,6 +1203,11 @@ export default function PlayerInfoPage() {
             {/* FM Intelligence Panel */}
             {(merged.fullName || player?.fullName) && (
               <FmIntelligencePanel playerName={merged.fullName || player?.fullName || ''} isRtl={isRtl} />
+            )}
+
+            {/* Similar Players Panel */}
+            {(merged.tmProfile || player?.tmProfile) && (
+              <SimilarPlayersPanel playerUrl={merged.tmProfile || player?.tmProfile || ''} isRtl={isRtl} />
             )}
 
             {/* Market value trend */}
