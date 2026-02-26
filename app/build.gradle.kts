@@ -60,15 +60,15 @@ android {
                 }.firstOrNull() ?: ""
         } else ""
         buildConfigField("String", "VIMEO_ACCESS_TOKEN", "\"$vimeoToken\"")
-        // MGSR web app URL for share links. Add to local.properties: MGSR_WEB_URL=https://your-app.vercel.app
+        // MGSR web app URL for share links. Add to local.properties: MGSR_WEB_URL=https://mgsr-team.vercel.app
         val mgsrWebUrl = if (localPropertiesFile.exists()) {
             localPropertiesFile.readLines()
                 .filter { it.contains("=") && !it.trim().startsWith("#") }
                 .mapNotNull { line ->
                     val (key, value) = line.split("=", limit = 2).map { it.trim() }
                     if (key == "MGSR_WEB_URL") value else null
-                }.firstOrNull() ?: "https://mgsr-web.vercel.app"
-        } else "https://mgsr-web.vercel.app"
+                }.firstOrNull() ?: "https://mgsr-team.vercel.app"
+        } else "https://mgsr-team.vercel.app"
         buildConfigField("String", "MGSR_WEB_URL", "\"$mgsrWebUrl\"")
     }
 
