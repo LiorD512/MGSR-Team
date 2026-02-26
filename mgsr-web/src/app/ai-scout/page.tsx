@@ -429,6 +429,37 @@ export default function AiScoutPage() {
                             </>
                           )}
                         </p>
+                        {/* FM Data Badge */}
+                        {s.fmCa != null && s.fmCa > 0 && (
+                          <div className="flex items-center gap-2 mt-2 flex-wrap">
+                            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-500/15 border border-indigo-500/30">
+                              <span className="text-[10px] font-semibold text-indigo-400 uppercase tracking-wider">FM</span>
+                              <span className="text-xs font-bold text-indigo-300">
+                                {s.fmCa}
+                              </span>
+                              {s.fmPa != null && s.fmPa > s.fmCa && (
+                                <span className="text-[10px] text-indigo-400/70">→ {s.fmPa}</span>
+                              )}
+                            </div>
+                            {s.fmPotentialGap != null && s.fmPotentialGap > 0 && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-500/15 border border-green-500/30 text-green-400 font-medium">
+                                +{s.fmPotentialGap} potential
+                              </span>
+                            )}
+                            {s.fmTier && (
+                              <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
+                                s.fmTier === 'world_class' ? 'bg-yellow-500/20 border border-yellow-500/40 text-yellow-400' :
+                                s.fmTier === 'elite' ? 'bg-purple-500/20 border border-purple-500/40 text-purple-400' :
+                                s.fmTier === 'top_league' ? 'bg-blue-500/15 border border-blue-500/30 text-blue-400' :
+                                s.fmTier === 'solid_pro' ? 'bg-sky-500/15 border border-sky-500/30 text-sky-400' :
+                                s.fmTier === 'prospect' ? 'bg-emerald-500/15 border border-emerald-500/30 text-emerald-400' :
+                                'bg-mgsr-card border border-mgsr-border text-mgsr-muted'
+                              }`}>
+                                {s.fmTier.replace(/_/g, ' ')}
+                              </span>
+                            )}
+                          </div>
+                        )}
                         {s.scoutAnalysis && (
                           <div className="text-xs text-mgsr-muted mt-2 space-y-0.5" dir={lang === 'he' ? 'rtl' : 'ltr'}>
                             {s.scoutAnalysis.split('\n').map((line, i) => (

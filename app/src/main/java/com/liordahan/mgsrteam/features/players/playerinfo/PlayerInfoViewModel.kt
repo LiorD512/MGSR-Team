@@ -9,6 +9,7 @@ import com.liordahan.mgsrteam.features.players.models.MarketValueEntry
 import com.liordahan.mgsrteam.features.players.models.NotesModel
 import com.liordahan.mgsrteam.features.players.models.PassportDetails
 import com.liordahan.mgsrteam.features.players.models.Player
+import com.liordahan.mgsrteam.features.players.models.getAgentPhoneNumber
 import com.liordahan.mgsrteam.features.players.playerinfo.ai.AiHelperService
 import com.liordahan.mgsrteam.features.players.playerinfo.ai.ScoutReportOptions
 import com.liordahan.mgsrteam.features.players.playerinfo.ai.SimilarPlayersOptions
@@ -89,6 +90,7 @@ abstract class IPlayerInfoViewModel : ViewModel() {
     abstract fun addPlayerTask(agentId: String, agentName: String, title: String, dueDate: Long, priority: Int, notes: String, playerId: String, playerName: String, playerTmProfile: String, templateId: String)
     abstract fun togglePlayerTaskCompleted(task: com.liordahan.mgsrteam.features.home.models.AgentTask)
     abstract fun updateClubFeedback(offerId: String, clubFeedback: String?)
+    abstract suspend fun createShareUrl(player: Player, playerDocId: String, documents: List<PlayerDocument>, scoutReport: String?): Result<String>
 }
 
 
@@ -806,6 +808,76 @@ class PlayerInfoViewModel(
                 Log.e(TAG, "Failed to save passport details", e)
             }
         }
+    }
+
+    override suspend fun createShareUrl(
+        player: Player,
+        playerDocId: String,
+        documents: List<PlayerDocument>,
+        scoutReport: String?
+    ): Result<String> = withContext(Dispatchers.IO) {
+        try {
+            val mandateDoc = documents
+                .filter { it.documentType == DocumentType.MANDATE && !it.expired }
+                .maxByOrNull { it.expiresAt ?: 0L }
+            val mandateExpiry = mandateDoc?.expiresAt?.takeIf { it >= System.currentTimeMillis() }
+            val hasValidMandate = documents.any {
+                it.documentType == DocumentType.MANDATE &&
+                    !it.expired &&
+                    (it.expiresAt == null || it.expiresAt >= System.currentTimeMillis())
+            }
+
+            val shareData = hashMapOf<String, Any?>(
+                "playerId" to playerDocId,
+                "player" to hashMapOf(
+                    "fullName" to player.fullName,
+                    "fullNameHe" to player.fullNameHe,
+                    "profileImage" to player.profileImage,
+                    "positions" to player.positions,
+                    "marketValue" to player.marketValue,
+                    "currentClub" to player.currentClub?.let { c ->
+                        hashMapOf(
+                            "clubName" to c.clubName,
+                            "clubLogo" to c.clubLogo,
+                            "clubCountry" to c.clubCountry
+                        )
+                    },
+                    "age" to player.age,
+                    "height" to player.height,
+                    "nationality" to player.nationality,
+                    "contractExpired" to player.contractExpired
+                ),
+                "mandateInfo" to hashMapOf(
+                    "hasMandate" to hasValidMandate,
+                    "expiresAt" to mandateExpiry
+                ),
+                "sharerPhone" to player.getAgentPhoneNumber(),
+                "scoutReport" to (scoutReport?.takeIf { it.isNotBlank() }
+                    ?: buildScoutSummary(player)),
+                "createdAt" to System.currentTimeMillis()
+            )
+
+            val ref = firebaseHandler.firebaseStore
+                .collection(firebaseHandler.sharedPlayersTable)
+                .add(shareData)
+                .await()
+
+            val baseUrl = com.liordahan.mgsrteam.BuildConfig.MGSR_WEB_URL.trimEnd('/')
+            Result.success("$baseUrl/p/${ref.id}")
+        } catch (e: Exception) {
+            Log.e(TAG, "createShareUrl failed", e)
+            Result.failure(e)
+        }
+    }
+
+    private fun buildScoutSummary(player: Player): String {
+        val parts = mutableListOf<String>()
+        if (player.age != null) parts.add("${player.age}yo")
+        player.positions?.firstOrNull()?.let { parts.add(it ?: "") }
+        player.marketValue?.let { parts.add(it) }
+        player.currentClub?.clubName?.let { parts.add(it) }
+        player.nationality?.let { parts.add(it) }
+        return parts.filter { it.isNotBlank() }.joinToString(" • ")
     }
 
     private suspend fun getCurrentUserName(): String? = withContext(Dispatchers.IO) {

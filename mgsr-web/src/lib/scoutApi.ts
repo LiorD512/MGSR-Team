@@ -7,6 +7,17 @@
 // Use proxy to avoid CORS when deployed (browser → Vercel → Render)
 const SCOUT_BASE_URL = '/api/scout';
 
+/** Classify FM Current Ability into a tier label (mirrors Python classify_fm_tier) */
+function classifyFmTier(ca: number): string | undefined {
+  if (ca <= 0) return undefined;
+  if (ca >= 90) return 'world_class';
+  if (ca >= 80) return 'elite';
+  if (ca >= 70) return 'top_league';
+  if (ca >= 60) return 'solid_pro';
+  if (ca >= 50) return 'lower_league';
+  return 'prospect';
+}
+
 export interface ScoutPlayerSuggestion {
   name: string;
   position: string;
@@ -29,6 +40,14 @@ export interface ScoutPlayerSuggestion {
   height?: string;
   contractEnd?: string;
   foot?: string;
+  /** Football Manager Current Ability (1-200) */
+  fmCa?: number;
+  /** Football Manager Potential Ability (1-200) */
+  fmPa?: number;
+  /** PA minus CA — growth room */
+  fmPotentialGap?: number;
+  /** FM tier classification */
+  fmTier?: string;
 }
 
 export interface RecruitmentParams {
@@ -104,6 +123,16 @@ function parseResult(p: Record<string, unknown>): ScoutPlayerSuggestion {
     height: (p.height as string) || undefined,
     contractEnd: (p.contract as string) || undefined,
     foot: (p.foot as string) || undefined,
+    fmCa: typeof p.fm_ca === 'number' ? p.fm_ca : typeof p.fmi_ca === 'number' ? (p.fmi_ca as number) : undefined,
+    fmPa: typeof p.fm_pa === 'number' ? p.fm_pa : typeof p.fmi_pa === 'number' ? (p.fmi_pa as number) : undefined,
+    fmPotentialGap: typeof p.fm_potential_gap === 'number'
+      ? p.fm_potential_gap
+      : (typeof p.fmi_pa === 'number' && typeof p.fmi_ca === 'number')
+        ? ((p.fmi_pa as number) - (p.fmi_ca as number))
+        : undefined,
+    fmTier: (p.fm_tier as string) || classifyFmTier(
+      typeof p.fm_ca === 'number' ? p.fm_ca : typeof p.fmi_ca === 'number' ? (p.fmi_ca as number) : 0
+    ),
   };
 }
 

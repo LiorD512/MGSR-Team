@@ -721,6 +721,12 @@ export default function RequestsPage() {
                                                               {t('requests_online_match_score').replace('{pct}', String(s.matchPercent))}
                                                             </>
                                                           )}
+                                                          {s.fmCa != null && s.fmCa > 0 && (
+                                                            <>
+                                                              <span className="mx-1.5">·</span>
+                                                              <span className="text-indigo-400 font-medium">FM {s.fmCa}{s.fmPa != null && s.fmPa > s.fmCa ? `→${s.fmPa}` : ''}</span>
+                                                            </>
+                                                          )}
                                                         </p>
                                                       </a>
                                                     {isInShortlist ? (

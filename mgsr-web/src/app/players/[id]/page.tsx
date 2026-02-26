@@ -7,11 +7,12 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { doc, collection, query, where, onSnapshot, updateDoc, addDoc, deleteDoc, deleteField } from 'firebase/firestore';
 import AddPlayerTaskModal from '@/components/AddPlayerTaskModal';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { db, storage } from '@/lib/firebase';
+import { auth, db, storage } from '@/lib/firebase';
 import { getPlayerDetails, PlayerDetails } from '@/lib/api';
 import AppLayout from '@/components/AppLayout';
 import Link from 'next/link';
 import { toWhatsAppUrl } from '@/lib/whatsapp';
+import { createShare } from '@/lib/shareApi';
 import { parseMarketValue } from '@/lib/releases';
 import { extractSalaryRange, extractFreeTransfer, type NoteModel } from '@/lib/noteParser';
 import { flattenPdf } from '@/lib/pdfFlatten';
@@ -144,6 +145,10 @@ export default function PlayerInfoPage() {
   const [mandateToggling, setMandateToggling] = useState(false);
   const [showAddTaskModal, setShowAddTaskModal] = useState(false);
   const [playerTasks, setPlayerTasks] = useState<{ id: string; title?: string; notes?: string; dueDate?: number; isCompleted?: boolean; agentName?: string; createdAt?: number }[]>([]);
+  const [sharing, setSharing] = useState(false);
+  const [shareError, setShareError] = useState<string | null>(null);
+  const [showShareSetupModal, setShowShareSetupModal] = useState(false);
+  const [pendingShareUrl, setPendingShareUrl] = useState<string | null>(null);
   const prevValidMandateCountRef = useRef<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -480,6 +485,82 @@ export default function PlayerInfoPage() {
     if (lower.startsWith('both')) return t('player_info_foot_both');
     return foot;
   };
+
+  const handleShare = useCallback(async () => {
+    if (!player || !id || sharing) return;
+    setSharing(true);
+    setShareError(null);
+    try {
+      const hasValidMandate = documents.some(
+        (d) =>
+          (d.type ?? '').toUpperCase() === 'MANDATE' &&
+          !d.expired &&
+          (d.expiresAt == null || d.expiresAt >= Date.now())
+      );
+      const mandateExpiry = documents
+        .filter((d) => (d.type ?? '').toUpperCase() === 'MANDATE' && d.expiresAt)
+        .map((d) => d.expiresAt!)
+        .filter((e) => e >= Date.now())
+        .sort((a, b) => a - b)[0];
+
+      const { url } = await createShare(
+        {
+          playerId: id,
+          player: {
+            fullName: player.fullName,
+            fullNameHe: player.fullNameHe,
+            profileImage: merged.profileImage || player.profileImage,
+            positions: player.positions,
+            marketValue: merged.marketValue || player.marketValue,
+            currentClub: merged.currentClub || player.currentClub,
+            age: merged.age || player.age,
+            height: merged.height || player.height,
+            nationality: merged.nationality || player.nationality,
+            contractExpired: merged.contractExpired || player.contractExpired,
+            agentPhoneNumber:
+              player?.playerAdditionalInfoModel?.agentNumber ||
+              player?.agentPhoneNumber ||
+              undefined,
+            playerAdditionalInfoModel: player.playerAdditionalInfoModel,
+          },
+          mandateInfo: {
+            hasMandate: hasValidMandate,
+            expiresAt: mandateExpiry,
+          },
+          sharerPhone:
+            player?.playerAdditionalInfoModel?.agentNumber ||
+            player?.agentPhoneNumber ||
+            undefined,
+        },
+        () => (user ? auth.currentUser?.getIdToken() ?? Promise.resolve(null) : Promise.resolve(null))
+      );
+
+      const displayName = merged.fullName || player.fullName || player.fullNameHe || '—';
+      const shareText = isRtl
+        ? `פרופיל שחקן: ${displayName}\n${url}`
+        : `Player profile: ${displayName}\n${url}`;
+
+      if (url.includes('localhost') && typeof window !== 'undefined') {
+        setPendingShareUrl(shareText);
+        setShowShareSetupModal(true);
+        setShareError(null);
+      } else {
+        const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
+        window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
+      }
+    } catch (e) {
+      console.error('Share failed:', e);
+      let msg = e instanceof Error ? e.message : 'Share failed';
+      if (msg.includes('permission') || msg.includes('PERMISSION_DENIED')) {
+        msg = isRtl
+          ? 'חסרות הרשאות Firestore. הוסף את כללי SharedPlayers (ראה docs/SHARE_PLAYER_SETUP.md)'
+          : 'Firestore permission denied. Add SharedPlayers rules (see docs/SHARE_PLAYER_SETUP.md)';
+      }
+      setShareError(msg);
+    } finally {
+      setSharing(false);
+    }
+  }, [player, id, documents, merged, user, sharing, isRtl]);
 
   const resolveAgentName = (name: string | undefined, agentId?: string): string => {
     if (!name) return '—';
@@ -1286,7 +1367,7 @@ export default function PlayerInfoPage() {
           </div>
         </div>
 
-        {/* Bottom bar - Generate mandate when passport exists */}
+        {/* Bottom bar - Generate mandate + Share */}
         {(() => {
           const hasPassportDetails = !!player?.passportDetails;
           const hasValidMandate = documents.some(
@@ -1297,24 +1378,115 @@ export default function PlayerInfoPage() {
           );
           return (
             <div className="sticky bottom-0 left-0 right-0 mt-8 rounded-t-2xl border border-t border-mgsr-border bg-mgsr-card p-4">
-              <div className="flex items-center justify-center gap-8">
-                {hasPassportDetails && (
-                  <Link
-                    href={hasValidMandate ? '#' : `/players/${id}/generate-mandate`}
-                    className={`flex items-center gap-2 ${hasValidMandate ? 'cursor-default opacity-50' : 'text-mgsr-teal hover:underline'}`}
-                    onClick={(e) => hasValidMandate && e.preventDefault()}
+              <div className="flex flex-col items-center gap-2">
+                <div className="flex items-center justify-center gap-8">
+                  {hasPassportDetails && (
+                    <Link
+                      href={hasValidMandate ? '#' : `/players/${id}/generate-mandate`}
+                      className={`flex items-center gap-2 ${hasValidMandate ? 'cursor-default opacity-50' : 'text-mgsr-teal hover:underline'}`}
+                      onClick={(e) => hasValidMandate && e.preventDefault()}
+                    >
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                      </svg>
+                      <span className="font-medium text-sm">{t('player_info_generate_mandate')}</span>
+                    </Link>
+                  )}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      handleShare();
+                    }}
+                    disabled={sharing}
+                    className="flex items-center gap-2 text-mgsr-teal hover:underline disabled:opacity-50"
                   >
                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
                     </svg>
-                    <span className="font-medium text-sm">{t('player_info_generate_mandate')}</span>
-                  </Link>
+                    <span className="font-medium text-sm">{t('player_info_share')}</span>
+                  </button>
+                </div>
+                {shareError && (
+                  <p className="text-sm text-red-400 text-center">{shareError}</p>
                 )}
               </div>
             </div>
           );
         })()}
       </div>
+
+      {/* Share setup modal - when on localhost */}
+      {showShareSetupModal && pendingShareUrl && (
+        <div
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
+          onClick={() => setShowShareSetupModal(false)}
+        >
+          <div className="absolute inset-0 bg-black/60" aria-hidden />
+          <div
+            dir={isRtl ? 'rtl' : 'ltr'}
+            className="relative w-full max-w-md bg-mgsr-card border border-mgsr-border rounded-2xl shadow-2xl p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-lg font-display font-semibold text-mgsr-text mb-3">
+              {isRtl ? 'לינק localhost לא יעבוד בטלפון' : 'localhost links won\'t work on phone'}
+            </h3>
+            <p className="text-sm text-mgsr-muted mb-4">
+              {isRtl
+                ? 'הלינק לא יפתח בטלפון ולא יציג תמונה ב-WhatsApp. כדי שזה יעבוד:'
+                : 'The link won\'t open on phone and won\'t show image in WhatsApp. To fix:'}
+            </p>
+            <ol className="text-sm text-mgsr-text list-decimal list-inside space-y-2 mb-4">
+              <li>
+                {isRtl ? 'העלה ל-Vercel (חינם): ' : 'Deploy to Vercel (free): '}
+                <a
+                  href="https://vercel.com/new"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-mgsr-teal hover:underline"
+                >
+                  vercel.com/new
+                </a>
+              </li>
+              <li>
+                {isRtl
+                  ? 'או הרץ "npx ngrok http 3006" והוסף NEXT_PUBLIC_APP_URL ל-.env.local'
+                  : 'Or run "npx ngrok http 3006" and add NEXT_PUBLIC_APP_URL to .env.local'}
+              </li>
+            </ol>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(pendingShareUrl)}`;
+                  window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
+                  setShowShareSetupModal(false);
+                }}
+                className="flex-1 px-4 py-2.5 rounded-xl bg-mgsr-teal text-mgsr-dark font-medium hover:bg-mgsr-teal/90"
+              >
+                {isRtl ? 'פתח WhatsApp בכל זאת' : 'Open WhatsApp anyway'}
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  await navigator.clipboard.writeText(pendingShareUrl.split('\n')[1] || pendingShareUrl);
+                  setShowShareSetupModal(false);
+                }}
+                className="flex-1 px-4 py-2.5 rounded-xl border border-mgsr-border text-mgsr-text hover:bg-mgsr-card/80"
+              >
+                {isRtl ? 'העתק לינק' : 'Copy link'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowShareSetupModal(false)}
+                className="px-4 py-2.5 rounded-xl text-mgsr-muted hover:text-mgsr-text"
+              >
+                {isRtl ? 'סגור' : 'Close'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Note Add/Edit Modal */}
       {noteModalOpen && (

@@ -659,6 +659,7 @@
     <string name="player_info_refresh">Refresh</string>
     <string name="player_info_refresh_cd">Refresh from Transfermarkt</string>
     <string name="player_info_share">Share</string>
+    <string name="player_info_share_error">Could not create share link. Please try again.</string>
     <string name="player_info_generate_mandate">Generate mandate</string>
 
     <!-- Generate Mandate Wizard -->

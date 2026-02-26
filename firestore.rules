@@ -1,0 +1,13 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // SharedPlayers: public read (token is unguessable), create requires auth
+    match /SharedPlayers/{token} {
+      allow read: if true;
+      allow create: if request.auth != null;
+      allow update, delete: if false;
+    }
+    // Add your existing rules below. This file may need to be merged with
+    // rules you already have in Firebase Console.
+  }
+}

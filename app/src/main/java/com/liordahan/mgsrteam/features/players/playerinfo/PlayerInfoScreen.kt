@@ -290,6 +290,8 @@ fun PlayerInfoScreen(
     var playerDocumentId by remember { mutableStateOf<String?>(null) }
     var allAccounts by remember { mutableStateOf<List<com.liordahan.mgsrteam.features.login.models.Account>>(emptyList()) }
     var documentsList by remember { mutableStateOf<List<PlayerDocument>>(emptyList()) }
+    val scoutReport by viewModel.scoutReportFlow.collectAsState()
+    val scope = rememberCoroutineScope()
     var docToDelete by remember { mutableStateOf<PlayerDocument?>(null) }
     var isUploadingDocument by remember { mutableStateOf(false) }
     var hasAutoRefreshed by remember { mutableStateOf(false) }
@@ -486,24 +488,24 @@ fun PlayerInfoScreen(
         }
 
         val shareAction: () -> Unit = {
-            com.liordahan.mgsrteam.analytics.AnalyticsHelper.logSharePlayer(playerToPresent?.tmProfile)
-            val textToSend = buildAnnotatedString {
-                playerToPresent?.let { player ->
-                    appendLine(player.tmProfile ?: "")
-                    append("\n\n")
-                    appendLine(
-                        listOfNotNull(
-                            player.fullName,
-                            player.positions?.getOrNull(0),
-                            player.age,
-                            player.height?.replace("m", ""),
-                            player.nationality
-                        ).joinToString(", ")
-                    )
-                    append(context.getString(R.string.player_info_current_club_share, player.currentClub?.clubName ?: context.getString(R.string.player_info_unknown)))
-                } ?: append(context.getString(R.string.player_info_player_data_not_available))
+            val player = playerToPresent
+            val docId = playerDocumentId
+            if (player == null || docId == null) return@Unit
+            com.liordahan.mgsrteam.analytics.AnalyticsHelper.logSharePlayer(player.tmProfile)
+            scope.launch {
+                viewModel.createShareUrl(player, docId, documentsList, scoutReport)
+                    .onSuccess { url ->
+                        val shareText = "${player.fullName ?: ""}\n$url"
+                        val intent = Intent(Intent.ACTION_SEND).apply {
+                            type = "text/plain"
+                            putExtra(Intent.EXTRA_TEXT, shareText)
+                        }
+                        context.startActivity(Intent.createChooser(intent, context.getString(R.string.player_info_share_with)))
+                    }
+                    .onFailure {
+                        ToastManager.showError(context.getString(R.string.player_info_share_error))
+                    }
             }
-            sharePlayerOnWhatsapp(context, textToSend.toString())
         }
 
         val isRefreshing = isRefreshingPlayer is UiResult.Loading
