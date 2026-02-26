@@ -150,6 +150,7 @@ export default function PlayerInfoPage() {
   const [sharing, setSharing] = useState(false);
   const [shareError, setShareError] = useState<string | null>(null);
   const [showShareSetupModal, setShowShareSetupModal] = useState(false);
+  const [showShareLanguageModal, setShowShareLanguageModal] = useState(false);
   const [pendingShareUrl, setPendingShareUrl] = useState<string | null>(null);
   const prevValidMandateCountRef = useRef<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -526,7 +527,9 @@ export default function PlayerInfoPage() {
           player?.agentPhoneNumber ??
           undefined;
         const sharerName =
-          sharerAccount?.name ?? sharerAccount?.hebrewName ?? undefined;
+          lang === 'he'
+            ? (sharerAccount?.hebrewName ?? sharerAccount?.name)
+            : (sharerAccount?.name ?? sharerAccount?.hebrewName);
 
         const playerPayload = {
           fullName: player.fullName,
@@ -583,11 +586,14 @@ export default function PlayerInfoPage() {
             user ? auth.currentUser?.getIdToken() ?? Promise.resolve(null) : Promise.resolve(null)
         );
 
-        const displayName = merged.fullName || player.fullName || player.fullNameHe || '—';
+        const displayName =
+          lang === 'he'
+            ? (merged.fullNameHe || merged.fullName || player.fullNameHe || player.fullName || '—')
+            : (merged.fullName || merged.fullNameHe || player.fullName || player.fullNameHe || '—');
         const shareText =
           lang === 'he'
-            ? `פרופיל שחקן: ${displayName}\n${url}`
-            : `Player profile: ${displayName}\n${url}`;
+            ? `פרופיל חדש נשלח אלייך מ - MGSR.\n${displayName}\n${url}`
+            : `A new profile sent to you by MGSR.\n${displayName}\n${url}`;
 
         if (url.includes('localhost') && typeof window !== 'undefined') {
           setPendingShareUrl(shareText);
@@ -1452,7 +1458,7 @@ export default function PlayerInfoPage() {
                     type="button"
                     onClick={(e) => {
                       e.preventDefault();
-                      handleShare(isRtl ? 'he' : 'en');
+                      setShowShareLanguageModal(true);
                     }}
                     disabled={sharing}
                     className="flex items-center gap-2 text-mgsr-teal hover:underline disabled:opacity-50"
@@ -1471,6 +1477,52 @@ export default function PlayerInfoPage() {
           );
         })()}
       </div>
+
+      {/* Share language choice modal */}
+      {showShareLanguageModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
+          onClick={() => setShowShareLanguageModal(false)}
+        >
+          <div className="absolute inset-0 bg-black/60" aria-hidden />
+          <div
+            dir={isRtl ? 'rtl' : 'ltr'}
+            className="relative w-full max-w-md bg-mgsr-card border border-mgsr-border rounded-2xl shadow-2xl p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-lg font-display font-semibold text-mgsr-text mb-2">
+              {isRtl ? 'שתף ב' : 'Share in'}
+            </h3>
+            <p className="text-sm text-mgsr-muted mb-4">
+              {isRtl ? 'בחר את שפת הדף המשותף' : 'Choose the language for the shared page'}
+            </p>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowShareLanguageModal(false);
+                  handleShare('he');
+                }}
+                disabled={sharing}
+                className="flex-1 px-4 py-3 rounded-xl bg-mgsr-teal/20 text-mgsr-teal font-medium hover:bg-mgsr-teal/30 disabled:opacity-50"
+              >
+                עברית
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowShareLanguageModal(false);
+                  handleShare('en');
+                }}
+                disabled={sharing}
+                className="flex-1 px-4 py-3 rounded-xl bg-mgsr-teal/20 text-mgsr-teal font-medium hover:bg-mgsr-teal/30 disabled:opacity-50"
+              >
+                English
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Share setup modal - when on localhost */}
       {showShareSetupModal && pendingShareUrl && (
