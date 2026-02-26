@@ -12,13 +12,20 @@ export async function generateMetadata({
 }) {
   const data = await getShareData(params.token);
   const name = data?.player?.fullName ?? data?.player?.fullNameHe ?? 'Player Profile';
+  const positionsStr = (data?.player?.positions ?? []).filter(Boolean).join(', ');
+  const clubStr = data?.player?.currentClub?.clubName ?? '';
+  const fallbackDesc = [positionsStr, clubStr].filter(Boolean).join(' • ').trim();
   const desc =
-    (data?.scoutReport?.slice(0, 200) ??
-      `${data?.player?.positions?.filter(Boolean).join(', ')} • ${data?.player?.currentClub?.clubName ?? ''}`.trim()) ||
+    (data?.scoutReport?.slice(0, 200) ?? fallbackDesc) ||
     'Player profile shared via MGSR Team';
   const image = data?.player?.profileImage;
   const url = `${APP_URL}/p/${params.token}`;
-  const imageUrl = image?.startsWith('http') ? image : (image ? `${APP_URL}${image.startsWith('/') ? '' : '/'}${image}` : null);
+  const imageUrl =
+    image && typeof image === 'string' && image.trim()
+      ? image.startsWith('http')
+        ? image
+        : `${APP_URL}${image.startsWith('/') ? '' : '/'}${image}`
+      : `${APP_URL}/logo.svg`;
 
   return {
     title: name,
@@ -27,14 +34,14 @@ export async function generateMetadata({
       title: name,
       description: desc,
       url,
-      images: imageUrl ? [{ url: imageUrl, width: 400, height: 400, alt: name }] : [],
+      images: [{ url: imageUrl, width: 400, height: 400, alt: name }],
       type: 'website',
     },
     twitter: {
       card: 'summary_large_image',
       title: name,
       description: desc,
-      images: imageUrl ? [imageUrl] : [],
+      images: [imageUrl],
     },
   };
 }

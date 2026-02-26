@@ -35,8 +35,10 @@ interface SharePayload {
     hasMandate: boolean;
     expiresAt?: number;
   };
+  mandateUrl?: string;
   sharerPhone?: string;
   scoutReport?: string;
+  lang?: 'he' | 'en';
 }
 
 function buildPlayerContext(player: SharePayload['player']): string {
@@ -96,13 +98,13 @@ export async function POST(request: NextRequest) {
     const uid = decoded.uid;
 
     const body = (await request.json()) as SharePayload;
-    const { playerId, player, mandateInfo, sharerPhone, scoutReport: providedScoutReport } = body;
+    const { playerId, player, mandateInfo, mandateUrl, sharerPhone, scoutReport: providedScoutReport, lang: bodyLang } = body;
 
     if (!playerId || !player) {
       return NextResponse.json({ error: 'Missing playerId or player' }, { status: 400 });
     }
 
-    const lang = request.headers.get('Accept-Language')?.includes('he') ? 'he' : 'en';
+    const lang = bodyLang ?? (request.headers.get('Accept-Language')?.includes('he') ? 'he' : 'en');
     let scoutReport = providedScoutReport;
     if (!scoutReport?.trim()) {
       scoutReport = await generateShortScoutReport(player, lang);
@@ -123,8 +125,10 @@ export async function POST(request: NextRequest) {
         contractExpired: player.contractExpired,
       },
       mandateInfo: mandateInfo ?? null,
+      mandateUrl: mandateUrl ?? null,
       sharerPhone: sharerPhone ?? player.agentPhoneNumber ?? player.playerAdditionalInfoModel?.agentNumber ?? null,
       scoutReport: scoutReport?.trim() || null,
+      lang: lang ?? null,
       createdAt: Date.now(),
       createdBy: uid,
     };

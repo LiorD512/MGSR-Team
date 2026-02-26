@@ -62,10 +62,9 @@ export default function SharedPlayerContent({
   }
 
   const player = data.player;
+  const useHebrew = data.lang === 'he' || (typeof navigator !== 'undefined' && navigator.language?.startsWith('he'));
   const displayName =
-    (typeof navigator !== 'undefined' && navigator.language?.startsWith('he')
-      ? player.fullNameHe || player.fullName
-      : player.fullName || player.fullNameHe) || '—';
+    useHebrew ? (player.fullNameHe || player.fullName) : (player.fullName || player.fullNameHe) || '—';
   const mandateExpiry = data.mandateInfo?.expiresAt
     ? new Date(data.mandateInfo.expiresAt).toLocaleDateString('en-GB', {
         day: '2-digit',
@@ -74,8 +73,36 @@ export default function SharedPlayerContent({
       })
     : null;
 
+  const labels = useHebrew
+    ? {
+        mandate: 'מנדט',
+        activeUntil: 'פעיל עד',
+        active: 'פעיל',
+        age: 'גיל',
+        height: 'גובה',
+        nationality: 'לאום',
+        contract: 'חוזה',
+        scoutReport: 'דוח סקאוט',
+        contact: 'איש קשר',
+        sharedVia: 'שותף דרך MGSR Team',
+        viewMandate: 'צפה במנדט',
+      }
+    : {
+        mandate: 'Mandate',
+        activeUntil: 'Active until',
+        active: 'Active',
+        age: 'Age',
+        height: 'Height',
+        nationality: 'Nationality',
+        contract: 'Contract',
+        scoutReport: 'Scout Report',
+        contact: 'Contact',
+        sharedVia: 'Shared via MGSR Team',
+        viewMandate: 'View mandate',
+      };
+
   return (
-    <div className="min-h-screen bg-mgsr-dark">
+    <div className="min-h-screen bg-mgsr-dark" dir={useHebrew ? 'rtl' : 'ltr'}>
       <header className="border-b border-mgsr-border bg-mgsr-card/50 px-4 py-3">
         <Link
           href="/"
@@ -125,25 +152,39 @@ export default function SharedPlayerContent({
         {data.mandateInfo?.hasMandate && (
           <div className="p-5 rounded-xl bg-mgsr-card border border-mgsr-teal/30 mb-6">
             <h3 className="text-sm font-semibold text-mgsr-teal uppercase tracking-wider mb-2">
-              Mandate
+              {labels.mandate}
             </h3>
-            <p className="text-mgsr-text font-medium">
-              {mandateExpiry ? `Active until ${mandateExpiry}` : 'Active'}
+            <p className="text-mgsr-text font-medium mb-2">
+              {mandateExpiry ? `${labels.activeUntil} ${mandateExpiry}` : labels.active}
             </p>
+            {data.mandateUrl && (
+              <a
+                href={data.mandateUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 text-mgsr-teal hover:underline font-medium text-sm"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                </svg>
+                {labels.viewMandate}
+              </a>
+            )}
           </div>
         )}
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
-          <StatCard label="Age" value={player.age} />
-          <StatCard label="Height" value={player.height} />
-          <StatCard label="Nationality" value={player.nationality} />
-          <StatCard label="Contract" value={player.contractExpired} />
+          <StatCard label={labels.age} value={player.age} />
+          <StatCard label={labels.height} value={player.height} />
+          <StatCard label={labels.nationality} value={player.nationality} />
+          <StatCard label={labels.contract} value={player.contractExpired} />
         </div>
 
         {data.scoutReport && (
           <div className="p-5 rounded-xl bg-mgsr-card border border-mgsr-border mb-8">
             <h3 className="text-sm font-semibold text-mgsr-muted uppercase tracking-wider mb-3">
-              Scout Report
+              {labels.scoutReport}
             </h3>
             <p className="text-mgsr-text leading-relaxed whitespace-pre-line">
               {data.scoutReport}
@@ -154,7 +195,7 @@ export default function SharedPlayerContent({
         {data.sharerPhone && (
           <div className="p-5 rounded-xl bg-mgsr-card border border-mgsr-border">
             <h3 className="text-sm font-semibold text-mgsr-muted uppercase tracking-wider mb-3">
-              Contact
+              {labels.contact}
             </h3>
             <a
               href={toWhatsAppUrl(data.sharerPhone) ?? `tel:${data.sharerPhone}`}
@@ -172,7 +213,7 @@ export default function SharedPlayerContent({
         )}
 
         <p className="text-center text-mgsr-muted text-sm mt-12">
-          Shared via MGSR Team
+          {labels.sharedVia}
         </p>
       </main>
     </div>

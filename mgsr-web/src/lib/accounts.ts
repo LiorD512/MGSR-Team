@@ -6,6 +6,7 @@ export interface AccountForShortlist {
   id: string;
   name?: string;
   hebrewName?: string;
+  phone?: string;
 }
 
 /**
@@ -31,11 +32,20 @@ export async function getCurrentAccountForShortlist(
   const data = doc.data();
   const name = (data.name as string)?.trim() || fallbackName;
   const hebrewName = (data.hebrewName as string)?.trim();
+  const phone = (data.phone as string)?.trim() || undefined;
   return {
     id: doc.id,
     name: name || fallbackName,
     hebrewName: hebrewName || undefined,
+    phone: phone || undefined,
   };
+}
+
+/** Get current user's account including phone (for share contact) */
+export async function getCurrentAccountWithPhone(
+  user: User
+): Promise<AccountForShortlist> {
+  return getCurrentAccountForShortlist(user);
 }
 
 /** Shared shortlist document - all agents see the same shortlist. */

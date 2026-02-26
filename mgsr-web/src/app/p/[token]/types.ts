@@ -15,6 +15,8 @@ export interface ShareData {
   playerId: string;
   player: SharedPlayer;
   mandateInfo?: { hasMandate: boolean; expiresAt?: number };
+  mandateUrl?: string;
   sharerPhone?: string;
   scoutReport?: string;
+  lang?: 'he' | 'en';
 }

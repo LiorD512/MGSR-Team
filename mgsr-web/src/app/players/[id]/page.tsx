@@ -16,6 +16,7 @@ import { createShare } from '@/lib/shareApi';
 import { parseMarketValue } from '@/lib/releases';
 import { extractSalaryRange, extractFreeTransfer, type NoteModel } from '@/lib/noteParser';
 import { flattenPdf } from '@/lib/pdfFlatten';
+import FmIntelligencePanel from '@/components/FmIntelligencePanel';
 import {
   LineChart,
   Line,
@@ -74,6 +75,7 @@ interface Account {
   hebrewName?: string;
   email?: string;
   fifaLicenseId?: string;
+  phone?: string;
 }
 
 interface PlayerDocument {
@@ -149,6 +151,8 @@ export default function PlayerInfoPage() {
   const [shareError, setShareError] = useState<string | null>(null);
   const [showShareSetupModal, setShowShareSetupModal] = useState(false);
   const [pendingShareUrl, setPendingShareUrl] = useState<string | null>(null);
+  const [showShareLangModal, setShowShareLangModal] = useState(false);
+  const [shareLang, setShareLang] = useState<'he' | 'en'>('en');
   const prevValidMandateCountRef = useRef<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -486,81 +490,116 @@ export default function PlayerInfoPage() {
     return foot;
   };
 
-  const handleShare = useCallback(async () => {
-    if (!player || !id || sharing) return;
-    setSharing(true);
-    setShareError(null);
-    try {
-      const hasValidMandate = documents.some(
-        (d) =>
-          (d.type ?? '').toUpperCase() === 'MANDATE' &&
-          !d.expired &&
-          (d.expiresAt == null || d.expiresAt >= Date.now())
-      );
-      const mandateExpiry = documents
-        .filter((d) => (d.type ?? '').toUpperCase() === 'MANDATE' && d.expiresAt)
-        .map((d) => d.expiresAt!)
-        .filter((e) => e >= Date.now())
-        .sort((a, b) => a - b)[0];
+  const handleShare = useCallback(
+    async (lang: 'he' | 'en') => {
+      if (!player || !id || sharing) return;
+      setShowShareLangModal(false);
+      setSharing(true);
+      setShareError(null);
+      try {
+        const hasValidMandate = documents.some(
+          (d) =>
+            (d.type ?? '').toUpperCase() === 'MANDATE' &&
+            !d.expired &&
+            (d.expiresAt == null || d.expiresAt >= Date.now())
+        );
+        const mandateExpiry = documents
+          .filter((d) => (d.type ?? '').toUpperCase() === 'MANDATE' && d.expiresAt)
+          .map((d) => d.expiresAt!)
+          .filter((e) => e >= Date.now())
+          .sort((a, b) => a - b)[0];
+        const validMandate = documents.find(
+          (d) =>
+            (d.type ?? '').toUpperCase() === 'MANDATE' &&
+            !d.expired &&
+            (d.expiresAt == null || d.expiresAt >= Date.now())
+        );
+        const mandateUrl = validMandate?.storageUrl ?? undefined;
 
-      const { url } = await createShare(
-        {
-          playerId: id,
-          player: {
-            fullName: player.fullName,
-            fullNameHe: player.fullNameHe,
-            profileImage: merged.profileImage || player.profileImage,
-            positions: player.positions,
-            marketValue: merged.marketValue || player.marketValue,
-            currentClub: merged.currentClub || player.currentClub,
-            age: merged.age || player.age,
-            height: merged.height || player.height,
-            nationality: merged.nationality || player.nationality,
-            contractExpired: merged.contractExpired || player.contractExpired,
-            agentPhoneNumber:
-              player?.playerAdditionalInfoModel?.agentNumber ||
-              player?.agentPhoneNumber ||
-              undefined,
-            playerAdditionalInfoModel: player.playerAdditionalInfoModel,
-          },
-          mandateInfo: {
-            hasMandate: hasValidMandate,
-            expiresAt: mandateExpiry,
-          },
-          sharerPhone:
+        const sharerAccount = user ? accounts.find((a) => a.id === user.uid) : null;
+        const sharerPhone =
+          sharerAccount?.phone ??
+          player?.playerAdditionalInfoModel?.agentNumber ??
+          player?.agentPhoneNumber ??
+          undefined;
+
+        const playerPayload = {
+          fullName: player.fullName,
+          fullNameHe: player.fullNameHe,
+          profileImage: merged.profileImage || player.profileImage,
+          positions: player.positions,
+          marketValue: merged.marketValue || player.marketValue,
+          currentClub: merged.currentClub || player.currentClub,
+          age: merged.age || player.age,
+          height: merged.height || player.height,
+          nationality: merged.nationality || player.nationality,
+          contractExpired: merged.contractExpired || player.contractExpired,
+          agentPhoneNumber:
             player?.playerAdditionalInfoModel?.agentNumber ||
             player?.agentPhoneNumber ||
             undefined,
-        },
-        () => (user ? auth.currentUser?.getIdToken() ?? Promise.resolve(null) : Promise.resolve(null))
-      );
+          playerAdditionalInfoModel: player.playerAdditionalInfoModel,
+        };
 
-      const displayName = merged.fullName || player.fullName || player.fullNameHe || '—';
-      const shareText = isRtl
-        ? `פרופיל שחקן: ${displayName}\n${url}`
-        : `Player profile: ${displayName}\n${url}`;
+        let scoutReport = '';
+        try {
+          const res = await fetch('/api/share/generate-scout-report', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ player: playerPayload, lang }),
+          });
+          const json = (await res.json()) as { scoutReport?: string };
+          scoutReport = json.scoutReport?.trim() || '';
+        } catch {
+          // Fall back to buildScoutSummary in createShare
+        }
 
-      if (url.includes('localhost') && typeof window !== 'undefined') {
-        setPendingShareUrl(shareText);
-        setShowShareSetupModal(true);
-        setShareError(null);
-      } else {
-        const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
-        window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
+        const { url } = await createShare(
+          {
+            playerId: id,
+            player: playerPayload,
+            mandateInfo: {
+              hasMandate: hasValidMandate,
+              expiresAt: mandateExpiry,
+            },
+            mandateUrl,
+            sharerPhone,
+            scoutReport: scoutReport || undefined,
+            lang,
+          },
+          () =>
+            user ? auth.currentUser?.getIdToken() ?? Promise.resolve(null) : Promise.resolve(null)
+        );
+
+        const displayName = merged.fullName || player.fullName || player.fullNameHe || '—';
+        const shareText =
+          lang === 'he'
+            ? `פרופיל שחקן: ${displayName}\n${url}`
+            : `Player profile: ${displayName}\n${url}`;
+
+        if (url.includes('localhost') && typeof window !== 'undefined') {
+          setPendingShareUrl(shareText);
+          setShowShareSetupModal(true);
+          setShareError(null);
+        } else {
+          const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
+          window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
+        }
+      } catch (e) {
+        console.error('Share failed:', e);
+        let msg = e instanceof Error ? e.message : 'Share failed';
+        if (msg.includes('permission') || msg.includes('PERMISSION_DENIED')) {
+          msg = isRtl
+            ? 'חסרות הרשאות Firestore. הוסף את כללי SharedPlayers (ראה docs/SHARE_PLAYER_SETUP.md)'
+            : 'Firestore permission denied. Add SharedPlayers rules (see docs/SHARE_PLAYER_SETUP.md)';
+        }
+        setShareError(msg);
+      } finally {
+        setSharing(false);
       }
-    } catch (e) {
-      console.error('Share failed:', e);
-      let msg = e instanceof Error ? e.message : 'Share failed';
-      if (msg.includes('permission') || msg.includes('PERMISSION_DENIED')) {
-        msg = isRtl
-          ? 'חסרות הרשאות Firestore. הוסף את כללי SharedPlayers (ראה docs/SHARE_PLAYER_SETUP.md)'
-          : 'Firestore permission denied. Add SharedPlayers rules (see docs/SHARE_PLAYER_SETUP.md)';
-      }
-      setShareError(msg);
-    } finally {
-      setSharing(false);
-    }
-  }, [player, id, documents, merged, user, sharing, isRtl]);
+    },
+    [player, id, documents, merged, user, accounts, sharing, isRtl]
+  );
 
   const resolveAgentName = (name: string | undefined, agentId?: string): string => {
     if (!name) return '—';
@@ -1142,6 +1181,11 @@ export default function PlayerInfoPage() {
 
           {/* Right column - Value history + Notes */}
           <div className="lg:col-span-2 space-y-8">
+            {/* FM Intelligence Panel */}
+            {(merged.fullName || player?.fullName) && (
+              <FmIntelligencePanel playerName={merged.fullName || player?.fullName || ''} isRtl={isRtl} />
+            )}
+
             {/* Market value trend */}
             {valueChartData.length > 0 && (
               <div className="p-5 rounded-xl bg-mgsr-card border border-mgsr-border">
@@ -1396,7 +1440,8 @@ export default function PlayerInfoPage() {
                     type="button"
                     onClick={(e) => {
                       e.preventDefault();
-                      handleShare();
+                      setShareLang(isRtl ? 'he' : 'en');
+                      setShowShareLangModal(true);
                     }}
                     disabled={sharing}
                     className="flex items-center gap-2 text-mgsr-teal hover:underline disabled:opacity-50"
@@ -1415,6 +1460,58 @@ export default function PlayerInfoPage() {
           );
         })()}
       </div>
+
+      {/* Share language modal - choose Hebrew or English for shared page */}
+      {showShareLangModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
+          onClick={() => setShowShareLangModal(false)}
+        >
+          <div className="absolute inset-0 bg-black/60" aria-hidden />
+          <div
+            dir={isRtl ? 'rtl' : 'ltr'}
+            className="relative w-full max-w-md bg-mgsr-card border border-mgsr-border rounded-2xl shadow-2xl p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-lg font-display font-semibold text-mgsr-text mb-3">
+              {isRtl ? 'בחר שפה לעמוד המשותף' : 'Choose language for shared page'}
+            </h3>
+            <div className="flex gap-3 mb-4">
+              <button
+                type="button"
+                onClick={() => handleShare('he')}
+                disabled={sharing}
+                className={`flex-1 px-4 py-3 rounded-xl border font-medium ${
+                  shareLang === 'he'
+                    ? 'bg-mgsr-teal/20 border-mgsr-teal text-mgsr-teal'
+                    : 'border-mgsr-border text-mgsr-text hover:bg-mgsr-card/80'
+                }`}
+              >
+                עברית
+              </button>
+              <button
+                type="button"
+                onClick={() => handleShare('en')}
+                disabled={sharing}
+                className={`flex-1 px-4 py-3 rounded-xl border font-medium ${
+                  shareLang === 'en'
+                    ? 'bg-mgsr-teal/20 border-mgsr-teal text-mgsr-teal'
+                    : 'border-mgsr-border text-mgsr-text hover:bg-mgsr-card/80'
+                }`}
+              >
+                English
+              </button>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowShareLangModal(false)}
+              className="w-full px-4 py-2.5 rounded-xl text-mgsr-muted hover:text-mgsr-text"
+            >
+              {isRtl ? 'ביטול' : 'Cancel'}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Share setup modal - when on localhost */}
       {showShareSetupModal && pendingShareUrl && (

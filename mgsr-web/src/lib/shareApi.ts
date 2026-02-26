@@ -36,8 +36,10 @@ export interface SharePayload {
     hasMandate: boolean;
     expiresAt?: number;
   };
+  mandateUrl?: string;
   sharerPhone?: string;
   scoutReport?: string;
+  lang?: 'he' | 'en';
 }
 
 export interface ShareResult {
@@ -132,12 +134,14 @@ export async function createShare(
     playerId: payload.playerId,
     player: stripUndefined(playerObj),
     mandateInfo: payload.mandateInfo ?? null,
+    mandateUrl: payload.mandateUrl ?? null,
     sharerPhone:
       payload.sharerPhone ??
       payload.player.agentPhoneNumber ??
       payload.player.playerAdditionalInfoModel?.agentNumber ??
       null,
     scoutReport: scoutReport || null,
+    lang: payload.lang ?? null,
     createdAt: Date.now(),
   });
 
