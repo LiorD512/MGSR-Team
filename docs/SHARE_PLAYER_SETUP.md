@@ -38,7 +38,9 @@ The `SharedPlayers` collection allows:
 
 No extra setup. The web app creates the share directly in Firestore when the user is logged in. Ensure Firestore rules are deployed.
 
-### Option B: API create (with short AI scout report)
+**⚠️ WhatsApp preview image:** To show the player photo in the link preview, you **must** add Firebase Admin (Option B credentials). Without it, the server cannot read Firestore and the preview shows "P" instead of the image.
+
+### Option B: API create + WhatsApp preview image (required for image)
 
 1. Add Firebase Admin credentials to Vercel env vars:
    - `FIREBASE_PROJECT_ID`
