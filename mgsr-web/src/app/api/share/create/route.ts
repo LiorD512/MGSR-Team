@@ -28,6 +28,7 @@ interface SharePayload {
     height?: string;
     nationality?: string;
     contractExpired?: string;
+    tmProfile?: string;
     agentPhoneNumber?: string;
     playerAdditionalInfoModel?: { agentNumber?: string };
   };
@@ -37,6 +38,7 @@ interface SharePayload {
   };
   mandateUrl?: string;
   sharerPhone?: string;
+  sharerName?: string;
   scoutReport?: string;
   lang?: 'he' | 'en';
 }
@@ -98,7 +100,7 @@ export async function POST(request: NextRequest) {
     const uid = decoded.uid;
 
     const body = (await request.json()) as SharePayload;
-    const { playerId, player, mandateInfo, mandateUrl, sharerPhone, scoutReport: providedScoutReport, lang: bodyLang } = body;
+    const { playerId, player, mandateInfo, mandateUrl, sharerPhone, sharerName, scoutReport: providedScoutReport, lang: bodyLang } = body;
 
     if (!playerId || !player) {
       return NextResponse.json({ error: 'Missing playerId or player' }, { status: 400 });
@@ -123,10 +125,12 @@ export async function POST(request: NextRequest) {
         height: player.height,
         nationality: player.nationality,
         contractExpired: player.contractExpired,
+        tmProfile: (player as { tmProfile?: string }).tmProfile,
       },
       mandateInfo: mandateInfo ?? null,
       mandateUrl: mandateUrl ?? null,
       sharerPhone: sharerPhone ?? player.agentPhoneNumber ?? player.playerAdditionalInfoModel?.agentNumber ?? null,
+      sharerName: sharerName ?? null,
       scoutReport: scoutReport?.trim() || null,
       lang: lang ?? null,
       createdAt: Date.now(),

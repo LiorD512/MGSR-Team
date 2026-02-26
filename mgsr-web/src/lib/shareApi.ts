@@ -38,6 +38,7 @@ export interface SharePayload {
   };
   mandateUrl?: string;
   sharerPhone?: string;
+  sharerName?: string;
   scoutReport?: string;
   lang?: 'he' | 'en';
 }
@@ -128,6 +129,7 @@ export async function createShare(
     height: payload.player.height,
     nationality: payload.player.nationality,
     contractExpired: payload.player.contractExpired,
+    tmProfile: (payload.player as { tmProfile?: string }).tmProfile,
   };
 
   const shareDoc = stripUndefined({
@@ -140,6 +142,7 @@ export async function createShare(
       payload.player.agentPhoneNumber ??
       payload.player.playerAdditionalInfoModel?.agentNumber ??
       null,
+    sharerName: payload.sharerName ?? null,
     scoutReport: scoutReport || null,
     lang: payload.lang ?? null,
     createdAt: Date.now(),

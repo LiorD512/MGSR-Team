@@ -513,12 +513,20 @@ export default function PlayerInfoPage() {
         );
         const mandateUrl = validMandate?.storageUrl ?? undefined;
 
-        const sharerAccount = user ? accounts.find((a) => a.id === user.uid) : null;
+        const sharerAccount = user
+          ? accounts.find(
+              (a) =>
+                a.id === user.uid ||
+                a.email?.toLowerCase() === user.email?.toLowerCase()
+            )
+          : null;
         const sharerPhone =
           sharerAccount?.phone ??
           player?.playerAdditionalInfoModel?.agentNumber ??
           player?.agentPhoneNumber ??
           undefined;
+        const sharerName =
+          sharerAccount?.name ?? sharerAccount?.hebrewName ?? undefined;
 
         const playerPayload = {
           fullName: player.fullName,
@@ -526,11 +534,17 @@ export default function PlayerInfoPage() {
           profileImage: merged.profileImage || player.profileImage,
           positions: player.positions,
           marketValue: merged.marketValue || player.marketValue,
+          marketValueHistory: player.marketValueHistory,
           currentClub: merged.currentClub || player.currentClub,
           age: merged.age || player.age,
           height: merged.height || player.height,
           nationality: merged.nationality || player.nationality,
           contractExpired: merged.contractExpired || player.contractExpired,
+          foot: merged.foot || player.foot,
+          isOnLoan: player.isOnLoan ?? merged.isOnLoan,
+          onLoanFromClub: player.onLoanFromClub ?? merged.onLoanFromClub,
+          agency: player.agency,
+          tmProfile: merged.tmProfile || player.tmProfile,
           agentPhoneNumber:
             player?.playerAdditionalInfoModel?.agentNumber ||
             player?.agentPhoneNumber ||
@@ -561,6 +575,7 @@ export default function PlayerInfoPage() {
             },
             mandateUrl,
             sharerPhone,
+            sharerName,
             scoutReport: scoutReport || undefined,
             lang,
           },

@@ -828,6 +828,11 @@ class PlayerInfoViewModel(
                     (it.expiresAt == null || it.expiresAt >= System.currentTimeMillis())
             }
 
+            val currentAccount = getCurrentUserAccount()
+            val sharerPhone = currentAccount?.phone?.takeIf { it.isNotBlank() }
+                ?: player.getAgentPhoneNumber()
+            val sharerName = currentAccount?.getDisplayName(appContext)?.takeIf { it.isNotBlank() }
+
             val shareData = hashMapOf<String, Any?>(
                 "playerId" to playerDocId,
                 "player" to hashMapOf(
@@ -846,17 +851,19 @@ class PlayerInfoViewModel(
                     "age" to player.age,
                     "height" to player.height,
                     "nationality" to player.nationality,
-                    "contractExpired" to player.contractExpired
+                    "contractExpired" to player.contractExpired,
+                    "tmProfile" to player.tmProfile
                 ),
                 "mandateInfo" to hashMapOf(
                     "hasMandate" to hasValidMandate,
                     "expiresAt" to mandateExpiry
                 ),
-                "sharerPhone" to player.getAgentPhoneNumber(),
                 "scoutReport" to (scoutReport?.takeIf { it.isNotBlank() }
                     ?: buildScoutSummary(player)),
                 "createdAt" to System.currentTimeMillis(),
-                "lang" to (lang.takeIf { it in listOf("he", "en") } ?: "en")
+                "lang" to (lang.takeIf { it in listOf("he", "en") } ?: "en"),
+                "sharerPhone" to sharerPhone,
+                "sharerName" to sharerName
             )
 
             val ref = firebaseHandler.firebaseStore
@@ -882,21 +889,23 @@ class PlayerInfoViewModel(
         return parts.filter { it.isNotBlank() }.joinToString(" • ")
     }
 
-    private suspend fun getCurrentUserName(): String? = withContext(Dispatchers.IO) {
+    private suspend fun getCurrentUserAccount(): Account? = withContext(Dispatchers.IO) {
         try {
             val snapshot =
                 firebaseHandler.firebaseStore.collection(firebaseHandler.accountsTable).get()
                     .await()
             val accounts = snapshot.toObjects(Account::class.java)
-            val account = accounts.firstOrNull {
+            accounts.firstOrNull {
                 it.email?.equals(
                     firebaseHandler.firebaseAuth.currentUser?.email,
                     ignoreCase = true
                 ) == true
             }
-            account?.getDisplayName(appContext)
         } catch (e: Exception) {
             null
         }
     }
+
+    private suspend fun getCurrentUserName(): String? =
+        getCurrentUserAccount()?.getDisplayName(appContext)
 }

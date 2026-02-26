@@ -9,6 +9,7 @@ export interface SharedPlayer {
   height?: string;
   nationality?: string;
   contractExpired?: string;
+  tmProfile?: string;
 }
 
 export interface ShareData {
@@ -17,6 +18,7 @@ export interface ShareData {
   mandateInfo?: { hasMandate: boolean; expiresAt?: number };
   mandateUrl?: string;
   sharerPhone?: string;
+  sharerName?: string;
   scoutReport?: string;
   lang?: 'he' | 'en';
 }
