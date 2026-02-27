@@ -31,10 +31,12 @@ export async function getPlayerHighlights(
   playerName: string,
   teamName?: string,
   position?: string,
+  refresh?: boolean,
 ): Promise<HighlightsResponse> {
   const params = new URLSearchParams({ playerName });
   if (teamName) params.set('teamName', teamName);
   if (position) params.set('position', position);
+  if (refresh) params.set('refresh', '1');
 
   const res = await fetch(`/api/highlights/search?${params.toString()}`, {
     signal: AbortSignal.timeout(30000),

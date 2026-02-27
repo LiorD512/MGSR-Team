@@ -507,6 +507,7 @@ const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     highlights_compilations: 'Player Highlights',
     highlights_powered_by: 'Powered by YouTube & Scorebat',
     highlights_updated: 'Updated',
+    highlights_refresh: 'Refresh',
     highlights_views: 'views',
     // FM Intelligence Panel
     fm_tab_intelligence: 'FM Intelligence',
@@ -1094,6 +1095,7 @@ const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     highlights_compilations: 'הדגשות שחקן',
     highlights_powered_by: 'מבוסס על YouTube ו-Scorebat',
     highlights_updated: 'עודכן',
+    highlights_refresh: 'רענן',
     highlights_views: 'צפיות',
     // FM Intelligence Panel
     fm_tab_intelligence: 'תובנות FM',

@@ -219,15 +219,17 @@ export default function PlayerHighlightsPanel({
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Lazy-fetch: only load when panel is expanded for the first time
-  const doFetch = useCallback(async () => {
-    if (fetched || !playerName) return;
+  const doFetch = useCallback(async (forceRefresh = false) => {
+    if (!forceRefresh && fetched) return;
+    if (!playerName) return;
     setLoading(true);
     setError(null);
     try {
-      const data = await getPlayerHighlights(playerName, teamName, position);
+      const data = await getPlayerHighlights(playerName, teamName, position, forceRefresh);
       setVideos(data.videos || []);
       setCachedAt(data.cachedAt || 0);
       setSources(data.sources || []);
+      setActiveIndex(0);
       if (data.error) setError(data.error);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load highlights');
@@ -441,11 +443,30 @@ export default function PlayerHighlightsPanel({
                   </svg>
                   <span>{t('highlights_powered_by')}</span>
                 </div>
-                {cacheAgo && (
-                  <span className="text-[10px] text-mgsr-muted/40">
-                    {t('highlights_updated')} {cacheAgo}
-                  </span>
-                )}
+                <div className="flex items-center gap-3">
+                  {cacheAgo && (
+                    <span className="text-[10px] text-mgsr-muted/40">
+                      {t('highlights_updated')} {cacheAgo}
+                    </span>
+                  )}
+                  <button
+                    onClick={() => doFetch(true)}
+                    disabled={loading}
+                    className="flex items-center gap-1 text-[10px] text-mgsr-muted/60 hover:text-mgsr-teal transition-colors disabled:opacity-40"
+                    title={t('highlights_refresh')}
+                  >
+                    <svg
+                      className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`}
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      strokeWidth={2}
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.992 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182M21.015 4.356v4.992" />
+                    </svg>
+                    <span>{t('highlights_refresh')}</span>
+                  </button>
+                </div>
               </div>
             </div>
           )}
