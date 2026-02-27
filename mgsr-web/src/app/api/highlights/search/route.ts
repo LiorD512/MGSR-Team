@@ -298,10 +298,16 @@ function stripAccents(str: string): string {
 /**
  * Filter raw YouTube results to only keep relevant highlight videos.
  * Separated from search so we can reuse across tiers.
+ *
+ * For multi-word names (e.g. "Santiago González"), requires at least 2
+ * name parts to match in the title — OR — the team name to appear.
+ * This prevents false positives like "Kevin González" or "Martin González"
+ * when searching for "Santiago González".
  */
 function filterHighlightVideos(
   videos: HighlightVideo[],
   playerName: string,
+  teamName?: string,
   minDuration = 45, // allow slightly shorter clips for lesser-known players
   maxDuration = 2700, // 45 min
 ): HighlightVideo[] {
@@ -310,18 +316,47 @@ function filterHighlightVideos(
   // For name matching, prefer last name (usually longer and more unique)
   const significantParts = nameParts.filter(p => p.length >= 3);
 
+  // Team name for disambiguation
+  const teamNorm = teamName ? stripAccents(teamName).replace(/^fc\s+|\s+fc$/g, '').trim() : '';
+  const teamParts = teamNorm ? teamNorm.split(/\s+/).filter(p => p.length >= 3) : [];
+
   return videos.filter(v => {
     const titleNorm = stripAccents(v.title);
+    const channelNorm = stripAccents(v.channelName);
 
     // Skip blacklisted content
     if (TITLE_BLACKLIST.some(bw => titleNorm.includes(bw))) return false;
 
-    // Player name relevance check — at least one significant name part must appear
-    // Uses accent-stripped comparison so "Gaël" matches "Gael", "André" matches "Andre"
-    const nameInTitle = significantParts.length > 0
-      ? significantParts.some(part => titleNorm.includes(part))
-      : nameParts.some(part => titleNorm.includes(part));
-    if (!nameInTitle) return false;
+    // Player name relevance check — accent-stripped comparison
+    // Count how many significant name parts appear in the title
+    const matchedParts = significantParts.filter(part => titleNorm.includes(part));
+    const matchedCount = matchedParts.length;
+
+    // For multi-word names (2+ significant parts), require stronger matching
+    // to avoid false positives with common last names (González, Silva, etc.)
+    if (significantParts.length >= 2) {
+      if (matchedCount >= 2) {
+        // Strong match — 2+ name parts found in title → allow
+      } else if (matchedCount === 1) {
+        // Only 1 part matched — could be wrong person (e.g. "Kevin González")
+        // Allow ONLY if team name also appears in title or channel
+        const teamInTitle = teamNorm && (
+          titleNorm.includes(teamNorm) ||
+          channelNorm.includes(teamNorm) ||
+          teamParts.some(tp => titleNorm.includes(tp) || channelNorm.includes(tp))
+        );
+        if (!teamInTitle) return false;
+      } else {
+        // 0 parts matched → definitely not this player
+        return false;
+      }
+    } else {
+      // Single-word name (e.g. "Neymar", "Pelé") — 1 match is fine
+      const nameInTitle = significantParts.length > 0
+        ? significantParts.some(part => titleNorm.includes(part))
+        : nameParts.some(part => titleNorm.includes(part));
+      if (!nameInTitle) return false;
+    }
 
     // Duration check — allow 45s-45min (much more lenient than before)
     if (v.durationSeconds < minDuration || v.durationSeconds > maxDuration) return false;
@@ -349,14 +384,15 @@ function scoreAndSort(videos: HighlightVideo[], playerName: string, teamName?: s
     const channelB = stripAccents(b.channelName);
 
     // Team name match — STRONGEST signal for disambiguation
-    // (e.g. "Santiago González Atlas" vs generic "Santiago Gonzalez")
+    // (e.g. "Santiago González Sporting Cristal" vs generic "Santiago Gonzalez")
+    // Bumped to 120 to ensure team-specific videos always rank above generic ones
     if (teamNorm) {
       const teamInA = titleA.includes(teamNorm) || channelA.includes(teamNorm) ||
         teamParts.some(tp => titleA.includes(tp));
       const teamInB = titleB.includes(teamNorm) || channelB.includes(teamNorm) ||
         teamParts.some(tp => titleB.includes(tp));
-      if (teamInA) scoreA += 80;
-      if (teamInB) scoreB += 80;
+      if (teamInA) scoreA += 120;
+      if (teamInB) scoreB += 120;
     }
 
     // Penalty for college / amateur / unrelated context
@@ -375,12 +411,14 @@ function scoreAndSort(videos: HighlightVideo[], playerName: string, teamName?: s
     if (TRUSTED_CHANNELS.has(a.channelName.toLowerCase())) scoreA += 50;
     if (TRUSTED_CHANNELS.has(b.channelName.toLowerCase())) scoreB += 50;
 
-    // Title contains "highlight" — strong signal
-    if (titleA.includes('highlight')) scoreA += 30;
-    if (titleB.includes('highlight')) scoreB += 30;
+    // Title contains "highlight" — strong signal (EN + ES/PT)
+    if (titleA.includes('highlight') || titleA.includes('jugadas') || titleA.includes('melhores')) scoreA += 30;
+    if (titleB.includes('highlight') || titleB.includes('jugadas') || titleB.includes('melhores')) scoreB += 30;
 
-    // Title contains relevant keywords
-    const goodWords = ['goals', 'skills', 'assists', 'best', 'compilation', 'amazing', 'magic'];
+    // Title contains relevant keywords (EN + ES/PT)
+    const goodWords = ['goals', 'skills', 'assists', 'best', 'compilation', 'amazing', 'magic',
+      'goles', 'gol', 'golazo', 'jugadas', 'asistencias', 'resumen', 'compacto',
+      'mejores', 'crack', 'destaques', 'lances'];
     for (const w of goodWords) {
       if (titleA.includes(w)) scoreA += 10;
       if (titleB.includes(w)) scoreB += 10;
@@ -430,17 +468,23 @@ function dedupeVideos(videos: HighlightVideo[]): HighlightVideo[] {
 /**
  * Multi-tier YouTube search using youtube-sr (no quota limits!).
  *
- * When team is known (most cases):
- *   Tier 1: "name team highlights position"  (most specific)
- *   Tier 2: "name team highlights"           (with team)
- *   Tier 3: "name highlights position"       (without team)
- *   Tier 4: "name highlights"                (broader)
- *   Tier 5: "name goals"                     (last resort)
+ * Tiers are split into two phases:
+ *   Phase A (team-specific) — always run all of these, never stop early.
+ *     Includes English AND Spanish/Portuguese keywords for international coverage.
+ *   Phase B (broad) — stop once we have enough results.
+ *
+ * When team is known:
+ *   A1: "name team highlights position"
+ *   A2: "name team highlights"
+ *   A3: "name team goles jugadas"           ← Spanish (Latin America, Spain)
+ *   B1: "name highlights position"
+ *   B2: "name highlights"
+ *   B3: "name goals"
  *
  * When team unknown:
- *   Tier 1: "name highlights position"
- *   Tier 2: "name highlights"
- *   Tier 3: "name goals"
+ *   B1: "name highlights position"
+ *   B2: "name highlights"
+ *   B3: "name goals"
  *
  * If youtube-sr fails entirely on all tiers, falls back to YouTube Data API.
  * Each tier is FREE — no API key needed, no quota consumed.
@@ -457,28 +501,38 @@ async function searchYouTube(
     ? teamName.replace(/^fc\s+|\s+fc$/gi, '').trim()
     : '';
 
-  // Define search tiers — ordered from most specific to broadest
-  // When team is known, search with team FIRST to avoid false positives
-  // (e.g. "Santiago González" is common — "Santiago González Atlas" is specific)
-  const tiers: Array<{ query: string; label: string }> = [
-    ...(cleanTeam ? [{
-      label: 'Tier 1: with team + position',
-      query: `${playerName} ${cleanTeam} highlights ${posLabel}`,
-    }] : []),
-    ...(cleanTeam ? [{
-      label: 'Tier 2: with team',
-      query: `${playerName} ${cleanTeam} highlights`,
-    }] : []),
+  // Phase A: team-specific tiers — always search ALL of these (never stop early)
+  // This ensures we find team-specific videos even for common names
+  const teamTiers: Array<{ query: string; label: string }> = cleanTeam ? [
     {
-      label: 'Tier 3: highlights + position',
+      label: 'A1: team + position (EN)',
+      query: `${playerName} ${cleanTeam} highlights ${posLabel}`,
+    },
+    {
+      label: 'A2: team (EN)',
+      query: `${playerName} ${cleanTeam} highlights`,
+    },
+    {
+      // Spanish keywords — critical for Latin American leagues (Liga 1 Peru,
+      // Liga MX, Argentine Primera, etc.) where ~90% of YouTube content is
+      // in Spanish. "goles jugadas" = "goals plays/skills"
+      label: 'A3: team (ES)',
+      query: `${playerName} ${cleanTeam} goles jugadas`,
+    },
+  ] : [];
+
+  // Phase B: broader tiers — stop once we have enough results
+  const broadTiers: Array<{ query: string; label: string }> = [
+    {
+      label: 'B1: highlights + position',
       query: `${playerName} highlights ${posLabel}`,
     },
     {
-      label: 'Tier 4: broad highlights',
+      label: 'B2: broad highlights',
       query: `${playerName} highlights`,
     },
     {
-      label: 'Tier 5: goals only',
+      label: 'B3: goals only',
       query: `${playerName} goals`,
     },
   ];
@@ -486,18 +540,33 @@ async function searchYouTube(
   let allResults: HighlightVideo[] = [];
   let youtubeSrWorked = false;
 
-  for (const tier of tiers) {
+  // --- Phase A: always run ALL team-specific tiers ---
+  for (const tier of teamTiers) {
     try {
       const raw = await youtubeSrSearch(tier.query);
       if (raw.length > 0) youtubeSrWorked = true;
-      const filtered = filterHighlightVideos(raw, playerName);
+      const filtered = filterHighlightVideos(raw, playerName, cleanTeam);
       allResults = dedupeVideos([...allResults, ...filtered]);
-
-      if (allResults.length >= MIN_ACCEPTABLE_RESULTS) {
-        break; // We have enough good results
-      }
     } catch (err) {
       console.error(`youtube-sr ${tier.label} error:`, err);
+    }
+  }
+
+  // --- Phase B: broader search, stop once we have enough ---
+  if (allResults.length < MIN_ACCEPTABLE_RESULTS) {
+    for (const tier of broadTiers) {
+      try {
+        const raw = await youtubeSrSearch(tier.query);
+        if (raw.length > 0) youtubeSrWorked = true;
+        const filtered = filterHighlightVideos(raw, playerName, cleanTeam);
+        allResults = dedupeVideos([...allResults, ...filtered]);
+
+        if (allResults.length >= MIN_ACCEPTABLE_RESULTS) {
+          break; // We have enough good results
+        }
+      } catch (err) {
+        console.error(`youtube-sr ${tier.label} error:`, err);
+      }
     }
   }
 
@@ -509,7 +578,7 @@ async function searchYouTube(
         ? `${playerName} ${cleanTeam} highlights ${posLabel}`
         : `${playerName} highlights ${posLabel}`;
       const raw = await youtubeApiFallback(fallbackQuery);
-      const filtered = filterHighlightVideos(raw, playerName);
+      const filtered = filterHighlightVideos(raw, playerName, cleanTeam);
       allResults = dedupeVideos([...allResults, ...filtered]);
     } catch (err) {
       console.error('YouTube API fallback also failed:', err);
