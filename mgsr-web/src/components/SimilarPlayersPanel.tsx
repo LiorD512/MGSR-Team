@@ -493,9 +493,11 @@ function SimilarPlayerCard({
 interface SimilarPlayersPanelProps {
   playerUrl: string;
   isRtl: boolean;
+  /** Position from app/Firebase — used as override for filtering when TM URL may point to wrong namesake */
+  playerPosition?: string;
 }
 
-export default function SimilarPlayersPanel({ playerUrl, isRtl }: SimilarPlayersPanelProps) {
+export default function SimilarPlayersPanel({ playerUrl, isRtl, playerPosition }: SimilarPlayersPanelProps) {
   const { t } = useLanguage();
   const { user } = useAuth();
   const [players, setPlayers] = useState<ScoutPlayerSuggestion[]>([]);
@@ -511,7 +513,7 @@ export default function SimilarPlayersPanel({ playerUrl, isRtl }: SimilarPlayers
     setError(null);
     try {
       const lang = isRtl ? 'he' : 'en';
-      const results = await findSimilarPlayers(playerUrl, lang, excludeNames);
+      const results = await findSimilarPlayers(playerUrl, lang, excludeNames, playerPosition);
       setPlayers((prev) => [...prev, ...results]);
       setHasSearched(true);
     } catch (err) {
@@ -520,7 +522,7 @@ export default function SimilarPlayersPanel({ playerUrl, isRtl }: SimilarPlayers
     } finally {
       setLoading(false);
     }
-  }, [playerUrl, isRtl]);
+  }, [playerUrl, isRtl, playerPosition]);
 
   const handleRefresh = useCallback(() => {
     const currentNames = players.map((p) => p.name);

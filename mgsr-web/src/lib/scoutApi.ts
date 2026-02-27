@@ -254,17 +254,22 @@ export interface FmIntelligenceData {
 /**
  * Find players similar to the given Transfermarkt profile URL.
  * Mirrors Android ScoutApiClient.findSimilarPlayers.
+ * Pass targetPosition to override position filtering (handles wrong TM URL for common names).
  */
 export async function findSimilarPlayers(
   playerUrl: string,
   lang: string = 'en',
-  excludeNames: string[] = []
+  excludeNames: string[] = [],
+  targetPosition?: string,
 ): Promise<ScoutPlayerSuggestion[]> {
   const search = new URLSearchParams();
   search.set('player_url', playerUrl);
   search.set('lang', lang);
   if (excludeNames.length > 0) {
     search.set('exclude', excludeNames.join(','));
+  }
+  if (targetPosition) {
+    search.set('target_position', targetPosition);
   }
   search.set('_t', String(Date.now()));
 
