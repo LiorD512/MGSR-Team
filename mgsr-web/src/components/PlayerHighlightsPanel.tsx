@@ -54,7 +54,7 @@ function YouTubeLiteEmbed({
       <img
         src={video.thumbnailUrl}
         alt={video.title}
-        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+        className="w-full h-full object-cover transition-transform duration-300 motion-reduce:transition-none group-hover:scale-105 motion-reduce:group-hover:scale-100"
         loading="lazy"
       />
       {/* Dark overlay */}
@@ -85,14 +85,22 @@ function VideoThumb({
   video,
   active,
   onClick,
+  index,
+  onKeyDown,
 }: {
   video: HighlightVideo;
   active: boolean;
   onClick: () => void;
+  index: number;
+  onKeyDown?: (e: React.KeyboardEvent, index: number) => void;
 }) {
   return (
     <button
+      type="button"
       onClick={onClick}
+      onKeyDown={onKeyDown ? (e) => onKeyDown(e, index) : undefined}
+      aria-current={active ? 'true' : undefined}
+      aria-label={`Play: ${video.title}`}
       className={`
         flex-shrink-0 w-40 md:w-48 rounded-lg overflow-hidden border-2 transition-all duration-200
         ${active
@@ -196,6 +204,14 @@ interface PlayerHighlightsPanelProps {
   playerName: string;
   teamName?: string;
   position?: string;
+  /** When player is on loan, the loaning club (for parent-club highlights) */
+  parentClub?: string;
+  /** For relevanceLanguage (e.g. "Spain" → es) */
+  nationality?: string;
+  /** Hebrew name for Israeli players */
+  fullNameHe?: string;
+  /** For league hint (e.g. "England" → Premier League) */
+  clubCountry?: string;
   isRtl?: boolean;
 }
 
@@ -203,6 +219,10 @@ export default function PlayerHighlightsPanel({
   playerName,
   teamName,
   position,
+  parentClub,
+  nationality,
+  fullNameHe,
+  clubCountry,
   isRtl: isRtlProp,
 }: PlayerHighlightsPanelProps) {
   const { t, isRtl: contextRtl } = useLanguage();
@@ -216,28 +236,51 @@ export default function PlayerHighlightsPanel({
   const [activeIndex, setActiveIndex] = useState(0);
   const [cachedAt, setCachedAt] = useState(0);
   const [sources, setSources] = useState<string[]>([]);
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const youtubeScrollRef = useRef<HTMLDivElement>(null);
+  const scorebatScrollRef = useRef<HTMLDivElement>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   // Lazy-fetch: only load when panel is expanded for the first time
   const doFetch = useCallback(async (forceRefresh = false) => {
     if (!forceRefresh && fetched) return;
     if (!playerName) return;
+    // Abort any in-flight request before starting a new one
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
     setLoading(true);
     setError(null);
     try {
-      const data = await getPlayerHighlights(playerName, teamName, position, forceRefresh);
+      const data = await getPlayerHighlights(
+        playerName,
+        teamName,
+        position,
+        forceRefresh,
+        parentClub,
+        controller.signal,
+        nationality,
+        fullNameHe,
+        clubCountry
+      );
+      if (controller.signal.aborted) return;
       setVideos(data.videos || []);
       setCachedAt(data.cachedAt || 0);
       setSources(data.sources || []);
       setActiveIndex(0);
       if (data.error) setError(data.error);
     } catch (err) {
+      if (controller.signal.aborted || (err instanceof Error && err.name === 'AbortError')) return;
       setError(err instanceof Error ? err.message : 'Failed to load highlights');
     } finally {
+      if (abortControllerRef.current === controller) {
+        abortControllerRef.current = null;
+      }
       setLoading(false);
       setFetched(true);
     }
-  }, [playerName, teamName, position, fetched]);
+  }, [playerName, teamName, position, parentClub, nationality, fullNameHe, clubCountry, fetched]);
 
   const handleToggle = useCallback(() => {
     const next = !expanded;
@@ -247,24 +290,47 @@ export default function PlayerHighlightsPanel({
     }
   }, [expanded, fetched, doFetch]);
 
-  // When active video changes, scroll thumbnail into view
-  useEffect(() => {
-    if (!scrollRef.current) return;
-    const children = scrollRef.current.children;
-    if (children[activeIndex]) {
-      (children[activeIndex] as HTMLElement).scrollIntoView({
-        behavior: 'smooth',
-        block: 'nearest',
-        inline: 'center',
-      });
-    }
-  }, [activeIndex]);
-
   const youtubeVideos = videos.filter((v) => v.source === 'youtube');
   const scorebatVideos = videos.filter((v) => v.source === 'scorebat');
   const activeVideo = videos[activeIndex] || null;
 
+  // When active video changes, scroll its thumbnail into view (use correct ref for YouTube vs Scorebat)
+  useEffect(() => {
+    const scrollContainer = activeVideo?.source === 'scorebat' ? scorebatScrollRef.current : youtubeScrollRef.current;
+    if (!scrollContainer) return;
+    const sectionVideos = activeVideo?.source === 'scorebat' ? scorebatVideos : youtubeVideos;
+    const sectionIndex = sectionVideos.findIndex((v) => v === activeVideo);
+    if (sectionIndex >= 0) {
+      const child = scrollContainer.children[sectionIndex] as HTMLElement | undefined;
+      if (child) {
+        const prefersReducedMotion = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        child.scrollIntoView({
+          behavior: prefersReducedMotion ? 'auto' : 'smooth',
+          block: 'nearest',
+          inline: 'center',
+        });
+      }
+    }
+  }, [activeIndex, activeVideo, youtubeVideos, scorebatVideos]);
+
   const cacheAgo = cachedAt > 0 ? timeAgo(new Date(cachedAt).toISOString()) : '';
+
+  const handleThumbKeyDown = useCallback(
+    (e: React.KeyboardEvent, index: number) => {
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+        e.preventDefault();
+        const next = e.key === 'ArrowLeft' ? Math.max(0, index - 1) : Math.min(videos.length - 1, index + 1);
+        setActiveIndex(next);
+        const scrollContainer = videos[next]?.source === 'scorebat' ? scorebatScrollRef.current : youtubeScrollRef.current;
+        const sectionVideos = videos[next]?.source === 'scorebat' ? scorebatVideos : youtubeVideos;
+        const sectionIndex = sectionVideos.findIndex((v) => v === videos[next]);
+        if (scrollContainer && sectionIndex >= 0) {
+          (scrollContainer.children[sectionIndex] as HTMLElement)?.focus();
+        }
+      }
+    },
+    [videos, youtubeVideos, scorebatVideos]
+  );
 
   return (
     <div className="rounded-xl bg-mgsr-card border border-mgsr-border overflow-hidden" dir={isRtl ? 'rtl' : 'ltr'}>
@@ -314,8 +380,16 @@ export default function PlayerHighlightsPanel({
           )}
 
           {!loading && error && videos.length === 0 && (
-            <div className="px-5 py-8 text-center">
-              <p className="text-sm text-mgsr-muted">{error}</p>
+            <div className="px-5 py-8 text-center space-y-3">
+              <p className="text-sm text-mgsr-muted">{t('highlights_error')}</p>
+              <p className="text-xs text-mgsr-muted/80">{error}</p>
+              <button
+                onClick={() => doFetch(true)}
+                disabled={loading}
+                className="px-4 py-2 rounded-lg bg-mgsr-teal/20 text-mgsr-teal hover:bg-mgsr-teal/30 transition-colors text-sm font-medium disabled:opacity-50"
+              >
+                {t('highlights_retry')}
+              </button>
             </div>
           )}
 
@@ -389,7 +463,7 @@ export default function PlayerHighlightsPanel({
                         </p>
                       )}
                       <div
-                        ref={scorebatVideos.length === 0 ? scrollRef : undefined}
+                        ref={youtubeScrollRef}
                         className="flex gap-3 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-mgsr-border scrollbar-track-transparent"
                       >
                         {youtubeVideos.map((v) => {
@@ -400,6 +474,8 @@ export default function PlayerHighlightsPanel({
                               video={v}
                               active={idx === activeIndex}
                               onClick={() => setActiveIndex(idx)}
+                              index={idx}
+                              onKeyDown={handleThumbKeyDown}
                             />
                           );
                         })}
@@ -414,7 +490,7 @@ export default function PlayerHighlightsPanel({
                         {t('highlights_recent_matches')}
                       </p>
                       <div
-                        ref={youtubeVideos.length === 0 ? scrollRef : undefined}
+                        ref={scorebatScrollRef}
                         className="flex gap-3 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-mgsr-border scrollbar-track-transparent"
                       >
                         {scorebatVideos.map((v) => {
@@ -425,6 +501,8 @@ export default function PlayerHighlightsPanel({
                               video={v}
                               active={idx === activeIndex}
                               onClick={() => setActiveIndex(idx)}
+                              index={idx}
+                              onKeyDown={handleThumbKeyDown}
                             />
                           );
                         })}

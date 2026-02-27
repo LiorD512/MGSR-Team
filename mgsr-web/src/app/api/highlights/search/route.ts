@@ -1,19 +1,26 @@
 /**
- * /api/highlights/search — Player Highlights Video Search
+ * /api/highlights/search — Player Highlights Video Search (Supernova)
  *
- * PRIMARY: Uses youtube-sr (scrapes YouTube, no API key, no quota limits).
- * FALLBACK: YouTube Data API v3 when youtube-sr fails (quota-limited).
- * BONUS: Scorebat for recent match highlights (top leagues only).
+ * PRIMARY (when YOUTUBE_API_KEY set): YouTube Data API v3 with filters
+ *   (videoDuration=medium, publishedAfter, topicId=football).
+ * SCRAPING: youtube-sr → @distube/ytsr fallback (no quota).
+ * FALLBACK: YouTube API when scraping fails.
+ * BONUS: Scorebat for recent match highlights.
  *
  * Results are cached in Firestore for 48 hours.
  *
  * Query params:
  *   playerName  – full player name (required)
- *   teamName    – current club name (optional, improves Scorebat matching)
- *   position    – e.g. "ST", "LW" (optional, improves query)
+ *   teamName    – current club name (optional)
+ *   position    – e.g. "ST", "LW" (optional)
+ *   parentClub  – on-loan parent club (optional)
+ *   nationality – for relevanceLanguage (optional)
+ *   fullNameHe  – Hebrew name for Israeli players (optional)
+ *   clubCountry – for league hint (optional)
  */
 import { NextRequest, NextResponse } from 'next/server';
 import YouTube from 'youtube-sr';
+import ytsr from '@distube/ytsr';
 
 export const dynamic = 'force-dynamic';
 
@@ -53,6 +60,9 @@ const TITLE_BLACKLIST = [
   'contract', 'unveiled', 'farewell', 'retirement', 'tabloid',
   'controversy', 'fight', 'red card compilation', 'funny', 'meme',
   'parody', 'fan cam', 'fancam', 'rant', 'angry',
+  'vlog', 'daily', 'viral', 'tiktok', 'shorts',
+  'fifa', 'pes', 'ea sports', 'career mode', 'ultimate team',
+  'kid', 'child', 'youth',
 ];
 
 /** Trusted football highlight channels get a quality boost */
@@ -63,7 +73,50 @@ const TRUSTED_CHANNELS = new Set([
   'dazn', 'eredivisie', 'liga portugal', 'süper lig',
   'football daily', 'b/r football', 'goal', 'onefootball',
   'football highlights', 'magicalhighlights', 'sporza',
+  'mls', 'liga mx', 'argentine primera', 'brasileirão',
 ]);
+
+/** Exclude from YouTube search query to reduce junk results */
+const QUERY_EXCLUSIONS = ' -interview -podcast -press -conference -reaction -news -transfer -fifa -pes';
+
+/** Nationality/country → YouTube relevanceLanguage (ISO 639-1) */
+const NATIONALITY_TO_LANG: Record<string, string> = {
+  spain: 'es', argentina: 'es', mexico: 'es', chile: 'es', colombia: 'es',
+  peru: 'es', uruguay: 'es', ecuador: 'es', venezuela: 'es', bolivia: 'es',
+  brazil: 'pt', portugal: 'pt',
+  france: 'fr', belgium: 'fr', switzerland: 'de',
+  germany: 'de', austria: 'de',
+  italy: 'it',
+  egypt: 'ar', saudi: 'ar', 'saudi arabia': 'ar', uae: 'ar', 'united arab emirates': 'ar',
+  morocco: 'ar', algeria: 'ar', tunisia: 'ar',
+  israel: 'he',
+  netherlands: 'nl', turkey: 'tr', russia: 'ru', japan: 'ja', korea: 'ko', 'south korea': 'ko',
+};
+
+/** Club country → league name for query */
+const COUNTRY_TO_LEAGUE: Record<string, string> = {
+  england: 'Premier League', spain: 'La Liga', germany: 'Bundesliga',
+  italy: 'Serie A', france: 'Ligue 1', portugal: 'Liga Portugal',
+  netherlands: 'Eredivisie', turkey: 'Süper Lig', belgium: 'Pro League',
+  brazil: 'Brasileirão', argentina: 'Argentine Primera', mexico: 'Liga MX',
+  usa: 'MLS', 'united states': 'MLS', scotland: 'Scottish Premiership', greece: 'Super League',
+};
+
+function appendExclusions(q: string): string {
+  return q + QUERY_EXCLUSIONS;
+}
+
+function getRelevanceLanguage(nationality?: string): string | undefined {
+  if (!nationality) return undefined;
+  const key = nationality.toLowerCase().replace(/\s+/g, ' ').trim();
+  return NATIONALITY_TO_LANG[key] || undefined;
+}
+
+function getLeagueFromCountry(clubCountry?: string): string | undefined {
+  if (!clubCountry) return undefined;
+  const key = clubCountry.toLowerCase().replace(/\s+/g, ' ').trim();
+  return COUNTRY_TO_LEAGUE[key] || undefined;
+}
 
 /* ------------------------------------------------------------------ */
 /*  Firestore admin (lightweight — reuse existing service account)    */
@@ -98,19 +151,26 @@ async function getFirestoreAdmin() {
 /*  Cache helpers                                                     */
 /* ------------------------------------------------------------------ */
 
-function cacheKey(playerName: string): string {
-  return playerName
+function cacheKey(playerName: string, teamName?: string): string {
+  const base = playerName
     .toLowerCase()
     .replace(/[^a-z0-9\u0590-\u05ff]+/g, '_')
     .replace(/^_|_$/g, '')
-    .slice(0, 100);
+    .slice(0, 80);
+  if (!teamName) return base;
+  const team = teamName
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_|_$/g, '')
+    .slice(0, 40);
+  return team ? `${base}_${team}` : base;
 }
 
-async function getCachedHighlights(playerName: string): Promise<CachedResult | null> {
+async function getCachedHighlights(playerName: string, teamName?: string): Promise<CachedResult | null> {
   try {
     const db = await getFirestoreAdmin();
     if (!db) return null;
-    const docRef = db.collection('PlayerHighlightsCache').doc(cacheKey(playerName));
+    const docRef = db.collection('PlayerHighlightsCache').doc(cacheKey(playerName, teamName));
     const snap = await docRef.get();
     if (!snap.exists) return null;
     const data = snap.data() as CachedResult;
@@ -121,15 +181,37 @@ async function getCachedHighlights(playerName: string): Promise<CachedResult | n
   }
 }
 
-async function setCachedHighlights(playerName: string, result: CachedResult): Promise<void> {
+async function setCachedHighlights(playerName: string, result: CachedResult, teamName?: string): Promise<void> {
   try {
     const db = await getFirestoreAdmin();
     if (!db) return;
-    const docRef = db.collection('PlayerHighlightsCache').doc(cacheKey(playerName));
+    const docRef = db.collection('PlayerHighlightsCache').doc(cacheKey(playerName, teamName));
     await docRef.set(result);
   } catch {
     // silently ignore cache write failures
   }
+}
+
+/* ------------------------------------------------------------------ */
+/*  Duration parser: youtube-sr may return ms (number) or "M:SS" string */
+/* ------------------------------------------------------------------ */
+function parseYoutubeSrDuration(duration: unknown): number {
+  if (duration == null) return 0;
+  if (typeof duration === 'number') {
+    // Assume milliseconds if > 100 (e.g. 253000 for 4:13)
+    if (duration > 100) return Math.round(duration / 1000);
+    // Could be seconds if small number
+    return Math.round(duration);
+  }
+  if (typeof duration === 'string') {
+    // Parse "M:SS" or "H:MM:SS" or "S"
+    const parts = duration.trim().split(':').map(Number);
+    if (parts.some(isNaN)) return 0;
+    if (parts.length === 1) return parts[0];
+    if (parts.length === 2) return parts[0] * 60 + parts[1];
+    if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
+  }
+  return 0;
 }
 
 /* ------------------------------------------------------------------ */
@@ -199,7 +281,7 @@ const TARGET_RESULTS = 6;
  * Has a 12s timeout to prevent hanging, retries with modified query on error.
  */
 async function youtubeSrSearch(query: string): Promise<HighlightVideo[]> {
-  const attempts = [query, `${query} 2024`];
+  const attempts = [appendExclusions(query), appendExclusions(`${query} 2024`)];
   
   for (const q of attempts) {
     try {
@@ -232,7 +314,7 @@ async function youtubeSrSearch(query: string): Promise<HighlightVideo[]> {
           embedUrl: `https://www.youtube.com/embed/${v.id}`,
           channelName: v.channel?.name || '',
           publishedAt: parseRelativeDate(v.uploadedAt),
-          durationSeconds: Math.round((v.duration || 0) / 1000),
+          durationSeconds: parseYoutubeSrDuration(v.duration),
           viewCount: v.views || 0,
         }));
     } catch (err) {
@@ -244,8 +326,144 @@ async function youtubeSrSearch(query: string): Promise<HighlightVideo[]> {
 }
 
 /**
- * Fallback: YouTube Data API v3 search (quota-limited, 100 searches/day).
- * Only used when youtube-sr fails entirely.
+ * Run scraper: youtube-sr first, then @distube/ytsr on empty.
+ */
+async function scraperSearch(query: string, hl?: string): Promise<HighlightVideo[]> {
+  let raw = await youtubeSrSearch(query);
+  if (raw.length === 0) {
+    raw = await ytsrSearch(query, hl);
+  }
+  return raw;
+}
+
+/**
+ * Fallback scraper: @distube/ytsr when youtube-sr fails.
+ */
+async function ytsrSearch(query: string, hl?: string): Promise<HighlightVideo[]> {
+  try {
+    const result = await Promise.race([
+      ytsr(appendExclusions(query), {
+        type: 'video',
+        limit: 15,
+        safeSearch: false,
+        hl: hl || 'en',
+      }),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('ytsr timeout')), 12000)
+      ),
+    ]);
+    const items = (result as { items?: Array<{ id?: string; name?: string; thumbnail?: string; views?: number; duration?: string; author?: { name?: string } }> }).items || [];
+    return items
+      .filter((v) => v.id && v.name)
+      .map((v) => ({
+        id: v.id!,
+        source: 'youtube' as const,
+        title: v.name || '',
+        thumbnailUrl: v.thumbnail || `https://i.ytimg.com/vi/${v.id}/hqdefault.jpg`,
+        embedUrl: `https://www.youtube.com/embed/${v.id}`,
+        channelName: v.author?.name || '',
+        publishedAt: '',
+        durationSeconds: parseYoutubeSrDuration(v.duration),
+        viewCount: v.views || 0,
+      }));
+  } catch (err) {
+    console.warn('ytsr failed:', err instanceof Error ? err.message : err);
+    return [];
+  }
+}
+
+/**
+ * YouTube Data API v3 — PRIMARY when key is set (uses filters).
+ * videoDuration=medium (4-20 min), publishedAfter (2y), topicId=football.
+ */
+async function youtubeApiPrimary(
+  query: string,
+  relevanceLanguage?: string,
+): Promise<HighlightVideo[]> {
+  if (!YOUTUBE_API_KEY) return [];
+
+  const publishedAfter = new Date();
+  publishedAfter.setFullYear(publishedAfter.getFullYear() - 2);
+  const publishedAfterStr = publishedAfter.toISOString();
+
+  const params = new URLSearchParams({
+    key: YOUTUBE_API_KEY,
+    part: 'snippet',
+    type: 'video',
+    q: appendExclusions(query),
+    order: 'relevance',
+    maxResults: '15',
+    safeSearch: 'none',
+    videoEmbeddable: 'true',
+    videoDuration: 'medium',
+    publishedAfter: publishedAfterStr,
+    topicId: '/m/02vx4', // Football
+  });
+  if (relevanceLanguage) params.set('relevanceLanguage', relevanceLanguage);
+
+  try {
+    const searchRes = await fetch(
+      `https://www.googleapis.com/youtube/v3/search?${params.toString()}`,
+      { signal: AbortSignal.timeout(15000) }
+    );
+    if (!searchRes.ok) return [];
+
+    const searchData = await searchRes.json();
+    const items = searchData.items || [];
+    if (items.length === 0) return [];
+
+    const videoIds = items.map((it: { id: { videoId: string } }) => it.id.videoId).join(',');
+    const detailParams = new URLSearchParams({
+      key: YOUTUBE_API_KEY,
+      part: 'contentDetails,statistics',
+      id: videoIds,
+    });
+    const detailRes = await fetch(
+      `https://www.googleapis.com/youtube/v3/videos?${detailParams.toString()}`,
+      { signal: AbortSignal.timeout(10000) }
+    );
+    const detailData = detailRes.ok ? await detailRes.json() : { items: [] };
+    const detailMap = new Map<string, { duration: number; views: number }>();
+    for (const d of detailData.items || []) {
+      detailMap.set(d.id, {
+        duration: parseDuration(d.contentDetails?.duration || ''),
+        views: parseInt(d.statistics?.viewCount || '0', 10),
+      });
+    }
+
+    return items.map((item: {
+      id: { videoId: string };
+      snippet: {
+        title?: string;
+        channelTitle?: string;
+        publishedAt?: string;
+        thumbnails?: { high?: { url?: string }; medium?: { url?: string }; default?: { url?: string } };
+      };
+    }) => {
+      const videoId = item.id.videoId;
+      const detail = detailMap.get(videoId);
+      return {
+        id: videoId,
+        source: 'youtube' as const,
+        title: item.snippet?.title || '',
+        thumbnailUrl:
+          item.snippet?.thumbnails?.high?.url ||
+          item.snippet?.thumbnails?.medium?.url ||
+          item.snippet?.thumbnails?.default?.url || '',
+        embedUrl: `https://www.youtube.com/embed/${videoId}`,
+        channelName: item.snippet?.channelTitle || '',
+        publishedAt: item.snippet?.publishedAt || '',
+        durationSeconds: detail?.duration || 0,
+        viewCount: detail?.views || 0,
+      };
+    });
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Fallback: YouTube Data API v3 search (no filters, when primary fails).
  */
 async function youtubeApiFallback(
   query: string,
@@ -257,7 +475,7 @@ async function youtubeApiFallback(
       key: YOUTUBE_API_KEY,
       part: 'snippet',
       type: 'video',
-      q: query,
+      q: appendExclusions(query),
       order: 'relevance',
       maxResults: '10',
       safeSearch: 'none',
@@ -450,17 +668,23 @@ function scoreAndSort(videos: HighlightVideo[], playerName: string, teamName?: s
     }
 
     // Trusted channel bonus
-    if (TRUSTED_CHANNELS.has(a.channelName.toLowerCase())) scoreA += 50;
-    if (TRUSTED_CHANNELS.has(b.channelName.toLowerCase())) scoreB += 50;
+    if (TRUSTED_CHANNELS.has((a.channelName || '').toLowerCase())) scoreA += 50;
+    if (TRUSTED_CHANNELS.has((b.channelName || '').toLowerCase())) scoreB += 50;
 
     // Title contains "highlight" — strong signal (EN + ES/PT)
     if (titleA.includes('highlight') || titleA.includes('jugadas') || titleA.includes('melhores')) scoreA += 30;
     if (titleB.includes('highlight') || titleB.includes('jugadas') || titleB.includes('melhores')) scoreB += 30;
 
-    // Title contains relevant keywords (EN + ES/PT)
-    const goodWords = ['goals', 'skills', 'assists', 'best', 'compilation', 'amazing', 'magic',
+    // Title contains relevant keywords (EN + ES/PT + FR + DE + IT + AR)
+    const goodWords = [
+      'goals', 'skills', 'assists', 'best', 'compilation', 'amazing', 'magic',
       'goles', 'gol', 'golazo', 'jugadas', 'asistencias', 'resumen', 'compacto',
-      'mejores', 'crack', 'destaques', 'lances'];
+      'mejores', 'crack', 'destaques', 'lances',
+      'buts', 'meilleurs moments', 'résumé', 'resume',
+      'tore', 'best of',
+      'migliori', 'miglior',
+      'أهداف', 'تسجيلات',
+    ];
     for (const w of goodWords) {
       if (titleA.includes(w)) scoreA += 10;
       if (titleB.includes(w)) scoreB += 10;
@@ -537,106 +761,133 @@ function dedupeVideos(videos: HighlightVideo[]): HighlightVideo[] {
  * If youtube-sr fails entirely on all tiers, falls back to YouTube Data API.
  * Each tier is FREE — no API key needed, no quota consumed.
  */
+const CURRENT_YEAR = new Date().getFullYear();
+const PREV_YEAR = CURRENT_YEAR - 1;
+
 async function searchYouTube(
   playerName: string,
   position?: string,
   teamName?: string,
+  parentClub?: string,
+  nationality?: string,
+  fullNameHe?: string,
+  clubCountry?: string,
 ): Promise<HighlightVideo[]> {
   const posLabel = position === 'GK' ? 'saves' : 'goals skills';
+  const relLang = getRelevanceLanguage(nationality);
+  const hl = relLang || 'en';
+  const league = getLeagueFromCountry(clubCountry);
 
-  // Clean team name for queries (strip FC prefix/suffix)
+  // Name variants: last name (for distinctive names), fullNameHe for Israeli
+  const nameParts = playerName.trim().split(/\s+/).filter(Boolean);
+  const lastName = nameParts.length >= 2 ? nameParts[nameParts.length - 1] : null;
+  const isDistinctiveLastName = lastName && lastName.length >= 4 && !['silva', 'santos', 'oliveira', 'gonzalez', 'rodriguez', 'martinez', 'fernandez'].includes(lastName.toLowerCase());
+
   const cleanTeam = teamName
     ? teamName.replace(/^fc\s+|\s+fc$/gi, '').trim()
     : '';
+  const cleanParentClub = parentClub
+    ? parentClub.replace(/^fc\s+|\s+fc$/gi, '').trim()
+    : '';
+  const filterTeam = [cleanTeam, cleanParentClub].filter(Boolean).join(' ') || undefined;
 
-  // Phase A: team-specific tiers — always search ALL of these (never stop early)
-  // This ensures we find team-specific videos even for common names
   const teamTiers: Array<{ query: string; label: string }> = cleanTeam ? [
-    {
-      label: 'A1: team + position (EN)',
-      query: `${playerName} ${cleanTeam} highlights ${posLabel}`,
-    },
-    {
-      label: 'A2: team (EN)',
-      query: `${playerName} ${cleanTeam} highlights`,
-    },
-    {
-      // Spanish keywords — critical for Latin American leagues (Liga 1 Peru,
-      // Liga MX, Argentine Primera, etc.) where ~90% of YouTube content is
-      // in Spanish. "goles jugadas" = "goals plays/skills"
-      label: 'A3: team (ES)',
-      query: `${playerName} ${cleanTeam} goles jugadas`,
-    },
+    { label: 'A1: team + position', query: `${playerName} ${cleanTeam} highlights ${posLabel}` },
+    { label: 'A2: team', query: `${playerName} ${cleanTeam} highlights` },
+    { label: 'A3: team (ES)', query: `${playerName} ${cleanTeam} goles jugadas` },
+    { label: 'A4: team + year', query: `${playerName} ${cleanTeam} highlights ${CURRENT_YEAR}` },
   ] : [];
 
-  // Phase B: broader tiers — stop once we reach TARGET_RESULTS
+  if (league) {
+    teamTiers.push({ label: 'A5: league', query: `${playerName} ${league} highlights` });
+  }
+  if (cleanParentClub && cleanParentClub !== cleanTeam) {
+    teamTiers.push({ label: 'A6: parent club', query: `${playerName} ${cleanParentClub} highlights ${posLabel}` });
+  }
+
   const broadTiers: Array<{ query: string; label: string }> = [
-    {
-      label: 'B1: highlights + position',
-      query: `${playerName} highlights ${posLabel}`,
-    },
-    {
-      label: 'B2: broad highlights',
-      query: `${playerName} highlights`,
-    },
-    {
-      label: 'B3: goals only',
-      query: `${playerName} goals`,
-    },
-    {
-      // Plain name search — catches personal highlight reels, agent compilations,
-      // and recent videos titled with just the player name (e.g. "Florent Poulolo"
-      // by FPD Agency) that don't include keywords like "highlights" in the title.
-      label: 'B4: name only',
-      query: `${playerName}`,
-    },
+    { label: 'B1: highlights + position', query: `${playerName} highlights ${posLabel}` },
+    { label: 'B2: highlights', query: `${playerName} highlights` },
+    { label: 'B3: highlights + year', query: `${playerName} highlights ${PREV_YEAR}` },
+    { label: 'B4: goals', query: `${playerName} goals` },
+    { label: 'B5: name only', query: playerName },
   ];
 
+  if (isDistinctiveLastName && lastName) {
+    broadTiers.push({ label: 'B6: lastName + team', query: `${lastName} ${cleanTeam || ''} highlights`.trim() });
+  }
+  if (fullNameHe && fullNameHe.trim()) {
+    broadTiers.push({ label: 'B7: fullNameHe', query: `${fullNameHe.trim()} highlights` });
+  }
+
   let allResults: HighlightVideo[] = [];
-  let youtubeSrWorked = false;
+  let scraperWorked = false;
 
-  // --- Phase A: always run ALL team-specific tiers ---
+  // --- Try YouTube API first when key is set (best quality with filters) ---
+  if (YOUTUBE_API_KEY) {
+    const apiQueries = [
+      cleanTeam ? `${playerName} ${cleanTeam} highlights ${posLabel}` : `${playerName} highlights ${posLabel}`,
+      `${playerName} highlights`,
+    ];
+    for (const q of apiQueries) {
+      const raw = await youtubeApiPrimary(q, relLang);
+      if (raw.length > 0) {
+        const filtered = filterHighlightVideos(raw, playerName, filterTeam);
+        allResults = dedupeVideos([...allResults, ...filtered]);
+        if (allResults.length >= TARGET_RESULTS) break;
+      }
+    }
+  }
+
+  // --- Phase A: team-specific tiers (scraper) ---
   for (const tier of teamTiers) {
+    if (allResults.length >= TARGET_RESULTS) break;
     try {
-      const raw = await youtubeSrSearch(tier.query);
-      if (raw.length > 0) youtubeSrWorked = true;
-      const filtered = filterHighlightVideos(raw, playerName, cleanTeam);
+      const raw = await scraperSearch(tier.query, hl);
+      if (raw.length > 0) scraperWorked = true;
+      const filtered = filterHighlightVideos(raw, playerName, filterTeam);
       allResults = dedupeVideos([...allResults, ...filtered]);
     } catch (err) {
-      console.error(`youtube-sr ${tier.label} error:`, err);
+      console.error(`[highlights] ${tier.label} error:`, err);
     }
   }
 
-  // --- Phase B: broader search, always run to fill up to TARGET_RESULTS ---
+  // --- Phase B: broader tiers — stop when enough, skip if we have MIN_ACCEPTABLE_RESULTS from Phase A ---
   for (const tier of broadTiers) {
-    if (allResults.length >= TARGET_RESULTS) break; // already have enough
+    if (allResults.length >= TARGET_RESULTS) break;
     try {
-      const raw = await youtubeSrSearch(tier.query);
-      if (raw.length > 0) youtubeSrWorked = true;
-      const filtered = filterHighlightVideos(raw, playerName, cleanTeam);
+      const raw = await scraperSearch(tier.query, hl);
+      if (raw.length > 0) scraperWorked = true;
+      const filtered = filterHighlightVideos(raw, playerName, filterTeam);
       allResults = dedupeVideos([...allResults, ...filtered]);
     } catch (err) {
-      console.error(`youtube-sr ${tier.label} error:`, err);
+      console.error(`[highlights] ${tier.label} error:`, err);
     }
   }
 
-  // If youtube-sr returned zero results across ALL tiers, try YouTube Data API as fallback
-  if (!youtubeSrWorked && YOUTUBE_API_KEY) {
-    console.log('youtube-sr returned 0 across all tiers, falling back to YouTube Data API');
-    try {
-      const fallbackQuery = cleanTeam
-        ? `${playerName} ${cleanTeam} highlights ${posLabel}`
-        : `${playerName} highlights ${posLabel}`;
-      const raw = await youtubeApiFallback(fallbackQuery);
-      const filtered = filterHighlightVideos(raw, playerName, cleanTeam);
-      allResults = dedupeVideos([...allResults, ...filtered]);
-    } catch (err) {
-      console.error('YouTube API fallback also failed:', err);
+  // --- Fallback: YouTube API when scraper returned < MIN_ACCEPTABLE_RESULTS ---
+  if (allResults.length < MIN_ACCEPTABLE_RESULTS && YOUTUBE_API_KEY) {
+    console.log('[highlights] Scraper returned < 2 results, falling back to YouTube API');
+    const fallbackQueries = [
+      cleanTeam ? `${playerName} ${cleanTeam} highlights ${posLabel}` : `${playerName} highlights ${posLabel}`,
+      `${playerName} highlights`,
+      cleanParentClub ? `${playerName} ${cleanParentClub} highlights` : null,
+    ].filter(Boolean) as string[];
+    for (const fallbackQuery of fallbackQueries) {
+      try {
+        const raw = await youtubeApiFallback(fallbackQuery);
+        if (raw.length > 0) {
+          const filtered = filterHighlightVideos(raw, playerName, filterTeam);
+          allResults = dedupeVideos([...allResults, ...filtered]);
+          break;
+        }
+      } catch (err) {
+        console.error('[highlights] YouTube API fallback failed:', fallbackQuery, err);
+      }
     }
   }
 
-  // Score, sort, and return top results
-  const sorted = scoreAndSort(allResults, playerName, cleanTeam);
+  const sorted = scoreAndSort(allResults, playerName, filterTeam);
   return sorted.slice(0, TARGET_RESULTS);
 }
 
@@ -721,6 +972,10 @@ export async function GET(request: NextRequest) {
     const playerName = searchParams.get('playerName')?.trim();
     const teamName = searchParams.get('teamName')?.trim() || '';
     const position = searchParams.get('position')?.trim() || '';
+    const parentClub = searchParams.get('parentClub')?.trim() || '';
+    const nationality = searchParams.get('nationality')?.trim() || '';
+    const fullNameHe = searchParams.get('fullNameHe')?.trim() || '';
+    const clubCountry = searchParams.get('clubCountry')?.trim() || '';
     const forceRefresh = searchParams.get('refresh') === '1';
 
     if (!playerName) {
@@ -730,9 +985,11 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // 1. Check cache (skip if forceRefresh or if cache has empty results from old API-based search)
+    const cleanTeam = teamName.replace(/^fc\s+|\s+fc$/gi, '').trim();
+
+    // 1. Check cache (skip if forceRefresh)
     if (!forceRefresh) {
-      const cached = await getCachedHighlights(playerName);
+      const cached = await getCachedHighlights(playerName, cleanTeam || undefined);
       if (cached && cached.videos.length > 0) {
         return NextResponse.json(cached, {
           headers: { 'Cache-Control': 'private, max-age=3600' },
@@ -744,7 +1001,15 @@ export async function GET(request: NextRequest) {
 
     // 2. Fetch from both sources in parallel
     const [youtubeVideos, scorebatVideos] = await Promise.all([
-      searchYouTube(playerName, position, teamName),
+      searchYouTube(
+        playerName,
+        position || undefined,
+        teamName || undefined,
+        parentClub || undefined,
+        nationality || undefined,
+        fullNameHe || undefined,
+        clubCountry || undefined,
+      ),
       searchScorebat(teamName),
     ]);
 
@@ -768,7 +1033,7 @@ export async function GET(request: NextRequest) {
     if (allVideos.length === 0) {
       result.cachedAt = Date.now() - CACHE_TTL_MS + (4 * 60 * 60 * 1000); // expire in 4h
     }
-    await setCachedHighlights(playerName, result);
+    await setCachedHighlights(playerName, result, cleanTeam || undefined);
 
     return NextResponse.json(result, {
       headers: {

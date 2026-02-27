@@ -26,20 +26,34 @@ export interface HighlightsResponse {
 /**
  * Fetch highlight videos for a player.
  * Results are cached server-side for 48h — safe to call on every page load.
+ * @param parentClub - When player is on loan, the loaning club (for parent-club highlights)
+ * @param nationality - For relevanceLanguage (e.g. "Spain" → es)
+ * @param fullNameHe - Hebrew name for Israeli players
+ * @param clubCountry - For league hint (e.g. "England" → Premier League)
+ * @param signal - Optional AbortSignal to cancel the request
  */
 export async function getPlayerHighlights(
   playerName: string,
   teamName?: string,
   position?: string,
   refresh?: boolean,
+  parentClub?: string,
+  signal?: AbortSignal,
+  nationality?: string,
+  fullNameHe?: string,
+  clubCountry?: string,
 ): Promise<HighlightsResponse> {
   const params = new URLSearchParams({ playerName });
   if (teamName) params.set('teamName', teamName);
   if (position) params.set('position', position);
+  if (parentClub) params.set('parentClub', parentClub);
+  if (nationality) params.set('nationality', nationality);
+  if (fullNameHe) params.set('fullNameHe', fullNameHe);
+  if (clubCountry) params.set('clubCountry', clubCountry);
   if (refresh) params.set('refresh', '1');
 
   const res = await fetch(`/api/highlights/search?${params.toString()}`, {
-    signal: AbortSignal.timeout(30000),
+    signal: signal ?? AbortSignal.timeout(30000),
     ...(refresh ? { cache: 'no-store' as RequestCache } : {}),
   });
 

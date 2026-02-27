@@ -1228,6 +1228,10 @@ export default function PlayerInfoPage() {
                 playerName={merged.fullName || player?.fullName || ''}
                 teamName={merged.currentClub?.clubName || player?.currentClub?.clubName || ''}
                 position={merged.positions?.[0] || player?.positions?.[0] || ''}
+                parentClub={merged.isOnLoan ? (merged.onLoanFromClub || player?.onLoanFromClub) : undefined}
+                nationality={merged.nationality || player?.nationality}
+                fullNameHe={merged.fullNameHe || player?.fullNameHe}
+                clubCountry={merged.currentClub?.clubCountry || player?.currentClub?.clubCountry}
                 isRtl={isRtl}
               />
             )}

@@ -13,6 +13,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@distube/ytsr": "^2.0.4",
     "@google/generative-ai": "^0.24.1",
     "cheerio": "^0.22.0",
     "firebase": "^10.7.0",
