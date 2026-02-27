@@ -1211,7 +1211,7 @@ export default function PlayerInfoPage() {
               <SimilarPlayersPanel
                 playerUrl={merged.tmProfile || player?.tmProfile || ''}
                 isRtl={isRtl}
-                playerPosition={merged.positions?.[0] || player?.position}
+                playerPosition={merged.positions?.[0] || player?.positions?.[0]}
               />
             )}
 
