@@ -402,6 +402,48 @@ export async function handlePlayer(urlParam: string) {
   };
 }
 
+/**
+ * Get the most recent transfer fee (in euros) for a player.
+ * Used to filter out players bought for big money (e.g. >€2.5M) who are not realistic for Ligat Ha'Al.
+ * Returns null if free transfer, loan, or parse error.
+ */
+export async function getLastTransferFee(profileUrl: string): Promise<{ fee: number; date?: string } | null> {
+  const id = extractPlayerIdFromUrl(profileUrl);
+  if (!id) return null;
+  const transfersUrl = profileUrl
+    .replace(/\/profil\//, '/transfers/')
+    .replace(/\/player\//, '/transfers/')
+    .replace(/\/leistungsdaten\//, '/transfers/');
+  const url = transfersUrl.includes('/transfers/') ? transfersUrl : `${profileUrl.replace(/\/$/, '')}/transfers`;
+  try {
+    const html = await fetchHtmlWithRetry(url);
+    const $ = cheerio.load(html);
+    let lastFee: number | null = null;
+    let lastDate: string | undefined;
+    $('table.items tbody tr, div.responsive-table table.items tbody tr').each((_, row) => {
+      const $row = $(row);
+      const tds = $row.find('td');
+      if (tds.length < 4) return;
+      const rechts = $row.find('td.rechts');
+      let feeCell = (rechts.last().length ? rechts.last() : rechts.first()).text().trim();
+      if (!feeCell) feeCell = tds.last().text().trim();
+      const dateCell = tds.eq(1).text().trim() || tds.eq(0).text().trim();
+      const feeLower = feeCell.toLowerCase();
+      if (feeLower.includes('free') || feeLower.includes('loan') || feeLower.includes('-') || !feeCell || feeLower === '?') return;
+      const normalized = feeCell.replace(/,/g, '.');
+      const parsed = parseValueToEuros(normalized);
+      if (parsed > 0) {
+        lastFee = parsed;
+        lastDate = dateCell || undefined;
+        return false;
+      }
+    });
+    return lastFee != null ? { fee: lastFee, date: lastDate } : null;
+  } catch {
+    return null;
+  }
+}
+
 /** Last season stats: goals, assists, appearances, minutes. Season 2024 = 2024/25. */
 export interface PlayerPerformanceStats {
   season: string;
