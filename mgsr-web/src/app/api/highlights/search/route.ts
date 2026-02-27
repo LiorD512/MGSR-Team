@@ -142,6 +142,48 @@ function parseDuration(iso: string): number {
 }
 
 /* ------------------------------------------------------------------ */
+/*  Relative date parser (youtube-sr returns "9 months ago" etc.)     */
+/* ------------------------------------------------------------------ */
+/**
+ * youtube-sr returns uploadedAt as a relative string like "2 weeks ago",
+ * "9 months ago", "1 year ago" — NOT an ISO date.
+ * This converts it to an approximate ISO date string.
+ * If the input is already ISO-like, returns it as-is.
+ */
+function parseRelativeDate(raw: string | undefined | null): string {
+  if (!raw) return '';
+  // If it already looks like an ISO date (starts with 4 digits), return as-is
+  if (/^\d{4}-/.test(raw)) return raw;
+  // if it's a valid Date already, return ISO
+  const directParse = new Date(raw);
+  if (!isNaN(directParse.getTime()) && raw.length > 8) return directParse.toISOString();
+
+  // Parse relative strings like "2 weeks ago", "9 months ago", "1 year ago"
+  const match = raw.match(/(\d+)\s*(second|minute|hour|day|week|month|year)s?\s*ago/i);
+  if (!match) {
+    // Handle "Streamed X ago" pattern
+    const streamed = raw.match(/streamed\s+(\d+)\s*(second|minute|hour|day|week|month|year)s?\s*ago/i);
+    if (!streamed) return '';
+    return computeDateFromRelative(parseInt(streamed[1]), streamed[2].toLowerCase());
+  }
+  return computeDateFromRelative(parseInt(match[1]), match[2].toLowerCase());
+}
+
+function computeDateFromRelative(amount: number, unit: string): string {
+  const now = new Date();
+  switch (unit) {
+    case 'second': now.setSeconds(now.getSeconds() - amount); break;
+    case 'minute': now.setMinutes(now.getMinutes() - amount); break;
+    case 'hour': now.setHours(now.getHours() - amount); break;
+    case 'day': now.setDate(now.getDate() - amount); break;
+    case 'week': now.setDate(now.getDate() - amount * 7); break;
+    case 'month': now.setMonth(now.getMonth() - amount); break;
+    case 'year': now.setFullYear(now.getFullYear() - amount); break;
+  }
+  return now.toISOString();
+}
+
+/* ------------------------------------------------------------------ */
 /*  youtube-sr — PRIMARY search (no API key, no quota, unlimited)    */
 /*                                                                    */
 /*  Scrapes YouTube search results directly. Works for any player.    */
@@ -189,7 +231,7 @@ async function youtubeSrSearch(query: string): Promise<HighlightVideo[]> {
           thumbnailUrl: v.thumbnail?.url || `https://i.ytimg.com/vi/${v.id}/hqdefault.jpg`,
           embedUrl: `https://www.youtube.com/embed/${v.id}`,
           channelName: v.channel?.name || '',
-          publishedAt: v.uploadedAt || '',
+          publishedAt: parseRelativeDate(v.uploadedAt),
           durationSeconds: Math.round((v.duration || 0) / 1000),
           viewCount: v.views || 0,
         }));
@@ -442,12 +484,16 @@ function scoreAndSort(videos: HighlightVideo[], playerName: string, teamName?: s
     const ageA = Date.now() - new Date(a.publishedAt).getTime();
     const ageB = Date.now() - new Date(b.publishedAt).getTime();
     const yearMs = 365 * 24 * 60 * 60 * 1000;
-    if (ageA < yearMs) scoreA += 15;
-    else if (ageA < 2 * yearMs) scoreA += 10;
-    else if (ageA < 3 * yearMs) scoreA += 5;
-    if (ageB < yearMs) scoreB += 15;
-    else if (ageB < 2 * yearMs) scoreB += 10;
-    else if (ageB < 3 * yearMs) scoreB += 5;
+    if (!isNaN(ageA)) {
+      if (ageA < yearMs) scoreA += 15;
+      else if (ageA < 2 * yearMs) scoreA += 10;
+      else if (ageA < 3 * yearMs) scoreA += 5;
+    }
+    if (!isNaN(ageB)) {
+      if (ageB < yearMs) scoreB += 15;
+      else if (ageB < 2 * yearMs) scoreB += 10;
+      else if (ageB < 3 * yearMs) scoreB += 5;
+    }
 
     return scoreB - scoreA;
   });
@@ -480,11 +526,13 @@ function dedupeVideos(videos: HighlightVideo[]): HighlightVideo[] {
  *   B1: "name highlights position"
  *   B2: "name highlights"
  *   B3: "name goals"
+ *   B4: "name"                              ← catches agent reels, recent uploads
  *
  * When team unknown:
  *   B1: "name highlights position"
  *   B2: "name highlights"
  *   B3: "name goals"
+ *   B4: "name"
  *
  * If youtube-sr fails entirely on all tiers, falls back to YouTube Data API.
  * Each tier is FREE — no API key needed, no quota consumed.
@@ -521,7 +569,7 @@ async function searchYouTube(
     },
   ] : [];
 
-  // Phase B: broader tiers — stop once we have enough results
+  // Phase B: broader tiers — stop once we reach TARGET_RESULTS
   const broadTiers: Array<{ query: string; label: string }> = [
     {
       label: 'B1: highlights + position',
@@ -534,6 +582,13 @@ async function searchYouTube(
     {
       label: 'B3: goals only',
       query: `${playerName} goals`,
+    },
+    {
+      // Plain name search — catches personal highlight reels, agent compilations,
+      // and recent videos titled with just the player name (e.g. "Florent Poulolo"
+      // by FPD Agency) that don't include keywords like "highlights" in the title.
+      label: 'B4: name only',
+      query: `${playerName}`,
     },
   ];
 
@@ -552,21 +607,16 @@ async function searchYouTube(
     }
   }
 
-  // --- Phase B: broader search, stop once we have enough ---
-  if (allResults.length < MIN_ACCEPTABLE_RESULTS) {
-    for (const tier of broadTiers) {
-      try {
-        const raw = await youtubeSrSearch(tier.query);
-        if (raw.length > 0) youtubeSrWorked = true;
-        const filtered = filterHighlightVideos(raw, playerName, cleanTeam);
-        allResults = dedupeVideos([...allResults, ...filtered]);
-
-        if (allResults.length >= MIN_ACCEPTABLE_RESULTS) {
-          break; // We have enough good results
-        }
-      } catch (err) {
-        console.error(`youtube-sr ${tier.label} error:`, err);
-      }
+  // --- Phase B: broader search, always run to fill up to TARGET_RESULTS ---
+  for (const tier of broadTiers) {
+    if (allResults.length >= TARGET_RESULTS) break; // already have enough
+    try {
+      const raw = await youtubeSrSearch(tier.query);
+      if (raw.length > 0) youtubeSrWorked = true;
+      const filtered = filterHighlightVideos(raw, playerName, cleanTeam);
+      allResults = dedupeVideos([...allResults, ...filtered]);
+    } catch (err) {
+      console.error(`youtube-sr ${tier.label} error:`, err);
     }
   }
 

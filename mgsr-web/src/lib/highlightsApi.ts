@@ -78,6 +78,13 @@ export function formatViews(views: number): string {
 export function timeAgo(dateStr: string): string {
   if (!dateStr) return '';
   const d = new Date(dateStr);
+  if (isNaN(d.getTime())) {
+    // If it's already a relative string like "9 months ago", return it directly
+    if (/\d+\s*(second|minute|hour|day|week|month|year)s?\s*ago/i.test(dateStr)) {
+      return dateStr;
+    }
+    return '';
+  }
   const now = Date.now();
   const diffMs = now - d.getTime();
   const days = Math.floor(diffMs / 86_400_000);
