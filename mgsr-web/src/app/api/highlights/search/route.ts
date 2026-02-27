@@ -333,15 +333,43 @@ function filterHighlightVideos(
 /**
  * Score and sort videos by quality/relevance.
  */
-function scoreAndSort(videos: HighlightVideo[], playerName: string): HighlightVideo[] {
+function scoreAndSort(videos: HighlightVideo[], playerName: string, teamName?: string): HighlightVideo[] {
   const playerNorm = stripAccents(playerName);
   const nameParts = playerNorm.split(/\s+/).filter(p => p.length >= 2);
+  const teamNorm = teamName ? stripAccents(teamName) : '';
+  // Also create team word parts for partial matching (e.g. "atletico" from "Atletico Madrid")
+  const teamParts = teamNorm ? teamNorm.split(/\s+/).filter(p => p.length >= 3) : [];
 
   return [...videos].sort((a, b) => {
     let scoreA = 0, scoreB = 0;
 
     const titleA = stripAccents(a.title);
     const titleB = stripAccents(b.title);
+    const channelA = stripAccents(a.channelName);
+    const channelB = stripAccents(b.channelName);
+
+    // Team name match — STRONGEST signal for disambiguation
+    // (e.g. "Santiago González Atlas" vs generic "Santiago Gonzalez")
+    if (teamNorm) {
+      const teamInA = titleA.includes(teamNorm) || channelA.includes(teamNorm) ||
+        teamParts.some(tp => titleA.includes(tp));
+      const teamInB = titleB.includes(teamNorm) || channelB.includes(teamNorm) ||
+        teamParts.some(tp => titleB.includes(tp));
+      if (teamInA) scoreA += 80;
+      if (teamInB) scoreB += 80;
+    }
+
+    // Penalty for college / amateur / unrelated context
+    const collegePenalty = ['njcaa', 'naia', 'ncaa', 'college soccer', 'community college',
+      'junior college', ' cc ', ' juco ', 'high school', 'd1 ', 'd2 ', 'd3 ',
+      'division i', 'division ii', 'division iii', 'all-american',
+      'recruitment', 'recruiting', 'commit'];
+    for (const cp of collegePenalty) {
+      if (titleA.includes(cp) || channelA.includes(cp)) { scoreA -= 60; break; }
+    }
+    for (const cp of collegePenalty) {
+      if (titleB.includes(cp) || channelB.includes(cp)) { scoreB -= 60; break; }
+    }
 
     // Trusted channel bonus
     if (TRUSTED_CHANNELS.has(a.channelName.toLowerCase())) scoreA += 50;
@@ -402,10 +430,17 @@ function dedupeVideos(videos: HighlightVideo[]): HighlightVideo[] {
 /**
  * Multi-tier YouTube search using youtube-sr (no quota limits!).
  *
- * Tier 1: "name highlights goals/skills"  (most specific)
- * Tier 2: "name team highlights"          (with team context)
- * Tier 3: "name highlights"               (broader)
- * Tier 4: "name goals"                    (last resort)
+ * When team is known (most cases):
+ *   Tier 1: "name team highlights position"  (most specific)
+ *   Tier 2: "name team highlights"           (with team)
+ *   Tier 3: "name highlights position"       (without team)
+ *   Tier 4: "name highlights"                (broader)
+ *   Tier 5: "name goals"                     (last resort)
+ *
+ * When team unknown:
+ *   Tier 1: "name highlights position"
+ *   Tier 2: "name highlights"
+ *   Tier 3: "name goals"
  *
  * If youtube-sr fails entirely on all tiers, falls back to YouTube Data API.
  * Each tier is FREE — no API key needed, no quota consumed.
@@ -423,21 +458,27 @@ async function searchYouTube(
     : '';
 
   // Define search tiers — ordered from most specific to broadest
+  // When team is known, search with team FIRST to avoid false positives
+  // (e.g. "Santiago González" is common — "Santiago González Atlas" is specific)
   const tiers: Array<{ query: string; label: string }> = [
-    {
-      label: 'Tier 1: highlights + position',
-      query: `${playerName} highlights ${posLabel}`,
-    },
+    ...(cleanTeam ? [{
+      label: 'Tier 1: with team + position',
+      query: `${playerName} ${cleanTeam} highlights ${posLabel}`,
+    }] : []),
     ...(cleanTeam ? [{
       label: 'Tier 2: with team',
       query: `${playerName} ${cleanTeam} highlights`,
     }] : []),
     {
-      label: 'Tier 3: broad highlights',
+      label: 'Tier 3: highlights + position',
+      query: `${playerName} highlights ${posLabel}`,
+    },
+    {
+      label: 'Tier 4: broad highlights',
       query: `${playerName} highlights`,
     },
     {
-      label: 'Tier 4: goals only',
+      label: 'Tier 5: goals only',
       query: `${playerName} goals`,
     },
   ];
@@ -476,7 +517,7 @@ async function searchYouTube(
   }
 
   // Score, sort, and return top results
-  const sorted = scoreAndSort(allResults, playerName);
+  const sorted = scoreAndSort(allResults, playerName, cleanTeam);
   return sorted.slice(0, TARGET_RESULTS);
 }
 
@@ -578,6 +619,8 @@ export async function GET(request: NextRequest) {
           headers: { 'Cache-Control': 'private, max-age=3600' },
         });
       }
+    } else {
+      console.log(`[highlights] Force refresh for: ${playerName}`);
     }
 
     // 2. Fetch from both sources in parallel
@@ -609,7 +652,11 @@ export async function GET(request: NextRequest) {
     await setCachedHighlights(playerName, result);
 
     return NextResponse.json(result, {
-      headers: { 'Cache-Control': 'private, max-age=3600' },
+      headers: {
+        'Cache-Control': forceRefresh
+          ? 'no-store, no-cache, must-revalidate'
+          : 'private, max-age=3600',
+      },
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Highlights search failed';

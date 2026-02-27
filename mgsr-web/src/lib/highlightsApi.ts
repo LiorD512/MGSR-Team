@@ -40,6 +40,7 @@ export async function getPlayerHighlights(
 
   const res = await fetch(`/api/highlights/search?${params.toString()}`, {
     signal: AbortSignal.timeout(30000),
+    ...(refresh ? { cache: 'no-store' as RequestCache } : {}),
   });
 
   if (!res.ok) {
