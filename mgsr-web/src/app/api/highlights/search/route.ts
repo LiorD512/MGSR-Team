@@ -1,8 +1,11 @@
 /**
  * /api/highlights/search — Player Highlights Video Search
  *
- * Fetches highlight videos from YouTube Data API v3 + Scorebat (free).
- * Results are cached in Firestore for 48 hours to conserve YouTube quota.
+ * PRIMARY: Uses youtube-sr (scrapes YouTube, no API key, no quota limits).
+ * FALLBACK: YouTube Data API v3 when youtube-sr fails (quota-limited).
+ * BONUS: Scorebat for recent match highlights (top leagues only).
+ *
+ * Results are cached in Firestore for 48 hours.
  *
  * Query params:
  *   playerName  – full player name (required)
@@ -10,6 +13,7 @@
  *   position    – e.g. "ST", "LW" (optional, improves query)
  */
 import { NextRequest, NextResponse } from 'next/server';
+import YouTube from 'youtube-sr';
 
 export const dynamic = 'force-dynamic';
 
@@ -138,110 +142,157 @@ function parseDuration(iso: string): number {
 }
 
 /* ------------------------------------------------------------------ */
-/*  YouTube Data API v3 — Multi-tier cascading search                 */
+/*  youtube-sr — PRIMARY search (no API key, no quota, unlimited)    */
 /*                                                                    */
-/*  Problem: superstars (Salah, Haaland) have 4-20min compilations    */
-/*  uploaded every month, but most players only have short clips       */
-/*  (1-3 min) and/or older compilations (3-5+ years ago).             */
-/*                                                                    */
-/*  Strategy: progressively relax filters until we find results.      */
-/*  Each tier costs 100 YouTube API quota units (search) + 1 (detail) */
-/*  so we stop as soon as we have enough results.                     */
+/*  Scrapes YouTube search results directly. Works for any player.    */
+/*  Falls back to YouTube Data API v3 only if youtube-sr fails.       */
 /* ------------------------------------------------------------------ */
 
-/** Minimum acceptable videos before we try the next search tier */
 const MIN_ACCEPTABLE_RESULTS = 2;
 const TARGET_RESULTS = 6;
 
 /**
- * Single YouTube search call → filtered HighlightVideo[]
- * Does NOT apply videoDuration filter — we fetch details and filter ourselves
- * so we can accept 1-45 min instead of YouTube's rigid 4-20 min "medium" bucket.
+ * Search YouTube using youtube-sr (scraping, no API key needed).
+ * Returns raw HighlightVideo[] from a single query.
+ * Has a 12s timeout to prevent hanging, retries with modified query on error.
  */
-async function youtubeSearchOnce(
-  query: string,
-  publishedAfter?: string,
-): Promise<HighlightVideo[]> {
-  const searchParams = new URLSearchParams({
-    key: YOUTUBE_API_KEY,
-    part: 'snippet',
-    type: 'video',
-    q: query,
-    order: 'relevance',
-    maxResults: '10',
-    safeSearch: 'none',
-    videoEmbeddable: 'true',
-    relevanceLanguage: 'en',
-  });
-  if (publishedAfter) searchParams.set('publishedAfter', publishedAfter);
-
-  const searchRes = await fetch(
-    `https://www.googleapis.com/youtube/v3/search?${searchParams.toString()}`,
-    { signal: AbortSignal.timeout(15000) }
-  );
-  if (!searchRes.ok) {
-    const errText = await searchRes.text().catch(() => '');
-    // If quota exceeded, don't try more tiers
-    if (searchRes.status === 403 && errText.includes('quotaExceeded')) {
-      throw new Error('QUOTA_EXCEEDED');
+async function youtubeSrSearch(query: string): Promise<HighlightVideo[]> {
+  const attempts = [query, `${query} 2024`];
+  
+  for (const q of attempts) {
+    try {
+      // Race against a 12s timeout to prevent hanging
+      const result = await Promise.race([
+        YouTube.search(q, { limit: 15, type: 'video' }),
+        new Promise<null>((_, reject) =>
+          setTimeout(() => reject(new Error('youtube-sr timeout')), 12000)
+        ),
+      ]);
+      
+      if (!result || (result as unknown[]).length === 0) continue;
+      const videos = result as Array<{
+        id?: string;
+        title?: string;
+        thumbnail?: { url?: string };
+        channel?: { name?: string };
+        uploadedAt?: string;
+        duration?: number;
+        views?: number;
+      }>;
+      
+      return videos
+        .filter(v => v.id && v.title)
+        .map(v => ({
+          id: v.id!,
+          source: 'youtube' as const,
+          title: v.title || '',
+          thumbnailUrl: v.thumbnail?.url || `https://i.ytimg.com/vi/${v.id}/hqdefault.jpg`,
+          embedUrl: `https://www.youtube.com/embed/${v.id}`,
+          channelName: v.channel?.name || '',
+          publishedAt: v.uploadedAt || '',
+          durationSeconds: Math.round((v.duration || 0) / 1000),
+          viewCount: v.views || 0,
+        }));
+    } catch (err) {
+      console.warn(`youtube-sr failed for "${q}":`, err instanceof Error ? err.message : err);
+      // Try next query variant
     }
-    console.error('YouTube search failed:', searchRes.status, errText);
+  }
+  return [];
+}
+
+/**
+ * Fallback: YouTube Data API v3 search (quota-limited, 100 searches/day).
+ * Only used when youtube-sr fails entirely.
+ */
+async function youtubeApiFallback(
+  query: string,
+): Promise<HighlightVideo[]> {
+  if (!YOUTUBE_API_KEY) return [];
+
+  try {
+    const searchParams = new URLSearchParams({
+      key: YOUTUBE_API_KEY,
+      part: 'snippet',
+      type: 'video',
+      q: query,
+      order: 'relevance',
+      maxResults: '10',
+      safeSearch: 'none',
+      videoEmbeddable: 'true',
+    });
+
+    const searchRes = await fetch(
+      `https://www.googleapis.com/youtube/v3/search?${searchParams.toString()}`,
+      { signal: AbortSignal.timeout(15000) }
+    );
+    if (!searchRes.ok) return [];
+
+    const searchData = await searchRes.json();
+    const items = searchData.items || [];
+    if (items.length === 0) return [];
+
+    // Fetch video details (duration, views)
+    const videoIds = items.map((it: { id: { videoId: string } }) => it.id.videoId).join(',');
+    const detailParams = new URLSearchParams({
+      key: YOUTUBE_API_KEY,
+      part: 'contentDetails,statistics',
+      id: videoIds,
+    });
+    const detailRes = await fetch(
+      `https://www.googleapis.com/youtube/v3/videos?${detailParams.toString()}`,
+      { signal: AbortSignal.timeout(10000) }
+    );
+    const detailData = detailRes.ok ? await detailRes.json() : { items: [] };
+    const detailMap = new Map<string, { duration: number; views: number }>();
+    for (const d of detailData.items || []) {
+      detailMap.set(d.id, {
+        duration: parseDuration(d.contentDetails?.duration || ''),
+        views: parseInt(d.statistics?.viewCount || '0', 10),
+      });
+    }
+
+    return items.map((item: {
+      id: { videoId: string };
+      snippet: {
+        title?: string;
+        channelTitle?: string;
+        publishedAt?: string;
+        thumbnails?: {
+          high?: { url?: string };
+          medium?: { url?: string };
+          default?: { url?: string };
+        };
+      };
+    }) => {
+      const videoId = item.id.videoId;
+      const detail = detailMap.get(videoId);
+      return {
+        id: videoId,
+        source: 'youtube' as const,
+        title: item.snippet?.title || '',
+        thumbnailUrl:
+          item.snippet?.thumbnails?.high?.url ||
+          item.snippet?.thumbnails?.medium?.url ||
+          item.snippet?.thumbnails?.default?.url || '',
+        embedUrl: `https://www.youtube.com/embed/${videoId}`,
+        channelName: item.snippet?.channelTitle || '',
+        publishedAt: item.snippet?.publishedAt || '',
+        durationSeconds: detail?.duration || 0,
+        viewCount: detail?.views || 0,
+      };
+    });
+  } catch {
     return [];
   }
-  const searchData = await searchRes.json();
-  const items = searchData.items || [];
-  if (items.length === 0) return [];
+}
 
-  // Fetch video details (duration, views) — 1 quota unit
-  const videoIds = items.map((it: { id: { videoId: string } }) => it.id.videoId).join(',');
-  const detailParams = new URLSearchParams({
-    key: YOUTUBE_API_KEY,
-    part: 'contentDetails,statistics',
-    id: videoIds,
-  });
-  const detailRes = await fetch(
-    `https://www.googleapis.com/youtube/v3/videos?${detailParams.toString()}`,
-    { signal: AbortSignal.timeout(10000) }
-  );
-  const detailData = detailRes.ok ? await detailRes.json() : { items: [] };
-  const detailMap = new Map<string, { duration: number; views: number }>();
-  for (const d of detailData.items || []) {
-    detailMap.set(d.id, {
-      duration: parseDuration(d.contentDetails?.duration || ''),
-      views: parseInt(d.statistics?.viewCount || '0', 10),
-    });
-  }
-
-  return items.map((item: {
-    id: { videoId: string };
-    snippet: {
-      title?: string;
-      channelTitle?: string;
-      publishedAt?: string;
-      thumbnails?: {
-        high?: { url?: string };
-        medium?: { url?: string };
-        default?: { url?: string };
-      };
-    };
-  }) => {
-    const videoId = item.id.videoId;
-    const detail = detailMap.get(videoId);
-    return {
-      id: videoId,
-      source: 'youtube' as const,
-      title: item.snippet?.title || '',
-      thumbnailUrl:
-        item.snippet?.thumbnails?.high?.url ||
-        item.snippet?.thumbnails?.medium?.url ||
-        item.snippet?.thumbnails?.default?.url || '',
-      embedUrl: `https://www.youtube.com/embed/${videoId}`,
-      channelName: item.snippet?.channelTitle || '',
-      publishedAt: item.snippet?.publishedAt || '',
-      durationSeconds: detail?.duration || 0,
-      viewCount: detail?.views || 0,
-    };
-  });
+/**
+ * Strip diacritics/accents for fuzzy name matching.
+ * "Gaël" → "gael", "André" → "andre", "Müller" → "muller"
+ */
+function stripAccents(str: string): string {
+  return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 }
 
 /**
@@ -254,22 +305,22 @@ function filterHighlightVideos(
   minDuration = 45, // allow slightly shorter clips for lesser-known players
   maxDuration = 2700, // 45 min
 ): HighlightVideo[] {
-  const playerLower = playerName.toLowerCase();
-  const nameParts = playerLower.split(/\s+/).filter(p => p.length >= 2);
+  const playerNorm = stripAccents(playerName);
+  const nameParts = playerNorm.split(/\s+/).filter(p => p.length >= 2);
   // For name matching, prefer last name (usually longer and more unique)
   const significantParts = nameParts.filter(p => p.length >= 3);
 
   return videos.filter(v => {
-    const titleLower = v.title.toLowerCase();
+    const titleNorm = stripAccents(v.title);
 
     // Skip blacklisted content
-    if (TITLE_BLACKLIST.some(bw => titleLower.includes(bw))) return false;
+    if (TITLE_BLACKLIST.some(bw => titleNorm.includes(bw))) return false;
 
     // Player name relevance check — at least one significant name part must appear
-    // For very short names (e.g. "Dia"), also check channel description
+    // Uses accent-stripped comparison so "Gaël" matches "Gael", "André" matches "Andre"
     const nameInTitle = significantParts.length > 0
-      ? significantParts.some(part => titleLower.includes(part))
-      : nameParts.some(part => titleLower.includes(part));
+      ? significantParts.some(part => titleNorm.includes(part))
+      : nameParts.some(part => titleNorm.includes(part));
     if (!nameInTitle) return false;
 
     // Duration check — allow 45s-45min (much more lenient than before)
@@ -283,30 +334,33 @@ function filterHighlightVideos(
  * Score and sort videos by quality/relevance.
  */
 function scoreAndSort(videos: HighlightVideo[], playerName: string): HighlightVideo[] {
-  const playerLower = playerName.toLowerCase();
-  const nameParts = playerLower.split(/\s+/).filter(p => p.length >= 2);
+  const playerNorm = stripAccents(playerName);
+  const nameParts = playerNorm.split(/\s+/).filter(p => p.length >= 2);
 
   return [...videos].sort((a, b) => {
     let scoreA = 0, scoreB = 0;
+
+    const titleA = stripAccents(a.title);
+    const titleB = stripAccents(b.title);
 
     // Trusted channel bonus
     if (TRUSTED_CHANNELS.has(a.channelName.toLowerCase())) scoreA += 50;
     if (TRUSTED_CHANNELS.has(b.channelName.toLowerCase())) scoreB += 50;
 
     // Title contains "highlight" — strong signal
-    if (a.title.toLowerCase().includes('highlight')) scoreA += 30;
-    if (b.title.toLowerCase().includes('highlight')) scoreB += 30;
+    if (titleA.includes('highlight')) scoreA += 30;
+    if (titleB.includes('highlight')) scoreB += 30;
 
     // Title contains relevant keywords
     const goodWords = ['goals', 'skills', 'assists', 'best', 'compilation', 'amazing', 'magic'];
     for (const w of goodWords) {
-      if (a.title.toLowerCase().includes(w)) scoreA += 10;
-      if (b.title.toLowerCase().includes(w)) scoreB += 10;
+      if (titleA.includes(w)) scoreA += 10;
+      if (titleB.includes(w)) scoreB += 10;
     }
 
     // Full name match in title (better relevance)
-    const fullNameParts = nameParts.filter(p => a.title.toLowerCase().includes(p));
-    const fullNamePartsB = nameParts.filter(p => b.title.toLowerCase().includes(p));
+    const fullNameParts = nameParts.filter(p => titleA.includes(p));
+    const fullNamePartsB = nameParts.filter(p => titleB.includes(p));
     scoreA += fullNameParts.length * 15;
     scoreB += fullNamePartsB.length * 15;
 
@@ -346,85 +400,78 @@ function dedupeVideos(videos: HighlightVideo[]): HighlightVideo[] {
 }
 
 /**
- * Multi-tier YouTube search: progressively relaxes search constraints
- * to find highlights for any player, from superstar to obscure.
+ * Multi-tier YouTube search using youtube-sr (no quota limits!).
  *
- * Tier 1: "name highlights goals/skills" — last 2 years
- * Tier 2: "name team highlights"         — last 2 years
- * Tier 3: "name highlights"              — last 5 years
- * Tier 4: "name highlights"              — all time
- * Tier 5: "name goals"                   — all time (last resort)
+ * Tier 1: "name highlights goals/skills"  (most specific)
+ * Tier 2: "name team highlights"          (with team context)
+ * Tier 3: "name highlights"               (broader)
+ * Tier 4: "name goals"                    (last resort)
  *
- * Each tier costs ~101 quota units. We stop when we have ≥2 good results.
- * Worst case = 5 tiers × 101 = 505 units (half of daily 10k free quota).
- * But with Firestore caching (48h), repeat searches cost 0.
+ * If youtube-sr fails entirely on all tiers, falls back to YouTube Data API.
+ * Each tier is FREE — no API key needed, no quota consumed.
  */
 async function searchYouTube(
   playerName: string,
   position?: string,
   teamName?: string,
 ): Promise<HighlightVideo[]> {
-  if (!YOUTUBE_API_KEY) return [];
-
   const posLabel = position === 'GK' ? 'saves' : 'goals skills';
-  const negKeywords = '-interview -press -conference -reaction -podcast -transfer';
-
-  const twoYearsAgo = new Date();
-  twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2);
-  const fiveYearsAgo = new Date();
-  fiveYearsAgo.setFullYear(fiveYearsAgo.getFullYear() - 5);
 
   // Clean team name for queries (strip FC prefix/suffix)
   const cleanTeam = teamName
     ? teamName.replace(/^fc\s+|\s+fc$/gi, '').trim()
     : '';
 
-  // Define search tiers — ordered from most strict to most relaxed
-  const tiers: Array<{ query: string; publishedAfter?: string; label: string }> = [
+  // Define search tiers — ordered from most specific to broadest
+  const tiers: Array<{ query: string; label: string }> = [
     {
-      label: 'Tier 1: strict 2y',
-      query: `${playerName} highlights ${posLabel} ${negKeywords}`,
-      publishedAfter: twoYearsAgo.toISOString(),
+      label: 'Tier 1: highlights + position',
+      query: `${playerName} highlights ${posLabel}`,
     },
     ...(cleanTeam ? [{
-      label: 'Tier 2: with team 2y',
-      query: `${playerName} ${cleanTeam} highlights ${negKeywords}`,
-      publishedAfter: twoYearsAgo.toISOString(),
+      label: 'Tier 2: with team',
+      query: `${playerName} ${cleanTeam} highlights`,
     }] : []),
     {
-      label: 'Tier 3: 5y window',
-      query: `${playerName} highlights ${posLabel}`,
-      publishedAfter: fiveYearsAgo.toISOString(),
+      label: 'Tier 3: broad highlights',
+      query: `${playerName} highlights`,
     },
     {
-      label: 'Tier 4: all time',
-      query: `${playerName} highlights ${posLabel}`,
-    },
-    {
-      label: 'Tier 5: minimal goals',
+      label: 'Tier 4: goals only',
       query: `${playerName} goals`,
     },
   ];
 
   let allResults: HighlightVideo[] = [];
+  let youtubeSrWorked = false;
 
   for (const tier of tiers) {
     try {
-      const raw = await youtubeSearchOnce(tier.query, tier.publishedAfter);
+      const raw = await youtubeSrSearch(tier.query);
+      if (raw.length > 0) youtubeSrWorked = true;
       const filtered = filterHighlightVideos(raw, playerName);
       allResults = dedupeVideos([...allResults, ...filtered]);
 
       if (allResults.length >= MIN_ACCEPTABLE_RESULTS) {
-        // We have enough, stop searching
-        break;
+        break; // We have enough good results
       }
     } catch (err) {
-      if (err instanceof Error && err.message === 'QUOTA_EXCEEDED') {
-        console.warn('YouTube quota exceeded, stopping search tiers');
-        break;
-      }
-      console.error(`YouTube ${tier.label} error:`, err);
-      // Continue to next tier
+      console.error(`youtube-sr ${tier.label} error:`, err);
+    }
+  }
+
+  // If youtube-sr returned zero results across ALL tiers, try YouTube Data API as fallback
+  if (!youtubeSrWorked && YOUTUBE_API_KEY) {
+    console.log('youtube-sr returned 0 across all tiers, falling back to YouTube Data API');
+    try {
+      const fallbackQuery = cleanTeam
+        ? `${playerName} ${cleanTeam} highlights ${posLabel}`
+        : `${playerName} highlights ${posLabel}`;
+      const raw = await youtubeApiFallback(fallbackQuery);
+      const filtered = filterHighlightVideos(raw, playerName);
+      allResults = dedupeVideos([...allResults, ...filtered]);
+    } catch (err) {
+      console.error('YouTube API fallback also failed:', err);
     }
   }
 
@@ -514,6 +561,7 @@ export async function GET(request: NextRequest) {
     const playerName = searchParams.get('playerName')?.trim();
     const teamName = searchParams.get('teamName')?.trim() || '';
     const position = searchParams.get('position')?.trim() || '';
+    const forceRefresh = searchParams.get('refresh') === '1';
 
     if (!playerName) {
       return NextResponse.json(
@@ -522,12 +570,14 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // 1. Check cache
-    const cached = await getCachedHighlights(playerName);
-    if (cached && cached.videos.length > 0) {
-      return NextResponse.json(cached, {
-        headers: { 'Cache-Control': 'private, max-age=3600' },
-      });
+    // 1. Check cache (skip if forceRefresh or if cache has empty results from old API-based search)
+    if (!forceRefresh) {
+      const cached = await getCachedHighlights(playerName);
+      if (cached && cached.videos.length > 0) {
+        return NextResponse.json(cached, {
+          headers: { 'Cache-Control': 'private, max-age=3600' },
+        });
+      }
     }
 
     // 2. Fetch from both sources in parallel
@@ -551,10 +601,10 @@ export async function GET(request: NextRequest) {
     };
 
     // 3. Cache results
-    // Cache empty results for only 12 hours (they might get videos later)
+    // Cache empty results for only 4 hours (retry sooner in case youtube-sr had a hiccup)
     // Cache non-empty results for 48 hours
     if (allVideos.length === 0) {
-      result.cachedAt = Date.now() - CACHE_TTL_MS + (12 * 60 * 60 * 1000); // expire in 12h
+      result.cachedAt = Date.now() - CACHE_TTL_MS + (4 * 60 * 60 * 1000); // expire in 4h
     }
     await setCachedHighlights(playerName, result);
 
