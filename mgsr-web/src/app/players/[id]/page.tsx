@@ -1211,7 +1211,14 @@ export default function PlayerInfoPage() {
               <SimilarPlayersPanel
                 playerUrl={merged.tmProfile || player?.tmProfile || ''}
                 isRtl={isRtl}
+                playerName={merged.fullName || player?.fullName}
+                playerClub={merged.currentClub?.clubName || player?.currentClub?.clubName}
                 playerPosition={merged.positions?.[0] || player?.positions?.[0]}
+                playerAge={merged.age || player?.age}
+                playerFoot={merged.foot || player?.foot}
+                playerHeight={merged.height || player?.height}
+                playerNationality={merged.nationality || player?.nationality}
+                playerMarketValue={merged.marketValue || player?.marketValue}
               />
             )}
 

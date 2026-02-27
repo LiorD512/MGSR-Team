@@ -251,16 +251,29 @@ export interface FmIntelligenceData {
 // Similar Players API
 // ========================
 
+/** Extra context from the app's own player data (Firebase) for reliable matching. */
+export interface SimilarPlayersContext {
+  playerName?: string;
+  playerClub?: string;
+  playerPosition?: string;
+  playerAge?: string;
+  playerFoot?: string;
+  playerHeight?: string;
+  playerNationality?: string;
+  playerMarketValue?: string;
+}
+
 /**
  * Find players similar to the given Transfermarkt profile URL.
  * Mirrors Android ScoutApiClient.findSimilarPlayers.
- * Pass targetPosition to override position filtering (handles wrong TM URL for common names).
+ * Pass ctx with player metadata from Firebase so the server can find the
+ * RIGHT player even when the TM URL points to a wrong namesake.
  */
 export async function findSimilarPlayers(
   playerUrl: string,
   lang: string = 'en',
   excludeNames: string[] = [],
-  targetPosition?: string,
+  ctx?: SimilarPlayersContext,
 ): Promise<ScoutPlayerSuggestion[]> {
   const search = new URLSearchParams();
   search.set('player_url', playerUrl);
@@ -268,9 +281,15 @@ export async function findSimilarPlayers(
   if (excludeNames.length > 0) {
     search.set('exclude', excludeNames.join(','));
   }
-  if (targetPosition) {
-    search.set('target_position', targetPosition);
-  }
+  // Send all available player context for reliable server-side matching
+  if (ctx?.playerName) search.set('player_name', ctx.playerName);
+  if (ctx?.playerClub) search.set('player_club', ctx.playerClub);
+  if (ctx?.playerPosition) search.set('target_position', ctx.playerPosition);
+  if (ctx?.playerAge) search.set('player_age', ctx.playerAge);
+  if (ctx?.playerFoot) search.set('player_foot', ctx.playerFoot);
+  if (ctx?.playerHeight) search.set('player_height', ctx.playerHeight);
+  if (ctx?.playerNationality) search.set('player_nationality', ctx.playerNationality);
+  if (ctx?.playerMarketValue) search.set('player_market_value', ctx.playerMarketValue);
   search.set('_t', String(Date.now()));
 
   const url = `${SCOUT_BASE_URL}/similar-players?${search.toString()}`;
