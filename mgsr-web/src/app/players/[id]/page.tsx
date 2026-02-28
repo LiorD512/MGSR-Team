@@ -13,7 +13,7 @@ import AppLayout from '@/components/AppLayout';
 import Link from 'next/link';
 import { toWhatsAppUrl } from '@/lib/whatsapp';
 import { createShare } from '@/lib/shareApi';
-import { getPinnedHighlights } from '@/lib/highlightsApi';
+import type { HighlightVideo } from '@/lib/highlightsApi';
 import { parseMarketValue } from '@/lib/releases';
 import { extractSalaryRange, extractFreeTransfer, type NoteModel } from '@/lib/noteParser';
 import { flattenPdf } from '@/lib/pdfFlatten';
@@ -70,6 +70,7 @@ interface Player {
     nationality?: string;
     lastUpdatedAt?: number;
   };
+  pinnedHighlights?: HighlightVideo[];
 }
 
 interface Account {
@@ -571,7 +572,7 @@ export default function PlayerInfoPage() {
           // Fall back to buildScoutSummary in createShare
         }
 
-        const pinnedHighlights = getPinnedHighlights(id);
+        const pinnedHighlights = (player?.pinnedHighlights ?? []) as HighlightVideo[];
         const highlightsPayload = pinnedHighlights.length > 0
           ? pinnedHighlights.map((v) => ({
               id: v.id,
@@ -1241,6 +1242,7 @@ export default function PlayerInfoPage() {
             {(merged.fullName || player?.fullName) && (
               <PlayerHighlightsPanel
                 playerId={id}
+                pinnedHighlights={(player?.pinnedHighlights ?? []) as HighlightVideo[]}
                 playerName={merged.fullName || player?.fullName || ''}
                 teamName={merged.currentClub?.clubName || player?.currentClub?.clubName || ''}
                 position={merged.positions?.[0] || player?.positions?.[0] || ''}

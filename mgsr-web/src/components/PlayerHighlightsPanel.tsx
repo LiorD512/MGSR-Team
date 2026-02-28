@@ -4,6 +4,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import {
   getPlayerHighlights,
+  savePinnedHighlights,
   formatDuration,
   formatViews,
   timeAgo,
@@ -224,33 +225,12 @@ function EmptyState({ isRtl }: { isRtl: boolean }) {
 /*  Main Component                                                    */
 /* ------------------------------------------------------------------ */
 
-const STORAGE_KEY_PREFIX = 'player-highlights:';
 const MAX_PINNED = 2;
-
-function getPinnedFromStorage(playerId: string): HighlightVideo[] {
-  if (typeof window === 'undefined') return [];
-  try {
-    const raw = localStorage.getItem(`${STORAGE_KEY_PREFIX}${playerId}`);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw) as HighlightVideo[];
-    return Array.isArray(parsed) ? parsed.slice(0, MAX_PINNED) : [];
-  } catch {
-    return [];
-  }
-}
-
-function savePinnedToStorage(playerId: string, videos: HighlightVideo[]) {
-  if (typeof window === 'undefined') return;
-  try {
-    const toSave = videos.slice(0, MAX_PINNED);
-    localStorage.setItem(`${STORAGE_KEY_PREFIX}${playerId}`, JSON.stringify(toSave));
-  } catch {
-    // ignore
-  }
-}
 
 interface PlayerHighlightsPanelProps {
   playerId: string;
+  /** Pinned highlights from Firestore (Players.pinnedHighlights). Source of truth. */
+  pinnedHighlights: HighlightVideo[];
   playerName: string;
   teamName?: string;
   position?: string;
@@ -269,6 +249,7 @@ type Mode = 'pinned' | 'select' | 'replace';
 
 export default function PlayerHighlightsPanel({
   playerId,
+  pinnedHighlights,
   playerName,
   teamName,
   position,
@@ -281,11 +262,12 @@ export default function PlayerHighlightsPanel({
   const { t, isRtl: contextRtl } = useLanguage();
   const isRtl = isRtlProp ?? contextRtl;
 
-  const [pinned, setPinned] = useState<HighlightVideo[]>(() => getPinnedFromStorage(playerId));
+  const pinned = pinnedHighlights?.slice(0, MAX_PINNED) ?? [];
   const [mode, setMode] = useState<Mode>(() =>
-    getPinnedFromStorage(playerId).length > 0 ? 'pinned' : 'select'
+    (pinnedHighlights?.length ?? 0) > 0 ? 'pinned' : 'select'
   );
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [saving, setSaving] = useState(false);
 
   const [videos, setVideos] = useState<HighlightVideo[]>([]);
   const [loading, setLoading] = useState(false);
@@ -299,12 +281,11 @@ export default function PlayerHighlightsPanel({
   const scorebatScrollRef = useRef<HTMLDivElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  // Sync pinned from storage when playerId changes (e.g. navigation)
+  // Sync mode when pinnedHighlights change (e.g. from Firestore)
   useEffect(() => {
-    const stored = getPinnedFromStorage(playerId);
-    setPinned(stored);
-    setMode(stored.length > 0 ? 'pinned' : 'select');
-  }, [playerId]);
+    const hasPinned = (pinnedHighlights?.length ?? 0) > 0;
+    setMode((m) => (m === 'replace' ? m : hasPinned ? 'pinned' : 'select'));
+  }, [pinnedHighlights?.length]);
 
   // Reset activeIndex when switching mode or when display list changes
   useEffect(() => {
@@ -327,13 +308,19 @@ export default function PlayerHighlightsPanel({
     });
   }, []);
 
-  const confirmSelection = useCallback(() => {
+  const confirmSelection = useCallback(async () => {
     const selectedVideos = videos.filter((v) => selectedIds.has(v.id));
     if (selectedVideos.length === 0) return;
-    setPinned(selectedVideos);
-    savePinnedToStorage(playerId, selectedVideos);
-    setMode('pinned');
-    setSelectedIds(new Set());
+    setSaving(true);
+    try {
+      await savePinnedHighlights(playerId, selectedVideos);
+      setMode('pinned');
+      setSelectedIds(new Set());
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save');
+    } finally {
+      setSaving(false);
+    }
   }, [videos, selectedIds, playerId]);
 
   const cancelReplace = useCallback(() => {
@@ -724,10 +711,14 @@ export default function PlayerHighlightsPanel({
                   <div className="flex items-center gap-3">
                     <button
                       onClick={confirmSelection}
-                      disabled={selectedIds.size === 0}
+                      disabled={selectedIds.size === 0 || saving}
                       className="px-4 py-2 rounded-lg bg-mgsr-teal text-white hover:bg-mgsr-teal/90 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      {mode === 'replace' ? t('highlights_confirm_replacement') : t('highlights_confirm_selection')}
+                      {saving
+                        ? (t('highlights_saving') || 'Saving...')
+                        : mode === 'replace'
+                          ? t('highlights_confirm_replacement')
+                          : t('highlights_confirm_selection')}
                     </button>
                     {mode === 'replace' && (
                       <button

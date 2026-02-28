@@ -3,6 +3,9 @@
  * Calls /api/highlights/search (Next.js API route) which proxies to YouTube + Scorebat.
  */
 
+import { doc, updateDoc } from 'firebase/firestore';
+import { db } from './firebase';
+
 export interface HighlightVideo {
   id: string;
   source: 'youtube' | 'scorebat';
@@ -88,19 +91,27 @@ export function formatViews(views: number): string {
   return String(views);
 }
 
-const STORAGE_KEY_PREFIX = 'player-highlights:';
+const MAX_PINNED = 2;
 
-/** Get pinned highlight videos from localStorage (for share). */
+/** Save pinned highlights to Firestore (Players collection). Persists across devices. */
+export async function savePinnedHighlights(playerId: string, videos: HighlightVideo[]): Promise<void> {
+  const toSave = videos.slice(0, MAX_PINNED).map((v) => ({
+    id: v.id,
+    source: v.source,
+    title: v.title,
+    thumbnailUrl: v.thumbnailUrl,
+    embedUrl: v.embedUrl,
+    channelName: v.channelName,
+    publishedAt: v.publishedAt,
+    durationSeconds: v.durationSeconds,
+    viewCount: v.viewCount,
+  }));
+  await updateDoc(doc(db, 'Players', playerId), { pinnedHighlights: toSave });
+}
+
+/** @deprecated Use player.pinnedHighlights from Firestore instead. Kept for fallback. */
 export function getPinnedHighlights(playerId: string): HighlightVideo[] {
-  if (typeof window === 'undefined') return [];
-  try {
-    const raw = localStorage.getItem(`${STORAGE_KEY_PREFIX}${playerId}`);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw) as HighlightVideo[];
-    return Array.isArray(parsed) ? parsed.slice(0, 2) : [];
-  } catch {
-    return [];
-  }
+  return [];
 }
 
 /** Format "time ago" from a date string */

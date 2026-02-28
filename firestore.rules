@@ -7,6 +7,11 @@ service cloud.firestore {
       allow create: if request.auth != null;
       allow update, delete: if false;
     }
+    // Players: read/write for authenticated users (pinnedHighlights, etc.)
+    // Merge with existing Players rules in Firebase Console if needed
+    match /Players/{playerId} {
+      allow read, write: if request.auth != null;
+    }
     // Add your existing rules below. This file may need to be merged with
     // rules you already have in Firebase Console.
   }
