@@ -10,6 +10,7 @@ const { getMessaging } = require("firebase-admin/messaging");
 const { getFirestore } = require("firebase-admin/firestore");
 const { runMandateExpiry } = require("./workers/mandateExpiry");
 const { runReleasesRefresh } = require("./workers/releasesRefresh");
+const { runScoutAgent } = require("./workers/scoutAgent");
 
 initializeApp();
 const db = getFirestore();
@@ -222,6 +223,32 @@ exports.releasesRefreshScheduled = onSchedule(
     console.log("[releasesRefreshScheduled] Triggered at 03:00 Israel time");
     await runReleasesRefresh();
     console.log("[releasesRefreshScheduled] Completed");
+  }
+);
+
+/**
+ * Runs daily at 05:00 Israel time. AI Scout Agent Network — fetches players from
+ * scout server, assigns to country agents, matches scouting profiles, writes to ScoutProfiles.
+ */
+exports.scoutAgentScheduled = onSchedule(
+  { schedule: "0 5 * * *", timeZone: "Asia/Jerusalem" },
+  async () => {
+    console.log("[scoutAgentScheduled] Triggered at 05:00 Israel time");
+    try {
+      await runScoutAgent();
+      console.log("[scoutAgentScheduled] Completed");
+    } catch (err) {
+      console.error("[scoutAgentScheduled] Failed:", err);
+      const db = getFirestore();
+      await db.collection("ScoutAgentRuns").add({
+        runAt: Date.now(),
+        status: "failed",
+        profilesFound: 0,
+        leaguesScanned: 0,
+        durationMs: 0,
+        error: err?.message || String(err),
+      });
+    }
   }
 );
 

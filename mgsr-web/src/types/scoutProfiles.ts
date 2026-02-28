@@ -1,0 +1,27 @@
+export interface ScoutProfileResponse {
+  id: string;
+  tmProfileUrl: string;
+  agentId: string;
+  profileType: string;
+  profileTypeLabel: string;
+  profileTypeLabelHe: string;
+  playerName: string;
+  profileImage: string | null;
+  age: number;
+  position: string;
+  marketValue: string;
+  marketValueEuro: number;
+  club: string;
+  league: string;
+  leagueTier: number;
+  nationality: string | null;
+  matchReason: string;
+  matchScore: number;
+  fmPa: number | null;
+  fmCa: number | null;
+  contractExpires: string | null;
+  discoveredAt: number;
+  lastRefreshedAt: number;
+  agentName: string;
+  agentFlag: string;
+}

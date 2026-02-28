@@ -9,6 +9,8 @@ import { db } from '@/lib/firebase';
 import { getCurrentAccountForShortlist, SHARED_SHORTLIST_DOC_ID } from '@/lib/accounts';
 import { extractPlayerIdFromUrl } from '@/lib/api';
 import AppLayout from '@/components/AppLayout';
+import { AGENTS_CONFIG, type AgentId } from '@/lib/scoutAgentConfig';
+import type { ScoutProfileResponse } from '@/types/scoutProfiles';
 
 interface DiscoveryCandidate {
   name: string;
@@ -108,6 +110,13 @@ export default function WarRoomPage() {
   const [addError, setAddError] = useState<string | null>(null);
   const fetchIdRef = useRef(0);
 
+  // War Room main tabs: Discovery | AI Scout Agents
+  const [warRoomTab, setWarRoomTab] = useState<'discovery' | 'scout-agents'>('discovery');
+  const [scoutProfiles, setScoutProfiles] = useState<ScoutProfileResponse[]>([]);
+  const [loadingScoutProfiles, setLoadingScoutProfiles] = useState(false);
+  const [scoutLastRunAt, setScoutLastRunAt] = useState<number | null>(null);
+  const [scoutAgentFilter, setScoutAgentFilter] = useState<AgentId | 'all'>('all');
+
   useEffect(() => {
     if (!loading && !user) router.replace('/login');
   }, [user, loading, router]);
@@ -187,6 +196,49 @@ export default function WarRoomPage() {
     },
     [user, rosterTmProfiles, lang]
   );
+
+  const addToShortlistFromProfile = useCallback(
+    async (p: ScoutProfileResponse) => {
+      const c: DiscoveryCandidate = {
+        name: p.playerName,
+        position: p.position,
+        age: String(p.age),
+        marketValue: p.marketValue,
+        transfermarktUrl: p.tmProfileUrl,
+        club: p.club,
+        nationality: p.nationality ?? undefined,
+        profileImage: p.profileImage ?? undefined,
+        source: 'general',
+        sourceLabel: 'AI Scout',
+      };
+      return addToShortlist(c);
+    },
+    [addToShortlist]
+  );
+
+  const fetchScoutProfiles = useCallback(async () => {
+    setLoadingScoutProfiles(true);
+    try {
+      const params = new URLSearchParams();
+      if (scoutAgentFilter !== 'all') params.set('agentId', scoutAgentFilter);
+      const res = await fetch(`/api/war-room/scout-profiles?${params.toString()}`, {
+        signal: AbortSignal.timeout(30000),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+      setScoutProfiles(data.profiles ?? []);
+      setScoutLastRunAt(data.lastRunAt ?? null);
+    } catch (err) {
+      setScoutProfiles([]);
+      setScoutLastRunAt(null);
+    } finally {
+      setLoadingScoutProfiles(false);
+    }
+  }, [scoutAgentFilter]);
+
+  useEffect(() => {
+    if (user && warRoomTab === 'scout-agents') fetchScoutProfiles();
+  }, [user, warRoomTab, scoutAgentFilter, fetchScoutProfiles]);
 
   const fetchDiscovery = useCallback(async () => {
     const thisFetchId = ++fetchIdRef.current;
@@ -283,8 +335,35 @@ export default function WarRoomPage() {
 
         <div className="relative">
           <h1 className="text-3xl md:text-4xl font-display font-extrabold text-mgsr-text tracking-tight">
-            {isHe ? 'שחקנים שכדאי לשים לב אליהם' : 'Players Worth Your Attention'}
+            War Room
           </h1>
+
+          {/* War Room main tabs: Discovery | AI Scout Agents */}
+          <div className="flex flex-wrap gap-1 p-1 rounded-xl bg-mgsr-card border border-mgsr-border mt-4 mb-4">
+            <button
+              onClick={() => setWarRoomTab('discovery')}
+              className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${
+                warRoomTab === 'discovery'
+                  ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30'
+                  : 'text-mgsr-muted hover:text-mgsr-text hover:bg-mgsr-dark border border-transparent'
+              }`}
+            >
+              {isHe ? 'גילוי' : 'Discovery'}
+            </button>
+            <button
+              onClick={() => setWarRoomTab('scout-agents')}
+              className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${
+                warRoomTab === 'scout-agents'
+                  ? 'bg-mgsr-teal/20 text-mgsr-teal border border-mgsr-teal/40'
+                  : 'text-mgsr-muted hover:text-mgsr-text hover:bg-mgsr-dark border border-transparent'
+              }`}
+            >
+              {isHe ? 'סוכני AI Scout' : 'AI Scout Agents'}
+            </button>
+          </div>
+
+          {warRoomTab === 'discovery' && (
+            <>
           <p className="text-sm md:text-base text-mgsr-muted mt-1">
             {isHe
               ? 'פיד גילוי מבוסס AI. רק שחקנים ריאליסטיים לליגת העל — שווי €0–€2.5m.'
@@ -671,6 +750,189 @@ export default function WarRoomPage() {
             })}
           </div>
         )}
+            </>
+          )}
+
+          {warRoomTab === 'scout-agents' && (
+            <div className="space-y-4">
+              <div className="p-4 rounded-xl bg-mgsr-teal/10 border border-mgsr-teal/25 border-l-4 border-l-mgsr-teal">
+                <h2 className="font-display font-bold text-mgsr-text mb-1">
+                  {isHe ? 'רשת סוכני AI Scout' : 'AI Scout Agent Network'}
+                </h2>
+                <p className="text-sm text-mgsr-muted">
+                  {isHe ? (
+                    <>
+                      <strong className="text-mgsr-teal">מאיפה הפרופילים?</strong> כל פרופיל נמצא על ידי סוכן שמנטר מדינה וליגותיה (Firebase/Cloud). המקור מוצג בבירור.
+                    </>
+                  ) : (
+                    <>
+                      <strong className="text-mgsr-teal">Where do these profiles come from?</strong> Each profile was found by an AI scout agent that monitors a specific country and its leagues (Firebase/Cloud). Source is shown clearly.
+                    </>
+                  )}
+                </p>
+                <div className="flex flex-wrap items-center gap-2 mt-3">
+                  {scoutLastRunAt && (
+                    <span className="px-2 py-1 rounded text-xs font-medium bg-mgsr-teal/15 text-mgsr-teal">
+                      {isHe ? 'הרצה אחרונה' : 'Last run'} {formatTimeAgo(scoutLastRunAt)}
+                    </span>
+                  )}
+                  <span className="px-2 py-1 rounded text-xs font-medium bg-mgsr-teal/15 text-mgsr-teal">
+                    {scoutProfiles.length} {isHe ? 'פרופילים' : 'profiles'}
+                  </span>
+                  <button
+                    onClick={fetchScoutProfiles}
+                    disabled={loadingScoutProfiles}
+                    className="px-2 py-1 rounded text-xs font-medium border border-mgsr-border text-mgsr-muted hover:text-mgsr-teal hover:border-mgsr-teal/50 transition disabled:opacity-50"
+                  >
+                    {loadingScoutProfiles ? (isHe ? 'מרענן...' : 'Refreshing...') : isHe ? 'רענן' : 'Refresh'}
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap gap-1 p-1 rounded-xl bg-mgsr-card border border-mgsr-border">
+                <button
+                  onClick={() => setScoutAgentFilter('all')}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${
+                    scoutAgentFilter === 'all'
+                      ? 'bg-mgsr-teal/20 text-mgsr-teal border border-mgsr-teal/40'
+                      : 'text-mgsr-muted hover:text-mgsr-text border border-transparent'
+                  }`}
+                >
+                  {isHe ? 'כל הסוכנים' : 'All agents'}
+                </button>
+                {(Object.keys(AGENTS_CONFIG) as AgentId[]).map((aid) => (
+                  <button
+                    key={aid}
+                    onClick={() => setScoutAgentFilter(aid)}
+                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition flex items-center gap-1 ${
+                      scoutAgentFilter === aid
+                        ? 'bg-mgsr-teal/20 text-mgsr-teal border border-mgsr-teal/40'
+                        : 'text-mgsr-muted hover:text-mgsr-text border border-transparent'
+                    }`}
+                  >
+                    <span>{AGENTS_CONFIG[aid].flag}</span>
+                    <span>{isHe ? AGENTS_CONFIG[aid].nameHe : AGENTS_CONFIG[aid].name}</span>
+                  </button>
+                ))}
+              </div>
+
+              {addError && (
+                <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
+                  {addError}
+                </div>
+              )}
+
+              {loadingScoutProfiles && (
+                <div className="flex items-center justify-center gap-2 py-12 text-mgsr-muted">
+                  <div className="w-5 h-5 border-2 border-mgsr-teal/30 border-t-mgsr-teal rounded-full animate-spin" />
+                  <span>{isHe ? 'טוען פרופילי סוכנים...' : 'Loading scout profiles...'}</span>
+                </div>
+              )}
+
+              {!loadingScoutProfiles && scoutProfiles.length === 0 && (
+                <div className="py-16 text-center rounded-2xl bg-mgsr-card border border-mgsr-border">
+                  <p className="text-mgsr-muted">
+                    {isHe
+                      ? 'אין פרופילים עדיין. הסוכנים רצים מדי יום ב-05:00.'
+                      : 'No profiles yet. Agents run daily at 05:00 Israel time.'}
+                  </p>
+                </div>
+              )}
+
+              {!loadingScoutProfiles && scoutProfiles.length > 0 && (
+                <div className="space-y-4">
+                  {Object.entries(
+                    scoutProfiles.reduce<Record<string, ScoutProfileResponse[]>>((acc, p) => {
+                      if (scoutAgentFilter !== 'all' && p.agentId !== scoutAgentFilter) return acc;
+                      (acc[p.agentId] = acc[p.agentId] || []).push(p);
+                      return acc;
+                    }, {})
+                  ).map(([agentId, profiles]) => {
+                    const cfg = AGENTS_CONFIG[agentId as AgentId];
+                    return (
+                      <section
+                        key={agentId}
+                        className="rounded-xl border border-mgsr-border bg-mgsr-card overflow-hidden"
+                      >
+                        <div className="flex items-center gap-2 px-4 py-3 bg-mgsr-teal/10 border-b border-mgsr-border">
+                          <span className="text-xl">{cfg?.flag || '🌍'}</span>
+                          <h3 className="font-display font-bold text-mgsr-text">
+                            {isHe ? cfg?.nameHe : cfg?.name} Agent
+                          </h3>
+                          <span className="text-xs text-mgsr-muted ml-auto">
+                            <strong className="text-mgsr-teal">{profiles.length}</strong> {isHe ? 'פרופילים' : 'profiles'}
+                          </span>
+                        </div>
+                        <div className="p-3 space-y-2">
+                          {profiles.map((p) => {
+                            const inRoster = Array.from(rosterTmProfiles).some((r) => samePlayer(r, p.tmProfileUrl));
+                            const inShortlist = Array.from(shortlistUrls).some((s) => samePlayer(s, p.tmProfileUrl));
+                            const isAdding = addingUrl === p.tmProfileUrl;
+                            return (
+                              <div
+                                key={p.id}
+                                className="flex gap-3 p-3 rounded-lg bg-mgsr-dark border border-mgsr-border hover:border-mgsr-teal/40 transition"
+                              >
+                                <img
+                                  src={p.profileImage || `https://img.a.transfermarkt.technology/portrait/medium/${extractPlayerIdFromUrl(p.tmProfileUrl) || '0'}.jpg`}
+                                  alt=""
+                                  className="w-12 h-12 rounded-lg object-cover bg-mgsr-border shrink-0"
+                                  onError={(e) => {
+                                    (e.target as HTMLImageElement).src = 'https://img.a.transfermarkt.technology/portrait/medium/0.jpg';
+                                  }}
+                                />
+                                <div className="flex-1 min-w-0">
+                                  <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-mgsr-teal/25 text-mgsr-teal border border-mgsr-teal/40 mb-1">
+                                    <span>{p.agentFlag}</span>
+                                    <span>{isHe ? 'נמצא על ידי' : 'Found by'} {p.agentName} Agent</span>
+                                    {p.league && <span>· {p.league}</span>}
+                                  </div>
+                                  <p className="font-display font-bold text-mgsr-text">{p.playerName}</p>
+                                  <p className="text-xs text-mgsr-muted">
+                                    {p.age} · {shortenPosition(p.position)} · {p.marketValue}
+                                    {p.club && ` · ${p.club}`}
+                                  </p>
+                                  <p className="text-xs text-mgsr-text mt-1">{p.matchReason}</p>
+                                  <div className="flex flex-wrap gap-2 mt-2" onClick={(e) => e.stopPropagation()}>
+                                    <a
+                                      href={p.tmProfileUrl}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium bg-mgsr-border text-mgsr-muted hover:text-mgsr-teal border border-mgsr-border transition"
+                                    >
+                                      Transfermarkt →
+                                    </a>
+                                    {!inRoster && (
+                                      <button
+                                        onClick={() => addToShortlistFromProfile(p)}
+                                        disabled={isAdding || inShortlist}
+                                        className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium bg-mgsr-teal/20 text-mgsr-teal hover:bg-mgsr-teal/30 border border-mgsr-teal/40 transition disabled:opacity-50"
+                                      >
+                                        {isAdding ? (isHe ? 'מוסיף...' : 'Adding...') : inShortlist ? (isHe ? 'ברשימת מעקב' : 'In shortlist') : (isHe ? 'הוסף לרשימת מעקב' : 'Add to shortlist')}
+                                      </button>
+                                    )}
+                                    {inRoster && (
+                                      <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-mgsr-teal/25 text-mgsr-teal">
+                                        {isHe ? 'במאגר' : 'In roster'}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                                <span className="px-2 py-0.5 rounded text-[10px] font-semibold uppercase bg-purple-500/20 text-purple-400 shrink-0 h-fit">
+                                  {isHe ? p.profileTypeLabelHe : p.profileTypeLabel}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </section>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </AppLayout>
   );
