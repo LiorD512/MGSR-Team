@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { doc, collection, query, where, onSnapshot, updateDoc, addDoc, deleteDoc, deleteField } from 'firebase/firestore';
+import { doc, collection, query, where, onSnapshot, updateDoc, addDoc, getDocs, setDoc, deleteDoc, deleteField } from 'firebase/firestore';
 import AddPlayerTaskModal from '@/components/AddPlayerTaskModal';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { auth, db, storage } from '@/lib/firebase';
@@ -746,7 +746,19 @@ export default function PlayerInfoPage() {
           createdAt: Date.now(),
         });
 
-        await addDoc(collection(db, 'Portfolio'), portfolioDoc);
+        const existingQ = query(
+          collection(db, 'Portfolio'),
+          where('agentId', '==', user.uid),
+          where('playerId', '==', id),
+          where('lang', '==', lang)
+        );
+        const existingSnap = await getDocs(existingQ);
+        if (!existingSnap.empty) {
+          const existingId = existingSnap.docs[0].id;
+          await setDoc(doc(db, 'Portfolio', existingId), portfolioDoc);
+        } else {
+          await addDoc(collection(db, 'Portfolio'), portfolioDoc);
+        }
 
         router.push('/portfolio');
       } catch (e) {

@@ -142,13 +142,6 @@ function buildPlayerContext(player: PlayerPayload, scoutData?: ScoutData): strin
         .join(', ');
       parts.push(`Top attributes: ${attrs}`);
     }
-    if (Array.isArray(f.weak_attributes) && f.weak_attributes.length > 0) {
-      const weak = (f.weak_attributes as { name: string; value: number }[])
-        .slice(0, 4)
-        .map((a) => `${a.name} ${a.value}`)
-        .join(', ');
-      parts.push(`Areas to develop: ${weak}`);
-    }
   }
   if (scoutData?.similarResults && scoutData.similarResults.length > 0) {
     const similarSummary = scoutData.similarResults
@@ -182,13 +175,11 @@ function buildTemplateScoutReport(
         exec: 'סיכום',
         strengths: 'חוזקות מרכזיות',
         comparable: 'שחקנים דומים',
-        market: 'הקשר שוק',
         fit: 'התאמה טקטית',
         stats: 'סטטיסטיקות',
         fm: 'FM',
         fmAttr: 'מאפיינים מובילים',
         style: 'סגנון משחק',
-        price: 'טווח מחיר',
         minutes: 'דקות',
         goals: 'שערים',
         assists: 'אסיסטים',
@@ -199,13 +190,11 @@ function buildTemplateScoutReport(
         exec: 'Executive Summary',
         strengths: 'Key Strengths',
         comparable: 'Comparable Players',
-        market: 'Market Context',
         fit: 'Tactical Fit',
         stats: 'Stats',
         fm: 'FM',
         fmAttr: 'Top attributes',
         style: 'Playing style',
-        price: 'Price range',
         minutes: 'minutes',
         goals: 'goals',
         assists: 'assists',
@@ -258,28 +247,15 @@ function buildTemplateScoutReport(
   if (hasM) valueNum *= 1_000_000;
   else if (hasK) valueNum *= 1_000;
   let fit = '';
-  let priceRange = '';
   if (valueNum >= 1_500_000) {
     fit = isHe ? 'שחקן סגל/סטארטר למועדונים מובילים' : 'Squad/starter for top clubs';
-    priceRange = '€1M–€2.5m';
   } else if (valueNum >= 500_000) {
     fit = isHe ? 'שחקן סגל לליגת העל' : 'Squad player for Ligat Ha\'Al';
-    priceRange = '€500k–€1.5m';
   } else if (valueNum >= 100_000) {
     fit = isHe ? 'שחקן רוטציה/סגל' : 'Rotation/squad';
-    priceRange = '€100k–€500k';
   } else {
     fit = isHe ? 'שחקן סגל/פרויקט' : 'Squad/project';
-    priceRange = '€50k–€200k';
   }
-  const marketParts: string[] = [];
-  if (player.marketValueHistory?.length) {
-    const trend = player.marketValueHistory.slice(-3).map((h) => h.value ?? '?').join(' → ');
-    marketParts.push(`${isHe ? 'מגמת שווי' : 'Value trend'}: ${trend}`);
-  }
-  marketParts.push(`${L.price}: **${priceRange}**`);
-  sections.push(`## ${L.market}\n\n${marketParts.join('. ')}.`);
-
   sections.push(`## ${L.fit}\n\n${fit}.`);
 
   return sections.join('\n\n');
@@ -291,7 +267,7 @@ OUTPUT FORMAT:
 - Structured markdown with ## section headers.
 - Use **bold** for key numbers and standout stats.
 - ~200–300 words total.
-- Promotional tone: highlight strengths; mention 1–2 "areas to develop" only if weak_attributes data supports it.
+- Promotional tone: highlight strengths only. Never mention areas to develop, weaknesses, or weak attributes.
 - Never use generic phrases ("works hard", "comfortable on the ball") — always cite specific numbers.
 - Do NOT invent: minutes, stats, or facts not in the profile.
 - Write in {outputLang}.
@@ -306,9 +282,6 @@ REQUIRED SECTIONS (use these exact ## headers):
 
 ## Comparable Players
 1–2 sentences. Use the comparable players list: "Statistically similar to players like X (€Y, Club Z) and W (€V, Club U)." If no comparable players, omit this section.
-
-## Market Context
-Value trend (if marketValueHistory available), contract leverage, realistic price range €X–€Y for Israeli clubs.
 
 ## Tactical Fit
 Best role (from FM best_position), Ligat Ha'Al fit (rotation/squad/starter for top-6 or mid-table). Be specific.

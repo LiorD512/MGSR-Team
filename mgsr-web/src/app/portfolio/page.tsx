@@ -263,6 +263,9 @@ export default function PortfolioPage() {
                         <h3 className="font-display font-bold text-mgsr-text text-lg truncate">
                           {displayName}
                         </h3>
+                        <span className="inline-block mt-1 px-2 py-0.5 rounded text-xs font-medium bg-mgsr-teal/15 text-mgsr-teal">
+                          {item.lang === 'he' ? t('portfolio_version_hebrew') : t('portfolio_version_english')}
+                        </span>
                         <p className="text-sm text-mgsr-muted mt-0.5">
                           {item.player.positions?.filter(Boolean).join(' • ') ||
                             '—'}
