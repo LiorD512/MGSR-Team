@@ -144,11 +144,7 @@ export async function createShare(
     player: stripUndefined(playerObj),
     mandateInfo: payload.mandateInfo ?? null,
     mandateUrl: payload.mandateUrl ?? null,
-    sharerPhone:
-      payload.sharerPhone ??
-      payload.player.agentPhoneNumber ??
-      payload.player.playerAdditionalInfoModel?.agentNumber ??
-      null,
+    sharerPhone: payload.sharerPhone ?? null,
     sharerName: payload.sharerName ?? null,
     scoutReport: scoutReport || null,
     highlights: payload.highlights?.length ? payload.highlights : null,

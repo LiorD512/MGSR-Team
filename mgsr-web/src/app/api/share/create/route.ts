@@ -135,7 +135,7 @@ export async function POST(request: NextRequest) {
       },
       mandateInfo: mandateInfo ?? null,
       mandateUrl: mandateUrl ?? null,
-      sharerPhone: sharerPhone ?? player.agentPhoneNumber ?? player.playerAdditionalInfoModel?.agentNumber ?? null,
+      sharerPhone: sharerPhone ?? null,
       sharerName: sharerName ?? null,
       scoutReport: scoutReport?.trim() || null,
       highlights: highlights?.length ? highlights : null,

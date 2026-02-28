@@ -77,6 +77,7 @@ export default function SharedPlayerContent({
         scoutReport: 'דוח סקאוט',
         highlights: 'היילייטס',
         contact: 'איש קשר',
+        contactNote: 'המספר שיוצג בשיתוף הוא מספר הטלפון של הסוכן ששיתף את המסמך.',
         transfermarkt: 'פרופיל Transfermarkt',
         sharedVia: 'שותף דרך MGSR Team',
         viewMandate: 'צפה במנדט',
@@ -90,6 +91,7 @@ export default function SharedPlayerContent({
         scoutReport: 'Scout Report',
         highlights: 'Highlights',
         contact: 'Contact',
+        contactNote: 'The phone number shown when sharing is the phone number of the agent who shared the document.',
         transfermarkt: 'Transfermarkt profile',
         sharedVia: 'Shared via MGSR Team',
         viewMandate: 'View mandate',
@@ -251,6 +253,9 @@ export default function SharedPlayerContent({
             <h3 className="text-sm font-semibold text-mgsr-muted uppercase tracking-wider mb-3">
               {labels.contact}
             </h3>
+            <p className="text-xs text-mgsr-muted mb-2">
+              {labels.contactNote}
+            </p>
             <p className="text-mgsr-text font-medium mb-2">
               {data.sharerName || '—'}
             </p>

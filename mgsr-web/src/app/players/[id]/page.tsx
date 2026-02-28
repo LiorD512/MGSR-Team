@@ -528,11 +528,7 @@ export default function PlayerInfoPage() {
                 a.email?.toLowerCase() === user.email?.toLowerCase()
             )
           : null;
-        const sharerPhone =
-          sharerAccount?.phone ??
-          player?.playerAdditionalInfoModel?.agentNumber ??
-          player?.agentPhoneNumber ??
-          undefined;
+        const sharerPhone = sharerAccount?.phone ?? undefined;
         const sharerName =
           lang === 'he'
             ? (sharerAccount?.hebrewName ?? sharerAccount?.name)
@@ -555,11 +551,7 @@ export default function PlayerInfoPage() {
           onLoanFromClub: player.onLoanFromClub ?? merged.onLoanFromClub,
           agency: player.agency,
           tmProfile: merged.tmProfile || player.tmProfile,
-          agentPhoneNumber:
-            player?.playerAdditionalInfoModel?.agentNumber ||
-            player?.agentPhoneNumber ||
-            undefined,
-          playerAdditionalInfoModel: player.playerAdditionalInfoModel,
+          // Never include agent/player contact - only Accounts phone when sharing
         };
 
         let scoutReport = '';
@@ -682,11 +674,7 @@ export default function PlayerInfoPage() {
           onLoanFromClub: player.onLoanFromClub ?? merged.onLoanFromClub,
           agency: player.agency,
           tmProfile: merged.tmProfile || player.tmProfile,
-          agentPhoneNumber:
-            player?.playerAdditionalInfoModel?.agentNumber ||
-            player?.agentPhoneNumber ||
-            undefined,
-          playerAdditionalInfoModel: player.playerAdditionalInfoModel,
+          // Never include agent/player contact - only Accounts phone when sharing
         };
 
         let scoutReport = '';
