@@ -1,10 +1,12 @@
 /**
  * POST /api/share/generate-scout-report
- * Generates a short, promotional scout report for sharing with clubs.
- * Fetches FBref + FM data when tmProfile available. No verdict/sign decision.
+ * Generates a promotional scout report for sharing with clubs.
+ * Uses all available tools: similar_players (5), full FM intelligence, market history.
+ * Output: structured markdown with sections.
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { extractPlayerIdFromUrl } from '@/lib/api';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -30,21 +32,35 @@ interface PlayerPayload {
   tmProfile?: string;
 }
 
-async function fetchScoutData(tmProfile: string, playerName: string) {
+interface ScoutData {
+  profile?: Record<string, unknown>;
+  fm?: Record<string, unknown>;
+  similarResults?: Record<string, unknown>[];
+}
+
+function samePlayer(url1: string, url2: string): boolean {
+  const id1 = extractPlayerIdFromUrl(url1);
+  const id2 = extractPlayerIdFromUrl(url2);
+  return !!id1 && id1 === id2;
+}
+
+async function fetchScoutData(tmProfile: string, playerName: string, lang: string): Promise<ScoutData> {
   const [similarRes, fmRes] = await Promise.all([
-    fetch(`${SCOUT_BASE}/similar_players?player_url=${encodeURIComponent(tmProfile)}&lang=en&limit=1`, {
+    fetch(`${SCOUT_BASE}/similar_players?player_url=${encodeURIComponent(tmProfile)}&lang=${lang}&limit=5`, {
       signal: AbortSignal.timeout(8000),
     }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
     fetch(`${SCOUT_BASE}/fm_intelligence?player_name=${encodeURIComponent(playerName)}`, {
       signal: AbortSignal.timeout(8000),
     }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
   ]);
-  const profile = similarRes?.player_profile ?? similarRes?.results?.[0];
+  const similarResults = (similarRes?.results ?? []) as Record<string, unknown>[];
+  const playerMatch = similarResults.find((r) => samePlayer((r.url as string) || '', tmProfile));
+  const profile = similarRes?.player_profile ?? playerMatch ?? similarResults[0];
   const fm = fmRes && !fmRes.error ? fmRes : null;
-  return { profile, fm };
+  return { profile, fm, similarResults };
 }
 
-function buildPlayerContext(player: PlayerPayload, scoutData?: { profile?: Record<string, unknown>; fm?: Record<string, unknown> }): string {
+function buildPlayerContext(player: PlayerPayload, scoutData?: ScoutData): string {
   const parts: string[] = [];
   if (player.fullName) parts.push(`Name: ${player.fullName}`);
   if (player.age) parts.push(`Age: ${player.age}`);
@@ -80,12 +96,31 @@ function buildPlayerContext(player: PlayerPayload, scoutData?: { profile?: Recor
     if (p.fbref_interceptions_per90 != null) parts.push(`Interceptions/90: ${p.fbref_interceptions_per90}`);
     if (p.fbref_goals_per90 != null) parts.push(`Goals/90: ${p.fbref_goals_per90}`);
     if (p.fbref_assists_per90 != null) parts.push(`Assists/90: ${p.fbref_assists_per90}`);
+    if (p.fbref_progressive_carries_per90 != null || p.fbref_progressive_carries != null)
+      parts.push(`Progressive carries/90: ${p.fbref_progressive_carries_per90 ?? p.fbref_progressive_carries ?? '?'}`);
+    if (p.fbref_key_passes_per90 != null || p.fbref_key_passes != null)
+      parts.push(`Key passes/90: ${p.fbref_key_passes_per90 ?? p.fbref_key_passes ?? '?'}`);
     if (p.player_style) parts.push(`Playing style: ${p.player_style}`);
   }
   if (scoutData?.fm && !scoutData.fm.error) {
     const f = scoutData.fm;
     parts.push(`FM CA: ${f.ca}, PA: ${f.pa}, Tier: ${f.tier}`);
     if (f.best_position) parts.push(`Best position: ${(f.best_position as { position?: string }).position} (fit ${(f.best_position as { fit?: number }).fit})`);
+    if (typeof f.dimension_scores === 'object' && f.dimension_scores) {
+      const dims = Object.entries(f.dimension_scores as Record<string, number>)
+        .filter(([k]) => k !== 'overall')
+        .map(([k, v]) => `${k}: ${v}`)
+        .join(', ');
+      if (dims) parts.push(`FM dimension scores: ${dims}`);
+    }
+    if (typeof f.position_fit === 'object' && f.position_fit) {
+      const fits = Object.entries(f.position_fit as Record<string, number>)
+        .sort(([, a], [, b]) => (b as number) - (a as number))
+        .slice(0, 5)
+        .map(([pos, fit]) => `${pos}: ${fit}`)
+        .join(', ');
+      if (fits) parts.push(`FM position fit: ${fits}`);
+    }
     if (Array.isArray(f.top_attributes) && f.top_attributes.length > 0) {
       const attrs = (f.top_attributes as { name: string; value: number }[])
         .slice(0, 8)
@@ -93,14 +128,28 @@ function buildPlayerContext(player: PlayerPayload, scoutData?: { profile?: Recor
         .join(', ');
       parts.push(`Top attributes: ${attrs}`);
     }
+    if (Array.isArray(f.weak_attributes) && f.weak_attributes.length > 0) {
+      const weak = (f.weak_attributes as { name: string; value: number }[])
+        .slice(0, 4)
+        .map((a) => `${a.name} ${a.value}`)
+        .join(', ');
+      parts.push(`Areas to develop: ${weak}`);
+    }
+  }
+  if (scoutData?.similarResults && scoutData.similarResults.length > 0) {
+    const similarSummary = scoutData.similarResults
+      .slice(0, 5)
+      .map((p) => `${p.name} (${p.market_value ?? '?'}, ${p.club ?? '?'})`)
+      .join('; ');
+    parts.push(`Comparable players (statistically similar): ${similarSummary}`);
   }
   return parts.join('\n');
 }
 
-/** Template-based scout report when Gemini fails. No AI, pure data formatting. */
+/** Template-based scout report when Gemini fails. Outputs structured markdown. */
 function buildTemplateScoutReport(
   player: PlayerPayload,
-  scoutData: { profile?: Record<string, unknown>; fm?: Record<string, unknown> } | undefined,
+  scoutData: ScoutData | undefined,
   lang: 'he' | 'en'
 ): string {
   const isHe = lang === 'he';
@@ -116,12 +165,15 @@ function buildTemplateScoutReport(
 
   const L = isHe
     ? {
-        identity: 'זהות',
+        exec: 'סיכום',
+        strengths: 'חוזקות מרכזיות',
+        comparable: 'שחקנים דומים',
+        market: 'הקשר שוק',
+        fit: 'התאמה טקטית',
         stats: 'סטטיסטיקות',
         fm: 'FM',
         fmAttr: 'מאפיינים מובילים',
         style: 'סגנון משחק',
-        fit: 'התאמה לליגת העל',
         price: 'טווח מחיר',
         minutes: 'דקות',
         goals: 'שערים',
@@ -130,12 +182,15 @@ function buildTemplateScoutReport(
         interceptions: 'חטיפות',
       }
     : {
-        identity: 'Identity',
+        exec: 'Executive Summary',
+        strengths: 'Key Strengths',
+        comparable: 'Comparable Players',
+        market: 'Market Context',
+        fit: 'Tactical Fit',
         stats: 'Stats',
         fm: 'FM',
         fmAttr: 'Top attributes',
         style: 'Playing style',
-        fit: 'Ligat Ha\'Al fit',
         price: 'Price range',
         minutes: 'minutes',
         goals: 'goals',
@@ -144,38 +199,43 @@ function buildTemplateScoutReport(
         interceptions: 'interceptions',
       };
 
-  const lines: string[] = [];
+  const sections: string[] = [];
 
-  lines.push(`${name} — ${age}${isHe ? ' שנים' : 'yo'}, ${pos}. ${club}${league ? ` (${league})` : ''}. ${isHe ? 'שווי שוק' : 'Market value'}: ${value}. ${nat}. ${isHe ? 'חוזה' : 'Contract'}: ${contract}.`);
-  if (height) lines.push(`${isHe ? 'גובה' : 'Height'}: ${height}.`);
+  const execLine = `${name} — ${age}${isHe ? ' שנים' : 'yo'}, ${pos}. ${club}${league ? ` (${league})` : ''}. ${isHe ? 'שווי שוק' : 'Market value'}: **${value}**. ${nat}. ${isHe ? 'חוזה' : 'Contract'}: ${contract}.`;
+  sections.push(`## ${L.exec}\n\n${execLine}${height ? ` ${isHe ? 'גובה' : 'Height'}: ${height}.` : '.'}`);
 
   const profile = scoutData?.profile;
   const fm = scoutData?.fm && !scoutData.fm.error ? scoutData.fm : null;
 
+  const strengths: string[] = [];
   if (profile && profile.fbref_matched) {
     const p = profile;
     const mins = p.fbref_minutes_90s != null ? Math.round(Number(p.fbref_minutes_90s) * 90) : null;
-    const stats: string[] = [];
-    if (mins) stats.push(`${mins} ${L.minutes}`);
-    if (p.fbref_goals_per90 != null) stats.push(`${p.fbref_goals_per90} ${L.goals}/90`);
-    if (p.fbref_assists_per90 != null) stats.push(`${p.fbref_assists_per90} ${L.assists}/90`);
-    if (p.fbref_tackles_per90 != null) stats.push(`${p.fbref_tackles_per90} ${L.tackles}/90`);
-    if (p.fbref_interceptions_per90 != null) stats.push(`${p.fbref_interceptions_per90} ${L.interceptions}/90`);
-    if (stats.length) lines.push(`${L.stats} (365d): ${stats.join(', ')}.`);
+    if (mins) strengths.push(`**${mins}** ${L.minutes} (365d)`);
+    if (p.fbref_goals_per90 != null) strengths.push(`**${p.fbref_goals_per90}** ${L.goals}/90`);
+    if (p.fbref_assists_per90 != null) strengths.push(`**${p.fbref_assists_per90}** ${L.assists}/90`);
+    if (p.fbref_tackles_per90 != null) strengths.push(`**${p.fbref_tackles_per90}** ${L.tackles}/90`);
+    if (p.fbref_interceptions_per90 != null) strengths.push(`**${p.fbref_interceptions_per90}** ${L.interceptions}/90`);
   }
-
   if (fm) {
     const f = fm as { ca?: number; pa?: number; tier?: string; best_position?: { position?: string; fit?: number }; top_attributes?: { name: string; value: number }[] };
-    const fmLine = `FM: CA ${f.ca ?? '?'}, PA ${f.pa ?? '?'}. ${f.tier ? `Tier: ${f.tier}.` : ''}`;
-    lines.push(fmLine);
-    if (f.best_position?.position) lines.push(`${isHe ? 'עמדה מובילה' : 'Best position'}: ${f.best_position.position} (fit ${f.best_position.fit ?? '?'}).`);
+    if (f.ca != null) strengths.push(`FM CA **${f.ca}**${f.tier ? ` (${f.tier})` : ''}`);
+    if (f.best_position?.position) strengths.push(`${isHe ? 'עמדה מובילה' : 'Best position'}: **${f.best_position.position}** (fit ${f.best_position.fit ?? '?'})`);
     if (Array.isArray(f.top_attributes) && f.top_attributes.length) {
-      const attrs = f.top_attributes.slice(0, 6).map((a) => `${a.name} ${a.value}`).join(', ');
-      lines.push(`${L.fmAttr}: ${attrs}.`);
+      const attrs = f.top_attributes.slice(0, 4).map((a) => `${a.name} ${a.value}`).join(', ');
+      strengths.push(`${L.fmAttr}: ${attrs}`);
     }
   }
+  if (profile?.player_style) strengths.push(`${L.style}: ${profile.player_style}`);
+  if (strengths.length) sections.push(`## ${L.strengths}\n\n- ${strengths.join('\n- ')}`);
 
-  if (profile?.player_style) lines.push(`${L.style}: ${profile.player_style}.`);
+  if (scoutData?.similarResults && scoutData.similarResults.length > 0) {
+    const similarList = scoutData.similarResults
+      .slice(0, 5)
+      .map((p) => `${p.name} (${p.market_value ?? '?'}, ${p.club ?? '?'})`)
+      .join('; ');
+    sections.push(`## ${L.comparable}\n\n${isHe ? 'דומה סטטיסטית ל' : 'Statistically similar to'}: ${similarList}.`);
+  }
 
   const valueStr = (value || '').replace(/,/g, '');
   const hasM = /m|M|million/i.test(valueStr);
@@ -198,30 +258,48 @@ function buildTemplateScoutReport(
     fit = isHe ? 'שחקן סגל/פרויקט' : 'Squad/project';
     priceRange = '€50k–€200k';
   }
-  lines.push(`${L.fit}: ${fit}. ${L.price}: ${priceRange}.`);
+  const marketParts: string[] = [];
+  if (player.marketValueHistory?.length) {
+    const trend = player.marketValueHistory.slice(-3).map((h) => h.value ?? '?').join(' → ');
+    marketParts.push(`${isHe ? 'מגמת שווי' : 'Value trend'}: ${trend}`);
+  }
+  marketParts.push(`${L.price}: **${priceRange}**`);
+  sections.push(`## ${L.market}\n\n${marketParts.join('. ')}.`);
 
-  return lines.join('\n\n');
+  sections.push(`## ${L.fit}\n\n${fit}.`);
+
+  return sections.join('\n\n');
 }
 
-const SCOUT_REPORT_PROMPT = `You are a professional scout presenting a player to clubs. Your job is to showcase the player in the best light — promotional, concise, data-driven. NO verdict, NO sign/monitor/pass decision. Just present the player.
+const SCOUT_REPORT_PROMPT = `You are a professional scout presenting a player to clubs. Your job is to showcase the player in the best light — promotional, engaging, data-driven. NO verdict, NO sign/monitor/pass decision. Just present the player attractively.
 
-FORMAT:
-- All in prose (words), NO tables.
-- Short: ~150–250 words max.
-- Clear, punchy sentences. Bold key numbers where they stand out.
-- Promotional tone: highlight strengths, never list weaknesses or diminish value.
-- Do NOT include: key passes, progressive carries (we don't have this data — omit entirely).
+OUTPUT FORMAT:
+- Structured markdown with ## section headers.
+- Use **bold** for key numbers and standout stats.
+- ~200–300 words total.
+- Promotional tone: highlight strengths; mention 1–2 "areas to develop" only if weak_attributes data supports it.
+- Never use generic phrases ("works hard", "comfortable on the ball") — always cite specific numbers.
 - Do NOT invent: minutes, stats, or facts not in the profile.
-- End with Ligat Ha'Al fit (rotation/squad/starter) and realistic price range if relevant.
+- Write in {outputLang}.
 
-STRUCTURE (flow naturally in prose):
-1. Identity: name, age, position, club, league, market value, nationality.
-2. Stats (if available): minutes, tackles/90, interceptions/90, goals/90 — only what's in the data.
-3. FM attributes (if available): CA, PA, tier, top attributes, best position.
-4. Playing style (if available): one line.
-5. Ligat Ha'Al fit: rotation/squad/starter for top-6 or mid-table. Price range €X–€Y if relevant.
+REQUIRED SECTIONS (use these exact ## headers):
 
-Write in {outputLang}. Plain text only, no markdown. Be professional and club-ready.`;
+## Executive Summary
+1–2 sentences. Narrative hook: e.g. "A [nationality] [position] with [key standout trait] who could [value proposition for Ligat Ha'Al]." Start with impact, not "Player X is 24 years old."
+
+## Key Strengths
+2–4 bullet points. Each must cite specific data: "**2.1** tackles/90", "FM CA **78**", "**X** goals/90". Include playing style if available.
+
+## Comparable Players
+1–2 sentences. Use the comparable players list: "Statistically similar to players like X (€Y, Club Z) and W (€V, Club U)." If no comparable players, omit this section.
+
+## Market Context
+Value trend (if marketValueHistory available), contract leverage, realistic price range €X–€Y for Israeli clubs.
+
+## Tactical Fit
+Best role (from FM best_position), Ligat Ha'Al fit (rotation/squad/starter for top-6 or mid-table). Be specific.
+
+Use ONLY data from the profile below. Never invent stats. Israeli clubs typically pay €100k–€2.5m.`;
 
 export async function POST(request: NextRequest) {
   try {
@@ -231,10 +309,10 @@ export async function POST(request: NextRequest) {
 
     const langKey = (lang === 'he' || lang === 'iw' ? 'he' : 'en') as 'he' | 'en';
 
-    let scoutData: { profile?: Record<string, unknown>; fm?: Record<string, unknown> } | undefined;
+    let scoutData: ScoutData | undefined;
     if (player.tmProfile && player.fullName) {
       try {
-        scoutData = await fetchScoutData(player.tmProfile, player.fullName);
+        scoutData = await fetchScoutData(player.tmProfile, player.fullName, langKey);
       } catch {
         scoutData = undefined;
       }

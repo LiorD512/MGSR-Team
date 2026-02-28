@@ -1341,7 +1341,12 @@ export default function PlayerInfoPage() {
           <div className="lg:col-span-2 space-y-8">
             {/* FM Intelligence Panel */}
             {(merged.fullName || player?.fullName) && (
-              <FmIntelligencePanel playerName={merged.fullName || player?.fullName || ''} isRtl={isRtl} />
+              <FmIntelligencePanel
+                playerName={merged.fullName || player?.fullName || ''}
+                club={merged.currentClub?.clubName || player?.currentClub?.clubName || ''}
+                age={String(merged.age || player?.age || '')}
+                isRtl={isRtl}
+              />
             )}
 
             {/* Similar Players Panel */}

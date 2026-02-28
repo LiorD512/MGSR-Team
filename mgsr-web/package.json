@@ -23,6 +23,7 @@
     "pdfjs-dist": "^4.8.69",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "react-markdown": "^10.1.0",
     "react-soccer-lineup": "^1.0.0-beta.10",
     "recharts": "^3.7.0",
     "sharp": "^0.34.5",

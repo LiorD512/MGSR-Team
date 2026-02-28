@@ -184,10 +184,12 @@ function PositionDot({
 
 interface FmIntelligencePanelProps {
   playerName: string;
+  club?: string;
+  age?: string;
   isRtl?: boolean;
 }
 
-export default function FmIntelligencePanel({ playerName }: FmIntelligencePanelProps) {
+export default function FmIntelligencePanel({ playerName, club, age }: FmIntelligencePanelProps) {
   const { t, isRtl } = useLanguage();
   const [data, setData] = useState<FmIntelligenceData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -198,7 +200,7 @@ export default function FmIntelligencePanel({ playerName }: FmIntelligencePanelP
     if (!playerName) return;
     setLoading(true);
     setError(null);
-    getFmIntelligence(playerName)
+    getFmIntelligence(playerName, club, age)
       .then((result) => {
         if (result) {
           setData(result);
@@ -208,7 +210,7 @@ export default function FmIntelligencePanel({ playerName }: FmIntelligencePanelP
       })
       .catch(() => setError('Failed to load FM data'))
       .finally(() => setLoading(false));
-  }, [playerName]);
+  }, [playerName, club, age]);
 
   const sortedDimensions = useMemo(() => {
     if (!data?.dimension_scores) return [];

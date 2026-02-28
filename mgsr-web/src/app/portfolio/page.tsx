@@ -282,7 +282,7 @@ export default function PortfolioPage() {
 
                     {item.scoutReport && (
                       <p className="mt-4 text-sm text-mgsr-muted line-clamp-3 leading-relaxed">
-                        {item.scoutReport}
+                        {item.scoutReport.replace(/^## .+$/gm, '').replace(/\n{2,}/g, ' ').trim()}
                       </p>
                     )}
 

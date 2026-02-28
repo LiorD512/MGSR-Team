@@ -5,7 +5,29 @@ import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { toWhatsAppUrl } from '@/lib/whatsapp';
 import Link from 'next/link';
+import ReactMarkdown from 'react-markdown';
 import type { ShareData } from './types';
+
+/** Scout report markdown styling — teal section headers, clear hierarchy */
+const scoutReportComponents = {
+  h2: ({ children }: { children?: React.ReactNode }) => (
+    <h3 className="text-base font-semibold text-mgsr-teal mt-5 mb-2 first:mt-0">
+      {children}
+    </h3>
+  ),
+  p: ({ children }: { children?: React.ReactNode }) => (
+    <p className="text-mgsr-text leading-relaxed mb-3 last:mb-0">{children}</p>
+  ),
+  ul: ({ children }: { children?: React.ReactNode }) => (
+    <ul className="list-disc list-inside space-y-1 mb-3 text-mgsr-text">{children}</ul>
+  ),
+  li: ({ children }: { children?: React.ReactNode }) => (
+    <li className="leading-relaxed">{children}</li>
+  ),
+  strong: ({ children }: { children?: React.ReactNode }) => (
+    <strong className="font-semibold text-mgsr-teal">{children}</strong>
+  ),
+};
 
 function StatCard({ label, value }: { label: string; value?: string }) {
   if (!value) return null;
@@ -186,12 +208,14 @@ export default function SharedPlayerContent({
 
         {data.scoutReport && (
           <div className="p-5 rounded-xl bg-mgsr-card border border-mgsr-border mb-8">
-            <h3 className="text-sm font-semibold text-mgsr-muted uppercase tracking-wider mb-3">
+            <h3 className="text-sm font-semibold text-mgsr-muted uppercase tracking-wider mb-4">
               {labels.scoutReport}
             </h3>
-            <p className="text-mgsr-text leading-relaxed whitespace-pre-line">
-              {data.scoutReport}
-            </p>
+            <div className="scout-report-content text-mgsr-text">
+              <ReactMarkdown components={scoutReportComponents}>
+                {data.scoutReport}
+              </ReactMarkdown>
+            </div>
           </div>
         )}
 

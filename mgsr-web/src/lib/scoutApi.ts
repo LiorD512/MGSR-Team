@@ -313,10 +313,14 @@ export async function findSimilarPlayers(
  * Returns dimension scores, position fit heatmap, top/weak attributes.
  */
 export async function getFmIntelligence(
-  playerName: string
+  playerName: string,
+  club?: string,
+  age?: string
 ): Promise<FmIntelligenceData | null> {
   try {
-    const url = `${SCOUT_BASE_URL}/fm-intelligence?player_name=${encodeURIComponent(playerName)}`;
+    let url = `${SCOUT_BASE_URL}/fm-intelligence?player_name=${encodeURIComponent(playerName)}`;
+    if (club) url += `&club=${encodeURIComponent(club)}`;
+    if (age) url += `&age=${encodeURIComponent(age)}`;
     const res = await fetch(url, {
       headers: { Accept: 'application/json' },
       cache: 'no-store',
