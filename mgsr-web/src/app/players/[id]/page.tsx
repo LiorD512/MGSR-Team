@@ -1225,6 +1225,7 @@ export default function PlayerInfoPage() {
             {/* Player Highlights Panel */}
             {(merged.fullName || player?.fullName) && (
               <PlayerHighlightsPanel
+                playerId={id}
                 playerName={merged.fullName || player?.fullName || ''}
                 teamName={merged.currentClub?.clubName || player?.currentClub?.clubName || ''}
                 position={merged.positions?.[0] || player?.positions?.[0] || ''}

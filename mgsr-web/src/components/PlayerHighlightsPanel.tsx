@@ -87,25 +87,42 @@ function VideoThumb({
   onClick,
   index,
   onKeyDown,
+  selectable,
+  selected,
+  onSelectToggle,
 }: {
   video: HighlightVideo;
   active: boolean;
   onClick: () => void;
   index: number;
   onKeyDown?: (e: React.KeyboardEvent, index: number) => void;
+  selectable?: boolean;
+  selected?: boolean;
+  onSelectToggle?: () => void;
 }) {
+  const handleClick = () => {
+    if (selectable && onSelectToggle) {
+      onSelectToggle();
+    }
+    onClick();
+  };
+
   return (
     <button
       type="button"
-      onClick={onClick}
+      onClick={handleClick}
       onKeyDown={onKeyDown ? (e) => onKeyDown(e, index) : undefined}
       aria-current={active ? 'true' : undefined}
-      aria-label={`Play: ${video.title}`}
+      aria-label={selectable ? (selected ? `Deselect: ${video.title}` : `Select: ${video.title}`) : `Play: ${video.title}`}
+      aria-pressed={selectable ? selected : undefined}
       className={`
         flex-shrink-0 w-40 md:w-48 rounded-lg overflow-hidden border-2 transition-all duration-200
-        ${active
+        ${selected ? 'border-mgsr-teal ring-2 ring-mgsr-teal/50' : ''}
+        ${active && !selectable
           ? 'border-mgsr-teal shadow-lg shadow-mgsr-teal/20 scale-[1.02]'
-          : 'border-transparent hover:border-mgsr-border/60 opacity-75 hover:opacity-100'}
+          : !selected
+            ? 'border-transparent hover:border-mgsr-border/60 opacity-75 hover:opacity-100'
+            : ''}
       `}
     >
       {/* Thumb image */}
@@ -126,7 +143,14 @@ function VideoThumb({
             Match
           </span>
         )}
-        {active && (
+        {selectable && selected && (
+          <div className="absolute top-1 right-1 w-6 h-6 rounded-full bg-mgsr-teal flex items-center justify-center">
+            <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+            </svg>
+          </div>
+        )}
+        {active && !selectable && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/20">
             <div className="w-6 h-6 rounded-full bg-mgsr-teal flex items-center justify-center">
               <svg className="w-3 h-3 text-white ml-0.5" fill="currentColor" viewBox="0 0 24 24">
@@ -200,7 +224,33 @@ function EmptyState({ isRtl }: { isRtl: boolean }) {
 /*  Main Component                                                    */
 /* ------------------------------------------------------------------ */
 
+const STORAGE_KEY_PREFIX = 'player-highlights:';
+const MAX_PINNED = 2;
+
+function getPinnedFromStorage(playerId: string): HighlightVideo[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = localStorage.getItem(`${STORAGE_KEY_PREFIX}${playerId}`);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as HighlightVideo[];
+    return Array.isArray(parsed) ? parsed.slice(0, MAX_PINNED) : [];
+  } catch {
+    return [];
+  }
+}
+
+function savePinnedToStorage(playerId: string, videos: HighlightVideo[]) {
+  if (typeof window === 'undefined') return;
+  try {
+    const toSave = videos.slice(0, MAX_PINNED);
+    localStorage.setItem(`${STORAGE_KEY_PREFIX}${playerId}`, JSON.stringify(toSave));
+  } catch {
+    // ignore
+  }
+}
+
 interface PlayerHighlightsPanelProps {
+  playerId: string;
   playerName: string;
   teamName?: string;
   position?: string;
@@ -215,7 +265,10 @@ interface PlayerHighlightsPanelProps {
   isRtl?: boolean;
 }
 
+type Mode = 'pinned' | 'select' | 'replace';
+
 export default function PlayerHighlightsPanel({
+  playerId,
   playerName,
   teamName,
   position,
@@ -228,6 +281,12 @@ export default function PlayerHighlightsPanel({
   const { t, isRtl: contextRtl } = useLanguage();
   const isRtl = isRtlProp ?? contextRtl;
 
+  const [pinned, setPinned] = useState<HighlightVideo[]>(() => getPinnedFromStorage(playerId));
+  const [mode, setMode] = useState<Mode>(() =>
+    getPinnedFromStorage(playerId).length > 0 ? 'pinned' : 'select'
+  );
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
   const [videos, setVideos] = useState<HighlightVideo[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -239,6 +298,48 @@ export default function PlayerHighlightsPanel({
   const youtubeScrollRef = useRef<HTMLDivElement>(null);
   const scorebatScrollRef = useRef<HTMLDivElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+
+  // Sync pinned from storage when playerId changes (e.g. navigation)
+  useEffect(() => {
+    const stored = getPinnedFromStorage(playerId);
+    setPinned(stored);
+    setMode(stored.length > 0 ? 'pinned' : 'select');
+  }, [playerId]);
+
+  // Reset activeIndex when switching mode or when display list changes
+  useEffect(() => {
+    const list = mode === 'pinned' ? pinned : videos;
+    setActiveIndex((i) => (i >= list.length ? 0 : i));
+  }, [mode, pinned.length, videos.length]);
+
+  const displayVideos = mode === 'pinned' ? pinned : videos;
+  const isSelectMode = mode === 'select' || mode === 'replace';
+
+  const toggleSelect = useCallback((video: HighlightVideo) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(video.id)) {
+        next.delete(video.id);
+      } else if (next.size < MAX_PINNED) {
+        next.add(video.id);
+      }
+      return next;
+    });
+  }, []);
+
+  const confirmSelection = useCallback(() => {
+    const selectedVideos = videos.filter((v) => selectedIds.has(v.id));
+    if (selectedVideos.length === 0) return;
+    setPinned(selectedVideos);
+    savePinnedToStorage(playerId, selectedVideos);
+    setMode('pinned');
+    setSelectedIds(new Set());
+  }, [videos, selectedIds, playerId]);
+
+  const cancelReplace = useCallback(() => {
+    setMode('pinned');
+    setSelectedIds(new Set());
+  }, []);
 
   // Lazy-fetch: only load when panel is expanded for the first time
   const doFetch = useCallback(async (forceRefresh = false) => {
@@ -282,6 +383,12 @@ export default function PlayerHighlightsPanel({
     }
   }, [playerName, teamName, position, parentClub, nationality, fullNameHe, clubCountry, fetched]);
 
+  const startReplace = useCallback(() => {
+    setMode('replace');
+    setSelectedIds(new Set());
+    if (!fetched) doFetch();
+  }, [fetched, doFetch]);
+
   const handleToggle = useCallback(() => {
     const next = !expanded;
     setExpanded(next);
@@ -292,7 +399,10 @@ export default function PlayerHighlightsPanel({
 
   const youtubeVideos = videos.filter((v) => v.source === 'youtube');
   const scorebatVideos = videos.filter((v) => v.source === 'scorebat');
-  const activeVideo = videos[activeIndex] || null;
+  const activeVideo =
+    mode === 'pinned'
+      ? pinned[activeIndex] || pinned[0] || null
+      : (videos[activeIndex] || videos[0] || null);
 
   // When active video changes, scroll its thumbnail into view (use correct ref for YouTube vs Scorebat)
   useEffect(() => {
@@ -351,9 +461,13 @@ export default function PlayerHighlightsPanel({
             <h3 className="text-base font-display font-semibold text-mgsr-text">
               {t('highlights_title')}
             </h3>
-            {!expanded && fetched && videos.length > 0 && (
+            {!expanded && (
               <p className="text-xs text-mgsr-muted mt-0.5">
-                {videos.length} {videos.length === 1 ? 'video' : 'videos'}
+                {mode === 'pinned' && pinned.length > 0
+                  ? t('highlights_pinned_count').replace('{n}', String(pinned.length))
+                  : fetched && videos.length > 0
+                    ? `${videos.length} ${videos.length === 1 ? 'video' : 'videos'}`
+                    : ''}
               </p>
             )}
           </div>
@@ -373,34 +487,122 @@ export default function PlayerHighlightsPanel({
       {/* ── Expanded content ────────────────────────────────────── */}
       {expanded && (
         <div className="border-t border-mgsr-border">
-          {loading && (
-            <div className="px-5 py-5">
-              <HighlightsSkeleton />
-            </div>
-          )}
-
-          {!loading && error && videos.length === 0 && (
-            <div className="px-5 py-8 text-center space-y-3">
-              <p className="text-sm text-mgsr-muted">{t('highlights_error')}</p>
-              <p className="text-xs text-mgsr-muted/80">{error}</p>
-              <button
-                onClick={() => doFetch(true)}
-                disabled={loading}
-                className="px-4 py-2 rounded-lg bg-mgsr-teal/20 text-mgsr-teal hover:bg-mgsr-teal/30 transition-colors text-sm font-medium disabled:opacity-50"
-              >
-                {t('highlights_retry')}
-              </button>
-            </div>
-          )}
-
-          {!loading && !error && videos.length === 0 && fetched && (
-            <EmptyState isRtl={isRtl} />
-          )}
-
-          {!loading && videos.length > 0 && (
+          {/* ── Pinned mode: show saved videos ───────────────────── */}
+          {mode === 'pinned' && pinned.length > 0 && (
             <div className="px-5 py-4 space-y-4">
-              {/* ── Main video player ──────────────────────────── */}
               {activeVideo && (
+                <div className="aspect-video rounded-lg overflow-hidden bg-black shadow-xl shadow-black/30">
+                  <YouTubeLiteEmbed key={activeVideo.id} video={activeVideo} autoplay={false} />
+                </div>
+              )}
+              {activeVideo && (
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-mgsr-text truncate">{activeVideo.title}</p>
+                    <div className="flex items-center gap-2 mt-0.5 text-xs text-mgsr-muted">
+                      <span>{activeVideo.channelName}</span>
+                      {activeVideo.viewCount != null && activeVideo.viewCount > 0 && (
+                        <>
+                          <span className="text-mgsr-muted/40">·</span>
+                          <span>{formatViews(activeVideo.viewCount)} {t('highlights_views')}</span>
+                        </>
+                      )}
+                      {activeVideo.publishedAt && (
+                        <>
+                          <span className="text-mgsr-muted/40">·</span>
+                          <span>{timeAgo(activeVideo.publishedAt)}</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  {activeVideo.source === 'youtube' && (
+                    <a
+                      href={`https://www.youtube.com/watch?v=${activeVideo.id}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-shrink-0 text-xs text-mgsr-muted hover:text-mgsr-teal transition-colors flex items-center gap-1"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7Z" />
+                        <path d="M5 5v14h14v-7h2v7c0 1.1-.9 2-2 2H5c-1.1 0-2-.9-2-2V5c0-1.1.9-2 2-2h7v2H5Z" />
+                      </svg>
+                      YouTube
+                    </a>
+                  )}
+                </div>
+              )}
+              {pinned.length > 1 && (
+                <div
+                  ref={youtubeScrollRef}
+                  className="flex gap-3 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-mgsr-border scrollbar-track-transparent"
+                >
+                  {pinned.map((v, idx) => (
+                    <VideoThumb
+                      key={v.id}
+                      video={v}
+                      active={idx === activeIndex}
+                      onClick={() => setActiveIndex(idx)}
+                      index={idx}
+                      onKeyDown={handleThumbKeyDown}
+                    />
+                  ))}
+                </div>
+              )}
+              <div className="flex items-center justify-between border-t border-mgsr-border/50 pt-3">
+                <div className="flex items-center gap-1.5 text-[10px] text-mgsr-muted/60">
+                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M23.498 6.186a2.832 2.832 0 0 0-1.991-2.006C19.693 3.6 12 3.6 12 3.6s-7.693 0-9.507.58A2.832 2.832 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a2.832 2.832 0 0 0 1.991 2.006C4.307 20.4 12 20.4 12 20.4s7.693 0 9.507-.58a2.832 2.832 0 0 0 1.991-2.006C24 15.93 24 12 24 12s0-3.93-.502-5.814Z" />
+                    <path d="m9.545 15.568 6.364-3.568-6.364-3.568v7.136Z" fill="white" />
+                  </svg>
+                  <span>{t('highlights_powered_by')}</span>
+                </div>
+                <button
+                  onClick={startReplace}
+                  className="px-3 py-1.5 rounded-lg bg-mgsr-teal/20 text-mgsr-teal hover:bg-mgsr-teal/30 transition-colors text-sm font-medium"
+                >
+                  {t('highlights_replace_videos')}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* ── Select/Replace mode: fetch + choose videos ────────── */}
+          {(mode === 'select' || mode === 'replace') && (
+            <>
+              {loading && (
+                <div className="px-5 py-5">
+                  <HighlightsSkeleton />
+                </div>
+              )}
+
+              {!loading && error && videos.length === 0 && (
+                <div className="px-5 py-8 text-center space-y-3">
+                  <p className="text-sm text-mgsr-muted">{t('highlights_error')}</p>
+                  <p className="text-xs text-mgsr-muted/80">{error}</p>
+                  <button
+                    onClick={() => doFetch(true)}
+                    disabled={loading}
+                    className="px-4 py-2 rounded-lg bg-mgsr-teal/20 text-mgsr-teal hover:bg-mgsr-teal/30 transition-colors text-sm font-medium disabled:opacity-50"
+                  >
+                    {t('highlights_retry')}
+                  </button>
+                </div>
+              )}
+
+              {!loading && !error && videos.length === 0 && fetched && (
+                <EmptyState isRtl={isRtl} />
+              )}
+
+              {!loading && videos.length > 0 && (
+                <div className="px-5 py-4 space-y-4">
+                  {/* Disclaimer */}
+                  <div className="rounded-lg bg-mgsr-dark/50 border border-mgsr-border/50 px-4 py-3">
+                    <p className="text-sm text-mgsr-muted">{t('highlights_disclaimer')}</p>
+                    <p className="text-xs font-medium text-mgsr-teal mt-1">{t('highlights_select_up_to')}</p>
+                  </div>
+
+                  {/* ── Main video player ──────────────────────────── */}
+                  {activeVideo && (
                 <div className="aspect-video rounded-lg overflow-hidden bg-black shadow-xl shadow-black/30">
                   <YouTubeLiteEmbed
                     key={activeVideo.id}
@@ -451,8 +653,8 @@ export default function PlayerHighlightsPanel({
                 </div>
               )}
 
-              {/* ── Thumbnail strip ────────────────────────────── */}
-              {videos.length > 1 && (
+              {/* ── Thumbnail strip (selectable) ────────────────── */}
+              {videos.length > 0 && (
                 <>
                   {/* Section: Player Highlights */}
                   {youtubeVideos.length > 0 && (
@@ -476,6 +678,9 @@ export default function PlayerHighlightsPanel({
                               onClick={() => setActiveIndex(idx)}
                               index={idx}
                               onKeyDown={handleThumbKeyDown}
+                              selectable
+                              selected={selectedIds.has(v.id)}
+                              onSelectToggle={() => toggleSelect(v)}
                             />
                           );
                         })}
@@ -503,6 +708,9 @@ export default function PlayerHighlightsPanel({
                               onClick={() => setActiveIndex(idx)}
                               index={idx}
                               onKeyDown={handleThumbKeyDown}
+                              selectable
+                              selected={selectedIds.has(v.id)}
+                              onSelectToggle={() => toggleSelect(v)}
                             />
                           );
                         })}
@@ -512,8 +720,27 @@ export default function PlayerHighlightsPanel({
                 </>
               )}
 
-              {/* ── Footer ─────────────────────────────────────── */}
-              <div className="flex items-center justify-between border-t border-mgsr-border/50 pt-3">
+                  {/* Action buttons */}
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={confirmSelection}
+                      disabled={selectedIds.size === 0}
+                      className="px-4 py-2 rounded-lg bg-mgsr-teal text-white hover:bg-mgsr-teal/90 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {mode === 'replace' ? t('highlights_confirm_replacement') : t('highlights_confirm_selection')}
+                    </button>
+                    {mode === 'replace' && (
+                      <button
+                        onClick={cancelReplace}
+                        className="px-4 py-2 rounded-lg border border-mgsr-border text-mgsr-muted hover:bg-mgsr-dark/50 transition-colors text-sm font-medium"
+                      >
+                        {t('highlights_cancel')}
+                      </button>
+                    )}
+                  </div>
+
+                  {/* ── Footer ─────────────────────────────────────── */}
+                  <div className="flex items-center justify-between border-t border-mgsr-border/50 pt-3">
                 <div className="flex items-center gap-1.5 text-[10px] text-mgsr-muted/60">
                   <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M23.498 6.186a2.832 2.832 0 0 0-1.991-2.006C19.693 3.6 12 3.6 12 3.6s-7.693 0-9.507.58A2.832 2.832 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a2.832 2.832 0 0 0 1.991 2.006C4.307 20.4 12 20.4 12 20.4s7.693 0 9.507-.58a2.832 2.832 0 0 0 1.991-2.006C24 15.93 24 12 24 12s0-3.93-.502-5.814Z" />
@@ -545,8 +772,10 @@ export default function PlayerHighlightsPanel({
                     <span>{t('highlights_refresh')}</span>
                   </button>
                 </div>
-              </div>
-            </div>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </div>
       )}
