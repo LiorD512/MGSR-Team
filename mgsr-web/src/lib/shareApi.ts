@@ -35,7 +35,8 @@ export interface SharePayload {
     nationality?: string;
     contractExpired?: string;
     agentPhoneNumber?: string;
-    playerAdditionalInfoModel?: { agentNumber?: string };
+    playerAdditionalInfoModel?: { agentNumber?: string; playerNumber?: string };
+    playerPhoneNumber?: string;
     tmProfile?: string;
   };
   mandateInfo?: {
@@ -48,6 +49,8 @@ export interface SharePayload {
   scoutReport?: string;
   highlights?: { id: string; source: string; title: string; thumbnailUrl: string; embedUrl: string; channelName?: string; viewCount?: number }[];
   lang?: 'he' | 'en';
+  includePlayerContact?: boolean;
+  includeAgencyContact?: boolean;
 }
 
 export interface ShareResult {
@@ -138,6 +141,14 @@ export async function createShare(
     contractExpired: payload.player.contractExpired,
     tmProfile: (payload.player as { tmProfile?: string }).tmProfile,
   };
+  if (payload.includePlayerContact) {
+    const playerPhone = payload.player.playerAdditionalInfoModel?.playerNumber ?? (payload.player as { playerPhoneNumber?: string }).playerPhoneNumber;
+    if (playerPhone) (playerObj as Record<string, unknown>).playerPhoneNumber = playerPhone;
+  }
+  if (payload.includeAgencyContact) {
+    const agentPhone = payload.player.playerAdditionalInfoModel?.agentNumber ?? payload.player.agentPhoneNumber;
+    if (agentPhone) (playerObj as Record<string, unknown>).agentPhoneNumber = agentPhone;
+  }
 
   const shareDoc = stripUndefined({
     playerId: payload.playerId,

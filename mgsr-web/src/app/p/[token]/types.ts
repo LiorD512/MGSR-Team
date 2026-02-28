@@ -10,6 +10,8 @@ export interface SharedPlayer {
   nationality?: string;
   contractExpired?: string;
   tmProfile?: string;
+  playerPhoneNumber?: string;
+  agentPhoneNumber?: string;
 }
 
 export interface SharedHighlightVideo {

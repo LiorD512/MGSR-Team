@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { toWhatsAppUrl } from '@/lib/whatsapp';
@@ -110,6 +110,10 @@ export default function SharedPlayerContent({
         highlights: 'היילייטס',
         contact: 'איש קשר',
         contactNote: 'המספר שיוצג בשיתוף הוא מספר הטלפון של הסוכן ששיתף את המסמך.',
+        playerContact: 'יצירת קשר עם השחקן',
+        agencyContact: 'יצירת קשר עם הסוכנות',
+        addToContacts: 'הוסף לרשימת אנשי קשר',
+        openWhatsApp: 'פתח WhatsApp',
         transfermarkt: 'פרופיל Transfermarkt',
         sharedVia: 'שותף דרך MGSR Team',
         viewMandate: 'צפה במנדט',
@@ -124,10 +128,74 @@ export default function SharedPlayerContent({
         highlights: 'Highlights',
         contact: 'Contact',
         contactNote: 'The phone number shown when sharing is the phone number of the agent who shared the document.',
+        playerContact: 'Player contact',
+        agencyContact: 'Agency contact',
+        addToContacts: 'Add to contacts',
+        openWhatsApp: 'Open WhatsApp',
         transfermarkt: 'Transfermarkt profile',
         sharedVia: 'Shared via MGSR Team',
         viewMandate: 'View mandate',
       };
+
+  const playerPhone = player.playerPhoneNumber;
+  const agencyPhone = player.agentPhoneNumber;
+
+  const handleAddToContacts = useCallback((phone: string, name: string) => {
+    if (!phone) return;
+    const vcard = [
+      'BEGIN:VCARD',
+      'VERSION:3.0',
+      `FN:${name.replace(/[,;\\]/g, ' ')}`,
+      `TEL;TYPE=CELL:${phone.replace(/\D/g, '')}`,
+      'END:VCARD',
+    ].join('\n');
+    const blob = new Blob([vcard], { type: 'text/vcard' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${name.replace(/\s+/g, '_')}.vcf`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, []);
+
+  function ContactBlock({ phone, title }: { phone: string; title: string }) {
+    const whatsappUrl = toWhatsAppUrl(phone);
+    return (
+      <div className="p-5 rounded-xl bg-mgsr-card border border-mgsr-border mb-8">
+        <h3 className="text-sm font-semibold text-mgsr-muted uppercase tracking-wider mb-3">
+          {title}
+        </h3>
+        <p className="text-mgsr-text font-medium mb-3" dir="ltr">
+          {phone}
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => handleAddToContacts(phone, title)}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-mgsr-teal/20 text-mgsr-teal font-medium hover:bg-mgsr-teal/30 transition"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+            </svg>
+            {labels.addToContacts}
+          </button>
+          {whatsappUrl && (
+            <a
+              href={whatsappUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#25D366]/20 text-[#25D366] font-medium hover:bg-[#25D366]/30 transition"
+            >
+              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+              </svg>
+              {labels.openWhatsApp}
+            </a>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-mgsr-dark" dir={useHebrew ? 'rtl' : 'ltr'}>
@@ -280,6 +348,13 @@ export default function SharedPlayerContent({
               {data.lang === 'he' ? 'צפה בפרופיל' : 'View profile'}
             </a>
           </div>
+        )}
+
+        {playerPhone && (
+          <ContactBlock phone={playerPhone} title={labels.playerContact} />
+        )}
+        {agencyPhone && (
+          <ContactBlock phone={agencyPhone} title={labels.agencyContact} />
         )}
 
         {(data.sharerPhone || data.sharerName) && (

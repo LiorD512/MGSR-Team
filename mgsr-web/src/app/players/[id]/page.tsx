@@ -657,6 +657,8 @@ export default function PlayerInfoPage() {
         );
         const mandateUrl = validMandate?.storageUrl ?? undefined;
 
+        const agentPhone = getAgentPhone();
+        const playerPhone = getPhone();
         const playerPayload = {
           fullName: player.fullName,
           fullNameHe: player.fullNameHe,
@@ -674,7 +676,9 @@ export default function PlayerInfoPage() {
           onLoanFromClub: player.onLoanFromClub ?? merged.onLoanFromClub,
           agency: player.agency,
           tmProfile: merged.tmProfile || player.tmProfile,
-          // Never include agent/player contact - only Accounts phone when sharing
+          ...(agentPhone ? { agentPhoneNumber: agentPhone } : {}),
+          ...(playerPhone ? { playerPhoneNumber: playerPhone } : {}),
+          ...(player.playerAdditionalInfoModel ? { playerAdditionalInfoModel: player.playerAdditionalInfoModel } : {}),
         };
 
         let scoutReport = '';

@@ -35,7 +35,8 @@ interface SharePayload {
     contractExpired?: string;
     tmProfile?: string;
     agentPhoneNumber?: string;
-    playerAdditionalInfoModel?: { agentNumber?: string };
+    playerAdditionalInfoModel?: { agentNumber?: string; playerNumber?: string };
+    playerPhoneNumber?: string;
   };
   mandateInfo?: {
     hasMandate: boolean;
@@ -105,8 +106,8 @@ export async function POST(request: NextRequest) {
     const decoded = await adminAuth().verifyIdToken(token);
     const uid = decoded.uid;
 
-    const body = (await request.json()) as SharePayload;
-    const { playerId, player, mandateInfo, mandateUrl, sharerPhone, sharerName, scoutReport: providedScoutReport, highlights, lang: bodyLang } = body;
+    const body = (await request.json()) as SharePayload & { includePlayerContact?: boolean; includeAgencyContact?: boolean };
+    const { playerId, player, mandateInfo, mandateUrl, sharerPhone, sharerName, scoutReport: providedScoutReport, highlights, lang: bodyLang, includePlayerContact, includeAgencyContact } = body;
 
     if (!playerId || !player) {
       return NextResponse.json({ error: 'Missing playerId or player' }, { status: 400 });
@@ -118,6 +119,12 @@ export async function POST(request: NextRequest) {
       scoutReport = await generateShortScoutReport(player, lang);
     }
 
+    const playerPhone = includePlayerContact
+      ? (player.playerAdditionalInfoModel?.playerNumber ?? (player as { playerPhoneNumber?: string }).playerPhoneNumber)
+      : undefined;
+    const agentPhone = includeAgencyContact
+      ? (player.playerAdditionalInfoModel?.agentNumber ?? player.agentPhoneNumber)
+      : undefined;
     const shareDoc = {
       playerId,
       player: {
@@ -132,6 +139,8 @@ export async function POST(request: NextRequest) {
         nationality: player.nationality,
         contractExpired: player.contractExpired,
         tmProfile: (player as { tmProfile?: string }).tmProfile,
+        ...(playerPhone ? { playerPhoneNumber: playerPhone } : {}),
+        ...(agentPhone ? { agentPhoneNumber: agentPhone } : {}),
       },
       mandateInfo: mandateInfo ?? null,
       mandateUrl: mandateUrl ?? null,
