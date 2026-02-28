@@ -7,11 +7,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getFirebaseAdmin } from '@/lib/firebaseAdmin';
 import { AGENTS_CONFIG, SCOUT_PROFILES, type AgentId } from '@/lib/scoutAgentConfig';
 import { extractPlayerIdFromUrl } from '@/lib/api';
+import { formatMarketValue } from '@/lib/releases';
+import { handlePlayer } from '@/lib/transfermarkt';
 import type { ScoutProfileResponse } from '@/types/scoutProfiles';
 
 export const dynamic = 'force-dynamic';
 
 export type { ScoutProfileResponse };
+
+const IMAGE_FETCH_CONCURRENCY = 3;
 
 function getProfileImage(profileImage: string | null | undefined, tmProfileUrl: string): string {
   if (profileImage?.trim()) return profileImage.trim();
@@ -47,10 +51,13 @@ export async function GET(request: NextRequest) {
       docs = docs.slice(0, limit);
     }
 
-    const profiles: ScoutProfileResponse[] = docs.map((doc) => {
+    let profiles: ScoutProfileResponse[] = docs.map((doc) => {
       const d = doc.data();
       const agentCfg = AGENTS_CONFIG[(d.agentId as AgentId) || 'portugal'];
       const profileCfg = SCOUT_PROFILES[(d.profileType as keyof typeof SCOUT_PROFILES) || 'HIDDEN_GEM'];
+      const marketValueEuro = d.marketValueEuro ?? 0;
+      const displayValue =
+        marketValueEuro > 0 ? formatMarketValue(marketValueEuro) : (d.marketValue || '');
       return {
         id: doc.id,
         tmProfileUrl: d.tmProfileUrl || '',
@@ -62,8 +69,8 @@ export async function GET(request: NextRequest) {
         profileImage: getProfileImage(d.profileImage, d.tmProfileUrl),
         age: d.age ?? 0,
         position: d.position || '',
-        marketValue: d.marketValue || '',
-        marketValueEuro: d.marketValueEuro ?? 0,
+        marketValue: displayValue,
+        marketValueEuro,
         club: d.club || '',
         league: d.league || '',
         leagueTier: d.leagueTier ?? 1,
@@ -77,7 +84,31 @@ export async function GET(request: NextRequest) {
         lastRefreshedAt: d.lastRefreshedAt ?? 0,
         agentName: agentCfg?.name || d.agentId || '',
         agentFlag: agentCfg?.flag || '🌍',
+        scoutExplanationEn: profileCfg?.explanationEn || '',
+        scoutExplanationHe: profileCfg?.explanationHe || '',
       };
+    });
+
+    // Enrich first 20 profiles with real images from Transfermarkt (like Discovery)
+    const toEnrich = profiles.slice(0, 20);
+    const imageMap = new Map<string, string>();
+    for (let i = 0; i < toEnrich.length; i += IMAGE_FETCH_CONCURRENCY) {
+      const chunk = toEnrich.slice(i, i + IMAGE_FETCH_CONCURRENCY);
+      await Promise.all(
+        chunk.map(async (p) => {
+          try {
+            const data = await handlePlayer(p.tmProfileUrl);
+            const img = (data as { profileImage?: string })?.profileImage?.trim();
+            if (img) imageMap.set(p.tmProfileUrl, img);
+          } catch {
+            // ignore
+          }
+        })
+      );
+    }
+    profiles = profiles.map((p) => {
+      const img = imageMap.get(p.tmProfileUrl);
+      return { ...p, profileImage: img || p.profileImage };
     });
 
     const lastRun = await db

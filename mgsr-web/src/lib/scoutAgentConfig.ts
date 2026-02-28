@@ -150,10 +150,15 @@ export interface ScoutProfileParams {
   contractExpiresWithinMonths?: number;
 }
 
-export const SCOUT_PROFILES: Record<ScoutProfileType, { label: string; labelHe: string; params: ScoutProfileParams }> = {
+export const SCOUT_PROFILES: Record<
+  ScoutProfileType,
+  { label: string; labelHe: string; explanationEn: string; explanationHe: string; params: ScoutProfileParams }
+> = {
   HIGH_VALUE_BENCHED: {
     label: 'High Value Benched',
     labelHe: 'ערך גבוה על הספסל',
+    explanationEn: 'High-value player not getting enough minutes — potential bargain if his club is willing to move him.',
+    explanationHe: 'שחקן בעל שווי גבוה שלא מקבל דקות — פוטנציאל למציאה אם המועדון מוכן לשחרר.',
     params: {
       marketValueMin: 800_000,
       marketValueMax: 3_000_000,
@@ -164,6 +169,8 @@ export const SCOUT_PROFILES: Record<ScoutProfileType, { label: string; labelHe: 
   LOW_VALUE_STARTER: {
     label: 'Low Value Starter',
     labelHe: 'שווי נמוך משחק הרבה',
+    explanationEn: 'Low market value but plays regularly — proven performer at an affordable price.',
+    explanationHe: 'שווי שוק נמוך אבל משחק הרבה — שחקן מוכח במחיר נגיש.',
     params: {
       marketValueMax: 500_000,
       ageMax: 28,
@@ -172,6 +179,8 @@ export const SCOUT_PROFILES: Record<ScoutProfileType, { label: string; labelHe: 
   YOUNG_STRIKER_HOT: {
     label: 'Young Striker Hot',
     labelHe: 'חלוץ צעיר חם',
+    explanationEn: 'Young striker with scoring potential at a low price — could develop into a key player.',
+    explanationHe: 'חלוץ צעיר עם פוטנציאל כיבוש במחיר נמוך — יכול להתפתח לשחקן מפתח.',
     params: {
       marketValueMax: 1_000_000,
       ageMax: 21,
@@ -181,6 +190,8 @@ export const SCOUT_PROFILES: Record<ScoutProfileType, { label: string; labelHe: 
   CONTRACT_EXPIRING: {
     label: 'Contract Expiring',
     labelHe: 'חוזה מסתיים',
+    explanationEn: 'Contract running out soon — opportunity to negotiate a favorable deal or free transfer.',
+    explanationHe: 'חוזה מסתיים בקרוב — הזדמנות למשא ומתן טוב או העברה חופשית.',
     params: {
       marketValueMax: 2_500_000,
       contractExpiresWithinMonths: 6,
@@ -189,6 +200,8 @@ export const SCOUT_PROFILES: Record<ScoutProfileType, { label: string; labelHe: 
   HIDDEN_GEM: {
     label: 'Hidden Gem',
     labelHe: 'יהלום חבוי',
+    explanationEn: 'Young player with high FM potential at a low price — could be a steal for Ligat Ha\'Al.',
+    explanationHe: 'שחקן צעיר עם פוטנציאל FM גבוה במחיר נמוך — יכול להיות מציאה לליגת העל.',
     params: {
       marketValueMax: 1_500_000,
       ageMax: 24,
@@ -198,6 +211,8 @@ export const SCOUT_PROFILES: Record<ScoutProfileType, { label: string; labelHe: 
   LOWER_LEAGUE_RISER: {
     label: 'Lower League Riser',
     labelHe: 'כוכב עולה בליגה נמוכה',
+    explanationEn: 'Rising star in a lower league — ready to step up, often undervalued by the market.',
+    explanationHe: 'כוכב עולה בליגה נמוכה — מוכן לעלות רמה, לרוב מוערך מתחת לשווי בשוק.',
     params: {
       marketValueMax: 1_000_000,
       ageMax: 23,

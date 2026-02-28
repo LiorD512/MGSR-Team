@@ -4,6 +4,7 @@ if (typeof globalThis.File === "undefined") {
 }
 
 const { onDocumentCreated } = require("firebase-functions/v2/firestore");
+const { onMessagePublished } = require("firebase-functions/v2/pubsub");
 const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { initializeApp } = require("firebase-admin/app");
 const { getMessaging } = require("firebase-admin/messaging");
@@ -214,31 +215,72 @@ exports.mandateExpiryScheduled = onSchedule(
 );
 
 /**
- * Runs daily at 03:00 Israel time. Fetches releases from Transfermarkt,
- * detects new free agents, writes FeedEvents. Cloud replacement for ReleasesRefreshWorker.
+ * Runs daily at 03:00 Israel time. Publishes to Pub/Sub and returns immediately
+ * so Cloud Scheduler never times out. The actual work runs in releasesRefreshWorker.
  */
+const RELEASES_REFRESH_TOPIC = "releases-refresh-trigger";
+const SCOUT_AGENT_TOPIC = "scout-agent-trigger";
+
 exports.releasesRefreshScheduled = onSchedule(
   { schedule: "0 3 * * *", timeZone: "Asia/Jerusalem" },
   async () => {
-    console.log("[releasesRefreshScheduled] Triggered at 03:00 Israel time");
-    await runReleasesRefresh();
-    console.log("[releasesRefreshScheduled] Completed");
+    console.log("[releasesRefreshScheduled] Triggered at 03:00 Israel time — publishing to Pub/Sub");
+    const { PubSub } = require("@google-cloud/pubsub");
+    const pubsub = new PubSub();
+    await pubsub.topic(RELEASES_REFRESH_TOPIC).publishMessage({ data: Buffer.from("{}") });
+    console.log("[releasesRefreshScheduled] Published — worker will run asynchronously");
   }
 );
 
 /**
- * Runs daily at 05:00 Israel time. AI Scout Agent Network — fetches players from
- * scout server, assigns to country agents, matches scouting profiles, writes to ScoutProfiles.
+ * Handles releases refresh work. Triggered by Pub/Sub (from releasesRefreshScheduled).
+ * 9 min timeout, built-in retries on failure.
+ */
+exports.releasesRefreshWorker = onMessagePublished(
+  {
+    topic: RELEASES_REFRESH_TOPIC,
+    timeoutSeconds: 540,
+    retry: true,
+  },
+  async () => {
+    console.log("[releasesRefreshWorker] Started");
+    await runReleasesRefresh();
+    console.log("[releasesRefreshWorker] Completed");
+  }
+);
+
+/**
+ * Runs daily at 05:00 Israel time. Publishes to Pub/Sub and returns immediately
+ * so Cloud Scheduler never times out. The actual work runs in scoutAgentWorker.
  */
 exports.scoutAgentScheduled = onSchedule(
   { schedule: "0 5 * * *", timeZone: "Asia/Jerusalem" },
   async () => {
-    console.log("[scoutAgentScheduled] Triggered at 05:00 Israel time");
+    console.log("[scoutAgentScheduled] Triggered at 05:00 Israel time — publishing to Pub/Sub");
+    const { PubSub } = require("@google-cloud/pubsub");
+    const pubsub = new PubSub();
+    await pubsub.topic(SCOUT_AGENT_TOPIC).publishMessage({ data: Buffer.from("{}") });
+    console.log("[scoutAgentScheduled] Published — worker will run asynchronously");
+  }
+);
+
+/**
+ * Handles scout agent work. Triggered by Pub/Sub (from scoutAgentScheduled).
+ * 9 min timeout — scout server calls can be slow (cold start).
+ */
+exports.scoutAgentWorker = onMessagePublished(
+  {
+    topic: SCOUT_AGENT_TOPIC,
+    timeoutSeconds: 540,
+    retry: true,
+  },
+  async () => {
+    console.log("[scoutAgentWorker] Started");
     try {
       await runScoutAgent();
-      console.log("[scoutAgentScheduled] Completed");
+      console.log("[scoutAgentWorker] Completed");
     } catch (err) {
-      console.error("[scoutAgentScheduled] Failed:", err);
+      console.error("[scoutAgentWorker] Failed:", err);
       const db = getFirestore();
       await db.collection("ScoutAgentRuns").add({
         runAt: Date.now(),
@@ -248,6 +290,7 @@ exports.scoutAgentScheduled = onSchedule(
         durationMs: 0,
         error: err?.message || String(err),
       });
+      throw err;
     }
   }
 );

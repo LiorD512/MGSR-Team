@@ -17,13 +17,21 @@ Workers have been moved from Android WorkManager to cloud services.
 
 ## Deploy Cloud Functions
 
+**One-time setup:** Create the Pub/Sub topic for releases refresh (required for `releasesRefreshScheduled`):
+
+```bash
+gcloud pubsub topics create releases-refresh-trigger --project=mgsr-64e4b
+```
+
+Then deploy:
+
 ```bash
 cd functions
 npm install
 firebase deploy --only functions
 ```
 
-This deploys `mandateExpiryScheduled` and `releasesRefreshScheduled` in addition to existing functions.
+This deploys `mandateExpiryScheduled`, `releasesRefreshScheduled`, `releasesRefreshWorker`, and other functions. The scheduler publishes to Pub/Sub and returns immediately; the worker runs asynchronously with 9 min timeout and automatic retries.
 
 ## Deploy PlayerRefresh (Cloud Run Job)
 

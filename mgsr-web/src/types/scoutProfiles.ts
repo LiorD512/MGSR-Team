@@ -24,4 +24,6 @@ export interface ScoutProfileResponse {
   lastRefreshedAt: number;
   agentName: string;
   agentFlag: string;
+  scoutExplanationEn?: string;
+  scoutExplanationHe?: string;
 }

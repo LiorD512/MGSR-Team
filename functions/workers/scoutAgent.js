@@ -8,7 +8,7 @@ const { getFirestore } = require("firebase-admin/firestore");
 
 const SCOUT_BASE = process.env.SCOUT_SERVER_URL || "https://football-scout-server-l38w.onrender.com";
 const LIGAT_HAAL_VALUE_MAX = 2_500_000;
-const DELAY_BETWEEN_REQUESTS_MS = 5000;
+const DELAY_BETWEEN_REQUESTS_MS = 3000;
 
 /** League name (from scout) -> agentId. Use lowercase for matching. */
 const LEAGUE_TO_AGENT = {
@@ -112,9 +112,15 @@ function matchesProfile(p, profileType, valEuro, ageNum, leagueTier) {
   }
 }
 
+function formatValue(valEuro) {
+  if (!valEuro || valEuro <= 0) return "€0";
+  if (valEuro >= 1_000_000) return `€${(valEuro / 1_000_000).toFixed(valEuro % 1_000_000 === 0 ? 0 : 1)}M`;
+  return `€${Math.round(valEuro / 1_000)}k`;
+}
+
 function buildMatchReason(p, profileType, valEuro, ageNum) {
   const parts = [];
-  if (valEuro > 0) parts.push(`€${(valEuro / 1_000_000).toFixed(2)}M value`);
+  if (valEuro > 0) parts.push(`${formatValue(valEuro)} value`);
   if (ageNum != null) parts.push(`age ${ageNum}`);
   const fmPa = getFmPa(p);
   if (fmPa != null) parts.push(`FM PA ${fmPa}`);

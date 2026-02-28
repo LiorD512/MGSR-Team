@@ -335,7 +335,7 @@ export default function WarRoomPage() {
 
         <div className="relative">
           <h1 className="text-3xl md:text-4xl font-display font-extrabold text-mgsr-text tracking-tight">
-            War Room
+            {t('nav_war_room')}
           </h1>
 
           {/* War Room main tabs: Discovery | AI Scout Agents */}
@@ -873,7 +873,7 @@ export default function WarRoomPage() {
                                 className="flex gap-3 p-3 rounded-lg bg-mgsr-dark border border-mgsr-border hover:border-mgsr-teal/40 transition"
                               >
                                 <img
-                                  src={p.profileImage || `https://img.a.transfermarkt.technology/portrait/medium/${extractPlayerIdFromUrl(p.tmProfileUrl) || '0'}.jpg`}
+                                  src={getPlayerImageUrl(p.profileImage ?? undefined, p.tmProfileUrl)}
                                   alt=""
                                   className="w-12 h-12 rounded-lg object-cover bg-mgsr-border shrink-0"
                                   onError={(e) => {
@@ -891,7 +891,9 @@ export default function WarRoomPage() {
                                     {p.age} · {shortenPosition(p.position)} · {p.marketValue}
                                     {p.club && ` · ${p.club}`}
                                   </p>
-                                  <p className="text-xs text-mgsr-text mt-1">{p.matchReason}</p>
+                                  <p className="text-xs text-mgsr-text mt-1">
+                                    {(isHe ? p.scoutExplanationHe : p.scoutExplanationEn) || p.matchReason}
+                                  </p>
                                   <div className="flex flex-wrap gap-2 mt-2" onClick={(e) => e.stopPropagation()}>
                                     <a
                                       href={p.tmProfileUrl}

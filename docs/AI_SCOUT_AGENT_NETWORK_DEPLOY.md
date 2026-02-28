@@ -9,6 +9,16 @@ The AI Scout Agent Network runs as a **Firebase Cloud Function** (`scoutAgentSch
 - Firebase project with Blaze plan (for outbound HTTP)
 - `SCOUT_SERVER_URL` env var (optional — defaults to football-scout-server on Render)
 
+## Create Pub/Sub Topic (one-time)
+
+The scout agent uses Pub/Sub to avoid Cloud Scheduler timeout (504). Create the topic:
+
+```bash
+gcloud pubsub topics create scout-agent-trigger --project=mgsr-64e4b
+```
+
+Or in [Google Cloud Console](https://console.cloud.google.com/cloudpubsub) → Create topic → `scout-agent-trigger`.
+
 ## Deploy Firebase Functions
 
 ```bash
@@ -17,8 +27,9 @@ npm install
 firebase deploy --only functions
 ```
 
-The following function will be deployed:
-- `scoutAgentScheduled` — runs at 05:00 Israel time
+The following functions will be deployed:
+- `scoutAgentScheduled` — runs at 05:00 Israel time, publishes to Pub/Sub (returns immediately)
+- `scoutAgentWorker` — triggered by Pub/Sub, runs the actual work (9 min timeout)
 
 ## Firestore Indexes
 

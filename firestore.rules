@@ -8,7 +8,6 @@ service cloud.firestore {
       allow update, delete: if false;
     }
     // Players: read/write for authenticated users (pinnedHighlights, etc.)
-    // Merge with existing Players rules in Firebase Console if needed
     match /Players/{playerId} {
       allow read, write: if request.auth != null;
     }
@@ -26,7 +25,46 @@ service cloud.firestore {
       allow read: if request.auth != null;
       allow write: if false;
     }
-    // Add your existing rules below. This file may need to be merged with
-    // rules you already have in Firebase Console.
+
+    // ── Core app collections (required for dashboard, tasks, etc.) ──
+    match /Accounts/{docId} {
+      allow read, write: if request.auth != null;
+    }
+    match /AgentTasks/{docId} {
+      allow read, write: if request.auth != null;
+    }
+    match /FeedEvents/{docId} {
+      allow read, write: if request.auth != null;
+    }
+    match /ClubRequests/{docId} {
+      allow read, write: if request.auth != null;
+    }
+    match /Contacts/{docId} {
+      allow read, write: if request.auth != null;
+    }
+    match /Shortlists/{docId} {
+      allow read, write: if request.auth != null;
+    }
+    match /PlayerDocuments/{docId} {
+      allow read, write: if request.auth != null;
+    }
+    match /PlayerOffers/{docId} {
+      allow read, write: if request.auth != null;
+    }
+    match /ShadowTeams/{docId} {
+      allow read, write: if request.auth != null;
+    }
+
+    // Reference/lookup collections (read for app, write by admin/backend)
+    match /Sections/{docId} { allow read: if request.auth != null; allow write: if request.auth != null; }
+    match /Strengths/{docId} { allow read: if request.auth != null; allow write: if request.auth != null; }
+    match /DocumentsType/{docId} { allow read: if request.auth != null; allow write: if request.auth != null; }
+    match /Leagues/{docId} { allow read: if request.auth != null; allow write: if request.auth != null; }
+    match /Clubs/{docId} { allow read: if request.auth != null; allow write: if request.auth != null; }
+    match /Positions/{docId} { allow read: if request.auth != null; allow write: if request.auth != null; }
+    match /Roles/{docId} { allow read: if request.auth != null; allow write: if request.auth != null; }
+    match /Requests/{docId} { allow read: if request.auth != null; allow write: if request.auth != null; }
+    match /YouthPlayers/{docId} { allow read: if request.auth != null; allow write: if request.auth != null; }
+    match /YouthStatus/{docId} { allow read: if request.auth != null; allow write: if request.auth != null; }
   }
 }

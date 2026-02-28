@@ -33,7 +33,7 @@ const RELEASE_RANGES = [
   [2000000, 2200000],
 ];
 
-const DELAY_BETWEEN_RANGES_MS = 8000;
+const DELAY_BETWEEN_RANGES_MS = 6000;
 
 function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms));
@@ -122,14 +122,24 @@ async function runReleasesRefresh() {
       `Releases already in feed: ${alreadyHaveEvents.size}, creating events for: ${releasesToCreate.length}`
     );
 
+    // Batch player lookups (Firestore "in" max 30) — avoids N sequential queries
+    const playersInDb = new Set();
+    const urlsToCheck = releasesToCreate.map((r) => r.playerUrl).filter(Boolean);
+    for (let i = 0; i < urlsToCheck.length; i += 30) {
+      const chunk = urlsToCheck.slice(i, i + 30);
+      const snapshot = await playersRef.where("tmProfile", "in", chunk).get();
+      snapshot.docs.forEach((d) => {
+        const tm = d.data()?.tmProfile;
+        if (tm) playersInDb.add(tm);
+      });
+    }
+
+    const now = Date.now();
     for (const release of releasesToCreate) {
       const playerUrl = release.playerUrl;
       if (!playerUrl) continue;
 
-      const playerSnap = await playersRef.where("tmProfile", "==", playerUrl).get();
-      const isInDatabase = !playerSnap.empty;
-
-      const now = Date.now();
+      const isInDatabase = playersInDb.has(playerUrl);
       const docId = feedEventDocId(
         FEED_EVENT_TYPE_NEW_RELEASE_FROM_CLUB,
         playerUrl,

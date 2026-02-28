@@ -1,5 +1,12 @@
 import type { ReleasePlayer } from './api';
 
+/** Format euro value for display: €150k for <1M, €1.5M for ≥1M. */
+export function formatMarketValue(euro: number): string {
+  if (!euro || euro <= 0) return '€0';
+  if (euro >= 1_000_000) return `€${(euro / 1_000_000).toFixed(euro % 1_000_000 === 0 ? 0 : 1)}M`;
+  return `€${Math.round(euro / 1_000)}k`;
+}
+
 /** Parse market value string (e.g. "€1.5m", "€500k") to number for sorting. */
 export function parseMarketValue(value: string | undefined): number {
   if (!value || value.includes('-')) return 0;
