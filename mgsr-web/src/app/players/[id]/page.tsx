@@ -760,7 +760,7 @@ export default function PlayerInfoPage() {
           await addDoc(collection(db, 'Portfolio'), portfolioDoc);
         }
 
-        router.push('/portfolio');
+        router.push(`/portfolio?fromPlayer=${id}`);
       } catch (e) {
         console.error('Add to portfolio failed:', e);
         setPortfolioError(e instanceof Error ? e.message : t('player_info_portfolio_scout_failed'));

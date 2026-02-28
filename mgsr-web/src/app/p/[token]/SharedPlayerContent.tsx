@@ -87,6 +87,16 @@ export default function SharedPlayerContent({
 
   const player = data.player;
   const useHebrew = data.lang === 'he';
+
+  useEffect(() => {
+    document.documentElement.dir = useHebrew ? 'rtl' : 'ltr';
+    document.documentElement.lang = useHebrew ? 'he' : 'en';
+    return () => {
+      document.documentElement.dir = 'ltr';
+      document.documentElement.lang = 'en';
+    };
+  }, [useHebrew]);
+
   const displayName =
     useHebrew ? (player.fullNameHe || player.fullName) : (player.fullName || player.fullNameHe) || '—';
   const labels = useHebrew

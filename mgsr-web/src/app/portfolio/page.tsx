@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import AppLayout from '@/components/AppLayout';
@@ -31,6 +31,8 @@ export default function PortfolioPage() {
   const { user, loading } = useAuth();
   const { t, isRtl } = useLanguage();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const fromPlayerId = searchParams.get('fromPlayer');
   const [items, setItems] = useState<PortfolioItem[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loadingItems, setLoadingItems] = useState(true);
@@ -192,6 +194,17 @@ export default function PortfolioPage() {
             <p className="mt-2 text-mgsr-muted text-lg max-w-xl">
               {t('portfolio_subtitle')}
             </p>
+            {fromPlayerId && (
+              <Link
+                href={`/players/${fromPlayerId}`}
+                className="mt-4 inline-flex items-center gap-2 text-mgsr-teal hover:text-mgsr-teal/80 font-medium transition"
+              >
+                <svg className={`w-5 h-5 ${isRtl ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+                {t('portfolio_back_to_player')}
+              </Link>
+            )}
           </div>
         </div>
 
