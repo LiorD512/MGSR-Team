@@ -44,12 +44,26 @@ function samePlayer(url1: string, url2: string): boolean {
   return !!id1 && id1 === id2;
 }
 
-async function fetchScoutData(tmProfile: string, playerName: string, lang: string): Promise<ScoutData> {
+async function fetchScoutData(
+  tmProfile: string,
+  playerName: string,
+  lang: string,
+  club?: string,
+  age?: string
+): Promise<ScoutData> {
+  const fmParams = new URLSearchParams();
+  fmParams.set('player_name', playerName);
+  if (club) fmParams.set('club', club);
+  if (age) fmParams.set('age', age);
+  fmParams.set('_t', String(Date.now()));
+
   const [similarRes, fmRes] = await Promise.all([
     fetch(`${SCOUT_BASE}/similar_players?player_url=${encodeURIComponent(tmProfile)}&lang=${lang}&limit=5`, {
+      cache: 'no-store',
       signal: AbortSignal.timeout(8000),
     }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
-    fetch(`${SCOUT_BASE}/fm_intelligence?player_name=${encodeURIComponent(playerName)}`, {
+    fetch(`${SCOUT_BASE}/fm_intelligence?${fmParams.toString()}`, {
+      cache: 'no-store',
       signal: AbortSignal.timeout(8000),
     }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
   ]);
@@ -312,7 +326,13 @@ export async function POST(request: NextRequest) {
     let scoutData: ScoutData | undefined;
     if (player.tmProfile && player.fullName) {
       try {
-        scoutData = await fetchScoutData(player.tmProfile, player.fullName, langKey);
+        scoutData = await fetchScoutData(
+          player.tmProfile,
+          player.fullName,
+          langKey,
+          player.currentClub?.clubName,
+          player.age
+        );
       } catch {
         scoutData = undefined;
       }
