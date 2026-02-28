@@ -65,19 +65,9 @@ export default function SharedPlayerContent({
   const useHebrew = data.lang === 'he' || (typeof navigator !== 'undefined' && navigator.language?.startsWith('he'));
   const displayName =
     useHebrew ? (player.fullNameHe || player.fullName) : (player.fullName || player.fullNameHe) || '—';
-  const mandateExpiry = data.mandateInfo?.expiresAt
-    ? new Date(data.mandateInfo.expiresAt).toLocaleDateString('en-GB', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-      })
-    : null;
-
   const labels = useHebrew
     ? {
         mandate: 'מנדט',
-        activeUntil: 'פעיל עד',
-        active: 'פעיל',
         age: 'גיל',
         height: 'גובה',
         nationality: 'לאום',
@@ -91,8 +81,6 @@ export default function SharedPlayerContent({
       }
     : {
         mandate: 'Mandate',
-        activeUntil: 'Active until',
-        active: 'Active',
         age: 'Age',
         height: 'Height',
         nationality: 'Nationality',
@@ -156,14 +144,9 @@ export default function SharedPlayerContent({
         {data.mandateInfo?.hasMandate && (
           <div className="p-5 rounded-xl bg-mgsr-card border border-mgsr-teal/30 mb-6">
             <div className="flex items-center justify-between gap-4">
-              <div>
-                <h3 className="text-sm font-semibold text-mgsr-teal uppercase tracking-wider mb-1">
-                  {labels.mandate}
-                </h3>
-                <p className="text-mgsr-text font-medium text-sm">
-                  {mandateExpiry ? `${labels.activeUntil} ${mandateExpiry}` : labels.active}
-                </p>
-              </div>
+              <h3 className="text-sm font-semibold text-mgsr-teal uppercase tracking-wider">
+                {labels.mandate}
+              </h3>
               <div className="shrink-0">
                 <div className="w-11 h-6 rounded-full bg-mgsr-teal flex items-center justify-end px-1">
                   <div className="w-4 h-4 rounded-full bg-white" />
@@ -209,10 +192,15 @@ export default function SharedPlayerContent({
                     />
                   </div>
                   <div className="p-3 bg-mgsr-card/50">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-[10px] font-medium uppercase tracking-wider text-mgsr-teal">
+                        {v.source === 'scorebat' ? (useHebrew ? 'משחק' : 'Match') : (useHebrew ? 'יוטיוב' : 'YouTube')}
+                      </span>
+                      {v.channelName && (
+                        <span className="text-xs text-mgsr-muted truncate">{v.channelName}</span>
+                      )}
+                    </div>
                     <p className="text-sm font-medium text-mgsr-text line-clamp-2">{v.title}</p>
-                    {v.channelName && (
-                      <p className="text-xs text-mgsr-muted mt-0.5">{v.channelName}</p>
-                    )}
                   </div>
                 </div>
               ))}
