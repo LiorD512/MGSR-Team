@@ -142,11 +142,13 @@ export default function SharedPlayerContent({
 
   const handleAddToContacts = useCallback((phone: string, name: string) => {
     if (!phone) return;
+    const digits = phone.replace(/\D/g, '');
+    const telValue = phone.startsWith('+') ? `+${digits}` : digits;
     const vcard = [
       'BEGIN:VCARD',
       'VERSION:3.0',
       `FN:${name.replace(/[,;\\]/g, ' ')}`,
-      `TEL;TYPE=CELL:${phone.replace(/\D/g, '')}`,
+      `TEL;TYPE=CELL:${telValue}`,
       'END:VCARD',
     ].join('\n');
     const blob = new Blob([vcard], { type: 'text/vcard' });
@@ -158,7 +160,7 @@ export default function SharedPlayerContent({
     URL.revokeObjectURL(url);
   }, []);
 
-  function ContactBlock({ phone, title }: { phone: string; title: string }) {
+  function ContactBlock({ phone, title, contactName }: { phone: string; title: string; contactName: string }) {
     const whatsappUrl = toWhatsAppUrl(phone);
     return (
       <div className="p-5 rounded-xl bg-mgsr-card border border-mgsr-border mb-8">
@@ -171,7 +173,7 @@ export default function SharedPlayerContent({
         <div className="flex flex-wrap gap-2">
           <button
             type="button"
-            onClick={() => handleAddToContacts(phone, title)}
+            onClick={() => handleAddToContacts(phone, contactName)}
             className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-mgsr-teal/20 text-mgsr-teal font-medium hover:bg-mgsr-teal/30 transition"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -351,10 +353,10 @@ export default function SharedPlayerContent({
         )}
 
         {playerPhone && (
-          <ContactBlock phone={playerPhone} title={labels.playerContact} />
+          <ContactBlock phone={playerPhone} title={labels.playerContact} contactName={displayName || '—'} />
         )}
         {agencyPhone && (
-          <ContactBlock phone={agencyPhone} title={labels.agencyContact} />
+          <ContactBlock phone={agencyPhone} title={labels.agencyContact} contactName={`${displayName || '—'} agent`} />
         )}
 
         {(data.sharerPhone || data.sharerName) && (
