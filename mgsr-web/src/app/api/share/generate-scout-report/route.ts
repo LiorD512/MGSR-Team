@@ -1,12 +1,14 @@
 /**
  * POST /api/share/generate-scout-report
- * Generates a detailed scout report via Gemini (same structure as app's AiHelperService).
- * No auth required (rate limit by usage).
+ * Generates a short, promotional scout report for sharing with clubs.
+ * Fetches FBref + FM data when tmProfile available. No verdict/sign decision.
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
 export const dynamic = 'force-dynamic';
+
+const SCOUT_BASE = process.env.SCOUT_SERVER_URL || 'https://football-scout-server-l38w.onrender.com';
 
 interface PlayerPayload {
   fullName?: string;
@@ -27,7 +29,21 @@ interface PlayerPayload {
   tmProfile?: string;
 }
 
-function buildPlayerContext(player: PlayerPayload): string {
+async function fetchScoutData(tmProfile: string, playerName: string) {
+  const [similarRes, fmRes] = await Promise.all([
+    fetch(`${SCOUT_BASE}/similar_players?player_url=${encodeURIComponent(tmProfile)}&lang=en&limit=1`, {
+      signal: AbortSignal.timeout(20000),
+    }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
+    fetch(`${SCOUT_BASE}/fm_intelligence?player_name=${encodeURIComponent(playerName)}`, {
+      signal: AbortSignal.timeout(15000),
+    }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
+  ]);
+  const profile = similarRes?.player_profile ?? similarRes?.results?.[0];
+  const fm = fmRes && !fmRes.error ? fmRes : null;
+  return { profile, fm };
+}
+
+function buildPlayerContext(player: PlayerPayload, scoutData?: { profile?: Record<string, unknown>; fm?: Record<string, unknown> }): string {
   const parts: string[] = [];
   if (player.fullName) parts.push(`Name: ${player.fullName}`);
   if (player.age) parts.push(`Age: ${player.age}`);
@@ -47,57 +63,58 @@ function buildPlayerContext(player: PlayerPayload): string {
   if (player.currentClub?.clubName)
     parts.push(`Current club: ${player.currentClub.clubName}`);
   if (player.currentClub?.clubCountry)
-    parts.push(`Club country/league: ${player.currentClub.clubCountry}`);
+    parts.push(`League: ${player.currentClub.clubCountry}`);
   if (player.contractExpired) parts.push(`Contract: ${player.contractExpired}`);
   if (player.isOnLoan) parts.push('On loan: yes');
   if (player.onLoanFromClub)
     parts.push(`On loan from: ${player.onLoanFromClub}`);
   if (player.agency) parts.push(`Agency: ${player.agency}`);
   if (player.tmProfile) parts.push(`Transfermarkt: ${player.tmProfile}`);
+
+  if (scoutData?.profile && scoutData.profile.fbref_matched) {
+    const p = scoutData.profile;
+    const mins = p.fbref_minutes_90s != null ? `${Number(p.fbref_minutes_90s) * 90} minutes` : null;
+    if (mins) parts.push(`Minutes (365d): ${mins}`);
+    if (p.fbref_tackles_per90 != null) parts.push(`Tackles/90: ${p.fbref_tackles_per90}`);
+    if (p.fbref_interceptions_per90 != null) parts.push(`Interceptions/90: ${p.fbref_interceptions_per90}`);
+    if (p.fbref_goals_per90 != null) parts.push(`Goals/90: ${p.fbref_goals_per90}`);
+    if (p.fbref_assists_per90 != null) parts.push(`Assists/90: ${p.fbref_assists_per90}`);
+    if (p.player_style) parts.push(`Playing style: ${p.player_style}`);
+  }
+  if (scoutData?.fm && !scoutData.fm.error) {
+    const f = scoutData.fm;
+    parts.push(`FM CA: ${f.ca}, PA: ${f.pa}, Tier: ${f.tier}`);
+    if (f.best_position) parts.push(`Best position: ${(f.best_position as { position?: string }).position} (fit ${(f.best_position as { fit?: number }).fit})`);
+    if (Array.isArray(f.top_attributes) && f.top_attributes.length > 0) {
+      const attrs = (f.top_attributes as { name: string; value: number }[])
+        .slice(0, 8)
+        .map((a) => `${a.name} ${a.value}`)
+        .join(', ');
+      parts.push(`Top attributes: ${attrs}`);
+    }
+  }
   return parts.join('\n');
 }
 
-const SCOUT_REPORT_PROMPT = `You are a CHIEF SCOUT with 25+ years at top clubs. Your reports drive transfer decisions. You combine experience, creativity, and ruthless analysis. Write with authority, precision, and tactical insight.
+const SCOUT_REPORT_PROMPT = `You are a professional scout presenting a player to clubs. Your job is to showcase the player in the best light — promotional, concise, data-driven. NO verdict, NO sign/monitor/pass decision. Just present the player.
 
-TASK: Generate a professional scout report for the following player.
+FORMAT:
+- All in prose (words), NO tables.
+- Short: ~150–250 words max.
+- Clear, punchy sentences. Bold key numbers where they stand out.
+- Promotional tone: highlight strengths, never list weaknesses or diminish value.
+- Do NOT include: key passes, progressive carries (we don't have this data — omit entirely).
+- Do NOT invent: minutes, stats, or facts not in the profile.
+- End with Ligat Ha'Al fit (rotation/squad/starter) and realistic price range if relevant.
 
-FORMAT: Full tactical scout report (Barcelona/Real Madrid standard).
-Use section headers. Pro-grade detail. Every claim traceable to the profile.
+STRUCTURE (flow naturally in prose):
+1. Identity: name, age, position, club, league, market value, nationality.
+2. Stats (if available): minutes, tackles/90, interceptions/90, goals/90 — only what's in the data.
+3. FM attributes (if available): CA, PA, tier, top attributes, best position.
+4. Playing style (if available): one line.
+5. Ligat Ha'Al fit: rotation/squad/starter for top-6 or mid-table. Price range €X–€Y if relevant.
 
-SECTIONS:
-1. Executive Summary — 2–3 sentences: key strengths, main concern, recommendation
-2. Technical Profile — infer from position, height, foot, value: first touch, passing, dribbling, press resistance, weak foot. Use tactical reasoning. Do NOT invent match stats or playing time.
-3. Tactical Fit — best system, role, instructions. Positional play understanding.
-4. Strengths — 3–4 specific points. Technical, physical, tactical. Based on profile.
-5. Weaknesses — 2–3 areas of concern. Age, contract, value trend. Never assume injuries or form.
-6. FIT FOR ISRAELI PREMIER LEAGUE (LIGAT HA'AL) — CORE SECTION: This is the primary market. Analyze: (a) START / ROTATION / SQUAD verdict for top-6 clubs; (b) Club-specific fit: Maccabi Haifa, Maccabi TA, Hapoel BS, Hapoel TA, Beitar, Maccabi Netanya; (c) League standard comparison for position; (d) Transfer feasibility for Israeli market; (e) Risk/opportunity in Ligat Ha'Al context. Be specific and creative.
-7. Market Value & Transfer Suitability — from profile. Ideal buyer profile. Contract context.
-8. Verdict — SIGN / MONITOR / PASS with clear action and rationale.
-
-ISRAELI PREMIER LEAGUE (LIGAT HA'AL) — MANDATORY CORE ANALYSIS:
-This is your PRIMARY market. Every report MUST include a dedicated section analyzing this player's fit for Israel's top division. Be specific and actionable.
-
-REQUIRED ELEMENTS:
-1. LIGAT HA'AL FIT VERDICT: Would this player START / ROTATION / SQUAD / BENEATH for a top-6 Israeli club? State clearly.
-2. CLUB-SPECIFIC FIT: Which Israeli clubs suit best? Maccabi Haifa, Maccabi Tel Aviv, Hapoel Be'er Sheva, Hapoel Tel Aviv, Beitar Jerusalem, Maccabi Netanya. Explain why each fits or doesn't based on profile (value, age, position, style).
-3. LEAGUE STANDARD COMPARISON: Typical Ligat Ha'Al level: market values €100k–€2m for starters. Physical and technical demands. League tempo. How does this player compare to typical Israeli league standards for this position?
-4. TRANSFER FEASIBILITY: Value, contract, club level compatibility. Is this a realistic target for Israeli clubs? Price range for Israeli market.
-5. RISK/OPPORTUNITY: What would make this player excel or struggle in Ligat Ha'Al?
-Base analysis on profile data only. Be creative and experienced — you are a chief scout who knows the Israeli market inside out.
-
-FACTUAL ACCURACY (non-negotiable — a pro scout never gets this wrong):
-- Base the report ONLY on the data provided in the player profile below. You have NO other data.
-- NEVER invent, assume, or infer: playing time, minutes played, injuries, career gaps, "hasn't played for X months/years", recent form, last season stats, or any fact not explicitly in the profile.
-- If the profile does not mention playing time, injuries, or recent activity — do NOT write about them. Omit those sections entirely.
-- When discussing strengths/weaknesses, base them on: position, age, height, foot, market value, club, contract, nationality. Use tactical reasoning, not invented facts.
-- If uncertain about any fact, omit it. A wrong claim destroys credibility. "Data not available" is better than a false claim.
-
-Player profile (this is your ONLY data source — no other fields exist):
-{playerContext}
-
-Note: If a field is missing above (e.g. no contract, no description), do not invent it. Work with what is provided.
-
-Write the report in {outputLang}. Use clear numbered section headers (e.g. "1. Executive Summary", "2. Technical Profile"). Do NOT use markdown asterisks (**bold**) or hashtags — use plain text only. Be specific about what the data shows. Avoid generic fluff. Your verdict should be actionable. Never fabricate facts.`;
+Write in {outputLang}. Plain text only, no markdown. Be professional and club-ready.`;
 
 export async function POST(request: NextRequest) {
   try {
@@ -110,6 +127,14 @@ export async function POST(request: NextRequest) {
     const { player, lang = 'en' } = body;
     if (!player) return NextResponse.json({ scoutReport: '' });
 
+    let scoutData: { profile?: Record<string, unknown>; fm?: Record<string, unknown> } | undefined;
+    if (player.tmProfile && player.fullName) {
+      scoutData = await fetchScoutData(player.tmProfile, player.fullName);
+    }
+
+    const playerContext = buildPlayerContext(player, scoutData);
+    const outputLang = lang === 'he' || lang === 'iw' ? 'Hebrew' : 'English';
+
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({
       model: 'gemini-2.5-flash',
@@ -119,11 +144,10 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    const playerContext = buildPlayerContext(player);
-    const outputLang = lang === 'he' || lang === 'iw' ? 'Hebrew' : 'English';
+    const prompt = `${SCOUT_REPORT_PROMPT.replace('{outputLang}', outputLang)}
 
-    const prompt = SCOUT_REPORT_PROMPT.replace('{playerContext}', playerContext)
-      .replace('{outputLang}', outputLang);
+Player profile (ONLY use data below — never invent):
+${playerContext}`;
 
     const result = await model.generateContent(prompt);
     const text = result.response.text()?.trim() || '';

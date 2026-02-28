@@ -124,10 +124,15 @@ export default function SharedPlayerContent({
               <p className="text-mgsr-muted mt-2 text-lg">
                 {player.positions?.filter(Boolean).join(' • ') || '—'}
               </p>
-              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3 mt-4">
+              <div className="flex flex-col items-center sm:items-start gap-0.5 mt-4">
                 {player.currentClub?.clubName && (
                   <span className="text-mgsr-text font-medium">
                     {player.currentClub.clubName}
+                  </span>
+                )}
+                {player.currentClub?.clubCountry && (
+                  <span className="text-mgsr-muted text-sm">
+                    {player.currentClub.clubCountry}
                   </span>
                 )}
               </div>
