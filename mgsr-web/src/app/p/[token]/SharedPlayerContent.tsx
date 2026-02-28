@@ -86,7 +86,7 @@ export default function SharedPlayerContent({
   }
 
   const player = data.player;
-  const useHebrew = data.lang === 'he' || (typeof navigator !== 'undefined' && navigator.language?.startsWith('he'));
+  const useHebrew = data.lang === 'he';
   const displayName =
     useHebrew ? (player.fullNameHe || player.fullName) : (player.fullName || player.fullNameHe) || '—';
   const labels = useHebrew
