@@ -25,11 +25,14 @@ The web app includes the Transfermarkt backend as Next.js API routes. Deploy **o
    | `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET` | From Firebase Console |
    | `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID` | From Firebase Console |
    | `NEXT_PUBLIC_FIREBASE_APP_ID` | From Firebase Console |
+   | `GEMINI_API_KEY` | From [Google AI Studio](https://aistudio.google.com/apikey) — required for scout report (portfolio/share) |
 
    **Do not** set `NEXT_PUBLIC_BACKEND_URL` — the app uses built-in API routes.
 
 6. Click **Deploy**.
 7. Your app will be at `https://mgsr-web-xxxx.vercel.app`.
+
+**Note:** Scout report generation (portfolio, share) needs up to 60 seconds. Vercel Hobby limits functions to 10s — upgrade to Pro or the scout report may fail. Add `GEMINI_API_KEY` in Environment Variables.
 
 ---
 

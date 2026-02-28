@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 60;
 
 const SCOUT_BASE = process.env.SCOUT_SERVER_URL || 'https://football-scout-server-l38w.onrender.com';
 
@@ -32,10 +33,10 @@ interface PlayerPayload {
 async function fetchScoutData(tmProfile: string, playerName: string) {
   const [similarRes, fmRes] = await Promise.all([
     fetch(`${SCOUT_BASE}/similar_players?player_url=${encodeURIComponent(tmProfile)}&lang=en&limit=1`, {
-      signal: AbortSignal.timeout(20000),
+      signal: AbortSignal.timeout(8000),
     }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
     fetch(`${SCOUT_BASE}/fm_intelligence?player_name=${encodeURIComponent(playerName)}`, {
-      signal: AbortSignal.timeout(15000),
+      signal: AbortSignal.timeout(8000),
     }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
   ]);
   const profile = similarRes?.player_profile ?? similarRes?.results?.[0];
@@ -96,6 +97,112 @@ function buildPlayerContext(player: PlayerPayload, scoutData?: { profile?: Recor
   return parts.join('\n');
 }
 
+/** Template-based scout report when Gemini fails. No AI, pure data formatting. */
+function buildTemplateScoutReport(
+  player: PlayerPayload,
+  scoutData: { profile?: Record<string, unknown>; fm?: Record<string, unknown> } | undefined,
+  lang: 'he' | 'en'
+): string {
+  const isHe = lang === 'he';
+  const name = (isHe ? player.fullNameHe || player.fullName : player.fullName || player.fullNameHe) || '—';
+  const pos = player.positions?.filter(Boolean).join(', ') || '—';
+  const club = player.currentClub?.clubName || '—';
+  const league = player.currentClub?.clubCountry || '';
+  const value = player.marketValue || '—';
+  const nat = player.nationality || '—';
+  const contract = player.contractExpired || '—';
+  const age = player.age || '—';
+  const height = player.height || '';
+
+  const L = isHe
+    ? {
+        identity: 'זהות',
+        stats: 'סטטיסטיקות',
+        fm: 'FM',
+        fmAttr: 'מאפיינים מובילים',
+        style: 'סגנון משחק',
+        fit: 'התאמה לליגת העל',
+        price: 'טווח מחיר',
+        minutes: 'דקות',
+        goals: 'שערים',
+        assists: 'אסיסטים',
+        tackles: 'טאקלים',
+        interceptions: 'חטיפות',
+      }
+    : {
+        identity: 'Identity',
+        stats: 'Stats',
+        fm: 'FM',
+        fmAttr: 'Top attributes',
+        style: 'Playing style',
+        fit: 'Ligat Ha\'Al fit',
+        price: 'Price range',
+        minutes: 'minutes',
+        goals: 'goals',
+        assists: 'assists',
+        tackles: 'tackles',
+        interceptions: 'interceptions',
+      };
+
+  const lines: string[] = [];
+
+  lines.push(`${name} — ${age}${isHe ? ' שנים' : 'yo'}, ${pos}. ${club}${league ? ` (${league})` : ''}. ${isHe ? 'שווי שוק' : 'Market value'}: ${value}. ${nat}. ${isHe ? 'חוזה' : 'Contract'}: ${contract}.`);
+  if (height) lines.push(`${isHe ? 'גובה' : 'Height'}: ${height}.`);
+
+  const profile = scoutData?.profile;
+  const fm = scoutData?.fm && !scoutData.fm.error ? scoutData.fm : null;
+
+  if (profile && profile.fbref_matched) {
+    const p = profile;
+    const mins = p.fbref_minutes_90s != null ? Math.round(Number(p.fbref_minutes_90s) * 90) : null;
+    const stats: string[] = [];
+    if (mins) stats.push(`${mins} ${L.minutes}`);
+    if (p.fbref_goals_per90 != null) stats.push(`${p.fbref_goals_per90} ${L.goals}/90`);
+    if (p.fbref_assists_per90 != null) stats.push(`${p.fbref_assists_per90} ${L.assists}/90`);
+    if (p.fbref_tackles_per90 != null) stats.push(`${p.fbref_tackles_per90} ${L.tackles}/90`);
+    if (p.fbref_interceptions_per90 != null) stats.push(`${p.fbref_interceptions_per90} ${L.interceptions}/90`);
+    if (stats.length) lines.push(`${L.stats} (365d): ${stats.join(', ')}.`);
+  }
+
+  if (fm) {
+    const f = fm as { ca?: number; pa?: number; tier?: string; best_position?: { position?: string; fit?: number }; top_attributes?: { name: string; value: number }[] };
+    const fmLine = `FM: CA ${f.ca ?? '?'}, PA ${f.pa ?? '?'}. ${f.tier ? `Tier: ${f.tier}.` : ''}`;
+    lines.push(fmLine);
+    if (f.best_position?.position) lines.push(`${isHe ? 'עמדה מובילה' : 'Best position'}: ${f.best_position.position} (fit ${f.best_position.fit ?? '?'}).`);
+    if (Array.isArray(f.top_attributes) && f.top_attributes.length) {
+      const attrs = f.top_attributes.slice(0, 6).map((a) => `${a.name} ${a.value}`).join(', ');
+      lines.push(`${L.fmAttr}: ${attrs}.`);
+    }
+  }
+
+  if (profile?.player_style) lines.push(`${L.style}: ${profile.player_style}.`);
+
+  const valueStr = (value || '').replace(/,/g, '');
+  const hasM = /m|M|million/i.test(valueStr);
+  const hasK = /k|K|thousand/i.test(valueStr);
+  let valueNum = parseFloat(valueStr.replace(/[^0-9.]/g, '')) || 0;
+  if (hasM) valueNum *= 1_000_000;
+  else if (hasK) valueNum *= 1_000;
+  let fit = '';
+  let priceRange = '';
+  if (valueNum >= 1_500_000) {
+    fit = isHe ? 'שחקן סגל/סטארטר למועדונים מובילים' : 'Squad/starter for top clubs';
+    priceRange = '€1M–€2.5m';
+  } else if (valueNum >= 500_000) {
+    fit = isHe ? 'שחקן סגל לליגת העל' : 'Squad player for Ligat Ha\'Al';
+    priceRange = '€500k–€1.5m';
+  } else if (valueNum >= 100_000) {
+    fit = isHe ? 'שחקן רוטציה/סגל' : 'Rotation/squad';
+    priceRange = '€100k–€500k';
+  } else {
+    fit = isHe ? 'שחקן סגל/פרויקט' : 'Squad/project';
+    priceRange = '€50k–€200k';
+  }
+  lines.push(`${L.fit}: ${fit}. ${L.price}: ${priceRange}.`);
+
+  return lines.join('\n\n');
+}
+
 const SCOUT_REPORT_PROMPT = `You are a professional scout presenting a player to clubs. Your job is to showcase the player in the best light — promotional, concise, data-driven. NO verdict, NO sign/monitor/pass decision. Just present the player.
 
 FORMAT:
@@ -118,41 +225,49 @@ Write in {outputLang}. Plain text only, no markdown. Be professional and club-re
 
 export async function POST(request: NextRequest) {
   try {
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-      return NextResponse.json({ scoutReport: '' });
-    }
-
     const body = (await request.json()) as { player: PlayerPayload; lang?: string };
     const { player, lang = 'en' } = body;
     if (!player) return NextResponse.json({ scoutReport: '' });
 
+    const langKey = (lang === 'he' || lang === 'iw' ? 'he' : 'en') as 'he' | 'en';
+
     let scoutData: { profile?: Record<string, unknown>; fm?: Record<string, unknown> } | undefined;
     if (player.tmProfile && player.fullName) {
-      scoutData = await fetchScoutData(player.tmProfile, player.fullName);
+      try {
+        scoutData = await fetchScoutData(player.tmProfile, player.fullName);
+      } catch {
+        scoutData = undefined;
+      }
     }
 
-    const playerContext = buildPlayerContext(player, scoutData);
-    const outputLang = lang === 'he' || lang === 'iw' ? 'Hebrew' : 'English';
+    let scoutReport = '';
 
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({
-      model: 'gemini-2.5-flash',
-      generationConfig: {
-        temperature: 0.4,
-        topP: 0.9,
-      },
-    });
-
-    const prompt = `${SCOUT_REPORT_PROMPT.replace('{outputLang}', outputLang)}
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (apiKey) {
+      try {
+        const playerContext = buildPlayerContext(player, scoutData);
+        const outputLang = langKey === 'he' ? 'Hebrew' : 'English';
+        const genAI = new GoogleGenerativeAI(apiKey);
+        const model = genAI.getGenerativeModel({
+          model: 'gemini-2.5-flash',
+          generationConfig: { temperature: 0.4, topP: 0.9 },
+        });
+        const prompt = `${SCOUT_REPORT_PROMPT.replace('{outputLang}', outputLang)}
 
 Player profile (ONLY use data below — never invent):
 ${playerContext}`;
+        const result = await model.generateContent(prompt);
+        scoutReport = result.response.text()?.trim() || '';
+      } catch (e) {
+        console.error('[share] Gemini scout report failed, using template:', e);
+      }
+    }
 
-    const result = await model.generateContent(prompt);
-    const text = result.response.text()?.trim() || '';
+    if (!scoutReport) {
+      scoutReport = buildTemplateScoutReport(player, scoutData, langKey);
+    }
 
-    return NextResponse.json({ scoutReport: text });
+    return NextResponse.json({ scoutReport });
   } catch (e) {
     console.error('[share] Scout report generation failed:', e);
     return NextResponse.json({ scoutReport: '' });
