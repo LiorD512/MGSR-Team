@@ -863,7 +863,20 @@ class PlayerInfoViewModel(
                 "createdAt" to System.currentTimeMillis(),
                 "lang" to (lang.takeIf { it in listOf("he", "en") } ?: "en"),
                 "sharerPhone" to sharerPhone,
-                "sharerName" to sharerName
+                "sharerName" to sharerName,
+                "highlights" to player.pinnedHighlights
+                    ?.takeIf { it.isNotEmpty() }
+                    ?.map { h ->
+                        hashMapOf(
+                            "id" to h.id,
+                            "source" to h.source,
+                            "title" to h.title,
+                            "thumbnailUrl" to h.thumbnailUrl,
+                            "embedUrl" to h.embedUrl,
+                            "channelName" to (h.channelName?.takeIf { it.isNotBlank() }),
+                            "viewCount" to h.viewCount
+                        )
+                    }
             )
 
             val ref = firebaseHandler.firebaseStore

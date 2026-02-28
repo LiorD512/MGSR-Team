@@ -41,7 +41,20 @@ data class Player(
     val passportDetails: PassportDetails? = null,
     val foot: String? = null,
     val agency: String? = null,
-    val agencyUrl: String? = null
+    val agencyUrl: String? = null,
+    val pinnedHighlights: List<PinnedHighlight>? = null
+) : Parcelable
+
+@Keep
+@Parcelize
+data class PinnedHighlight(
+    val id: String = "",
+    val source: String = "",
+    val title: String = "",
+    val thumbnailUrl: String = "",
+    val embedUrl: String = "",
+    val channelName: String? = null,
+    val viewCount: Long? = null
 ) : Parcelable
 
 @Keep
