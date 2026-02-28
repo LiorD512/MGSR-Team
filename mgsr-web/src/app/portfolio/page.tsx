@@ -9,9 +9,8 @@ import Link from 'next/link';
 import {
   collection,
   query,
-  where,
+  orderBy,
   onSnapshot,
-  addDoc,
   deleteDoc,
   doc,
 } from 'firebase/firestore';
@@ -59,14 +58,14 @@ export default function PortfolioPage() {
     if (!user) return;
     const q = query(
       collection(db, 'Portfolio'),
-      where('agentId', '==', user.uid)
+      orderBy('createdAt', 'desc')
     );
     const unsub = onSnapshot(q, (snap) => {
       const list = snap.docs.map((d) => ({
         id: d.id,
         ...d.data(),
       })) as PortfolioItem[];
-      setItems(list.sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0)));
+      setItems(list);
       setLoadingItems(false);
     });
     return () => unsub();
@@ -256,6 +255,7 @@ export default function PortfolioPage() {
                   : (item.player.fullName || item.player.fullNameHe || '—');
               const isSharing = sharingId === item.id;
               const showShareForThis = showShareModal === item.id;
+              const isMine = item.agentId === user?.uid;
 
               return (
                 <div
@@ -351,26 +351,28 @@ export default function PortfolioPage() {
                           t('portfolio_view')
                         )}
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => handleRemove(item.id)}
-                        className="p-2.5 rounded-xl text-mgsr-muted hover:text-red-400 hover:bg-red-500/10 transition"
-                        title={isRtl ? 'הסר' : 'Remove'}
-                      >
-                        <svg
-                          className="w-5 h-5"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
+                      {isMine && (
+                        <button
+                          type="button"
+                          onClick={() => handleRemove(item.id)}
+                          className="p-2.5 rounded-xl text-mgsr-muted hover:text-red-400 hover:bg-red-500/10 transition"
+                          title={isRtl ? 'הסר' : 'Remove'}
                         >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4m1 4h.01M12 4h.01"
-                          />
-                        </svg>
-                      </button>
+                          <svg
+                            className="w-5 h-5"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4m1 4h.01M12 4h.01"
+                            />
+                          </svg>
+                        </button>
+                      )}
                     </div>
                   </div>
 
