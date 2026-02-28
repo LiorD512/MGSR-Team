@@ -89,6 +89,29 @@ export async function GET(request: NextRequest) {
       };
     });
 
+    // Deduplicate by player (tmProfileUrl) — keep one profile per player, preferring most specific type
+    const PROFILE_PRIORITY: Record<string, number> = {
+      CONTRACT_EXPIRING: 1,
+      YOUNG_STRIKER_HOT: 2,
+      HIDDEN_GEM: 3,
+      HIGH_VALUE_BENCHED: 4,
+      LOWER_LEAGUE_RISER: 5,
+      LOW_VALUE_STARTER: 6,
+    };
+    const seenUrls = new Map<string, ScoutProfileResponse>();
+    for (const p of profiles) {
+      const url = p.tmProfileUrl;
+      const existing = seenUrls.get(url);
+      const priority = PROFILE_PRIORITY[p.profileType] ?? 99;
+      const existingPriority = existing ? (PROFILE_PRIORITY[existing.profileType] ?? 99) : 99;
+      if (!existing || priority < existingPriority) {
+        seenUrls.set(url, p);
+      }
+    }
+    profiles = Array.from(seenUrls.values()).sort(
+      (a, b) => (b.lastRefreshedAt ?? 0) - (a.lastRefreshedAt ?? 0)
+    );
+
     // Enrich first 20 profiles with real images from Transfermarkt (like Discovery)
     const toEnrich = profiles.slice(0, 20);
     const imageMap = new Map<string, string>();

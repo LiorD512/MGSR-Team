@@ -88,16 +88,26 @@ function getFmPa(p) {
   return null;
 }
 
+/** Parse fbref_minutes_90s (e.g. "1.8" = 162 min). Returns 0 if missing/invalid. */
+function getMinutes90s(p) {
+  const v = p.fbref_minutes_90s;
+  if (v == null) return 0;
+  const n = parseFloat(String(v));
+  return isNaN(n) || n < 0 ? 0 : n;
+}
+
 function matchesProfile(p, profileType, valEuro, ageNum, leagueTier) {
+  const minutes90s = getMinutes90s(p);
   switch (profileType) {
     case "HIGH_VALUE_BENCHED":
       return valEuro >= 800_000 && valEuro <= 3_000_000 && ageNum != null && ageNum <= 30;
     case "LOW_VALUE_STARTER":
-      return valEuro <= 500_000 && valEuro > 0 && ageNum != null && ageNum <= 28;
+      // Must actually play: at least ~5 full games (450 min) this season
+      return valEuro <= 500_000 && valEuro > 0 && ageNum != null && ageNum <= 28 && minutes90s >= 5;
     case "YOUNG_STRIKER_HOT": {
       const pos = (p.position || "").toLowerCase();
       const isStriker = pos.includes("forward") || pos.includes("striker") || pos === "cf" || pos === "ss";
-      return valEuro <= 1_000_000 && ageNum != null && ageNum <= 21 && isStriker;
+      return valEuro <= 1_000_000 && ageNum != null && ageNum <= 21 && isStriker && minutes90s >= 3;
     }
     case "CONTRACT_EXPIRING":
       return valEuro <= 2_500_000 && (p.contract || "").toLowerCase().includes("2025");
