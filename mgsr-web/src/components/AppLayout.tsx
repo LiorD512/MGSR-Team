@@ -14,6 +14,7 @@ const navItems = [
   { href: '/shadow-teams', labelKey: 'nav_shadow_teams' },
   { href: '/releases', labelKey: 'nav_releases' },
   { href: '/contract-finisher', labelKey: 'nav_contract_finisher' },
+  { href: '/portfolio', labelKey: 'nav_portfolio' },
   { href: '/returnees', labelKey: 'nav_returnee' },
   { href: '/ai-scout', labelKey: 'nav_ai_scout' },
   { href: '/war-room', labelKey: 'nav_war_room' },

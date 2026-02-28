@@ -36,6 +36,7 @@ export interface SharePayload {
     contractExpired?: string;
     agentPhoneNumber?: string;
     playerAdditionalInfoModel?: { agentNumber?: string };
+    tmProfile?: string;
   };
   mandateInfo?: {
     hasMandate: boolean;

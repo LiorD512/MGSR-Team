@@ -64,9 +64,18 @@ export async function generateMetadata({
 
 export default async function SharedPlayerPage({
   params,
+  searchParams,
 }: {
   params: { token: string };
+  searchParams?: { from?: string };
 }) {
   const data = await getShareData(params.token);
-  return <SharedPlayerContent token={params.token} initialData={data} />;
+  const fromPortfolio = searchParams?.from === 'portfolio';
+  return (
+    <SharedPlayerContent
+      token={params.token}
+      initialData={data}
+      fromPortfolio={fromPortfolio}
+    />
+  );
 }

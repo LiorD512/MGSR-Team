@@ -20,9 +20,11 @@ function StatCard({ label, value }: { label: string; value?: string }) {
 export default function SharedPlayerContent({
   token,
   initialData,
+  fromPortfolio = false,
 }: {
   token: string;
   initialData: ShareData | null;
+  fromPortfolio?: boolean;
 }) {
   const [data, setData] = useState<ShareData | null>(initialData);
   const [loading, setLoading] = useState(!initialData);
@@ -95,13 +97,25 @@ export default function SharedPlayerContent({
 
   return (
     <div className="min-h-screen bg-mgsr-dark" dir={useHebrew ? 'rtl' : 'ltr'}>
-      <header className="border-b border-mgsr-border bg-mgsr-card/50 px-4 py-3">
+      <header className="border-b border-mgsr-border bg-mgsr-card/50 px-4 py-3 flex items-center justify-between gap-4">
         <Link
-          href="/"
+          href={fromPortfolio ? '/portfolio' : '/'}
           className="inline-flex items-center gap-2 text-mgsr-teal hover:underline"
         >
+          {fromPortfolio && (
+            <svg
+              className={`w-5 h-5 shrink-0 ${useHebrew ? 'scale-x-[-1]' : ''}`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+          )}
           <img src="/logo.svg" alt="" className="w-8 h-8" />
-          <span className="font-bold font-display">MGSR Team</span>
+          <span className="font-bold font-display">
+            {fromPortfolio ? (useHebrew ? 'חזרה לפורטפוליו' : 'Back to Portfolio') : 'MGSR Team'}
+          </span>
         </Link>
       </header>
 

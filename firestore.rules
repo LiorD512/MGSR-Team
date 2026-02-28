@@ -12,6 +12,20 @@ service cloud.firestore {
     match /Players/{playerId} {
       allow read, write: if request.auth != null;
     }
+    // Portfolio: per-agent collection, authenticated read/write
+    match /Portfolio/{docId} {
+      allow read, write: if request.auth != null;
+    }
+    // ScoutProfiles: AI Scout Agent Network — read for authenticated, write by backend/jobs only
+    match /ScoutProfiles/{profileId} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
+    // ScoutAgentRuns: run history — read for authenticated
+    match /ScoutAgentRuns/{runId} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
     // Add your existing rules below. This file may need to be merged with
     // rules you already have in Firebase Console.
   }

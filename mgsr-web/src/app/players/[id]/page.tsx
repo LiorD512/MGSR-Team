@@ -156,6 +156,9 @@ export default function PlayerInfoPage() {
   const [showShareSetupModal, setShowShareSetupModal] = useState(false);
   const [showShareLanguageModal, setShowShareLanguageModal] = useState(false);
   const [pendingShareUrl, setPendingShareUrl] = useState<string | null>(null);
+  const [addingToPortfolio, setAddingToPortfolio] = useState(false);
+  const [portfolioError, setPortfolioError] = useState<string | null>(null);
+  const [showPortfolioLanguageModal, setShowPortfolioLanguageModal] = useState(false);
   const prevValidMandateCountRef = useRef<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -635,6 +638,137 @@ export default function PlayerInfoPage() {
       }
     },
     [player, id, documents, merged, user, accounts, sharing, isRtl]
+  );
+
+  const handleAddToPortfolio = useCallback(
+    async (lang: 'he' | 'en') => {
+      if (!player || !id || !user || addingToPortfolio) return;
+      setAddingToPortfolio(true);
+      setPortfolioError(null);
+      try {
+        const hasValidMandate = documents.some(
+          (d) =>
+            (d.type ?? '').toUpperCase() === 'MANDATE' &&
+            !d.expired &&
+            (d.expiresAt == null || d.expiresAt >= Date.now())
+        );
+        const mandateExpiry = documents
+          .filter((d) => (d.type ?? '').toUpperCase() === 'MANDATE' && d.expiresAt)
+          .map((d) => d.expiresAt!)
+          .filter((e) => e >= Date.now())
+          .sort((a, b) => a - b)[0];
+        const validMandate = documents.find(
+          (d) =>
+            (d.type ?? '').toUpperCase() === 'MANDATE' &&
+            !d.expired &&
+            (d.expiresAt == null || d.expiresAt >= Date.now())
+        );
+        const mandateUrl = validMandate?.storageUrl ?? undefined;
+
+        const playerPayload = {
+          fullName: player.fullName,
+          fullNameHe: player.fullNameHe,
+          profileImage: merged.profileImage || player.profileImage,
+          positions: player.positions,
+          marketValue: merged.marketValue || player.marketValue,
+          marketValueHistory: player.marketValueHistory,
+          currentClub: merged.currentClub || player.currentClub,
+          age: merged.age || player.age,
+          height: merged.height || player.height,
+          nationality: merged.nationality || player.nationality,
+          contractExpired: merged.contractExpired || player.contractExpired,
+          foot: merged.foot || player.foot,
+          isOnLoan: player.isOnLoan ?? merged.isOnLoan,
+          onLoanFromClub: player.onLoanFromClub ?? merged.onLoanFromClub,
+          agency: player.agency,
+          tmProfile: merged.tmProfile || player.tmProfile,
+          agentPhoneNumber:
+            player?.playerAdditionalInfoModel?.agentNumber ||
+            player?.agentPhoneNumber ||
+            undefined,
+          playerAdditionalInfoModel: player.playerAdditionalInfoModel,
+        };
+
+        let scoutReport = '';
+        const res = await fetch('/api/share/generate-scout-report', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ player: playerPayload, lang }),
+        });
+        const json = (await res.json()) as { scoutReport?: string };
+        scoutReport = json.scoutReport?.trim() || '';
+
+        if (!scoutReport) {
+          setPortfolioError(t('player_info_portfolio_scout_failed'));
+          return;
+        }
+
+        const pinnedHighlights = (player?.pinnedHighlights ?? []) as HighlightVideo[];
+        const highlightsPayload = pinnedHighlights.length > 0
+          ? pinnedHighlights.map((v) => ({
+              id: v.id,
+              source: v.source,
+              title: v.title,
+              thumbnailUrl: v.thumbnailUrl,
+              embedUrl: v.embedUrl,
+              channelName: v.channelName,
+              viewCount: v.viewCount,
+            }))
+          : undefined;
+
+        /** Firestore rejects undefined - remove undefined values recursively */
+        function stripUndefined(obj: Record<string, unknown>): Record<string, unknown> {
+          const result: Record<string, unknown> = {};
+          for (const [k, v] of Object.entries(obj)) {
+            if (v === undefined) continue;
+            if (Array.isArray(v)) {
+              result[k] = v
+                .filter((x) => x !== undefined)
+                .map((x) =>
+                  x !== null && typeof x === 'object' && !Array.isArray(x) && Object.getPrototypeOf(x) === Object.prototype
+                    ? stripUndefined(x as Record<string, unknown>)
+                    : x
+                );
+            } else if (
+              v !== null &&
+              typeof v === 'object' &&
+              !(v instanceof Date) &&
+              Object.getPrototypeOf(v) === Object.prototype
+            ) {
+              result[k] = stripUndefined(v as Record<string, unknown>);
+            } else {
+              result[k] = v;
+            }
+          }
+          return result;
+        }
+
+        const portfolioDoc = stripUndefined({
+          agentId: user.uid,
+          playerId: id,
+          player: playerPayload as Record<string, unknown>,
+          mandateInfo: {
+            hasMandate: hasValidMandate,
+            expiresAt: mandateExpiry,
+          },
+          mandateUrl: mandateUrl ?? null,
+          scoutReport,
+          highlights: highlightsPayload ?? null,
+          lang,
+          createdAt: Date.now(),
+        });
+
+        await addDoc(collection(db, 'Portfolio'), portfolioDoc);
+
+        router.push('/portfolio');
+      } catch (e) {
+        console.error('Add to portfolio failed:', e);
+        setPortfolioError(e instanceof Error ? e.message : t('player_info_portfolio_scout_failed'));
+      } finally {
+        setAddingToPortfolio(false);
+      }
+    },
+    [player, id, documents, merged, user, addingToPortfolio, t, router]
   );
 
   const resolveAgentName = (name: string | undefined, agentId?: string): string => {
@@ -1518,15 +1652,44 @@ export default function PlayerInfoPage() {
                     </svg>
                     <span className="font-medium text-sm">{t('player_info_share')}</span>
                   </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setShowPortfolioLanguageModal(true);
+                    }}
+                    disabled={addingToPortfolio}
+                    className="flex items-center gap-2 text-mgsr-teal hover:underline disabled:opacity-50"
+                  >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                    </svg>
+                    <span className="font-medium text-sm">{t('player_info_prepare_portfolio')}</span>
+                  </button>
                 </div>
-                {shareError && (
-                  <p className="text-sm text-red-400 text-center">{shareError}</p>
+                {(shareError || portfolioError) && (
+                  <p className="text-sm text-red-400 text-center">{shareError || portfolioError}</p>
                 )}
               </div>
             </div>
           );
         })()}
       </div>
+
+      {/* Portfolio preparation loader */}
+      {addingToPortfolio && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70">
+          <div
+            dir={isRtl ? 'rtl' : 'ltr'}
+            className="flex flex-col items-center gap-4 px-8 py-6 rounded-2xl bg-mgsr-card border border-mgsr-border"
+          >
+            <div className="w-10 h-10 border-2 border-mgsr-teal border-t-transparent rounded-full animate-spin" />
+            <p className="text-mgsr-text font-medium">
+              {isRtl ? 'מכין דוח סקאוט ומוסיף לפורטפוליו...' : 'Preparing scout report and adding to portfolio...'}
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Share preparation loader - shown while creating share doc and opening WhatsApp */}
       {sharing && (
@@ -1539,6 +1702,54 @@ export default function PlayerInfoPage() {
             <p className="text-mgsr-text font-medium">
               {isRtl ? 'המסמך לשיתוף בהכנה...' : 'Preparing document for share...'}
             </p>
+          </div>
+        </div>
+      )}
+
+      {/* Portfolio language choice modal */}
+      {showPortfolioLanguageModal && !addingToPortfolio && (
+        <div
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
+          onClick={() => setShowPortfolioLanguageModal(false)}
+        >
+          <div className="absolute inset-0 bg-black/60" aria-hidden />
+          <div
+            dir={isRtl ? 'rtl' : 'ltr'}
+            className="relative w-full max-w-md bg-mgsr-card border border-mgsr-border rounded-2xl shadow-2xl p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-lg font-display font-semibold text-mgsr-text mb-2">
+              {isRtl ? 'הכן לפורטפוליו ב' : 'Prepare for portfolio in'}
+            </h3>
+            <p className="text-sm text-mgsr-muted mb-4">
+              {isRtl
+                ? 'בחר את שפת דוח הסקאוט'
+                : 'Choose the language for the scout report'}
+            </p>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowPortfolioLanguageModal(false);
+                  handleAddToPortfolio('he');
+                }}
+                disabled={addingToPortfolio}
+                className="flex-1 px-4 py-3 rounded-xl bg-mgsr-teal/20 text-mgsr-teal font-medium hover:bg-mgsr-teal/30 disabled:opacity-50"
+              >
+                עברית
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowPortfolioLanguageModal(false);
+                  handleAddToPortfolio('en');
+                }}
+                disabled={addingToPortfolio}
+                className="flex-1 px-4 py-3 rounded-xl bg-mgsr-teal/20 text-mgsr-teal font-medium hover:bg-mgsr-teal/30 disabled:opacity-50"
+              >
+                English
+              </button>
+            </div>
           </div>
         </div>
       )}
