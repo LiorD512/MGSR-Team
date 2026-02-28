@@ -11,8 +11,10 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -48,8 +50,12 @@ import androidx.compose.material3.ModalBottomSheetProperties
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.PlainTooltip
 import androidx.compose.material3.Text
+import androidx.compose.material3.TooltipBox
+import androidx.compose.material3.TooltipDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -502,6 +508,7 @@ private fun ShortlistStatsStripDivider() {
 //  SHORTLIST CARD (rich layout like ReleaseListItem)
 // ═════════════════════════════════════════════════════════════════════════════
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ShortlistCard(
     context: Context,
@@ -588,10 +595,10 @@ private fun ShortlistCard(
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
-                    Row(
+                    FlowRow(
                         modifier = Modifier.padding(top = 4.dp),
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         release.playerPosition?.takeIf { it.isNotBlank() }?.let { pos ->
                             Box(
@@ -620,29 +627,45 @@ private fun ShortlistCard(
                             }
                         }
                         if (!release.playerNationalityFlag.isNullOrBlank() || !release.playerNationality.isNullOrBlank()) {
-                            Row(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(6.dp))
-                                    .background(HomeDarkCardBorder.copy(alpha = 0.5f))
-                                    .padding(horizontal = 6.dp, vertical = 2.dp),
-                                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                if (!release.playerNationalityFlag.isNullOrBlank()) {
-                                    AsyncImage(
-                                        model = release.playerNationalityFlag,
-                                        contentDescription = release.playerNationality,
-                                        modifier = Modifier.size(14.dp).clip(CircleShape),
-                                        contentScale = ContentScale.Crop
-                                    )
+                            val nat = release.playerNationality?.takeIf { it.isNotBlank() }.orEmpty()
+                            val chipContent = @Composable {
+                                Row(
+                                    modifier = Modifier
+                                        .widthIn(max = 140.dp)
+                                        .clip(RoundedCornerShape(6.dp))
+                                        .background(HomeDarkCardBorder.copy(alpha = 0.5f))
+                                        .padding(horizontal = 6.dp, vertical = 2.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    if (!release.playerNationalityFlag.isNullOrBlank()) {
+                                        AsyncImage(
+                                            model = release.playerNationalityFlag,
+                                            contentDescription = release.playerNationality,
+                                            modifier = Modifier.size(14.dp).clip(CircleShape),
+                                            contentScale = ContentScale.Crop
+                                        )
+                                    }
+                                    if (nat.isNotBlank()) {
+                                        Text(
+                                            text = nat,
+                                            style = regularTextStyle(HomeTextSecondary, 10.sp),
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                    }
                                 }
-                                release.playerNationality?.takeIf { it.isNotBlank() }?.let { nat ->
-                                    Text(
-                                        text = nat,
-                                        style = regularTextStyle(HomeTextSecondary, 10.sp),
-                                        maxLines = 1
-                                    )
+                            }
+                            if (nat.isNotBlank()) {
+                                TooltipBox(
+                                    positionProvider = TooltipDefaults.rememberTooltipPositionProvider(),
+                                    tooltip = { PlainTooltip { Text(nat) } },
+                                    state = rememberTooltipState()
+                                ) {
+                                    chipContent()
                                 }
+                            } else {
+                                chipContent()
                             }
                         }
                     }

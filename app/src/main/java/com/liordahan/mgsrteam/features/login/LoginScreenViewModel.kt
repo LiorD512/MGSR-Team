@@ -44,8 +44,8 @@ class LoginScreenViewModel(
                         if (accountToLogin != null) {
                             fcmTokenManager.registerTokenIfNeeded()
                             android.util.Log.i("MGSR_Worker", "Login success — enqueuing immediate run for both workers")
-                            PlayerRefreshWorker.enqueueImmediateRefresh(appContext)
-                            ReleasesRefreshWorker.enqueueImmediateRefresh(appContext)
+//                            PlayerRefreshWorker.enqueueImmediateRefresh(appContext)
+//                            ReleasesRefreshWorker.enqueueImmediateRefresh(appContext)
                             _userLoginFlow.update { UiResult.Success(accountToLogin) }
                         } else {
                             _userLoginFlow.update { UiResult.Failed("Your account is not allowed") }

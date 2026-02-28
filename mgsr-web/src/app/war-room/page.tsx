@@ -26,6 +26,14 @@ interface DiscoveryCandidate {
   clubName?: string;
   hiddenGemScore?: number;
   hiddenGemReason?: { he: string; en: string };
+  fmPa?: number;
+  fmCa?: number;
+  fmPotentialGap?: number;
+  fbrefGoals?: string | number;
+  fbrefAssists?: string | number;
+  fbrefGoalsPer90?: number;
+  fbrefAssistsPer90?: number;
+  fbrefMinutes90s?: string | number;
 }
 
 interface WarRoomReport {
@@ -485,6 +493,29 @@ export default function WarRoomPage() {
                             </span>
                           )}
                         </div>
+                        {((c.fbrefGoalsPer90 != null && !isNaN(c.fbrefGoalsPer90)) ||
+                          (c.fbrefAssistsPer90 != null && !isNaN(c.fbrefAssistsPer90)) ||
+                          (c.fmPa != null || c.fmCa != null)) && (
+                          <p className="text-xs text-mgsr-muted mt-2 flex flex-wrap gap-x-3 gap-y-0.5">
+                            {(c.fbrefGoalsPer90 != null && !isNaN(c.fbrefGoalsPer90)) ||
+                            (c.fbrefAssistsPer90 != null && !isNaN(c.fbrefAssistsPer90)) ? (
+                              <span>
+                                FBref: G/90 {((c.fbrefGoalsPer90 ?? 0) as number).toFixed(2)}
+                                {(c.fbrefAssistsPer90 != null && !isNaN(c.fbrefAssistsPer90)) && (
+                                  <> · A/90 {(c.fbrefAssistsPer90 as number).toFixed(2)}</>
+                                )}
+                              </span>
+                            ) : null}
+                            {(c.fmPa != null || c.fmCa != null) && (
+                              <span>
+                                FM: CA {c.fmCa ?? '?'} · PA {c.fmPa ?? '?'}
+                                {c.fmPotentialGap != null && c.fmPotentialGap > 0 && (
+                                  <> (+{c.fmPotentialGap})</>
+                                )}
+                              </span>
+                            )}
+                          </p>
+                        )}
                         {sourceFilter === 'hidden_gem' && c.hiddenGemReason && (
                           <div className="mt-3 p-3 rounded-xl bg-amber-500/10 border border-amber-500/25 text-start">
                             <p className="text-xs font-semibold text-amber-400 uppercase tracking-wider mb-1.5">

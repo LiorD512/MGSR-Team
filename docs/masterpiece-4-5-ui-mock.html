@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Masterpiece Features 4 & 5 — UI Mock</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Outfit:wght@400;500;600&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --mgsr-dark: #0F1923;
+      --mgsr-card: #1A2736;
+      --mgsr-border: #253545;
+      --mgsr-teal: #4DB6AC;
+      --mgsr-text: #E8EAED;
+      --mgsr-muted: #8C999B;
+      --mgsr-purple: #A855F7;
+      --mgsr-amber: #F59E0B;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Outfit', sans-serif; background: var(--mgsr-dark); color: var(--mgsr-text); min-height: 100vh; line-height: 1.5; }
+    .font-display { font-family: 'Syne', sans-serif; }
+    .font-serif { font-family: 'Instrument Serif', serif; }
+
+    /* ═══ App Shell ═══ */
+    .app-shell { display: flex; min-height: 100vh; }
+    .sidebar {
+      width: 224px; flex-shrink: 0; background: var(--mgsr-card); border-right: 1px solid var(--mgsr-border);
+      display: flex; flex-direction: column;
+    }
+    .sidebar-logo {
+      padding: 1rem; border-bottom: 1px solid var(--mgsr-border);
+      display: flex; align-items: center; gap: 0.75rem;
+    }
+    .sidebar-logo span { font-family: 'Syne', sans-serif; font-size: 1.25rem; font-weight: 700; color: var(--mgsr-teal); }
+    .sidebar-nav { flex: 1; padding: 1rem; }
+    .sidebar-nav a {
+      display: block; padding: 0.75rem 1rem; border-radius: 0.5rem; color: var(--mgsr-muted);
+      font-size: 0.9rem; text-decoration: none; margin-bottom: 0.25rem; transition: all 0.2s;
+    }
+    .sidebar-nav a:hover { color: var(--mgsr-text); background: var(--mgsr-dark); }
+    .sidebar-nav a.active { background: rgba(77, 182, 172, 0.2); color: var(--mgsr-teal); }
+    .main-content { flex: 1; overflow: auto; padding: 1.5rem; position: relative; }
+
+    /* ═══ View Switcher (mock nav) ═══ */
+    .view-nav {
+      display: flex; gap: 0.5rem; margin-bottom: 1.5rem; padding-bottom: 1rem;
+      border-bottom: 1px solid var(--mgsr-border);
+    }
+    .view-btn {
+      padding: 0.5rem 1rem; background: transparent; border: 1px solid transparent;
+      color: var(--mgsr-muted); font-size: 0.85rem; font-weight: 500; cursor: pointer;
+      border-radius: 0.5rem; transition: all 0.2s;
+    }
+    .view-btn:hover { color: var(--mgsr-text); }
+    .view-btn.active { color: var(--mgsr-teal); border-color: var(--mgsr-teal); }
+    .view-panel { display: none; }
+    .view-panel.active { display: block; }
+
+    /* ═══ Player Page Header ═══ */
+    .player-header {
+      display: flex; gap: 1.5rem; margin-bottom: 1.5rem; padding-bottom: 1.5rem;
+      border-bottom: 1px solid var(--mgsr-border); flex-wrap: wrap;
+    }
+    .player-avatar {
+      width: 80px; height: 80px; border-radius: 12px; object-fit: cover;
+      background: var(--mgsr-border); border: 1px solid var(--mgsr-border);
+    }
+    .player-header-info { flex: 1; min-width: 200px; }
+    .player-header-info h1 { font-family: 'Syne', sans-serif; font-size: 1.75rem; font-weight: 700; color: var(--mgsr-text); margin-bottom: 0.35rem; }
+    .player-header-meta { font-size: 0.9rem; color: var(--mgsr-muted); }
+    .player-header-meta span { margin-right: 0.75rem; }
+    .player-tabs {
+      display: flex; gap: 0.25rem; padding: 0.25rem; background: var(--mgsr-card);
+      border-radius: 0.75rem; border: 1px solid var(--mgsr-border); margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+    }
+    .player-tab {
+      padding: 0.5rem 1rem; border-radius: 0.5rem; font-size: 0.9rem; font-weight: 500;
+      color: var(--mgsr-muted); cursor: pointer; transition: all 0.2s; border: 1px solid transparent;
+    }
+    .player-tab:hover { color: var(--mgsr-text); }
+    .player-tab.active { background: rgba(77, 182, 172, 0.2); color: var(--mgsr-teal); border-color: rgba(77, 182, 172, 0.3); }
+
+    /* ═══ Living Dossier Section ═══ */
+    .dossier-card {
+      background: var(--mgsr-card); border: 1px solid var(--mgsr-border);
+      border-radius: 1rem; padding: 1.5rem; margin-bottom: 1rem;
+    }
+    .dossier-header {
+      display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem;
+      flex-wrap: wrap; gap: 0.75rem;
+    }
+    .dossier-header h2 {
+      font-family: 'Syne', sans-serif; font-size: 1.25rem; font-weight: 700; color: var(--mgsr-text);
+      display: flex; align-items: center; gap: 0.5rem;
+    }
+    .dossier-header h2::before {
+      content: ''; width: 8px; height: 8px; border-radius: 50%;
+      background: var(--mgsr-teal); animation: pulse 2s infinite;
+    }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+    .dossier-badge {
+      font-size: 0.75rem; padding: 0.25rem 0.6rem; border-radius: 0.5rem;
+      background: rgba(77, 182, 172, 0.15); color: var(--mgsr-teal);
+      font-weight: 500;
+    }
+    .dossier-summary {
+      font-size: 1rem; line-height: 1.65; color: var(--mgsr-text);
+      margin-bottom: 1.25rem; padding: 1rem; background: rgba(77, 182, 172, 0.06);
+      border-left: 3px solid var(--mgsr-teal); border-radius: 0 0.5rem 0.5rem 0;
+    }
+    .dossier-highlights {
+      margin-bottom: 1.5rem;
+    }
+    .dossier-highlights h3 { font-size: 0.8rem; font-weight: 600; color: var(--mgsr-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.75rem; }
+    .dossier-highlights ul { list-style: none; }
+    .dossier-highlights li {
+      padding: 0.5rem 0; padding-left: 1.25rem; position: relative;
+      font-size: 0.95rem; color: var(--mgsr-text);
+    }
+    .dossier-highlights li::before {
+      content: ''; position: absolute; left: 0; top: 0.9rem; width: 6px; height: 6px;
+      border-radius: 50%; background: var(--mgsr-teal);
+    }
+    .dossier-timeline {
+      margin-bottom: 1.5rem;
+    }
+    .dossier-timeline h3 { font-size: 0.8rem; font-weight: 600; color: var(--mgsr-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.75rem; }
+    .timeline-item {
+      display: flex; gap: 1rem; padding: 0.75rem 0; border-bottom: 1px solid rgba(37, 53, 69, 0.6);
+      font-size: 0.9rem;
+    }
+    .timeline-item:last-child { border-bottom: none; }
+    .timeline-date { color: var(--mgsr-muted); font-size: 0.8rem; min-width: 5rem; }
+    .timeline-type {
+      font-size: 0.7rem; font-weight: 600; padding: 0.15rem 0.4rem; border-radius: 0.25rem;
+      min-width: 5rem; text-align: center;
+    }
+    .timeline-type.value { background: rgba(245, 158, 11, 0.2); color: var(--mgsr-amber); }
+    .timeline-type.club { background: rgba(77, 182, 172, 0.2); color: var(--mgsr-teal); }
+    .timeline-type.news { background: rgba(168, 85, 247, 0.2); color: var(--mgsr-purple); }
+    .timeline-detail { color: var(--mgsr-text); flex: 1; }
+    .dossier-news {
+      margin-top: 1rem;
+    }
+    .dossier-news h3 { font-size: 0.8rem; font-weight: 600; color: var(--mgsr-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.75rem; }
+    .news-item {
+      padding: 0.75rem; background: var(--mgsr-dark); border: 1px solid var(--mgsr-border);
+      border-radius: 0.5rem; margin-bottom: 0.5rem;
+    }
+    .news-item a { color: var(--mgsr-teal); text-decoration: none; font-weight: 500; }
+    .news-item a:hover { text-decoration: underline; }
+    .news-item .source { font-size: 0.75rem; color: var(--mgsr-muted); margin-top: 0.25rem; }
+
+    /* ═══ War Room Page ═══ */
+    .war-room-hero {
+      max-width: 52rem; margin: 0 auto 2rem;
+    }
+    .war-room-hero h1 { font-family: 'Syne', sans-serif; font-size: 2.25rem; font-weight: 800; color: var(--mgsr-text); margin-bottom: 0.5rem; }
+    .war-room-hero p { font-size: 1rem; color: var(--mgsr-muted); }
+    .war-room-form {
+      background: var(--mgsr-card); border: 1px solid var(--mgsr-border);
+      border-radius: 1rem; padding: 1.5rem; margin-bottom: 2rem; max-width: 52rem;
+    }
+    .war-room-form label { display: block; font-size: 0.9rem; font-weight: 500; color: var(--mgsr-text); margin-bottom: 0.5rem; }
+    .war-room-form input, .war-room-form select {
+      width: 100%; padding: 0.75rem 1rem; background: var(--mgsr-dark);
+      border: 1px solid var(--mgsr-border); border-radius: 0.5rem;
+      color: var(--mgsr-text); font-size: 1rem; margin-bottom: 1rem;
+    }
+    .war-room-form input:focus, .war-room-form select:focus {
+      outline: none; border-color: var(--mgsr-purple); box-shadow: 0 0 0 2px rgba(168, 85, 247, 0.2);
+    }
+    .war-room-form-row { display: flex; gap: 1rem; flex-wrap: wrap; }
+    .war-room-form-row > div { flex: 1; min-width: 180px; }
+    .btn-generate {
+      padding: 0.75rem 1.5rem; border-radius: 0.75rem; background: var(--mgsr-purple);
+      color: white; border: none; font-weight: 600; font-size: 1rem; cursor: pointer;
+      transition: all 0.2s; margin-top: 0.5rem;
+    }
+    .btn-generate:hover { background: #9333ea; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(168, 85, 247, 0.4); }
+    .btn-generate:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    /* ═══ War Room Report ═══ */
+    .war-report { max-width: 52rem; }
+    .war-synthesis {
+      background: linear-gradient(135deg, rgba(168, 85, 247, 0.12) 0%, rgba(77, 182, 172, 0.08) 100%);
+      border: 1px solid rgba(168, 85, 247, 0.3);
+      border-radius: 1rem; padding: 1.5rem; margin-bottom: 1.5rem;
+    }
+    .war-synthesis h2 { font-family: 'Syne', sans-serif; font-size: 1.1rem; font-weight: 700; color: var(--mgsr-purple); margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem; }
+    .war-synthesis h2::before { content: '✦'; }
+    .war-recommendation {
+      display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem;
+      border-radius: 0.5rem; font-weight: 700; font-size: 1rem; margin-bottom: 1rem;
+    }
+    .war-recommendation.sign { background: rgba(34, 197, 94, 0.2); color: #22c55e; }
+    .war-recommendation.monitor { background: rgba(245, 158, 11, 0.2); color: var(--mgsr-amber); }
+    .war-recommendation.pass { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
+    .war-executive { font-size: 1rem; line-height: 1.65; color: var(--mgsr-text); margin-bottom: 1rem; }
+    .war-risks-opps { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    @media (max-width: 640px) { .war-risks-opps { grid-template-columns: 1fr; } }
+    .war-risks-opps h4 { font-size: 0.8rem; font-weight: 600; color: var(--mgsr-muted); text-transform: uppercase; margin-bottom: 0.5rem; }
+    .war-risks-opps ul { list-style: none; }
+    .war-risks-opps li { padding: 0.35rem 0; font-size: 0.9rem; padding-left: 1rem; position: relative; }
+    .war-risks-opps li::before { content: '•'; position: absolute; left: 0; color: var(--mgsr-muted); }
+
+    .war-agent-cards { display: flex; flex-direction: column; gap: 1rem; }
+    .war-agent-card {
+      background: var(--mgsr-card); border: 1px solid var(--mgsr-border);
+      border-radius: 1rem; padding: 1.25rem; transition: all 0.2s;
+    }
+    .war-agent-card:hover { border-color: rgba(77, 182, 172, 0.3); }
+    .war-agent-card h3 {
+      font-family: 'Syne', sans-serif; font-size: 1rem; font-weight: 700; color: var(--mgsr-text);
+      margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem;
+    }
+    .war-agent-card h3 .badge {
+      font-size: 0.65rem; padding: 0.2rem 0.45rem; border-radius: 0.25rem;
+      font-weight: 600; text-transform: uppercase;
+    }
+    .war-agent-card h3 .badge.stats { background: rgba(59, 130, 246, 0.2); color: #3b82f6; }
+    .war-agent-card h3 .badge.market { background: rgba(245, 158, 11, 0.2); color: var(--mgsr-amber); }
+    .war-agent-card h3 .badge.tactics { background: rgba(34, 197, 94, 0.2); color: #22c55e; }
+    .war-agent-summary { font-size: 0.95rem; line-height: 1.6; color: var(--mgsr-text); margin-bottom: 0.75rem; }
+    .war-agent-details { font-size: 0.85rem; color: var(--mgsr-muted); }
+    .war-agent-details .tag { display: inline-block; padding: 0.2rem 0.5rem; margin: 0.2rem 0.2rem 0 0; background: var(--mgsr-dark); border-radius: 0.25rem; }
+
+    /* ═══ War Room from Player Page (compact) ═══ */
+    .war-inline { margin-top: 1rem; }
+    .war-inline .btn-run {
+      padding: 0.5rem 1rem; border-radius: 0.5rem; background: rgba(168, 85, 247, 0.2);
+      border: 1px solid rgba(168, 85, 247, 0.4); color: var(--mgsr-purple);
+      font-size: 0.9rem; font-weight: 500; cursor: pointer; transition: all 0.2s;
+    }
+    .war-inline .btn-run:hover { background: rgba(168, 85, 247, 0.3); }
+    .war-inline-result { margin-top: 1rem; }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-logo">
+        <span>MGSR Team</span>
+      </div>
+      <nav class="sidebar-nav">
+        <a href="#">Dashboard</a>
+        <a href="#">Players</a>
+        <a href="#">Shortlist</a>
+        <a href="#">AI Scout</a>
+        <a href="#" class="active">War Room</a>
+        <a href="#">Contacts</a>
+        <a href="#">Requests</a>
+      </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <!-- View Switcher (for mock demo) -->
+      <div class="view-nav">
+        <button class="view-btn active" data-view="player">Player Page (with Living Dossier)</button>
+        <button class="view-btn" data-view="war-room">War Room (standalone)</button>
+      </div>
+
+      <!-- ═══ VIEW 1: Player Page with Living Dossier ═══ -->
+      <div class="view-panel active" id="view-player">
+        <!-- Player header -->
+        <div class="player-header">
+          <img class="player-avatar" src="https://img.a.transfermarkt.technology/portrait/medium/148455-1637346512.jpg" alt="Player">
+          <div class="player-header-info">
+            <h1>Oscar Gloukh</h1>
+            <p class="player-header-meta">
+              <span>22 yrs</span>
+              <span>AM</span>
+              <span>€8.00m</span>
+              <span>Red Bull Salzburg</span>
+              <span>Ligat Ha'Al</span>
+            </p>
+          </div>
+        </div>
+
+        <!-- Tabs: Overview | Living Dossier | War Room -->
+        <div class="player-tabs">
+          <button class="player-tab">Overview</button>
+          <button class="player-tab active">Living Dossier</button>
+          <button class="player-tab">War Room Report</button>
+        </div>
+
+        <!-- Living Dossier Card -->
+        <div class="dossier-card">
+          <div class="dossier-header">
+            <h2>Living Dossier</h2>
+            <span class="dossier-badge">Updated 2 hours ago</span>
+          </div>
+
+          <p class="dossier-summary">
+            Gloukh's market value has held steady at €8m over the past week. No club changes or contract updates. Recent news links him with interest from Maccabi Haifa and Hapoel Be'er Sheva ahead of the summer window. His per-90 stats (0.42 goals, 0.18 assists) remain consistent with his role as a creative attacking midfielder.
+          </p>
+
+          <div class="dossier-highlights">
+            <h3>Key highlights</h3>
+            <ul>
+              <li>Market value stable at €8.00m — no movement in 7 days</li>
+              <li>2 news articles in the last week mentioning transfer interest</li>
+              <li>Contract expires Jun 30, 2027 — 18 months remaining</li>
+              <li>FBref stats: 0.42 goals/90, 0.18 assists/90 (enriched)</li>
+            </ul>
+          </div>
+
+          <div class="dossier-timeline">
+            <h3>Recent changes</h3>
+            <div class="timeline-item">
+              <span class="timeline-date">3 days ago</span>
+              <span class="timeline-type news">NEWS</span>
+              <span class="timeline-detail">"Maccabi Haifa eye Gloukh as summer target" — One</span>
+            </div>
+            <div class="timeline-item">
+              <span class="timeline-date">5 days ago</span>
+              <span class="timeline-type value">VALUE</span>
+              <span class="timeline-detail">€8.00m → €8.00m (no change)</span>
+            </div>
+            <div class="timeline-item">
+              <span class="timeline-date">1 week ago</span>
+              <span class="timeline-type club">CLUB</span>
+              <span class="timeline-detail">Red Bull Salzburg — no change</span>
+            </div>
+          </div>
+
+          <div class="dossier-news">
+            <h3>Recent news</h3>
+            <div class="news-item">
+              <a href="#" target="_blank">Maccabi Haifa eye Gloukh as summer target</a>
+              <p class="source">One — Feb 24, 2025</p>
+            </div>
+            <div class="news-item">
+              <a href="#" target="_blank">Israeli star Oscar Gloukh attracting European interest</a>
+              <p class="source">Sport5 — Feb 22, 2025</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- War Room inline (from player page) -->
+        <div class="dossier-card">
+          <div class="dossier-header">
+            <h2>War Room Report</h2>
+          </div>
+          <p class="dossier-summary" style="border-left-color: var(--mgsr-purple);">
+            Multi-agent scouting analysis. Run a full report to get Stats, Market, and Tactics agents' perspectives plus a unified recommendation.
+          </p>
+          <div class="war-inline">
+            <button class="btn-run">Generate War Room Report</button>
+            <div class="war-inline-result" style="margin-top: 1rem; display: none;">
+              <!-- Report would appear here -->
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ VIEW 2: War Room Standalone Page ═══ -->
+      <div class="view-panel" id="view-war-room">
+        <div class="war-room-hero">
+          <h1>War Room</h1>
+          <p>Multi-agent scouting analysis. Stats, Market, and Tactics agents work together to produce a unified report and recommendation.</p>
+        </div>
+
+        <div class="war-room-form">
+          <label>Player (Transfermarkt URL or select from roster)</label>
+          <input type="text" placeholder="https://www.transfermarkt.com/oscar-gloukh/profil/spieler/..." value="https://www.transfermarkt.com/oscar-gloukh/profil/spieler/...">
+          <div class="war-room-form-row">
+            <div>
+              <label>Target club (optional)</label>
+              <select>
+                <option value="">— General —</option>
+                <option>Maccabi Haifa</option>
+                <option>Maccabi Tel Aviv</option>
+                <option>Hapoel Be'er Sheva</option>
+              </select>
+            </div>
+            <div>
+              <label>Formation (optional)</label>
+              <select>
+                <option value="">— Any —</option>
+                <option>4-3-3</option>
+                <option>4-4-2</option>
+                <option>4-2-3-1</option>
+              </select>
+            </div>
+          </div>
+          <button class="btn-generate">Generate War Room Report</button>
+        </div>
+
+        <!-- War Room Report Result -->
+        <div class="war-report">
+          <div class="war-synthesis">
+            <h2>Synthesis</h2>
+            <div class="war-recommendation sign">SIGN — Strong fit for Ligat Ha'Al</div>
+            <p class="war-executive">
+              Gloukh is a technically gifted attacking midfielder with strong creative output (0.42 G/90, 0.18 A/90). Market value of €8m is fair given his age and production. Tactically, he fits best as a #10 or advanced #8 in a possession-based system. For Maccabi Haifa's 4-3-3, he would slot in as the advanced midfielder with license to drift. Contract runs to 2027 — some leverage for selling club. Key risk: adaptation to Israeli league tempo; key opportunity: sell-on value if he excels.
+            </p>
+            <div class="war-risks-opps">
+              <div>
+                <h4>Key risks</h4>
+                <ul>
+                  <li>Adaptation to Ligat Ha'Al tempo</li>
+                  <li>Price may rise if he performs in Europe</li>
+                </ul>
+              </div>
+              <div>
+                <h4>Key opportunities</h4>
+                <ul>
+                  <li>High sell-on potential</li>
+                  <li>Israeli market familiarity</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <div class="war-agent-cards">
+            <div class="war-agent-card">
+              <h3><span class="badge stats">Stats</span> Stats Agent</h3>
+              <p class="war-agent-summary">Strong creative output with 0.42 goals and 0.18 assists per 90. Above-average progressive carries and key passes. Defensive contribution is modest — typical for an AM. Best deployed as a #10 or advanced #8.</p>
+              <div class="war-agent-details">
+                <span class="tag">Goals/90: 0.42</span>
+                <span class="tag">Assists/90: 0.18</span>
+                <span class="tag">Prog. Carries: 3.2</span>
+                <span class="tag">Key Passes: 2.1</span>
+              </div>
+            </div>
+            <div class="war-agent-card">
+              <h3><span class="badge market">Market</span> Market Agent</h3>
+              <p class="war-agent-summary">€8m is fair value for a 22-year-old AM with his production. Comparable players in similar leagues trade at €6–10m. Contract to 2027 gives Salzburg leverage; Israeli clubs would need to negotiate.</p>
+              <div class="war-agent-details">
+                <span class="tag">Position: Fair value</span>
+                <span class="tag">Comparables: €6–10m</span>
+                <span class="tag">Contract leverage: Medium</span>
+              </div>
+            </div>
+            <div class="war-agent-card">
+              <h3><span class="badge tactics">Tactics</span> Tactics Agent</h3>
+              <p class="war-agent-summary">Best role: advanced midfielder in 4-3-3 or 4-2-3-1. Ligat Ha'Al fit: START for top-4 clubs. Maccabi Haifa: excellent fit as creative hub. Maccabi TA: would complement existing midfield. Hapoel BS: could be focal point.</p>
+              <div class="war-agent-details">
+                <span class="tag">Best role: #10 / Advanced #8</span>
+                <span class="tag">Ligat Ha'Al: START</span>
+                <span class="tag">Maccabi Haifa: Strong fit</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    document.querySelectorAll('.view-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const view = btn.dataset.view;
+        document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.view-panel').forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById('view-' + view).classList.add('active');
+      });
+    });
+
+    document.querySelectorAll('.player-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.player-tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+      });
+    });
+  </script>
+</body>
+</html>

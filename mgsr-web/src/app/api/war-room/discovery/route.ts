@@ -124,6 +124,11 @@ interface DiscoveryCandidate {
   fmPa?: number;
   fmCa?: number;
   fmPotentialGap?: number;
+  fbrefGoals?: string | number;
+  fbrefAssists?: string | number;
+  fbrefGoalsPer90?: number;
+  fbrefAssistsPer90?: number;
+  fbrefMinutes90s?: string | number;
 }
 
 function parseMarketValueToEuro(val: string | undefined): number {
@@ -188,6 +193,7 @@ function toCandidate(
   const profileImage = (p.profile_image as string) || undefined;
   const id = extractPlayerId(url);
   const derivedImage = id ? `https://img.a.transfermarkt.technology/portrait/medium/${id}.jpg` : undefined;
+  const fbrefMatched = p.fbref_matched === true;
   return {
     name: (p.name as string) || '',
     position: (p.position as string) || '',
@@ -207,6 +213,11 @@ function toCandidate(
     fmPa: opts?.fmPa ?? getFmPa(p) ?? undefined,
     fmCa: opts?.fmCa ?? getFmCa(p) ?? undefined,
     fmPotentialGap: opts?.fmPotentialGap ?? getFmPotentialGap(p) ?? undefined,
+    fbrefGoals: fbrefMatched ? (p.fbref_goals as string | number | undefined) : undefined,
+    fbrefAssists: fbrefMatched ? (p.fbref_assists as string | number | undefined) : undefined,
+    fbrefGoalsPer90: fbrefMatched ? (typeof p.fbref_goals_per90 === 'number' ? p.fbref_goals_per90 : parseFloat(String(p.fbref_goals_per90 || '')) || undefined) : undefined,
+    fbrefAssistsPer90: fbrefMatched ? (typeof p.fbref_assists_per90 === 'number' ? p.fbref_assists_per90 : parseFloat(String(p.fbref_assists_per90 || '')) || undefined) : undefined,
+    fbrefMinutes90s: fbrefMatched ? (p.fbref_minutes_90s as string | number | undefined) : undefined,
   };
 }
 

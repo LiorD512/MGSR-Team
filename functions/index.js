@@ -1,8 +1,15 @@
+// Polyfill for undici (used by Firebase deps) when File is not in global scope (Node 18)
+if (typeof globalThis.File === "undefined") {
+  globalThis.File = class File {};
+}
+
 const { onDocumentCreated } = require("firebase-functions/v2/firestore");
 const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { initializeApp } = require("firebase-admin/app");
 const { getMessaging } = require("firebase-admin/messaging");
 const { getFirestore } = require("firebase-admin/firestore");
+const { runMandateExpiry } = require("./workers/mandateExpiry");
+const { runReleasesRefresh } = require("./workers/releasesRefresh");
 
 initializeApp();
 const db = getFirestore();
@@ -187,6 +194,36 @@ function getDaysUntilDueIsrael(dueDateMs, nowMs) {
   const nowDateOnly = Date.UTC(nowY, nowM - 1, nowD);
   return Math.round((dueDateOnly - nowDateOnly) / oneDayMs);
 }
+
+/**
+ * Runs daily at 9:00 AM Israel time. Sends reminder push notifications for
+ * incomplete tasks approaching their due date (7 days, 3 days, 1 day, day-of).
+ */
+/**
+ * Runs daily at 04:00 Israel time. Scans mandate documents, marks expired ones,
+ * updates player haveMandate, writes FeedEvents. Cloud replacement for MandateExpiryWorker.
+ */
+exports.mandateExpiryScheduled = onSchedule(
+  { schedule: "0 4 * * *", timeZone: "Asia/Jerusalem" },
+  async () => {
+    console.log("[mandateExpiryScheduled] Triggered at 04:00 Israel time");
+    await runMandateExpiry();
+    console.log("[mandateExpiryScheduled] Completed");
+  }
+);
+
+/**
+ * Runs daily at 03:00 Israel time. Fetches releases from Transfermarkt,
+ * detects new free agents, writes FeedEvents. Cloud replacement for ReleasesRefreshWorker.
+ */
+exports.releasesRefreshScheduled = onSchedule(
+  { schedule: "0 3 * * *", timeZone: "Asia/Jerusalem" },
+  async () => {
+    console.log("[releasesRefreshScheduled] Triggered at 03:00 Israel time");
+    await runReleasesRefresh();
+    console.log("[releasesRefreshScheduled] Completed");
+  }
+);
 
 /**
  * Runs daily at 9:00 AM Israel time. Sends reminder push notifications for

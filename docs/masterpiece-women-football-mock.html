@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MGSR — Platform Switch: Team vs Women</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Outfit:wght@400;500;600&family=Instrument+Serif:ital@0;1&family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --mgsr-dark: #0F1923;
+      --mgsr-card: #1A2736;
+      --mgsr-border: #253545;
+      --mgsr-teal: #4DB6AC;
+      --mgsr-text: #E8EAED;
+      --mgsr-muted: #8C999B;
+      --mgsr-purple: #A855F7;
+      --mgsr-amber: #F59E0B;
+      --mgsr-green: #22c55e;
+      --mgsr-red: #ef4444;
+    }
+    [data-platform="women"] {
+      --mgsr-accent: #E8A0BF;
+      --mgsr-accent-dim: rgba(232, 160, 191, 0.15);
+      --mgsr-secondary: #D4A5A5;
+      --mgsr-highlight: #C9B1BD;
+      --mgsr-glow: rgba(232, 160, 191, 0.12);
+      --mgsr-border-hover: rgba(232, 160, 191, 0.35);
+    }
+    [data-platform="men"] {
+      --mgsr-accent: #4DB6AC;
+      --mgsr-accent-dim: rgba(77, 182, 172, 0.15);
+      --mgsr-secondary: #A855F7;
+      --mgsr-highlight: #4DB6AC;
+      --mgsr-glow: rgba(168, 85, 247, 0.08);
+      --mgsr-border-hover: rgba(168, 85, 247, 0.35);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Outfit', sans-serif; background: var(--mgsr-dark); color: var(--mgsr-text); min-height: 100vh; line-height: 1.5; transition: background 0.3s; }
+    .font-display { font-family: 'Syne', sans-serif; }
+    .font-elegant { font-family: 'Cormorant Garamond', 'Instrument Serif', serif; }
+
+    /* ═══ TOP PLATFORM BAR — MGSR Team | MGSR Women ═══ */
+    .platform-topbar {
+      background: var(--mgsr-card); border-bottom: 1px solid var(--mgsr-border);
+      padding: 0.75rem 1.5rem; display: flex; align-items: center; justify-content: center;
+      position: sticky; top: 0; z-index: 20; transition: border-color 0.3s;
+    }
+    [data-platform="women"] .platform-topbar { border-bottom-color: rgba(232, 160, 191, 0.25); }
+    .platform-tabs {
+      display: flex; gap: 0.5rem; padding: 0.35rem; background: var(--mgsr-dark);
+      border-radius: 0.75rem; border: 1px solid var(--mgsr-border);
+    }
+    .platform-tab {
+      padding: 0.6rem 1.5rem; border-radius: 0.5rem; font-size: 0.95rem; font-weight: 700;
+      color: var(--mgsr-muted); cursor: pointer; transition: all 0.25s;
+      border: 1px solid transparent; display: flex; align-items: center; gap: 0.5rem;
+    }
+    .platform-tab:hover { color: var(--mgsr-text); }
+    .platform-tab.active {
+      background: var(--mgsr-accent-dim); color: var(--mgsr-accent);
+      border-color: rgba(232, 160, 191, 0.35);
+    }
+    [data-platform="men"] .platform-tab.active { background: rgba(77, 182, 172, 0.2); color: var(--mgsr-teal); border-color: rgba(77, 182, 172, 0.35); }
+    .platform-tab .brand { font-family: 'Syne', sans-serif; letter-spacing: -0.02em; }
+    .platform-tab .brand-women { font-family: 'Cormorant Garamond', serif; font-weight: 600; }
+
+    /* ═══ App Shell ═══ */
+    .app-shell { display: flex; min-height: calc(100vh - 56px); }
+    .sidebar {
+      width: 224px; flex-shrink: 0; background: var(--mgsr-card); border-right: 1px solid var(--mgsr-border);
+      display: flex; flex-direction: column; transition: border-color 0.3s;
+    }
+    [data-platform="women"] .sidebar { border-right-color: rgba(232, 160, 191, 0.2); }
+    .sidebar-logo {
+      padding: 1rem; border-bottom: 1px solid var(--mgsr-border);
+      display: flex; align-items: center; gap: 0.75rem;
+    }
+    .sidebar-logo .logo-text { font-family: 'Syne', sans-serif; font-size: 1.25rem; font-weight: 700; color: var(--mgsr-accent); transition: color 0.3s; }
+    .sidebar-logo .logo-text-women { font-family: 'Cormorant Garamond', serif; font-weight: 600; font-size: 1.35rem; }
+    .sidebar-logo .logo-text-men { display: none; }
+    .sidebar-logo .logo-text-women { display: none; }
+    [data-platform="men"] .sidebar-logo .logo-text-men { display: block; }
+    [data-platform="women"] .sidebar-logo .logo-text-women { display: block; }
+    [data-platform="men"] .sidebar-logo .logo-text-men { color: var(--mgsr-teal); }
+    [data-platform="women"] .sidebar-logo .logo-text-women { color: var(--mgsr-accent); }
+    .sidebar-nav { flex: 1; padding: 1rem; }
+    .sidebar-nav a {
+      display: block; padding: 0.75rem 1rem; border-radius: 0.5rem; color: var(--mgsr-muted);
+      font-size: 0.9rem; text-decoration: none; margin-bottom: 0.25rem; transition: all 0.2s;
+    }
+    .sidebar-nav a:hover { color: var(--mgsr-text); background: var(--mgsr-dark); }
+    .sidebar-nav a.active { background: var(--mgsr-accent-dim); color: var(--mgsr-accent); }
+    [data-platform="men"] .sidebar-nav a.active { background: rgba(77, 182, 172, 0.2); color: var(--mgsr-teal); }
+
+    /* ═══ Main Content ═══ */
+    .main-wrapper { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+    .main-content { flex: 1; overflow: auto; padding: 1.5rem; position: relative; }
+
+    /* ═══ Page Content (shared structure) ═══ */
+    .page-panel { display: none; }
+    .page-panel.active { display: block; animation: fadeIn 0.3s ease-out; }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    .platform-panel { display: none; }
+    .platform-panel.active { display: block; }
+    .page-hero { max-width: 52rem; margin: 0 auto 1.5rem; position: relative; }
+    .page-hero::before {
+      content: ''; position: absolute; top: -30%; left: -15%; width: 60%; height: 80%;
+      background: radial-gradient(ellipse, var(--mgsr-glow) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .page-hero h1 { font-family: 'Syne', sans-serif; font-size: 2rem; font-weight: 800; color: var(--mgsr-text); margin-bottom: 0.5rem; }
+    [data-platform="women"] .page-hero h1 { font-family: 'Cormorant Garamond', serif; font-weight: 600; }
+    .page-hero .sub { font-size: 0.95rem; color: var(--mgsr-muted); margin-bottom: 1rem; }
+    .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1rem; max-width: 52rem; }
+    .stat-card {
+      background: var(--mgsr-card); border: 1px solid var(--mgsr-border);
+      border-radius: 1rem; padding: 1.25rem; transition: all 0.2s;
+    }
+    .stat-card:hover { border-color: var(--mgsr-border-hover); }
+    .stat-card .label { font-size: 0.8rem; color: var(--mgsr-muted); text-transform: uppercase; margin-bottom: 0.35rem; }
+    .stat-card .value { font-family: 'Syne', sans-serif; font-size: 1.75rem; font-weight: 700; color: var(--mgsr-accent); }
+    .data-badge {
+      font-size: 0.75rem; padding: 0.25rem 0.5rem; border-radius: 0.25rem;
+      background: var(--mgsr-accent-dim); color: var(--mgsr-accent);
+      display: inline-block; margin-top: 0.75rem;
+    }
+    [data-platform="men"] .data-badge { background: rgba(77, 182, 172, 0.2); color: var(--mgsr-teal); }
+
+    /* ═══ Dashboard specific ═══ */
+    .dashboard-welcome { margin-bottom: 1.5rem; padding: 1rem; background: rgba(37, 53, 69, 0.4); border-radius: 0.75rem; border-left: 3px solid var(--mgsr-accent); }
+
+    /* ═══ Players page ═══ */
+    .player-row {
+      display: flex; align-items: center; gap: 1rem; padding: 1rem;
+      background: var(--mgsr-card); border: 1px solid var(--mgsr-border);
+      border-radius: 0.75rem; margin-bottom: 0.75rem; max-width: 52rem;
+    }
+    .player-row .avatar { width: 48px; height: 48px; border-radius: 8px; background: var(--mgsr-border); }
+    .player-row .name { font-weight: 600; color: var(--mgsr-text); }
+    .player-row .meta { font-size: 0.85rem; color: var(--mgsr-muted); }
+
+    /* ═══ War Room ═══ */
+    .discovery-card {
+      background: var(--mgsr-card); border: 1px solid var(--mgsr-border);
+      border-radius: 1rem; padding: 1.25rem; margin-bottom: 1rem; max-width: 52rem;
+      transition: all 0.25s; cursor: pointer;
+    }
+    .discovery-card:hover { border-color: var(--mgsr-border-hover); }
+    .discovery-card .name { font-weight: 700; color: var(--mgsr-text); margin-bottom: 0.25rem; }
+    .discovery-card .meta { font-size: 0.85rem; color: var(--mgsr-muted); margin-bottom: 0.5rem; }
+    .source-badge { font-size: 0.7rem; padding: 0.2rem 0.5rem; border-radius: 0.25rem; font-weight: 600; margin-right: 0.35rem; }
+    .source-badge.tm { background: rgba(77, 182, 172, 0.2); color: var(--mgsr-teal); }
+    .source-badge.wsl { background: rgba(232, 160, 191, 0.25); color: #E8A0BF; }
+    .source-badge.fbref { background: rgba(77, 182, 172, 0.2); color: var(--mgsr-teal); }
+    .rec-badge { padding: 0.35rem 0.75rem; border-radius: 0.5rem; font-size: 0.8rem; font-weight: 700; }
+    .rec-badge.sign { background: rgba(34, 197, 94, 0.2); color: var(--mgsr-green); }
+  </style>
+</head>
+<body data-platform="men">
+  <!-- ═══ TOP: Platform Switch — MGSR Team | MGSR Women ═══ -->
+  <div class="platform-topbar">
+    <div class="platform-tabs">
+      <button class="platform-tab active" data-platform="men" aria-pressed="true">
+        <span class="brand brand-men">MGSR Team</span>
+      </button>
+      <button class="platform-tab" data-platform="women" aria-pressed="false">
+        <span class="brand brand-women">MGSR Women</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="sidebar-logo">
+        <span class="logo-text logo-text-men">MGSR Team</span>
+        <span class="logo-text logo-text-women">MGSR Women</span>
+      </div>
+      <nav class="sidebar-nav">
+        <a href="#" data-page="dashboard" class="nav-link active">Dashboard</a>
+        <a href="#" data-page="players" class="nav-link">Players</a>
+        <a href="#" data-page="shortlist" class="nav-link">Shortlist</a>
+        <a href="#" data-page="ai-scout" class="nav-link">AI Scout</a>
+        <a href="#" data-page="war-room" class="nav-link">War Room</a>
+        <a href="#" data-page="contacts" class="nav-link">Contacts</a>
+        <a href="#" data-page="requests" class="nav-link">Requests</a>
+      </nav>
+    </aside>
+
+    <div class="main-wrapper">
+      <main class="main-content">
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <!-- MEN'S PLATFORM — MGSR Team (everything different)           -->
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <div class="platform-panel active" id="platform-men">
+          <!-- Men: Dashboard -->
+          <div class="page-panel active" data-page="dashboard">
+            <div class="page-hero">
+              <h1>Dashboard</h1>
+              <p class="sub">MGSR Team — Men's football scouting. Ligat Ha'Al, Balkans, Scandinavia, reachable leagues.</p>
+            </div>
+            <div class="dashboard-welcome">
+              <strong>Data:</strong> Transfermarkt, Scout Server, FBref, FMInside. Men's leagues only.
+            </div>
+            <div class="card-grid">
+              <div class="stat-card"><div class="label">Roster</div><div class="value">47</div><span class="data-badge">Transfermarkt</span></div>
+              <div class="stat-card"><div class="label">Shortlist</div><div class="value">23</div><span class="data-badge">TM + Scout</span></div>
+              <div class="stat-card"><div class="label">Active Requests</div><div class="value">5</div><span class="data-badge">Clubs</span></div>
+              <div class="stat-card"><div class="label">War Room Today</div><div class="value">8</div><span class="data-badge">Discovery</span></div>
+            </div>
+          </div>
+          <!-- Men: Players -->
+          <div class="page-panel" data-page="players">
+            <div class="page-hero">
+              <h1>Players</h1>
+              <p class="sub">Men's roster. Transfermarkt profiles, Scout Server enrichment, FMInside attributes.</p>
+            </div>
+            <div class="player-row"><div class="avatar"></div><div><div class="name">Marko Petković</div><div class="meta">24 · CF · €750k · FK Vojvodina</div></div></div>
+            <div class="player-row"><div class="avatar"></div><div><div class="name">David Čerin</div><div class="meta">20 · CM · €400k · NK Domžale</div></div></div>
+            <div class="data-badge" style="margin-top:1rem">Transfermarkt · Scout Server · FMInside</div>
+          </div>
+          <!-- Men: War Room -->
+          <div class="page-panel" data-page="war-room">
+            <div class="page-hero">
+              <h1>War Room</h1>
+              <p class="sub">AI discovery for men's football. Value €0–€2.5m, reachable leagues. Transfermarkt + Scout.</p>
+            </div>
+            <div class="discovery-card">
+              <div class="name">Marko Petković</div>
+              <div class="meta">24 · CF · €750k · FK Vojvodina · Serbia</div>
+              <span class="source-badge tm">Transfermarkt</span>
+              <span class="rec-badge sign">SIGN</span>
+            </div>
+            <div class="discovery-card">
+              <div class="name">David Čerin</div>
+              <div class="meta">20 · CM · €400k · NK Domžale · Slovenia</div>
+              <span class="source-badge tm">Hidden Gem</span>
+              <span class="rec-badge sign">SIGN</span>
+            </div>
+            <div class="data-badge" style="margin-top:1rem">Transfermarkt · Scout Server · FBref · FMInside</div>
+          </div>
+          <!-- Men: other pages placeholder -->
+          <div class="page-panel" data-page="shortlist"><div class="page-hero"><h1>Shortlist</h1><p class="sub">Men's shortlist. Transfermarkt links.</p></div><div class="data-badge">Transfermarkt</div></div>
+          <div class="page-panel" data-page="ai-scout"><div class="page-hero"><h1>AI Scout</h1><p class="sub">Search men's players. Scout Server + Transfermarkt.</p></div><div class="data-badge">Scout Server · TM</div></div>
+          <div class="page-panel" data-page="contacts"><div class="page-hero"><h1>Contacts</h1><p class="sub">Clubs & agents — men's football.</p></div></div>
+          <div class="page-panel" data-page="requests"><div class="page-hero"><h1>Requests</h1><p class="sub">Club requests — men's positions.</p></div></div>
+        </div>
+
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <!-- WOMEN'S PLATFORM — MGSR Women (completely different site)   -->
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <div class="platform-panel" id="platform-women">
+          <!-- Women: Dashboard -->
+          <div class="page-panel active" data-page="dashboard">
+            <div class="page-hero">
+              <h1>Dashboard</h1>
+              <p class="sub">MGSR Women — Women's football scouting. WSL, NWSL, Liga F, UWCL, Frauen-Bundesliga.</p>
+            </div>
+            <div class="dashboard-welcome">
+              <strong>Data:</strong> Wosostat (FBref), FMInside. No Transfermarkt — women's coverage via Wosostat API.
+            </div>
+            <div class="card-grid">
+              <div class="stat-card"><div class="label">Roster</div><div class="value">12</div><span class="data-badge">Wosostat · FMInside</span></div>
+              <div class="stat-card"><div class="label">Shortlist</div><div class="value">8</div><span class="data-badge">FBref</span></div>
+              <div class="stat-card"><div class="label">Active Requests</div><div class="value">2</div><span class="data-badge">Women's clubs</span></div>
+              <div class="stat-card"><div class="label">War Room Today</div><div class="value">6</div><span class="data-badge">Discovery</span></div>
+            </div>
+          </div>
+          <!-- Women: Players -->
+          <div class="page-panel" data-page="players">
+            <div class="page-hero">
+              <h1>Players</h1>
+              <p class="sub">Women's roster. Wosostat/FBref stats, FMInside attributes. No Transfermarkt.</p>
+            </div>
+            <div class="player-row"><div class="avatar"></div><div><div class="name">Lauren James</div><div class="meta">23 · RW · Chelsea FCW · England</div></div></div>
+            <div class="player-row"><div class="avatar"></div><div><div class="name">Sophia Smith</div><div class="meta">24 · CF · Portland Thorns · USA</div></div></div>
+            <div class="data-badge" style="margin-top:1rem">Wosostat · FBref · FMInside</div>
+          </div>
+          <!-- Women: War Room -->
+          <div class="page-panel" data-page="war-room">
+            <div class="page-hero">
+              <h1>War Room</h1>
+              <p class="sub">AI discovery for women's football. WSL, NWSL, Liga F, UWCL. Wosostat + FMInside.</p>
+            </div>
+            <div class="discovery-card">
+              <div class="name">Lauren James</div>
+              <div class="meta">23 · RW · Chelsea FCW · England</div>
+              <span class="source-badge wsl">WSL</span>
+              <span class="source-badge fbref">FBref</span>
+              <span class="rec-badge sign">SIGN</span>
+            </div>
+            <div class="discovery-card">
+              <div class="name">Sophia Smith</div>
+              <div class="meta">24 · CF · Portland Thorns · USA</div>
+              <span class="source-badge wsl">NWSL</span>
+              <span class="source-badge fbref">FBref</span>
+              <span class="rec-badge sign">SIGN</span>
+            </div>
+            <div class="data-badge" style="margin-top:1rem">Wosostat · FMInside · FBref — No Transfermarkt</div>
+          </div>
+          <!-- Women: other pages placeholder -->
+          <div class="page-panel" data-page="shortlist"><div class="page-hero"><h1>Shortlist</h1><p class="sub">Women's shortlist. Wosostat/FBref links.</p></div><div class="data-badge">Wosostat · FMInside</div></div>
+          <div class="page-panel" data-page="ai-scout"><div class="page-hero"><h1>AI Scout</h1><p class="sub">Search women's players. Wosostat + FMInside.</p></div><div class="data-badge">Wosostat · FMInside</div></div>
+          <div class="page-panel" data-page="contacts"><div class="page-hero"><h1>Contacts</h1><p class="sub">Clubs & agents — women's football.</p></div></div>
+          <div class="page-panel" data-page="requests"><div class="page-hero"><h1>Requests</h1><p class="sub">Club requests — women's positions.</p></div></div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script>
+    const body = document.body;
+    const platformTabs = document.querySelectorAll('.platform-tab');
+    const platformPanels = document.querySelectorAll('.platform-panel');
+    const navLinks = document.querySelectorAll('.nav-link');
+    const pagePanels = document.querySelectorAll('.page-panel');
+
+    // Platform switch: MGSR Team <-> MGSR Women
+    platformTabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        const platform = tab.dataset.platform;
+        body.setAttribute('data-platform', platform);
+        platformTabs.forEach(t => { t.classList.remove('active'); t.setAttribute('aria-pressed', 'false'); });
+        tab.classList.add('active');
+        tab.setAttribute('aria-pressed', 'true');
+        platformPanels.forEach(p => {
+          p.classList.remove('active');
+          if (p.id === 'platform-' + platform) p.classList.add('active');
+        });
+        // Reset to dashboard when switching platform
+        navLinks.forEach(l => l.classList.remove('active'));
+        navLinks[0].classList.add('active');
+        pagePanels.forEach(p => {
+          p.classList.remove('active');
+          if (p.closest('.platform-panel.active') && p.dataset.page === 'dashboard') p.classList.add('active');
+        });
+      });
+    });
+
+    // Page nav within platform
+    navLinks.forEach(link => {
+      link.addEventListener('click', (e) => {
+        e.preventDefault();
+        const page = link.dataset.page;
+        navLinks.forEach(l => l.classList.remove('active'));
+        link.classList.add('active');
+        pagePanels.forEach(p => {
+          p.classList.remove('active');
+          if (p.closest('.platform-panel.active') && p.dataset.page === page) p.classList.add('active');
+        });
+      });
+    });
+  </script>
+</body>
+</html>

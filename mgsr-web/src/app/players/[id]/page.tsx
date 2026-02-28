@@ -1526,8 +1526,23 @@ export default function PlayerInfoPage() {
         })()}
       </div>
 
+      {/* Share preparation loader - shown while creating share doc and opening WhatsApp */}
+      {sharing && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70">
+          <div
+            dir={isRtl ? 'rtl' : 'ltr'}
+            className="flex flex-col items-center gap-4 px-8 py-6 rounded-2xl bg-mgsr-card border border-mgsr-border"
+          >
+            <div className="w-10 h-10 border-2 border-mgsr-teal border-t-transparent rounded-full animate-spin" />
+            <p className="text-mgsr-text font-medium">
+              {isRtl ? 'המסמך לשיתוף בהכנה...' : 'Preparing document for share...'}
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Share language choice modal */}
-      {showShareLanguageModal && (
+      {showShareLanguageModal && !sharing && (
         <div
           className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
           onClick={() => setShowShareLanguageModal(false)}

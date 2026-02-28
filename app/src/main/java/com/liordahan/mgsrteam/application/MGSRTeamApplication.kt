@@ -66,37 +66,36 @@ class MGSRTeamApplication : Application(), KoinComponent {
             .addOnSuccessListener { token -> Log.i("MGSR_DEBUG", "FCM token: ${token.take(30)}…") }
             .addOnFailureListener { Log.e("MGSR_DEBUG", "FCM token retrieval FAILED", it) }
 
-        // Schedule nightly player data refresh from Transfermarkt at 02:00 Israel time
-        schedulePlayerRefresh()
-        Log.i("MGSR_Worker", "PlayerRefreshWorker: periodic schedule enqueued (02:00 Israel)")
-        // Schedule nightly releases fetch at 03:00 Israel time (new free agents → push notifications)
-        ReleasesRefreshWorker.schedule(this)
-        Log.i("MGSR_Worker", "ReleasesRefreshWorker: periodic schedule enqueued (03:00 Israel)")
-        // Schedule nightly mandate expiry check at 04:00 Israel time
-        MandateExpiryWorker.schedule(this)
-        Log.i("MGSR_Worker", "MandateExpiryWorker: periodic schedule enqueued (04:00 Israel)")
+        // WORKERS MOVED TO CLOUD — scheduling disabled. Workers now run as:
+        // - MandateExpiryWorker: Firebase Cloud Function (04:00 Israel)
+        // - ReleasesRefreshWorker: Firebase Cloud Function (03:00 Israel)
+        // - PlayerRefreshWorker: Cloud Run Job (02:00 Israel via Cloud Scheduler)
+        // Success confirmation stored in Firestore WorkerRuns collection.
+        // schedulePlayerRefresh()
+        // Log.i("MGSR_Worker", "PlayerRefreshWorker: periodic schedule enqueued (02:00 Israel)")
+        // ReleasesRefreshWorker.schedule(this)
+        // Log.i("MGSR_Worker", "ReleasesRefreshWorker: periodic schedule enqueued (03:00 Israel)")
+        // MandateExpiryWorker.schedule(this)
+        // Log.i("MGSR_Worker", "MandateExpiryWorker: periodic schedule enqueued (04:00 Israel)")
 
-        // If the user is already logged in, check whether the last successful
-        // refresh was more than 24 h ago. If so, enqueue an immediate catch-up
-        // run (e.g. when the nightly 02:00 run was missed). On fresh install
-        // currentUser is null so this is a no-op; the login screen triggers
-        // the first refresh after authentication instead.
-        val currentUser = FirebaseAuth.getInstance().currentUser
-        if (currentUser != null) {
-            Log.i("MGSR_Worker", "User logged in (${currentUser.email}) — checking if workers need immediate run")
-            if (BuildConfig.DEBUG) {
-                Log.i("MGSR_Worker", "DEBUG build — forcing immediate run of all workers for testing")
-                PlayerRefreshWorker.enqueueImmediateRefresh(this)
-                ReleasesRefreshWorker.enqueueImmediateRefresh(this)
-                MandateExpiryWorker.enqueueImmediateRefresh(this)
-            } else {
-                PlayerRefreshWorker.enqueueIfStale(this)
-                ReleasesRefreshWorker.enqueueIfStale(this)
-                MandateExpiryWorker.enqueueIfStale(this)
-            }
-        } else {
-            Log.i("MGSR_Worker", "User not logged in — workers will run after login")
-        }
+        // Catch-up / immediate run — disabled; workers run on cloud only.
+        // val currentUser = FirebaseAuth.getInstance().currentUser
+        // if (currentUser != null) {
+        //     Log.i("MGSR_Worker", "User logged in (${currentUser.email}) — checking if workers need immediate run")
+        //     if (BuildConfig.DEBUG) {
+        //         Log.i("MGSR_Worker", "DEBUG build — forcing immediate run of all workers for testing")
+        //         PlayerRefreshWorker.enqueueImmediateRefresh(this)
+        //         ReleasesRefreshWorker.enqueueImmediateRefresh(this)
+        //         MandateExpiryWorker.enqueueImmediateRefresh(this)
+        //     } else {
+        //         PlayerRefreshWorker.enqueueIfStale(this)
+        //         ReleasesRefreshWorker.enqueueIfStale(this)
+        //         MandateExpiryWorker.enqueueIfStale(this)
+        //     }
+        // } else {
+        //     Log.i("MGSR_Worker", "User not logged in — workers will run after login")
+        // }
+        Log.i("MGSR_Worker", "Workers run on cloud — Android scheduling disabled")
     }
 
     /**

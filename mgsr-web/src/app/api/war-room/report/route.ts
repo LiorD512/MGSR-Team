@@ -6,8 +6,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { handlePlayer } from '@/lib/transfermarkt';
+import { extractPlayerIdFromUrl } from '@/lib/api';
 
 const SCOUT_BASE = process.env.SCOUT_SERVER_URL || 'https://football-scout-server-l38w.onrender.com';
+
+function samePlayer(url1: string, url2: string): boolean {
+  const id1 = extractPlayerIdFromUrl(url1);
+  const id2 = extractPlayerIdFromUrl(url2);
+  return !!id1 && id1 === id2;
+}
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -102,13 +109,15 @@ export async function POST(request: NextRequest) {
         `${SCOUT_BASE}/similar_players?player_url=${encodeURIComponent(playerUrl)}&lang=${lang}&limit=5`
       ),
       fetchJson<Record<string, unknown>>(
-        `${SCOUT_BASE}/fm-intelligence?player_name=${encodeURIComponent(name)}`
+        `${SCOUT_BASE}/fm_intelligence?player_name=${encodeURIComponent(name)}`
       ),
     ]);
 
-    const firstSimilar = similarData?.results?.[0] as Record<string, unknown> | undefined;
-    const statsContext = firstSimilar
-      ? `Goals/90: ${firstSimilar.fbref_goals ?? '?'}, Assists/90: ${firstSimilar.fbref_assists ?? '?'}, Progressive carries: ${firstSimilar.fbref_progressive_carries ?? '?'}, Key passes: ${firstSimilar.fbref_key_passes ?? '?'}`
+    const similarResults = (similarData?.results ?? []) as Record<string, unknown>[];
+    const playerMatch = similarResults.find((r) => samePlayer((r.url as string) || '', playerUrl));
+    const statsSource = playerMatch ?? similarResults[0];
+    const statsContext = statsSource
+      ? `Goals/90: ${statsSource.fbref_goals ?? statsSource.fbref_goals_per90 ?? '?'}, Assists/90: ${statsSource.fbref_assists ?? statsSource.fbref_assists_per90 ?? '?'}, Progressive carries: ${statsSource.fbref_progressive_carries ?? statsSource.fbref_progressive_carries_per90 ?? '?'}, Key passes: ${statsSource.fbref_key_passes ?? statsSource.fbref_key_passes_per90 ?? '?'}`
       : 'No FBref stats available';
     const fmContext = fmData && !fmData.error
       ? `CA: ${fmData.ca}, PA: ${fmData.pa}, Tier: ${fmData.tier}`

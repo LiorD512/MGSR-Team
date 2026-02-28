@@ -164,8 +164,7 @@ export default function SharedPlayerContent({
                   {mandateExpiry ? `${labels.activeUntil} ${mandateExpiry}` : labels.active}
                 </p>
               </div>
-              <div className="shrink-0 flex items-center gap-2">
-                <span className="text-sm font-medium text-mgsr-teal">{labels.active}</span>
+              <div className="shrink-0">
                 <div className="w-11 h-6 rounded-full bg-mgsr-teal flex items-center justify-end px-1">
                   <div className="w-4 h-4 rounded-full bg-white" />
                 </div>
