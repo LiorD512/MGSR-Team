@@ -15,6 +15,7 @@ export async function GET() {
   try {
     const res = await fetch(url, {
       headers: { Accept: 'application/json' },
+      cache: 'no-store',
       signal: AbortSignal.timeout(60000),
     });
     const elapsed = Date.now() - start;

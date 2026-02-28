@@ -45,6 +45,7 @@ async function fetchFreesearch(
     console.log('[AI Scout] Using freesearch proxy:', url.slice(0, 80) + '...');
     const res = await fetch(url, {
       headers: { Accept: 'application/json' },
+      cache: 'no-store',
       signal: AbortSignal.timeout(180000),
     });
     const data = (await res.json().catch(() => null)) as { results?: Record<string, unknown>[]; error?: string } | null;
@@ -366,6 +367,7 @@ async function fetchScoutRecruitment(
 
   const res = await fetch(url, {
     headers: { Accept: 'application/json' },
+    cache: 'no-store',
     signal: AbortSignal.timeout(180000), // 3 min - Render cold start can take 60-90s
   });
 

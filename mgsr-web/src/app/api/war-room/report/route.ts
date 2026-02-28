@@ -46,7 +46,7 @@ async function generateWithRetry(
 
 async function fetchJson<T>(url: string): Promise<T | null> {
   try {
-    const res = await fetch(url, { signal: AbortSignal.timeout(15000) });
+    const res = await fetch(url, { cache: 'no-store', signal: AbortSignal.timeout(15000) });
     if (!res.ok) return null;
     return res.json();
   } catch {

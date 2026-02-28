@@ -14,6 +14,7 @@ export async function GET(request: NextRequest) {
     const url = `${SCOUT_BASE}/similar_players?${searchParams.toString()}`;
     const res = await fetch(url, {
       headers: { Accept: 'application/json' },
+      cache: 'no-store',
       signal: AbortSignal.timeout(120000), // 2 min — similarity search can be slow on cold start
     });
     const data = await res.json().catch(() => ({}));

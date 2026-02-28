@@ -13,6 +13,7 @@ export async function GET(request: NextRequest) {
     const url = `${SCOUT_BASE}/recruitment?${searchParams.toString()}`;
     const res = await fetch(url, {
       headers: { Accept: 'application/json' },
+      cache: 'no-store',
       signal: AbortSignal.timeout(120000), // 2 min: Render cold start + heavy search
     });
     const data = await res.json().catch(() => ({}));

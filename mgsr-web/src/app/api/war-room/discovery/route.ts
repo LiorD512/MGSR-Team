@@ -151,6 +151,7 @@ async function fetchRecruitment(params: Record<string, string>): Promise<Record<
   const url = `${SCOUT_BASE}/recruitment?${search.toString()}`;
   const res = await fetch(url, {
     headers: { Accept: 'application/json' },
+    cache: 'no-store',
     signal: AbortSignal.timeout(90000),
   });
   if (!res.ok) return [];
