@@ -13,6 +13,7 @@ import AppLayout from '@/components/AppLayout';
 import Link from 'next/link';
 import { toWhatsAppUrl } from '@/lib/whatsapp';
 import { createShare } from '@/lib/shareApi';
+import { getPinnedHighlights } from '@/lib/highlightsApi';
 import { parseMarketValue } from '@/lib/releases';
 import { extractSalaryRange, extractFreeTransfer, type NoteModel } from '@/lib/noteParser';
 import { flattenPdf } from '@/lib/pdfFlatten';
@@ -570,6 +571,19 @@ export default function PlayerInfoPage() {
           // Fall back to buildScoutSummary in createShare
         }
 
+        const pinnedHighlights = getPinnedHighlights(id);
+        const highlightsPayload = pinnedHighlights.length > 0
+          ? pinnedHighlights.map((v) => ({
+              id: v.id,
+              source: v.source,
+              title: v.title,
+              thumbnailUrl: v.thumbnailUrl,
+              embedUrl: v.embedUrl,
+              channelName: v.channelName,
+              viewCount: v.viewCount,
+            }))
+          : undefined;
+
         const { url } = await createShare(
           {
             playerId: id,
@@ -582,6 +596,7 @@ export default function PlayerInfoPage() {
             sharerPhone,
             sharerName,
             scoutReport: scoutReport || undefined,
+            highlights: highlightsPayload,
             lang,
           },
           () =>

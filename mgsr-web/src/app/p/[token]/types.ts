@@ -12,6 +12,16 @@ export interface SharedPlayer {
   tmProfile?: string;
 }
 
+export interface SharedHighlightVideo {
+  id: string;
+  source: string;
+  title: string;
+  thumbnailUrl: string;
+  embedUrl: string;
+  channelName?: string;
+  viewCount?: number;
+}
+
 export interface ShareData {
   playerId: string;
   player: SharedPlayer;
@@ -20,5 +30,6 @@ export interface ShareData {
   sharerPhone?: string;
   sharerName?: string;
   scoutReport?: string;
+  highlights?: SharedHighlightVideo[];
   lang?: 'he' | 'en';
 }

@@ -83,6 +83,7 @@ export default function SharedPlayerContent({
         nationality: 'לאום',
         contract: 'חוזה',
         scoutReport: 'דוח סקאוט',
+        highlights: 'היילייטס',
         contact: 'איש קשר',
         transfermarkt: 'פרופיל Transfermarkt',
         sharedVia: 'שותף דרך MGSR Team',
@@ -97,6 +98,7 @@ export default function SharedPlayerContent({
         nationality: 'Nationality',
         contract: 'Contract',
         scoutReport: 'Scout Report',
+        highlights: 'Highlights',
         contact: 'Contact',
         transfermarkt: 'Transfermarkt profile',
         sharedVia: 'Shared via MGSR Team',
@@ -153,26 +155,22 @@ export default function SharedPlayerContent({
 
         {data.mandateInfo?.hasMandate && (
           <div className="p-5 rounded-xl bg-mgsr-card border border-mgsr-teal/30 mb-6">
-            <h3 className="text-sm font-semibold text-mgsr-teal uppercase tracking-wider mb-2">
-              {labels.mandate}
-            </h3>
-            <p className="text-mgsr-text font-medium mb-2">
-              {mandateExpiry ? `${labels.activeUntil} ${mandateExpiry}` : labels.active}
-            </p>
-            {data.mandateUrl && (
-              <a
-                href={data.mandateUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 text-mgsr-teal hover:underline font-medium text-sm"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                </svg>
-                {labels.viewMandate}
-              </a>
-            )}
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <h3 className="text-sm font-semibold text-mgsr-teal uppercase tracking-wider mb-1">
+                  {labels.mandate}
+                </h3>
+                <p className="text-mgsr-text font-medium text-sm">
+                  {mandateExpiry ? `${labels.activeUntil} ${mandateExpiry}` : labels.active}
+                </p>
+              </div>
+              <div className="shrink-0 flex items-center gap-2">
+                <span className="text-sm font-medium text-mgsr-teal">{labels.active}</span>
+                <div className="w-11 h-6 rounded-full bg-mgsr-teal flex items-center justify-end px-1">
+                  <div className="w-4 h-4 rounded-full bg-white" />
+                </div>
+              </div>
+            </div>
           </div>
         )}
 
@@ -191,6 +189,35 @@ export default function SharedPlayerContent({
             <p className="text-mgsr-text leading-relaxed whitespace-pre-line">
               {data.scoutReport}
             </p>
+          </div>
+        )}
+
+        {data.highlights && data.highlights.length > 0 && (
+          <div className="p-5 rounded-xl bg-mgsr-card border border-mgsr-border mb-8">
+            <h3 className="text-sm font-semibold text-mgsr-muted uppercase tracking-wider mb-4">
+              {labels.highlights}
+            </h3>
+            <div className="space-y-4">
+              {data.highlights.map((v) => (
+                <div key={v.id} className="rounded-xl overflow-hidden border border-mgsr-border">
+                  <div className="aspect-video bg-mgsr-dark">
+                    <iframe
+                      src={v.embedUrl}
+                      title={v.title}
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                      className="w-full h-full"
+                    />
+                  </div>
+                  <div className="p-3 bg-mgsr-card/50">
+                    <p className="text-sm font-medium text-mgsr-text line-clamp-2">{v.title}</p>
+                    {v.channelName && (
+                      <p className="text-xs text-mgsr-muted mt-0.5">{v.channelName}</p>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 

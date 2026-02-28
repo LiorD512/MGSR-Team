@@ -45,6 +45,7 @@ export interface SharePayload {
   sharerPhone?: string;
   sharerName?: string;
   scoutReport?: string;
+  highlights?: { id: string; source: string; title: string; thumbnailUrl: string; embedUrl: string; channelName?: string; viewCount?: number }[];
   lang?: 'he' | 'en';
 }
 
@@ -149,6 +150,7 @@ export async function createShare(
       null,
     sharerName: payload.sharerName ?? null,
     scoutReport: scoutReport || null,
+    highlights: payload.highlights?.length ? payload.highlights : null,
     lang: payload.lang ?? null,
     createdAt: Date.now(),
   });

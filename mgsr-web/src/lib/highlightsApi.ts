@@ -88,6 +88,21 @@ export function formatViews(views: number): string {
   return String(views);
 }
 
+const STORAGE_KEY_PREFIX = 'player-highlights:';
+
+/** Get pinned highlight videos from localStorage (for share). */
+export function getPinnedHighlights(playerId: string): HighlightVideo[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = localStorage.getItem(`${STORAGE_KEY_PREFIX}${playerId}`);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as HighlightVideo[];
+    return Array.isArray(parsed) ? parsed.slice(0, 2) : [];
+  } catch {
+    return [];
+  }
+}
+
 /** Format "time ago" from a date string */
 export function timeAgo(dateStr: string): string {
   if (!dateStr) return '';
