@@ -397,7 +397,6 @@ export default function WarRoomPage() {
               ? "שווי נוכחי €0–€2.5m, דמי העברה אחרונים ≤€2.5m, ליגות נגישות. ללא כוכבים שנקנו ביוקר."
               : 'Current value €0–€2.5m, last transfer fee ≤€2.5m, reachable leagues. Excludes players bought for big money.'}
           </p>
-        </div>
 
         {/* Source tabs */}
         <div className="flex flex-wrap gap-1 p-1 rounded-xl bg-mgsr-card border border-mgsr-border mt-6 mb-6">

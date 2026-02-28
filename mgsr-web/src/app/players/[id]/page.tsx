@@ -717,7 +717,7 @@ export default function PlayerInfoPage() {
           : undefined;
 
         /** Firestore rejects undefined - remove undefined values recursively */
-        function stripUndefined(obj: Record<string, unknown>): Record<string, unknown> {
+        const stripUndefined = (obj: Record<string, unknown>): Record<string, unknown> => {
           const result: Record<string, unknown> = {};
           for (const [k, v] of Object.entries(obj)) {
             if (v === undefined) continue;
@@ -741,7 +741,7 @@ export default function PlayerInfoPage() {
             }
           }
           return result;
-        }
+        };
 
         const portfolioDoc = stripUndefined({
           agentId: user.uid,
