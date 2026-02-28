@@ -260,7 +260,7 @@ export default function PortfolioPage() {
               return (
                 <div
                   key={item.id}
-                  className="group relative overflow-hidden rounded-2xl border border-mgsr-border bg-mgsr-card hover:border-mgsr-teal/40 transition-all duration-300 hover:shadow-[0_0_40px_-10px_rgba(77,182,172,0.2)]"
+                  className="group relative rounded-2xl border border-mgsr-border bg-mgsr-card hover:border-mgsr-teal/40 transition-all duration-300 hover:shadow-[0_0_40px_-10px_rgba(77,182,172,0.2)]"
                 >
                   {/* Card gradient accent */}
                   <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-mgsr-teal/60 via-mgsr-teal to-mgsr-teal/60 opacity-0 group-hover:opacity-100 transition-opacity" />

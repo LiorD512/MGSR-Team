@@ -142,22 +142,24 @@ export default function SharedPlayerContent({
 
   const handleAddToContacts = useCallback((phone: string, name: string) => {
     if (!phone) return;
-    const digits = phone.replace(/\D/g, '');
-    const telValue = phone.startsWith('+') ? `+${digits}` : digits;
-    const vcard = [
-      'BEGIN:VCARD',
-      'VERSION:3.0',
-      `FN:${name.replace(/[,;\\]/g, ' ')}`,
-      `TEL;TYPE=CELL:${telValue}`,
-      'END:VCARD',
-    ].join('\n');
-    const blob = new Blob([vcard], { type: 'text/vcard' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${name.replace(/\s+/g, '_')}.vcf`;
-    a.click();
-    URL.revokeObjectURL(url);
+    // Use form POST to API - iOS Safari doesn't trigger add-to-contacts from
+    // programmatic blob download; serving vCard from server works reliably.
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '/api/share/vcard';
+    form.target = '_blank';
+    form.style.display = 'none';
+    const phoneInput = document.createElement('input');
+    phoneInput.name = 'phone';
+    phoneInput.value = phone;
+    const nameInput = document.createElement('input');
+    nameInput.name = 'name';
+    nameInput.value = name.replace(/[,;\\]/g, ' ');
+    form.appendChild(phoneInput);
+    form.appendChild(nameInput);
+    document.body.appendChild(form);
+    form.submit();
+    document.body.removeChild(form);
   }, []);
 
   function ContactBlock({ phone, title, contactName }: { phone: string; title: string; contactName: string }) {
