@@ -12,7 +12,7 @@ const {
   saveKnownReleaseUrls,
   markRefreshSuccess,
 } = require("../lib/workerState");
-const { feedEventDocId } = require("../lib/utils");
+const { feedEventDocIdForRelease } = require("../lib/utils");
 
 const PLAYERS_TABLE = "Players";
 const FEED_EVENTS_TABLE = "FeedEvents";
@@ -140,11 +140,7 @@ async function runReleasesRefresh() {
       if (!playerUrl) continue;
 
       const isInDatabase = playersInDb.has(playerUrl);
-      const docId = feedEventDocId(
-        FEED_EVENT_TYPE_NEW_RELEASE_FROM_CLUB,
-        playerUrl,
-        now
-      );
+      const docId = feedEventDocIdForRelease(playerUrl);
 
       try {
         await feedRef.doc(docId).set({

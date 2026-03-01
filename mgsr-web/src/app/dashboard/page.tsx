@@ -33,6 +33,9 @@ import { useShortlistDocId, SHARED_SHORTLIST_DOC_ID } from '@/lib/accounts';
 import { useIsMobile } from '@/hooks/useMediaQuery';
 import { getCountryDisplayName } from '@/lib/countryTranslations';
 import { toWhatsAppUrl } from '@/lib/whatsapp';
+import { usePlatform } from '@/contexts/PlatformContext';
+import { PlatformSwitcher } from '@/components/PlatformSwitcher';
+import { subscribePlayersWomen, type WomanPlayer } from '@/lib/playersWomen';
 
 interface FeedEvent {
   id: string;
@@ -40,11 +43,28 @@ interface FeedEvent {
   playerName?: string;
   playerImage?: string;
   playerTmProfile?: string;
+  playerWomenId?: string;
   oldValue?: string;
   newValue?: string;
   extraInfo?: string;
   timestamp?: number;
   agentName?: string;
+}
+
+/** Deduplicates feed events by (type, playerTmProfile) — keeps most recent. Fixes legacy duplicates. */
+function deduplicateFeedEvents(events: FeedEvent[]): FeedEvent[] {
+  const seen = new Map<string, FeedEvent>();
+  for (const ev of events) {
+    const key =
+      ev.type && (ev.playerTmProfile || ev.playerWomenId)
+        ? `${ev.type}:${ev.playerTmProfile || ev.playerWomenId || ''}`
+        : ev.id;
+    const existing = seen.get(key);
+    if (!existing || (ev.timestamp ?? 0) > (existing.timestamp ?? 0)) {
+      seen.set(key, ev);
+    }
+  }
+  return Array.from(seen.values()).sort((a, b) => (b.timestamp ?? 0) - (a.timestamp ?? 0));
 }
 
 interface Account {
@@ -211,6 +231,7 @@ interface DashboardCache {
 export default function DashboardPage() {
   const { user, loading } = useAuth();
   const { lang, setLang, t, isRtl } = useLanguage();
+  const { platform } = usePlatform();
   const isMobile = useIsMobile();
   const router = useRouter();
   const cached = user ? getScreenCache<DashboardCache>('dashboard', user.uid) : undefined;
@@ -230,7 +251,13 @@ export default function DashboardPage() {
   const [transferWindowsLoading, setTransferWindowsLoading] = useState(false);
   const [expandedConfederations, setExpandedConfederations] = useState<Set<string>>(new Set(['PRIORITY']));
   const [expandedWindowCountries, setExpandedWindowCountries] = useState<Set<string>>(new Set());
+  const [womenPlayers, setWomenPlayers] = useState<WomanPlayer[]>([]);
   const shortlistDocId = useShortlistDocId(user ?? null);
+
+  useEffect(() => {
+    if (platform !== 'women') return;
+    return subscribePlayersWomen(setWomenPlayers);
+  }, [platform]);
 
   useEffect(() => {
     if (!loading && !user) router.replace('/login');
@@ -250,19 +277,20 @@ export default function DashboardPage() {
   }, [user]);
 
   useEffect(() => {
+    const coll = platform === 'women' ? 'FeedEventsWomen' : 'FeedEvents';
     const q = query(
-      collection(db, 'FeedEvents'),
+      collection(db, coll),
       orderBy('timestamp', 'desc'),
       limit(100)
     );
     const unsub = onSnapshot(q, (snap) => {
-      setEvents(
-        snap.docs.map((doc) => ({ id: doc.id, ...doc.data() } as FeedEvent))
-      );
+      const raw = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() } as FeedEvent));
+      const deduped = deduplicateFeedEvents(raw);
+      setEvents(deduped);
       setEventsLoading(false);
     });
     return () => unsub();
-  }, []);
+  }, [platform]);
 
   useEffect(() => {
     const unsub = onSnapshot(collection(db, 'Players'), (snap) => {
@@ -293,11 +321,12 @@ export default function DashboardPage() {
   }, []);
 
   useEffect(() => {
-    const unsub = onSnapshot(collection(db, 'AgentTasks'), (snap) => {
+    const coll = platform === 'women' ? 'AgentTasksWomen' : 'AgentTasks';
+    const unsub = onSnapshot(collection(db, coll), (snap) => {
       setTasks(snap.docs.map((d) => ({ id: d.id, ...d.data() } as AgentTask)));
     });
     return () => unsub();
-  }, []);
+  }, [platform]);
 
   useEffect(() => {
     if (!user || !shortlistDocId) return;
@@ -464,7 +493,7 @@ export default function DashboardPage() {
       .sort(([, a], [, b]) => b - a)
       .map(([type, count]) => ({
         type,
-        name: translateType(type, t),
+        name: translateType(type, t, platform),
         value: count,
         pct: total > 0 ? Math.round((count / total) * 100) : 0,
       }));
@@ -687,10 +716,12 @@ export default function DashboardPage() {
     ].filter((d) => d.value > 0);
   }, [rosterPlayers, t]);
 
+  const isWomen = platform === 'women';
+
   if (loading || !user) {
     return (
       <div className="min-h-screen bg-mgsr-dark flex items-center justify-center">
-        <div className="animate-pulse text-mgsr-teal font-display">
+        <div className={`animate-pulse font-display ${isWomen ? 'text-[var(--women-rose)]' : 'text-mgsr-teal'}`}>
           {t('loading')}
         </div>
       </div>
@@ -707,52 +738,76 @@ export default function DashboardPage() {
   return (
     <AppLayout>
       <div
-        className={`max-w-7xl ${isRtl ? 'text-right' : 'text-left'}`}
+        className={`max-w-7xl ${isRtl ? 'text-right' : 'text-left'} ${isWomen ? 'relative' : ''}`}
         dir={isRtl ? 'rtl' : 'ltr'}
       >
-        {/* Header: greeting + language toggle */}
-        <div className="flex flex-wrap items-start justify-between gap-4 mb-10 animate-fade-in">
+        {/* Women: ambient gradient orbs */}
+        {isWomen && (
+          <div className="pointer-events-none absolute inset-0 overflow-hidden -z-10">
+            <div
+              className="absolute -top-24 -right-24 w-96 h-96 rounded-full opacity-25"
+              style={{ background: 'radial-gradient(circle, var(--women-rose) 0%, transparent 65%)' }}
+            />
+            <div
+              className="absolute top-1/3 -left-16 w-72 h-72 rounded-full opacity-15"
+              style={{ background: 'radial-gradient(circle, var(--women-blush) 0%, transparent 65%)' }}
+            />
+          </div>
+        )}
+
+        {/* Header: greeting + platform switch & language */}
+        <div className={`flex flex-wrap items-start justify-between gap-4 mb-10 animate-fade-in ${isWomen ? 'mb-12' : ''}`}>
           <div className="space-y-1">
             <p className="text-mgsr-muted text-sm font-medium">
               {greeting},
             </p>
-            <h1 className="text-3xl md:text-4xl font-bold text-mgsr-text font-display tracking-tight">
+            <h1 className={`text-3xl md:text-4xl font-bold font-display tracking-tight ${isWomen ? 'text-mgsr-text bg-clip-text' : 'text-mgsr-text'}`}>
               {userName}
             </h1>
             <p className="text-mgsr-muted text-sm mt-1">{dateStr}</p>
           </div>
-          <button
-            onClick={() => setLang(lang === 'en' ? 'he' : 'en')}
-            className="px-4 py-2 rounded-lg border border-mgsr-border bg-mgsr-card text-mgsr-muted hover:text-mgsr-teal hover:border-mgsr-teal/50 transition text-sm font-medium"
-            aria-label={lang === 'en' ? 'Switch to Hebrew' : 'עברית לאנגלית'}
-          >
-            {lang === 'en' ? 'עברית' : 'English'}
-          </button>
+          <div className={`flex items-center gap-2 p-1 rounded-xl border bg-mgsr-card/80 ${isWomen ? 'border-[var(--women-rose)]/20 rounded-2xl' : 'border-mgsr-border'}`}>
+            <PlatformSwitcher variant="grouped" />
+            <span className={`w-px h-6 ${isWomen ? 'bg-[var(--women-rose)]/30' : 'bg-mgsr-border/80'}`} aria-hidden />
+            <button
+              onClick={() => setLang(lang === 'en' ? 'he' : 'en')}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition ${isWomen ? 'text-mgsr-muted hover:text-[var(--women-rose)]' : 'text-mgsr-muted hover:text-mgsr-teal'}`}
+              aria-label={lang === 'en' ? 'Switch to Hebrew' : 'עברית לאנגלית'}
+            >
+              {lang === 'en' ? 'עברית' : 'English'}
+            </button>
+          </div>
         </div>
 
         {/* Stats row */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-10">
-          {[
-            { href: '/players', count: players.length, label: t('players') },
-            { href: '/contacts', count: contacts.length, label: t('contacts') },
-            { href: '/requests', count: requests.length, label: t('requests') },
-            {
-              href: '/tasks',
-              count: tasks.filter((t) => !t.isCompleted).length,
-              label: t('tasks'),
-            },
-            { href: '/shortlist', count: shortlistCount, label: t('shortlist') },
-            { href: '/releases', count: null, label: t('releases'), arrow: true },
-            { href: '/returnees', count: null, label: t('nav_returnee'), arrow: true },
-            { href: '/contract-finisher', count: null, label: t('nav_contract_finisher'), arrow: true },
-          ].map((item, i) => (
+        <div className={`grid gap-4 mb-10 ${isWomen ? 'grid-cols-2 md:grid-cols-3 gap-5' : 'grid-cols-2 md:grid-cols-3 lg:grid-cols-6'}`}>
+          {(platform === 'women'
+            ? [
+                { href: '/players', count: womenPlayers.length, label: t('players_women') },
+                { href: '/tasks', count: tasks.filter((t) => !t.isCompleted).length, label: t('tasks') },
+              ]
+            : [
+                { href: '/players', count: players.length, label: t('players') },
+                { href: '/contacts', count: contacts.length, label: t('contacts') },
+                { href: '/requests', count: requests.length, label: t('requests') },
+                { href: '/tasks', count: tasks.filter((t) => !t.isCompleted).length, label: t('tasks') },
+                { href: '/shortlist', count: shortlistCount, label: t('shortlist') },
+                { href: '/releases', count: null, label: t('releases'), arrow: true },
+                { href: '/returnees', count: null, label: t('nav_returnee'), arrow: true },
+                { href: '/contract-finisher', count: null, label: t('nav_contract_finisher'), arrow: true },
+              ]
+          ).map((item, i) => (
             <Link
               key={item.href}
               href={item.href}
-              className="group relative p-4 sm:p-5 bg-mgsr-card/80 border border-mgsr-border rounded-2xl hover:border-mgsr-teal/40 hover:bg-mgsr-card transition-all duration-300 animate-slide-up min-h-[80px] flex flex-col justify-center"
+              className={`group relative p-4 sm:p-5 border rounded-2xl transition-all duration-300 animate-slide-up min-h-[80px] flex flex-col justify-center ${
+                isWomen
+                  ? 'bg-mgsr-card/60 border-[var(--women-rose)]/15 hover:border-[var(--women-rose)]/40 hover:bg-mgsr-card/80 shadow-[0_0_30px_rgba(232,160,191,0.06)]'
+                  : 'bg-mgsr-card/80 border border-mgsr-border hover:border-[var(--mgsr-accent)]/40 hover:bg-mgsr-card'
+              }`}
               style={{ animationDelay: `${i * 50}ms` }}
             >
-              <p className="text-3xl font-bold text-mgsr-teal font-display">
+              <p className="text-3xl font-bold font-display" style={{ color: isWomen ? 'var(--women-rose)' : 'var(--mgsr-accent)' }}>
                 {item.arrow ? (isRtl ? '←' : '→') : item.count}
               </p>
               <p className="text-sm text-mgsr-muted mt-1">{item.label}</p>
@@ -765,7 +820,8 @@ export default function DashboardPage() {
           ))}
         </div>
 
-        {/* Charts row */}
+        {/* Charts row (men only; women has simplified dashboard) */}
+        {platform !== 'women' && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-10">
           <div className="p-6 bg-mgsr-card/60 border border-mgsr-border rounded-2xl backdrop-blur-sm">
             <h3 className="text-sm font-semibold text-mgsr-text mb-5 font-display">
@@ -784,12 +840,12 @@ export default function DashboardPage() {
                     >
                       <stop
                         offset="5%"
-                        stopColor="#4DB6AC"
+                        stopColor="var(--mgsr-accent)"
                         stopOpacity={0.35}
                       />
                       <stop
                         offset="95%"
-                        stopColor="#4DB6AC"
+                        stopColor="var(--mgsr-accent)"
                         stopOpacity={0}
                       />
                     </linearGradient>
@@ -825,7 +881,7 @@ export default function DashboardPage() {
                   <Area
                     type="monotone"
                     dataKey="count"
-                    stroke="#4DB6AC"
+                    stroke="var(--mgsr-accent)"
                     strokeWidth={2}
                     fillOpacity={1}
                     fill="url(#colorCount)"
@@ -874,9 +930,10 @@ export default function DashboardPage() {
             </div>
           </div>
         </div>
+        )}
 
-        {/* Roster Analytics */}
-        {rosterPlayers.length > 0 && (
+        {/* Roster Analytics (men only) */}
+        {platform !== 'women' && rosterPlayers.length > 0 && (
           <div className="mb-10">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-mgsr-text font-display">
@@ -1202,10 +1259,12 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* Staff, Top agents & Leading agencies */}
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6 mb-10">
-          <div className="p-4 md:p-6 bg-mgsr-card/60 border border-mgsr-border rounded-2xl backdrop-blur-sm">
-            <h3 className="text-sm font-semibold text-mgsr-text mb-4 font-display">
+        {/* Staff, Top agents & Leading agencies (men only for top agents & agencies) */}
+        <div className={`grid gap-4 md:gap-6 mb-10 ${isWomen ? 'grid-cols-1 max-w-md' : 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3'}`}>
+          <div className={`p-4 md:p-6 border rounded-2xl backdrop-blur-sm ${
+            isWomen ? 'bg-mgsr-card/50 border-[var(--women-rose)]/20' : 'bg-mgsr-card/60 border border-mgsr-border'
+          }`}>
+            <h3 className={`text-sm font-semibold text-mgsr-text mb-4 font-display ${isWomen ? 'text-[var(--women-rose)]' : ''}`}>
               {t('staff_tasks')}
             </h3>
             {staffWithTasks.length > 0 ? (
@@ -1218,7 +1277,7 @@ export default function DashboardPage() {
                     <span className="text-mgsr-text">{s.name}</span>
                     <Link
                       href="/tasks"
-                      className="text-sm text-mgsr-teal hover:underline font-medium"
+                      className={`text-sm hover:underline font-medium ${isWomen ? 'text-[var(--women-rose)]' : 'text-mgsr-teal'}`}
                     >
                       {s.pending} {t('pending')}
                     </Link>
@@ -1230,6 +1289,7 @@ export default function DashboardPage() {
             )}
           </div>
 
+          {!isWomen && (
           <div className="p-4 md:p-6 bg-mgsr-card/60 border border-mgsr-border rounded-2xl backdrop-blur-sm">
             <h3 className="text-sm font-semibold text-mgsr-text mb-4 font-display">
               {t('top_agents_this_week')}
@@ -1254,8 +1314,9 @@ export default function DashboardPage() {
               <p className="text-sm text-mgsr-muted">{t('no_agent_activity')}</p>
             )}
           </div>
+          )}
 
-          {/* Leading Agencies */}
+          {!isWomen && (
           <div className="p-4 md:p-6 bg-mgsr-card/60 border border-mgsr-border rounded-2xl backdrop-blur-sm">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-semibold text-mgsr-text font-display">
@@ -1328,9 +1389,11 @@ export default function DashboardPage() {
               </p>
             )}
           </div>
+          )}
         </div>
 
-        {/* Transfer Windows — Open worldwide (app-like design) */}
+        {/* Transfer Windows — Open worldwide (men only) */}
+        {platform !== 'women' && (
         <div className="mb-10">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-mgsr-text font-display">
@@ -1605,46 +1668,160 @@ export default function DashboardPage() {
             </div>
           )}
         </div>
+        )}
 
         {/* Quick actions */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-10">
-          {[
-            { href: '/shortlist', label: t('shortlist') },
-            { href: '/releases', label: t('releases') },
-            { href: '/returnees', label: t('nav_returnee') },
-            { href: '/contract-finisher', label: t('nav_contract_finisher') },
-            { href: '/tasks', label: t('tasks') },
-            { href: '/requests', label: t('requests') },
-            { href: '/contacts', label: t('contacts') },
-          ].map((item) => (
+        <div className={`grid gap-4 mb-10 ${platform === 'women' ? 'grid-cols-2 md:grid-cols-2' : 'grid-cols-2 md:grid-cols-3 lg:grid-cols-6'}`}>
+          {(platform === 'women'
+            ? [
+                { href: '/players', label: t('players_women') },
+                { href: '/tasks', label: t('tasks') },
+              ]
+            : [
+                { href: '/shortlist', label: t('shortlist') },
+                { href: '/releases', label: t('releases') },
+                { href: '/returnees', label: t('nav_returnee') },
+                { href: '/contract-finisher', label: t('nav_contract_finisher') },
+                { href: '/tasks', label: t('tasks') },
+                { href: '/requests', label: t('requests') },
+                { href: '/contacts', label: t('contacts') },
+              ]
+          ).map((item) => (
             <Link
               key={item.href}
               href={item.href}
-              className="p-4 bg-mgsr-card/60 border border-mgsr-border rounded-xl hover:border-mgsr-teal/50 hover:bg-mgsr-card transition text-center font-medium text-mgsr-teal"
+              className={`p-4 border rounded-xl transition text-center font-medium ${
+                isWomen
+                  ? 'bg-mgsr-card/50 border-[var(--women-rose)]/20 hover:border-[var(--women-rose)]/50 hover:bg-mgsr-card/70'
+                  : 'bg-mgsr-card/60 border border-mgsr-border hover:border-[var(--mgsr-accent)]/50 hover:bg-mgsr-card'
+              }`}
+              style={{ color: isWomen ? 'var(--women-rose)' : 'var(--mgsr-accent)' }}
             >
               {item.label}
             </Link>
           ))}
         </div>
 
-        {/* Recent activity — timeline design */}
-        <div className="relative">
-          <h2 className="text-lg font-semibold text-mgsr-text mb-6 font-display">
+        {/* Recent activity — women: card flow design; men: timeline */}
+        <div className={`relative ${isWomen ? 'rounded-2xl' : ''}`}>
+          <h2 className={`text-lg font-semibold text-mgsr-text mb-6 font-display ${isWomen ? 'text-[var(--women-rose)]' : ''}`}>
             {t('recent_activity')}
           </h2>
           {eventsLoading ? (
             <div className="flex items-center gap-3 py-8 text-mgsr-muted">
-              <div className="w-2 h-2 rounded-full bg-mgsr-teal/50 animate-pulse" />
+              <div className={`w-2 h-2 rounded-full animate-pulse ${isWomen ? 'bg-[var(--women-rose)]/50' : 'bg-mgsr-teal/50'}`} />
               <span>{t('loading_feed')}</span>
             </div>
           ) : events.length === 0 ? (
-            <div className="relative overflow-hidden p-12 bg-mgsr-card/40 border border-mgsr-border rounded-2xl text-center">
-              <div className="absolute inset-0 bg-gradient-to-b from-mgsr-teal/5 to-transparent" />
-              <p className="relative text-mgsr-muted">{t('no_recent_activity')}</p>
+            <div className={`relative overflow-hidden p-12 bg-mgsr-card/40 border rounded-2xl text-center ${
+              isWomen ? 'border-[var(--women-rose)]/20' : 'border border-mgsr-border'
+            }`}>
+              <div className={`absolute inset-0 ${isWomen ? 'bg-gradient-to-b from-[var(--women-rose)]/8 to-transparent' : 'bg-gradient-to-b from-mgsr-teal/5 to-transparent'}`} />
+              <p className="relative text-mgsr-muted">{t(platform === 'women' ? 'no_recent_activity_women' : 'no_recent_activity')}</p>
+            </div>
+          ) : isWomen ? (
+            /* Women: timeline with rose styling */
+            <div className="relative">
+              <div
+                className="absolute top-0 bottom-0 w-px bg-gradient-to-b from-[var(--women-rose)]/50 via-[var(--women-rose)]/20 to-transparent"
+                style={{ [isRtl ? 'right' : 'left']: '19px' }}
+              />
+              <div className="space-y-0">
+                {events.slice(0, 15).map((ev, i) => {
+                  const color = getEventColor(ev.type || '');
+                  const typeLabel = translateType(ev.type || '', t, platform) || ev.type;
+                  const cardContent = (
+                    <div
+                      className={`flex-1 min-w-0 rounded-xl border bg-mgsr-card/70 px-4 py-3.5 transition-all duration-200 ${
+                        (ev.playerTmProfile || ev.playerWomenId)
+                          ? 'border-[var(--women-rose)]/25 hover:border-[var(--women-rose)]/50 hover:bg-mgsr-card/90 cursor-pointer'
+                          : 'border-mgsr-border/80'
+                      }`}
+                      style={{
+                        borderInlineStartWidth: '3px',
+                        borderInlineStartColor: color,
+                      }}
+                    >
+                      <div className="flex flex-wrap items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <span
+                            className="inline-block text-[10px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded-md mb-1.5"
+                            style={{
+                              backgroundColor: `${color}25`,
+                              color,
+                            }}
+                          >
+                            {typeLabel}
+                          </span>
+                          <p className="text-mgsr-text font-medium leading-snug">
+                            {ev.playerName || ev.extraInfo || '—'}
+                          </p>
+                          {ev.oldValue && ev.newValue && (
+                            <p className="text-sm text-mgsr-muted mt-1 font-mono">
+                              {ev.oldValue}
+                              <span className="mx-1.5 text-[var(--women-rose)]/70">→</span>
+                              {ev.newValue}
+                            </p>
+                          )}
+                          {ev.agentName && (
+                            <p className="text-xs text-mgsr-muted/90 mt-1">
+                              {t('by')} {resolveAgentDisplayName(ev.agentName, accounts, isRtl)}
+                            </p>
+                          )}
+                        </div>
+                        <span className="text-xs text-mgsr-muted shrink-0 tabular-nums">
+                          {formatTime(ev.timestamp, t, isRtl)}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                  return (
+                    <div
+                      key={ev.id}
+                      className="group relative flex gap-5 py-4 animate-slide-up"
+                      style={{ animationDelay: `${i * 40}ms` }}
+                    >
+                      <div
+                        className="relative z-10 shrink-0 flex items-center justify-center w-10 h-10 rounded-full border-2 border-mgsr-dark bg-mgsr-card"
+                        style={{
+                          borderColor: color,
+                          boxShadow: `0 0 0 1px ${color}40, 0 0 16px rgba(232,160,191,0.15)`,
+                        }}
+                      >
+                        {ev.playerImage ? (
+                          <img
+                            src={ev.playerImage}
+                            alt=""
+                            className="w-full h-full rounded-full object-cover"
+                          />
+                        ) : (
+                          <span
+                            className="text-sm font-bold font-display"
+                            style={{ color }}
+                          >
+                            {(ev.playerName || typeLabel || '?').charAt(0).toUpperCase()}
+                          </span>
+                        )}
+                      </div>
+                      {ev.playerWomenId ? (
+                        <Link href={`/players/women/${ev.playerWomenId}`} className="flex-1 min-w-0 block">
+                          {cardContent}
+                        </Link>
+                      ) : ev.playerTmProfile ? (
+                        <Link href={`/players/add?url=${encodeURIComponent(ev.playerTmProfile)}`} className="flex-1 min-w-0 block">
+                          {cardContent}
+                        </Link>
+                      ) : (
+                        <div className="flex-1 min-w-0">{cardContent}</div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           ) : (
+            /* Men: timeline design */
             <div className="relative">
-              {/* Vertical timeline line */}
               <div
                 className="absolute top-0 bottom-0 w-px bg-gradient-to-b from-mgsr-teal/30 via-mgsr-border to-transparent"
                 style={{ [isRtl ? 'right' : 'left']: '19px' }}
@@ -1652,11 +1829,11 @@ export default function DashboardPage() {
               <div className="space-y-0">
                 {events.slice(0, 15).map((ev, i) => {
                   const color = getEventColor(ev.type || '');
-                  const typeLabel = translateType(ev.type || '', t) || ev.type;
+                  const typeLabel = translateType(ev.type || '', t, platform) || ev.type;
                   const cardContent = (
                     <div
                       className={`flex-1 min-w-0 rounded-xl border border-mgsr-border bg-mgsr-card/60 px-4 py-3 transition-all duration-200 ${
-                        ev.playerTmProfile
+                        (ev.playerTmProfile || ev.playerWomenId)
                           ? 'hover:border-mgsr-teal/40 hover:bg-mgsr-card/80 cursor-pointer'
                           : ''
                       }`}
@@ -1669,10 +1846,7 @@ export default function DashboardPage() {
                         <div className="min-w-0 flex-1">
                           <span
                             className="inline-block text-[10px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded-md mb-1.5"
-                            style={{
-                              backgroundColor: `${color}20`,
-                              color,
-                            }}
+                            style={{ backgroundColor: `${color}20`, color }}
                           >
                             {typeLabel}
                           </span>
@@ -1699,37 +1873,25 @@ export default function DashboardPage() {
                     </div>
                   );
                   return (
-                    <div
-                      key={ev.id}
-                      className="group relative flex gap-5 py-4 animate-slide-up"
-                      style={{ animationDelay: `${i * 40}ms` }}
-                    >
-                      {/* Timeline node */}
+                    <div key={ev.id} className="group relative flex gap-5 py-4 animate-slide-up" style={{ animationDelay: `${i * 40}ms` }}>
                       <div
                         className="relative z-10 shrink-0 flex items-center justify-center w-10 h-10 rounded-full border-2 border-mgsr-dark bg-mgsr-card shadow-lg"
                         style={{ borderColor: color, boxShadow: `0 0 0 1px ${color}40` }}
                       >
                         {ev.playerImage ? (
-                          <img
-                            src={ev.playerImage}
-                            alt=""
-                            className="w-full h-full rounded-full object-cover"
-                          />
+                          <img src={ev.playerImage} alt="" className="w-full h-full rounded-full object-cover" />
                         ) : (
-                          <span
-                            className="text-sm font-bold font-display"
-                            style={{ color }}
-                          >
+                          <span className="text-sm font-bold font-display" style={{ color }}>
                             {(ev.playerName || typeLabel || '?').charAt(0).toUpperCase()}
                           </span>
                         )}
                       </div>
-                      {/* Content card */}
-                      {ev.playerTmProfile ? (
-                        <Link
-                          href={`/players/add?url=${encodeURIComponent(ev.playerTmProfile)}`}
-                          className="flex-1 min-w-0 block"
-                        >
+                      {ev.playerWomenId ? (
+                        <Link href={`/players/women/${ev.playerWomenId}`} className="flex-1 min-w-0 block">
+                          {cardContent}
+                        </Link>
+                      ) : ev.playerTmProfile ? (
+                        <Link href={`/players/add?url=${encodeURIComponent(ev.playerTmProfile)}`} className="flex-1 min-w-0 block">
                           {cardContent}
                         </Link>
                       ) : (

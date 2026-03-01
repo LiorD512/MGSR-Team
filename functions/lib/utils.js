@@ -30,6 +30,16 @@ function feedEventDocId(type, playerTmProfile, timestamp) {
 }
 
 /**
+ * Generates FeedEvent document ID for NEW_RELEASE_FROM_CLUB — no dayBucket.
+ * Ensures one doc per player so Pub/Sub retries overwrite instead of creating duplicates.
+ * Prevents duplicate push notifications when retry crosses UTC midnight.
+ */
+function feedEventDocIdForRelease(playerTmProfile) {
+  const profileHash = javaHashCode(playerTmProfile || "");
+  return `NEW_RELEASE_FROM_CLUB_${profileHash}`;
+}
+
+/**
  * Checks if market value is "no value" (empty, €0, -, etc.)
  * Matches Kotlin isNoMarketValue.
  */
@@ -60,6 +70,7 @@ function makeAbsoluteUrl(url) {
 module.exports = {
   javaHashCode,
   feedEventDocId,
+  feedEventDocIdForRelease,
   isNoMarketValue,
   makeAbsoluteUrl,
   TRANSFERMARKT_BASE_URL,
