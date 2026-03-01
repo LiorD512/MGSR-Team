@@ -11,7 +11,9 @@ import { Syne, Outfit, Instrument_Serif, Sora } from 'next/font/google';
 import './globals.css';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { LanguageProvider } from '@/contexts/LanguageContext';
+import { PlatformProvider } from '@/contexts/PlatformContext';
 import DirSync from '@/components/DirSync';
+import PlatformSync from '@/components/PlatformSync';
 
 const syne = Syne({
   subsets: ['latin'],
@@ -53,8 +55,11 @@ export default function RootLayout({
       <body className="font-sans antialiased">
         <AuthProvider>
           <LanguageProvider>
-            <DirSync />
-            {children}
+            <PlatformProvider>
+              <DirSync />
+              <PlatformSync />
+              {children}
+            </PlatformProvider>
           </LanguageProvider>
         </AuthProvider>
       </body>
