@@ -14,6 +14,9 @@
   --mgsr-muted: #8C999B;
   /* Women theme (used on shared page when data-platform="women") */
   --women-rose: #E8A0BF;
+  /* Youth theme tokens (available globally, activated by data-platform="youth") */
+  --youth-cyan: #00D4FF;
+  --youth-violet: #A855F7;
 }
 
 /* Women's platform — athletic feminine theme */
@@ -29,6 +32,153 @@
   --women-card-radius: 1.25rem;
   --women-glow: 0 0 40px rgba(232, 160, 191, 0.15);
   --women-dialog-glow: 0 0 60px rgba(232, 160, 191, 0.12);
+}
+
+/* ═══ Youth platform — Glassmorphism: frosted glass, cyan + violet ═══ */
+[data-platform="youth"] {
+  --mgsr-dark: #0B0E17;
+  --mgsr-card: rgba(255, 255, 255, 0.06);
+  --mgsr-card-border: rgba(255, 255, 255, 0.1);
+  --mgsr-accent: #00D4FF;
+  --mgsr-accent-dim: rgba(0, 212, 255, 0.12);
+  --mgsr-teal: #00D4FF;
+  --mgsr-teal-dim: rgba(0, 212, 255, 0.12);
+  --youth-cyan: #00D4FF;
+  --youth-cyan-dim: rgba(0, 212, 255, 0.12);
+  --youth-violet: #A855F7;
+  --youth-violet-dim: rgba(168, 85, 247, 0.12);
+  --youth-gradient: linear-gradient(135deg, #00D4FF 0%, #A855F7 100%);
+  --youth-glass: rgba(255, 255, 255, 0.06);
+  --youth-glass-border: rgba(255, 255, 255, 0.12);
+  --youth-glass-hover: rgba(255, 255, 255, 0.1);
+  --youth-glow: 0 0 40px rgba(0, 212, 255, 0.15), 0 0 80px rgba(168, 85, 247, 0.08);
+  --youth-card-radius: 1rem;
+}
+
+/* Youth glass card */
+[data-platform="youth"] .bg-mgsr-card {
+  background: var(--youth-glass) !important;
+  backdrop-filter: blur(16px) saturate(1.4);
+  -webkit-backdrop-filter: blur(16px) saturate(1.4);
+  border-color: var(--youth-glass-border) !important;
+}
+
+/* Youth sidebar special treatment */
+[data-platform="youth"] aside.bg-mgsr-card {
+  background: rgba(11, 14, 23, 0.85) !important;
+  backdrop-filter: blur(24px) saturate(1.5);
+  -webkit-backdrop-filter: blur(24px) saturate(1.5);
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* Youth active nav item glow */
+[data-platform="youth"] .bg-\[var\(--youth-cyan\)\]\/15 {
+  box-shadow: inset 0 0 20px rgba(0, 212, 255, 0.08);
+}
+
+/* Youth dialog entrance animation */
+@keyframes youth-dialog-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(8px);
+    filter: blur(4px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+    filter: blur(0);
+  }
+}
+
+.youth-dialog-backdrop {
+  backdrop-filter: blur(16px) saturate(1.5);
+  background: rgba(11, 14, 23, 0.75);
+  animation: youth-dialog-in 0.25s ease-out;
+}
+
+.youth-dialog-content {
+  animation: youth-dialog-in 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 0 60px rgba(0, 212, 255, 0.12), 0 0 120px rgba(168, 85, 247, 0.06), 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(0, 212, 255, 0.15);
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(24px) saturate(1.5);
+  -webkit-backdrop-filter: blur(24px) saturate(1.5);
+}
+
+.youth-dialog-accent {
+  height: 3px;
+  background: linear-gradient(90deg, #00D4FF 0%, #A855F7 100%);
+  border-radius: 2px 2px 0 0;
+}
+
+/* Youth gradient text utility */
+.youth-gradient-text {
+  background: linear-gradient(135deg, #00D4FF, #A855F7);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Youth glass input styling */
+.youth-glass-input {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.youth-glass-input:focus {
+  border-color: rgba(0, 212, 255, 0.4);
+  box-shadow: 0 0 0 3px rgba(0, 212, 255, 0.1), 0 0 20px rgba(0, 212, 255, 0.08);
+}
+
+/* Youth glass card component */
+.youth-glass-card {
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(16px) saturate(1.4);
+  -webkit-backdrop-filter: blur(16px) saturate(1.4);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 1rem;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.youth-glass-card:hover {
+  border-color: rgba(255, 255, 255, 0.18);
+  box-shadow: 0 4px 30px rgba(0, 212, 255, 0.06);
+}
+
+/* Youth gradient border effect */
+.youth-gradient-border {
+  position: relative;
+  border: none;
+}
+.youth-gradient-border::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  padding: 1px;
+  border-radius: inherit;
+  background: linear-gradient(135deg, rgba(0, 212, 255, 0.3), rgba(168, 85, 247, 0.3));
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+/* Youth stat card glow */
+.youth-stat-glow-cyan {
+  box-shadow: 0 0 20px rgba(0, 212, 255, 0.1), inset 0 0 20px rgba(0, 212, 255, 0.04);
+}
+.youth-stat-glow-violet {
+  box-shadow: 0 0 20px rgba(168, 85, 247, 0.1), inset 0 0 20px rgba(168, 85, 247, 0.04);
+}
+
+/* Youth neon pulse */
+@keyframes youth-glow-pulse {
+  0%, 100% { box-shadow: 0 0 15px rgba(0, 212, 255, 0.15); }
+  50% { box-shadow: 0 0 25px rgba(0, 212, 255, 0.25), 0 0 50px rgba(168, 85, 247, 0.1); }
+}
+.youth-glow-pulse {
+  animation: youth-glow-pulse 3s ease-in-out infinite;
 }
 
 /* Women dialog entrance animation */

@@ -36,6 +36,15 @@ import { toWhatsAppUrl } from '@/lib/whatsapp';
 import { usePlatform } from '@/contexts/PlatformContext';
 import { PlatformSwitcher } from '@/components/PlatformSwitcher';
 import { subscribePlayersWomen, type WomanPlayer } from '@/lib/playersWomen';
+import { subscribePlayersYouth, type YouthPlayer } from '@/lib/playersYouth';
+import {
+  FEED_EVENTS_COLLECTIONS,
+  PLAYERS_COLLECTIONS,
+  CONTACTS_COLLECTIONS,
+  CLUB_REQUESTS_COLLECTIONS,
+  AGENT_TASKS_COLLECTIONS,
+  SHORTLISTS_COLLECTIONS,
+} from '@/lib/platformCollections';
 
 interface FeedEvent {
   id: string;
@@ -44,6 +53,7 @@ interface FeedEvent {
   playerImage?: string;
   playerTmProfile?: string;
   playerWomenId?: string;
+  playerYouthId?: string;
   oldValue?: string;
   newValue?: string;
   extraInfo?: string;
@@ -252,11 +262,17 @@ export default function DashboardPage() {
   const [expandedConfederations, setExpandedConfederations] = useState<Set<string>>(new Set(['PRIORITY']));
   const [expandedWindowCountries, setExpandedWindowCountries] = useState<Set<string>>(new Set());
   const [womenPlayers, setWomenPlayers] = useState<WomanPlayer[]>([]);
+  const [youthPlayers, setYouthPlayers] = useState<YouthPlayer[]>([]);
   const shortlistDocId = useShortlistDocId(user ?? null);
 
   useEffect(() => {
     if (platform !== 'women') return;
     return subscribePlayersWomen(setWomenPlayers);
+  }, [platform]);
+
+  useEffect(() => {
+    if (platform !== 'youth') return;
+    return subscribePlayersYouth(setYouthPlayers);
   }, [platform]);
 
   useEffect(() => {
@@ -277,7 +293,7 @@ export default function DashboardPage() {
   }, [user]);
 
   useEffect(() => {
-    const coll = platform === 'women' ? 'FeedEventsWomen' : 'FeedEvents';
+    const coll = FEED_EVENTS_COLLECTIONS[platform];
     const q = query(
       collection(db, coll),
       orderBy('timestamp', 'desc'),
@@ -285,7 +301,13 @@ export default function DashboardPage() {
     );
     const unsub = onSnapshot(q, (snap) => {
       const raw = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() } as FeedEvent));
-      const deduped = deduplicateFeedEvents(raw);
+      // Filter out cross-platform events that leaked due to legacy bugs
+      const filtered = raw.filter((ev) => {
+        if (platform === 'men') return !ev.playerWomenId && !ev.playerYouthId;
+        if (platform === 'women') return !ev.playerYouthId;
+        return true;
+      });
+      const deduped = deduplicateFeedEvents(filtered);
       setEvents(deduped);
       setEventsLoading(false);
     });
@@ -293,23 +315,26 @@ export default function DashboardPage() {
   }, [platform]);
 
   useEffect(() => {
+    if (platform === 'women' || platform === 'youth') return;
     const unsub = onSnapshot(collection(db, 'Players'), (snap) => {
       const list = snap.docs.map((d) => ({ id: d.id, ...d.data() } as RosteredPlayer));
       setPlayers(list.map((p) => ({ id: p.id })));
       setRosterPlayers(list);
     });
     return () => unsub();
-  }, []);
+  }, [platform]);
 
   useEffect(() => {
-    const unsub = onSnapshot(collection(db, 'Contacts'), (snap) => {
+    const coll = CONTACTS_COLLECTIONS[platform];
+    const unsub = onSnapshot(collection(db, coll), (snap) => {
       setContacts(snap.docs.map((d) => ({ id: d.id, ...d.data() } as ContactFull)));
     });
     return () => unsub();
-  }, []);
+  }, [platform]);
 
   useEffect(() => {
-    const unsub = onSnapshot(collection(db, 'ClubRequests'), (snap) => {
+    const coll = CLUB_REQUESTS_COLLECTIONS[platform];
+    const unsub = onSnapshot(collection(db, coll), (snap) => {
       setRequests(
         snap.docs.map((d) => ({
           id: d.id,
@@ -318,10 +343,10 @@ export default function DashboardPage() {
       );
     });
     return () => unsub();
-  }, []);
+  }, [platform]);
 
   useEffect(() => {
-    const coll = platform === 'women' ? 'AgentTasksWomen' : 'AgentTasks';
+    const coll = AGENT_TASKS_COLLECTIONS[platform];
     const unsub = onSnapshot(collection(db, coll), (snap) => {
       setTasks(snap.docs.map((d) => ({ id: d.id, ...d.data() } as AgentTask)));
     });
@@ -330,8 +355,9 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!user || !shortlistDocId) return;
+    const shortlistColl = SHORTLISTS_COLLECTIONS[platform];
     const unsub = onSnapshot(
-      doc(db, 'Shortlists', SHARED_SHORTLIST_DOC_ID),
+      doc(db, shortlistColl, SHARED_SHORTLIST_DOC_ID),
       (snap) => {
         const entries = (snap.data()?.entries as unknown[]) || [];
         setShortlistCount(entries.length);
@@ -339,9 +365,10 @@ export default function DashboardPage() {
       () => setShortlistCount(0)
     );
     return () => unsub();
-  }, [user, shortlistDocId]);
+  }, [user, shortlistDocId, platform]);
 
   useEffect(() => {
+    if (platform !== 'men') return; // Transfer windows only for men
     let cancelled = false;
     const load = () => {
       if (cancelled) return;
@@ -366,7 +393,7 @@ export default function DashboardPage() {
       cancelled = true;
       document.removeEventListener('visibilitychange', onVisible);
     };
-  }, []);
+  }, [platform]);
 
   const PRIORITY_COUNTRY_CODES = new Set(['il', 'gb-eng', 'de', 'es', 'it', 'fr']);
   const transferWindowGroups = useMemo(() => {
@@ -717,6 +744,7 @@ export default function DashboardPage() {
   }, [rosterPlayers, t]);
 
   const isWomen = platform === 'women';
+  const isYouth = platform === 'youth';
 
   if (loading || !user) {
     return (
@@ -738,7 +766,7 @@ export default function DashboardPage() {
   return (
     <AppLayout>
       <div
-        className={`max-w-7xl ${isRtl ? 'text-right' : 'text-left'} ${isWomen ? 'relative' : ''}`}
+        className={`max-w-7xl ${isRtl ? 'text-right' : 'text-left'} ${isWomen || isYouth ? 'relative' : ''}`}
         dir={isRtl ? 'rtl' : 'ltr'}
       >
         {/* Women: ambient gradient orbs */}
@@ -755,8 +783,22 @@ export default function DashboardPage() {
           </div>
         )}
 
+        {/* Youth: ambient glassmorphism glow orbs */}
+        {isYouth && (
+          <div className="pointer-events-none absolute inset-0 overflow-hidden -z-10">
+            <div
+              className="absolute -top-24 -right-24 w-96 h-96 rounded-full opacity-20"
+              style={{ background: 'radial-gradient(circle, var(--youth-cyan) 0%, transparent 65%)' }}
+            />
+            <div
+              className="absolute top-1/3 -left-16 w-72 h-72 rounded-full opacity-15"
+              style={{ background: 'radial-gradient(circle, var(--youth-violet) 0%, transparent 65%)' }}
+            />
+          </div>
+        )}
+
         {/* Header: greeting + platform switch & language */}
-        <div className={`flex flex-wrap items-start justify-between gap-4 mb-10 animate-fade-in ${isWomen ? 'mb-12' : ''}`}>
+        <div className={`flex flex-wrap items-start justify-between gap-4 mb-10 animate-fade-in ${isWomen || isYouth ? 'mb-12' : ''}`}>
           <div className="space-y-1">
             <p className="text-mgsr-muted text-sm font-medium">
               {greeting},
@@ -767,12 +809,12 @@ export default function DashboardPage() {
             <p className="text-mgsr-muted text-sm mt-1">{dateStr}</p>
           </div>
           {/* Hide platform/lang controls on mobile — MobileHeader handles them */}
-          <div className={`hidden lg:flex items-center gap-2 p-1 rounded-xl border bg-mgsr-card/80 ${isWomen ? 'border-[var(--women-rose)]/20 rounded-2xl' : 'border-mgsr-border'}`}>
+          <div className={`hidden lg:flex items-center gap-2 p-1 rounded-xl border bg-mgsr-card/80 relative ${isWomen ? 'border-[var(--women-rose)]/20 rounded-2xl' : isYouth ? 'border-[var(--youth-cyan)]/20 rounded-2xl' : 'border-mgsr-border'}`}>
             <PlatformSwitcher variant="grouped" />
-            <span className={`w-px h-6 ${isWomen ? 'bg-[var(--women-rose)]/30' : 'bg-mgsr-border/80'}`} aria-hidden />
+            <span className={`w-px h-6 ${isYouth ? 'bg-[var(--youth-cyan)]/30' : isWomen ? 'bg-[var(--women-rose)]/30' : 'bg-mgsr-border/80'}`} aria-hidden />
             <button
               onClick={() => setLang(lang === 'en' ? 'he' : 'en')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition ${isWomen ? 'text-mgsr-muted hover:text-[var(--women-rose)]' : 'text-mgsr-muted hover:text-mgsr-teal'}`}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition ${isYouth ? 'text-mgsr-muted hover:text-[var(--youth-cyan)]' : isWomen ? 'text-mgsr-muted hover:text-[var(--women-rose)]' : 'text-mgsr-muted hover:text-mgsr-teal'}`}
               aria-label={lang === 'en' ? 'Switch to Hebrew' : 'עברית לאנגלית'}
             >
               {lang === 'en' ? 'עברית' : 'English'}
@@ -782,9 +824,17 @@ export default function DashboardPage() {
 
         {/* Stats row — horizontally scrollable on phone, grid on tablet/desktop */}
         <div className={`mb-10 ${isWomen ? '' : ''}`}>
-          <div className={`${isWomen ? 'grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-5' : 'flex lg:grid lg:grid-cols-6 gap-3 lg:gap-4 overflow-x-auto lg:overflow-visible pb-2 lg:pb-0 -mx-4 px-4 lg:mx-0 lg:px-0'}`}
-               style={!isWomen ? { scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' } : undefined}>
-          {(platform === 'women'
+          <div className={`${isWomen || isYouth ? 'grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-5' : 'flex lg:grid lg:grid-cols-6 gap-3 lg:gap-4 overflow-x-auto lg:overflow-visible pb-2 lg:pb-0 -mx-4 px-4 lg:mx-0 lg:px-0'}`}
+               style={!isWomen && !isYouth ? { scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' } : undefined}>
+          {(platform === 'youth'
+            ? [
+                { href: '/players', count: youthPlayers.length, label: t('nav_players_youth') },
+                { href: '/tasks', count: tasks.filter((t) => !t.isCompleted).length, label: t('tasks') },
+                { href: '/shortlist', count: shortlistCount, label: t('shortlist') },
+                { href: '/contacts', count: contacts.length, label: t('contacts') },
+                { href: '/requests', count: requests.length, label: t('requests') },
+              ]
+            : platform === 'women'
             ? [
                 { href: '/players', count: womenPlayers.length, label: t('players_women') },
                 { href: '/tasks', count: tasks.filter((t) => !t.isCompleted).length, label: t('tasks') },
@@ -804,15 +854,17 @@ export default function DashboardPage() {
               key={item.href}
               href={item.href}
               className={`group relative p-4 sm:p-5 border rounded-2xl transition-all duration-300 animate-slide-up min-h-[80px] flex flex-col justify-center shrink-0 ${
-                !isWomen ? 'min-w-[140px] lg:min-w-0' : ''
+                !isWomen && !isYouth ? 'min-w-[140px] lg:min-w-0' : ''
               } ${
-                isWomen
+                isYouth
+                  ? 'bg-mgsr-card/40 border-[var(--youth-cyan)]/15 hover:border-[var(--youth-cyan)]/40 hover:bg-mgsr-card/60 shadow-[0_0_30px_rgba(0,212,255,0.06)] backdrop-blur-sm'
+                  : isWomen
                   ? 'bg-mgsr-card/60 border-[var(--women-rose)]/15 hover:border-[var(--women-rose)]/40 hover:bg-mgsr-card/80 shadow-[0_0_30px_rgba(232,160,191,0.06)]'
                   : 'bg-mgsr-card/80 border border-mgsr-border hover:border-[var(--mgsr-accent)]/40 hover:bg-mgsr-card'
               }`}
               style={{ animationDelay: `${i * 50}ms` }}
             >
-              <p className="text-2xl lg:text-3xl font-bold font-display" style={{ color: isWomen ? 'var(--women-rose)' : 'var(--mgsr-accent)' }}>
+              <p className="text-2xl lg:text-3xl font-bold font-display" style={{ color: isYouth ? 'var(--youth-cyan)' : isWomen ? 'var(--women-rose)' : 'var(--mgsr-accent)' }}>
                 {item.arrow ? (isRtl ? '←' : '→') : item.count}
               </p>
               <p className="text-xs lg:text-sm text-mgsr-muted mt-1">{item.label}</p>
@@ -826,8 +878,8 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Charts row (men only; women has simplified dashboard) */}
-        {platform !== 'women' && (
+        {/* Charts row (men only; women & youth have simplified dashboards) */}
+        {platform === 'men' && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-10">
           <div className="p-6 bg-mgsr-card/60 border border-mgsr-border rounded-2xl backdrop-blur-sm">
             <h3 className="text-sm font-semibold text-mgsr-text mb-5 font-display">
@@ -939,7 +991,7 @@ export default function DashboardPage() {
         )}
 
         {/* Roster Analytics (men only) */}
-        {platform !== 'women' && rosterPlayers.length > 0 && (
+        {platform === 'men' && rosterPlayers.length > 0 && (
           <div className="mb-10">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-mgsr-text font-display">
@@ -1266,11 +1318,11 @@ export default function DashboardPage() {
         )}
 
         {/* Staff, Top agents & Leading agencies (men only for top agents & agencies) */}
-        <div className={`grid gap-4 md:gap-6 mb-10 ${isWomen ? 'grid-cols-1 max-w-md' : 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3'}`}>
+        <div className={`grid gap-4 md:gap-6 mb-10 ${isWomen || isYouth ? 'grid-cols-1 max-w-md' : 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3'}`}>
           <div className={`p-4 md:p-6 border rounded-2xl backdrop-blur-sm ${
-            isWomen ? 'bg-mgsr-card/50 border-[var(--women-rose)]/20' : 'bg-mgsr-card/60 border border-mgsr-border'
+            isYouth ? 'bg-mgsr-card/40 border-[var(--youth-cyan)]/20' : isWomen ? 'bg-mgsr-card/50 border-[var(--women-rose)]/20' : 'bg-mgsr-card/60 border border-mgsr-border'
           }`}>
-            <h3 className={`text-sm font-semibold text-mgsr-text mb-4 font-display ${isWomen ? 'text-[var(--women-rose)]' : ''}`}>
+            <h3 className={`text-sm font-semibold text-mgsr-text mb-4 font-display ${isYouth ? 'text-[var(--youth-cyan)]' : isWomen ? 'text-[var(--women-rose)]' : ''}`}>
               {t('staff_tasks')}
             </h3>
             {staffWithTasks.length > 0 ? (
@@ -1283,7 +1335,7 @@ export default function DashboardPage() {
                     <span className="text-mgsr-text">{s.name}</span>
                     <Link
                       href="/tasks"
-                      className={`text-sm hover:underline font-medium ${isWomen ? 'text-[var(--women-rose)]' : 'text-mgsr-teal'}`}
+                      className={`text-sm hover:underline font-medium ${isYouth ? 'text-[var(--youth-cyan)]' : isWomen ? 'text-[var(--women-rose)]' : 'text-mgsr-teal'}`}
                     >
                       {s.pending} {t('pending')}
                     </Link>
@@ -1295,7 +1347,7 @@ export default function DashboardPage() {
             )}
           </div>
 
-          {!isWomen && (
+          {!isWomen && !isYouth && (
           <div className="p-4 md:p-6 bg-mgsr-card/60 border border-mgsr-border rounded-2xl backdrop-blur-sm">
             <h3 className="text-sm font-semibold text-mgsr-text mb-4 font-display">
               {t('top_agents_this_week')}
@@ -1322,7 +1374,7 @@ export default function DashboardPage() {
           </div>
           )}
 
-          {!isWomen && (
+          {!isWomen && !isYouth && (
           <div className="p-4 md:p-6 bg-mgsr-card/60 border border-mgsr-border rounded-2xl backdrop-blur-sm">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-semibold text-mgsr-text font-display">
@@ -1399,7 +1451,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Transfer Windows — Open worldwide (men only) */}
-        {platform !== 'women' && (
+        {platform === 'men' && (
         <div className="mb-10">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-mgsr-text font-display">
@@ -1677,10 +1729,18 @@ export default function DashboardPage() {
         )}
 
         {/* Quick actions — scrollable on mobile */}
-        <div className={`mb-10 ${platform === 'women' ? '' : ''}`}>
-          <div className={`${platform === 'women' ? 'grid grid-cols-2 md:grid-cols-2 gap-4' : 'flex lg:grid lg:grid-cols-6 gap-3 lg:gap-4 overflow-x-auto lg:overflow-visible pb-2 lg:pb-0 -mx-4 px-4 lg:mx-0 lg:px-0'}`}
-               style={platform !== 'women' ? { scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' } : undefined}>
-          {(platform === 'women'
+        <div className={`mb-10 ${platform === 'women' || platform === 'youth' ? '' : ''}`}>
+          <div className={`${platform === 'women' || platform === 'youth' ? 'grid grid-cols-2 md:grid-cols-3 gap-4' : 'flex lg:grid lg:grid-cols-6 gap-3 lg:gap-4 overflow-x-auto lg:overflow-visible pb-2 lg:pb-0 -mx-4 px-4 lg:mx-0 lg:px-0'}`}
+               style={platform === 'men' ? { scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' } : undefined}>
+          {(platform === 'youth'
+            ? [
+                { href: '/players', label: t('nav_players_youth') },
+                { href: '/tasks', label: t('tasks') },
+                { href: '/shortlist', label: t('shortlist') },
+                { href: '/contacts', label: t('contacts') },
+                { href: '/portfolio', label: t('nav_portfolio') },
+              ]
+            : platform === 'women'
             ? [
                 { href: '/players', label: t('players_women') },
                 { href: '/tasks', label: t('tasks') },
@@ -1699,13 +1759,15 @@ export default function DashboardPage() {
               key={item.href}
               href={item.href}
               className={`p-4 border rounded-xl transition text-center font-medium shrink-0 ${
-                platform !== 'women' ? 'min-w-[120px] lg:min-w-0' : ''
+                platform === 'men' ? 'min-w-[120px] lg:min-w-0' : ''
               } ${
-                isWomen
+                isYouth
+                  ? 'bg-mgsr-card/40 border-[var(--youth-cyan)]/20 hover:border-[var(--youth-cyan)]/50 hover:bg-mgsr-card/60 backdrop-blur-sm'
+                  : isWomen
                   ? 'bg-mgsr-card/50 border-[var(--women-rose)]/20 hover:border-[var(--women-rose)]/50 hover:bg-mgsr-card/70'
                   : 'bg-mgsr-card/60 border border-mgsr-border hover:border-[var(--mgsr-accent)]/50 hover:bg-mgsr-card'
               }`}
-              style={{ color: isWomen ? 'var(--women-rose)' : 'var(--mgsr-accent)' }}
+              style={{ color: isYouth ? 'var(--youth-cyan)' : isWomen ? 'var(--women-rose)' : 'var(--mgsr-accent)' }}
             >
               {item.label}
             </Link>
@@ -1713,22 +1775,22 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Recent activity — women: card flow design; men: timeline */}
-        <div className={`relative ${isWomen ? 'rounded-2xl' : ''}`}>
-          <h2 className={`text-lg font-semibold text-mgsr-text mb-6 font-display ${isWomen ? 'text-[var(--women-rose)]' : ''}`}>
+        {/* Recent activity */}
+        <div className={`relative ${isWomen || isYouth ? 'rounded-2xl' : ''}`}>
+          <h2 className={`text-lg font-semibold text-mgsr-text mb-6 font-display ${isYouth ? 'text-[var(--youth-cyan)]' : isWomen ? 'text-[var(--women-rose)]' : ''}`}>
             {t('recent_activity')}
           </h2>
           {eventsLoading ? (
             <div className="flex items-center gap-3 py-8 text-mgsr-muted">
-              <div className={`w-2 h-2 rounded-full animate-pulse ${isWomen ? 'bg-[var(--women-rose)]/50' : 'bg-mgsr-teal/50'}`} />
+              <div className={`w-2 h-2 rounded-full animate-pulse ${isYouth ? 'bg-[var(--youth-cyan)]/50' : isWomen ? 'bg-[var(--women-rose)]/50' : 'bg-mgsr-teal/50'}`} />
               <span>{t('loading_feed')}</span>
             </div>
           ) : events.length === 0 ? (
             <div className={`relative overflow-hidden p-12 bg-mgsr-card/40 border rounded-2xl text-center ${
-              isWomen ? 'border-[var(--women-rose)]/20' : 'border border-mgsr-border'
+              isYouth ? 'border-[var(--youth-cyan)]/20' : isWomen ? 'border-[var(--women-rose)]/20' : 'border border-mgsr-border'
             }`}>
-              <div className={`absolute inset-0 ${isWomen ? 'bg-gradient-to-b from-[var(--women-rose)]/8 to-transparent' : 'bg-gradient-to-b from-mgsr-teal/5 to-transparent'}`} />
-              <p className="relative text-mgsr-muted">{t(platform === 'women' ? 'no_recent_activity_women' : 'no_recent_activity')}</p>
+              <div className={`absolute inset-0 ${isYouth ? 'bg-gradient-to-b from-[var(--youth-cyan)]/8 to-transparent' : isWomen ? 'bg-gradient-to-b from-[var(--women-rose)]/8 to-transparent' : 'bg-gradient-to-b from-mgsr-teal/5 to-transparent'}`} />
+              <p className="relative text-mgsr-muted">{t(platform === 'youth' ? 'no_recent_activity' : platform === 'women' ? 'no_recent_activity_women' : 'no_recent_activity')}</p>
             </div>
           ) : isWomen ? (
             /* Women: timeline with rose styling */
@@ -1819,6 +1881,88 @@ export default function DashboardPage() {
                           {cardContent}
                         </Link>
                       ) : ev.playerTmProfile ? (
+                        <Link href={`/players/add?url=${encodeURIComponent(ev.playerTmProfile)}`} className="flex-1 min-w-0 block">
+                          {cardContent}
+                        </Link>
+                      ) : (
+                        <div className="flex-1 min-w-0">{cardContent}</div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ) : isYouth ? (
+            /* Youth: timeline with cyan/violet glassmorphism */
+            <div className="relative">
+              <div
+                className="absolute top-0 bottom-0 w-px bg-gradient-to-b from-[var(--youth-cyan)]/50 via-[var(--youth-violet)]/20 to-transparent"
+                style={{ [isRtl ? 'right' : 'left']: '19px' }}
+              />
+              <div className="space-y-0">
+                {events.slice(0, 15).map((ev, i) => {
+                  const color = getEventColor(ev.type || '');
+                  const typeLabel = translateType(ev.type || '', t, platform) || ev.type;
+                  const cardContent = (
+                    <div
+                      className="flex-1 min-w-0 rounded-xl border bg-mgsr-card/40 backdrop-blur-sm px-4 py-3.5 transition-all duration-200 border-[var(--youth-cyan)]/15 hover:border-[var(--youth-cyan)]/40 hover:bg-mgsr-card/60 cursor-pointer"
+                      style={{
+                        borderInlineStartWidth: '3px',
+                        borderInlineStartColor: color,
+                      }}
+                    >
+                      <div className="flex flex-wrap items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <span
+                            className="inline-block text-[10px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded-md mb-1.5"
+                            style={{ backgroundColor: `${color}25`, color }}
+                          >
+                            {typeLabel}
+                          </span>
+                          <p className="text-mgsr-text font-medium leading-snug">
+                            {ev.playerName || ev.extraInfo || '—'}
+                          </p>
+                          {ev.oldValue && ev.newValue && (
+                            <p className="text-sm text-mgsr-muted mt-1 font-mono">
+                              {ev.oldValue}
+                              <span className="mx-1.5 text-[var(--youth-cyan)]/70">→</span>
+                              {ev.newValue}
+                            </p>
+                          )}
+                          {ev.agentName && (
+                            <p className="text-xs text-mgsr-muted/90 mt-1">
+                              {t('by')} {resolveAgentDisplayName(ev.agentName, accounts, isRtl)}
+                            </p>
+                          )}
+                        </div>
+                        <span className="text-xs text-mgsr-muted shrink-0 tabular-nums">
+                          {formatTime(ev.timestamp, t, isRtl)}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                  return (
+                    <div
+                      key={ev.id}
+                      className="group relative flex gap-5 py-4 animate-slide-up"
+                      style={{ animationDelay: `${i * 40}ms` }}
+                    >
+                      <div
+                        className="relative z-10 shrink-0 flex items-center justify-center w-10 h-10 rounded-full border-2 border-mgsr-dark bg-mgsr-card"
+                        style={{
+                          borderColor: color,
+                          boxShadow: `0 0 0 1px ${color}40, 0 0 16px rgba(0,212,255,0.15)`,
+                        }}
+                      >
+                        {ev.playerImage ? (
+                          <img src={ev.playerImage} alt="" className="w-full h-full rounded-full object-cover" />
+                        ) : (
+                          <span className="text-sm font-bold font-display" style={{ color }}>
+                            {(ev.playerName || typeLabel || '?').charAt(0).toUpperCase()}
+                          </span>
+                        )}
+                      </div>
+                      {ev.playerTmProfile ? (
                         <Link href={`/players/add?url=${encodeURIComponent(ev.playerTmProfile)}`} className="flex-1 min-w-0 block">
                           {cardContent}
                         </Link>

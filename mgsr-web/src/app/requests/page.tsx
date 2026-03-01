@@ -16,7 +16,7 @@ import { getPlayerDetails } from '@/lib/api';
 import { getCurrentAccountForShortlist, useShortlistDocId, SHARED_SHORTLIST_DOC_ID } from '@/lib/accounts';
 import { getScreenCache, setScreenCache } from '@/lib/screenCache';
 import { toWhatsAppUrl } from '@/lib/whatsapp';
-import { CLUB_REQUESTS_COLLECTIONS, PLAYERS_COLLECTIONS, SHORTLISTS_COLLECTIONS } from '@/lib/platformCollections';
+import { CLUB_REQUESTS_COLLECTIONS, PLAYERS_COLLECTIONS, SHORTLISTS_COLLECTIONS, FEED_EVENTS_COLLECTIONS } from '@/lib/platformCollections';
 import { subscribePlayersWomen, type WomanPlayer } from '@/lib/playersWomen';
 import AddRequestSheet from './AddRequestSheet';
 
@@ -177,6 +177,8 @@ export default function RequestsPage() {
 
   const isHebrew = lang === 'he';
   const isWomen = platform === 'women';
+  const isYouth = platform === 'youth';
+  const feedEventsCollection = FEED_EVENTS_COLLECTIONS[platform];
 
   useEffect(() => {
     if (!loading && !user) router.replace('/login');
@@ -384,7 +386,7 @@ export default function RequestsPage() {
             timestamp: Date.now(),
             agentName: account.name ?? null,
           };
-          await addDoc(collection(db, 'FeedEvents'), feedEvent);
+          await addDoc(collection(db, feedEventsCollection), feedEvent);
         }
       } catch (err) {
         console.error('Add to shortlist error:', err);
@@ -410,7 +412,7 @@ export default function RequestsPage() {
         timestamp: Date.now(),
         agentName,
       };
-      await addDoc(collection(db, 'FeedEvents'), feedEvent);
+      await addDoc(collection(db, feedEventsCollection), feedEvent);
       await deleteDoc(doc(db, clubRequestsCollection, r.id));
       setDeleteConfirm(null);
     } catch (err) {
@@ -441,7 +443,7 @@ export default function RequestsPage() {
   if (loading || !user) {
     return (
       <div className="min-h-screen bg-mgsr-dark flex items-center justify-center">
-        <div className={`animate-pulse font-display ${isWomen ? 'text-[var(--women-rose)]' : 'text-mgsr-teal'}`}>{t('loading')}</div>
+        <div className={`animate-pulse font-display ${isYouth ? 'text-[var(--youth-cyan)]' : isWomen ? 'text-[var(--women-rose)]' : 'text-mgsr-teal'}`}>{t('loading')}</div>
       </div>
     );
   }
@@ -453,15 +455,17 @@ export default function RequestsPage() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
           <div>
             <h1 className="text-3xl font-display font-bold text-mgsr-text tracking-tight">
-              {isWomen ? t('requests_title_women') : t('requests_title')}
+              {isYouth ? t('requests_title_youth') : isWomen ? t('requests_title_women') : t('requests_title')}
             </h1>
-            <p className="text-mgsr-muted mt-1 text-sm">{isWomen ? t('requests_subtitle_women') : t('requests_subtitle')}</p>
+            <p className="text-mgsr-muted mt-1 text-sm">{isYouth ? t('requests_subtitle_youth') : isWomen ? t('requests_subtitle_women') : t('requests_subtitle')}</p>
           </div>
           <button
             type="button"
             onClick={() => setShowAddSheet(true)}
             className={`shrink-0 px-5 py-2.5 rounded-xl font-semibold transition ${
-              isWomen
+              isYouth
+                ? 'bg-gradient-to-r from-[var(--youth-cyan)] to-[var(--youth-violet)] text-white shadow-[0_0_20px_rgba(0,212,255,0.3)] hover:opacity-90'
+                : isWomen
                 ? 'bg-[var(--women-gradient)] text-white shadow-[var(--women-glow)] hover:opacity-90'
                 : 'bg-mgsr-teal text-mgsr-dark hover:bg-mgsr-teal/90'
             }`}
@@ -471,9 +475,9 @@ export default function RequestsPage() {
         </div>
 
         {/* Stats strip (like app) */}
-        <div className={`flex flex-wrap gap-3 lg:gap-4 mb-6 p-4 rounded-2xl bg-mgsr-card border border-mgsr-border ${isWomen ? 'shadow-[0_0_30px_rgba(232,160,191,0.06)]' : ''}`}>
+        <div className={`flex flex-wrap gap-3 lg:gap-4 mb-6 p-4 rounded-2xl bg-mgsr-card border border-mgsr-border ${isYouth ? 'shadow-[0_0_30px_rgba(0,212,255,0.06)]' : isWomen ? 'shadow-[0_0_30px_rgba(232,160,191,0.06)]' : ''}`}>
           <div className="flex items-center gap-2">
-            <div className={`w-1.5 h-1.5 rounded-full ${isWomen ? 'bg-[var(--women-rose)]' : 'bg-mgsr-teal'}`} />
+            <div className={`w-1.5 h-1.5 rounded-full ${isYouth ? 'bg-[var(--youth-cyan)]' : isWomen ? 'bg-[var(--women-rose)]' : 'bg-mgsr-teal'}`} />
             <span className="text-mgsr-text font-semibold">{totalCount}</span>
             <span className="text-mgsr-muted text-sm">{t('requests_stat_total')}</span>
           </div>
@@ -487,15 +491,15 @@ export default function RequestsPage() {
 
         {loadingList ? (
           <div className="flex items-center justify-center py-20">
-            <div className={`flex items-center gap-3 ${isWomen ? 'text-[var(--women-rose)]/70' : 'text-mgsr-muted'}`}>
-              <div className={`w-3 h-3 rounded-full animate-pulse ${isWomen ? 'bg-[var(--women-rose)]/50' : 'bg-mgsr-teal/50'}`} />
-              {isWomen ? t('requests_loading_women') : t('requests_loading')}
+            <div className={`flex items-center gap-3 ${isYouth ? 'text-[var(--youth-cyan)]/70' : isWomen ? 'text-[var(--women-rose)]/70' : 'text-mgsr-muted'}`}>
+              <div className={`w-3 h-3 rounded-full animate-pulse ${isYouth ? 'bg-[var(--youth-cyan)]/50' : isWomen ? 'bg-[var(--women-rose)]/50' : 'bg-mgsr-teal/50'}`} />
+              {isYouth ? t('requests_loading_youth') : isWomen ? t('requests_loading_women') : t('requests_loading')}
             </div>
           </div>
         ) : Object.keys(byPositionCountry).length === 0 ? (
-          <div className={`relative overflow-hidden p-16 bg-mgsr-card/50 border border-mgsr-border rounded-2xl text-center ${isWomen ? 'shadow-[0_0_30px_rgba(232,160,191,0.06)]' : ''}`}>
-            <div className={`absolute inset-0 ${isWomen ? 'bg-[radial-gradient(ellipse_at_center,rgba(232,160,191,0.08)_0%,transparent_70%)]' : 'bg-[radial-gradient(ellipse_at_center,rgba(77,182,172,0.06)_0%,transparent_70%)]'}`} />
-            <p className="text-mgsr-muted text-lg relative">{isWomen ? t('requests_empty_women') : t('requests_empty')}</p>
+          <div className={`relative overflow-hidden p-16 bg-mgsr-card/50 border border-mgsr-border rounded-2xl text-center ${isYouth ? 'shadow-[0_0_30px_rgba(0,212,255,0.06)]' : isWomen ? 'shadow-[0_0_30px_rgba(232,160,191,0.06)]' : ''}`}>
+            <div className={`absolute inset-0 ${isYouth ? 'bg-[radial-gradient(ellipse_at_center,rgba(0,212,255,0.08)_0%,transparent_70%)]' : isWomen ? 'bg-[radial-gradient(ellipse_at_center,rgba(232,160,191,0.08)_0%,transparent_70%)]' : 'bg-[radial-gradient(ellipse_at_center,rgba(77,182,172,0.06)_0%,transparent_70%)]'}`} />
+            <p className="text-mgsr-muted text-lg relative">{isYouth ? t('requests_empty_youth') : isWomen ? t('requests_empty_women') : t('requests_empty')}</p>
           </div>
         ) : (
           <div className="space-y-2">
@@ -509,9 +513,9 @@ export default function RequestsPage() {
                   <button
                     type="button"
                     onClick={() => togglePosition(position)}
-                    className={`w-full flex items-center gap-3 px-4 py-3 text-start border-s-4 ${isWomen ? 'border-[var(--women-rose)]' : 'border-mgsr-teal'}`}
+                    className={`w-full flex items-center gap-3 px-4 py-3 text-start border-s-4 ${isYouth ? 'border-[var(--youth-cyan)]' : isWomen ? 'border-[var(--women-rose)]' : 'border-mgsr-teal'}`}
                   >
-                    <span className={`px-2.5 py-1 rounded-lg text-xs font-semibold shrink-0 ${isWomen ? 'bg-[var(--women-rose)]/20 text-[var(--women-rose)]' : 'bg-mgsr-teal/20 text-mgsr-teal'}`}>
+                    <span className={`px-2.5 py-1 rounded-lg text-xs font-semibold shrink-0 ${isYouth ? 'bg-[var(--youth-cyan)]/20 text-[var(--youth-cyan)]' : isWomen ? 'bg-[var(--women-rose)]/20 text-[var(--women-rose)]' : 'bg-mgsr-teal/20 text-mgsr-teal'}`}>
                       {position}
                     </span>
                     <span className="font-semibold text-mgsr-text">
@@ -608,17 +612,17 @@ export default function RequestsPage() {
                                             </a>
                                           )}
                                           <div className="flex flex-wrap gap-2 mt-1">
-                                            {r.salaryRange && (
+                                            {!isYouth && r.salaryRange && r.salaryRange !== 'N/A' && (
                                               <span className="text-xs px-2 py-0.5 rounded bg-mgsr-teal/20 text-mgsr-teal">
                                                 {t('requests_salary')}: {r.salaryRange}
                                               </span>
                                             )}
-                                            {r.transferFee && (
+                                            {!isYouth && r.transferFee && r.transferFee !== 'N/A' && (
                                               <span className="text-xs px-2 py-0.5 rounded bg-mgsr-teal/20 text-mgsr-teal">
                                                 {t('requests_fee')}: {r.transferFee === 'Free/Free loan' ? t('requests_fee_free_loan') : r.transferFee}
                                               </span>
                                             )}
-                                            {ageStr && (
+                                            {!isYouth && ageStr && (
                                               <span className="text-xs px-2 py-0.5 rounded bg-mgsr-teal/20 text-mgsr-teal">
                                                 {t('requests_age_range')}: {ageStr}
                                               </span>
@@ -653,10 +657,10 @@ export default function RequestsPage() {
                                         >
                                           <span className="text-sm text-mgsr-muted">
                                             {matchingPlayers.length === 0
-                                              ? t(isWomen ? 'requests_no_match_women' : 'requests_no_match')
+                                              ? t(isYouth ? 'requests_no_match_youth' : isWomen ? 'requests_no_match_women' : 'requests_no_match')
                                               : matchingPlayers.length === 1
-                                                ? t(isWomen ? 'requests_matching_players_one_women' : 'requests_matching_players_one').replace('{count}', '1')
-                                                : t(isWomen ? 'requests_matching_players_women' : 'requests_matching_players').replace('{count}', String(matchingPlayers.length))}
+                                                ? t(isYouth ? 'requests_matching_players_one_youth' : isWomen ? 'requests_matching_players_one_women' : 'requests_matching_players_one').replace('{count}', '1')
+                                                : t(isYouth ? 'requests_matching_players_youth' : isWomen ? 'requests_matching_players_women' : 'requests_matching_players').replace('{count}', String(matchingPlayers.length))}
                                           </span>
                                           <span
                                             className={`ml-auto shrink-0 inline-flex text-mgsr-muted transition-transform duration-200 ${isMatchingExpanded ? 'rotate-180' : ''}`}
@@ -708,7 +712,7 @@ export default function RequestsPage() {
                                       </div>
 
                                       {/* AI Scout section — Transfermarkt-based, men only */}
-                                      {!isWomen && (
+                                      {!isWomen && !isYouth && (
                                       <div className="border-t border-mgsr-border/50">
                                         <button
                                           type="button"
@@ -875,7 +879,9 @@ export default function RequestsPage() {
           onClose={() => setShowAddSheet(false)}
           onSaved={() => {}}
           clubRequestsCollection={clubRequestsCollection}
+          feedEventsCollection={feedEventsCollection}
           isWomen={isWomen}
+          isYouth={isYouth}
         />
 
         {deleteConfirm && (

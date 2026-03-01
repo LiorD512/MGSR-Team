@@ -51,7 +51,7 @@ export interface SharePayload {
   lang?: 'he' | 'en';
   includePlayerContact?: boolean;
   includeAgencyContact?: boolean;
-  platform?: 'men' | 'women';
+  platform?: 'men' | 'women' | 'youth';
 }
 
 export interface ShareResult {

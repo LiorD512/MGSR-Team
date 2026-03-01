@@ -97,7 +97,7 @@ const MAX_PINNED = 2;
 export async function savePinnedHighlights(
   playerId: string,
   videos: HighlightVideo[],
-  playerCollection: 'Players' | 'PlayersWomen' = 'Players'
+  playerCollection: 'Players' | 'PlayersWomen' | 'PlayersYouth' = 'Players'
 ): Promise<void> {
   const toSave = videos.slice(0, MAX_PINNED).map((v) => ({
     id: v.id,

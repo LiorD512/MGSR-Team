@@ -97,6 +97,19 @@ export const womenMoreItems = [
   { href: '/portfolio', labelKey: 'nav_portfolio' },
 ];
 
+const youthTabs: TabItem[] = [
+  { href: '/dashboard', labelKey: 'nav_dashboard', icon: IconDashboard },
+  { href: '/players', labelKey: 'nav_players', icon: IconPlayers, matchPrefixes: ['/players'] },
+  { href: '/tasks', labelKey: 'nav_tasks', icon: IconTasks },
+  { href: '/portfolio', labelKey: 'nav_portfolio', icon: IconPortfolio },
+];
+
+export const youthMoreItems = [
+  { href: '/shortlist', labelKey: 'nav_shortlist' },
+  { href: '/contacts', labelKey: 'nav_contacts' },
+  { href: '/requests', labelKey: 'nav_requests' },
+];
+
 function isTabActive(tab: TabItem, pathname: string): boolean {
   if (tab.href === pathname) return true;
   if (tab.matchPrefixes) {
@@ -105,8 +118,8 @@ function isTabActive(tab: TabItem, pathname: string): boolean {
   return false;
 }
 
-function isMoreActive(pathname: string, platform: 'men' | 'women'): boolean {
-  const tabHrefs = (platform === 'women' ? womenTabs : menTabs).map((t) => t.href);
+function isMoreActive(pathname: string, platform: 'men' | 'women' | 'youth'): boolean {
+  const tabHrefs = (platform === 'youth' ? youthTabs : platform === 'women' ? womenTabs : menTabs).map((t) => t.href);
   return !tabHrefs.some((href) => pathname === href || pathname.startsWith(href + '/'));
 }
 
@@ -116,11 +129,11 @@ export default function MobileBottomTabBar() {
   const { t } = useLanguage();
   const [moreOpen, setMoreOpen] = useState(false);
 
-  const tabs = platform === 'women' ? womenTabs : menTabs;
+  const tabs = platform === 'youth' ? youthTabs : platform === 'women' ? womenTabs : menTabs;
   const showMore = true;
   const moreActive = isMoreActive(pathname, platform);
 
-  const accentColor = platform === 'women' ? 'var(--women-rose)' : 'var(--mgsr-accent)';
+  const accentColor = platform === 'youth' ? 'var(--youth-cyan)' : platform === 'women' ? 'var(--women-rose)' : 'var(--mgsr-accent)';
 
   return (
     <>

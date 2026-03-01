@@ -37,6 +37,16 @@ const womenNavItems = [
   { href: '/portfolio', labelKey: 'nav_portfolio' },
 ];
 
+const youthNavItems = [
+  { href: '/dashboard', labelKey: 'nav_dashboard' },
+  { href: '/tasks', labelKey: 'nav_tasks' },
+  { href: '/players', labelKey: 'nav_players_youth' },
+  { href: '/shortlist', labelKey: 'nav_shortlist' },
+  { href: '/contacts', labelKey: 'nav_contacts' },
+  { href: '/requests', labelKey: 'nav_requests' },
+  { href: '/portfolio', labelKey: 'nav_portfolio' },
+];
+
 /* ── Desktop sidebar nav content (unchanged) ── */
 function NavContent({
   pathname,
@@ -57,14 +67,14 @@ function NavContent({
   user: { email?: string | null } | null;
   signOut: () => void;
   onNavClick?: () => void;
-  platform: 'men' | 'women';
+  platform: 'men' | 'women' | 'youth';
   items: { href: string; labelKey: string }[];
   platformSwitcher: React.ReactNode;
 }) {
-  const brandName = platform === 'women' ? 'MGSR Women' : 'MGSR Team';
-  const logo = platform === 'women' ? '/logo-women.svg' : '/logo.svg';
-  const accentClass = platform === 'women' ? 'text-[var(--women-rose)]' : 'text-[var(--mgsr-accent)]';
-  const activeClass = platform === 'women' ? 'bg-[var(--women-rose)]/15 text-[var(--women-rose)]' : 'bg-[var(--mgsr-accent-dim)] text-[var(--mgsr-accent)]';
+  const brandName = platform === 'youth' ? 'MGSR Youth' : platform === 'women' ? 'MGSR Women' : 'MGSR Team';
+  const logo = platform === 'youth' ? '/logo.svg' : platform === 'women' ? '/logo-women.svg' : '/logo.svg';
+  const accentClass = platform === 'youth' ? 'text-[var(--youth-cyan)]' : platform === 'women' ? 'text-[var(--women-rose)]' : 'text-[var(--mgsr-accent)]';
+  const activeClass = platform === 'youth' ? 'bg-[var(--youth-cyan)]/15 text-[var(--youth-cyan)]' : platform === 'women' ? 'bg-[var(--women-rose)]/15 text-[var(--women-rose)]' : 'bg-[var(--mgsr-accent-dim)] text-[var(--mgsr-accent)]';
   return (
     <>
       <Link
@@ -128,6 +138,17 @@ function isWomenAllowedPath(pathname: string | null): boolean {
   return false;
 }
 
+const YOUTH_ALLOWED_PATHS = ['/dashboard', '/tasks', '/players', '/players/add', '/portfolio', '/shortlist', '/contacts', '/requests'];
+function isYouthAllowedPath(pathname: string | null): boolean {
+  if (!pathname) return false;
+  if (pathname === '/dashboard' || pathname === '/tasks') return true;
+  if (pathname === '/players' || pathname === '/players/add') return true;
+  if (pathname === '/portfolio') return true;
+  if (pathname === '/shortlist' || pathname === '/contacts' || pathname === '/requests') return true;
+  if (pathname.startsWith('/players/youth/')) return true;
+  return false;
+}
+
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -136,15 +157,18 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { platform, setPlatform } = usePlatform();
   const isMobileOrTablet = useIsMobileOrTablet();
 
-  // Route guard: when women platform, only allow dashboard, tasks, players
+  // Route guard: when women/youth platform, only allow specific paths
   useEffect(() => {
     if (platform === 'women' && !isWomenAllowedPath(pathname)) {
+      router.replace('/dashboard');
+    }
+    if (platform === 'youth' && !isYouthAllowedPath(pathname)) {
       router.replace('/dashboard');
     }
   }, [platform, pathname, router]);
 
   const toggleLang = () => setLang(isRtl ? 'en' : 'he');
-  const currentItems = platform === 'women' ? womenNavItems : navItems;
+  const currentItems = platform === 'youth' ? youthNavItems : platform === 'women' ? womenNavItems : navItems;
 
   /* ═══════════════════════════════════════════════════════════
    *  MOBILE / TABLET layout (< 1024px)

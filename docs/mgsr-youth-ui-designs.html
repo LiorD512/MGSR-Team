@@ -1,0 +1,2268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MGSR Youth — Street & Urban UI Designs</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=Outfit:wght@300;400;500;600;700&family=Permanent+Marker&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════
+   MGSR YOUTH — STREET & URBAN DESIGN SYSTEM
+   ═══════════════════════════════════════════ */
+
+:root {
+  /* Core dark palette */
+  --bg: #0A0A0A;
+  --bg-elevated: #111111;
+  --card: #161616;
+  --card-hover: #1A1A1A;
+  --border: #252525;
+  --border-hover: #333333;
+  --text: #F0F0F0;
+  --text-secondary: #9A9A9A;
+  --text-muted: #666666;
+
+  /* Street palette */
+  --neon: #39FF14;
+  --neon-dim: rgba(57, 255, 20, 0.12);
+  --neon-glow: rgba(57, 255, 20, 0.25);
+  --spray: #FF6B35;
+  --spray-dim: rgba(255, 107, 53, 0.12);
+  --spray-glow: rgba(255, 107, 53, 0.25);
+  --gold: #FFD700;
+  --gold-dim: rgba(255, 215, 0, 0.12);
+  --electric: #00D4FF;
+  --electric-dim: rgba(0, 212, 255, 0.12);
+  --concrete: #2A2A2A;
+
+  /* Semantic */
+  --success: #22c55e;
+  --danger: #ef4444;
+  --warning: #F59E0B;
+  --whatsapp: #25D366;
+
+  /* Typography */
+  --font-display: 'Syne', sans-serif;
+  --font-body: 'Outfit', sans-serif;
+  --font-street: 'Permanent Marker', cursive;
+
+  /* Radius — sharper, more angular */
+  --r-sm: 4px;
+  --r-md: 8px;
+  --r-lg: 12px;
+  --r-card: 10px;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  line-height: 1.5;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ─── SCREEN NAVIGATION ─── */
+.screen-nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  background: rgba(10, 10, 10, 0.92);
+  backdrop-filter: blur(20px) saturate(1.6);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 24px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.screen-nav-brand {
+  font-family: var(--font-street);
+  font-size: 1.1rem;
+  color: var(--neon);
+  text-shadow: 0 0 20px var(--neon-glow);
+  margin-right: 16px;
+  white-space: nowrap;
+}
+.screen-nav a {
+  font-family: var(--font-display);
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-decoration: none;
+  padding: 6px 14px;
+  border-radius: var(--r-sm);
+  border: 1px solid transparent;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+.screen-nav a:hover {
+  color: var(--text);
+  border-color: var(--border);
+  background: var(--card);
+}
+.screen-nav a.active {
+  color: var(--neon);
+  background: var(--neon-dim);
+  border-color: rgba(57, 255, 20, 0.2);
+}
+
+/* ─── LAYOUT ─── */
+.screen-section {
+  padding: 80px 0 40px;
+  min-height: 100vh;
+  position: relative;
+}
+.screen-section + .screen-section {
+  border-top: 2px solid var(--border);
+}
+.screen-label {
+  font-family: var(--font-street);
+  font-size: 2.2rem;
+  color: var(--neon);
+  text-shadow: 0 0 30px var(--neon-glow), 0 0 60px rgba(57, 255, 20, 0.1);
+  text-align: center;
+  margin-bottom: 6px;
+  letter-spacing: 2px;
+}
+.screen-sublabel {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  margin-bottom: 32px;
+}
+
+/* ─── SIDEBAR ─── */
+.app-shell {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  min-height: calc(100vh - 60px);
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+.sidebar {
+  padding: 20px 0;
+  border-right: 1px solid var(--border);
+}
+.sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 16px 20px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+.sidebar-logo {
+  width: 36px;
+  height: 36px;
+  background: var(--neon);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 0.85rem;
+  color: #000;
+  position: relative;
+  overflow: hidden;
+}
+.sidebar-logo::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(45deg, transparent 40%, rgba(255,255,255,0.2) 50%, transparent 60%);
+  animation: logo-shine 3s infinite;
+}
+@keyframes logo-shine {
+  0%, 100% { transform: translateX(-100%) rotate(45deg); }
+  50% { transform: translateX(100%) rotate(45deg); }
+}
+.sidebar-brand-text {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: var(--text);
+}
+.sidebar-brand-text span {
+  color: var(--neon);
+}
+
+/* Platform switcher */
+.platform-switcher {
+  margin: 0 12px 16px;
+  padding: 8px 12px;
+  border-radius: var(--r-md);
+  background: var(--card);
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+.platform-switcher:hover { border-color: var(--neon); }
+.platform-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--neon);
+  box-shadow: 0 0 8px var(--neon-glow);
+}
+.platform-switcher-label {
+  font-family: var(--font-display);
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--neon);
+  flex: 1;
+}
+.platform-switcher-chevron {
+  color: var(--text-muted);
+  font-size: 0.7rem;
+}
+
+/* Nav items */
+.nav-items { list-style: none; padding: 0 8px; }
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border-radius: var(--r-md);
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  margin-bottom: 2px;
+}
+.nav-item:hover {
+  background: var(--card);
+  color: var(--text);
+}
+.nav-item.active {
+  background: var(--neon-dim);
+  color: var(--neon);
+}
+.nav-icon { width: 18px; text-align: center; font-size: 0.9rem; }
+.nav-badge {
+  margin-left: auto;
+  font-size: 0.7rem;
+  padding: 1px 6px;
+  border-radius: 10px;
+  background: var(--spray-dim);
+  color: var(--spray);
+  font-weight: 600;
+}
+
+/* ─── MAIN CONTENT ─── */
+.main-content { padding: 20px 24px; }
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+}
+.page-title {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+/* ─── BUTTONS ─── */
+.btn {
+  font-family: var(--font-display);
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 8px 16px;
+  border-radius: var(--r-sm);
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.btn-primary {
+  background: var(--neon);
+  color: #000;
+}
+.btn-primary:hover {
+  box-shadow: 0 0 20px var(--neon-glow);
+  transform: translateY(-1px);
+}
+.btn-secondary {
+  background: var(--neon-dim);
+  color: var(--neon);
+  border: 1px solid rgba(57, 255, 20, 0.2);
+}
+.btn-spray {
+  background: var(--spray);
+  color: #fff;
+}
+.btn-spray:hover {
+  box-shadow: 0 0 20px var(--spray-glow);
+}
+.btn-ghost {
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+}
+.btn-ghost:hover {
+  border-color: var(--text-muted);
+  color: var(--text);
+}
+.btn-sm { padding: 5px 10px; font-size: 0.75rem; }
+
+/* ─── CARDS ─── */
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r-card);
+  padding: 16px;
+  transition: border-color 0.2s;
+}
+.card:hover { border-color: var(--border-hover); }
+.card-accent-left {
+  border-left: 3px solid var(--neon);
+}
+.card-accent-spray {
+  border-left: 3px solid var(--spray);
+}
+
+/* ─── BADGES ─── */
+.badge {
+  font-family: var(--font-display);
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: var(--r-sm);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.badge-neon { background: var(--neon-dim); color: var(--neon); }
+.badge-spray { background: var(--spray-dim); color: var(--spray); }
+.badge-gold { background: var(--gold-dim); color: var(--gold); }
+.badge-electric { background: var(--electric-dim); color: var(--electric); }
+.badge-success { background: rgba(34, 197, 94, 0.12); color: var(--success); }
+.badge-danger { background: rgba(239, 68, 68, 0.12); color: var(--danger); }
+
+/* Spray-paint style badge */
+.badge-spray-tag {
+  font-family: var(--font-street);
+  font-size: 0.65rem;
+  letter-spacing: 1px;
+  padding: 3px 10px;
+  border-radius: 2px;
+  background: linear-gradient(135deg, var(--spray) 0%, #FF8F35 100%);
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+  transform: rotate(-1deg);
+  display: inline-block;
+}
+
+/* ─── GRAFFITI DIVIDER ─── */
+.graffiti-divider {
+  height: 3px;
+  background: linear-gradient(90deg, var(--neon) 0%, var(--spray) 40%, var(--gold) 70%, transparent 100%);
+  border-radius: 2px;
+  margin: 24px 0;
+  opacity: 0.6;
+  position: relative;
+}
+.graffiti-divider::after {
+  content: '';
+  position: absolute;
+  right: 20%;
+  top: -2px;
+  width: 40px;
+  height: 7px;
+  background: var(--spray);
+  border-radius: 3px;
+  opacity: 0.4;
+  transform: skewX(-15deg);
+}
+
+/* Street texture overlay */
+.concrete-texture {
+  position: relative;
+}
+.concrete-texture::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='256' height='256' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+  background-size: 256px;
+  pointer-events: none;
+  z-index: 0;
+  border-radius: inherit;
+}
+
+/* ─── STAT CARDS ─── */
+.stat-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r-card);
+  padding: 16px;
+  position: relative;
+  overflow: hidden;
+}
+.stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+}
+.stat-card.neon::before { background: linear-gradient(90deg, var(--neon), transparent); }
+.stat-card.spray::before { background: linear-gradient(90deg, var(--spray), transparent); }
+.stat-card.gold::before { background: linear-gradient(90deg, var(--gold), transparent); }
+.stat-card.electric::before { background: linear-gradient(90deg, var(--electric), transparent); }
+
+.stat-value {
+  font-family: var(--font-display);
+  font-size: 2rem;
+  font-weight: 800;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+.stat-value.neon { color: var(--neon); text-shadow: 0 0 20px var(--neon-glow); }
+.stat-value.spray { color: var(--spray); text-shadow: 0 0 20px var(--spray-glow); }
+.stat-value.gold { color: var(--gold); }
+.stat-value.electric { color: var(--electric); }
+.stat-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.stat-delta {
+  font-size: 0.7rem;
+  font-weight: 600;
+  margin-top: 6px;
+}
+.stat-delta.up { color: var(--success); }
+.stat-delta.down { color: var(--danger); }
+
+/* ─── SEARCH BAR ─── */
+.search-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: 10px 14px;
+  transition: all 0.2s;
+}
+.search-bar:focus-within {
+  border-color: var(--neon);
+  box-shadow: 0 0 20px var(--neon-dim), inset 0 0 20px var(--neon-dim);
+}
+.search-bar input {
+  background: none;
+  border: none;
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  outline: none;
+  flex: 1;
+}
+.search-bar input::placeholder { color: var(--text-muted); }
+.search-icon { color: var(--text-muted); font-size: 0.9rem; }
+
+/* ─── PLAYER CARDS ─── */
+.player-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--neon);
+  border-radius: var(--r-card);
+  padding: 14px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+}
+.player-card:hover {
+  border-color: var(--border-hover);
+  background: var(--card-hover);
+  transform: translateX(2px);
+}
+.player-card-img {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--r-md);
+  background: var(--concrete);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.3rem;
+  flex-shrink: 0;
+  position: relative;
+  overflow: hidden;
+  border: 2px solid var(--border);
+}
+.player-card-img.has-img {
+  border-color: var(--neon);
+  box-shadow: 0 0 10px var(--neon-dim);
+}
+.player-card-info { flex: 1; min-width: 0; }
+.player-card-name {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.player-card-name-he {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: -1px;
+}
+.player-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+  flex-wrap: wrap;
+}
+.player-card-meta span {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+.player-card-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.player-card-age-group {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+}
+
+/* ─── FORM ELEMENTS ─── */
+.form-group { margin-bottom: 16px; }
+.form-label {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+}
+.form-input {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  padding: 10px 12px;
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  transition: border-color 0.2s;
+  outline: none;
+}
+.form-input:focus {
+  border-color: var(--neon);
+  box-shadow: 0 0 0 3px var(--neon-dim);
+}
+.form-input::placeholder { color: var(--text-muted); }
+.form-input.filled {
+  border-color: rgba(57, 255, 20, 0.3);
+  background: rgba(57, 255, 20, 0.03);
+}
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.form-section {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--neon);
+  border-radius: var(--r-card);
+  padding: 16px;
+  margin-bottom: 16px;
+}
+.form-section.spray { border-left-color: var(--spray); }
+.form-section-title {
+  font-family: var(--font-display);
+  font-size: 0.9rem;
+  font-weight: 700;
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Position toggles */
+.position-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.position-tag {
+  font-family: var(--font-display);
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: var(--r-sm);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.position-tag.selected {
+  background: var(--neon-dim);
+  border-color: var(--neon);
+  color: var(--neon);
+}
+
+/* Age group dropdown */
+.age-group-select {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.age-group-chip {
+  font-family: var(--font-street);
+  font-size: 0.65rem;
+  letter-spacing: 1px;
+  padding: 4px 10px;
+  border-radius: 2px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.age-group-chip.selected {
+  background: linear-gradient(135deg, var(--spray) 0%, #FF8F35 100%);
+  border-color: var(--spray);
+  color: #fff;
+  transform: rotate(-1deg);
+}
+
+/* ─── CONTACT CARDS ─── */
+.contact-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r-card);
+  padding: 16px;
+}
+.contact-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.contact-card-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--r-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9rem;
+}
+.contact-card-icon.player { background: var(--neon-dim); color: var(--neon); }
+.contact-card-icon.parent { background: var(--spray-dim); color: var(--spray); }
+.contact-card-title {
+  font-family: var(--font-display);
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+.contact-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-top: 1px solid var(--border);
+}
+.contact-row:first-of-type { border-top: none; }
+.contact-row-icon { 
+  width: 28px; 
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+.contact-row-label {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.contact-row-value {
+  font-size: 0.85rem;
+  color: var(--text);
+  font-weight: 500;
+}
+.contact-wa-btn {
+  margin-left: auto;
+  background: rgba(37, 211, 102, 0.12);
+  color: var(--whatsapp);
+  border: none;
+  border-radius: var(--r-sm);
+  padding: 4px 8px;
+  font-size: 0.75rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* ─── IFA STATS GRID ─── */
+.ifa-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+.ifa-stat {
+  text-align: center;
+  padding: 12px 8px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+}
+.ifa-stat-value {
+  font-family: var(--font-street);
+  font-size: 1.5rem;
+  letter-spacing: 1px;
+}
+.ifa-stat-value.goals { color: var(--neon); text-shadow: 0 0 15px var(--neon-glow); }
+.ifa-stat-value.assists { color: var(--electric); }
+.ifa-stat-value.cards { color: var(--gold); }
+.ifa-stat-value.matches { color: var(--spray); }
+.ifa-stat-label {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-top: 2px;
+}
+
+/* ─── NOTES TIMELINE ─── */
+.note-item {
+  display: flex;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+.note-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--neon);
+  margin-top: 6px;
+  flex-shrink: 0;
+  box-shadow: 0 0 8px var(--neon-glow);
+}
+.note-content { flex: 1; }
+.note-text { font-size: 0.85rem; color: var(--text); line-height: 1.5; }
+.note-meta {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  margin-top: 4px;
+  display: flex;
+  gap: 12px;
+}
+
+/* ─── ACTIVITY FEED ─── */
+.activity-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+.activity-item:last-child { border-bottom: none; }
+.activity-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--r-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  flex-shrink: 0;
+}
+.activity-icon.add { background: var(--neon-dim); color: var(--neon); }
+.activity-icon.note { background: var(--electric-dim); color: var(--electric); }
+.activity-icon.task { background: var(--spray-dim); color: var(--spray); }
+.activity-icon.mandate { background: var(--gold-dim); color: var(--gold); }
+.activity-text { font-size: 0.82rem; color: var(--text-secondary); flex: 1; }
+.activity-text strong { color: var(--text); font-weight: 600; }
+.activity-time { font-size: 0.7rem; color: var(--text-muted); flex-shrink: 0; }
+
+/* ─── SEARCH DROPDOWN ─── */
+.search-dropdown {
+  background: var(--card);
+  border: 1px solid var(--neon);
+  border-radius: var(--r-md);
+  margin-top: 4px;
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4), 0 0 20px var(--neon-dim);
+}
+.search-dropdown-header {
+  padding: 8px 12px;
+  background: var(--neon-dim);
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--neon);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.search-result-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: background 0.1s;
+  border-bottom: 1px solid var(--border);
+}
+.search-result-item:last-child { border-bottom: none; }
+.search-result-item:hover { background: var(--neon-dim); }
+.search-result-item.selected { background: var(--neon-dim); }
+.search-result-flag {
+  width: 24px;
+  height: 18px;
+  border-radius: 2px;
+  background: var(--concrete);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  flex-shrink: 0;
+}
+.search-result-info { flex: 1; }
+.search-result-name {
+  font-family: var(--font-display);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+.search-result-name-he {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  direction: rtl;
+}
+.search-result-club {
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+}
+.search-result-source {
+  font-size: 0.6rem;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: var(--r-sm);
+  background: var(--neon-dim);
+  color: var(--neon);
+}
+
+/* ─── MANDATE DOC ─── */
+.doc-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+}
+.doc-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--r-sm);
+  background: var(--spray-dim);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--spray);
+  font-size: 1rem;
+}
+.doc-info { flex: 1; }
+.doc-name { font-size: 0.82rem; font-weight: 600; }
+.doc-meta { font-size: 0.7rem; color: var(--text-muted); }
+
+/* ─── HIGHLIGHTS ─── */
+.highlight-thumb {
+  position: relative;
+  width: 160px;
+  height: 90px;
+  border-radius: var(--r-md);
+  background: var(--concrete);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  flex-shrink: 0;
+  border: 1px solid var(--border);
+}
+.highlight-play {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 0.9rem;
+}
+.highlight-duration {
+  position: absolute;
+  bottom: 4px;
+  right: 4px;
+  background: rgba(0,0,0,0.7);
+  padding: 1px 5px;
+  border-radius: 2px;
+  font-size: 0.65rem;
+  color: #fff;
+}
+
+/* ─── PLAYER DETAIL HERO ─── */
+.player-hero {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+  margin-bottom: 24px;
+}
+.player-hero-img {
+  width: 120px;
+  height: 120px;
+  border-radius: var(--r-lg);
+  background: var(--concrete);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 3rem;
+  flex-shrink: 0;
+  border: 3px solid var(--neon);
+  box-shadow: 0 0 30px var(--neon-dim), 0 0 60px rgba(57, 255, 20, 0.05);
+  position: relative;
+}
+.player-hero-img::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: calc(var(--r-lg) + 3px);
+  background: linear-gradient(135deg, var(--neon), var(--spray));
+  z-index: -1;
+  opacity: 0.3;
+  filter: blur(10px);
+}
+.player-hero-info { flex: 1; }
+.player-hero-name {
+  font-family: var(--font-display);
+  font-size: 1.8rem;
+  font-weight: 800;
+  line-height: 1.1;
+}
+.player-hero-name-he {
+  font-size: 1rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+  direction: rtl;
+}
+.player-hero-badges {
+  display: flex;
+  gap: 6px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+.player-hero-details {
+  display: flex;
+  gap: 16px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+.player-hero-detail {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+.player-hero-detail strong { color: var(--text); font-weight: 600; }
+.player-hero-links {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+}
+.link-btn {
+  font-family: var(--font-display);
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.link-btn:hover { border-color: var(--neon); color: var(--neon); }
+.link-btn.ifa { color: #0066cc; border-color: rgba(0, 102, 204, 0.3); }
+.link-btn.tm { color: #28a745; border-color: rgba(40, 167, 69, 0.3); }
+
+/* ─── DISTRIBUTION CHART ─── */
+.age-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  height: 100px;
+  padding-top: 10px;
+}
+.age-bar {
+  flex: 1;
+  border-radius: 3px 3px 0 0;
+  position: relative;
+  min-width: 30px;
+  transition: all 0.3s;
+}
+.age-bar:hover { filter: brightness(1.2); }
+.age-bar-label {
+  position: absolute;
+  bottom: -18px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.6rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.age-bar-value {
+  position: absolute;
+  top: -16px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: var(--font-display);
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+/* ─── SECTION HEADER COMPONENT ─── */
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+.section-title {
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.section-title-icon {
+  color: var(--neon);
+  font-size: 0.85rem;
+}
+.section-count {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+/* ─── FILTER CHIPS ─── */
+.filter-chips {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 16px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.filter-chips::-webkit-scrollbar { display: none; }
+.filter-chip {
+  font-family: var(--font-display);
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text-muted);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.filter-chip.active {
+  border-color: var(--neon);
+  background: var(--neon-dim);
+  color: var(--neon);
+}
+
+/* ─── EMPTY STATE ─── */
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+}
+.empty-state-icon {
+  font-size: 3rem;
+  margin-bottom: 16px;
+  opacity: 0.3;
+}
+.empty-state-title {
+  font-family: var(--font-street);
+  font-size: 1.2rem;
+  color: var(--neon);
+  margin-bottom: 8px;
+}
+.empty-state-text {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  max-width: 300px;
+  margin: 0 auto;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+/* ─── NEON GLOW ANIMATION ─── */
+@keyframes neon-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+.neon-pulse { animation: neon-pulse 2s ease-in-out infinite; }
+
+/* Responsive */
+@media (max-width: 900px) {
+  .app-shell { grid-template-columns: 1fr; }
+  .sidebar { display: none; }
+  .ifa-stats-grid { grid-template-columns: repeat(2, 1fr); }
+  .form-row { grid-template-columns: 1fr; }
+  .player-hero { flex-direction: column; align-items: center; text-align: center; }
+  .player-hero-badges, .player-hero-details, .player-hero-links { justify-content: center; }
+}
+</style>
+</head>
+
+<body>
+
+<!-- ═══════════════════════════════════════ -->
+<!-- SCREEN NAVIGATION                      -->
+<!-- ═══════════════════════════════════════ -->
+<nav class="screen-nav">
+  <span class="screen-nav-brand">MGSR YOUTH</span>
+  <a href="#dashboard" class="active" onclick="switchScreen('dashboard', this)">Dashboard</a>
+  <a href="#players" onclick="switchScreen('players', this)">Players List</a>
+  <a href="#add-player" onclick="switchScreen('add-player', this)">Add Player</a>
+  <a href="#player-detail" onclick="switchScreen('player-detail', this)">Player Detail</a>
+</nav>
+
+
+<!-- ═══════════════════════════════════════════════ -->
+<!--  SCREEN 1 — DASHBOARD                          -->
+<!-- ═══════════════════════════════════════════════ -->
+<section id="dashboard" class="screen-section">
+  <div class="screen-label">Dashboard</div>
+  <div class="screen-sublabel">Main overview — Youth player stats, activity &amp; age distribution</div>
+
+  <div class="app-shell">
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <div class="sidebar-logo">MY</div>
+        <div class="sidebar-brand-text">MGSR <span>Youth</span></div>
+      </div>
+      <div class="platform-switcher">
+        <div class="platform-dot"></div>
+        <span class="platform-switcher-label">MGSR Youth</span>
+        <span class="platform-switcher-chevron">▾</span>
+      </div>
+      <ul class="nav-items">
+        <li class="nav-item active"><span class="nav-icon">📊</span> Dashboard</li>
+        <li class="nav-item"><span class="nav-icon">📋</span> Tasks <span class="nav-badge">3</span></li>
+        <li class="nav-item"><span class="nav-icon">⚽</span> Players <span class="nav-badge">24</span></li>
+        <li class="nav-item"><span class="nav-icon">⭐</span> Shortlist</li>
+        <li class="nav-item"><span class="nav-icon">👥</span> Contacts</li>
+        <li class="nav-item"><span class="nav-icon">📨</span> Requests</li>
+      </ul>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="main-content">
+      <div class="page-header">
+        <h1 class="page-title" style="display:flex; align-items: center; gap: 10px;">
+          <span>Dashboard</span>
+          <span class="badge-spray-tag">YOUTH</span>
+        </h1>
+        <button class="btn btn-primary">+ Add Player</button>
+      </div>
+
+      <!-- STAT CARDS -->
+      <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 24px;">
+        <div class="stat-card neon">
+          <div class="stat-value neon">24</div>
+          <div class="stat-label">Total Players</div>
+          <div class="stat-delta up">+3 this week</div>
+        </div>
+        <div class="stat-card spray">
+          <div class="stat-value spray">8</div>
+          <div class="stat-label">With Mandate</div>
+          <div class="stat-delta up">+1 this month</div>
+        </div>
+        <div class="stat-card gold">
+          <div class="stat-value gold">5</div>
+          <div class="stat-label">Active Tasks</div>
+          <div class="stat-delta" style="color: var(--text-muted);">2 overdue</div>
+        </div>
+        <div class="stat-card electric">
+          <div class="stat-value electric">12</div>
+          <div class="stat-label">Club Requests</div>
+          <div class="stat-delta up">+4 new</div>
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 320px; gap: 20px;">
+        <!-- LEFT: Recent Activity -->
+        <div>
+          <div class="section-header">
+            <div class="section-title"><span class="section-title-icon">🔥</span> Recent Activity</div>
+            <span class="section-count">Last 7 days</span>
+          </div>
+          <div class="card">
+            <div class="activity-item">
+              <div class="activity-icon add">+</div>
+              <div class="activity-text"><strong>Yarin Leibowitz</strong> added to players roster</div>
+              <div class="activity-time">2h ago</div>
+            </div>
+            <div class="activity-item">
+              <div class="activity-icon note">✎</div>
+              <div class="activity-text">Note added for <strong>Noam Greenfeld</strong>: "Impressive performance U-17 league..."</div>
+              <div class="activity-time">5h ago</div>
+            </div>
+            <div class="activity-item">
+              <div class="activity-icon task">⚡</div>
+              <div class="activity-text">Task completed: <strong>Contact parent of Amit Shalom</strong></div>
+              <div class="activity-time">1d ago</div>
+            </div>
+            <div class="activity-item">
+              <div class="activity-icon mandate">📄</div>
+              <div class="activity-text">Mandate signed for <strong>Daniel Peretz Jr.</strong></div>
+              <div class="activity-time">2d ago</div>
+            </div>
+            <div class="activity-item">
+              <div class="activity-icon add">+</div>
+              <div class="activity-text"><strong>Tom Avrahami</strong> added from IFA search</div>
+              <div class="activity-time">3d ago</div>
+            </div>
+            <div class="activity-item">
+              <div class="activity-icon note">✎</div>
+              <div class="activity-text">Note added for <strong>Omer Raz</strong>: "Left foot very technical, needs strength..."</div>
+              <div class="activity-time">4d ago</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- RIGHT: Age Distribution -->
+        <div>
+          <div class="section-header">
+            <div class="section-title"><span class="section-title-icon">📈</span> Age Groups</div>
+          </div>
+          <div class="card" style="padding: 20px 16px 32px;">
+            <div class="age-chart">
+              <div class="age-bar" style="height: 15%; background: var(--neon-dim); border: 1px solid rgba(57,255,20,0.2);">
+                <span class="age-bar-value" style="color: var(--neon);">1</span>
+                <span class="age-bar-label">U-13</span>
+              </div>
+              <div class="age-bar" style="height: 35%; background: var(--neon-dim); border: 1px solid rgba(57,255,20,0.3);">
+                <span class="age-bar-value" style="color: var(--neon);">4</span>
+                <span class="age-bar-label">U-14</span>
+              </div>
+              <div class="age-bar" style="height: 60%; background: linear-gradient(180deg, var(--neon) 0%, rgba(57,255,20,0.3) 100%);">
+                <span class="age-bar-value" style="color: var(--neon);">7</span>
+                <span class="age-bar-label">U-15</span>
+              </div>
+              <div class="age-bar" style="height: 85%; background: linear-gradient(180deg, var(--neon) 0%, var(--spray) 100%);">
+                <span class="age-bar-value">9</span>
+                <span class="age-bar-label">U-17</span>
+              </div>
+              <div class="age-bar" style="height: 25%; background: var(--spray-dim); border: 1px solid rgba(255,107,53,0.3);">
+                <span class="age-bar-value" style="color: var(--spray);">2</span>
+                <span class="age-bar-label">U-19</span>
+              </div>
+              <div class="age-bar" style="height: 10%; background: var(--gold-dim); border: 1px solid rgba(255,215,0,0.2);">
+                <span class="age-bar-value" style="color: var(--gold);">1</span>
+                <span class="age-bar-label">U-21</span>
+              </div>
+            </div>
+          </div>
+
+          <div style="margin-top: 16px;">
+            <div class="section-header">
+              <div class="section-title"><span class="section-title-icon">🏟️</span> Top Clubs</div>
+            </div>
+            <div class="card" style="padding: 12px;">
+              <div style="display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid var(--border);">
+                <span style="font-size: 0.82rem;">Maccabi Petah Tikva</span>
+                <span class="badge badge-neon">6</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid var(--border);">
+                <span style="font-size: 0.82rem;">Hapoel Tel Aviv</span>
+                <span class="badge badge-neon">4</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid var(--border);">
+                <span style="font-size: 0.82rem;">Maccabi Tel Aviv</span>
+                <span class="badge badge-neon">3</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; padding: 6px 0;">
+                <span style="font-size: 0.82rem;">Beitar Jerusalem</span>
+                <span class="badge badge-neon">2</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="graffiti-divider"></div>
+    </main>
+  </div>
+</section>
+
+
+
+<!-- ═══════════════════════════════════════════════ -->
+<!--  SCREEN 2 — PLAYERS LIST                       -->
+<!-- ═══════════════════════════════════════════════ -->
+<section id="players" class="screen-section" style="display:none;">
+  <div class="screen-label">Players</div>
+  <div class="screen-sublabel">Youth roster — IFA data, age groups, search &amp; filter</div>
+
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <div class="sidebar-logo">MY</div>
+        <div class="sidebar-brand-text">MGSR <span>Youth</span></div>
+      </div>
+      <div class="platform-switcher">
+        <div class="platform-dot"></div>
+        <span class="platform-switcher-label">MGSR Youth</span>
+        <span class="platform-switcher-chevron">▾</span>
+      </div>
+      <ul class="nav-items">
+        <li class="nav-item"><span class="nav-icon">📊</span> Dashboard</li>
+        <li class="nav-item"><span class="nav-icon">📋</span> Tasks <span class="nav-badge">3</span></li>
+        <li class="nav-item active"><span class="nav-icon">⚽</span> Players <span class="nav-badge">24</span></li>
+        <li class="nav-item"><span class="nav-icon">⭐</span> Shortlist</li>
+        <li class="nav-item"><span class="nav-icon">👥</span> Contacts</li>
+        <li class="nav-item"><span class="nav-icon">📨</span> Requests</li>
+      </ul>
+    </aside>
+
+    <main class="main-content">
+      <div class="page-header">
+        <h1 class="page-title">Players <span style="color: var(--text-muted); font-size: 0.85rem; font-weight: 400; margin-left: 6px;">24 players</span></h1>
+        <button class="btn btn-primary">+ Add Player</button>
+      </div>
+
+      <!-- SEARCH -->
+      <div class="search-bar" style="margin-bottom: 14px;">
+        <span class="search-icon">🔍</span>
+        <input type="text" placeholder="Search players by name, club, or position..." />
+      </div>
+
+      <!-- FILTER CHIPS -->
+      <div class="filter-chips">
+        <span class="filter-chip active">All</span>
+        <span class="filter-chip">U-13</span>
+        <span class="filter-chip">U-14</span>
+        <span class="filter-chip">U-15</span>
+        <span class="filter-chip">U-17</span>
+        <span class="filter-chip">U-19</span>
+        <span class="filter-chip">U-21</span>
+        <span class="filter-chip">⚡ With Mandate</span>
+        <span class="filter-chip">GK</span>
+        <span class="filter-chip">CB</span>
+        <span class="filter-chip">CM</span>
+        <span class="filter-chip">ST</span>
+      </div>
+
+      <!-- PLAYER LIST -->
+      <div style="display: flex; flex-direction: column; gap: 8px;">
+
+        <div class="player-card">
+          <div class="player-card-img has-img">⚽</div>
+          <div class="player-card-info">
+            <div class="player-card-name">Yarin Leibowitz</div>
+            <div class="player-card-name-he" dir="rtl">ירין ליבוביץ</div>
+            <div class="player-card-meta">
+              <span>🇮🇱 Israel</span>
+              <span>·</span>
+              <span>Maccabi Petah Tikva</span>
+              <span>·</span>
+              <span style="color: var(--neon);">CM, AM</span>
+              <span>·</span>
+              <span>Born 01/2011</span>
+            </div>
+          </div>
+          <div class="player-card-age-group">
+            <span class="badge-spray-tag">U-15</span>
+          </div>
+          <div class="player-card-actions">
+            <button class="btn btn-sm btn-ghost">📄</button>
+            <button class="btn btn-sm btn-ghost">✏️</button>
+          </div>
+        </div>
+
+        <div class="player-card" style="border-left-color: var(--spray);">
+          <div class="player-card-img">⚽</div>
+          <div class="player-card-info">
+            <div class="player-card-name">Noam Greenfeld</div>
+            <div class="player-card-name-he" dir="rtl">נועם גרינפלד</div>
+            <div class="player-card-meta">
+              <span>🇮🇱 Israel</span>
+              <span>·</span>
+              <span>Hapoel Tel Aviv</span>
+              <span>·</span>
+              <span style="color: var(--neon);">LW</span>
+              <span>·</span>
+              <span>Born 05/2008</span>
+            </div>
+          </div>
+          <div class="player-card-age-group">
+            <span class="badge-spray-tag">U-17</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 6px; margin-right: 8px;">
+            <span class="badge badge-success" style="font-size: 0.65rem;">📄 Mandate</span>
+          </div>
+          <div class="player-card-actions">
+            <button class="btn btn-sm btn-ghost">📄</button>
+            <button class="btn btn-sm btn-ghost">✏️</button>
+          </div>
+        </div>
+
+        <div class="player-card">
+          <div class="player-card-img">⚽</div>
+          <div class="player-card-info">
+            <div class="player-card-name">Daniel Peretz Jr.</div>
+            <div class="player-card-name-he" dir="rtl">דניאל פרץ ג'וניור</div>
+            <div class="player-card-meta">
+              <span>🇮🇱 Israel</span>
+              <span>·</span>
+              <span>Maccabi Tel Aviv</span>
+              <span>·</span>
+              <span style="color: var(--neon);">GK</span>
+              <span>·</span>
+              <span>Born 11/2009</span>
+            </div>
+          </div>
+          <div class="player-card-age-group">
+            <span class="badge-spray-tag">U-17</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 6px; margin-right: 8px;">
+            <span class="badge badge-success" style="font-size: 0.65rem;">📄 Mandate</span>
+          </div>
+          <div class="player-card-actions">
+            <button class="btn btn-sm btn-ghost">📄</button>
+            <button class="btn btn-sm btn-ghost">✏️</button>
+          </div>
+        </div>
+
+        <div class="player-card">
+          <div class="player-card-img">⚽</div>
+          <div class="player-card-info">
+            <div class="player-card-name">Amit Shalom</div>
+            <div class="player-card-name-he" dir="rtl">עמית שלום</div>
+            <div class="player-card-meta">
+              <span>🇮🇱 Israel</span>
+              <span>·</span>
+              <span>Beitar Jerusalem</span>
+              <span>·</span>
+              <span style="color: var(--neon);">CB</span>
+              <span>·</span>
+              <span>Born 03/2010</span>
+            </div>
+          </div>
+          <div class="player-card-age-group">
+            <span class="badge-spray-tag">U-15</span>
+          </div>
+          <div class="player-card-actions">
+            <button class="btn btn-sm btn-ghost">📄</button>
+            <button class="btn btn-sm btn-ghost">✏️</button>
+          </div>
+        </div>
+
+        <div class="player-card">
+          <div class="player-card-img has-img">⚽</div>
+          <div class="player-card-info">
+            <div class="player-card-name">Tom Avrahami</div>
+            <div class="player-card-name-he" dir="rtl">תום אברהמי</div>
+            <div class="player-card-meta">
+              <span>🇮🇱 Israel</span>
+              <span>·</span>
+              <span>Maccabi Petah Tikva</span>
+              <span>·</span>
+              <span style="color: var(--neon);">ST</span>
+              <span>·</span>
+              <span>Born 07/2009</span>
+            </div>
+          </div>
+          <div class="player-card-age-group">
+            <span class="badge-spray-tag">U-17</span>
+          </div>
+          <div class="player-card-actions">
+            <button class="btn btn-sm btn-ghost">📄</button>
+            <button class="btn btn-sm btn-ghost">✏️</button>
+          </div>
+        </div>
+
+        <div class="player-card">
+          <div class="player-card-img">⚽</div>
+          <div class="player-card-info">
+            <div class="player-card-name">Omer Raz</div>
+            <div class="player-card-name-he" dir="rtl">עומר רז</div>
+            <div class="player-card-meta">
+              <span>🇮🇱 Israel</span>
+              <span>·</span>
+              <span>Hapoel Be'er Sheva</span>
+              <span>·</span>
+              <span style="color: var(--neon);">LW, RW</span>
+              <span>·</span>
+              <span>Born 02/2012</span>
+            </div>
+          </div>
+          <div class="player-card-age-group">
+            <span class="badge-spray-tag">U-14</span>
+          </div>
+          <div class="player-card-actions">
+            <button class="btn btn-sm btn-ghost">📄</button>
+            <button class="btn btn-sm btn-ghost">✏️</button>
+          </div>
+        </div>
+
+        <div class="player-card">
+          <div class="player-card-img">⚽</div>
+          <div class="player-card-info">
+            <div class="player-card-name">Eyal Cohen</div>
+            <div class="player-card-name-he" dir="rtl">אייל כהן</div>
+            <div class="player-card-meta">
+              <span>🇮🇱 Israel</span>
+              <span>·</span>
+              <span>Maccabi Haifa</span>
+              <span>·</span>
+              <span style="color: var(--neon);">DM</span>
+              <span>·</span>
+              <span>Born 09/2007</span>
+            </div>
+          </div>
+          <div class="player-card-age-group">
+            <span class="badge-spray-tag">U-19</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 6px; margin-right: 8px;">
+            <span class="badge badge-success" style="font-size: 0.65rem;">📄 Mandate</span>
+          </div>
+          <div class="player-card-actions">
+            <button class="btn btn-sm btn-ghost">📄</button>
+            <button class="btn btn-sm btn-ghost">✏️</button>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="graffiti-divider"></div>
+    </main>
+  </div>
+</section>
+
+
+
+<!-- ═══════════════════════════════════════════════ -->
+<!--  SCREEN 3 — ADD PLAYER                         -->
+<!-- ═══════════════════════════════════════════════ -->
+<section id="add-player" class="screen-section" style="display:none;">
+  <div class="screen-label">Add Player</div>
+  <div class="screen-sublabel">Search IFA, fill details &amp; parent contacts — save to Youth roster</div>
+
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <div class="sidebar-logo">MY</div>
+        <div class="sidebar-brand-text">MGSR <span>Youth</span></div>
+      </div>
+      <div class="platform-switcher">
+        <div class="platform-dot"></div>
+        <span class="platform-switcher-label">MGSR Youth</span>
+        <span class="platform-switcher-chevron">▾</span>
+      </div>
+      <ul class="nav-items">
+        <li class="nav-item"><span class="nav-icon">📊</span> Dashboard</li>
+        <li class="nav-item"><span class="nav-icon">📋</span> Tasks</li>
+        <li class="nav-item active"><span class="nav-icon">⚽</span> Players</li>
+        <li class="nav-item"><span class="nav-icon">⭐</span> Shortlist</li>
+        <li class="nav-item"><span class="nav-icon">👥</span> Contacts</li>
+        <li class="nav-item"><span class="nav-icon">📨</span> Requests</li>
+      </ul>
+    </aside>
+
+    <main class="main-content">
+      <div class="page-header">
+        <h1 class="page-title" style="display: flex; align-items: center; gap: 8px;">
+          <span style="color: var(--text-muted); cursor: pointer;">← Players</span>
+          <span style="color: var(--text-muted);">/</span>
+          Add Player
+        </h1>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+
+        <!-- LEFT COLUMN: Search -->
+        <div>
+          <!-- IFA SEARCH -->
+          <div class="form-section">
+            <div class="form-section-title">
+              <span style="color: var(--neon);">🔍</span> Search IFA Database
+            </div>
+            <div class="search-bar">
+              <span class="search-icon">🇮🇱</span>
+              <input type="text" placeholder="Search player name on football.org.il..." value="ירין ליבוב" />
+              <span style="font-size: 0.7rem; color: var(--neon); animation: neon-pulse 1.5s infinite;">searching...</span>
+            </div>
+
+            <!-- Search results dropdown -->
+            <div class="search-dropdown" style="margin-top: 6px;">
+              <div class="search-dropdown-header">
+                <span>🇮🇱</span> IFA Results — 4 players found
+              </div>
+              <div class="search-result-item selected">
+                <div class="search-result-flag">🇮🇱</div>
+                <div class="search-result-info">
+                  <div class="search-result-name">Yarin Leibowitz</div>
+                  <div class="search-result-name-he">ירין ליבוביץ</div>
+                  <div class="search-result-club">Maccabi Petah Tikva · נערים ג' על</div>
+                </div>
+                <span class="search-result-source">IFA</span>
+              </div>
+              <div class="search-result-item">
+                <div class="search-result-flag">🇮🇱</div>
+                <div class="search-result-info">
+                  <div class="search-result-name">Yarin Lev</div>
+                  <div class="search-result-name-he">ירין לב</div>
+                  <div class="search-result-club">Hapoel Haifa · נערים א'</div>
+                </div>
+                <span class="search-result-source">IFA</span>
+              </div>
+              <div class="search-result-item">
+                <div class="search-result-flag">🇮🇱</div>
+                <div class="search-result-info">
+                  <div class="search-result-name">Yarin Liberzon</div>
+                  <div class="search-result-name-he">ירין ליברזון</div>
+                  <div class="search-result-club">Maccabi Netanya · ילדים ב'</div>
+                </div>
+                <span class="search-result-source">IFA</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- OR PASTE URL -->
+          <div class="form-section" style="border-left-color: var(--text-muted);">
+            <div class="form-section-title">
+              <span style="color: var(--text-muted);">🔗</span> Or Paste IFA URL
+            </div>
+            <div style="display: flex; gap: 8px;">
+              <input class="form-input" placeholder="https://www.football.org.il/players/player/?player_id=..." style="flex: 1;" />
+              <button class="btn btn-secondary" style="white-space: nowrap;">Load</button>
+            </div>
+          </div>
+
+          <!-- TM ENRICHMENT -->
+          <div class="form-section" style="border-left-color: var(--electric); opacity: 0.7;">
+            <div class="form-section-title">
+              <span style="color: var(--electric);">🌐</span> Transfermarkt Enrichment
+              <span class="badge badge-electric" style="margin-left: auto;">Optional</span>
+            </div>
+            <p style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 10px;">Search for additional data (market value, international stats) from Transfermarkt.</p>
+            <button class="btn btn-ghost" style="width: 100%;">🔍 Search on Transfermarkt</button>
+          </div>
+        </div>
+
+        <!-- RIGHT COLUMN: Form -->
+        <div>
+
+          <!-- BASIC INFO -->
+          <div class="form-section">
+            <div class="form-section-title">
+              <span style="color: var(--neon);">👤</span> Basic Info
+            </div>
+            <div class="form-row" style="margin-bottom: 12px;">
+              <div class="form-group">
+                <label class="form-label">Full Name (English)</label>
+                <input class="form-input filled" value="Yarin Leibowitz" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Full Name (Hebrew)</label>
+                <input class="form-input filled" value="ירין ליבוביץ" dir="rtl" />
+              </div>
+            </div>
+            <div class="form-row" style="margin-bottom: 12px;">
+              <div class="form-group">
+                <label class="form-label">Date of Birth</label>
+                <input class="form-input filled" value="01/2011" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Nationality</label>
+                <input class="form-input filled" value="🇮🇱 Israel" />
+              </div>
+            </div>
+            <div class="form-row" style="margin-bottom: 12px;">
+              <div class="form-group">
+                <label class="form-label">Current Club</label>
+                <input class="form-input filled" value="Maccabi Petah Tikva" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Academy</label>
+                <input class="form-input" placeholder="Academy name (optional)" />
+              </div>
+            </div>
+
+            <!-- AGE GROUP -->
+            <div class="form-group">
+              <label class="form-label">Age Group</label>
+              <div class="age-group-select">
+                <span class="age-group-chip">U-13</span>
+                <span class="age-group-chip">U-14</span>
+                <span class="age-group-chip selected">U-15</span>
+                <span class="age-group-chip">U-17</span>
+                <span class="age-group-chip">U-19</span>
+                <span class="age-group-chip">U-21</span>
+              </div>
+            </div>
+
+            <!-- POSITIONS -->
+            <div class="form-group" style="margin-top: 12px;">
+              <label class="form-label">Positions</label>
+              <div class="position-grid">
+                <span class="position-tag">GK</span>
+                <span class="position-tag">CB</span>
+                <span class="position-tag">LB</span>
+                <span class="position-tag">RB</span>
+                <span class="position-tag">DM</span>
+                <span class="position-tag selected">CM</span>
+                <span class="position-tag selected">AM</span>
+                <span class="position-tag">LW</span>
+                <span class="position-tag">RW</span>
+                <span class="position-tag">ST</span>
+              </div>
+            </div>
+
+            <!-- PROFILE IMAGE -->
+            <div class="form-group" style="margin-top: 12px;">
+              <label class="form-label">Profile Image</label>
+              <div style="display: flex; gap: 8px; align-items: center;">
+                <div style="width: 56px; height: 56px; background: var(--bg); border: 1px dashed var(--border); border-radius: var(--r-md); display: flex; align-items: center; justify-content: center; color: var(--text-muted); font-size: 1.2rem;">📷</div>
+                <div style="flex: 1;">
+                  <input class="form-input" placeholder="Image URL" style="margin-bottom: 4px;" />
+                  <button class="btn btn-sm btn-ghost">🔍 Search Image</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- PLAYER CONTACT -->
+          <div class="form-section">
+            <div class="form-section-title">
+              <span style="color: var(--neon);">📱</span> Player Contact
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Phone Number</label>
+                <input class="form-input" placeholder="+972..." />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Email</label>
+                <input class="form-input" placeholder="player@email.com" />
+              </div>
+            </div>
+          </div>
+
+          <!-- PARENT CONTACT -->
+          <div class="form-section spray">
+            <div class="form-section-title">
+              <span style="color: var(--spray);">👨‍👩‍👦</span> Parent / Guardian Contact
+            </div>
+            <div class="form-row" style="margin-bottom: 12px;">
+              <div class="form-group">
+                <label class="form-label">Parent Name</label>
+                <input class="form-input" placeholder="Full name" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Relationship</label>
+                <div style="display: flex; gap: 6px;">
+                  <span class="filter-chip active" style="font-size: 0.72rem; padding: 4px 10px;">Father</span>
+                  <span class="filter-chip" style="font-size: 0.72rem; padding: 4px 10px;">Mother</span>
+                  <span class="filter-chip" style="font-size: 0.72rem; padding: 4px 10px;">Guardian</span>
+                </div>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Phone Number</label>
+                <input class="form-input" placeholder="+972..." />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Email</label>
+                <input class="form-input" placeholder="parent@email.com" />
+              </div>
+            </div>
+          </div>
+
+          <!-- SUBMIT -->
+          <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 8px;">
+            <button class="btn btn-ghost">Cancel</button>
+            <button class="btn btn-primary" style="padding: 10px 24px; font-size: 0.85rem; position: relative; overflow: hidden;">
+              ⚡ Add to Roster
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="graffiti-divider"></div>
+    </main>
+  </div>
+</section>
+
+
+
+<!-- ═══════════════════════════════════════════════ -->
+<!--  SCREEN 4 — PLAYER DETAIL                      -->
+<!-- ═══════════════════════════════════════════════ -->
+<section id="player-detail" class="screen-section" style="display:none;">
+  <div class="screen-label">Player Detail</div>
+  <div class="screen-sublabel">Full profile — IFA stats, contacts, notes, highlights &amp; documents</div>
+
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <div class="sidebar-logo">MY</div>
+        <div class="sidebar-brand-text">MGSR <span>Youth</span></div>
+      </div>
+      <div class="platform-switcher">
+        <div class="platform-dot"></div>
+        <span class="platform-switcher-label">MGSR Youth</span>
+        <span class="platform-switcher-chevron">▾</span>
+      </div>
+      <ul class="nav-items">
+        <li class="nav-item"><span class="nav-icon">📊</span> Dashboard</li>
+        <li class="nav-item"><span class="nav-icon">📋</span> Tasks</li>
+        <li class="nav-item active"><span class="nav-icon">⚽</span> Players</li>
+        <li class="nav-item"><span class="nav-icon">⭐</span> Shortlist</li>
+        <li class="nav-item"><span class="nav-icon">👥</span> Contacts</li>
+        <li class="nav-item"><span class="nav-icon">📨</span> Requests</li>
+      </ul>
+    </aside>
+
+    <main class="main-content">
+      <!-- BREADCRUMB + ACTIONS -->
+      <div class="page-header">
+        <h1 class="page-title" style="font-size: 0.9rem; font-weight: 500;">
+          <span style="color: var(--text-muted); cursor: pointer;">Players</span>
+          <span style="color: var(--text-muted); margin: 0 6px;">/</span>
+          <span>Yarin Leibowitz</span>
+        </h1>
+        <div style="display: flex; gap: 8px;">
+          <button class="btn btn-ghost btn-sm">🗑️ Delete</button>
+          <button class="btn btn-secondary btn-sm">✏️ Edit</button>
+          <button class="btn btn-primary btn-sm">📤 Share</button>
+        </div>
+      </div>
+
+      <!-- HERO -->
+      <div class="player-hero">
+        <div class="player-hero-img">⚽</div>
+        <div class="player-hero-info">
+          <div class="player-hero-name">Yarin Leibowitz</div>
+          <div class="player-hero-name-he" dir="rtl">ירין ליבוביץ</div>
+          <div class="player-hero-badges">
+            <span class="badge-spray-tag">U-15</span>
+            <span class="badge badge-neon">CM</span>
+            <span class="badge badge-neon">AM</span>
+            <span class="badge badge-success">📄 Mandate Active</span>
+          </div>
+          <div class="player-hero-details">
+            <div class="player-hero-detail"><strong>Born:</strong> 01/2011</div>
+            <div class="player-hero-detail"><strong>Age:</strong> 15</div>
+            <div class="player-hero-detail"><strong>Nationality:</strong> 🇮🇱 Israel</div>
+            <div class="player-hero-detail"><strong>Club:</strong> Maccabi Petah Tikva</div>
+            <div class="player-hero-detail"><strong>Foot:</strong> Right</div>
+          </div>
+          <div class="player-hero-links">
+            <button class="link-btn ifa">🇮🇱 IFA Profile</button>
+            <button class="link-btn tm">⚽ Transfermarkt</button>
+            <button class="link-btn">📋 Add Task</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="graffiti-divider" style="margin: 16px 0;"></div>
+
+      <!-- TWO COLUMN LAYOUT -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px;">
+
+        <!-- PLAYER CONTACT -->
+        <div class="contact-card" style="border-left: 3px solid var(--neon);">
+          <div class="contact-card-header">
+            <div class="contact-card-icon player">📱</div>
+            <div class="contact-card-title">Player Contact</div>
+          </div>
+          <div class="contact-row">
+            <div class="contact-row-icon">📞</div>
+            <div>
+              <div class="contact-row-label">Phone</div>
+              <div class="contact-row-value">+972 52-123-4567</div>
+            </div>
+            <button class="contact-wa-btn">💬 WhatsApp</button>
+          </div>
+          <div class="contact-row">
+            <div class="contact-row-icon">✉️</div>
+            <div>
+              <div class="contact-row-label">Email</div>
+              <div class="contact-row-value">yarin.l@gmail.com</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- PARENT CONTACT -->
+        <div class="contact-card" style="border-left: 3px solid var(--spray);">
+          <div class="contact-card-header">
+            <div class="contact-card-icon parent">👨‍👩‍👦</div>
+            <div class="contact-card-title">Parent Contact</div>
+            <span class="badge badge-spray" style="margin-left: auto;">Father</span>
+          </div>
+          <div class="contact-row">
+            <div class="contact-row-icon">👤</div>
+            <div>
+              <div class="contact-row-label">Name</div>
+              <div class="contact-row-value">David Leibowitz</div>
+            </div>
+          </div>
+          <div class="contact-row">
+            <div class="contact-row-icon">📞</div>
+            <div>
+              <div class="contact-row-label">Phone</div>
+              <div class="contact-row-value">+972 54-987-6543</div>
+            </div>
+            <button class="contact-wa-btn">💬 WhatsApp</button>
+          </div>
+          <div class="contact-row">
+            <div class="contact-row-icon">✉️</div>
+            <div>
+              <div class="contact-row-label">Email</div>
+              <div class="contact-row-value">david.leib@gmail.com</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- IFA STATS + NOTES SIDE-BY-SIDE -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px;">
+
+        <!-- IFA STATS -->
+        <div>
+          <div class="section-header">
+            <div class="section-title"><span class="section-title-icon">🇮🇱</span> IFA Season Stats</div>
+            <span class="badge badge-neon" style="font-size: 0.65rem;">Season 2025/26</span>
+          </div>
+          <div class="card">
+            <div class="ifa-stats-grid">
+              <div class="ifa-stat">
+                <div class="ifa-stat-value goals">7</div>
+                <div class="ifa-stat-label">Goals</div>
+              </div>
+              <div class="ifa-stat">
+                <div class="ifa-stat-value assists">4</div>
+                <div class="ifa-stat-label">Assists</div>
+              </div>
+              <div class="ifa-stat">
+                <div class="ifa-stat-value cards">2</div>
+                <div class="ifa-stat-label">Yellow Cards</div>
+              </div>
+              <div class="ifa-stat">
+                <div class="ifa-stat-value matches">18</div>
+                <div class="ifa-stat-label">Matches</div>
+              </div>
+            </div>
+            <div style="margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border);">
+              <div style="font-size: 0.75rem; font-weight: 600; color: var(--text-muted); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">Recent Matches</div>
+              <div style="display: flex; flex-direction: column; gap: 6px;">
+                <div style="display: flex; align-items: center; gap: 10px; padding: 6px 8px; background: var(--bg); border-radius: var(--r-sm); font-size: 0.78rem;">
+                  <span style="color: var(--neon);">⚽</span>
+                  <span style="flex: 1;">vs Hapoel Haifa U-15</span>
+                  <span style="color: var(--neon); font-weight: 600;">1 goal</span>
+                  <span style="color: var(--text-muted); font-size: 0.7rem;">Feb 25</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 10px; padding: 6px 8px; background: var(--bg); border-radius: var(--r-sm); font-size: 0.78rem;">
+                  <span>🟢</span>
+                  <span style="flex: 1;">vs Maccabi Haifa U-15</span>
+                  <span style="color: var(--text-muted);">0 goals</span>
+                  <span style="color: var(--text-muted); font-size: 0.7rem;">Feb 18</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 10px; padding: 6px 8px; background: var(--bg); border-radius: var(--r-sm); font-size: 0.78rem;">
+                  <span style="color: var(--neon);">⚽⚽</span>
+                  <span style="flex: 1;">vs Bnei Yehuda U-15</span>
+                  <span style="color: var(--neon); font-weight: 600;">2 goals</span>
+                  <span style="color: var(--text-muted); font-size: 0.7rem;">Feb 11</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- NOTES -->
+        <div>
+          <div class="section-header">
+            <div class="section-title"><span class="section-title-icon">📝</span> Notes</div>
+            <button class="btn btn-sm btn-secondary">+ Add Note</button>
+          </div>
+          <div class="card">
+            <div class="note-item">
+              <div class="note-dot"></div>
+              <div class="note-content">
+                <div class="note-text">Very technical midfielder. Excellent vision for his age, reads the game well. Left foot is his stronger side despite being listed as right-footed. Great in tight spaces.</div>
+                <div class="note-meta">
+                  <span>Lior Dahan</span>
+                  <span>Feb 26, 2026</span>
+                </div>
+              </div>
+            </div>
+            <div class="note-item">
+              <div class="note-dot" style="background: var(--spray); box-shadow: 0 0 8px var(--spray-glow);"></div>
+              <div class="note-content">
+                <div class="note-text">Watched him in the U-15 league match. Dominated the midfield. Needs to work on physicality — gets pushed off the ball too easily. But his passing range is exceptional for 15.</div>
+                <div class="note-meta">
+                  <span>Lior Dahan</span>
+                  <span>Feb 20, 2026</span>
+                </div>
+              </div>
+            </div>
+            <div class="note-item">
+              <div class="note-dot"></div>
+              <div class="note-content">
+                <div class="note-text">Parents are supportive. Father played semi-pro. Family interested in exploring options abroad in 2-3 years. Keep in touch.</div>
+                <div class="note-meta">
+                  <span>Lior Dahan</span>
+                  <span>Feb 10, 2026</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- HIGHLIGHTS + DOCUMENTS -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px;">
+
+        <!-- HIGHLIGHTS -->
+        <div>
+          <div class="section-header">
+            <div class="section-title"><span class="section-title-icon">🎬</span> Highlights</div>
+            <button class="btn btn-sm btn-ghost">🔍 Search</button>
+          </div>
+          <div class="card">
+            <div style="display: flex; gap: 12px; margin-bottom: 12px;">
+              <div class="highlight-thumb">
+                <div class="highlight-play">▶</div>
+                <div class="highlight-duration">3:42</div>
+              </div>
+              <div style="flex: 1;">
+                <div style="font-size: 0.82rem; font-weight: 600; margin-bottom: 4px;">Yarin Leibowitz - Season Highlights 2025/26</div>
+                <div style="font-size: 0.7rem; color: var(--text-muted);">MaccabiPTFC Youth · 2.4K views · 3 weeks ago</div>
+                <div style="margin-top: 6px;">
+                  <span class="badge badge-neon" style="font-size: 0.6rem;">📌 Pinned</span>
+                </div>
+              </div>
+            </div>
+            <div style="display: flex; gap: 12px;">
+              <div class="highlight-thumb">
+                <div class="highlight-play">▶</div>
+                <div class="highlight-duration">2:15</div>
+              </div>
+              <div style="flex: 1;">
+                <div style="font-size: 0.82rem; font-weight: 600; margin-bottom: 4px;">U-15 League: Maccabi PT vs Hapoel TA</div>
+                <div style="font-size: 0.7rem; color: var(--text-muted);">IFA Official · 890 views · 1 month ago</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- DOCUMENTS -->
+        <div>
+          <div class="section-header">
+            <div class="section-title"><span class="section-title-icon">📁</span> Documents</div>
+            <button class="btn btn-sm btn-secondary">+ Upload</button>
+          </div>
+          <div class="card">
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+              <div class="doc-item">
+                <div class="doc-icon">📄</div>
+                <div class="doc-info">
+                  <div class="doc-name">Representation Mandate</div>
+                  <div class="doc-meta">Signed Feb 1, 2026 · Expires Feb 1, 2027</div>
+                </div>
+                <span class="badge badge-success">Active</span>
+              </div>
+              <div class="doc-item">
+                <div class="doc-icon" style="background: var(--electric-dim); color: var(--electric);">📋</div>
+                <div class="doc-info">
+                  <div class="doc-name">Player Passport Scan</div>
+                  <div class="doc-meta">Uploaded Jan 28, 2026</div>
+                </div>
+                <span class="badge badge-electric">ID Doc</span>
+              </div>
+              <div class="doc-item">
+                <div class="doc-icon" style="background: var(--gold-dim); color: var(--gold);">📊</div>
+                <div class="doc-info">
+                  <div class="doc-name">Scouting Report — Feb 2026</div>
+                  <div class="doc-meta">Uploaded Feb 22, 2026</div>
+                </div>
+                <span class="badge badge-gold">Report</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- MATCHING REQUESTS -->
+      <div style="margin-bottom: 20px;">
+        <div class="section-header">
+          <div class="section-title"><span class="section-title-icon">🎯</span> Matching Club Requests</div>
+          <span class="section-count">2 matches found</span>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+          <div class="card card-accent-left" style="display: flex; align-items: center; gap: 14px;">
+            <div style="width: 44px; height: 44px; background: var(--neon-dim); border-radius: var(--r-md); display: flex; align-items: center; justify-content: center; font-size: 1.1rem;">🏟️</div>
+            <div style="flex: 1;">
+              <div style="font-family: var(--font-display); font-weight: 700; font-size: 0.9rem;">Hapoel Kfar Saba Youth</div>
+              <div style="font-size: 0.75rem; color: var(--text-secondary);">Looking for: U-15 Midfielder · Posted 5 days ago</div>
+            </div>
+            <span class="badge badge-neon">92% match</span>
+          </div>
+          <div class="card card-accent-spray" style="display: flex; align-items: center; gap: 14px;">
+            <div style="width: 44px; height: 44px; background: var(--spray-dim); border-radius: var(--r-md); display: flex; align-items: center; justify-content: center; font-size: 1.1rem;">🏟️</div>
+            <div style="flex: 1;">
+              <div style="font-family: var(--font-display); font-weight: 700; font-size: 0.9rem;">Maccabi Netanya Academy</div>
+              <div style="font-size: 0.75rem; color: var(--text-secondary);">Looking for: Young Creative Midfielder · Posted 2 weeks ago</div>
+            </div>
+            <span class="badge badge-spray">78% match</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- AGENT ASSIGNMENT -->
+      <div style="margin-bottom: 24px;">
+        <div class="section-header">
+          <div class="section-title"><span class="section-title-icon">🧑‍💼</span> Agent Assignment</div>
+        </div>
+        <div class="card" style="display: flex; align-items: center; gap: 14px;">
+          <div style="width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, var(--neon), var(--spray)); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.85rem; color: #000;">LD</div>
+          <div>
+            <div style="font-family: var(--font-display); font-weight: 700; font-size: 0.9rem;">Lior Dahan</div>
+            <div style="font-size: 0.75rem; color: var(--text-secondary);">Primary Agent · Assigned since Feb 1, 2026</div>
+          </div>
+          <button class="btn btn-sm btn-ghost" style="margin-left: auto;">Change</button>
+        </div>
+      </div>
+
+      <div class="graffiti-divider"></div>
+    </main>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════════════ -->
+<!-- NAVIGATION SCRIPT                      -->
+<!-- ═══════════════════════════════════════ -->
+<script>
+function switchScreen(id, linkEl) {
+  // Hide all screens
+  document.querySelectorAll('.screen-section').forEach(s => s.style.display = 'none');
+  // Show selected
+  document.getElementById(id).style.display = 'block';
+  // Update nav active state
+  document.querySelectorAll('.screen-nav a').forEach(a => a.classList.remove('active'));
+  if (linkEl) linkEl.classList.add('active');
+  // Scroll to top
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// Handle hash navigation
+function handleHash() {
+  const hash = window.location.hash.replace('#', '');
+  if (hash) {
+    const section = document.getElementById(hash);
+    if (section) {
+      const link = document.querySelector(`.screen-nav a[href="#${hash}"]`);
+      switchScreen(hash, link);
+    }
+  }
+}
+window.addEventListener('hashchange', handleHash);
+window.addEventListener('load', handleHash);
+
+// Interactive: filter chips
+document.querySelectorAll('.filter-chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    if (chip.closest('.filter-chips')) {
+      chip.closest('.filter-chips').querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+    }
+    chip.classList.toggle('active');
+  });
+});
+
+// Interactive: position tags
+document.querySelectorAll('.position-tag').forEach(tag => {
+  tag.addEventListener('click', () => tag.classList.toggle('selected'));
+});
+
+// Interactive: age group chips
+document.querySelectorAll('.age-group-chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    chip.closest('.age-group-select').querySelectorAll('.age-group-chip').forEach(c => c.classList.remove('selected'));
+    chip.classList.add('selected');
+  });
+});
+
+// Interactive: nav items
+document.querySelectorAll('.nav-item').forEach(item => {
+  item.addEventListener('click', () => {
+    item.closest('.nav-items').querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+    item.classList.add('active');
+  });
+});
+
+// Interactive: player cards
+document.querySelectorAll('.player-card').forEach(card => {
+  card.addEventListener('click', (e) => {
+    if (e.target.closest('.btn')) return;
+    switchScreen('player-detail', document.querySelector('.screen-nav a[href="#player-detail"]'));
+    window.location.hash = 'player-detail';
+  });
+});
+</script>
+
+</body>
+</html>

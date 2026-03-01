@@ -46,6 +46,7 @@ interface AddContactSheetProps {
   onSaved: () => void;
   contactsCollection: string;
   isWomen?: boolean;
+  isYouth?: boolean;
   /** When set, sheet opens in edit mode */
   initialContact?: Contact | null;
 }
@@ -56,9 +57,11 @@ export default function AddContactSheet({
   onSaved,
   contactsCollection,
   isWomen = false,
+  isYouth = false,
   initialContact = null,
 }: AddContactSheetProps) {
   const { t, isRtl } = useLanguage();
+  const focusBorder = isYouth ? 'focus:border-[var(--youth-cyan)]' : isWomen ? 'focus:border-[var(--women-rose)]' : 'focus:border-mgsr-teal';
   const [name, setName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [contactType, setContactType] = useState<'CLUB' | 'AGENCY'>('CLUB');
@@ -170,7 +173,7 @@ export default function AddContactSheet({
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder={t('contacts_add_name_placeholder')}
-              className={`w-full px-4 py-3 rounded-xl bg-mgsr-dark border border-mgsr-border text-mgsr-text placeholder-mgsr-muted focus:outline-none ${isWomen ? 'focus:border-[var(--women-rose)]' : 'focus:border-mgsr-teal'}`}
+              className={`w-full px-4 py-3 rounded-xl bg-mgsr-dark border border-mgsr-border text-mgsr-text placeholder-mgsr-muted focus:outline-none ${focusBorder}`}
             />
           </div>
 
@@ -181,7 +184,7 @@ export default function AddContactSheet({
               value={phoneNumber}
               onChange={(e) => setPhoneNumber(e.target.value)}
               placeholder={t('contacts_add_phone_placeholder')}
-              className={`w-full px-4 py-3 rounded-xl bg-mgsr-dark border border-mgsr-border text-mgsr-text placeholder-mgsr-muted focus:outline-none ${isWomen ? 'focus:border-[var(--women-rose)]' : 'focus:border-mgsr-teal'}`}
+              className={`w-full px-4 py-3 rounded-xl bg-mgsr-dark border border-mgsr-border text-mgsr-text placeholder-mgsr-muted focus:outline-none ${focusBorder}`}
               dir="ltr"
             />
           </div>
@@ -189,16 +192,18 @@ export default function AddContactSheet({
           <div>
             <label className="block text-sm text-mgsr-muted mb-1">{t('contacts_add_type')}</label>
             <div className="flex gap-2">
-              {CONTACT_TYPES.map(({ value, labelKey }) => (
+              {(isYouth ? CONTACT_TYPES.filter(ct => ct.value === 'CLUB') : CONTACT_TYPES).map(({ value, labelKey }) => (
                 <button
                   key={value}
                   type="button"
                   onClick={() => setContactType(value as 'CLUB' | 'AGENCY')}
                   className={`flex-1 px-4 py-2.5 rounded-xl text-sm font-medium border transition ${
                     contactType === value
-                      ? isWomen
-                        ? 'bg-[var(--women-rose)]/20 border-[var(--women-rose)] text-[var(--women-rose)]'
-                        : 'bg-mgsr-teal/20 border-mgsr-teal text-mgsr-teal'
+                      ? isYouth
+                        ? 'bg-[var(--youth-cyan)]/20 border-[var(--youth-cyan)] text-[var(--youth-cyan)]'
+                        : isWomen
+                          ? 'bg-[var(--women-rose)]/20 border-[var(--women-rose)] text-[var(--women-rose)]'
+                          : 'bg-mgsr-teal/20 border-mgsr-teal text-mgsr-teal'
                       : 'bg-mgsr-dark/50 border-mgsr-border text-mgsr-muted'
                   }`}
                 >
@@ -217,7 +222,7 @@ export default function AddContactSheet({
                   value={clubName}
                   onChange={(e) => setClubName(e.target.value)}
                   placeholder={t('contacts_add_club_name_placeholder')}
-                  className={`w-full px-4 py-3 rounded-xl bg-mgsr-dark border border-mgsr-border text-mgsr-text placeholder-mgsr-muted focus:outline-none ${isWomen ? 'focus:border-[var(--women-rose)]' : 'focus:border-mgsr-teal'}`}
+                  className={`w-full px-4 py-3 rounded-xl bg-mgsr-dark border border-mgsr-border text-mgsr-text placeholder-mgsr-muted focus:outline-none ${focusBorder}`}
                 />
               </div>
               <div>
@@ -227,7 +232,7 @@ export default function AddContactSheet({
                   value={clubCountry}
                   onChange={(e) => setClubCountry(e.target.value)}
                   placeholder={t('contacts_add_club_country_placeholder')}
-                  className={`w-full px-4 py-3 rounded-xl bg-mgsr-dark border border-mgsr-border text-mgsr-text placeholder-mgsr-muted focus:outline-none ${isWomen ? 'focus:border-[var(--women-rose)]' : 'focus:border-mgsr-teal'}`}
+                  className={`w-full px-4 py-3 rounded-xl bg-mgsr-dark border border-mgsr-border text-mgsr-text placeholder-mgsr-muted focus:outline-none ${focusBorder}`}
                 />
               </div>
             </>
@@ -242,7 +247,7 @@ export default function AddContactSheet({
                   value={agencyName}
                   onChange={(e) => setAgencyName(e.target.value)}
                   placeholder={t('contacts_add_agency_name_placeholder')}
-                  className={`w-full px-4 py-3 rounded-xl bg-mgsr-dark border border-mgsr-border text-mgsr-text placeholder-mgsr-muted focus:outline-none ${isWomen ? 'focus:border-[var(--women-rose)]' : 'focus:border-mgsr-teal'}`}
+                  className={`w-full px-4 py-3 rounded-xl bg-mgsr-dark border border-mgsr-border text-mgsr-text placeholder-mgsr-muted focus:outline-none ${focusBorder}`}
                 />
               </div>
               <div>
@@ -252,7 +257,7 @@ export default function AddContactSheet({
                   value={agencyCountry}
                   onChange={(e) => setAgencyCountry(e.target.value)}
                   placeholder={t('contacts_add_agency_country_placeholder')}
-                  className={`w-full px-4 py-3 rounded-xl bg-mgsr-dark border border-mgsr-border text-mgsr-text placeholder-mgsr-muted focus:outline-none ${isWomen ? 'focus:border-[var(--women-rose)]' : 'focus:border-mgsr-teal'}`}
+                  className={`w-full px-4 py-3 rounded-xl bg-mgsr-dark border border-mgsr-border text-mgsr-text placeholder-mgsr-muted focus:outline-none ${focusBorder}`}
                 />
               </div>
             </>
@@ -263,7 +268,7 @@ export default function AddContactSheet({
             <select
               value={role}
               onChange={(e) => setRole(e.target.value)}
-              className={`w-full px-4 py-3 rounded-xl bg-mgsr-dark border border-mgsr-border text-mgsr-text focus:outline-none ${isWomen ? 'focus:border-[var(--women-rose)]' : 'focus:border-mgsr-teal'}`}
+              className={`w-full px-4 py-3 rounded-xl bg-mgsr-dark border border-mgsr-border text-mgsr-text focus:outline-none ${focusBorder}`}
             >
               {ROLES.map(({ value: v, labelKey }) => (
                 <option key={v} value={v}>
@@ -280,9 +285,11 @@ export default function AddContactSheet({
             onClick={handleSave}
             disabled={saving}
             className={`w-full py-3 rounded-xl font-semibold disabled:opacity-50 disabled:cursor-not-allowed ${
-              isWomen
-                ? 'bg-[var(--women-gradient)] text-white shadow-[var(--women-glow)] hover:opacity-90'
-                : 'bg-mgsr-teal text-mgsr-dark hover:bg-mgsr-teal/90'
+              isYouth
+                ? 'bg-gradient-to-r from-[var(--youth-cyan)] to-[var(--youth-violet)] text-white shadow-[0_0_20px_rgba(0,212,255,0.2)] hover:opacity-90'
+                : isWomen
+                  ? 'bg-[var(--women-gradient)] text-white shadow-[var(--women-glow)] hover:opacity-90'
+                  : 'bg-mgsr-teal text-mgsr-dark hover:bg-mgsr-teal/90'
             }`}
           >
             {saving ? '…' : (isEdit ? t('contacts_edit_save') : t('contacts_add_save'))}

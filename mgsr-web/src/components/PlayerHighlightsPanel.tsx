@@ -244,9 +244,9 @@ interface PlayerHighlightsPanelProps {
   clubCountry?: string;
   isRtl?: boolean;
   /** Firestore collection for saving pinned highlights (default: Players) */
-  playerCollection?: 'Players' | 'PlayersWomen';
+  playerCollection?: 'Players' | 'PlayersWomen' | 'PlayersYouth';
   /** Accent variant for styling (women uses rose instead of teal) */
-  accentVariant?: 'teal' | 'women';
+  accentVariant?: 'teal' | 'women' | 'youth';
 }
 
 type Mode = 'pinned' | 'select' | 'replace';

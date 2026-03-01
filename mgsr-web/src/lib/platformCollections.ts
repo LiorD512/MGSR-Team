@@ -1,6 +1,6 @@
 /**
  * Platform-specific Firestore collection names.
- * MGSR Team (men) and MGSR Women use separate collections — no shared data.
+ * MGSR Team (men), MGSR Women, and MGSR Youth use separate collections — no shared data.
  */
 
 import type { Platform } from '@/contexts/PlatformContext';
@@ -8,22 +8,44 @@ import type { Platform } from '@/contexts/PlatformContext';
 export const CLUB_REQUESTS_COLLECTIONS: Record<Platform, string> = {
   men: 'ClubRequests',
   women: 'ClubRequestsWomen',
+  youth: 'ClubRequestsYouth',
 };
 
 export const SHORTLISTS_COLLECTIONS: Record<Platform, string> = {
   men: 'Shortlists',
   women: 'ShortlistsWomen',
+  youth: 'ShortlistsYouth',
 };
 
 export const CONTACTS_COLLECTIONS: Record<Platform, string> = {
   men: 'Contacts',
   women: 'ContactsWomen',
+  youth: 'ContactsYouth',
 };
 
 export const PLAYERS_COLLECTIONS: Record<Platform, string> = {
   men: 'Players',
   women: 'PlayersWomen',
+  youth: 'PlayersYouth',
 };
 
-/** Shared shortlist document ID — same for both platforms, but different collections. */
+export const AGENT_TASKS_COLLECTIONS: Record<Platform, string> = {
+  men: 'AgentTasks',
+  women: 'AgentTasksWomen',
+  youth: 'AgentTasksYouth',
+};
+
+export const FEED_EVENTS_COLLECTIONS: Record<Platform, string> = {
+  men: 'FeedEvents',
+  women: 'FeedEventsWomen',
+  youth: 'FeedEventsYouth',
+};
+
+export const PORTFOLIO_COLLECTIONS: Record<Platform, string> = {
+  men: 'Portfolio',
+  women: 'PortfolioWomen',
+  youth: 'PortfolioYouth',
+};
+
+/** Shared shortlist document ID — same for all platforms, but different collections. */
 export const SHARED_SHORTLIST_DOC_ID = 'team';
