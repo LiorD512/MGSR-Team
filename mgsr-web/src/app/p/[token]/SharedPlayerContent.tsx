@@ -350,7 +350,7 @@ export default function SharedPlayerContent({
           </div>
         )}
 
-        {player.tmProfile && (
+        {!isWomen && player.tmProfile && (
           <div className={`p-5 rounded-xl bg-mgsr-card border mb-8 ${isWomen ? 'border-[var(--women-rose)]/20' : 'border-mgsr-border'}`}>
             <h3 className="text-sm font-semibold text-mgsr-muted uppercase tracking-wider mb-3">
               {labels.transfermarkt}

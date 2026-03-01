@@ -4,9 +4,12 @@ import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { usePlatform } from '@/contexts/PlatformContext';
 import { getScreenCache, setScreenCache } from '@/lib/screenCache';
-import { collection, onSnapshot } from 'firebase/firestore';
+import { collection, onSnapshot, doc, deleteDoc } from 'firebase/firestore';
+import AddContactSheet, { type Contact as AddContactSheetContact } from './AddContactSheet';
 import { db } from '@/lib/firebase';
+import { CONTACTS_COLLECTIONS } from '@/lib/platformCollections';
 import AppLayout from '@/components/AppLayout';
 import { getCountryDisplayName } from '@/lib/countryTranslations';
 import { toWhatsAppUrl } from '@/lib/whatsapp';
@@ -67,31 +70,46 @@ function buildContactsGroupedByCountry(
 export default function ContactsPage() {
   const { user, loading } = useAuth();
   const { t, isRtl } = useLanguage();
+  const { platform } = usePlatform();
   const router = useRouter();
-  const cached = getScreenCache<ContactsCache>('contacts');
+  const contactsCollection = CONTACTS_COLLECTIONS[platform];
+  const cacheKey = `contacts_${platform}`;
+  const isWomen = platform === 'women';
+  const cached = getScreenCache<ContactsCache>(cacheKey);
   const [contacts, setContacts] = useState<Contact[]>(cached?.contacts ?? []);
   const [loadingList, setLoadingList] = useState(cached === undefined);
   const [filter, setFilter] = useState<'all' | 'club' | 'agency'>(cached?.filter ?? 'all');
   const [search, setSearch] = useState(cached?.search ?? '');
+  const [showAddSheet, setShowAddSheet] = useState(false);
+  const [editContact, setEditContact] = useState<Contact | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<Contact | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) router.replace('/login');
   }, [user, loading, router]);
 
   useEffect(() => {
-    const q = collection(db, 'Contacts');
-    const unsub = onSnapshot(q, (snap) => {
-      const list = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Contact));
-      list.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-      setContacts(list);
-      setLoadingList(false);
-    });
+    const q = collection(db, contactsCollection);
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        const list = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Contact));
+        list.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+        setContacts(list);
+        setLoadingList(false);
+      },
+      (err) => {
+        console.error('Contacts snapshot error:', err);
+        setLoadingList(false);
+      }
+    );
     return () => unsub();
-  }, []);
+  }, [contactsCollection]);
 
   useEffect(() => {
-    setScreenCache<ContactsCache>('contacts', { contacts, filter, search });
-  }, [contacts, filter, search]);
+    setScreenCache<ContactsCache>(cacheKey, { contacts, filter, search });
+  }, [contacts, filter, search, cacheKey]);
 
   const filtered = useMemo(() => {
     let list = contacts;
@@ -147,10 +165,24 @@ export default function ContactsPage() {
   const clubsCount = contacts.filter((c) => c.contactType === 'CLUB').length;
   const agenciesCount = contacts.filter((c) => c.contactType === 'AGENCY').length;
 
+  const handleDelete = async () => {
+    const c = deleteConfirm;
+    if (!c?.id) return;
+    setDeleting(true);
+    try {
+      await deleteDoc(doc(db, contactsCollection, c.id));
+      setDeleteConfirm(null);
+    } catch (err) {
+      console.error('Delete contact failed:', err);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   if (loading || !user) {
     return (
       <div className="min-h-screen bg-mgsr-dark flex items-center justify-center">
-        <div className="animate-pulse text-mgsr-teal font-display">{t('loading')}</div>
+        <div className={`animate-pulse font-display ${isWomen ? 'text-[var(--women-rose)]' : 'text-mgsr-teal'}`}>{t('loading')}</div>
       </div>
     );
   }
@@ -159,13 +191,26 @@ export default function ContactsPage() {
     <AppLayout>
       <div dir={isRtl ? 'rtl' : 'ltr'} className="max-w-6xl mx-auto">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-display font-bold text-mgsr-text tracking-tight">
-            {t('contacts_title')}
-          </h1>
-          <p className="text-mgsr-muted mt-1 text-sm">
-            {contacts.length} {t('contacts')} • {clubsCount} {t('contacts_clubs')} • {agenciesCount} {t('contacts_agencies')}
-          </p>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+          <div>
+            <h1 className="text-3xl font-display font-bold text-mgsr-text tracking-tight">
+              {isWomen ? t('contacts_title_women') : t('contacts_title')}
+            </h1>
+            <p className="text-mgsr-muted mt-1 text-sm">
+              {contacts.length} {t('contacts')} • {clubsCount} {t('contacts_clubs')} • {agenciesCount} {t('contacts_agencies')}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowAddSheet(true)}
+            className={`shrink-0 px-5 py-2.5 rounded-xl font-semibold transition ${
+              isWomen
+                ? 'bg-[var(--women-gradient)] text-white shadow-[var(--women-glow)] hover:opacity-90'
+                : 'bg-mgsr-teal text-mgsr-dark hover:bg-mgsr-teal/90'
+            }`}
+          >
+            {t('contacts_add')}
+          </button>
         </div>
 
         {/* Filters + Search */}
@@ -177,8 +222,10 @@ export default function ContactsPage() {
                 onClick={() => setFilter(f)}
                 className={`px-4 py-2 rounded-xl text-sm font-medium transition ${
                   filter === f
-                    ? 'bg-mgsr-teal text-mgsr-dark'
-                    : 'bg-mgsr-card border border-mgsr-border text-mgsr-muted hover:text-mgsr-text hover:border-mgsr-teal/30'
+                    ? isWomen
+                      ? 'bg-[var(--women-rose)] text-mgsr-dark'
+                      : 'bg-mgsr-teal text-mgsr-dark'
+                    : `bg-mgsr-card border border-mgsr-border text-mgsr-muted hover:text-mgsr-text ${isWomen ? 'hover:border-[var(--women-rose)]/30' : 'hover:border-mgsr-teal/30'}`
                 }`}
               >
                 {f === 'all' ? t('contacts_all') : f === 'club' ? t('contacts_clubs') : t('contacts_agencies')}
@@ -190,18 +237,32 @@ export default function ContactsPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder={t('search_placeholder')}
-            className="flex-1 max-w-md px-4 py-2.5 rounded-xl bg-mgsr-card border border-mgsr-border text-mgsr-text placeholder-mgsr-muted focus:outline-none focus:border-mgsr-teal/60"
+            className={`flex-1 max-w-md px-4 py-2.5 rounded-xl bg-mgsr-card border border-mgsr-border text-mgsr-text placeholder-mgsr-muted focus:outline-none ${isWomen ? 'focus:border-[var(--women-rose)]/50' : 'focus:border-mgsr-teal/60'}`}
           />
         </div>
 
         {loadingList ? (
           <div className="flex items-center justify-center py-20">
-            <div className="animate-pulse text-mgsr-muted">{t('contacts_loading')}</div>
+            <div className={`flex items-center gap-3 ${isWomen ? 'text-[var(--women-rose)]/70' : 'text-mgsr-muted'}`}>
+              <div className={`w-3 h-3 rounded-full animate-pulse ${isWomen ? 'bg-[var(--women-rose)]/50' : 'bg-mgsr-teal/50'}`} />
+              {isWomen ? t('contacts_loading_women') : t('contacts_loading')}
+            </div>
           </div>
         ) : filtered.length === 0 ? (
-          <div className="relative overflow-hidden p-16 bg-mgsr-card/50 border border-mgsr-border rounded-2xl text-center">
-            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(77,182,172,0.06)_0%,transparent_70%)]" />
-            <p className="text-mgsr-muted text-lg relative">{t('contacts_empty')}</p>
+          <div className={`relative overflow-hidden p-16 bg-mgsr-card/50 border border-mgsr-border rounded-2xl text-center ${isWomen ? 'shadow-[0_0_30px_rgba(232,160,191,0.06)]' : ''}`}>
+            <div className={`absolute inset-0 ${isWomen ? 'bg-[radial-gradient(ellipse_at_center,rgba(232,160,191,0.08)_0%,transparent_70%)]' : 'bg-[radial-gradient(ellipse_at_center,rgba(77,182,172,0.06)_0%,transparent_70%)]'}`} />
+            <p className="text-mgsr-muted text-lg relative">{isWomen ? t('contacts_empty_women') : t('contacts_empty')}</p>
+            <button
+              type="button"
+              onClick={() => setShowAddSheet(true)}
+              className={`relative mt-6 px-6 py-3 rounded-xl font-semibold transition ${
+                isWomen
+                  ? 'bg-[var(--women-rose)]/20 text-[var(--women-rose)] hover:bg-[var(--women-rose)]/30'
+                  : 'bg-mgsr-teal/20 text-mgsr-teal hover:bg-mgsr-teal/30'
+              }`}
+            >
+              {t('contacts_add')}
+            </button>
           </div>
         ) : (
           <div className="space-y-6">
@@ -223,7 +284,7 @@ export default function ContactsPage() {
                   {group.contacts.map((c, i) => (
                     <div
                       key={c.id}
-                      className="group flex items-start gap-4 p-4 bg-mgsr-card border border-mgsr-border rounded-xl hover:border-mgsr-teal/30 transition-all duration-300 animate-fade-in"
+                      className={`group flex items-start gap-4 p-4 bg-mgsr-card border border-mgsr-border rounded-xl transition-all duration-300 animate-fade-in ${isWomen ? 'hover:border-[var(--women-rose)]/30' : 'hover:border-mgsr-teal/30'}`}
                       style={{ animationDelay: `${i * 30}ms` }}
                     >
                       <div className="shrink-0">
@@ -234,8 +295,8 @@ export default function ContactsPage() {
                             className="w-14 h-14 rounded-full object-cover bg-mgsr-dark ring-2 ring-mgsr-border"
                           />
                         ) : (
-                          <div className="w-14 h-14 rounded-full bg-mgsr-teal/20 flex items-center justify-center">
-                            <span className="text-xl font-display font-bold text-mgsr-teal">
+                          <div className={`w-14 h-14 rounded-full flex items-center justify-center ${isWomen ? 'bg-[var(--women-rose)]/20' : 'bg-mgsr-teal/20'}`}>
+                            <span className={`text-xl font-display font-bold ${isWomen ? 'text-[var(--women-rose)]' : 'text-mgsr-teal'}`}>
                               {(c.name || c.clubName || '?')[0]}
                             </span>
                           </div>
@@ -248,7 +309,9 @@ export default function ContactsPage() {
                             className={`text-xs px-2 py-0.5 rounded-md shrink-0 ${
                               c.contactType === 'AGENCY'
                                 ? 'bg-blue-500/20 text-blue-400'
-                                : 'bg-mgsr-teal/20 text-mgsr-teal'
+                                : isWomen
+                                  ? 'bg-[var(--women-rose)]/20 text-[var(--women-rose)]'
+                                  : 'bg-mgsr-teal/20 text-mgsr-teal'
                             }`}
                           >
                             {getContactRoleOrType(c)}
@@ -262,12 +325,32 @@ export default function ContactsPage() {
                             href={toWhatsAppUrl(c.phoneNumber) ?? `tel:${c.phoneNumber}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-block mt-2 text-sm text-mgsr-teal hover:underline"
+                            className={`inline-block mt-2 text-sm hover:underline ${isWomen ? 'text-[var(--women-rose)]' : 'text-mgsr-teal'}`}
                             dir="ltr"
                           >
                             {c.phoneNumber}
                           </a>
                         )}
+                        <div className="flex gap-2 mt-3">
+                          <button
+                            type="button"
+                            onClick={() => setEditContact(c)}
+                            className={`text-xs font-medium px-2.5 py-1 rounded-lg transition ${
+                              isWomen
+                                ? 'text-[var(--women-rose)] hover:bg-[var(--women-rose)]/20'
+                                : 'text-mgsr-teal hover:bg-mgsr-teal/20'
+                            }`}
+                          >
+                            {t('contacts_edit')}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setDeleteConfirm(c)}
+                            className="text-xs font-medium px-2.5 py-1 rounded-lg text-mgsr-red hover:bg-mgsr-red/20 transition"
+                          >
+                            {t('contacts_delete')}
+                          </button>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -277,6 +360,59 @@ export default function ContactsPage() {
           </div>
         )}
       </div>
+
+      <AddContactSheet
+        open={showAddSheet || !!editContact}
+        onClose={() => {
+          setShowAddSheet(false);
+          setEditContact(null);
+        }}
+        onSaved={() => {
+          setShowAddSheet(false);
+          setEditContact(null);
+        }}
+        contactsCollection={contactsCollection}
+        isWomen={isWomen}
+        initialContact={editContact as AddContactSheetContact | null}
+      />
+
+      {deleteConfirm && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
+          onClick={() => !deleting && setDeleteConfirm(null)}
+        >
+          <div
+            className="bg-mgsr-card border border-mgsr-border rounded-2xl p-6 max-w-sm w-full mx-4 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <p className="text-mgsr-text font-medium mb-4">
+              {t('contacts_delete_confirm').replace('{name}', deleteConfirm.name || '—')}
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                type="button"
+                onClick={() => setDeleteConfirm(null)}
+                disabled={deleting}
+                className="px-4 py-2 rounded-xl border border-mgsr-border text-mgsr-muted hover:bg-mgsr-dark/50"
+              >
+                {t('tasks_cancel')}
+              </button>
+              <button
+                type="button"
+                onClick={handleDelete}
+                disabled={deleting}
+                className={`px-4 py-2 rounded-xl font-semibold disabled:opacity-50 ${
+                  isWomen
+                    ? 'bg-[var(--women-rose)]/20 text-[var(--women-rose)] hover:bg-[var(--women-rose)]/30'
+                    : 'bg-mgsr-red/20 text-mgsr-red hover:bg-mgsr-red/30'
+                }`}
+              >
+                {deleting ? '…' : t('contacts_delete')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </AppLayout>
   );
 }

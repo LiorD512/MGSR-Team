@@ -90,6 +90,13 @@ export const menMoreItems = [
   { href: '/requests', labelKey: 'nav_requests' },
 ];
 
+export const womenMoreItems = [
+  { href: '/shortlist', labelKey: 'nav_shortlist' },
+  { href: '/contacts', labelKey: 'nav_contacts' },
+  { href: '/requests', labelKey: 'nav_requests' },
+  { href: '/portfolio', labelKey: 'nav_portfolio' },
+];
+
 function isTabActive(tab: TabItem, pathname: string): boolean {
   if (tab.href === pathname) return true;
   if (tab.matchPrefixes) {
@@ -99,8 +106,7 @@ function isTabActive(tab: TabItem, pathname: string): boolean {
 }
 
 function isMoreActive(pathname: string, platform: 'men' | 'women'): boolean {
-  if (platform === 'women') return false;
-  const tabHrefs = menTabs.map((t) => t.href);
+  const tabHrefs = (platform === 'women' ? womenTabs : menTabs).map((t) => t.href);
   return !tabHrefs.some((href) => pathname === href || pathname.startsWith(href + '/'));
 }
 
@@ -111,7 +117,7 @@ export default function MobileBottomTabBar() {
   const [moreOpen, setMoreOpen] = useState(false);
 
   const tabs = platform === 'women' ? womenTabs : menTabs;
-  const showMore = platform === 'men';
+  const showMore = true;
   const moreActive = isMoreActive(pathname, platform);
 
   const accentColor = platform === 'women' ? 'var(--women-rose)' : 'var(--mgsr-accent)';

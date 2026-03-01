@@ -9,8 +9,6 @@ import { getCountryDisplayName } from '@/lib/countryTranslations';
 import { useAuth } from '@/contexts/AuthContext';
 import { getCurrentAccountForShortlist } from '@/lib/accounts';
 
-const CLUB_REQUESTS_COLLECTION = 'ClubRequests';
-
 const POSITIONS = ['GK', 'CB', 'LB', 'RB', 'DM', 'CM', 'LM', 'RM', 'LW', 'RW', 'CF', 'ST', 'SS'];
 const SALARY_OPTIONS = ['>5', '6-10', '11-15', '16-20', '20-25', '26-30', '30+'];
 const FEE_OPTIONS = ['Free/Free loan', '<200', '300-600', '700-900', '1m+'];
@@ -24,9 +22,11 @@ interface AddRequestSheetProps {
   open: boolean;
   onClose: () => void;
   onSaved: () => void;
+  clubRequestsCollection?: string;
+  isWomen?: boolean;
 }
 
-export default function AddRequestSheet({ open, onClose, onSaved }: AddRequestSheetProps) {
+export default function AddRequestSheet({ open, onClose, onSaved, clubRequestsCollection = 'ClubRequests', isWomen = false }: AddRequestSheetProps) {
   const { t, isRtl, lang } = useLanguage();
   const { user } = useAuth();
   const isHebrew = lang === 'he';
@@ -46,6 +46,8 @@ export default function AddRequestSheet({ open, onClose, onSaved }: AddRequestSh
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [manualClubName, setManualClubName] = useState('');
+  const [manualClubCountry, setManualClubCountry] = useState('');
 
   const stepLabels = [t('requests_step_club'), t('requests_step_position'), t('requests_step_requirements'), t('requests_step_notes')];
 
@@ -67,26 +69,29 @@ export default function AddRequestSheet({ open, onClose, onSaved }: AddRequestSh
   }, []);
 
   useEffect(() => {
+    if (isWomen) return;
     const timer = setTimeout(() => searchClubsDebounced(clubQuery), 300);
     return () => clearTimeout(timer);
-  }, [clubQuery, searchClubsDebounced]);
+  }, [clubQuery, searchClubsDebounced, isWomen]);
 
-  const canProceedStep0 = !!selectedClub;
+  const canProceedStep0 = isWomen ? manualClubName.trim().length >= 2 : !!selectedClub;
   const canProceedStep1 = !!selectedPosition;
   const canProceedStep2 = !!selectedSalary && !!selectedFee;
 
   const handleSave = async () => {
-    if (!selectedClub || !selectedPosition || !selectedSalary || !selectedFee) return;
+    const clubName = isWomen ? manualClubName.trim() : selectedClub?.clubName || '';
+    const clubCountry = isWomen ? manualClubCountry.trim() : selectedClub?.clubCountry || '';
+    if (!clubName || !selectedPosition || !selectedSalary || !selectedFee) return;
     setSaving(true);
     setError(null);
     try {
       const createdAt = Date.now();
-      await addDoc(collection(db, CLUB_REQUESTS_COLLECTION), {
-        clubTmProfile: selectedClub.clubTmProfile || '',
-        clubName: selectedClub.clubName || '',
-        clubLogo: selectedClub.clubLogo || '',
-        clubCountry: selectedClub.clubCountry || '',
-        clubCountryFlag: selectedClub.clubCountryFlag || '',
+      await addDoc(collection(db, clubRequestsCollection), {
+        clubTmProfile: isWomen ? '' : (selectedClub?.clubTmProfile || ''),
+        clubName,
+        clubLogo: isWomen ? '' : (selectedClub?.clubLogo || ''),
+        clubCountry,
+        clubCountryFlag: isWomen ? '' : (selectedClub?.clubCountryFlag || ''),
         contactId: '',
         contactName: '',
         contactPhoneNumber: '',
@@ -105,9 +110,9 @@ export default function AddRequestSheet({ open, onClose, onSaved }: AddRequestSh
       const agentName = user ? (await getCurrentAccountForShortlist(user)).name ?? null : null;
       const feedEvent: Record<string, unknown> = {
         type: 'REQUEST_ADDED',
-        playerName: selectedClub.clubName ?? null,
-        playerImage: selectedClub.clubLogo ?? null,
-        playerTmProfile: selectedClub.clubTmProfile ?? null,
+        playerName: clubName ?? null,
+        playerImage: isWomen ? null : (selectedClub?.clubLogo ?? null),
+        playerTmProfile: isWomen ? null : (selectedClub?.clubTmProfile ?? null),
         newValue: selectedPosition,
         timestamp: createdAt,
         agentName,
@@ -127,6 +132,8 @@ export default function AddRequestSheet({ open, onClose, onSaved }: AddRequestSh
     setClubQuery('');
     setClubResults([]);
     setSelectedClub(null);
+    setManualClubName('');
+    setManualClubCountry('');
     setSelectedPosition(null);
     setAgeDoesntMatter(true);
     setMinAge('');
@@ -175,7 +182,7 @@ export default function AddRequestSheet({ open, onClose, onSaved }: AddRequestSh
           {stepLabels.map((label, i) => (
             <div
               key={i}
-              className={`h-1.5 rounded-full flex-1 ${i <= step ? 'bg-mgsr-teal' : 'bg-mgsr-border'}`}
+              className={`h-1.5 rounded-full flex-1 ${i <= step ? (isWomen ? 'bg-[var(--women-rose)]' : 'bg-mgsr-teal') : 'bg-mgsr-border'}`}
               title={label}
             />
           ))}
@@ -188,63 +195,91 @@ export default function AddRequestSheet({ open, onClose, onSaved }: AddRequestSh
 
           {step === 0 && (
             <>
-              <p className="text-sm text-mgsr-muted">{t('requests_search_for_club')}</p>
-              <input
-                type="text"
-                value={clubQuery}
-                onChange={(e) => {
-                  setClubQuery(e.target.value);
-                  if (selectedClub) setSelectedClub(null);
-                }}
-                placeholder={t('requests_search_club')}
-                className="w-full px-4 py-3 rounded-xl bg-mgsr-dark border border-mgsr-border text-mgsr-text placeholder-mgsr-muted focus:outline-none focus:border-mgsr-teal"
-              />
-              {clubSearching && <p className="text-sm text-mgsr-muted">Searching…</p>}
-              {clubResults.length > 0 && !selectedClub && (
-                <div className="max-h-48 overflow-y-auto space-y-1 rounded-xl border border-mgsr-border p-2">
-                  {clubResults.map((club) => (
-                    <button
-                      key={club.clubTmProfile || club.clubName}
-                      type="button"
-                      onClick={() => {
-                        setSelectedClub(club);
-                        setClubQuery('');
-                        setClubResults([]);
-                      }}
-                      className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-mgsr-dark/50 text-start"
-                    >
-                      {club.clubLogo && (
-                        <img src={club.clubLogo} alt="" className="w-10 h-10 rounded-lg object-contain shrink-0" />
+              {isWomen ? (
+                <>
+                  <p className="text-sm text-mgsr-muted">{t('requests_manual_club_hint')}</p>
+                  <div>
+                    <label className="block text-xs text-mgsr-muted mb-1.5">{t('requests_club_name')}</label>
+                    <input
+                      type="text"
+                      value={manualClubName}
+                      onChange={(e) => setManualClubName(e.target.value)}
+                      placeholder={t('requests_search_club')}
+                      className={`w-full px-4 py-3 rounded-xl bg-mgsr-dark border border-mgsr-border text-mgsr-text placeholder-mgsr-muted focus:outline-none focus:border-[var(--women-rose)]`}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-mgsr-muted mb-1.5">{t('requests_club_country')}</label>
+                    <input
+                      type="text"
+                      value={manualClubCountry}
+                      onChange={(e) => setManualClubCountry(e.target.value)}
+                      placeholder={isHebrew ? 'ישראל, גרמניה...' : 'Israel, Germany...'}
+                      className="w-full px-4 py-3 rounded-xl bg-mgsr-dark border border-mgsr-border text-mgsr-text placeholder-mgsr-muted focus:outline-none focus:border-[var(--women-rose)]"
+                    />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <p className="text-sm text-mgsr-muted">{t('requests_search_for_club')}</p>
+                  <input
+                    type="text"
+                    value={clubQuery}
+                    onChange={(e) => {
+                      setClubQuery(e.target.value);
+                      if (selectedClub) setSelectedClub(null);
+                    }}
+                    placeholder={t('requests_search_club')}
+                    className={`w-full px-4 py-3 rounded-xl bg-mgsr-dark border border-mgsr-border text-mgsr-text placeholder-mgsr-muted focus:outline-none focus:border-mgsr-teal`}
+                  />
+                  {clubSearching && <p className="text-sm text-mgsr-muted">Searching…</p>}
+                  {clubResults.length > 0 && !selectedClub && (
+                    <div className="max-h-48 overflow-y-auto space-y-1 rounded-xl border border-mgsr-border p-2">
+                      {clubResults.map((club) => (
+                        <button
+                          key={club.clubTmProfile || club.clubName}
+                          type="button"
+                          onClick={() => {
+                            setSelectedClub(club);
+                            setClubQuery('');
+                            setClubResults([]);
+                          }}
+                          className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-mgsr-dark/50 text-start"
+                        >
+                          {club.clubLogo && (
+                            <img src={club.clubLogo} alt="" className="w-10 h-10 rounded-lg object-contain shrink-0" />
+                          )}
+                          <div className="min-w-0">
+                            <p className="font-medium text-mgsr-text truncate">{club.clubName}</p>
+                            {club.clubCountry && (
+                              <p className="text-sm text-mgsr-muted">{getCountryDisplayName(club.clubCountry, isHebrew)}</p>
+                            )}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {selectedClub && (
+                    <div className="flex items-center gap-3 p-3 rounded-xl border border-mgsr-teal bg-mgsr-teal/10">
+                      {selectedClub.clubLogo && (
+                        <img src={selectedClub.clubLogo} alt="" className="w-12 h-12 rounded-lg object-contain shrink-0" />
                       )}
-                      <div className="min-w-0">
-                        <p className="font-medium text-mgsr-text truncate">{club.clubName}</p>
-                        {club.clubCountry && (
-                          <p className="text-sm text-mgsr-muted">{getCountryDisplayName(club.clubCountry, isHebrew)}</p>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-mgsr-text">{selectedClub.clubName}</p>
+                        {selectedClub.clubCountry && (
+                          <p className="text-sm text-mgsr-muted">{getCountryDisplayName(selectedClub.clubCountry, isHebrew)}</p>
                         )}
                       </div>
-                    </button>
-                  ))}
-                </div>
-              )}
-              {selectedClub && (
-                <div className="flex items-center gap-3 p-3 rounded-xl border border-mgsr-teal bg-mgsr-teal/10">
-                  {selectedClub.clubLogo && (
-                    <img src={selectedClub.clubLogo} alt="" className="w-12 h-12 rounded-lg object-contain shrink-0" />
+                      <button
+                        type="button"
+                        onClick={() => setSelectedClub(null)}
+                        className="text-sm hover:underline text-mgsr-teal"
+                      >
+                        {t('requests_change_club')}
+                      </button>
+                    </div>
                   )}
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-mgsr-text">{selectedClub.clubName}</p>
-                    {selectedClub.clubCountry && (
-                      <p className="text-sm text-mgsr-muted">{getCountryDisplayName(selectedClub.clubCountry, isHebrew)}</p>
-                    )}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedClub(null)}
-                    className="text-sm text-mgsr-teal hover:underline"
-                  >
-                    {t('requests_change_club')}
-                  </button>
-                </div>
+                </>
               )}
             </>
           )}
@@ -260,7 +295,9 @@ export default function AddRequestSheet({ open, onClose, onSaved }: AddRequestSh
                     onClick={() => setSelectedPosition(pos)}
                     className={`px-4 py-3 rounded-xl text-sm font-medium border transition ${
                       selectedPosition === pos
-                        ? 'bg-mgsr-teal/20 border-mgsr-teal text-mgsr-teal'
+                        ? isWomen
+                          ? 'bg-[var(--women-rose)]/20 border-[var(--women-rose)] text-[var(--women-rose)]'
+                          : 'bg-mgsr-teal/20 border-mgsr-teal text-mgsr-teal'
                         : 'bg-mgsr-dark/50 border-mgsr-border text-mgsr-muted hover:text-mgsr-text hover:border-mgsr-teal/30'
                     }`}
                   >
@@ -318,7 +355,7 @@ export default function AddRequestSheet({ open, onClose, onSaved }: AddRequestSh
                       onClick={() => setSelectedFoot(value)}
                       className={`flex-1 px-3 py-2 rounded-lg text-sm border ${
                         selectedFoot === value
-                          ? 'bg-mgsr-teal/20 border-mgsr-teal text-mgsr-teal'
+                          ? isWomen ? 'bg-[var(--women-rose)]/20 border-[var(--women-rose)] text-[var(--women-rose)]' : 'bg-mgsr-teal/20 border-mgsr-teal text-mgsr-teal'
                           : 'bg-mgsr-dark/50 border-mgsr-border text-mgsr-muted'
                       }`}
                     >
@@ -338,7 +375,7 @@ export default function AddRequestSheet({ open, onClose, onSaved }: AddRequestSh
                       onClick={() => setSelectedSalary(opt)}
                       className={`px-3 py-2 rounded-lg text-sm border ${
                         selectedSalary === opt
-                          ? 'bg-mgsr-teal/20 border-mgsr-teal text-mgsr-teal'
+                          ? isWomen ? 'bg-[var(--women-rose)]/20 border-[var(--women-rose)] text-[var(--women-rose)]' : 'bg-mgsr-teal/20 border-mgsr-teal text-mgsr-teal'
                           : 'bg-mgsr-dark/50 border-mgsr-border text-mgsr-muted'
                       }`}
                     >
@@ -358,7 +395,7 @@ export default function AddRequestSheet({ open, onClose, onSaved }: AddRequestSh
                       onClick={() => setSelectedFee(opt)}
                       className={`px-3 py-2 rounded-lg text-sm border ${
                         selectedFee === opt
-                          ? 'bg-mgsr-teal/20 border-mgsr-teal text-mgsr-teal'
+                          ? isWomen ? 'bg-[var(--women-rose)]/20 border-[var(--women-rose)] text-[var(--women-rose)]' : 'bg-mgsr-teal/20 border-mgsr-teal text-mgsr-teal'
                           : 'bg-mgsr-dark/50 border-mgsr-border text-mgsr-muted'
                       }`}
                     >
@@ -379,7 +416,7 @@ export default function AddRequestSheet({ open, onClose, onSaved }: AddRequestSh
                 placeholder={t('requests_notes_placeholder')}
                 rows={4}
                 dir={isHebrew ? 'rtl' : 'ltr'}
-                className="w-full px-4 py-3 rounded-xl bg-mgsr-dark border border-mgsr-border text-mgsr-text placeholder-mgsr-muted focus:outline-none focus:border-mgsr-teal resize-none"
+                className={`w-full px-4 py-3 rounded-xl bg-mgsr-dark border border-mgsr-border text-mgsr-text placeholder-mgsr-muted focus:outline-none resize-none ${isWomen ? 'focus:border-[var(--women-rose)]' : 'focus:border-mgsr-teal'}`}
               />
             </>
           )}
@@ -395,7 +432,7 @@ export default function AddRequestSheet({ open, onClose, onSaved }: AddRequestSh
                 (step === 1 && !canProceedStep1) ||
                 (step === 2 && !canProceedStep2)
               }
-              className="w-full py-3 rounded-xl bg-mgsr-teal text-mgsr-dark font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+              className={`w-full py-3 rounded-xl font-semibold disabled:opacity-50 disabled:cursor-not-allowed ${isWomen ? 'bg-[var(--women-gradient)] text-white shadow-[var(--women-glow)]' : 'bg-mgsr-teal text-mgsr-dark'}`}
             >
               {t('requests_next')}
             </button>
@@ -404,7 +441,7 @@ export default function AddRequestSheet({ open, onClose, onSaved }: AddRequestSh
               type="button"
               onClick={handleSave}
               disabled={saving}
-              className="w-full py-3 rounded-xl bg-mgsr-teal text-mgsr-dark font-semibold disabled:opacity-50"
+              className={`w-full py-3 rounded-xl font-semibold disabled:opacity-50 ${isWomen ? 'bg-[var(--women-gradient)] text-white shadow-[var(--women-glow)]' : 'bg-mgsr-teal text-mgsr-dark'}`}
             >
               {saving ? '…' : t('requests_save')}
             </button>

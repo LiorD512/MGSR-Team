@@ -3,8 +3,9 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { usePlatform } from '@/contexts/PlatformContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { menMoreItems } from './MobileBottomTabBar';
+import { menMoreItems, womenMoreItems } from './MobileBottomTabBar';
 import { useEffect } from 'react';
 
 /* ── Icon map for secondary nav items ── */
@@ -68,6 +69,8 @@ export function MoreSheet({ onClose }: { onClose: () => void }) {
   const pathname = usePathname();
   const { t } = useLanguage();
   const { user, signOut } = useAuth();
+  const { platform } = usePlatform();
+  const moreItems = platform === 'women' ? womenMoreItems : menMoreItems;
 
   // Prevent body scroll while sheet is open
   useEffect(() => {
@@ -108,9 +111,10 @@ export function MoreSheet({ onClose }: { onClose: () => void }) {
 
         {/* Grid of nav items */}
         <div className="px-4 pb-4 grid grid-cols-3 gap-2">
-          {menMoreItems.map((item) => {
+          {moreItems.map((item) => {
             const active = pathname === item.href || pathname.startsWith(item.href + '/');
             const Icon = icons[item.href] || DefaultIcon;
+            const isWomen = platform === 'women';
             return (
               <Link
                 key={item.href}
@@ -118,7 +122,9 @@ export function MoreSheet({ onClose }: { onClose: () => void }) {
                 onClick={onClose}
                 className={`flex flex-col items-center justify-center gap-1.5 p-3 rounded-xl min-h-[72px] transition ${
                   active
-                    ? 'bg-[var(--mgsr-accent-dim)] text-[var(--mgsr-accent)]'
+                    ? isWomen
+                      ? 'bg-[var(--women-rose)]/15 text-[var(--women-rose)]'
+                      : 'bg-[var(--mgsr-accent-dim)] text-[var(--mgsr-accent)]'
                     : 'bg-mgsr-dark/40 text-mgsr-muted hover:text-mgsr-text hover:bg-mgsr-dark/60'
                 }`}
               >

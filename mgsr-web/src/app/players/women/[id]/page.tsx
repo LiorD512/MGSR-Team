@@ -34,6 +34,7 @@ import FmInsideWomenPanel from '@/components/FmInsideWomenPanel';
 import AppLayout from '@/components/AppLayout';
 import MatchingRequestsSection from '@/components/MatchingRequestsSection';
 import { matchingRequestsForPlayer, type RosterPlayer, type ClubRequest } from '@/lib/requestMatcher';
+import { CLUB_REQUESTS_COLLECTIONS } from '@/lib/platformCollections';
 import { toWhatsAppUrl } from '@/lib/whatsapp';
 import Link from 'next/link';
 
@@ -190,7 +191,7 @@ export default function WomanPlayerPage() {
   }, [id]);
 
   useEffect(() => {
-    const unsub = onSnapshot(collection(db, 'ClubRequests'), (snap) => {
+    const unsub = onSnapshot(collection(db, CLUB_REQUESTS_COLLECTIONS.women), (snap) => {
       const list = snap.docs.map((d) => ({ id: d.id, ...d.data() } as ClubRequest & { status?: string; clubName?: string; clubLogo?: string; clubCountry?: string; contactPhoneNumber?: string }));
       setClubRequests(list);
     });

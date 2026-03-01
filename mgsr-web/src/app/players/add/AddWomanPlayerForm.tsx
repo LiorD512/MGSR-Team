@@ -1,12 +1,16 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import AppLayout from '@/components/AppLayout';
 import Link from 'next/link';
 import { addWomanPlayer, checkWomanPlayerExists } from '@/lib/playersWomen';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { getCurrentAccountForShortlist } from '@/lib/accounts';
+import { SHORTLISTS_COLLECTIONS, SHARED_SHORTLIST_DOC_ID } from '@/lib/platformCollections';
 
 const POSITIONS = ['GK', 'CB', 'LB', 'RB', 'DM', 'CM', 'AM', 'LW', 'RW', 'CF', 'SS'];
 const DEBOUNCE_MS = 350;
@@ -37,6 +41,10 @@ export default function AddWomanPlayerForm() {
   const { user, loading } = useAuth();
   const { t, isRtl } = useLanguage();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const forShortlist = searchParams.get('shortlist') === '1';
+  const fromShortlist = searchParams.get('from') === 'shortlist';
+  const preloadUrl = searchParams.get('url') ?? '';
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<WomanPlayerSearchResult[]>([]);
   const [loadingSearch, setLoadingSearch] = useState(false);
@@ -100,6 +108,34 @@ export default function AddWomanPlayerForm() {
   useEffect(() => {
     runSearch(debouncedSearch);
   }, [debouncedSearch, runSearch]);
+
+  useEffect(() => {
+    if (!preloadUrl || !preloadUrl.includes('soccerdonna')) return;
+    setUrlInput(preloadUrl);
+    setLoadingProfile(true);
+    setError('');
+    fetch('/api/women-players/fetch-profile', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: preloadUrl }),
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error('Failed to load profile');
+        return res.json();
+      })
+      .then((data: Record<string, string>) => {
+        setFullName(data.fullName ?? '');
+        setCurrentClub(data.currentClub ?? '');
+        setAge(data.age ?? '');
+        setNationality(data.nationality ?? '');
+        setMarketValue(data.marketValue ?? '');
+        setProfileImage(data.profileImage ?? '');
+        setSoccerDonnaUrl(data.soccerDonnaUrl ?? preloadUrl);
+        if (data.position) setPositions(mapPosition(data.position));
+      })
+      .catch(() => setError('Failed to load profile'))
+      .finally(() => setLoadingProfile(false));
+  }, [preloadUrl]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -269,16 +305,6 @@ export default function AddWomanPlayerForm() {
     setError('');
     setSaving(true);
     try {
-      if (soccerDonnaUrl.trim()) {
-        const exists = await checkWomanPlayerExists(soccerDonnaUrl.trim());
-        if (exists) {
-          setError(t('add_woman_player_duplicate_error'));
-          setSaving(false);
-          return;
-        }
-      }
-
-      const { db } = await import('@/lib/firebase');
       const { collection, getDocs, addDoc } = await import('firebase/firestore');
       const accountsSnap = await getDocs(collection(db, 'Accounts'));
       let agentName = user.displayName || user.email || '';
@@ -288,6 +314,67 @@ export default function AddWomanPlayerForm() {
           agentName = data.name || agentName;
         }
       });
+
+      if (forShortlist) {
+        const profileUrl = soccerDonnaUrl.trim() || urlInput.trim();
+        if (!profileUrl || (!profileUrl.includes('soccerdonna') && !profileUrl.includes('fminside'))) {
+          setError(t('shortlist_women_profile_url_required'));
+          setSaving(false);
+          return;
+        }
+        if (profileUrl.includes('soccerdonna')) {
+          const inRoster = await checkWomanPlayerExists(profileUrl);
+          if (inRoster) {
+            setError(t('shortlist_player_in_roster_women'));
+            setSaving(false);
+            return;
+          }
+        }
+        const account = await getCurrentAccountForShortlist(user);
+        const docRef = doc(db, SHORTLISTS_COLLECTIONS.women, SHARED_SHORTLIST_DOC_ID);
+        const snap = await getDoc(docRef);
+        const current = (snap.data()?.entries as Record<string, unknown>[]) || [];
+        const exists = current.some((e) => (e.tmProfileUrl as string) === profileUrl);
+        if (exists) {
+          setError(t('shortlist_already_added'));
+          setSaving(false);
+          return;
+        }
+        const entry = {
+          tmProfileUrl: profileUrl,
+          addedAt: Date.now(),
+          playerImage: profileImage.trim() || null,
+          playerName: fullName.trim(),
+          playerPosition: positions[0] ?? null,
+          playerAge: age.trim() || null,
+          playerNationality: nationality.trim() || null,
+          clubJoinedName: currentClub.trim() || null,
+          marketValue: marketValue.trim() || null,
+          addedByAgentId: account.id,
+          addedByAgentName: account.name ?? null,
+          addedByAgentHebrewName: account.hebrewName ?? null,
+        };
+        await setDoc(docRef, { entries: [...current, entry] }, { merge: true });
+        await addDoc(collection(db, 'FeedEvents'), {
+          type: 'SHORTLIST_ADDED',
+          playerName: fullName.trim(),
+          playerImage: profileImage.trim() || null,
+          playerTmProfile: profileUrl,
+          timestamp: Date.now(),
+          agentName: account.name ?? null,
+        });
+        router.push('/shortlist');
+        return;
+      }
+
+      if (soccerDonnaUrl.trim()) {
+        const exists = await checkWomanPlayerExists(soccerDonnaUrl.trim());
+        if (exists) {
+          setError(t('add_woman_player_duplicate_error'));
+          setSaving(false);
+          return;
+        }
+      }
 
       const pPhone = playerPhone.trim();
       const aPhone = agentPhone.trim();
@@ -309,6 +396,24 @@ export default function AddWomanPlayerForm() {
         agentInChargeName: agentName,
       });
 
+      if (fromShortlist && preloadUrl) {
+        const docRef = doc(db, SHORTLISTS_COLLECTIONS.women, SHARED_SHORTLIST_DOC_ID);
+        const snap = await getDoc(docRef);
+        const entries = (snap.data()?.entries as Record<string, unknown>[]) || [];
+        const filtered = entries
+          .filter((e) => (e.tmProfileUrl as string) !== preloadUrl)
+          .map((e) => Object.fromEntries(Object.entries(e).map(([k, v]) => [k, v === undefined ? null : v])));
+        await setDoc(docRef, { entries: filtered }, { merge: true });
+        await addDoc(collection(db, 'FeedEvents'), {
+          type: 'SHORTLIST_REMOVED',
+          playerName: fullName.trim(),
+          playerImage: profileImage.trim() || null,
+          playerTmProfile: preloadUrl,
+          timestamp: Date.now(),
+          agentName,
+        });
+      }
+
       await addDoc(collection(db, 'FeedEventsWomen'), {
         type: 'PLAYER_ADDED',
         playerName: fullName.trim(),
@@ -318,7 +423,7 @@ export default function AddWomanPlayerForm() {
         agentName,
       });
 
-      router.push('/players');
+      router.push(fromShortlist ? '/shortlist' : '/players');
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to save';
       if (msg.toLowerCase().includes('permission') || msg.includes('PERMISSION_DENIED')) {
@@ -367,8 +472,8 @@ export default function AddWomanPlayerForm() {
           </div>
 
           <Link
-            href="/players"
-            className="inline-flex items-center gap-2 text-mgsr-muted hover:text-[var(--mgsr-accent)] transition-colors mb-10 group"
+            href={forShortlist ? '/shortlist' : fromShortlist ? '/shortlist' : '/players'}
+            className="inline-flex items-center gap-2 text-mgsr-muted hover:text-[var(--women-rose)] transition-colors mb-10 group"
           >
             <span
               className={`transition-transform duration-200 group-hover:-translate-x-1 ${isRtl ? 'rotate-180' : ''}`}
@@ -376,15 +481,15 @@ export default function AddWomanPlayerForm() {
               ←
             </span>
             <span className="text-sm font-medium">
-              {t('add_player_back')} {t('players_women')}
+              {t('add_player_back')} {forShortlist || fromShortlist ? t('shortlist_title_women') : t('players_women')}
             </span>
           </Link>
 
           <h1 className="font-display font-extrabold text-3xl sm:text-4xl text-mgsr-text tracking-tight mb-1">
-            {t('add_woman_player_title')}
+            {forShortlist ? t('shortlist_add_to_shortlist_women') : t('add_woman_player_title')}
           </h1>
           <p className="text-mgsr-muted text-sm mb-6">
-            {t('add_woman_player_subtitle')}
+            {forShortlist ? t('shortlist_add_hint_women') : t('add_woman_player_subtitle')}
           </p>
 
           {/* Search with autocomplete */}
@@ -645,6 +750,7 @@ export default function AddWomanPlayerForm() {
               </div>
             </div>
 
+            {!forShortlist && (
             <div className="space-y-4">
               <p className="text-xs font-medium text-mgsr-muted uppercase tracking-wider">
                 {t('add_player_contact_section')}
@@ -672,7 +778,9 @@ export default function AddWomanPlayerForm() {
                 </div>
               </div>
             </div>
+            )}
 
+            {!forShortlist && (
             <div>
               <label className="block text-xs font-medium text-mgsr-muted uppercase tracking-wider mb-2">
                 {t('add_woman_player_notes')}
@@ -685,13 +793,18 @@ export default function AddWomanPlayerForm() {
                 className="w-full px-4 py-3 rounded-2xl bg-mgsr-card border border-mgsr-border text-mgsr-text placeholder-mgsr-muted focus:outline-none focus:border-[var(--women-rose)]/50 focus:ring-2 focus:ring-[var(--women-rose)]/20 transition resize-none"
               />
             </div>
+            )}
 
             <button
               type="submit"
               disabled={saving || !fullName.trim()}
               className="w-full py-3.5 rounded-2xl font-semibold hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed transition-colors bg-[var(--women-gradient)] text-white shadow-[0_0_30px_rgba(232,160,191,0.2)]"
             >
-              {saving ? t('add_woman_player_saving') : t('add_woman_player_to_roster')}
+              {saving
+                ? t('add_woman_player_saving')
+                : forShortlist
+                  ? t('shortlist_add')
+                  : t('add_woman_player_to_roster')}
             </button>
           </form>
         </div>
