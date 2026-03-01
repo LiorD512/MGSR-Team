@@ -75,3 +75,89 @@ body {
 [dir='rtl'] {
   text-align: right;
 }
+
+/* ── Mobile / Tablet enhancements (< 1024px) ── */
+@media (max-width: 1023px) {
+  /* Ensure content doesn't hide behind bottom tab bar */
+  .mobile-content-pad {
+    padding-bottom: calc(60px + env(safe-area-inset-bottom, 0px));
+  }
+
+  /* Smooth scrolling for mobile */
+  html {
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Better touch targets globally */
+  button, a, [role="button"] {
+    min-height: 44px;
+  }
+
+  /* Cards on mobile get full-width treatment */
+  .mobile-card {
+    border-radius: 0.75rem;
+    padding: 1rem;
+  }
+}
+
+/* Bottom sheet slide-up animation */
+@keyframes mobile-slide-up {
+  from {
+    transform: translateY(100%);
+    opacity: 0.5;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.animate-mobile-slide-up {
+  animation: mobile-slide-up 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Horizontal scroll container for mobile chips / stat strips */
+.mobile-scroll-strip {
+  display: flex;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  gap: 0.5rem;
+  padding-bottom: 0.25rem;
+}
+
+.mobile-scroll-strip::-webkit-scrollbar {
+  display: none;
+}
+
+/* Section tabs for detail pages on mobile */
+.mobile-section-tabs {
+  display: flex;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  border-bottom: 1px solid var(--mgsr-card-border);
+  gap: 0;
+}
+
+.mobile-section-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.mobile-section-tab {
+  flex-shrink: 0;
+  padding: 0.75rem 1rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--mgsr-muted);
+  border-bottom: 2px solid transparent;
+  transition: color 0.2s, border-color 0.2s;
+  white-space: nowrap;
+}
+
+.mobile-section-tab.active {
+  color: var(--mgsr-accent);
+  border-bottom-color: var(--mgsr-accent);
+}

@@ -842,12 +842,12 @@ export default function WomanPlayerPage() {
         <div className="flex items-center justify-between mb-8">
           <Link
             href="/players"
-            className="inline-flex items-center gap-2 text-mgsr-muted hover:text-[var(--women-rose)] transition-colors group"
+            className="hidden lg:inline-flex items-center gap-2 text-mgsr-muted hover:text-[var(--women-rose)] transition-colors group"
           >
             <span className={`transition-transform group-hover:-translate-x-1 ${isRtl ? 'rotate-180' : ''}`}>←</span>
             <span className="text-sm font-medium">{t('players_women')}</span>
           </Link>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <button
               type="button"
               onClick={openEdit}
@@ -866,11 +866,11 @@ export default function WomanPlayerPage() {
         </div>
 
         {/* Hero card */}
-        <div className="flex gap-6 p-6 bg-mgsr-card border border-mgsr-border rounded-2xl shadow-[0_0_30px_rgba(232,160,191,0.08)] mb-8">
+        <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 p-4 sm:p-6 bg-mgsr-card border border-mgsr-border rounded-2xl shadow-[0_0_30px_rgba(232,160,191,0.08)] mb-8">
           <img
             src={player.profileImage || 'https://placehold.co/120x120/1A2736/E8A0BF?text=?'}
             alt=""
-            className="w-24 h-24 rounded-xl object-cover bg-mgsr-dark shrink-0"
+            className="w-20 h-20 sm:w-24 sm:h-24 rounded-xl object-cover bg-mgsr-dark shrink-0 self-center sm:self-start"
           />
           <div className="flex-1 min-w-0">
             <h1 className="font-display font-bold text-2xl text-mgsr-text">{player.fullName}</h1>

@@ -429,7 +429,7 @@ export default function RequestsPage() {
         </div>
 
         {/* Stats strip (like app) */}
-        <div className="flex gap-4 mb-6 p-4 rounded-2xl bg-mgsr-card border border-mgsr-border">
+        <div className="flex flex-wrap gap-3 lg:gap-4 mb-6 p-4 rounded-2xl bg-mgsr-card border border-mgsr-border">
           <div className="flex items-center gap-2">
             <div className="w-1.5 h-1.5 rounded-full bg-mgsr-teal" />
             <span className="text-mgsr-text font-semibold">{totalCount}</span>

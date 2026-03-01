@@ -11,6 +11,8 @@ import { db } from '@/lib/firebase';
 import { getCurrentAccountForShortlist } from '@/lib/accounts';
 import { subscribePlayersWomen, type WomanPlayer } from '@/lib/playersWomen';
 import AppLayout from '@/components/AppLayout';
+import FilterBottomSheet from '@/components/mobile/FilterBottomSheet';
+import { useIsMobileOrTablet } from '@/hooks/useMediaQuery';
 import Link from 'next/link';
 
 interface Player {
@@ -90,6 +92,7 @@ export default function PlayersPage() {
   const { t, isRtl } = useLanguage();
   const { platform } = usePlatform();
   const router = useRouter();
+  const isMobileOrTablet = useIsMobileOrTablet();
   const cached = getScreenCache<PlayersCache>('players');
   const [players, setPlayers] = useState<Player[]>(cached?.players ?? []);
   const [womenPlayers, setWomenPlayers] = useState<WomanPlayer[]>([]);
@@ -106,6 +109,7 @@ export default function PlayersPage() {
   const [withNotes, setWithNotes] = useState(cached?.withNotes ?? false);
   const [footFilter, setFootFilter] = useState<'left' | 'right' | null>(cached?.footFilter ?? null);
   const [currentAccountName, setCurrentAccountName] = useState<string | null>(null);
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) router.replace('/login');
@@ -370,23 +374,41 @@ export default function PlayersPage() {
           </Link>
         </div>
 
-        {/* Search */}
-        <div className="mb-4">
+        {/* Search + filter trigger */}
+        <div className="mb-4 flex items-center gap-2">
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder={t('search_placeholder')}
-            className={`w-full max-w-md text-mgsr-text placeholder-mgsr-muted focus:outline-none transition ${
+            className={`flex-1 lg:max-w-md text-mgsr-text placeholder-mgsr-muted focus:outline-none transition ${
               isWomen
                 ? 'px-5 py-3.5 rounded-2xl bg-mgsr-card border border-mgsr-border focus:border-[var(--women-rose)]/50 focus:ring-2 focus:ring-[var(--women-rose)]/20'
                 : 'px-4 py-3 rounded-xl bg-mgsr-card border border-mgsr-border focus:border-mgsr-teal/60 focus:ring-1 focus:ring-mgsr-teal/30'
             }`}
           />
+          {/* Mobile: filter button */}
+          {platform === 'men' && isMobileOrTablet && (
+            <button
+              onClick={() => setFilterSheetOpen(true)}
+              className={`relative shrink-0 flex items-center gap-1.5 px-4 py-3 rounded-xl border transition text-sm font-medium ${
+                hasActiveFilters
+                  ? 'bg-[var(--mgsr-accent-dim)] border-[var(--mgsr-accent)]/40 text-[var(--mgsr-accent)]'
+                  : 'bg-mgsr-card border-mgsr-border text-mgsr-muted hover:text-mgsr-text'
+              }`}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+              </svg>
+              {hasActiveFilters && (
+                <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-[var(--mgsr-accent)]" />
+              )}
+            </button>
+          )}
         </div>
 
-        {/* Filters */}
-        <div className="mb-6 space-y-4">
+        {/* Position filter pills — always visible */}
+        <div className="mb-4">
           <div className="flex flex-wrap items-center gap-2">
             {POSITION_GROUPS.map((pos) => (
               <button
@@ -407,10 +429,21 @@ export default function PlayersPage() {
                 {t(isWomen && pos.toLowerCase() === 'gk' ? 'players_filter_position_gk_women' : `players_filter_position_${pos.toLowerCase()}`)}
               </button>
             ))}
+            {hasActiveFilters && (
+              <button
+                onClick={clearFilters}
+                className={`shrink-0 px-3 py-1.5 text-sm font-medium text-mgsr-muted hover:text-mgsr-red border border-mgsr-border hover:border-mgsr-red/50 transition-all ${isWomen ? 'rounded-xl' : 'rounded-lg'}`}
+              >
+                {t('players_filter_clear')}
+              </button>
+            )}
           </div>
-          <div className="flex flex-wrap gap-2 overflow-x-auto pb-1 -mx-1">
-            {platform === 'men' && (
-            <>
+        </div>
+
+        {/* Advanced filters — desktop only (inline) */}
+        {platform === 'men' && !isMobileOrTablet && (
+        <div className="mb-6">
+          <div className="flex flex-wrap gap-2 pb-1">
             <button
               onClick={() => setFreeAgents((v) => !v)}
               className={`shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 ${
@@ -502,18 +535,49 @@ export default function PlayersPage() {
             >
               {t('players_filter_foot_right')}
             </button>
-            </>
-            )}
-            {hasActiveFilters && (
-              <button
-                onClick={clearFilters}
-                className={`shrink-0 px-3 py-1.5 text-sm font-medium text-mgsr-muted hover:text-mgsr-red border border-mgsr-border hover:border-mgsr-red/50 transition-all ${isWomen ? 'rounded-xl' : 'rounded-lg'}`}
-              >
-                {t('players_filter_clear')}
-              </button>
-            )}
           </div>
         </div>
+        )}
+
+        {/* Mobile filter bottom sheet */}
+        {platform === 'men' && (
+        <FilterBottomSheet open={filterSheetOpen} onClose={() => setFilterSheetOpen(false)} title={t('filters') || 'Filters'}>
+          <div className="flex flex-wrap gap-2">
+            {[
+              { key: 'freeAgents', active: freeAgents, toggle: () => setFreeAgents(v => !v), label: t('players_filter_free_agents') },
+              { key: 'contractExpiring', active: contractExpiring, toggle: () => setContractExpiring(v => !v), label: t('players_filter_contract_expiring') },
+              { key: 'withMandate', active: withMandate, toggle: () => setWithMandate(v => !v), label: t('players_filter_with_mandate') },
+              { key: 'myPlayersOnly', active: myPlayersOnly, toggle: () => setMyPlayersOnly(v => !v), label: t('players_filter_my_players_only'), disabled: !currentAccountName },
+              { key: 'loanPlayersOnly', active: loanPlayersOnly, toggle: () => setLoanPlayersOnly(v => !v), label: t('players_filter_loan_players_only') },
+              { key: 'withoutRegisteredAgent', active: withoutRegisteredAgent, toggle: () => setWithoutRegisteredAgent(v => !v), label: t('players_filter_without_registered_agent') },
+              { key: 'withNotes', active: withNotes, toggle: () => setWithNotes(v => !v), label: t('players_filter_with_notes') },
+              { key: 'footLeft', active: footFilter === 'left', toggle: () => setFootFilter(v => v === 'left' ? null : 'left'), label: t('players_filter_foot_left') },
+              { key: 'footRight', active: footFilter === 'right', toggle: () => setFootFilter(v => v === 'right' ? null : 'right'), label: t('players_filter_foot_right') },
+            ].map(f => (
+              <button
+                key={f.key}
+                onClick={f.toggle}
+                disabled={f.disabled}
+                className={`px-4 py-2.5 rounded-xl text-sm font-medium transition min-h-[44px] ${
+                  f.active
+                    ? 'bg-mgsr-teal text-mgsr-dark shadow-sm'
+                    : 'bg-mgsr-dark/60 border border-mgsr-border text-mgsr-muted'
+                } ${f.disabled ? 'opacity-50' : ''}`}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+          {hasActiveFilters && (
+            <button
+              onClick={() => { clearFilters(); setFilterSheetOpen(false); }}
+              className="w-full mt-2 py-2.5 rounded-xl border border-mgsr-border text-mgsr-muted hover:text-mgsr-red text-sm font-medium transition min-h-[44px]"
+            >
+              {t('players_filter_clear')}
+            </button>
+          )}
+        </FilterBottomSheet>
+        )}
 
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-20 gap-3">

@@ -220,8 +220,8 @@ export default function PortfolioPage() {
           <div className={`absolute inset-0 ${isWomen ? 'bg-gradient-to-br from-[var(--women-rose)]/15 via-mgsr-card to-mgsr-dark' : 'bg-gradient-to-br from-mgsr-teal/20 via-mgsr-card to-mgsr-dark'}`} />
           <div className={`absolute inset-0 ${isWomen ? 'bg-[radial-gradient(ellipse_at_70%_0%,rgba(232,160,191,0.25)_0%,transparent_60%)]' : 'bg-[radial-gradient(ellipse_at_70%_0%,rgba(77,182,172,0.25)_0%,transparent_60%)]'}`} />
           <div className={`absolute inset-0 ${isWomen ? 'bg-[radial-gradient(ellipse_at_20%_100%,rgba(232,160,191,0.15)_0%,transparent_50%)]' : 'bg-[radial-gradient(ellipse_at_20%_100%,rgba(77,182,172,0.15)_0%,transparent_50%)]'}`} />
-          <div className="relative px-8 py-12 sm:py-16">
-            <h1 className="text-3xl sm:text-4xl font-display font-bold text-mgsr-text tracking-tight">
+          <div className="relative px-4 sm:px-8 py-8 sm:py-16">
+            <h1 className="text-2xl sm:text-4xl font-display font-bold text-mgsr-text tracking-tight">
               {t('portfolio_title')}
             </h1>
             <p className="mt-2 text-mgsr-muted text-lg max-w-xl">

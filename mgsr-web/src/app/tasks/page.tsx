@@ -379,34 +379,34 @@ export default function TasksPage() {
             }
           />
           <div className="relative flex flex-wrap items-center justify-between gap-6 p-6 md:p-8">
-            <div className="flex items-center gap-6">
-              <h1 className="text-2xl md:text-4xl font-bold text-mgsr-text font-display tracking-tight">
+            <div className="flex items-center gap-4 lg:gap-6">
+              <h1 className="text-xl md:text-2xl lg:text-4xl font-bold text-mgsr-text font-display tracking-tight">
                 {isWomen ? t('tasks_title_women') : t('tasks_title')}
               </h1>
               <button
                 onClick={() => setLang(lang === 'en' ? 'he' : 'en')}
-                className="px-3 py-1.5 rounded-lg border border-white/20 bg-white/5 text-mgsr-text/90 hover:bg-white/10 transition text-sm font-medium"
+                className="hidden lg:block px-3 py-1.5 rounded-lg border border-white/20 bg-white/5 text-mgsr-text/90 hover:bg-white/10 transition text-sm font-medium"
               >
                 {lang === 'en' ? 'עברית' : 'English'}
               </button>
             </div>
-            <div className="flex items-center gap-6">
+            <div className="flex flex-wrap items-center gap-3 lg:gap-6">
               <div className="flex items-center gap-2">
-                <span className={`text-3xl font-bold font-display ${isWomen ? 'text-[var(--women-rose)]' : 'text-mgsr-teal'}`}>
+                <span className={`text-xl lg:text-3xl font-bold font-display ${isWomen ? 'text-[var(--women-rose)]' : 'text-mgsr-teal'}`}>
                   {stats.pending}
                 </span>
-                <span className="text-mgsr-muted">{t('tasks_filter_pending')}</span>
+                <span className="text-mgsr-muted text-sm lg:text-base">{t('tasks_filter_pending')}</span>
               </div>
-              <div className="w-px h-8 bg-mgsr-border" />
+              <div className="w-px h-6 lg:h-8 bg-mgsr-border" />
               <div className="flex items-center gap-2">
-                <span className="text-3xl font-bold text-mgsr-red font-display">
+                <span className="text-xl lg:text-3xl font-bold text-mgsr-red font-display">
                   {stats.overdue}
                 </span>
-                <span className="text-mgsr-muted">{t('tasks_overdue_count')}</span>
+                <span className="text-mgsr-muted text-sm lg:text-base">{t('tasks_overdue_count')}</span>
               </div>
-              <div className="w-px h-8 bg-mgsr-border" />
+              <div className="w-px h-6 lg:h-8 bg-mgsr-border" />
               <div className="flex items-center gap-2">
-                <span className="text-3xl font-bold text-mgsr-text font-display">
+                <span className="text-xl lg:text-3xl font-bold text-mgsr-text font-display">
                   {stats.agents}
                 </span>
                 <span className="text-mgsr-muted">{t('tasks_agents')}</span>

@@ -107,9 +107,9 @@ function StatCard({
 }) {
   if (!value) return null;
   return (
-    <div className={`px-4 py-3 rounded-xl border ${highlight ? 'bg-mgsr-teal/10 border-mgsr-teal/30' : 'bg-mgsr-card/50 border-mgsr-border'}`}>
-      <p className="text-xs text-mgsr-muted uppercase tracking-wider">{label}</p>
-      <p className={`font-semibold mt-0.5 ${highlight ? 'text-mgsr-teal text-lg' : 'text-mgsr-text'}`}>
+    <div className={`shrink-0 min-w-[120px] lg:min-w-0 px-4 py-3 rounded-xl border ${highlight ? 'bg-mgsr-teal/10 border-mgsr-teal/30' : 'bg-mgsr-card/50 border-mgsr-border'}`}>
+      <p className="text-xs text-mgsr-muted uppercase tracking-wider whitespace-nowrap">{label}</p>
+      <p className={`font-semibold mt-0.5 whitespace-nowrap ${highlight ? 'text-mgsr-teal text-lg' : 'text-mgsr-text'}`}>
         {value}
       </p>
     </div>
@@ -1054,12 +1054,12 @@ export default function PlayerInfoPage() {
         <div className="flex items-center justify-between mb-6">
           <Link
             href={fromPath}
-            className="inline-flex items-center gap-2 text-mgsr-teal hover:underline"
+            className="hidden lg:inline-flex items-center gap-2 text-mgsr-teal hover:underline"
           >
             <span className={isRtl ? 'rotate-180' : ''}>←</span>
             {t(backLabelKey)}
           </Link>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 lg:gap-3 flex-wrap">
             {player.tmProfile && (
               <>
                 <button
@@ -1087,12 +1087,12 @@ export default function PlayerInfoPage() {
           <div className="absolute inset-0 bg-gradient-to-br from-mgsr-card via-mgsr-card to-mgsr-dark" />
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_30%_20%,rgba(77,182,172,0.15)_0%,transparent_50%)]" />
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_80%_80%,rgba(77,182,172,0.08)_0%,transparent_40%)]" />
-          <div className="relative flex flex-col sm:flex-row items-center sm:items-end gap-8 p-8 sm:p-10">
+          <div className="relative flex flex-col sm:flex-row items-center sm:items-end gap-4 sm:gap-8 p-5 sm:p-10">
             <div className="relative shrink-0">
               <img
                 src={merged.profileImage || 'https://via.placeholder.com/160'}
                 alt=""
-                className="w-32 h-32 sm:w-40 sm:h-40 rounded-2xl object-cover bg-mgsr-dark ring-4 ring-mgsr-border shadow-2xl"
+                className="w-24 h-24 sm:w-40 sm:h-40 rounded-2xl object-cover bg-mgsr-dark ring-4 ring-mgsr-border shadow-2xl"
               />
               {merged.nationalityFlag && (
                 <img
@@ -1103,10 +1103,10 @@ export default function PlayerInfoPage() {
               )}
             </div>
             <div className="flex-1 text-center sm:text-left min-w-0">
-              <h1 className="text-3xl sm:text-4xl font-display font-bold text-mgsr-text tracking-tight">
+              <h1 className="text-2xl sm:text-4xl font-display font-bold text-mgsr-text tracking-tight">
                 {displayName}
               </h1>
-              <p className="text-mgsr-muted mt-2 text-lg">
+              <p className="text-mgsr-muted mt-1 sm:mt-2 text-base sm:text-lg">
                 {merged.positions?.filter(Boolean).join(' • ') || '—'}
               </p>
               <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3 mt-4">
@@ -1145,8 +1145,9 @@ export default function PlayerInfoPage() {
           </div>
         </div>
 
-        {/* Stats grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3 mb-8">
+        {/* Stats grid — horizontal scroll on phone, grid on larger */}
+        <div className="mb-8 -mx-4 px-4 lg:mx-0 lg:px-0">
+          <div className="flex lg:grid lg:grid-cols-6 gap-3 overflow-x-auto lg:overflow-visible pb-2 lg:pb-0" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
           <StatCard label={t('player_info_age')} value={merged.age} />
           <StatCard label={t('player_info_height')} value={merged.height} />
           <StatCard label={t('player_info_nationality')} value={merged.nationality} />
@@ -1161,6 +1162,7 @@ export default function PlayerInfoPage() {
                 : player.transferFee
             }
           />
+          </div>
         </div>
 
         {/* Two-column content */}

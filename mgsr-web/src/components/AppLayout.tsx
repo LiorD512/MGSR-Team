@@ -7,6 +7,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { usePlatform } from '@/contexts/PlatformContext';
 import { PlatformSwitcher } from '@/components/PlatformSwitcher';
+import { useIsMobileOrTablet } from '@/hooks/useMediaQuery';
+import MobileHeader from '@/components/mobile/MobileHeader';
+import MobileBottomTabBar from '@/components/mobile/MobileBottomTabBar';
 
 const navItems = [
   { href: '/dashboard', labelKey: 'nav_dashboard' },
@@ -31,6 +34,7 @@ const womenNavItems = [
   { href: '/portfolio', labelKey: 'nav_portfolio' },
 ];
 
+/* ── Desktop sidebar nav content (unchanged) ── */
 function NavContent({
   pathname,
   t,
@@ -126,7 +130,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, signOut } = useAuth();
   const { t, isRtl, setLang } = useLanguage();
   const { platform, setPlatform } = usePlatform();
-  const [menuOpen, setMenuOpen] = useState(false);
+  const isMobileOrTablet = useIsMobileOrTablet();
 
   // Route guard: when women platform, only allow dashboard, tasks, players
   useEffect(() => {
@@ -135,115 +139,40 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     }
   }, [platform, pathname, router]);
 
-  // Close menu on route change (mobile)
-  useEffect(() => {
-    setMenuOpen(false);
-  }, [pathname]);
-
-  // Prevent body scroll when menu open on mobile
-  useEffect(() => {
-    if (menuOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-    }
-    return () => {
-      document.body.style.overflow = '';
-    };
-  }, [menuOpen]);
-
   const toggleLang = () => setLang(isRtl ? 'en' : 'he');
+  const currentItems = platform === 'women' ? womenNavItems : navItems;
 
-  // MGSR Women: original layout — sidebar only (logo once), platform switch near language in sidebar
-  if (platform === 'women') {
+  /* ═══════════════════════════════════════════════════════════
+   *  MOBILE / TABLET layout (< 1024px)
+   *  — MobileHeader (top) + content + MobileBottomTabBar (bottom)
+   *  — No sidebar, no hamburger
+   * ═══════════════════════════════════════════════════════════ */
+  if (isMobileOrTablet) {
     return (
-      <div dir={isRtl ? 'rtl' : 'ltr'} className="min-h-screen bg-mgsr-dark flex min-h-[100dvh]">
-        {/* Mobile: hamburger only */}
-        <header className="md:hidden fixed top-0 inset-x-0 z-40 h-14 bg-mgsr-card border-b border-mgsr-border flex items-center px-4">
-          <button
-            onClick={() => setMenuOpen(true)}
-            className="p-2 -m-2 text-mgsr-muted hover:text-[var(--mgsr-accent)] transition"
-            aria-label="Open menu"
-          >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
-          </button>
-        </header>
+      <div dir={isRtl ? 'rtl' : 'ltr'} className="min-h-screen min-h-[100dvh] bg-mgsr-dark flex flex-col">
+        {/* Fixed header */}
+        <MobileHeader />
 
-        {menuOpen && (
-          <div
-            className="md:hidden fixed inset-0 z-50 bg-black/60"
-            onClick={() => setMenuOpen(false)}
-            aria-hidden="true"
-          />
-        )}
+        {/* Main content — scroll area between header and tab bar */}
+        <main className="flex-1 overflow-auto pt-14 pb-[calc(52px+env(safe-area-inset-bottom,0px))] px-4 min-w-0">
+          {children}
+        </main>
 
-        <aside
-          className={`
-          w-56 bg-mgsr-card flex flex-col shrink-0
-          fixed md:static inset-y-0 z-50
-          ${isRtl ? 'right-0 border-l' : 'left-0 border-r'} border-mgsr-border
-          transform transition-transform duration-200 ease-out
-          md:transform-none
-          ${menuOpen ? 'translate-x-0' : isRtl ? 'translate-x-full' : '-translate-x-full'}
-          md:translate-x-0
-          pt-14 md:pt-0
-        `}
-        >
-          <NavContent
-            pathname={pathname}
-            t={t}
-            isRtl={isRtl}
-            setLang={toggleLang}
-            user={user}
-            signOut={signOut}
-            onNavClick={() => setMenuOpen(false)}
-            platform="women"
-            items={womenNavItems}
-            platformSwitcher={<PlatformSwitcher variant="compact" />}
-          />
-        </aside>
-
-        <main className="flex-1 overflow-auto p-4 md:p-6 pt-14 md:pt-6 min-w-0">{children}</main>
+        {/* Fixed bottom tab bar */}
+        <MobileBottomTabBar />
       </div>
     );
   }
 
-  // MGSR Team: original layout — sidebar only (logo once), platform switch near language in sidebar
+  /* ═══════════════════════════════════════════════════════════
+   *  DESKTOP layout (≥ 1024px) — completely unchanged
+   * ═══════════════════════════════════════════════════════════ */
   return (
     <div dir={isRtl ? 'rtl' : 'ltr'} className="min-h-screen bg-mgsr-dark flex min-h-[100dvh]">
-      {/* Mobile: hamburger only */}
-      <header className="md:hidden fixed top-0 inset-x-0 z-40 h-14 bg-mgsr-card border-b border-mgsr-border flex items-center px-4">
-        <button
-          onClick={() => setMenuOpen(true)}
-          className="p-2 -m-2 text-mgsr-muted hover:text-mgsr-teal transition"
-          aria-label="Open menu"
-        >
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-          </svg>
-        </button>
-      </header>
-
-      {menuOpen && (
-        <div
-          className="md:hidden fixed inset-0 z-50 bg-black/60"
-          onClick={() => setMenuOpen(false)}
-          aria-hidden="true"
-        />
-      )}
-
       <aside
         className={`
-          w-56 bg-mgsr-card flex flex-col shrink-0
-          fixed md:static inset-y-0 z-50
-          ${isRtl ? 'right-0 border-l' : 'left-0 border-r'} border-mgsr-border
-          transform transition-transform duration-200 ease-out
-          md:transform-none
-          ${menuOpen ? 'translate-x-0' : isRtl ? 'translate-x-full' : '-translate-x-full'}
-          md:translate-x-0
-          pt-14 md:pt-0
+          w-56 bg-mgsr-card flex flex-col shrink-0 static inset-y-0
+          ${isRtl ? 'border-l' : 'border-r'} border-mgsr-border
         `}
       >
         <NavContent
@@ -253,14 +182,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           setLang={toggleLang}
           user={user}
           signOut={signOut}
-          onNavClick={() => setMenuOpen(false)}
-          platform="men"
-          items={navItems}
+          platform={platform}
+          items={currentItems}
           platformSwitcher={<PlatformSwitcher variant="compact" />}
         />
       </aside>
 
-      <main className="flex-1 overflow-auto p-4 md:p-6 pt-14 md:pt-6 min-w-0">{children}</main>
+      <main className="flex-1 overflow-auto p-6 min-w-0">{children}</main>
     </div>
   );
 }

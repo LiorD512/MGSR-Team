@@ -761,12 +761,13 @@ export default function DashboardPage() {
             <p className="text-mgsr-muted text-sm font-medium">
               {greeting},
             </p>
-            <h1 className={`text-3xl md:text-4xl font-bold font-display tracking-tight ${isWomen ? 'text-mgsr-text bg-clip-text' : 'text-mgsr-text'}`}>
+            <h1 className={`text-2xl lg:text-3xl md:text-4xl font-bold font-display tracking-tight ${isWomen ? 'text-mgsr-text bg-clip-text' : 'text-mgsr-text'}`}>
               {userName}
             </h1>
             <p className="text-mgsr-muted text-sm mt-1">{dateStr}</p>
           </div>
-          <div className={`flex items-center gap-2 p-1 rounded-xl border bg-mgsr-card/80 ${isWomen ? 'border-[var(--women-rose)]/20 rounded-2xl' : 'border-mgsr-border'}`}>
+          {/* Hide platform/lang controls on mobile — MobileHeader handles them */}
+          <div className={`hidden lg:flex items-center gap-2 p-1 rounded-xl border bg-mgsr-card/80 ${isWomen ? 'border-[var(--women-rose)]/20 rounded-2xl' : 'border-mgsr-border'}`}>
             <PlatformSwitcher variant="grouped" />
             <span className={`w-px h-6 ${isWomen ? 'bg-[var(--women-rose)]/30' : 'bg-mgsr-border/80'}`} aria-hidden />
             <button
@@ -779,8 +780,10 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Stats row */}
-        <div className={`grid gap-4 mb-10 ${isWomen ? 'grid-cols-2 md:grid-cols-3 gap-5' : 'grid-cols-2 md:grid-cols-3 lg:grid-cols-6'}`}>
+        {/* Stats row — horizontally scrollable on phone, grid on tablet/desktop */}
+        <div className={`mb-10 ${isWomen ? '' : ''}`}>
+          <div className={`${isWomen ? 'grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-5' : 'flex lg:grid lg:grid-cols-6 gap-3 lg:gap-4 overflow-x-auto lg:overflow-visible pb-2 lg:pb-0 -mx-4 px-4 lg:mx-0 lg:px-0'}`}
+               style={!isWomen ? { scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' } : undefined}>
           {(platform === 'women'
             ? [
                 { href: '/players', count: womenPlayers.length, label: t('players_women') },
@@ -800,17 +803,19 @@ export default function DashboardPage() {
             <Link
               key={item.href}
               href={item.href}
-              className={`group relative p-4 sm:p-5 border rounded-2xl transition-all duration-300 animate-slide-up min-h-[80px] flex flex-col justify-center ${
+              className={`group relative p-4 sm:p-5 border rounded-2xl transition-all duration-300 animate-slide-up min-h-[80px] flex flex-col justify-center shrink-0 ${
+                !isWomen ? 'min-w-[140px] lg:min-w-0' : ''
+              } ${
                 isWomen
                   ? 'bg-mgsr-card/60 border-[var(--women-rose)]/15 hover:border-[var(--women-rose)]/40 hover:bg-mgsr-card/80 shadow-[0_0_30px_rgba(232,160,191,0.06)]'
                   : 'bg-mgsr-card/80 border border-mgsr-border hover:border-[var(--mgsr-accent)]/40 hover:bg-mgsr-card'
               }`}
               style={{ animationDelay: `${i * 50}ms` }}
             >
-              <p className="text-3xl font-bold font-display" style={{ color: isWomen ? 'var(--women-rose)' : 'var(--mgsr-accent)' }}>
+              <p className="text-2xl lg:text-3xl font-bold font-display" style={{ color: isWomen ? 'var(--women-rose)' : 'var(--mgsr-accent)' }}>
                 {item.arrow ? (isRtl ? '←' : '→') : item.count}
               </p>
-              <p className="text-sm text-mgsr-muted mt-1">{item.label}</p>
+              <p className="text-xs lg:text-sm text-mgsr-muted mt-1">{item.label}</p>
               {'badge' in item && typeof item.badge === 'number' && item.badge > 0 && (
                 <span className="absolute top-3 end-3 text-xs font-medium text-amber-400 bg-amber-500/20 px-2 py-0.5 rounded-full">
                   {item.badge} {t('pending')}
@@ -818,6 +823,7 @@ export default function DashboardPage() {
               )}
             </Link>
           ))}
+          </div>
         </div>
 
         {/* Charts row (men only; women has simplified dashboard) */}
@@ -1670,8 +1676,10 @@ export default function DashboardPage() {
         </div>
         )}
 
-        {/* Quick actions */}
-        <div className={`grid gap-4 mb-10 ${platform === 'women' ? 'grid-cols-2 md:grid-cols-2' : 'grid-cols-2 md:grid-cols-3 lg:grid-cols-6'}`}>
+        {/* Quick actions — scrollable on mobile */}
+        <div className={`mb-10 ${platform === 'women' ? '' : ''}`}>
+          <div className={`${platform === 'women' ? 'grid grid-cols-2 md:grid-cols-2 gap-4' : 'flex lg:grid lg:grid-cols-6 gap-3 lg:gap-4 overflow-x-auto lg:overflow-visible pb-2 lg:pb-0 -mx-4 px-4 lg:mx-0 lg:px-0'}`}
+               style={platform !== 'women' ? { scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' } : undefined}>
           {(platform === 'women'
             ? [
                 { href: '/players', label: t('players_women') },
@@ -1690,7 +1698,9 @@ export default function DashboardPage() {
             <Link
               key={item.href}
               href={item.href}
-              className={`p-4 border rounded-xl transition text-center font-medium ${
+              className={`p-4 border rounded-xl transition text-center font-medium shrink-0 ${
+                platform !== 'women' ? 'min-w-[120px] lg:min-w-0' : ''
+              } ${
                 isWomen
                   ? 'bg-mgsr-card/50 border-[var(--women-rose)]/20 hover:border-[var(--women-rose)]/50 hover:bg-mgsr-card/70'
                   : 'bg-mgsr-card/60 border border-mgsr-border hover:border-[var(--mgsr-accent)]/50 hover:bg-mgsr-card'
@@ -1700,6 +1710,7 @@ export default function DashboardPage() {
               {item.label}
             </Link>
           ))}
+          </div>
         </div>
 
         {/* Recent activity — women: card flow design; men: timeline */}
