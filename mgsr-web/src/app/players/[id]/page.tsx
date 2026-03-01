@@ -20,6 +20,8 @@ import { flattenPdf } from '@/lib/pdfFlatten';
 import FmIntelligencePanel from '@/components/FmIntelligencePanel';
 import SimilarPlayersPanel from '@/components/SimilarPlayersPanel';
 import PlayerHighlightsPanel from '@/components/PlayerHighlightsPanel';
+import MatchingRequestsSection from '@/components/MatchingRequestsSection';
+import { matchingRequestsForPlayer, type RosterPlayer, type ClubRequest } from '@/lib/requestMatcher';
 import {
   LineChart,
   Line,
@@ -159,6 +161,8 @@ export default function PlayerInfoPage() {
   const [addingToPortfolio, setAddingToPortfolio] = useState(false);
   const [portfolioError, setPortfolioError] = useState<string | null>(null);
   const [showPortfolioLanguageModal, setShowPortfolioLanguageModal] = useState(false);
+  const [clubRequests, setClubRequests] = useState<(ClubRequest & { status?: string; clubName?: string; clubLogo?: string; clubCountry?: string; contactPhoneNumber?: string })[]>([]);
+  const [playerOffers, setPlayerOffers] = useState<{ id: string; requestId?: string; clubFeedback?: string; offeredAt?: number; markedByAgentName?: string; [key: string]: unknown }[]>([]);
   const prevValidMandateCountRef = useRef<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -246,6 +250,31 @@ export default function PlayerInfoPage() {
     return () => unsub();
   }, [id]);
 
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, 'ClubRequests'), (snap) => {
+      const list = snap.docs.map((d) => ({ id: d.id, ...d.data() } as ClubRequest & { status?: string; clubName?: string; clubLogo?: string; clubCountry?: string; contactPhoneNumber?: string }));
+      setClubRequests(list);
+    });
+    return () => unsub();
+  }, []);
+
+  useEffect(() => {
+    const tmProfile = player?.tmProfile;
+    if (!tmProfile?.trim()) {
+      setPlayerOffers([]);
+      return;
+    }
+    const q = query(
+      collection(db, 'PlayerOffers'),
+      where('playerTmProfile', '==', tmProfile)
+    );
+    const unsub = onSnapshot(q, (snap) => {
+      const list = snap.docs.map((d) => ({ id: d.id, ...d.data() } as { id: string; requestId?: string; clubFeedback?: string; offeredAt?: number; markedByAgentName?: string; [key: string]: unknown }));
+      setPlayerOffers(list);
+    });
+    return () => unsub();
+  }, [player?.tmProfile]);
+
   const getCurrentUserName = useCallback((): string | undefined => {
     if (!user?.email) return undefined;
     const account = accounts.find(
@@ -253,6 +282,58 @@ export default function PlayerInfoPage() {
     );
     return isRtl ? (account?.hebrewName ?? account?.name) : (account?.name ?? account?.hebrewName);
   }, [user?.email, accounts, isRtl]);
+
+  const playerAsRoster: RosterPlayer | null = useMemo(() => {
+    if (!player) return null;
+    return {
+      id: player.id,
+      fullName: player.fullName,
+      age: player.age,
+      positions: player.positions ?? [],
+      foot: player.foot,
+      salaryRange: player.salaryRange,
+      transferFee: player.transferFee,
+      tmProfile: player.tmProfile,
+    };
+  }, [player]);
+
+  const matchingRequests = useMemo(() => {
+    if (!playerAsRoster || !player?.tmProfile) return [];
+    const pending = clubRequests.filter((r) => (r.status ?? 'pending') === 'pending');
+    const matching = matchingRequestsForPlayer(playerAsRoster, pending);
+    const offerByRequestId = Object.fromEntries(
+      playerOffers.map((o) => [o.requestId ?? '', o])
+    );
+    return matching.map((req) => ({
+      request: req,
+      offer: offerByRequestId[req.id] as { id: string; requestId?: string; clubFeedback?: string; offeredAt?: number; markedByAgentName?: string; clubName?: string; clubLogo?: string; position?: string } | undefined,
+    }));
+  }, [playerAsRoster, player?.tmProfile, clubRequests, playerOffers]);
+
+  const handleMarkAsOffered = useCallback(
+    async (requestId: string, clubName?: string, clubLogo?: string, position?: string, feedback?: string) => {
+      if (!player?.tmProfile || !user?.email) return;
+      const agentName = accounts.find((a) => a.email?.toLowerCase() === user.email?.toLowerCase());
+      const markedBy = isRtl ? (agentName?.hebrewName ?? agentName?.name) : (agentName?.name ?? agentName?.hebrewName);
+      await addDoc(collection(db, 'PlayerOffers'), {
+        playerTmProfile: player.tmProfile,
+        playerName: player.fullName ?? '',
+        playerImage: player.profileImage ?? '',
+        requestId,
+        clubName: clubName ?? '',
+        clubLogo: clubLogo ?? '',
+        position: position ?? '',
+        offeredAt: Date.now(),
+        clubFeedback: feedback ?? '',
+        markedByAgentName: markedBy ?? '',
+      });
+    },
+    [player, user?.email, accounts, isRtl]
+  );
+
+  const handleUpdateOfferFeedback = useCallback(async (offerId: string, feedback: string) => {
+    await updateDoc(doc(db, 'PlayerOffers', offerId), { clubFeedback: feedback });
+  }, []);
 
   const handleUploadDocument = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1157,6 +1238,19 @@ export default function PlayerInfoPage() {
                   )}
                 </div>
               </div>
+            )}
+
+            {/* Matching Requests */}
+            {player?.tmProfile && (
+              <MatchingRequestsSection
+                matchingRequests={matchingRequests}
+                playerProfileUrl={player.tmProfile}
+                accounts={accounts}
+                currentUserEmail={user?.email}
+                onMarkAsOffered={handleMarkAsOffered}
+                onUpdateFeedback={handleUpdateOfferFeedback}
+                isWomen={false}
+              />
             )}
 
             {/* Mandate switch (like Android) */}

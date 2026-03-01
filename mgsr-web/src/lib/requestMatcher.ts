@@ -97,3 +97,14 @@ export function matchRequestToPlayers(request: ClubRequest, players: RosterPlaye
     return true;
   });
 }
+
+/**
+ * Returns requests that match the given player (reverse of matchRequestToPlayers).
+ * Used on Player Info screen to show "Matching Requests" for a player.
+ */
+export function matchingRequestsForPlayer(
+  player: RosterPlayer,
+  requests: ClubRequest[]
+): ClubRequest[] {
+  return requests.filter((req) => matchRequestToPlayers(req, [player]).length > 0);
+}

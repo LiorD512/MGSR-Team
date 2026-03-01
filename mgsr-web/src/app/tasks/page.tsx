@@ -98,6 +98,7 @@ export default function TasksPage() {
   const [accounts, setAccounts] = useState<Account[]>(cached?.accounts ?? []);
   const [loadingList, setLoadingList] = useState(cached === undefined);
   const [filter, setFilter] = useState<'all' | 'mine'>(cached?.filter ?? 'all');
+  const [activeCompletedTab, setActiveCompletedTab] = useState<'active' | 'completed'>('active');
   const [showAdd, setShowAdd] = useState(false);
   const [addTitle, setAddTitle] = useState('');
   const [addNotes, setAddNotes] = useState('');
@@ -158,7 +159,10 @@ export default function TasksPage() {
     accounts.forEach((a) => {
       byAgent[a.id] = { account: a, tasks: [] };
     });
+    const showCompleted = activeCompletedTab === 'completed';
     tasks.forEach((task) => {
+      const matchesTab = showCompleted ? task.isCompleted : !task.isCompleted;
+      if (!matchesTab) return;
       const key = task.agentId || 'unknown';
       if (!byAgent[key]) {
         byAgent[key] = {
@@ -174,7 +178,7 @@ export default function TasksPage() {
       .filter(([, data]) => filter === 'all' || data.tasks.length > 0 || isMyAccount(data.account.id))
       .map(([id, data]) => ({ id, ...data }))
       .sort((a, b) => b.tasks.filter((t) => !t.isCompleted).length - a.tasks.filter((t) => !t.isCompleted).length);
-  }, [tasks, accounts, filter, user, myAgentIds]);
+  }, [tasks, accounts, filter, user, myAgentIds, activeCompletedTab]);
 
   const stats = useMemo(() => {
     const pending = tasks.filter((t) => !t.isCompleted);
@@ -207,6 +211,11 @@ export default function TasksPage() {
   }, [myTasks]);
 
   const myTasksBySection = useMemo(() => {
+    if (activeCompletedTab === 'completed') {
+      const completed = myTasks.filter((t) => t.isCompleted);
+      if (completed.length === 0) return [];
+      return [{ key: 'done', label: 'tasks_section_completed', tasks: completed }];
+    }
     const now = new Date();
     now.setHours(0, 0, 0, 0);
     const todayStart = now.getTime();
@@ -233,13 +242,8 @@ export default function TasksPage() {
       else sections[5].tasks.push(task);
     });
 
-    const completed = myTasks.filter((t) => t.isCompleted);
-    if (completed.length > 0) {
-      sections.push({ key: 'done', label: 'tasks_section_completed', tasks: completed });
-    }
-
     return sections.filter((s) => s.tasks.length > 0);
-  }, [myTasks]);
+  }, [myTasks, activeCompletedTab]);
 
   const toggleComplete = async (task: AgentTask) => {
     await updateDoc(doc(db, taskCollection, task.id), {
@@ -515,9 +519,36 @@ export default function TasksPage() {
                 </div>
               </div>
 
+              {/* Active / Completed tabs */}
+              <div className={`flex overflow-hidden border border-mgsr-border bg-mgsr-card/60 p-0.5 w-fit ${isWomen ? 'rounded-2xl' : 'rounded-xl'}`}>
+                {(['active', 'completed'] as const).map((tab) => (
+                  <button
+                    key={tab}
+                    onClick={() => setActiveCompletedTab(tab)}
+                    className={`px-5 py-2.5 text-sm font-medium transition ${
+                      activeCompletedTab === tab
+                        ? isWomen
+                          ? 'bg-[var(--women-rose)] text-mgsr-dark'
+                          : 'bg-mgsr-teal text-mgsr-dark'
+                        : 'text-mgsr-muted hover:text-mgsr-text'
+                    }`}
+                  >
+                    {tab === 'active' ? t('tasks_tab_active') : t('tasks_section_completed')}
+                  </button>
+                ))}
+              </div>
+
               {/* Tasks grouped by section */}
               <div className="space-y-8">
-                {myTasksBySection.map((section, sectionIdx) => (
+                {myTasksBySection.length === 0 ? (
+                  <div className={`py-12 px-6 text-center rounded-2xl border border-mgsr-border ${isWomen ? 'bg-mgsr-card/30' : 'bg-mgsr-card/30'}`}>
+                    <p className="text-mgsr-muted">
+                      {activeCompletedTab === 'completed' ? t('tasks_no_completed') : t('tasks_no_active')}
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    {myTasksBySection.map((section, sectionIdx) => (
                   <div key={section.key} className="animate-slide-up" style={{ animationDelay: `${sectionIdx * 40}ms` }}>
                     <div className="flex items-center gap-3 mb-4">
                       <h3 className="text-sm font-semibold text-mgsr-muted uppercase tracking-wider">
@@ -630,7 +661,9 @@ export default function TasksPage() {
                       })}
                     </div>
                   </div>
-                ))}
+                    ))}
+                  </>
+                )}
               </div>
             </div>
           )
@@ -647,7 +680,26 @@ export default function TasksPage() {
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
+          <div className="space-y-6">
+            {/* Active / Completed tabs for All agents view */}
+            <div className={`flex overflow-hidden border border-mgsr-border bg-mgsr-card/60 p-0.5 w-fit ${isWomen ? 'rounded-2xl' : 'rounded-xl'}`}>
+              {(['active', 'completed'] as const).map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setActiveCompletedTab(tab)}
+                  className={`px-5 py-2.5 text-sm font-medium transition ${
+                    activeCompletedTab === tab
+                      ? isWomen
+                        ? 'bg-[var(--women-rose)] text-mgsr-dark'
+                        : 'bg-mgsr-teal text-mgsr-dark'
+                      : 'text-mgsr-muted hover:text-mgsr-text'
+                  }`}
+                >
+                  {tab === 'active' ? t('tasks_tab_active') : t('tasks_section_completed')}
+                </button>
+              ))}
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
             {tasksByAgent.map(({ id, account, tasks: agentTasks }, agentIdx) => {
               const colors = isWomen ? AGENT_COLORS_WOMEN : AGENT_COLORS;
               const color = colors[agentIdx % colors.length];
@@ -798,6 +850,7 @@ export default function TasksPage() {
                 </div>
               );
             })}
+            </div>
           </div>
         )}
 

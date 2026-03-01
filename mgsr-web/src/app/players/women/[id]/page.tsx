@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -32,6 +32,8 @@ import PlayerHighlightsPanel from '@/components/PlayerHighlightsPanel';
 import AddPlayerTaskModal from '@/components/AddPlayerTaskModal';
 import FmInsideWomenPanel from '@/components/FmInsideWomenPanel';
 import AppLayout from '@/components/AppLayout';
+import MatchingRequestsSection from '@/components/MatchingRequestsSection';
+import { matchingRequestsForPlayer, type RosterPlayer, type ClubRequest } from '@/lib/requestMatcher';
 import { toWhatsAppUrl } from '@/lib/whatsapp';
 import Link from 'next/link';
 
@@ -86,6 +88,8 @@ export default function WomanPlayerPage() {
   const [addingToPortfolio, setAddingToPortfolio] = useState(false);
   const [portfolioError, setPortfolioError] = useState<string | null>(null);
   const [showPortfolioLanguageModal, setShowPortfolioLanguageModal] = useState(false);
+  const [clubRequests, setClubRequests] = useState<(ClubRequest & { status?: string; clubName?: string; clubLogo?: string; clubCountry?: string; contactPhoneNumber?: string })[]>([]);
+  const [playerOffers, setPlayerOffers] = useState<{ id: string; requestId?: string; clubFeedback?: string; offeredAt?: number; markedByAgentName?: string; [key: string]: unknown }[]>([]);
   const prevValidMandateCountRef = useRef<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -185,6 +189,31 @@ export default function WomanPlayerPage() {
     return () => unsub();
   }, [id]);
 
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, 'ClubRequests'), (snap) => {
+      const list = snap.docs.map((d) => ({ id: d.id, ...d.data() } as ClubRequest & { status?: string; clubName?: string; clubLogo?: string; clubCountry?: string; contactPhoneNumber?: string }));
+      setClubRequests(list);
+    });
+    return () => unsub();
+  }, []);
+
+  useEffect(() => {
+    if (!id) {
+      setPlayerOffers([]);
+      return;
+    }
+    const womenProfile = `women-${id}`;
+    const q = query(
+      collection(db, 'PlayerOffers'),
+      where('playerTmProfile', '==', womenProfile)
+    );
+    const unsub = onSnapshot(q, (snap) => {
+      const list = snap.docs.map((d) => ({ id: d.id, ...d.data() } as { id: string; requestId?: string; clubFeedback?: string; offeredAt?: number; markedByAgentName?: string; [key: string]: unknown }));
+      setPlayerOffers(list);
+    });
+    return () => unsub();
+  }, [id]);
+
   const getCurrentUserName = useCallback((): string | undefined => {
     if (!user?.email) return undefined;
     const account = accounts.find(
@@ -201,6 +230,59 @@ export default function WomanPlayerPage() {
     );
     return account?.hebrewName || name;
   };
+
+  const playerAsRoster: RosterPlayer | null = useMemo(() => {
+    if (!player) return null;
+    return {
+      id: player.id,
+      fullName: player.fullName,
+      age: player.age,
+      positions: player.positions ?? [],
+      foot: player.foot,
+      salaryRange: undefined,
+      transferFee: undefined,
+      tmProfile: undefined,
+    };
+  }, [player]);
+
+  const matchingRequests = useMemo(() => {
+    if (!playerAsRoster || !id) return [];
+    const pending = clubRequests.filter((r) => (r.status ?? 'pending') === 'pending');
+    const matching = matchingRequestsForPlayer(playerAsRoster, pending);
+    const offerByRequestId = Object.fromEntries(
+      playerOffers.map((o) => [o.requestId ?? '', o])
+    );
+    return matching.map((req) => ({
+      request: req,
+      offer: offerByRequestId[req.id] as { id: string; requestId?: string; clubFeedback?: string; offeredAt?: number; markedByAgentName?: string; clubName?: string; clubLogo?: string; position?: string } | undefined,
+    }));
+  }, [playerAsRoster, id, clubRequests, playerOffers]);
+
+  const handleMarkAsOffered = useCallback(
+    async (requestId: string, clubName?: string, clubLogo?: string, position?: string, feedback?: string) => {
+      if (!player || !id || !user?.email) return;
+      const womenProfile = `women-${id}`;
+      const agentName = accounts.find((a) => a.email?.toLowerCase() === user.email?.toLowerCase());
+      const markedBy = isRtl ? (agentName?.hebrewName ?? agentName?.name) : (agentName?.name ?? agentName?.hebrewName);
+      await addDoc(collection(db, 'PlayerOffers'), {
+        playerTmProfile: womenProfile,
+        playerName: player.fullName ?? '',
+        playerImage: player.profileImage ?? '',
+        requestId,
+        clubName: clubName ?? '',
+        clubLogo: clubLogo ?? '',
+        position: position ?? '',
+        offeredAt: Date.now(),
+        clubFeedback: feedback ?? '',
+        markedByAgentName: markedBy ?? '',
+      });
+    },
+    [player, id, user?.email, accounts, isRtl]
+  );
+
+  const handleUpdateOfferFeedback = useCallback(async (offerId: string, feedback: string) => {
+    await updateDoc(doc(db, 'PlayerOffers', offerId), { clubFeedback: feedback });
+  }, []);
 
   const handleUploadDocument = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -895,6 +977,19 @@ export default function WomanPlayerPage() {
                   )}
                 </div>
               </div>
+            )}
+
+            {/* Matching Requests */}
+            {player && id && (
+              <MatchingRequestsSection
+                matchingRequests={matchingRequests}
+                playerProfileUrl={player.fmInsideUrl ?? (typeof window !== 'undefined' ? `${window.location.origin}/players/women/${id}` : '')}
+                accounts={accounts}
+                currentUserEmail={user?.email}
+                onMarkAsOffered={handleMarkAsOffered}
+                onUpdateFeedback={handleUpdateOfferFeedback}
+                isWomen
+              />
             )}
 
             {/* Documents */}
