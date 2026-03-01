@@ -370,12 +370,12 @@ export default function WarRoomPage() {
         </div>
 
         <div className="relative">
-          <h1 className="text-3xl md:text-4xl font-display font-extrabold text-mgsr-text tracking-tight">
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-display font-extrabold text-mgsr-text tracking-tight">
             {t('nav_war_room')}
           </h1>
 
           {/* War Room main tabs: Discovery | AI Scout Agents */}
-          <div className="flex flex-wrap gap-1 p-1 rounded-xl bg-mgsr-card border border-mgsr-border mt-4 mb-4">
+          <div className="flex gap-1 p-1 rounded-xl bg-mgsr-card border border-mgsr-border mt-4 mb-4">
             <button
               onClick={() => setWarRoomTab('discovery')}
               className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${
@@ -406,28 +406,28 @@ export default function WarRoomPage() {
               : "AI-curated discovery feed. Only players realistic for Ligat Ha'Al — value €0–€2.5m."}
           </p>
 
-          <div className="flex flex-wrap items-center gap-3 mt-4">
+          <div className="flex gap-2 mt-4 overflow-x-auto pb-2 -mx-1 px-1" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
             {updatedAt && (
-              <span className="px-3 py-1.5 rounded-lg text-xs font-medium bg-mgsr-teal/15 text-mgsr-teal border border-mgsr-teal/30">
+              <span className="shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium bg-mgsr-teal/15 text-mgsr-teal border border-mgsr-teal/30 whitespace-nowrap">
                 {isHe ? 'עודכן' : 'Updated'} {formatTimeAgo(updatedAt)}
               </span>
             )}
-            <span className="px-3 py-1.5 rounded-lg text-xs font-medium bg-mgsr-teal/15 text-mgsr-teal border border-mgsr-teal/30">
+            <span className="shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium bg-mgsr-teal/15 text-mgsr-teal border border-mgsr-teal/30 whitespace-nowrap">
               {candidates.length} {isHe ? 'שחקנים' : 'players'}
             </span>
-            <span className="px-3 py-1.5 rounded-lg text-xs font-medium bg-green-500/15 text-green-400 border border-green-500/30">
+            <span className="shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium bg-green-500/15 text-green-400 border border-green-500/30 whitespace-nowrap">
               {isHe ? 'מסנן ליגת העל: פעיל' : 'Ligat Ha\'Al filter: on'}
             </span>
             <button
               onClick={fetchDiscovery}
               disabled={loadingDiscovery}
-              className="px-3 py-1.5 rounded-lg text-xs font-medium border border-mgsr-border text-mgsr-muted hover:text-mgsr-teal hover:border-mgsr-teal/50 transition disabled:opacity-50"
+              className="shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium border border-mgsr-border text-mgsr-muted hover:text-mgsr-teal hover:border-mgsr-teal/50 transition disabled:opacity-50 whitespace-nowrap min-h-[36px]"
             >
               {loadingDiscovery ? (isHe ? 'מרענן...' : 'Refreshing...') : isHe ? 'רענן גילוי' : 'Refresh discovery'}
             </button>
           </div>
 
-          <p className="text-xs text-mgsr-muted mt-3 px-3 py-2 rounded-lg bg-mgsr-card/50 border border-mgsr-border/50">
+          <p className="text-xs text-mgsr-muted mt-3 px-3 py-2 rounded-lg bg-mgsr-card/50 border border-mgsr-border/50 hidden sm:block">
             <strong className="text-mgsr-text">{isHe ? 'מסנן רלוונטיות:' : 'Relevance filter:'}</strong>{' '}
             {isHe
               ? "שווי נוכחי €0–€2.5m, דמי העברה אחרונים ≤€2.5m, ליגות נגישות. ללא כוכבים שנקנו ביוקר."
@@ -435,7 +435,7 @@ export default function WarRoomPage() {
           </p>
 
         {/* Source tabs */}
-        <div className="flex flex-wrap gap-1 p-1 rounded-xl bg-mgsr-card border border-mgsr-border mt-6 mb-6">
+        <div className="flex gap-1 p-1 rounded-xl bg-mgsr-card border border-mgsr-border mt-4 sm:mt-6 mb-4 sm:mb-6 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
           {[
             { key: 'all', label: isHe ? 'הכל' : 'All' },
             { key: 'request', label: isHe ? 'התאמות לבקשות' : 'Request Matches' },
@@ -444,7 +444,7 @@ export default function WarRoomPage() {
             <button
               key={key}
               onClick={() => setSourceFilter(key)}
-              className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${
+              className={`shrink-0 px-3 sm:px-4 py-2 rounded-lg text-sm font-semibold transition whitespace-nowrap min-h-[40px] ${
                 sourceFilter === key
                   ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30'
                   : 'text-mgsr-muted hover:text-mgsr-text hover:bg-mgsr-card/80 border border-transparent'
@@ -545,28 +545,56 @@ export default function WarRoomPage() {
                   }`}
                   onClick={() => handleExpand(c.transfermarktUrl)}
                 >
-                  <div className="p-5">
-                    <div className="flex gap-4 items-start">
+                  <div className="p-3 sm:p-5">
+                    <div className="flex gap-3 sm:gap-4 items-start">
                       <img
                         src={getPlayerImageUrl(c.profileImage, c.transfermarktUrl)}
                         alt=""
-                        className="w-14 h-14 rounded-xl object-cover bg-mgsr-border shrink-0"
+                        className="w-11 h-11 sm:w-14 sm:h-14 rounded-xl object-cover bg-mgsr-border shrink-0"
                         onError={(e) => {
                           (e.target as HTMLImageElement).src = 'https://img.a.transfermarkt.technology/portrait/medium/0.jpg';
                         }}
                       />
                       <div className="flex-1 min-w-0">
-                        <p className="font-display font-bold text-lg text-mgsr-text truncate">{c.name}</p>
-                        <p className="text-sm text-mgsr-muted mt-0.5">
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="font-display font-bold text-base sm:text-lg text-mgsr-text truncate">{c.name}</p>
+                          <div className="shrink-0 flex items-center gap-1.5 sm:gap-2">
+                            {validReport?.synthesis?.recommendation ? (
+                              <span
+                                className={`inline-flex px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-xs sm:text-sm font-bold ${
+                                  rec === 'SIGN'
+                                    ? 'bg-green-500/20 text-green-400'
+                                    : rec === 'MONITOR'
+                                      ? 'bg-amber-500/20 text-amber-400'
+                                      : 'bg-red-500/20 text-red-400'
+                                }`}
+                              >
+                                {rec === 'SIGN' ? t('rec_sign') : rec === 'MONITOR' ? t('rec_monitor') : rec === 'PASS' ? t('rec_pass') : validReport.synthesis.recommendation}
+                              </span>
+                            ) : (
+                              <span className="text-mgsr-muted text-[10px] sm:text-xs hidden sm:inline">{isHe ? 'לחץ לדוח' : 'Tap for report'}</span>
+                            )}
+                            <svg
+                              className={`w-4 h-4 sm:w-5 sm:h-5 text-mgsr-muted transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                            </svg>
+                          </div>
+                        </div>
+                        <p className="text-xs sm:text-sm text-mgsr-muted mt-0.5">
                           {c.age}
-                          <span className="mx-1.5">·</span>
+                          <span className="mx-1 sm:mx-1.5">·</span>
                           {shortenPosition(c.position)}
-                          <span className="mx-1.5">·</span>
+                          <span className="mx-1 sm:mx-1.5">·</span>
                           {c.marketValue}
                           {c.club && (
                             <>
-                              <span className="mx-1.5">·</span>
-                              {c.club}
+                              <span className="mx-1 sm:mx-1.5">·</span>
+                              <span className="hidden sm:inline">{c.club}</span>
+                              <span className="sm:hidden">{c.club.length > 15 ? c.club.slice(0, 15) + '…' : c.club}</span>
                             </>
                           )}
                         </p>
@@ -645,7 +673,7 @@ export default function WarRoomPage() {
                             href={c.transfermarktUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-mgsr-border text-mgsr-muted hover:bg-mgsr-teal/20 hover:text-mgsr-teal border border-mgsr-border transition"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-mgsr-border text-mgsr-muted hover:bg-mgsr-teal/20 hover:text-mgsr-teal border border-mgsr-border transition min-h-[36px]"
                           >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
@@ -656,7 +684,7 @@ export default function WarRoomPage() {
                             <button
                               onClick={() => addToShortlist(c)}
                               disabled={isAdding || inShortlist}
-                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-mgsr-teal/20 text-mgsr-teal hover:bg-mgsr-teal/30 border border-mgsr-teal/40 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-mgsr-teal/20 text-mgsr-teal hover:bg-mgsr-teal/30 border border-mgsr-teal/40 transition disabled:opacity-50 disabled:cursor-not-allowed min-h-[36px]"
                             >
                               {isAdding ? (
                                 <>
@@ -677,36 +705,11 @@ export default function WarRoomPage() {
                           )}
                         </div>
                       </div>
-                      <div className="shrink-0 flex items-center gap-2">
-                        {validReport?.synthesis?.recommendation ? (
-                          <span
-                            className={`inline-flex px-3 py-1.5 rounded-lg text-sm font-bold ${
-                              rec === 'SIGN'
-                                ? 'bg-green-500/20 text-green-400'
-                                : rec === 'MONITOR'
-                                  ? 'bg-amber-500/20 text-amber-400'
-                                  : 'bg-red-500/20 text-red-400'
-                            }`}
-                          >
-                            {rec === 'SIGN' ? t('rec_sign') : rec === 'MONITOR' ? t('rec_monitor') : rec === 'PASS' ? t('rec_pass') : validReport.synthesis.recommendation}
-                          </span>
-                        ) : (
-                          <span className="text-mgsr-muted text-xs">{isHe ? 'לחץ לדוח' : 'Tap for report'}</span>
-                        )}
-                        <svg
-                          className={`w-5 h-5 text-mgsr-muted transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                        </svg>
-                      </div>
                     </div>
 
                     {/* Expanded report */}
                     {isExpanded && (
-                      <div className="mt-5 pt-5 border-t border-mgsr-border">
+                      <div className="mt-3 sm:mt-5 pt-3 sm:pt-5 border-t border-mgsr-border">
                         {isLoadingReport && (
                           <div className="flex items-center gap-2 text-mgsr-muted py-4">
                             <div className="w-5 h-5 border-2 border-purple-500/30 border-t-purple-500 rounded-full animate-spin" />
@@ -735,7 +738,7 @@ export default function WarRoomPage() {
                                 ) : null}
                               </div>
                             )}
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
                               {validReport.stats?.summary && (
                                 <div className="p-3 rounded-lg bg-mgsr-dark border border-mgsr-border">
                                   <h5 className="text-[10px] font-semibold text-mgsr-muted uppercase mb-1">
@@ -824,10 +827,10 @@ export default function WarRoomPage() {
                 </div>
               </div>
 
-              <div className="flex flex-wrap gap-1 p-1 rounded-xl bg-mgsr-card border border-mgsr-border">
+              <div className="flex gap-1 p-1 rounded-xl bg-mgsr-card border border-mgsr-border overflow-x-auto" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
                 <button
                   onClick={() => setScoutAgentFilter('all')}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${
+                  className={`shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium transition whitespace-nowrap min-h-[36px] ${
                     scoutAgentFilter === 'all'
                       ? 'bg-mgsr-teal/20 text-mgsr-teal border border-mgsr-teal/40'
                       : 'text-mgsr-muted hover:text-mgsr-text border border-transparent'
@@ -839,7 +842,7 @@ export default function WarRoomPage() {
                   <button
                     key={aid}
                     onClick={() => setScoutAgentFilter(aid)}
-                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition flex items-center gap-1 ${
+                    className={`shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium transition flex items-center gap-1 whitespace-nowrap min-h-[36px] ${
                       scoutAgentFilter === aid
                         ? 'bg-mgsr-teal/20 text-mgsr-teal border border-mgsr-teal/40'
                         : 'text-mgsr-muted hover:text-mgsr-text border border-transparent'
@@ -889,16 +892,16 @@ export default function WarRoomPage() {
                         key={agentId}
                         className="rounded-xl border border-mgsr-border bg-mgsr-card overflow-hidden"
                       >
-                        <div className="flex items-center gap-2 px-4 py-3 bg-mgsr-teal/10 border-b border-mgsr-border">
-                          <span className="text-xl">{cfg?.flag || '🌍'}</span>
-                          <h3 className="font-display font-bold text-mgsr-text">
+                        <div className="flex items-center gap-2 px-3 sm:px-4 py-2.5 sm:py-3 bg-mgsr-teal/10 border-b border-mgsr-border">
+                          <span className="text-lg sm:text-xl">{cfg?.flag || '🌍'}</span>
+                          <h3 className="font-display font-bold text-sm sm:text-base text-mgsr-text">
                             {isHe ? cfg?.nameHe : cfg?.name} Agent
                           </h3>
                           <span className="text-xs text-mgsr-muted ml-auto">
                             <strong className="text-mgsr-teal">{profiles.length}</strong> {isHe ? 'פרופילים' : 'profiles'}
                           </span>
                         </div>
-                        <div className="p-3 space-y-2">
+                        <div className="p-2 sm:p-3 space-y-2">
                           {profiles.map((p) => {
                             const inRoster = Array.from(rosterTmProfiles).some((r) => samePlayer(r, p.tmProfileUrl));
                             const inShortlist = Array.from(shortlistUrls).some((s) => samePlayer(s, p.tmProfileUrl));
@@ -911,39 +914,45 @@ export default function WarRoomPage() {
                                 <img
                                   src={getPlayerImageUrl(p.profileImage ?? undefined, p.tmProfileUrl)}
                                   alt=""
-                                  className="w-12 h-12 rounded-lg object-cover bg-mgsr-border shrink-0"
+                                  className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg object-cover bg-mgsr-border shrink-0"
                                   onError={(e) => {
                                     (e.target as HTMLImageElement).src = 'https://img.a.transfermarkt.technology/portrait/medium/0.jpg';
                                   }}
                                 />
                                 <div className="flex-1 min-w-0">
-                                  <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-mgsr-teal/25 text-mgsr-teal border border-mgsr-teal/40 mb-1">
-                                    <span>{p.agentFlag}</span>
-                                    <span>{isHe ? 'נמצא על ידי' : 'Found by'} {p.agentName} Agent</span>
-                                    {p.league && <span>· {p.league}</span>}
+                                  <div className="flex items-start justify-between gap-2 mb-1">
+                                    <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-mgsr-teal/25 text-mgsr-teal border border-mgsr-teal/40">
+                                      <span>{p.agentFlag}</span>
+                                      <span className="hidden sm:inline">{isHe ? 'נמצא על ידי' : 'Found by'} {p.agentName} Agent</span>
+                                      <span className="sm:hidden">{p.agentName}</span>
+                                      {p.league && <span className="hidden sm:inline">· {p.league}</span>}
+                                    </div>
+                                    <span className="px-2 py-0.5 rounded text-[10px] font-semibold uppercase bg-purple-500/20 text-purple-400 shrink-0">
+                                      {isHe ? p.profileTypeLabelHe : p.profileTypeLabel}
+                                    </span>
                                   </div>
-                                  <p className="font-display font-bold text-mgsr-text">{p.playerName}</p>
+                                  <p className="font-display font-bold text-sm sm:text-base text-mgsr-text truncate">{p.playerName}</p>
                                   <p className="text-xs text-mgsr-muted">
                                     {p.age} · {shortenPosition(p.position)} · {p.marketValue}
-                                    {p.club && ` · ${p.club}`}
+                                    {p.club && <span className="hidden sm:inline"> · {p.club}</span>}
                                   </p>
-                                  <p className="text-xs text-mgsr-text mt-1">
+                                  <p className="text-xs text-mgsr-text mt-1 line-clamp-2 sm:line-clamp-none">
                                     {(isHe ? p.scoutExplanationHe : p.scoutExplanationEn) || p.matchReason}
                                   </p>
-                                  <div className="flex flex-wrap gap-2 mt-2 items-center" onClick={(e) => e.stopPropagation()}>
+                                  <div className="flex flex-wrap gap-1.5 sm:gap-2 mt-2 items-center" onClick={(e) => e.stopPropagation()}>
                                     <a
                                       href={p.tmProfileUrl}
                                       target="_blank"
                                       rel="noopener noreferrer"
-                                      className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium bg-mgsr-border text-mgsr-muted hover:text-mgsr-teal border border-mgsr-border transition"
+                                      className="inline-flex items-center gap-1 px-2 py-1.5 rounded text-xs font-medium bg-mgsr-border text-mgsr-muted hover:text-mgsr-teal border border-mgsr-border transition min-h-[32px]"
                                     >
-                                      Transfermarkt →
+                                      TM →
                                     </a>
                                     <span className="flex items-center gap-0.5 text-mgsr-muted">
                                       <button
                                         type="button"
                                         onClick={() => setProfileFeedback(p.id, 'up', p.agentId)}
-                                        className={`p-1 rounded transition ${scoutFeedback[p.id] === 'up' ? 'text-green-500 bg-green-500/20' : 'hover:text-green-500 hover:bg-green-500/10'}`}
+                                        className={`p-1.5 rounded transition ${scoutFeedback[p.id] === 'up' ? 'text-green-500 bg-green-500/20' : 'hover:text-green-500 hover:bg-green-500/10'}`}
                                         title={isHe ? 'טוב' : 'Good pick'}
                                         aria-label={isHe ? 'טוב' : 'Good pick'}
                                       >
@@ -952,7 +961,7 @@ export default function WarRoomPage() {
                                       <button
                                         type="button"
                                         onClick={() => setProfileFeedback(p.id, 'down', p.agentId)}
-                                        className={`p-1 rounded transition ${scoutFeedback[p.id] === 'down' ? 'text-red-500 bg-red-500/20' : 'hover:text-red-500 hover:bg-red-500/10'}`}
+                                        className={`p-1.5 rounded transition ${scoutFeedback[p.id] === 'down' ? 'text-red-500 bg-red-500/20' : 'hover:text-red-500 hover:bg-red-500/10'}`}
                                         title={isHe ? 'לא רלוונטי' : 'Not relevant'}
                                         aria-label={isHe ? 'לא רלוונטי' : 'Not relevant'}
                                       >
@@ -963,9 +972,9 @@ export default function WarRoomPage() {
                                       <button
                                         onClick={() => addToShortlistFromProfile(p)}
                                         disabled={isAdding || inShortlist}
-                                        className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium bg-mgsr-teal/20 text-mgsr-teal hover:bg-mgsr-teal/30 border border-mgsr-teal/40 transition disabled:opacity-50"
+                                        className="inline-flex items-center gap-1 px-2 py-1.5 rounded text-xs font-medium bg-mgsr-teal/20 text-mgsr-teal hover:bg-mgsr-teal/30 border border-mgsr-teal/40 transition disabled:opacity-50 min-h-[32px]"
                                       >
-                                        {isAdding ? (isHe ? 'מוסיף...' : 'Adding...') : inShortlist ? (isHe ? 'ברשימת מעקב' : 'In shortlist') : (isHe ? 'הוסף לרשימת מעקב' : 'Add to shortlist')}
+                                        {isAdding ? (isHe ? 'מוסיף...' : 'Adding...') : inShortlist ? (isHe ? 'ברשימת מעקב' : 'Shortlist') : (isHe ? 'לרשימת מעקב' : '+ Shortlist')}
                                       </button>
                                     )}
                                     {inRoster && (
@@ -975,9 +984,6 @@ export default function WarRoomPage() {
                                     )}
                                   </div>
                                 </div>
-                                <span className="px-2 py-0.5 rounded text-[10px] font-semibold uppercase bg-purple-500/20 text-purple-400 shrink-0 h-fit">
-                                  {isHe ? p.profileTypeLabelHe : p.profileTypeLabel}
-                                </span>
                               </div>
                             );
                           })}
