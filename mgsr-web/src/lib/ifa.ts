@@ -120,8 +120,8 @@ export async function searchIFA(query: string): Promise<IFASearchResult[]> {
 
       for (const r of data.organic_results ?? []) {
         const link = r.link ?? '';
-        // Only player pages
-        if (!link.includes('player_id=') && !link.includes('/players/player/')) continue;
+        // Only player pages — must have player_id= parameter
+        if (!link.includes('player_id=')) continue;
 
         const playerIdMatch = link.match(/player_id=(\d+)/);
         const playerId = playerIdMatch?.[1];
@@ -170,21 +170,24 @@ export async function searchIFA(query: string): Promise<IFASearchResult[]> {
     }
   };
 
-  // Primary search: site-scoped with player keyword for better targeting
+  // Primary search: site-scoped with inurl:player_id for precise player targeting
   const isHebrew = /[\u0590-\u05FF]/.test(q);
-  await runSearch(`site:football.org.il/players/player ${q}`);
+  await runSearch(`site:football.org.il inurl:player_id ${q}`);
 
-  // If few results, try broader search with Hebrew player keyword
+  // If few results, try with player keyword in the query language
   if (results.length < 3) {
-    const fallbackQuery = isHebrew
-      ? `site:football.org.il ${q} שחקן`
-      : `site:football.org.il ${q} player`;
-    await runSearch(fallbackQuery);
+    const keyword = isHebrew ? 'שחקן' : 'player';
+    await runSearch(`site:football.org.il inurl:player_id ${q} ${keyword}`);
   }
 
-  // If still few results and query is English, try without site restriction using IFA keywords
+  // If still few results and query is English, try adding Hebrew keyword for better IFA coverage
   if (results.length < 3 && !isHebrew) {
-    await runSearch(`football.org.il player_id ${q}`);
+    await runSearch(`site:football.org.il inurl:player_id ${q} שחקן`);
+  }
+
+  // If still few results and query is Hebrew, try broader site search (still player-filtered by URL check)
+  if (results.length < 3 && isHebrew) {
+    await runSearch(`site:football.org.il ${q} שחקן כדורגל`);
   }
 
   return results.slice(0, 20);
