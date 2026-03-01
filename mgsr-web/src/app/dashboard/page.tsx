@@ -497,7 +497,7 @@ export default function DashboardPage() {
         value: count,
         pct: total > 0 ? Math.round((count / total) * 100) : 0,
       }));
-  }, [eventsThisWeek, t]);
+  }, [eventsThisWeek, t, platform]);
 
   const startOfToday = useMemo(() => {
     const d = new Date();
