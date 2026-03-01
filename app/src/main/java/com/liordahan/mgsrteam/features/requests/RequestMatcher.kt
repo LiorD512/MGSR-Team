@@ -7,19 +7,49 @@ import com.liordahan.mgsrteam.features.requests.models.SalaryRangeOptions
 
 /**
  * Matches roster players to a request based on position, age, dominate foot, salary range, and transfer fee.
- * - Position: player must have the requested position (or equivalent)
+ * All ClubRequests are shared — matching is not filtered by who added the request.
+ * - Position: player must have the requested position (or equivalent); normalizes "Centre Forward" <-> "CF"
  * - Age: if request has an age range, player age must fall within it
  * - Dominate foot: if request specifies left/right, player must match; players without foot info are shown anyway
  * - Salary: if request has salaryRange, player's salaryRange must match the request range OR an adjacent range
- *   (e.g. request 26-30 also accepts 20-25 and 30+). Players with no salary data are included as suggestions.
  * - Transfer fee: if request has transferFee, player's transferFee must match exactly.
- *   Players with no transfer fee data are included as suggestions.
  */
 object RequestMatcher {
+
+    /** Maps common position names to canonical codes (aligns with web/Transfermarkt). */
+    private val POSITION_ALIASES = mapOf(
+        "GOALKEEPER" to "GK",
+        "LEFT BACK" to "LB",
+        "CENTRE BACK" to "CB",
+        "CENTER BACK" to "CB",
+        "CENTREBACK" to "CB",
+        "CENTERBACK" to "CB",
+        "RIGHT BACK" to "RB",
+        "LEFTBACK" to "LB",
+        "RIGHTBACK" to "RB",
+        "DEFENSIVE MIDFIELD" to "DM",
+        "CENTRAL MIDFIELD" to "CM",
+        "ATTACKING MIDFIELD" to "AM",
+        "RIGHT WINGER" to "RW",
+        "LEFT WINGER" to "LW",
+        "CENTRE FORWARD" to "CF",
+        "CENTER FORWARD" to "CF",
+        "CENTREFORWARD" to "CF",
+        "CENTERFORWARD" to "CF",
+        "SECOND STRIKER" to "SS",
+        "LEFT MIDFIELD" to "LM",
+        "RIGHT MIDFIELD" to "RM"
+    )
+
+    private fun normalizePosition(pos: String): String {
+        val upper = pos.trim().uppercase().replace("-", " ")
+        return POSITION_ALIASES[upper] ?: POSITION_ALIASES[upper.replace(" ", "")] ?: upper.replace(" ", "")
+    }
 
     /**
      * Returns requests that match the given player (reverse of match).
      * Used on Player Info screen to show "Matching Requests" for a player.
+     * Requests are not filtered by who added them — all pending requests are considered.
      */
     fun matchingRequestsForPlayer(player: Player, requests: List<Request>): List<Request> {
         return requests.filter { match(it, listOf(player)).isNotEmpty() }
@@ -43,16 +73,16 @@ object RequestMatcher {
         val reqFoot = request.dominateFoot?.trim()?.lowercase()?.takeIf { it.isNotBlank() } ?: return true
         if (reqFoot == DominateFootOptions.ANY) return true
         val playerFoot = player.foot?.trim()?.lowercase()?.takeIf { it.isNotBlank() }
-        // Show players without foot info anyway; only exclude when player has different foot
         if (playerFoot == null) return true
         return playerFoot == reqFoot
     }
 
     private fun matchesPosition(player: Player, requestPosition: String): Boolean {
-        val playerPositions = player.positions?.mapNotNull { it?.trim()?.uppercase()?.takeIf { p -> p.isNotBlank() } } ?: return false
+        val playerPositions = player.positions?.mapNotNull { it?.trim()?.takeIf { p -> p.isNotBlank() } } ?: return false
         if (playerPositions.isEmpty()) return false
-        val reqPos = requestPosition.trim().uppercase().takeIf { it.isNotBlank() } ?: return false
-        return playerPositions.any { it.equals(reqPos, ignoreCase = true) }
+        val reqPosNorm = normalizePosition(requestPosition)
+        if (reqPosNorm.isBlank()) return false
+        return playerPositions.any { normalizePosition(it) == reqPosNorm }
     }
 
     private fun matchesAge(player: Player, request: Request): Boolean {

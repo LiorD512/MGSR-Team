@@ -36,6 +36,8 @@ interface DiscoveryCandidate {
   fbrefGoalsPer90?: number;
   fbrefAssistsPer90?: number;
   fbrefMinutes90s?: string | number;
+  sourceAgentId?: string;
+  sourceProfileId?: string;
 }
 
 interface WarRoomReport {
@@ -116,6 +118,7 @@ export default function WarRoomPage() {
   const [loadingScoutProfiles, setLoadingScoutProfiles] = useState(false);
   const [scoutLastRunAt, setScoutLastRunAt] = useState<number | null>(null);
   const [scoutAgentFilter, setScoutAgentFilter] = useState<AgentId | 'all'>('all');
+  const [scoutFeedback, setScoutFeedback] = useState<Record<string, 'up' | 'down'>>({});
 
   useEffect(() => {
     if (!loading && !user) router.replace('/login');
@@ -140,6 +143,35 @@ export default function WarRoomPage() {
       rosterUnsub();
     };
   }, [user]);
+
+  // Listen to scout profile feedback (thumbs up/down)
+  useEffect(() => {
+    if (!user || warRoomTab !== 'scout-agents') return;
+    const feedbackRef = doc(db, 'ScoutProfileFeedback', user.uid);
+    const unsub = onSnapshot(feedbackRef, (snap) => {
+      const data = snap.data();
+      const fb = (data?.feedback as Record<string, 'up' | 'down' | { feedback: 'up' | 'down'; agentId: string }>) || {};
+      const flat: Record<string, 'up' | 'down'> = {};
+      for (const [k, v] of Object.entries(fb)) {
+        flat[k] = typeof v === 'object' && v?.feedback ? v.feedback : (v as 'up' | 'down');
+      }
+      setScoutFeedback(flat);
+    });
+    return () => unsub();
+  }, [user, warRoomTab]);
+
+  const setProfileFeedback = useCallback(
+    async (profileId: string, feedback: 'up' | 'down', agentId: string) => {
+      if (!user) return;
+      const feedbackRef = doc(db, 'ScoutProfileFeedback', user.uid);
+      const snap = await getDoc(feedbackRef);
+      const current = (snap.data()?.feedback as Record<string, 'up' | 'down' | { feedback: 'up' | 'down'; agentId: string }>) || {};
+      const next = { ...current, [profileId]: { feedback, agentId } };
+      await setDoc(feedbackRef, { feedback: next, updatedAt: Date.now() }, { merge: true });
+      setScoutFeedback((prev) => ({ ...prev, [profileId]: feedback }));
+    },
+    [user]
+  );
 
   useEffect(() => {
     if (addError) {
@@ -178,6 +210,8 @@ export default function WarRoomPage() {
           addedByAgentId: account.id,
           addedByAgentName: account.name ?? null,
           addedByAgentHebrewName: account.hebrewName ?? null,
+          ...(c.sourceAgentId && { sourceAgentId: c.sourceAgentId }),
+          ...(c.sourceProfileId && { sourceProfileId: c.sourceProfileId }),
         };
         await setDoc(docRef, { entries: [...current, entry] }, { merge: true });
         await addDoc(collection(db, 'FeedEvents'), {
@@ -210,6 +244,8 @@ export default function WarRoomPage() {
         profileImage: p.profileImage ?? undefined,
         source: 'general',
         sourceLabel: 'AI Scout',
+        sourceAgentId: p.agentId,
+        sourceProfileId: p.id,
       };
       return addToShortlist(c);
     },
@@ -894,7 +930,7 @@ export default function WarRoomPage() {
                                   <p className="text-xs text-mgsr-text mt-1">
                                     {(isHe ? p.scoutExplanationHe : p.scoutExplanationEn) || p.matchReason}
                                   </p>
-                                  <div className="flex flex-wrap gap-2 mt-2" onClick={(e) => e.stopPropagation()}>
+                                  <div className="flex flex-wrap gap-2 mt-2 items-center" onClick={(e) => e.stopPropagation()}>
                                     <a
                                       href={p.tmProfileUrl}
                                       target="_blank"
@@ -903,6 +939,26 @@ export default function WarRoomPage() {
                                     >
                                       Transfermarkt →
                                     </a>
+                                    <span className="flex items-center gap-0.5 text-mgsr-muted">
+                                      <button
+                                        type="button"
+                                        onClick={() => setProfileFeedback(p.id, 'up', p.agentId)}
+                                        className={`p-1 rounded transition ${scoutFeedback[p.id] === 'up' ? 'text-green-500 bg-green-500/20' : 'hover:text-green-500 hover:bg-green-500/10'}`}
+                                        title={isHe ? 'טוב' : 'Good pick'}
+                                        aria-label={isHe ? 'טוב' : 'Good pick'}
+                                      >
+                                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M2 10.5a1.5 1.5 0 113 0v6a1.5 1.5 0 01-3 0v-6zM6 10.333v5.43a2 2 0 001.106 1.79l.05.025A4 4 0 008.943 18h5.416a2 2 0 001.962-1.608l1.2-6A2 2 0 0015.56 8H12V4a2 2 0 00-2-2 1 1 0 00-1 1v.667a4 4 0 01-.8 2.4L6.8 7.933a4 4 0 00-.8 2.4z" /></svg>
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => setProfileFeedback(p.id, 'down', p.agentId)}
+                                        className={`p-1 rounded transition ${scoutFeedback[p.id] === 'down' ? 'text-red-500 bg-red-500/20' : 'hover:text-red-500 hover:bg-red-500/10'}`}
+                                        title={isHe ? 'לא רלוונטי' : 'Not relevant'}
+                                        aria-label={isHe ? 'לא רלוונטי' : 'Not relevant'}
+                                      >
+                                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M18 9.5a1.5 1.5 0 11-3 0v-6a1.5 1.5 0 013 0v6zM14 9.667v-5.43a2 2 0 00-1.105-1.79l-.05-.025A4 4 0 0011.055 2H5.64a2 2 0 00-1.962 1.608l-1.2 6A2 2 0 004.44 12H8v4a2 2 0 002 2 1 1 0 001-1v-.667a4 4 0 01.8-2.4l1.4-1.866a4 4 0 00.8-2.4z" /></svg>
+                                      </button>
+                                    </span>
                                     {!inRoster && (
                                       <button
                                         onClick={() => addToShortlistFromProfile(p)}

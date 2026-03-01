@@ -12,6 +12,7 @@ const { getFirestore } = require("firebase-admin/firestore");
 const { runMandateExpiry } = require("./workers/mandateExpiry");
 const { runReleasesRefresh } = require("./workers/releasesRefresh");
 const { runScoutAgent } = require("./workers/scoutAgent");
+const { runScoutSkillLearning } = require("./workers/scoutSkillLearner");
 
 initializeApp();
 const db = getFirestore();
@@ -277,7 +278,14 @@ exports.scoutAgentWorker = onMessagePublished(
   async () => {
     console.log("[scoutAgentWorker] Started");
     try {
-      await runScoutAgent();
+      const runResult = await runScoutAgent();
+      if (runResult?.runId && runResult?.profilesByAgent) {
+        try {
+          await runScoutSkillLearning(runResult, runResult.runId);
+        } catch (learnErr) {
+          console.error("[scoutAgentWorker] Skill learning failed:", learnErr);
+        }
+      }
       console.log("[scoutAgentWorker] Completed");
     } catch (err) {
       console.error("[scoutAgentWorker] Failed:", err);

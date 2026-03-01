@@ -22,6 +22,10 @@ class RequestsRepository(
     private val firebaseHandler: FirebaseHandler
 ) : IRequestsRepository {
 
+    /**
+     * All ClubRequests are shared — no filtering by user/agent.
+     * Any authenticated user can see all requests.
+     */
     override fun requestsFlow(): Flow<List<Request>> = callbackFlow {
         val listener: ListenerRegistration = firebaseHandler.firebaseStore
             .collection(firebaseHandler.clubRequestsTable)
@@ -30,7 +34,9 @@ class RequestsRepository(
                     trySend(emptyList())
                     return@addSnapshotListener
                 }
-                val list = value?.toObjects(Request::class.java) ?: emptyList()
+                val list = value?.documents?.mapNotNull { doc ->
+                    doc.toObject(Request::class.java)?.copy(id = doc.id)
+                } ?: emptyList()
                 trySend(list.sortedByDescending { it.createdAt ?: 0L })
             }
         awaitClose { listener.remove() }

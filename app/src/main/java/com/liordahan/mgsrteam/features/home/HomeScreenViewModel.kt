@@ -20,6 +20,7 @@ import com.liordahan.mgsrteam.transfermarket.PRIORITY_COUNTRY_CODES
 import com.liordahan.mgsrteam.transfermarket.TransferWindow
 import com.liordahan.mgsrteam.transfermarket.TransferWindows
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
@@ -139,9 +140,17 @@ class HomeScreenViewModel(
         listenToPlayers()
         listenToRequests()
         loadFeedEvents()
-        loadDocumentReminders()
         listenToAgentTasks()
-        loadTransferWindows()
+        loadTransferWindowsDeferred()
+        ensureLoadingClearedWithinTimeout()
+    }
+
+    /** Fallback: clear loading if FeedEvents/Players listeners are slow (e.g. offline). */
+    private fun ensureLoadingClearedWithinTimeout() {
+        viewModelScope.launch(Dispatchers.Main) {
+            delay(4000)
+            _state.update { if (it.isLoading) it.copy(isLoading = false) else it }
+        }
     }
 
     override fun onCleared() {
@@ -185,11 +194,17 @@ class HomeScreenViewModel(
                 else -> R.string.greeting_good_evening
             }
             val currentAccount = try {
-                val snap = firebaseHandler.firebaseStore
-                    .collection(firebaseHandler.accountsTable).get().await()
-                val accounts = snap.toObjects(Account::class.java)
-                accounts.firstOrNull {
-                    it.email.equals(firebaseHandler.firebaseAuth.currentUser?.email, true)
+                val currentEmail = firebaseHandler.firebaseAuth.currentUser?.email
+                if (currentEmail == null) null
+                else {
+                    val snap = firebaseHandler.firebaseStore
+                        .collection(firebaseHandler.accountsTable)
+                        .whereEqualTo("email", currentEmail)
+                        .limit(1)
+                        .get()
+                        .await()
+                    val doc = snap.documents.firstOrNull()
+                    doc?.toObject(Account::class.java)?.copy(id = doc.id)
                 }
             } catch (_: Exception) { null }
 
@@ -250,12 +265,12 @@ class HomeScreenViewModel(
                             freeAgents = freeAgents,
                             expiringSoon = expiring,
                             agentSummaries = summaries,
-                            mandateStatusByTmProfile = mandateStatusByTmProfile,
-                            isLoading = false
+                            mandateStatusByTmProfile = mandateStatusByTmProfile
                         )
                     }
                     recomputeMyOverview()
 
+                    loadDocumentReminders()
                     countMandates(players)
                 }
             }
@@ -320,7 +335,12 @@ class HomeScreenViewModel(
                 val deduped = events.distinctBy {
                     "${it.type}_${it.playerTmProfile}_${it.oldValue}_${it.newValue}"
                 }
-                _state.update { it.copy(feedEvents = deduped) }
+                _state.update {
+                    it.copy(
+                        feedEvents = deduped,
+                        isLoading = false
+                    )
+                }
             }
         listenerRegistrations.add(reg)
     }
@@ -377,6 +397,7 @@ class HomeScreenViewModel(
     private fun listenToAgentTasks() {
         val reg = firebaseHandler.firebaseStore.collection(firebaseHandler.agentTasksTable)
             .orderBy("createdAt", com.google.firebase.firestore.Query.Direction.ASCENDING)
+            .limit(100)
             .addSnapshotListener { snapshot, _ ->
                 if (snapshot == null) return@addSnapshotListener
                 val tasks = snapshot.documents.mapNotNull { doc ->
@@ -522,6 +543,14 @@ class HomeScreenViewModel(
 
     override fun refreshTransferWindows() {
         loadTransferWindows()
+    }
+
+    /** Defer transfer windows load so initial Firestore fetches complete first. */
+    private fun loadTransferWindowsDeferred() {
+        viewModelScope.launch(Dispatchers.IO) {
+            delay(1500)
+            loadTransferWindows()
+        }
     }
 
     private fun loadTransferWindows() {

@@ -34,6 +34,25 @@ const LEAGUE_TO_AGENT = {
   "austrian bundesliga": "austria",
   "admiral bundesliga": "austria",
   "2. liga austria": "austria",
+  "allsvenskan": "sweden",
+  "swiss super league": "switzerland",
+  "raiffeisen super league": "switzerland",
+  "chance liga": "czech",
+  "fortuna liga": "czech",
+  "superliga": "romania",
+  "efbet liga": "bulgaria",
+  "nemzeti bajnoksag": "hungary",
+  "premier liga": "ukraine",
+  "championship": "england",
+  "2. bundesliga": "germany",
+  "2 bundesliga": "germany",
+  "serie b": "italy",
+  "laliga2": "spain",
+  "laliga 2": "spain",
+  "ligue 2": "france",
+  "championnat national": "france",
+  "national": "france",
+  "scottish premiership": "scotland",
 };
 
 /** Fallback: league contains country keyword -> agentId */
@@ -46,10 +65,27 @@ const LEAGUE_CONTAINS_AGENT = [
   [["netherlands", "dutch", "eredivisie", "eerste divisie"], "netherlands"],
   [["turkey", "turkish"], "turkey"],
   [["austria", "austrian", "admiral"], "austria"],
+  [["sweden", "swedish", "allsvenskan"], "sweden"],
+  [["switzerland", "swiss", "super league"], "switzerland"],
+  [["czech", "chance liga", "fortuna liga"], "czech"],
+  [["romania", "romanian", "superliga"], "romania"],
+  [["bulgaria", "bulgarian", "efbet"], "bulgaria"],
+  [["hungary", "hungarian", "nemzeti"], "hungary"],
+  [["ukraine", "ukrainian", "premier liga"], "ukraine"],
+  [["england", "english", "championship"], "england"],
+  [["germany", "german", "bundesliga"], "germany"],
+  [["italy", "italian", "serie"], "italy"],
+  [["spain", "spanish", "laliga"], "spain"],
+  [["france", "french", "ligue", "championnat national"], "france"],
+  [["scotland", "scottish", "premiership"], "scotland"],
 ];
 
 const POSITIONS = ["CF", "AM", "CM", "CB", "DM", "LW", "RW", "LB", "RB", "SS"];
-const AGENT_IDS = ["portugal", "serbia", "poland", "greece", "belgium", "netherlands", "turkey", "austria"];
+const AGENT_IDS = [
+  "portugal", "serbia", "poland", "greece", "belgium", "netherlands", "turkey", "austria",
+  "sweden", "switzerland", "czech", "romania", "bulgaria", "hungary", "ukraine",
+  "england", "germany", "italy", "spain", "france", "scotland",
+];
 
 function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms));
@@ -96,18 +132,30 @@ function getMinutes90s(p) {
   return isNaN(n) || n < 0 ? 0 : n;
 }
 
-function matchesProfile(p, profileType, valEuro, ageNum, leagueTier) {
+/**
+ * @param {Object} p - Player object
+ * @param {string} profileType
+ * @param {number} valEuro
+ * @param {number|null} ageNum
+ * @param {number} leagueTier
+ * @param {Object} [paramsOverrides] - Optional overrides from ScoutAgentSkills (e.g. { minMinutes90s: 8 })
+ */
+function matchesProfile(p, profileType, valEuro, ageNum, leagueTier, paramsOverrides = {}) {
   const minutes90s = getMinutes90s(p);
+  const minMinutes90s = paramsOverrides.minMinutes90s;
+
   switch (profileType) {
     case "HIGH_VALUE_BENCHED":
       return valEuro >= 800_000 && valEuro <= 3_000_000 && ageNum != null && ageNum <= 30;
-    case "LOW_VALUE_STARTER":
-      // Must actually play: at least ~5 full games (450 min) this season
-      return valEuro <= 500_000 && valEuro > 0 && ageNum != null && ageNum <= 28 && minutes90s >= 5;
+    case "LOW_VALUE_STARTER": {
+      const min = minMinutes90s ?? 5;
+      return valEuro <= 500_000 && valEuro > 0 && ageNum != null && ageNum <= 28 && minutes90s >= min;
+    }
     case "YOUNG_STRIKER_HOT": {
       const pos = (p.position || "").toLowerCase();
       const isStriker = pos.includes("forward") || pos.includes("striker") || pos === "cf" || pos === "ss";
-      return valEuro <= 1_000_000 && ageNum != null && ageNum <= 21 && isStriker && minutes90s >= 3;
+      const min = minMinutes90s ?? 3;
+      return valEuro <= 1_000_000 && ageNum != null && ageNum <= 21 && isStriker && minutes90s >= min;
     }
     case "CONTRACT_EXPIRING":
       return valEuro <= 2_500_000 && (p.contract || "").toLowerCase().includes("2025");
@@ -165,11 +213,25 @@ async function runScoutAgent() {
   const db = getFirestore();
   const profilesRef = db.collection("ScoutProfiles");
   const runsRef = db.collection("ScoutAgentRuns");
+  const skillsRef = db.collection("ScoutAgentSkills");
 
   const startTime = Date.now();
   const seen = new Map();
   const profilesToWrite = [];
   let leaguesScanned = 0;
+
+  // Load skill params for each agent (used to override profile matching)
+  const paramsByAgent = {};
+  const skillSnaps = await Promise.all(AGENT_IDS.map((id) => skillsRef.doc(id).get()));
+  for (let i = 0; i < AGENT_IDS.length; i++) {
+    const data = skillSnaps[i]?.data();
+    const paramsJson = (data?.paramsJson || "{}").trim();
+    try {
+      paramsByAgent[AGENT_IDS[i]] = JSON.parse(paramsJson) || {};
+    } catch {
+      paramsByAgent[AGENT_IDS[i]] = {};
+    }
+  }
 
   console.log("[ScoutAgent] Starting AI Scout Agent Network run");
 
@@ -194,7 +256,12 @@ async function runScoutAgent() {
 
         const ageNum = parseAge(p.age);
         const league = (p.league || "").trim();
-        const leagueTier = league.toLowerCase().includes("2") || league.toLowerCase().includes("second") ? 2 : 1;
+        const lc = league.toLowerCase();
+        const leagueTier = lc.includes("national") || lc.includes("3. liga") ? 3
+          : lc.includes("2") || lc.includes("second") ? 2
+          : 1;
+
+        const agentParams = paramsByAgent[agentId] || {};
 
         for (const profileType of [
           "HIGH_VALUE_BENCHED",
@@ -204,7 +271,8 @@ async function runScoutAgent() {
           "HIDDEN_GEM",
           "LOWER_LEAGUE_RISER",
         ]) {
-          if (!matchesProfile(p, profileType, valEuro, ageNum, leagueTier)) continue;
+          const profileOverrides = agentParams[profileType] || {};
+          if (!matchesProfile(p, profileType, valEuro, ageNum, leagueTier, profileOverrides)) continue;
 
           const urlHash = Buffer.from(url).toString("base64").replace(/[+/=]/g, "_").slice(0, 40);
           const docId = `${agentId}_${urlHash}_${profileType}`;
@@ -258,7 +326,7 @@ async function runScoutAgent() {
   }
 
   const durationMs = Date.now() - startTime;
-  await runsRef.add({
+  const runDoc = await runsRef.add({
     runAt: startTime,
     status: "success",
     profilesFound: profilesToWrite.length,
@@ -267,8 +335,24 @@ async function runScoutAgent() {
     error: null,
   });
 
+  const profilesByAgent = {};
+  for (const { docId, data } of profilesToWrite) {
+    const aid = data.agentId;
+    if (!profilesByAgent[aid]) profilesByAgent[aid] = [];
+    profilesByAgent[aid].push({
+      docId,
+      profileType: data.profileType,
+      league: data.league,
+    });
+  }
+
   console.log(`[ScoutAgent] Completed in ${durationMs}ms — ${profilesToWrite.length} profiles`);
-  return { profilesFound: profilesToWrite.length, durationMs };
+  return {
+    profilesFound: profilesToWrite.length,
+    durationMs,
+    profilesByAgent,
+    runId: runDoc.id,
+  };
 }
 
 module.exports = { runScoutAgent };

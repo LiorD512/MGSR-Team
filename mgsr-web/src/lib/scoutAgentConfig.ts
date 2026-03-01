@@ -12,6 +12,19 @@ export const AGENT_IDS = [
   'netherlands',
   'turkey',
   'austria',
+  'sweden',
+  'switzerland',
+  'czech',
+  'romania',
+  'bulgaria',
+  'hungary',
+  'ukraine',
+  'england',
+  'germany',
+  'italy',
+  'spain',
+  'france',
+  'scotland',
 ] as const;
 
 export type AgentId = (typeof AGENT_IDS)[number];
@@ -50,6 +63,34 @@ const LEAGUE_URLS: Record<string, string> = {
   // Austria
   'bundesliga-at': 'https://www.transfermarkt.com/bundesliga/startseite/wettbewerb/A1',
   '2-liga-at': 'https://www.transfermarkt.com/2-liga/startseite/wettbewerb/A2',
+  // Sweden
+  'allsvenskan': 'https://www.transfermarkt.com/allsvenskan/startseite/wettbewerb/SE1',
+  // Switzerland
+  'super-league': 'https://www.transfermarkt.com/super-league/startseite/wettbewerb/C1',
+  // Czech Republic
+  'chance-liga': 'https://www.transfermarkt.com/chance-liga/startseite/wettbewerb/TS1',
+  'first-league-cz': 'https://www.transfermarkt.com/fortuna-liga/startseite/wettbewerb/CZ1',
+  // Romania
+  'superliga': 'https://www.transfermarkt.com/superliga/startseite/wettbewerb/RO1',
+  // Bulgaria
+  'efbet-liga': 'https://www.transfermarkt.com/efbet-liga/startseite/wettbewerb/BU1',
+  // Hungary
+  'nemzeti-bajnoksag': 'https://www.transfermarkt.com/nemzeti-bajnoksag/startseite/wettbewerb/UNG1',
+  // Ukraine
+  'premier-liga': 'https://www.transfermarkt.com/premier-liga/startseite/wettbewerb/UKR1',
+  // England
+  'championship': 'https://www.transfermarkt.com/championship/startseite/wettbewerb/GB2',
+  // Germany
+  '2-bundesliga': 'https://www.transfermarkt.com/2-bundesliga/startseite/wettbewerb/L2',
+  // Italy
+  'serie-b': 'https://www.transfermarkt.com/serie-b/startseite/wettbewerb/IT2',
+  // Spain
+  'laliga2': 'https://www.transfermarkt.com/laliga2/startseite/wettbewerb/ES2',
+  // France
+  'ligue-2': 'https://www.transfermarkt.com/ligue-2/startseite/wettbewerb/FR2',
+  'championnat-national': 'https://www.transfermarkt.com/championnat-national/startseite/wettbewerb/FR3',
+  // Scotland
+  'scottish-premiership': 'https://www.transfermarkt.com/scottish-premiership/startseite/wettbewerb/SC1',
 };
 
 export const AGENTS_CONFIG: Record<AgentId, AgentConfig> = {
@@ -116,6 +157,110 @@ export const AGENTS_CONFIG: Record<AgentId, AgentConfig> = {
     flag: '🇦🇹',
     leagueUrls: [LEAGUE_URLS['bundesliga-at'], LEAGUE_URLS['2-liga-at']],
     leagueNames: ['Bundesliga', '2. Liga'],
+  },
+  sweden: {
+    id: 'sweden',
+    name: 'Sweden',
+    nameHe: 'שוודיה',
+    flag: '🇸🇪',
+    leagueUrls: [LEAGUE_URLS['allsvenskan']],
+    leagueNames: ['Allsvenskan'],
+  },
+  switzerland: {
+    id: 'switzerland',
+    name: 'Switzerland',
+    nameHe: 'שוויץ',
+    flag: '🇨🇭',
+    leagueUrls: [LEAGUE_URLS['super-league']],
+    leagueNames: ['Super League'],
+  },
+  czech: {
+    id: 'czech',
+    name: 'Czech Republic',
+    nameHe: 'צ\'כיה',
+    flag: '🇨🇿',
+    leagueUrls: [LEAGUE_URLS['chance-liga'], LEAGUE_URLS['first-league-cz']],
+    leagueNames: ['Chance Liga', 'Fortuna Liga'],
+  },
+  romania: {
+    id: 'romania',
+    name: 'Romania',
+    nameHe: 'רומניה',
+    flag: '🇷🇴',
+    leagueUrls: [LEAGUE_URLS['superliga']],
+    leagueNames: ['SuperLiga'],
+  },
+  bulgaria: {
+    id: 'bulgaria',
+    name: 'Bulgaria',
+    nameHe: 'בולגריה',
+    flag: '🇧🇬',
+    leagueUrls: [LEAGUE_URLS['efbet-liga']],
+    leagueNames: ['Efbet Liga'],
+  },
+  hungary: {
+    id: 'hungary',
+    name: 'Hungary',
+    nameHe: 'הונגריה',
+    flag: '🇭🇺',
+    leagueUrls: [LEAGUE_URLS['nemzeti-bajnoksag']],
+    leagueNames: ['Nemzeti Bajnoksag'],
+  },
+  ukraine: {
+    id: 'ukraine',
+    name: 'Ukraine',
+    nameHe: 'אוקראינה',
+    flag: '🇺🇦',
+    leagueUrls: [LEAGUE_URLS['premier-liga']],
+    leagueNames: ['Premier Liga'],
+  },
+  england: {
+    id: 'england',
+    name: 'England',
+    nameHe: 'אנגליה',
+    flag: '🏴',
+    leagueUrls: [LEAGUE_URLS['championship']],
+    leagueNames: ['Championship'],
+  },
+  germany: {
+    id: 'germany',
+    name: 'Germany',
+    nameHe: 'גרמניה',
+    flag: '🇩🇪',
+    leagueUrls: [LEAGUE_URLS['2-bundesliga']],
+    leagueNames: ['2. Bundesliga'],
+  },
+  italy: {
+    id: 'italy',
+    name: 'Italy',
+    nameHe: 'איטליה',
+    flag: '🇮🇹',
+    leagueUrls: [LEAGUE_URLS['serie-b']],
+    leagueNames: ['Serie B'],
+  },
+  spain: {
+    id: 'spain',
+    name: 'Spain',
+    nameHe: 'ספרד',
+    flag: '🇪🇸',
+    leagueUrls: [LEAGUE_URLS['laliga2']],
+    leagueNames: ['LaLiga2'],
+  },
+  france: {
+    id: 'france',
+    name: 'France',
+    nameHe: 'צרפת',
+    flag: '🇫🇷',
+    leagueUrls: [LEAGUE_URLS['ligue-2'], LEAGUE_URLS['championnat-national']],
+    leagueNames: ['Ligue 2', 'Championnat National'],
+  },
+  scotland: {
+    id: 'scotland',
+    name: 'Scotland',
+    nameHe: 'סקוטלנד',
+    flag: '🏴',
+    leagueUrls: [LEAGUE_URLS['scottish-premiership']],
+    leagueNames: ['Scottish Premiership'],
   },
 };
 

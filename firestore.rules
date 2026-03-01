@@ -33,6 +33,15 @@ service cloud.firestore {
       allow read: if request.auth != null;
       allow write: if false;
     }
+    // ScoutAgentSkills: per-agent learned skills — read for authenticated, write by backend only
+    match /ScoutAgentSkills/{agentId} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
+    // ScoutProfileFeedback: thumbs up/down per user — user can only read/write own doc
+    match /ScoutProfileFeedback/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
 
     // ── Core app collections (required for dashboard, tasks, etc.) ──
     match /Accounts/{docId} {
