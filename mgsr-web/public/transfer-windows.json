@@ -1,187 +1,180 @@
 {
   "windows": [
     {
-      "countryName": "Armenia",
-      "countryCode": "am",
-      "flagUrl": "https://tmssl.akamaized.net/images/flagge/originals/10.png",
-      "confederation": "UEFA",
-      "daysLeft": 0
-    },
-    {
       "countryName": "Senegal",
       "countryCode": "sn",
       "flagUrl": "https://tmssl.akamaized.net/images/flagge/originals/149.png",
       "confederation": "CAF",
-      "daysLeft": 2
+      "daysLeft": 0
     },
     {
       "countryName": "Uganda",
       "countryCode": "ug",
       "flagUrl": "https://tmssl.akamaized.net/images/flagge/originals/176.png",
       "confederation": "CAF",
-      "daysLeft": 3
+      "daysLeft": 2
     },
     {
       "countryName": "Moldova",
       "countryCode": "md",
       "flagUrl": "https://tmssl.akamaized.net/images/flagge/originals/112.png",
       "confederation": "UEFA",
-      "daysLeft": 3
+      "daysLeft": 2
     },
     {
       "countryName": "Brazil",
       "countryCode": "br",
       "flagUrl": "https://tmssl.akamaized.net/images/flagge/originals/26.png",
       "confederation": "CONMEBOL",
-      "daysLeft": 4
+      "daysLeft": 3
     },
     {
       "countryName": "Tajikistan",
       "countryCode": "tj",
       "flagUrl": "https://tmssl.akamaized.net/images/flagge/originals/165.png",
       "confederation": "AFC",
-      "daysLeft": 5
+      "daysLeft": 4
     },
     {
       "countryName": "China",
       "countryCode": "cn",
       "flagUrl": "https://tmssl.akamaized.net/images/flagge/originals/34.png",
       "confederation": "AFC",
-      "daysLeft": 6
+      "daysLeft": 5
     },
     {
       "countryName": "Colombia",
       "countryCode": "co",
       "flagUrl": "https://tmssl.akamaized.net/images/flagge/originals/83.png",
       "confederation": "CONMEBOL",
-      "daysLeft": 6
+      "daysLeft": 5
     },
     {
       "countryName": "Kyrgyzstan",
       "countryCode": "kg",
       "flagUrl": "https://tmssl.akamaized.net/images/flagge/originals/90.png",
       "confederation": "AFC",
-      "daysLeft": 10
+      "daysLeft": 9
     },
     {
       "countryName": "Belarus",
       "countryCode": "by",
       "flagUrl": "https://tmssl.akamaized.net/images/flagge/originals/18.png",
       "confederation": "UEFA",
-      "daysLeft": 10
+      "daysLeft": 9
     },
     {
       "countryName": "Argentina",
       "countryCode": "ar",
       "flagUrl": "https://tmssl.akamaized.net/images/flagge/originals/9.png",
       "confederation": "CONMEBOL",
-      "daysLeft": 10
+      "daysLeft": 9
     },
     {
       "countryName": "Venezuela",
       "countryCode": "ve",
       "flagUrl": "https://tmssl.akamaized.net/images/flagge/originals/182.png",
       "confederation": "CONMEBOL",
-      "daysLeft": 10
+      "daysLeft": 9
     },
     {
       "countryName": "Ukraine",
       "countryCode": "ua",
       "flagUrl": "https://tmssl.akamaized.net/images/flagge/originals/177.png",
       "confederation": "UEFA",
-      "daysLeft": 12
+      "daysLeft": 11
     },
     {
       "countryName": "Paraguay",
       "countryCode": "py",
       "flagUrl": "https://tmssl.akamaized.net/images/flagge/originals/132.png",
       "confederation": "CONMEBOL",
-      "daysLeft": 13
+      "daysLeft": 12
     },
     {
       "countryName": "Peru",
       "countryCode": "pe",
       "flagUrl": "https://tmssl.akamaized.net/images/flagge/originals/133.png",
       "confederation": "CONMEBOL",
-      "daysLeft": 15
+      "daysLeft": 14
     },
     {
       "countryName": "Vietnam",
       "countryCode": "vn",
       "flagUrl": "https://tmssl.akamaized.net/images/flagge/originals/185.png",
       "confederation": "AFC",
-      "daysLeft": 18
+      "daysLeft": 17
     },
     {
       "countryName": "Lithuania",
       "countryCode": "lt",
       "flagUrl": "https://tmssl.akamaized.net/images/flagge/originals/98.png",
       "confederation": "UEFA",
-      "daysLeft": 19
+      "daysLeft": 18
     },
     {
       "countryName": "Bolivia",
       "countryCode": "bo",
       "flagUrl": "https://tmssl.akamaized.net/images/flagge/originals/23.png",
       "confederation": "CONMEBOL",
-      "daysLeft": 20
+      "daysLeft": 19
     },
     {
       "countryName": "Sweden",
       "countryCode": "se",
       "flagUrl": "https://tmssl.akamaized.net/images/flagge/originals/147.png",
       "confederation": "UEFA",
-      "daysLeft": 26
+      "daysLeft": 25
     },
     {
       "countryName": "United States",
       "countryCode": "us",
       "flagUrl": "https://tmssl.akamaized.net/images/flagge/originals/184.png",
       "confederation": "CONCACAF",
-      "daysLeft": 26
+      "daysLeft": 25
     },
     {
       "countryName": "Korea, South",
       "countryCode": "kr",
       "flagUrl": "https://tmssl.akamaized.net/images/flagge/originals/87.png",
       "confederation": "AFC",
-      "daysLeft": 27
+      "daysLeft": 26
     },
     {
       "countryName": "Ecuador",
       "countryCode": "ec",
       "flagUrl": "https://tmssl.akamaized.net/images/flagge/originals/44.png",
       "confederation": "CONMEBOL",
-      "daysLeft": 29
+      "daysLeft": 28
     },
     {
       "countryName": "Norway",
       "countryCode": "no",
       "flagUrl": "https://tmssl.akamaized.net/images/flagge/originals/125.png",
       "confederation": "UEFA",
-      "daysLeft": 32
+      "daysLeft": 31
     },
     {
       "countryName": "Kazakhstan",
       "countryCode": "kz",
       "flagUrl": "https://tmssl.akamaized.net/images/flagge/originals/81.png",
       "confederation": "UEFA",
-      "daysLeft": 35
+      "daysLeft": 34
     },
     {
       "countryName": "Japan",
       "countryCode": "jp",
       "flagUrl": "https://tmssl.akamaized.net/images/flagge/originals/77.png",
       "confederation": "AFC",
-      "daysLeft": 40
+      "daysLeft": 39
     },
     {
       "countryName": "Canada",
       "countryCode": "ca",
       "flagUrl": "https://tmssl.akamaized.net/images/flagge/originals/80.png",
       "confederation": "CONCACAF",
-      "daysLeft": 48
+      "daysLeft": 47
     }
   ],
-  "updatedAt": "2026-02-28T08:18:32.850Z"
+  "updatedAt": "2026-03-01T08:21:10.046Z"
 }
