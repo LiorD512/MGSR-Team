@@ -8,33 +8,34 @@ import Link from 'next/link';
 import ReactMarkdown from 'react-markdown';
 import type { ShareData } from './types';
 
-/** Scout report markdown styling — teal section headers, clear hierarchy */
-const scoutReportComponents = {
-  h2: ({ children }: { children?: React.ReactNode }) => (
-    <h3 className="text-base font-semibold text-mgsr-teal mt-5 mb-2 first:mt-0">
-      {children}
-    </h3>
-  ),
-  p: ({ children }: { children?: React.ReactNode }) => (
-    <p className="text-mgsr-text leading-relaxed mb-3 last:mb-0">{children}</p>
-  ),
-  ul: ({ children }: { children?: React.ReactNode }) => (
-    <ul className="list-disc list-inside space-y-1 mb-3 text-mgsr-text">{children}</ul>
-  ),
-  li: ({ children }: { children?: React.ReactNode }) => (
-    <li className="leading-relaxed">{children}</li>
-  ),
-  strong: ({ children }: { children?: React.ReactNode }) => (
-    <strong className="font-semibold text-mgsr-teal">{children}</strong>
-  ),
-};
+/** Scout report markdown styling — teal/rose section headers */
+function getScoutReportComponents(isWomen: boolean) {
+  const accent = isWomen ? 'text-[var(--women-rose)]' : 'text-mgsr-teal';
+  return {
+    h2: ({ children }: { children?: React.ReactNode }) => (
+      <h3 className={`text-base font-semibold mt-5 mb-2 first:mt-0 ${accent}`}>{children}</h3>
+    ),
+    p: ({ children }: { children?: React.ReactNode }) => (
+      <p className="text-mgsr-text leading-relaxed mb-3 last:mb-0">{children}</p>
+    ),
+    ul: ({ children }: { children?: React.ReactNode }) => (
+      <ul className="list-disc list-inside space-y-1 mb-3 text-mgsr-text">{children}</ul>
+    ),
+    li: ({ children }: { children?: React.ReactNode }) => (
+      <li className="leading-relaxed">{children}</li>
+    ),
+    strong: ({ children }: { children?: React.ReactNode }) => (
+      <strong className={`font-semibold ${accent}`}>{children}</strong>
+    ),
+  };
+}
 
-function StatCard({ label, value }: { label: string; value?: string }) {
+function StatCard({ label, value, isWomen }: { label: string; value?: string; isWomen?: boolean }) {
   if (!value) return null;
   return (
-    <div className="px-4 py-3 rounded-xl border bg-mgsr-card/50 border-mgsr-border">
+    <div className={`px-4 py-3 rounded-xl border bg-mgsr-card/50 ${isWomen ? 'border-[var(--women-rose)]/20 shadow-[0_0_20px_rgba(232,160,191,0.05)]' : 'border-mgsr-border'}`}>
       <p className="text-xs text-mgsr-muted uppercase tracking-wider">{label}</p>
-      <p className="font-semibold mt-0.5 text-mgsr-text">{value}</p>
+      <p className={`font-semibold mt-0.5 ${isWomen ? 'text-[var(--women-rose)]' : 'text-mgsr-text'}`}>{value}</p>
     </div>
   );
 }
@@ -69,7 +70,10 @@ export default function SharedPlayerContent({
   if (loading) {
     return (
       <div className="min-h-screen bg-mgsr-dark flex items-center justify-center">
-        <div className="animate-pulse text-mgsr-teal">Loading...</div>
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-10 h-10 border-2 border-mgsr-teal border-t-transparent rounded-full animate-spin" />
+          <div className="animate-pulse text-mgsr-muted">Loading...</div>
+        </div>
       </div>
     );
   }
@@ -87,15 +91,18 @@ export default function SharedPlayerContent({
 
   const player = data.player;
   const useHebrew = data.lang === 'he';
+  const isWomen = data.platform === 'women';
 
   useEffect(() => {
     document.documentElement.dir = useHebrew ? 'rtl' : 'ltr';
     document.documentElement.lang = useHebrew ? 'he' : 'en';
+    document.documentElement.setAttribute('data-platform', isWomen ? 'women' : 'men');
     return () => {
       document.documentElement.dir = 'ltr';
       document.documentElement.lang = 'en';
+      document.documentElement.removeAttribute('data-platform');
     };
-  }, [useHebrew]);
+  }, [useHebrew, isWomen]);
 
   const displayName =
     useHebrew ? (player.fullNameHe || player.fullName) : (player.fullName || player.fullNameHe) || '—';
@@ -110,13 +117,14 @@ export default function SharedPlayerContent({
         highlights: 'היילייטס',
         contact: 'איש קשר',
         contactNote: 'המספר שיוצג בשיתוף הוא מספר הטלפון של הסוכן ששיתף את המסמך.',
-        playerContact: 'יצירת קשר עם השחקן',
+        playerContact: isWomen ? 'יצירת קשר עם השחקנית' : 'יצירת קשר עם השחקן',
         agencyContact: 'יצירת קשר עם הסוכנות',
         addToContacts: 'הוסף לרשימת אנשי קשר',
         openWhatsApp: 'פתח WhatsApp',
         transfermarkt: 'פרופיל Transfermarkt',
-        sharedVia: 'שותף דרך MGSR Team',
+        sharedVia: isWomen ? 'שותף דרך MGSR Women' : 'שותף דרך MGSR Team',
         viewMandate: 'צפה במנדט',
+        marketValue: 'שווי שוק',
       }
     : {
         mandate: 'Mandate',
@@ -128,13 +136,14 @@ export default function SharedPlayerContent({
         highlights: 'Highlights',
         contact: 'Contact',
         contactNote: 'The phone number shown when sharing is the phone number of the agent who shared the document.',
-        playerContact: 'Player contact',
+        playerContact: isWomen ? 'Athlete contact' : 'Player contact',
         agencyContact: 'Agency contact',
         addToContacts: 'Add to contacts',
         openWhatsApp: 'Open WhatsApp',
         transfermarkt: 'Transfermarkt profile',
-        sharedVia: 'Shared via MGSR Team',
+        sharedVia: isWomen ? 'Shared via MGSR Women' : 'Shared via MGSR Team',
         viewMandate: 'View mandate',
+        marketValue: 'Market value',
       };
 
   const playerPhone = player.playerPhoneNumber;
@@ -164,8 +173,11 @@ export default function SharedPlayerContent({
 
   function ContactBlock({ phone, title, contactName }: { phone: string; title: string; contactName: string }) {
     const whatsappUrl = toWhatsAppUrl(phone);
+    const btnClass = isWomen
+      ? 'inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[var(--women-rose)]/20 text-[var(--women-rose)] font-medium hover:bg-[var(--women-rose)]/30 transition'
+      : 'inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-mgsr-teal/20 text-mgsr-teal font-medium hover:bg-mgsr-teal/30 transition';
     return (
-      <div className="p-5 rounded-xl bg-mgsr-card border border-mgsr-border mb-8">
+      <div className={`p-5 rounded-xl bg-mgsr-card border mb-8 ${isWomen ? 'border-[var(--women-rose)]/20 shadow-[0_0_30px_rgba(232,160,191,0.05)]' : 'border-mgsr-border'}`}>
         <h3 className="text-sm font-semibold text-mgsr-muted uppercase tracking-wider mb-3">
           {title}
         </h3>
@@ -176,7 +188,7 @@ export default function SharedPlayerContent({
           <button
             type="button"
             onClick={() => handleAddToContacts(phone, contactName)}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-mgsr-teal/20 text-mgsr-teal font-medium hover:bg-mgsr-teal/30 transition"
+            className={btnClass}
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
@@ -201,12 +213,15 @@ export default function SharedPlayerContent({
     );
   }
 
+  const accentLink = isWomen ? 'text-[var(--women-rose)] hover:underline' : 'text-mgsr-teal hover:underline';
+  const scoutComponents = getScoutReportComponents(isWomen);
+
   return (
     <div className="min-h-screen bg-mgsr-dark" dir={useHebrew ? 'rtl' : 'ltr'}>
-      <header className="border-b border-mgsr-border bg-mgsr-card/50 px-4 py-3 flex items-center justify-between gap-4">
+      <header className={`border-b px-4 py-3 flex items-center justify-between gap-4 ${isWomen ? 'border-[var(--women-rose)]/20 bg-mgsr-card/50' : 'border-mgsr-border bg-mgsr-card/50'}`}>
         <Link
-          href={fromPortfolio ? '/portfolio' : '/'}
-          className="inline-flex items-center gap-2 text-mgsr-teal hover:underline"
+          href={fromPortfolio ? (isWomen ? '/portfolio?platform=women' : '/portfolio') : '/'}
+          className={`inline-flex items-center gap-2 ${accentLink}`}
         >
           {fromPortfolio && (
             <svg
@@ -220,21 +235,21 @@ export default function SharedPlayerContent({
           )}
           <img src="/logo.svg" alt="" className="w-8 h-8" />
           <span className="font-bold font-display">
-            {fromPortfolio ? (useHebrew ? 'חזרה לפורטפוליו' : 'Back to Portfolio') : 'MGSR Team'}
+            {fromPortfolio ? (useHebrew ? 'חזרה לפורטפוליו' : 'Back to Portfolio') : (isWomen ? 'MGSR Women' : 'MGSR Team')}
           </span>
         </Link>
       </header>
 
       <main className="max-w-2xl mx-auto p-6">
-        <div className="relative overflow-hidden rounded-2xl mb-8">
-          <div className="absolute inset-0 bg-gradient-to-br from-mgsr-card via-mgsr-card to-mgsr-dark" />
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_30%_20%,rgba(77,182,172,0.15)_0%,transparent_50%)]" />
+        <div className={`relative overflow-hidden rounded-2xl mb-8 ${isWomen ? 'shadow-[0_0_40px_rgba(232,160,191,0.12)]' : ''}`}>
+          <div className={`absolute inset-0 ${isWomen ? 'bg-gradient-to-br from-[var(--women-rose)]/15 via-mgsr-card to-mgsr-dark' : 'bg-gradient-to-br from-mgsr-card via-mgsr-card to-mgsr-dark'}`} />
+          <div className={`absolute inset-0 ${isWomen ? 'bg-[radial-gradient(ellipse_at_30%_20%,rgba(232,160,191,0.25)_0%,transparent_50%)]' : 'bg-[radial-gradient(ellipse_at_30%_20%,rgba(77,182,172,0.15)_0%,transparent_50%)]'}`} />
           <div className="relative flex flex-col sm:flex-row items-center sm:items-end gap-8 p-8 sm:p-10">
             <div className="relative shrink-0">
               <img
                 src={player.profileImage || 'https://via.placeholder.com/160'}
                 alt=""
-                className="w-32 h-32 sm:w-40 sm:h-40 rounded-2xl object-cover bg-mgsr-dark ring-4 ring-mgsr-border shadow-2xl"
+                className={`w-32 h-32 sm:w-40 sm:h-40 rounded-2xl object-cover bg-mgsr-dark ring-4 shadow-2xl ${isWomen ? 'ring-[var(--women-rose)]/30' : 'ring-mgsr-border'}`}
               />
             </div>
             <div className="flex-1 text-center sm:text-left min-w-0">
@@ -258,22 +273,22 @@ export default function SharedPlayerContent({
               </div>
             </div>
             <div className="shrink-0">
-              <p className="text-2xl sm:text-3xl font-display font-bold text-mgsr-teal">
+              <p className={`text-2xl sm:text-3xl font-display font-bold ${isWomen ? 'text-[var(--women-rose)]' : 'text-mgsr-teal'}`}>
                 {player.marketValue || '—'}
               </p>
-              <p className="text-xs text-mgsr-muted mt-0.5">Market value</p>
+              <p className="text-xs text-mgsr-muted mt-0.5">{labels.marketValue}</p>
             </div>
           </div>
         </div>
 
         {data.mandateInfo?.hasMandate && (
-          <div className="p-5 rounded-xl bg-mgsr-card border border-mgsr-teal/30 mb-6">
+          <div className={`p-5 rounded-xl bg-mgsr-card border mb-6 ${isWomen ? 'border-[var(--women-rose)]/30 shadow-[0_0_30px_rgba(232,160,191,0.05)]' : 'border-mgsr-teal/30'}`}>
             <div className="flex items-center justify-between gap-4">
-              <h3 className="text-sm font-semibold text-mgsr-teal uppercase tracking-wider">
+              <h3 className={`text-sm font-semibold uppercase tracking-wider ${isWomen ? 'text-[var(--women-rose)]' : 'text-mgsr-teal'}`}>
                 {labels.mandate}
               </h3>
               <div className="shrink-0">
-                <div className="w-11 h-6 rounded-full bg-mgsr-teal flex items-center justify-end px-1">
+                <div className={`w-11 h-6 rounded-full flex items-center justify-end px-1 ${isWomen ? 'bg-[var(--women-rose)]' : 'bg-mgsr-teal'}`}>
                   <div className="w-4 h-4 rounded-full bg-white" />
                 </div>
               </div>
@@ -282,19 +297,19 @@ export default function SharedPlayerContent({
         )}
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
-          <StatCard label={labels.age} value={player.age} />
-          <StatCard label={labels.height} value={player.height} />
-          <StatCard label={labels.nationality} value={player.nationality} />
-          <StatCard label={labels.contract} value={player.contractExpired} />
+          <StatCard label={labels.age} value={player.age} isWomen={isWomen} />
+          <StatCard label={labels.height} value={player.height} isWomen={isWomen} />
+          <StatCard label={labels.nationality} value={player.nationality} isWomen={isWomen} />
+          <StatCard label={labels.contract} value={player.contractExpired} isWomen={isWomen} />
         </div>
 
         {data.scoutReport && (
-          <div className="p-5 rounded-xl bg-mgsr-card border border-mgsr-border mb-8">
+          <div className={`p-5 rounded-xl bg-mgsr-card border mb-8 ${isWomen ? 'border-[var(--women-rose)]/20 shadow-[0_0_30px_rgba(232,160,191,0.05)]' : 'border-mgsr-border'}`}>
             <h3 className="text-sm font-semibold text-mgsr-muted uppercase tracking-wider mb-4">
               {labels.scoutReport}
             </h3>
             <div className="scout-report-content text-mgsr-text">
-              <ReactMarkdown components={scoutReportComponents}>
+              <ReactMarkdown components={scoutComponents}>
                 {data.scoutReport}
               </ReactMarkdown>
             </div>
@@ -302,7 +317,7 @@ export default function SharedPlayerContent({
         )}
 
         {data.highlights && data.highlights.length > 0 && (
-          <div className="p-5 rounded-xl bg-mgsr-card border border-mgsr-border mb-8">
+          <div className={`p-5 rounded-xl bg-mgsr-card border mb-8 ${isWomen ? 'border-[var(--women-rose)]/20 shadow-[0_0_30px_rgba(232,160,191,0.05)]' : 'border-mgsr-border'}`}>
             <h3 className="text-sm font-semibold text-mgsr-muted uppercase tracking-wider mb-4">
               {labels.highlights}
             </h3>
@@ -320,7 +335,7 @@ export default function SharedPlayerContent({
                   </div>
                   <div className="p-3 bg-mgsr-card/50">
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="text-[10px] font-medium uppercase tracking-wider text-mgsr-teal">
+                      <span className={`text-[10px] font-medium uppercase tracking-wider ${isWomen ? 'text-[var(--women-rose)]' : 'text-mgsr-teal'}`}>
                         {v.source === 'scorebat' ? (useHebrew ? 'משחק' : 'Match') : (useHebrew ? 'יוטיוב' : 'YouTube')}
                       </span>
                       {v.channelName && (
@@ -336,7 +351,7 @@ export default function SharedPlayerContent({
         )}
 
         {player.tmProfile && (
-          <div className="p-5 rounded-xl bg-mgsr-card border border-mgsr-border mb-8">
+          <div className={`p-5 rounded-xl bg-mgsr-card border mb-8 ${isWomen ? 'border-[var(--women-rose)]/20' : 'border-mgsr-border'}`}>
             <h3 className="text-sm font-semibold text-mgsr-muted uppercase tracking-wider mb-3">
               {labels.transfermarkt}
             </h3>
@@ -344,7 +359,7 @@ export default function SharedPlayerContent({
               href={player.tmProfile}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 text-mgsr-teal hover:underline font-medium"
+              className={`inline-flex items-center gap-2 font-medium ${accentLink}`}
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
@@ -362,7 +377,7 @@ export default function SharedPlayerContent({
         )}
 
         {(data.sharerPhone || data.sharerName) && (
-          <div className="p-5 rounded-xl bg-mgsr-card border border-mgsr-border">
+          <div className={`p-5 rounded-xl bg-mgsr-card border ${isWomen ? 'border-[var(--women-rose)]/20 shadow-[0_0_30px_rgba(232,160,191,0.05)]' : 'border-mgsr-border'}`}>
             <h3 className="text-sm font-semibold text-mgsr-muted uppercase tracking-wider mb-3">
               {labels.contact}
             </h3>
@@ -377,7 +392,7 @@ export default function SharedPlayerContent({
                 href={toWhatsAppUrl(data.sharerPhone) ?? `tel:${data.sharerPhone}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 text-mgsr-teal hover:underline font-medium"
+                className={`inline-flex items-center gap-2 font-medium ${accentLink}`}
                 dir="ltr"
               >
                 <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">

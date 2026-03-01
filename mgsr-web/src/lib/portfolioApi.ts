@@ -11,6 +11,8 @@ export interface PortfolioItem {
   id: string;
   agentId: string;
   playerId: string;
+  /** Women: playerWomenId (from PlayersWomen) */
+  playerWomenId?: string;
   createdAt: number;
   player: PortfolioPlayer;
   mandateInfo?: SharePayload['mandateInfo'];

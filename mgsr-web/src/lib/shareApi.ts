@@ -51,6 +51,7 @@ export interface SharePayload {
   lang?: 'he' | 'en';
   includePlayerContact?: boolean;
   includeAgencyContact?: boolean;
+  platform?: 'men' | 'women';
 }
 
 export interface ShareResult {
@@ -160,6 +161,7 @@ export async function createShare(
     scoutReport: scoutReport || null,
     highlights: payload.highlights?.length ? payload.highlights : null,
     lang: payload.lang ?? null,
+    platform: payload.platform ?? null,
     createdAt: Date.now(),
   });
 

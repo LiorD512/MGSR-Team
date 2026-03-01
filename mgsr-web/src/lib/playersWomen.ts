@@ -38,6 +38,8 @@ export interface WomanPlayer {
   soccerDonnaUrl?: string;
   wosostatId?: string;
   fmInsideId?: string;
+  /** Full FMInside player URL for direct lookup (e.g. https://fminside.net/players/7-fm-26/2000351404-diana-bieliakova) */
+  fmInsideUrl?: string;
   marketValue?: string;
   foot?: string;
   height?: string;

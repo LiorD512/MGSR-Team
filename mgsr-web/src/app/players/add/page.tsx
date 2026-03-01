@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { usePlatform } from '@/contexts/PlatformContext';
+import AddWomanPlayerForm from './AddWomanPlayerForm';
 import {
   collection,
   addDoc,
@@ -35,8 +37,13 @@ function useDebounce<T>(value: T, delay: number): T {
 export default function AddPlayerPage() {
   const { user, loading } = useAuth();
   const { t, isRtl } = useLanguage();
+  const { platform } = usePlatform();
   const router = useRouter();
   const searchParams = useSearchParams();
+
+  if (platform === 'women') {
+    return <AddWomanPlayerForm />;
+  }
   const forShortlist = searchParams.get('shortlist') === '1';
   const fromReleases = searchParams.get('from') === 'releases';
   const fromShortlist = searchParams.get('from') === 'shortlist';
@@ -263,7 +270,14 @@ export default function AddPlayerPage() {
         router.push(fromReleases ? '/releases' : fromShortlist ? '/shortlist' : '/players');
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save');
+      const msg = err instanceof Error ? err.message : 'Failed to save';
+      if (msg.toLowerCase().includes('permission') || msg.includes('PERMISSION_DENIED')) {
+        setError(
+          'Missing or insufficient permissions. Ensure Firestore rules are deployed (firebase deploy --only firestore) and you are logged in.'
+        );
+      } else {
+        setError(msg);
+      }
     } finally {
       setSaving(false);
     }

@@ -9,6 +9,8 @@ Workers have been moved from Android WorkManager to cloud services.
 | MandateExpiryWorker | Firebase Cloud Function | 04:00 Israel | `WorkerRuns/MandateExpiryWorker` |
 | ReleasesRefreshWorker | Firebase Cloud Function | 03:00 Israel | `WorkerRuns/ReleasesRefreshWorker` |
 | PlayerRefreshWorker | Cloud Run Job | 02:00 Israel | `WorkerRuns/PlayerRefreshWorker` |
+| Scout Agent | Firebase Cloud Function | 05:00 Israel | `ScoutAgentRuns` |
+| **ScoutDbBuild** | Cloud Run Job | **Monday 04:00 Israel** | Cloud Run Executions |
 
 ## Firestore collections
 
@@ -37,6 +39,18 @@ This deploys `mandateExpiryScheduled`, `releasesRefreshScheduled`, `releasesRefr
 
 See [workers-job/README.md](../workers-job/README.md).
 
+## Scout DB Build (Monday 04:00 Israel)
+
+Runs the football scout server database build (12-14h) in a Cloud Run Job every Monday at 04:00 Israel time. Build runs in GCP, then pushes to git — Render auto-deploys.
+
+See [workers-job-scout-build/README.md](../workers-job-scout-build/README.md).
+
+**Prerequisites:**
+
+1. Create `GITHUB_TOKEN` secret (GitHub PAT with `repo` scope)
+2. Set `SCOUT_REPO_URL` to your football scout server repo
+3. Deploy: `cd workers-job-scout-build && ./deploy.sh`
+
 ## Android app
 
 Worker scheduling is **commented out** in `MGSRTeamApplication.kt`. Worker classes remain for now; they can be removed after confirming cloud workers run correctly.
@@ -47,4 +61,4 @@ Worker scheduling is **commented out** in `MGSRTeamApplication.kt`. Worker class
 
 1. **Firebase Console** → Functions → Logs
 2. **Firestore** → `WorkerRuns` collection — check `status`, `lastRunAt`, `summary` for each worker
-3. **Cloud Run** → Jobs → player-refresh-job → Executions (for PlayerRefresh)
+3. **Cloud Run** → Jobs → player-refresh-job, scout-db-build-job → Executions

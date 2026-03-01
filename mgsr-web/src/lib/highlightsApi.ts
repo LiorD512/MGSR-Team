@@ -93,8 +93,12 @@ export function formatViews(views: number): string {
 
 const MAX_PINNED = 2;
 
-/** Save pinned highlights to Firestore (Players collection). Persists across devices. */
-export async function savePinnedHighlights(playerId: string, videos: HighlightVideo[]): Promise<void> {
+/** Save pinned highlights to Firestore. Persists across devices. */
+export async function savePinnedHighlights(
+  playerId: string,
+  videos: HighlightVideo[],
+  playerCollection: 'Players' | 'PlayersWomen' = 'Players'
+): Promise<void> {
   const toSave = videos.slice(0, MAX_PINNED).map((v) => ({
     id: v.id,
     source: v.source,
@@ -106,7 +110,7 @@ export async function savePinnedHighlights(playerId: string, videos: HighlightVi
     durationSeconds: v.durationSeconds,
     viewCount: v.viewCount,
   }));
-  await updateDoc(doc(db, 'Players', playerId), { pinnedHighlights: toSave });
+  await updateDoc(doc(db, playerCollection, playerId), { pinnedHighlights: toSave });
 }
 
 /** @deprecated Use player.pinnedHighlights from Firestore instead. Kept for fallback. */

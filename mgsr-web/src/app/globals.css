@@ -8,8 +8,57 @@
   --mgsr-card-border: #253545;
   --mgsr-teal: #4DB6AC;
   --mgsr-teal-dim: rgba(77, 182, 172, 0.15);
+  --mgsr-accent: #4DB6AC;
+  --mgsr-accent-dim: rgba(77, 182, 172, 0.15);
   --mgsr-text: #E8EAED;
   --mgsr-muted: #8C999B;
+  /* Women theme (used on shared page when data-platform="women") */
+  --women-rose: #E8A0BF;
+}
+
+/* Women's platform — athletic feminine theme */
+[data-platform="women"] {
+  --mgsr-accent: #E8A0BF;
+  --mgsr-accent-dim: rgba(232, 160, 191, 0.15);
+  --mgsr-teal: #E8A0BF;
+  --mgsr-teal-dim: rgba(232, 160, 191, 0.15);
+  --women-rose: #E8A0BF;
+  --women-blush: #D4A5A5;
+  --women-blush-rgb: 212, 165, 165;
+  --women-gradient: linear-gradient(135deg, #E8A0BF 0%, #C9B1BD 50%, #D4A5A5 100%);
+  --women-card-radius: 1.25rem;
+  --women-glow: 0 0 40px rgba(232, 160, 191, 0.15);
+  --women-dialog-glow: 0 0 60px rgba(232, 160, 191, 0.12);
+}
+
+/* Women dialog entrance animation */
+@keyframes women-dialog-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.women-dialog-backdrop {
+  backdrop-filter: blur(10px);
+  background: rgba(15, 25, 35, 0.75);
+  animation: women-dialog-in 0.25s ease-out;
+}
+
+.women-dialog-content {
+  animation: women-dialog-in 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 0 60px rgba(232, 160, 191, 0.15), 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(232, 160, 191, 0.2);
+}
+
+.women-dialog-accent {
+  height: 3px;
+  background: linear-gradient(90deg, #E8A0BF 0%, #C9B1BD 50%, #D4A5A5 100%);
+  border-radius: 2px 2px 0 0;
 }
 
 html {

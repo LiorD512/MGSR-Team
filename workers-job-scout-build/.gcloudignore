@@ -1,0 +1,6 @@
+# Exclude from gcloud builds submit
+.git
+.gitignore
+*.md
+.env*
+.DS_Store

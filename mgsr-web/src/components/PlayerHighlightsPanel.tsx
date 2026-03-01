@@ -243,6 +243,10 @@ interface PlayerHighlightsPanelProps {
   /** For league hint (e.g. "England" → Premier League) */
   clubCountry?: string;
   isRtl?: boolean;
+  /** Firestore collection for saving pinned highlights (default: Players) */
+  playerCollection?: 'Players' | 'PlayersWomen';
+  /** Accent variant for styling (women uses rose instead of teal) */
+  accentVariant?: 'teal' | 'women';
 }
 
 type Mode = 'pinned' | 'select' | 'replace';
@@ -258,6 +262,8 @@ export default function PlayerHighlightsPanel({
   fullNameHe,
   clubCountry,
   isRtl: isRtlProp,
+  playerCollection = 'Players',
+  accentVariant = 'teal',
 }: PlayerHighlightsPanelProps) {
   const { t, isRtl: contextRtl } = useLanguage();
   const isRtl = isRtlProp ?? contextRtl;
@@ -313,7 +319,7 @@ export default function PlayerHighlightsPanel({
     if (selectedVideos.length === 0) return;
     setSaving(true);
     try {
-      await savePinnedHighlights(playerId, selectedVideos);
+      await savePinnedHighlights(playerId, selectedVideos, playerCollection);
       setMode('pinned');
       setSelectedIds(new Set());
     } catch (err) {
@@ -321,7 +327,7 @@ export default function PlayerHighlightsPanel({
     } finally {
       setSaving(false);
     }
-  }, [videos, selectedIds, playerId]);
+  }, [videos, selectedIds, playerId, playerCollection]);
 
   const cancelReplace = useCallback(() => {
     setMode('pinned');

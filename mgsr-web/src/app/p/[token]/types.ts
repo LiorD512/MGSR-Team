@@ -34,4 +34,5 @@ export interface ShareData {
   scoutReport?: string;
   highlights?: SharedHighlightVideo[];
   lang?: 'he' | 'en';
+  platform?: 'men' | 'women';
 }

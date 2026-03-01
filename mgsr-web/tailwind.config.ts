@@ -16,6 +16,8 @@ const config: Config = {
           card: '#1A2736',
           border: '#253545',
           teal: '#4DB6AC',
+          accent: 'var(--mgsr-accent)',
+          'accent-dim': 'var(--mgsr-accent-dim)',
           text: '#E8EAED',
           muted: '#8C999B',
           red: '#E53935',

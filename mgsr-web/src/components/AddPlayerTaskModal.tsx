@@ -26,6 +26,7 @@ interface AddPlayerTaskModalProps {
     playerId: string;
     playerName: string;
     playerTmProfile?: string;
+    playerWomenId?: string;
     playerImage?: string;
     playerClub?: string;
     playerPosition?: string;
@@ -33,11 +34,19 @@ interface AddPlayerTaskModalProps {
   accounts: Account[];
   currentUserId: string;
   getDisplayName: (a: Account, isRtl: boolean) => string;
+  /** Firestore collection for tasks (AgentTasks or AgentTasksWomen) */
+  taskCollection?: 'AgentTasks' | 'AgentTasksWomen';
 }
 
 const PRIORITY_COLORS = {
   0: { bg: 'rgba(77, 182, 172, 0.25)', accent: '#4DB6AC' },
   1: { bg: 'rgba(255, 112, 67, 0.25)', accent: '#FF7043' },
+  2: { bg: 'rgba(229, 57, 53, 0.25)', accent: '#E53935' },
+};
+
+const PRIORITY_COLORS_WOMEN = {
+  0: { bg: 'rgba(232, 160, 191, 0.25)', accent: '#E8A0BF' },
+  1: { bg: 'rgba(212, 165, 165, 0.35)', accent: '#D4A5A5' },
   2: { bg: 'rgba(229, 57, 53, 0.25)', accent: '#E53935' },
 };
 
@@ -49,6 +58,7 @@ export default function AddPlayerTaskModal({
   accounts,
   currentUserId,
   getDisplayName,
+  taskCollection = 'AgentTasks',
 }: AddPlayerTaskModalProps) {
   const { t, isRtl, lang } = useLanguage();
   const [title, setTitle] = useState('');
@@ -79,14 +89,14 @@ export default function AddPlayerTaskModal({
   const handleTemplateSelect = (template: PlayerTaskTemplate) => {
     setSelectedTemplate(template);
     const month = dueDate ? new Date(dueDate).getMonth() : new Date().getMonth();
-    setTitle(getTemplateTitle(template, lang, template.hasMonthPlaceholder ? month : undefined));
+    setTitle(getTemplateTitle(template, lang, template.hasMonthPlaceholder ? month : undefined, isWomen));
   };
 
   const handleDueDateChange = (val: string) => {
     setDueDate(val);
     if (selectedTemplate?.hasMonthPlaceholder && val) {
       const month = new Date(val).getMonth();
-      setTitle(getTemplateTitle(selectedTemplate, lang, month));
+      setTitle(getTemplateTitle(selectedTemplate, lang, month, isWomen));
     }
   };
 
@@ -99,7 +109,7 @@ export default function AddPlayerTaskModal({
       const dueTs = dueDate ? new Date(dueDate).getTime() : 0;
       const createdBy = accounts.find((a) => a.id === currentUserId);
       const createdByName = createdBy ? getDisplayName(createdBy, isRtl) : '';
-      await addDoc(collection(db, 'AgentTasks'), {
+      const taskData: Record<string, unknown> = {
         agentId: agentId || currentUserId,
         agentName: agentName || '',
         title: title.trim(),
@@ -110,13 +120,18 @@ export default function AddPlayerTaskModal({
         createdAt: Date.now(),
         createdByAgentId: currentUserId,
         createdByAgentName: createdByName,
-        ...(playerContext && {
-          playerId: playerContext.playerId,
-          playerName: playerContext.playerName,
-          playerTmProfile: playerContext.playerTmProfile ?? '',
-          templateId: selectedTemplate?.id,
-        }),
-      });
+      };
+      if (playerContext) {
+        taskData.playerId = playerContext.playerId;
+        taskData.playerName = playerContext.playerName;
+        taskData.templateId = selectedTemplate?.id;
+        if (taskCollection === 'AgentTasks') {
+          taskData.playerTmProfile = playerContext.playerTmProfile ?? '';
+        } else {
+          taskData.playerWomenId = playerContext.playerWomenId ?? playerContext.playerId;
+        }
+      }
+      await addDoc(collection(db, taskCollection), taskData);
       onClose();
       onSuccess?.();
     } finally {
@@ -124,26 +139,30 @@ export default function AddPlayerTaskModal({
     }
   };
 
+  const isWomen = taskCollection === 'AgentTasksWomen';
+  const priorityColors = isWomen ? PRIORITY_COLORS_WOMEN : PRIORITY_COLORS;
+
   if (!open) return null;
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/70 backdrop-blur-md"
+      className={`fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 ${isWomen ? 'women-dialog-backdrop' : 'bg-black/70 backdrop-blur-md'}`}
       onClick={() => !saving && onClose()}
     >
       <div
         dir={isRtl ? 'rtl' : 'ltr'}
-        className="relative w-full sm:max-w-lg bg-mgsr-card border border-mgsr-border rounded-t-2xl sm:rounded-2xl shadow-2xl max-h-[90vh] overflow-auto"
+        className={`relative w-full sm:max-w-lg bg-mgsr-card rounded-t-2xl sm:rounded-2xl max-h-[90vh] flex flex-col ${isWomen ? 'women-dialog-content' : 'border border-mgsr-border shadow-2xl'}`}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="p-6 border-b border-mgsr-border">
+        {isWomen && <div className="women-dialog-accent shrink-0" />}
+        <div className={`p-6 shrink-0 ${isWomen ? 'border-b border-mgsr-border/50' : 'border-b border-mgsr-border'}`}>
           <h2 className="text-xl font-bold text-mgsr-text font-display">
-            {t('tasks_new_task')}
+            {t(isWomen ? 'tasks_new_task_women' : 'tasks_new_task')}
           </h2>
         </div>
-        <div className="p-6 space-y-5">
+        <div className="p-6 space-y-5 overflow-y-auto flex-1 min-h-0">
           {playerContext && (
-            <div className="flex items-center gap-3 p-3 rounded-xl bg-mgsr-teal/10 border border-mgsr-teal/25">
+            <div className={`flex items-center gap-3 p-3 rounded-xl ${isWomen ? 'bg-[var(--women-rose)]/10 border border-[var(--women-rose)]/25' : 'bg-mgsr-teal/10 border border-mgsr-teal/25'}`}>
               {playerContext.playerImage && (
                 <img
                   src={playerContext.playerImage}
@@ -165,7 +184,7 @@ export default function AddPlayerTaskModal({
           {playerContext && (
             <div>
               <label className="block text-xs font-semibold text-mgsr-muted uppercase mb-2">
-                {t('player_tasks_choose_template')}
+                {t(isWomen ? 'player_tasks_choose_template_women' : 'player_tasks_choose_template')}
               </label>
               <div className="grid grid-cols-2 gap-2">
                 {PLAYER_TASK_TEMPLATES.map((tpl) => (
@@ -175,11 +194,15 @@ export default function AddPlayerTaskModal({
                     onClick={() => handleTemplateSelect(tpl)}
                     className={`px-3 py-2.5 rounded-lg text-right text-sm transition ${
                       selectedTemplate?.id === tpl.id
-                        ? 'border-2 border-mgsr-teal bg-mgsr-teal/15 text-mgsr-teal'
-                        : 'border border-mgsr-border bg-mgsr-dark/50 text-mgsr-text hover:border-mgsr-teal/50'
+                        ? isWomen
+                          ? 'border-2 border-[var(--women-rose)] bg-[var(--women-rose)]/15 text-[var(--women-rose)]'
+                          : 'border-2 border-mgsr-teal bg-mgsr-teal/15 text-mgsr-teal'
+                        : isWomen
+                          ? 'border border-mgsr-border bg-mgsr-dark/50 text-mgsr-text hover:border-[var(--women-rose)]/50'
+                          : 'border border-mgsr-border bg-mgsr-dark/50 text-mgsr-text hover:border-mgsr-teal/50'
                     }`}
                   >
-                    {getTemplateTitle(tpl, lang)}
+                    {getTemplateTitle(tpl, lang, undefined, isWomen)}
                   </button>
                 ))}
               </div>
@@ -195,7 +218,7 @@ export default function AddPlayerTaskModal({
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder={t('tasks_what_needs_done')}
-              className="w-full px-4 py-3 rounded-xl bg-mgsr-dark border border-mgsr-border text-mgsr-text placeholder-mgsr-muted/60 focus:border-mgsr-teal focus:outline-none"
+              className={`w-full px-4 py-3 rounded-xl bg-mgsr-dark border border-mgsr-border text-mgsr-text placeholder-mgsr-muted/60 focus:outline-none ${isWomen ? 'focus:border-[var(--women-rose)]/50' : 'focus:border-mgsr-teal'}`}
             />
           </div>
           <div>
@@ -206,7 +229,7 @@ export default function AddPlayerTaskModal({
               type="date"
               value={dueDate}
               onChange={(e) => handleDueDateChange(e.target.value)}
-              className="w-full px-4 py-3 rounded-xl bg-mgsr-dark border border-mgsr-border text-mgsr-text focus:border-mgsr-teal focus:outline-none"
+              className={`w-full px-4 py-3 rounded-xl bg-mgsr-dark border border-mgsr-border text-mgsr-text focus:outline-none ${isWomen ? 'focus:border-[var(--women-rose)]/50' : 'focus:border-mgsr-teal'}`}
             />
           </div>
           <div>
@@ -222,12 +245,12 @@ export default function AddPlayerTaskModal({
                   className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition ${
                     priority === p ? 'border-2' : 'border border-mgsr-border bg-mgsr-dark/50 text-mgsr-muted hover:text-mgsr-text'
                   }`}
-                  style={
+                    style={
                     priority === p
                       ? {
-                          borderColor: PRIORITY_COLORS[p].accent,
-                          backgroundColor: PRIORITY_COLORS[p].bg,
-                          color: PRIORITY_COLORS[p].accent,
+                          borderColor: priorityColors[p].accent,
+                          backgroundColor: priorityColors[p].bg,
+                          color: priorityColors[p].accent,
                         }
                       : {}
                   }
@@ -244,7 +267,7 @@ export default function AddPlayerTaskModal({
             <select
               value={agentId}
               onChange={(e) => setAgentId(e.target.value)}
-              className="w-full px-4 py-3 rounded-xl bg-mgsr-dark border border-mgsr-border text-mgsr-text focus:border-mgsr-teal focus:outline-none"
+              className={`w-full px-4 py-3 rounded-xl bg-mgsr-dark border border-mgsr-border text-mgsr-text focus:outline-none ${isWomen ? 'focus:border-[var(--women-rose)]/50' : 'focus:border-mgsr-teal'}`}
             >
               {accounts.map((a) => (
                 <option key={a.id} value={a.id}>
@@ -262,16 +285,16 @@ export default function AddPlayerTaskModal({
               onChange={(e) => setNotes(e.target.value)}
               placeholder={t('tasks_notes_hint')}
               rows={2}
-              className="w-full px-4 py-3 rounded-xl bg-mgsr-dark border border-mgsr-border text-mgsr-text placeholder-mgsr-muted/60 focus:border-mgsr-teal focus:outline-none resize-none"
+              className={`w-full px-4 py-3 rounded-xl bg-mgsr-dark border border-mgsr-border text-mgsr-text placeholder-mgsr-muted/60 focus:outline-none resize-none ${isWomen ? 'focus:border-[var(--women-rose)]/50' : 'focus:border-mgsr-teal'}`}
             />
           </div>
         </div>
-        <div className="p-6 pt-0 flex gap-3">
+        <div className="p-6 pt-0 flex gap-3 shrink-0">
           <button
             type="button"
             onClick={onClose}
             disabled={saving}
-            className="flex-1 py-3 rounded-xl border border-mgsr-border text-mgsr-muted hover:text-mgsr-text hover:border-mgsr-border/80 transition disabled:opacity-50"
+            className={`flex-1 py-3 rounded-xl border transition disabled:opacity-50 ${isWomen ? 'border-mgsr-border text-mgsr-muted hover:bg-[var(--women-rose)]/10 hover:text-[var(--women-rose)] hover:border-[var(--women-rose)]/30' : 'border-mgsr-border text-mgsr-muted hover:text-mgsr-text hover:border-mgsr-border/80'}`}
           >
             {t('tasks_cancel')}
           </button>
@@ -279,7 +302,7 @@ export default function AddPlayerTaskModal({
             type="button"
             onClick={handleSubmit}
             disabled={saving || !title.trim()}
-            className="flex-1 py-3 rounded-xl bg-mgsr-teal text-mgsr-dark font-semibold hover:bg-mgsr-teal/90 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            className={`flex-1 py-3 rounded-xl font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed ${isWomen ? 'bg-[var(--women-gradient)] text-white shadow-[0_0_20px_rgba(232,160,191,0.25)] hover:opacity-95' : 'bg-mgsr-teal text-mgsr-dark hover:bg-mgsr-teal/90'}`}
           >
             {saving ? '...' : t('tasks_create')}
           </button>

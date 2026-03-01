@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { usePlatform } from '@/contexts/PlatformContext';
 import AppLayout from '@/components/AppLayout';
 import Link from 'next/link';
 import {
@@ -26,12 +27,24 @@ interface Account {
   phone?: string;
 }
 
+const PORTFOLIO_COLLECTION = 'Portfolio';
+const PORTFOLIO_WOMEN_COLLECTION = 'PortfolioWomen';
+
 export default function PortfolioPage() {
   const { user, loading } = useAuth();
   const { t, isRtl } = useLanguage();
+  const { platform, setPlatform } = usePlatform();
   const router = useRouter();
   const searchParams = useSearchParams();
   const fromPlayerId = searchParams.get('fromPlayer');
+  const platformFromUrl = searchParams.get('platform');
+  const isWomen = platform === 'women';
+
+  useEffect(() => {
+    if (platformFromUrl === 'women' && platform !== 'women') setPlatform('women');
+    else if (platformFromUrl === 'men' && platform !== 'men') setPlatform('men');
+  }, [platformFromUrl, platform, setPlatform]);
+  const portfolioColl = isWomen ? PORTFOLIO_WOMEN_COLLECTION : PORTFOLIO_COLLECTION;
   const [items, setItems] = useState<PortfolioItem[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loadingItems, setLoadingItems] = useState(true);
@@ -55,21 +68,32 @@ export default function PortfolioPage() {
   }, []);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+      setLoadingItems(false);
+      return;
+    }
+    setLoadingItems(true);
     const q = query(
-      collection(db, 'Portfolio'),
+      collection(db, portfolioColl),
       orderBy('createdAt', 'desc')
     );
-    const unsub = onSnapshot(q, (snap) => {
-      const list = snap.docs.map((d) => ({
-        id: d.id,
-        ...d.data(),
-      })) as PortfolioItem[];
-      setItems(list);
-      setLoadingItems(false);
-    });
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        const list = snap.docs.map((d) => ({
+          id: d.id,
+          ...d.data(),
+        })) as PortfolioItem[];
+        setItems(list);
+        setLoadingItems(false);
+      },
+      (err) => {
+        console.error('[Portfolio] onSnapshot error:', err);
+        setLoadingItems(false);
+      }
+    );
     return () => unsub();
-  }, [user]);
+  }, [user, portfolioColl]);
 
   const handleShare = useCallback(
     async (item: PortfolioItem, attachPlayer: boolean, attachAgency: boolean) => {
@@ -90,7 +114,7 @@ export default function PortfolioPage() {
 
         const { url } = await createShare(
           {
-            playerId: item.playerId,
+            playerId: item.playerWomenId ?? item.playerId,
             player: item.player,
             mandateInfo: item.mandateInfo,
             mandateUrl: item.mandateUrl,
@@ -101,6 +125,7 @@ export default function PortfolioPage() {
             lang,
             includePlayerContact: attachPlayer,
             includeAgencyContact: attachAgency,
+            platform: isWomen ? 'women' : 'men',
           },
           () =>
             user ? auth.currentUser?.getIdToken() ?? Promise.resolve(null) : Promise.resolve(null)
@@ -110,10 +135,11 @@ export default function PortfolioPage() {
           lang === 'he'
             ? (item.player.fullNameHe || item.player.fullName || '—')
             : (item.player.fullName || item.player.fullNameHe || '—');
+        const brand = isWomen ? 'MGSR Women' : 'MGSR';
         const shareText =
           lang === 'he'
-            ? `פרופיל חדש נשלח אלייך מ - MGSR.\n${displayName}\n${url}`
-            : `A new profile sent to you by MGSR.\n${displayName}\n${url}`;
+            ? `פרופיל חדש נשלח אלייך מ - ${brand}.\n${displayName}\n${url}`
+            : `A new profile sent to you by ${brand}.\n${displayName}\n${url}`;
 
         if (url.includes('localhost') && typeof window !== 'undefined') {
           setPendingShareUrl(shareText);
@@ -151,7 +177,7 @@ export default function PortfolioPage() {
 
         const { token } = await createShare(
           {
-            playerId: item.playerId,
+            playerId: item.playerWomenId ?? item.playerId,
             player: item.player,
             mandateInfo: item.mandateInfo,
             mandateUrl: item.mandateUrl,
@@ -160,12 +186,13 @@ export default function PortfolioPage() {
             scoutReport: item.scoutReport,
             highlights: item.highlights,
             lang,
+            platform: isWomen ? 'women' : 'men',
           },
           () =>
             user ? auth.currentUser?.getIdToken() ?? Promise.resolve(null) : Promise.resolve(null)
         );
 
-        router.push(`/p/${token}?from=portfolio`);
+        router.push(`/p/${token}?from=portfolio${isWomen ? '&platform=women' : ''}`);
       } catch (e) {
         console.error('Portfolio view failed:', e);
       } finally {
@@ -176,10 +203,12 @@ export default function PortfolioPage() {
   );
 
   const handleRemove = useCallback(async (id: string) => {
-    if (!confirm(isRtl ? 'להסיר שחקן זה מהפורטפוליו?' : 'Remove this player from portfolio?'))
-      return;
-    await deleteDoc(doc(db, 'Portfolio', id));
-  }, [isRtl]);
+    const msg = isRtl
+      ? (isWomen ? 'להסיר שחקנית זו מהפורטפוליו?' : 'להסיר שחקן זה מהפורטפוליו?')
+      : 'Remove this player from portfolio?';
+    if (!confirm(msg)) return;
+    await deleteDoc(doc(db, portfolioColl, id));
+  }, [isRtl, isWomen, portfolioColl]);
 
   if (loading || !user) return null;
 
@@ -187,21 +216,21 @@ export default function PortfolioPage() {
     <AppLayout>
       <div className="max-w-6xl mx-auto">
         {/* Hero header */}
-        <div className="relative overflow-hidden rounded-3xl mb-10">
-          <div className="absolute inset-0 bg-gradient-to-br from-mgsr-teal/20 via-mgsr-card to-mgsr-dark" />
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_70%_0%,rgba(77,182,172,0.25)_0%,transparent_60%)]" />
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_20%_100%,rgba(77,182,172,0.15)_0%,transparent_50%)]" />
+        <div className={`relative overflow-hidden rounded-3xl mb-10 ${isWomen ? 'shadow-[0_0_40px_rgba(232,160,191,0.12)]' : ''}`}>
+          <div className={`absolute inset-0 ${isWomen ? 'bg-gradient-to-br from-[var(--women-rose)]/15 via-mgsr-card to-mgsr-dark' : 'bg-gradient-to-br from-mgsr-teal/20 via-mgsr-card to-mgsr-dark'}`} />
+          <div className={`absolute inset-0 ${isWomen ? 'bg-[radial-gradient(ellipse_at_70%_0%,rgba(232,160,191,0.25)_0%,transparent_60%)]' : 'bg-[radial-gradient(ellipse_at_70%_0%,rgba(77,182,172,0.25)_0%,transparent_60%)]'}`} />
+          <div className={`absolute inset-0 ${isWomen ? 'bg-[radial-gradient(ellipse_at_20%_100%,rgba(232,160,191,0.15)_0%,transparent_50%)]' : 'bg-[radial-gradient(ellipse_at_20%_100%,rgba(77,182,172,0.15)_0%,transparent_50%)]'}`} />
           <div className="relative px-8 py-12 sm:py-16">
             <h1 className="text-3xl sm:text-4xl font-display font-bold text-mgsr-text tracking-tight">
               {t('portfolio_title')}
             </h1>
             <p className="mt-2 text-mgsr-muted text-lg max-w-xl">
-              {t('portfolio_subtitle')}
+              {t(isWomen ? 'portfolio_subtitle_women' : 'portfolio_subtitle')}
             </p>
             {fromPlayerId && (
               <Link
-                href={`/players/${fromPlayerId}`}
-                className="mt-4 inline-flex items-center gap-2 text-mgsr-teal hover:text-mgsr-teal/80 font-medium transition"
+                href={isWomen ? `/players/women/${fromPlayerId}` : `/players/${fromPlayerId}`}
+                className={`mt-4 inline-flex items-center gap-2 font-medium transition ${isWomen ? 'text-[var(--women-rose)] hover:text-[var(--women-rose)]/80' : 'text-mgsr-teal hover:text-mgsr-teal/80'}`}
               >
                 <svg className={`w-5 h-5 ${isRtl ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -214,13 +243,13 @@ export default function PortfolioPage() {
 
         {loadingItems ? (
           <div className="flex items-center justify-center py-24">
-            <div className="w-12 h-12 border-2 border-mgsr-teal border-t-transparent rounded-full animate-spin" />
+            <div className={`w-12 h-12 border-2 border-t-transparent rounded-full animate-spin ${isWomen ? 'border-[var(--women-rose)]' : 'border-mgsr-teal'}`} />
           </div>
         ) : items.length === 0 ? (
-          <div className="text-center py-20 px-6 rounded-2xl border border-mgsr-border bg-mgsr-card/50">
-            <div className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-mgsr-teal/10 flex items-center justify-center">
+          <div className={`text-center py-20 px-6 rounded-2xl border bg-mgsr-card/50 ${isWomen ? 'border-[var(--women-rose)]/20' : 'border-mgsr-border'}`}>
+            <div className={`w-20 h-20 mx-auto mb-6 rounded-2xl flex items-center justify-center ${isWomen ? 'bg-[var(--women-rose)]/10' : 'bg-mgsr-teal/10'}`}>
               <svg
-                className="w-10 h-10 text-mgsr-teal"
+                className={`w-10 h-10 ${isWomen ? 'text-[var(--women-rose)]' : 'text-mgsr-teal'}`}
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -237,13 +266,13 @@ export default function PortfolioPage() {
               {t('portfolio_empty_title')}
             </h2>
             <p className="text-mgsr-muted mb-6 max-w-md mx-auto">
-              {t('portfolio_empty_hint')}
+              {t(isWomen ? 'portfolio_empty_hint_women' : 'portfolio_empty_hint')}
             </p>
             <Link
               href="/players"
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-mgsr-teal text-mgsr-dark font-medium hover:bg-mgsr-teal/90 transition"
+              className={`inline-flex items-center gap-2 px-6 py-3 rounded-xl font-medium transition ${isWomen ? 'bg-[var(--women-rose)] text-mgsr-dark hover:opacity-90' : 'bg-mgsr-teal text-mgsr-dark hover:bg-mgsr-teal/90'}`}
             >
-              {t('portfolio_browse_players')}
+              {t(isWomen ? 'portfolio_browse_players_women' : 'portfolio_browse_players')}
             </Link>
           </div>
         ) : (
@@ -260,10 +289,16 @@ export default function PortfolioPage() {
               return (
                 <div
                   key={item.id}
-                  className="group relative rounded-2xl border border-mgsr-border bg-mgsr-card hover:border-mgsr-teal/40 transition-all duration-300 hover:shadow-[0_0_40px_-10px_rgba(77,182,172,0.2)]"
+                  className={`group relative rounded-2xl border bg-mgsr-card transition-all duration-300 ${
+                    isWomen
+                      ? 'border-[var(--women-rose)]/20 hover:border-[var(--women-rose)]/50 hover:shadow-[0_0_40px_-10px_rgba(232,160,191,0.2)]'
+                      : 'border-mgsr-border hover:border-mgsr-teal/40 hover:shadow-[0_0_40px_-10px_rgba(77,182,172,0.2)]'
+                  }`}
                 >
                   {/* Card gradient accent */}
-                  <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-mgsr-teal/60 via-mgsr-teal to-mgsr-teal/60 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <div className={`absolute top-0 inset-x-0 h-1 opacity-0 group-hover:opacity-100 transition-opacity ${
+                    isWomen ? 'bg-gradient-to-r from-[var(--women-rose)]/60 via-[var(--women-rose)] to-[var(--women-rose)]/60' : 'bg-gradient-to-r from-mgsr-teal/60 via-mgsr-teal to-mgsr-teal/60'
+                  }`} />
 
                   <div className="p-5">
                     <div className="flex gap-4">
@@ -281,7 +316,7 @@ export default function PortfolioPage() {
                         <h3 className="font-display font-bold text-mgsr-text text-lg truncate">
                           {displayName}
                         </h3>
-                        <span className="inline-block mt-1 px-2 py-0.5 rounded text-xs font-medium bg-mgsr-teal/15 text-mgsr-teal">
+                        <span className={`inline-block mt-1 px-2 py-0.5 rounded text-xs font-medium ${isWomen ? 'bg-[var(--women-rose)]/15 text-[var(--women-rose)]' : 'bg-mgsr-teal/15 text-mgsr-teal'}`}>
                           {item.lang === 'he' ? t('portfolio_version_hebrew') : t('portfolio_version_english')}
                         </span>
                         <p className="text-sm text-mgsr-muted mt-0.5">
@@ -294,7 +329,7 @@ export default function PortfolioPage() {
                           </p>
                         )}
                         {item.player.marketValue && (
-                          <p className="text-mgsr-teal font-semibold mt-2">
+                          <p className={`font-semibold mt-2 ${isWomen ? 'text-[var(--women-rose)]' : 'text-mgsr-teal'}`}>
                             {item.player.marketValue}
                           </p>
                         )}
@@ -316,7 +351,7 @@ export default function PortfolioPage() {
                           setShowShareModal(item.id);
                         }}
                         disabled={isSharing}
-                        className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-mgsr-teal/20 text-mgsr-teal font-medium hover:bg-mgsr-teal/30 disabled:opacity-50 transition"
+                        className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-medium disabled:opacity-50 transition ${isWomen ? 'bg-[var(--women-rose)]/20 text-[var(--women-rose)] hover:bg-[var(--women-rose)]/30' : 'bg-mgsr-teal/20 text-mgsr-teal hover:bg-mgsr-teal/30'}`}
                       >
                         {isSharing ? (
                           <>
@@ -342,9 +377,9 @@ export default function PortfolioPage() {
                         disabled={!!viewingId}
                         className="px-4 py-2.5 rounded-xl border border-mgsr-border text-mgsr-text font-medium hover:bg-mgsr-card/80 transition disabled:opacity-50 flex items-center gap-2"
                       >
-                        {viewingId ? (
+                            {viewingId ? (
                           <>
-                            <div className="w-4 h-4 border-2 border-mgsr-teal border-t-transparent rounded-full animate-spin" />
+                            <div className={`w-4 h-4 border-2 border-t-transparent rounded-full animate-spin ${isWomen ? 'border-[var(--women-rose)]' : 'border-mgsr-teal'}`} />
                             {isRtl ? 'טוען...' : 'Loading...'}
                           </>
                         ) : (
@@ -403,7 +438,7 @@ export default function PortfolioPage() {
                                   type="checkbox"
                                   checked={includePlayerContact}
                                   onChange={(e) => setIncludePlayerContact(e.target.checked)}
-                                  className="mt-1 w-4 h-4 rounded border-mgsr-border text-mgsr-teal focus:ring-mgsr-teal"
+                                  className={`mt-1 w-4 h-4 rounded border-mgsr-border focus:ring-mgsr-teal ${isWomen ? 'text-[var(--women-rose)]' : 'text-mgsr-teal'}`}
                                 />
                                 <span className="text-sm text-mgsr-text">
                                   {t('portfolio_share_attach_player_contact')}
@@ -422,7 +457,7 @@ export default function PortfolioPage() {
                                   type="checkbox"
                                   checked={includeAgencyContact}
                                   onChange={(e) => setIncludeAgencyContact(e.target.checked)}
-                                  className="mt-1 w-4 h-4 rounded border-mgsr-border text-mgsr-teal focus:ring-mgsr-teal"
+                                  className={`mt-1 w-4 h-4 rounded border-mgsr-border focus:ring-mgsr-teal ${isWomen ? 'text-[var(--women-rose)]' : 'text-mgsr-teal'}`}
                                 />
                                 <span className="text-sm text-mgsr-text">
                                   {t('portfolio_share_attach_agency_contact')}
@@ -453,7 +488,7 @@ export default function PortfolioPage() {
                             type="button"
                             onClick={() => handleShare(item, includePlayerContact, includeAgencyContact)}
                             disabled={isSharing}
-                            className="flex-1 px-4 py-2.5 rounded-xl bg-mgsr-teal text-mgsr-dark font-medium hover:bg-mgsr-teal/90 disabled:opacity-50 flex items-center justify-center gap-2"
+                            className={`flex-1 px-4 py-2.5 rounded-xl font-medium disabled:opacity-50 flex items-center justify-center gap-2 ${isWomen ? 'bg-[var(--women-rose)] text-mgsr-dark hover:opacity-90' : 'bg-mgsr-teal text-mgsr-dark hover:bg-mgsr-teal/90'}`}
                           >
                             {isSharing ? (
                               <>
@@ -486,7 +521,7 @@ export default function PortfolioPage() {
               dir={isRtl ? 'rtl' : 'ltr'}
               className="flex flex-col items-center gap-4 px-8 py-6 rounded-2xl bg-mgsr-card border border-mgsr-border"
             >
-              <div className="w-10 h-10 border-2 border-mgsr-teal border-t-transparent rounded-full animate-spin" />
+              <div className={`w-10 h-10 border-2 border-t-transparent rounded-full animate-spin ${isWomen ? 'border-[var(--women-rose)]' : 'border-mgsr-teal'}`} />
               <p className="text-mgsr-text font-medium">
                 {isRtl ? 'מכין דף תצוגה...' : 'Preparing preview...'}
               </p>
@@ -526,7 +561,7 @@ export default function PortfolioPage() {
                     setShowShareSetupModal(false);
                     setPendingShareUrl(null);
                   }}
-                  className="flex-1 px-4 py-2.5 rounded-xl bg-mgsr-teal text-mgsr-dark font-medium hover:bg-mgsr-teal/90"
+                  className={`flex-1 px-4 py-2.5 rounded-xl font-medium ${isWomen ? 'bg-[var(--women-rose)] text-mgsr-dark hover:opacity-90' : 'bg-mgsr-teal text-mgsr-dark hover:bg-mgsr-teal/90'}`}
                 >
                   {isRtl ? 'פתח WhatsApp בכל זאת' : 'Open WhatsApp anyway'}
                 </button>
