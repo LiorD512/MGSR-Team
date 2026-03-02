@@ -197,9 +197,9 @@ export default function AddRequestSheet({ open, onClose, onSaved, clubRequestsCo
 
           {step === 0 && (
             <>
-              {(isWomen || isYouth) ? (
+              {isWomen ? (
                 <>
-                  <p className="text-sm text-mgsr-muted">{isYouth ? t('requests_manual_club_hint_youth') : t('requests_manual_club_hint')}</p>
+                  <p className="text-sm text-mgsr-muted">{t('requests_manual_club_hint')}</p>
                   <div>
                     <label className="block text-xs text-mgsr-muted mb-1.5">{t('requests_club_name')}</label>
                     <input
@@ -207,7 +207,7 @@ export default function AddRequestSheet({ open, onClose, onSaved, clubRequestsCo
                       value={manualClubName}
                       onChange={(e) => setManualClubName(e.target.value)}
                       placeholder={t('requests_search_club')}
-                      className={`w-full px-4 py-3 rounded-xl bg-mgsr-dark border border-mgsr-border text-mgsr-text placeholder-mgsr-muted focus:outline-none ${isYouth ? 'focus:border-[var(--youth-cyan)]' : 'focus:border-[var(--women-rose)]'}`}
+                      className="w-full px-4 py-3 rounded-xl bg-mgsr-dark border border-mgsr-border text-mgsr-text placeholder-mgsr-muted focus:outline-none focus:border-[var(--women-rose)]"
                     />
                   </div>
                   <div>
@@ -217,7 +217,31 @@ export default function AddRequestSheet({ open, onClose, onSaved, clubRequestsCo
                       value={manualClubCountry}
                       onChange={(e) => setManualClubCountry(e.target.value)}
                       placeholder={isHebrew ? 'ישראל, גרמניה...' : 'Israel, Germany...'}
-                      className={`w-full px-4 py-3 rounded-xl bg-mgsr-dark border border-mgsr-border text-mgsr-text placeholder-mgsr-muted focus:outline-none ${isYouth ? 'focus:border-[var(--youth-cyan)]' : 'focus:border-[var(--women-rose)]'}`}
+                      className="w-full px-4 py-3 rounded-xl bg-mgsr-dark border border-mgsr-border text-mgsr-text placeholder-mgsr-muted focus:outline-none focus:border-[var(--women-rose)]"
+                    />
+                  </div>
+                </>
+              ) : isYouth ? (
+                <>
+                  <p className="text-sm text-mgsr-muted">{t('requests_manual_club_hint_youth')}</p>
+                  <div>
+                    <label className="block text-xs text-mgsr-muted mb-1.5">{t('requests_club_name')}</label>
+                    <input
+                      type="text"
+                      value={manualClubName}
+                      onChange={(e) => setManualClubName(e.target.value)}
+                      placeholder={t('requests_search_club')}
+                      className="w-full px-4 py-3 rounded-xl bg-mgsr-dark border border-mgsr-border text-mgsr-text placeholder-mgsr-muted focus:outline-none focus:border-[var(--youth-cyan)]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-mgsr-muted mb-1.5">{t('requests_club_country')}</label>
+                    <input
+                      type="text"
+                      value={manualClubCountry}
+                      onChange={(e) => setManualClubCountry(e.target.value)}
+                      placeholder={isHebrew ? 'ישראל, גרמניה...' : 'Israel, Germany...'}
+                      className="w-full px-4 py-3 rounded-xl bg-mgsr-dark border border-mgsr-border text-mgsr-text placeholder-mgsr-muted focus:outline-none focus:border-[var(--youth-cyan)]"
                     />
                   </div>
                 </>

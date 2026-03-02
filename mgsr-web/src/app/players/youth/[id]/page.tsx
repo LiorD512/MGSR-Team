@@ -28,8 +28,6 @@ import {
   computeAgeGroup,
 } from '@/lib/playersYouth';
 import { flattenPdf } from '@/lib/pdfFlatten';
-import type { HighlightVideo } from '@/lib/highlightsApi';
-import PlayerHighlightsPanel from '@/components/PlayerHighlightsPanel';
 import AddPlayerTaskModal from '@/components/AddPlayerTaskModal';
 import AppLayout from '@/components/AppLayout';
 import MatchingRequestsSection from '@/components/MatchingRequestsSection';
@@ -463,6 +461,8 @@ export default function YouthPlayerPage() {
           dateOfBirth: player.dateOfBirth,
           nationality: player.nationality,
           agency: player.agentInChargeName,
+          ifaUrl: player.ifaUrl,
+          ifaStats: player.ifaStats,
           ...(player.playerPhoneNumber ? { playerPhoneNumber: player.playerPhoneNumber } : {}),
         };
 
@@ -470,7 +470,7 @@ export default function YouthPlayerPage() {
         const res = await fetch('/api/share/generate-scout-report', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ player: playerPayload, lang }),
+          body: JSON.stringify({ player: playerPayload, lang, platform: 'youth' }),
         });
         const json = (await res.json()) as { scoutReport?: string };
         scoutReport = json.scoutReport?.trim() || '';
@@ -479,15 +479,6 @@ export default function YouthPlayerPage() {
           setPortfolioError(t('player_info_portfolio_scout_failed'));
           return;
         }
-
-        const pinnedHighlights = (player?.pinnedHighlights ?? []) as HighlightVideo[];
-        const highlightsPayload = pinnedHighlights.length > 0
-          ? pinnedHighlights.map((v) => ({
-              id: v.id, source: v.source, title: v.title,
-              thumbnailUrl: v.thumbnailUrl, embedUrl: v.embedUrl,
-              channelName: v.channelName, viewCount: v.viewCount,
-            }))
-          : undefined;
 
         const stripUndefined = (obj: Record<string, unknown>): Record<string, unknown> => {
           const result: Record<string, unknown> = {};
@@ -514,7 +505,6 @@ export default function YouthPlayerPage() {
           mandateInfo: { hasMandate: hasValidMandate, expiresAt: mandateExpiry },
           mandateUrl: mandateUrl ?? null,
           scoutReport,
-          highlights: highlightsPayload ?? null,
           lang,
           createdAt: Date.now(),
         });
@@ -891,18 +881,8 @@ export default function YouthPlayerPage() {
             </div>
           </div>
 
-          {/* Right column — Highlights + Tasks + Notes */}
+          {/* Right column — Tasks + Notes */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Highlights */}
-            <PlayerHighlightsPanel
-              playerId={id!}
-              playerName={player.fullName ?? ''}
-              pinnedHighlights={(player.pinnedHighlights as HighlightVideo[] | undefined) ?? []}
-              playerCollection="PlayersYouth"
-              accentVariant="youth"
-              fullNameHe={player.fullNameHe}
-            />
-
             {/* Tasks */}
             <div className={`${glassCard} p-5`}>
               <div className="flex items-center justify-between mb-4">

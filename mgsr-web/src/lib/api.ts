@@ -93,6 +93,21 @@ export async function searchClubs(query: string): Promise<ClubSearchResult[]> {
   return data.clubs || [];
 }
 
+/** Search IFA (football.org.il) clubs for youth requests. Returns clubs with clubCountry = Israel.
+ * Uses same-origin fetch (Next.js API route) so it works regardless of BACKEND_URL.
+ * The backend may not have SERPAPI_KEY; Next.js .env.local does. */
+export async function searchIFAClubs(query: string): Promise<ClubSearchResult[]> {
+  const res = await fetch(
+    `/api/ifa/club-search?q=${encodeURIComponent(query)}`
+  );
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || `IFA club search failed`);
+  }
+  const data = await res.json();
+  return data.clubs || [];
+}
+
 export async function searchPlayers(query: string): Promise<SearchPlayer[]> {
   const res = await fetchBackend(
     `/api/transfermarkt/search?q=${encodeURIComponent(query)}`

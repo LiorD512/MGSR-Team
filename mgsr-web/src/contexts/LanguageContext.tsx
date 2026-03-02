@@ -52,6 +52,7 @@ const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     note_added: 'Note added',
     player_added: 'Player added',
     player_added_women: 'Player added',
+    player_added_youth: 'Player added',
     free_agent: 'Free agent',
     free_agent_women: 'Free agent',
     mandate_expired: 'Mandate expired',
@@ -454,6 +455,9 @@ const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     requests_foot: 'Foot',
     requests_add_title: 'Add Request',
     requests_search_club: 'Search club…',
+    requests_search_club_ifa: 'Search club in IFA (optional)',
+    requests_searching_clubs: 'Searching IFA…',
+    requests_no_clubs_found: 'No clubs found. Enter manually below.',
     requests_search_for_club: 'Search for club',
     requests_manual_club_hint: 'Enter club details (MGSR Women does not use Transfermarkt)',
     requests_club_name: 'Club name',
@@ -962,6 +966,7 @@ const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     note_added: 'הערה נוספה',
     player_added: 'שחקן נוסף',
     player_added_women: 'שחקנית נוספה',
+    player_added_youth: 'שחקן הוסף',
     free_agent: 'שחקן חופשי',
     free_agent_women: 'שחקנית חופשית',
     mandate_expired: 'מנדט פג תוקף',
@@ -1364,6 +1369,9 @@ const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     requests_foot: 'רגל',
     requests_add_title: 'הוסף בקשה',
     requests_search_club: 'חפש מועדון…',
+    requests_search_club_ifa: 'חפש מועדון בהתאחדות (אופציונלי)',
+    requests_searching_clubs: 'מחפש בהתאחדות…',
+    requests_no_clubs_found: 'לא נמצאו מועדונים. הזן ידנית למטה.',
     requests_search_for_club: 'חפש מועדון',
     requests_manual_club_hint: 'הזן פרטי מועדון (MGSR Women לא משתמש ב-Transfermarkt)',
     requests_club_name: 'שם המועדון',
@@ -1898,12 +1906,17 @@ const TYPE_KEYS_WOMEN: Record<string, string> = {
   PLAYER_OFFERED_TO_CLUB: 'player_offered_women',
 };
 
+const TYPE_KEYS_YOUTH: Record<string, string> = {
+  ...TYPE_KEYS,
+  PLAYER_ADDED: 'player_added_youth',
+};
+
 export function translateType(
   type: string,
   t: (k: string) => string,
   platform?: 'men' | 'women' | 'youth'
 ): string {
-  const keys = platform === 'women' || platform === 'youth' ? TYPE_KEYS_WOMEN : TYPE_KEYS;
+  const keys = platform === 'youth' ? TYPE_KEYS_YOUTH : platform === 'women' ? TYPE_KEYS_WOMEN : TYPE_KEYS;
   const key = keys[type];
   return key ? t(key) : type;
 }

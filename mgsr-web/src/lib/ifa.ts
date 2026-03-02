@@ -285,6 +285,194 @@ export async function searchIFA(query: string): Promise<IFASearchResult[]> {
   return results;
 }
 
+/** IFA club search result — compatible with ClubSearchResult for AddRequestSheet */
+export interface IFAClubSearchResult {
+  clubName: string;
+  clubCountry: string;
+  clubTmProfile?: string;
+  clubLogo?: string;
+  clubCountryFlag?: string;
+}
+
+/** Extract team_id from IFA team-details URL. Returns null for team_id=0 (generic). */
+function extractTeamIdFromLink(link: string): string | null {
+  if (!link.includes('team-details') || !link.includes('team_id=')) return null;
+  const m = link.match(/team_id=(\d+)/);
+  const id = m?.[1];
+  if (!id || id === '0') return null;
+  return id;
+}
+
+/** Extract display name from SerpAPI title (remove football.org.il, etc.) */
+function extractClubNameFromTitle(title: string): string {
+  const trimmed = title
+    .split('|')[0]
+    ?.replace(/\s*-\s*football\.org\.il.*$/i, '')
+    .replace(/\s*\|\s*התאחדות.*$/i, '')
+    .replace(/\s*-\s*ההתאחדות.*$/i, '')
+    .trim() ?? title;
+  return trimmed || title;
+}
+
+/** IFA generic pages (org/section pages) — not actual club teams. Exclude these. */
+function isIFAGenericPage(clubName: string): boolean {
+  if (!clubName?.trim()) return true;
+  const t = clubName.trim();
+  // Hebrew: IFA org without a club name
+  if (t.includes('ההתאחדות לכדורגל בישראל') && !t.match(/מכבי|הפועל|בני|ביתר|חרות|סקציה|הכח|עירוני|פתח|תקווה|חיפה|תל אביב|ירושלים|באר שבע|נתניה|אשדוד|ראשון|פתח תקווה/i)) {
+    return true;
+  }
+  if (/^ההתאחדות לכדורגל בישראל\s*[-–]\s*(פרטי קבוצה|מועדונים)\s*$/i.test(t)) return true;
+  if (/^פרטי קבוצה\s*$/i.test(t) || /^מועדונים\s*$/i.test(t)) return true;
+  // English: IFA org pages
+  if (/^Israel Football Association\s*[-–]\s*(Team Details|Clubs)\s*$/i.test(t)) return true;
+  if (/^Israel Football Association\s*$/i.test(t)) return true;
+  if (/^Team Details\s*$/i.test(t) || /^Clubs\s*$/i.test(t)) return true;
+  return false;
+}
+
+/** Check if title contains at least one significant word from the query (relevance filter). */
+function titleMatchesQuery(clubName: string, query: string): boolean {
+  const words = query
+    .toLowerCase()
+    .split(/\s+/)
+    .filter((w) => w.length >= 2);
+  if (words.length === 0) return true;
+  const lower = clubName.toLowerCase();
+  const hebrewQuery = query.replace(/[a-z]/gi, '').trim();
+  for (const w of words) {
+    if (lower.includes(w)) return true;
+  }
+  if (hebrewQuery && clubName.includes(hebrewQuery)) return true;
+  return false;
+}
+
+/** Fetch IFA team-details page and extract full title (includes age group). Format: "Under 17 2025/2026 Maccabi Petah Tikva" */
+async function fetchTeamFullTitle(teamId: string): Promise<string | null> {
+  try {
+    const url = `${IFA_BASE}/team-details/?team_id=${teamId}&season_id=${CURRENT_SEASON_ID}`;
+    const html = await fetchIfaHtml(url);
+    const $ = cheerio.load(html);
+    const title = $('title').first().text().trim();
+    if (!title) return null;
+    return extractClubNameFromTitle(title);
+  } catch {
+    return null;
+  }
+}
+
+/** Search IFA clubs via SerpAPI. Enriches with full team title (age group) from IFA page when SerpAPI title is generic. */
+export async function searchIFAClubs(query: string): Promise<IFAClubSearchResult[]> {
+  const q = query.trim();
+  if (!q || q.length < 2) return [];
+
+  const serpKey = process.env.SERPAPI_KEY;
+  if (!serpKey?.trim()) {
+    console.warn('[IFA] No SERPAPI_KEY — cannot search IFA clubs');
+    return [];
+  }
+
+  const isHebrew = /[\u0590-\u05FF]/.test(q);
+  const clubMap = new Map<string, { clubName: string; fromSerp: boolean }>();
+
+  const runSearch = async (searchQuery: string, extraParams?: Record<string, string>) => {
+    try {
+      const url = new URL('https://serpapi.com/search.json');
+      url.searchParams.set('engine', 'google');
+      url.searchParams.set('q', searchQuery);
+      url.searchParams.set('api_key', serpKey.trim());
+      url.searchParams.set('num', '15');
+      url.searchParams.set('gl', 'il');
+      url.searchParams.set('hl', extraParams?.hl ?? (isHebrew ? 'he' : 'en'));
+      for (const [k, v] of Object.entries(extraParams ?? {})) {
+        if (k === 'hl') continue;
+        url.searchParams.set(k, v);
+      }
+
+      const res = await fetch(url.toString(), {
+        headers: { 'User-Agent': 'MGSR/1.0' },
+        signal: AbortSignal.timeout(15000),
+      });
+      const data = (await res.json()) as {
+        organic_results?: Array<{
+          title?: string;
+          link?: string;
+          sitelinks?: { inline?: Array<{ title?: string; link?: string }>; expanded?: Array<{ title?: string; link?: string }> };
+        }>;
+      };
+
+      const processLink = (link: string, title?: string) => {
+        const teamId = extractTeamIdFromLink(link);
+        if (!teamId) return;
+        const clubName = extractClubNameFromTitle(title ?? '');
+        if (!clubName || clubName.length < 2) return;
+        if (isIFAGenericPage(clubName)) return;
+        if (!titleMatchesQuery(clubName, q)) return;
+        if (!clubMap.has(teamId)) {
+          const hasAgeGroup = /under\s*\d+|עד\s*גיל|גיל\s*\d+|u\d+|u-\d+/i.test(clubName);
+          clubMap.set(teamId, { clubName, fromSerp: !hasAgeGroup });
+        }
+      };
+
+      for (const r of data.organic_results ?? []) {
+        processLink(r.link ?? '', r.title);
+        for (const sl of r.sitelinks?.inline ?? []) {
+          processLink(sl.link ?? '', sl.title ?? r.title);
+        }
+        for (const sl of r.sitelinks?.expanded ?? []) {
+          processLink(sl.link ?? '', sl.title ?? r.title);
+        }
+      }
+    } catch (err) {
+      console.error('[IFA] Club search error:', err);
+    }
+  };
+
+  // Require inurl:team_id to get only team-details pages with specific team (excludes generic IFA pages)
+  // Use quoted phrase for exact club name match
+  const quotedQ = q.includes(' ') ? `"${q}"` : q;
+  await runSearch(`site:football.org.il inurl:team_id ${quotedQ}`);
+  if (clubMap.size < 5 && !isHebrew) {
+    await runSearch(`site:football.org.il inurl:team_id ${quotedQ} קבוצה`, { hl: 'he' });
+  }
+  if (clubMap.size < 5 && isHebrew) {
+    await runSearch(`site:football.org.il inurl:team_id ${quotedQ} team`);
+  }
+  if (clubMap.size < 5) {
+    await runSearch(`site:football.org.il team-details ${quotedQ}`);
+  }
+
+  const teamIdsToEnrich = Array.from(clubMap.entries())
+    .filter(([, v]) => v.fromSerp)
+    .map(([teamId]) => teamId)
+    .slice(0, 12);
+
+  if (teamIdsToEnrich.length > 0) {
+    const enriched = await Promise.all(
+      teamIdsToEnrich.map(async (teamId) => {
+        const full = await fetchTeamFullTitle(teamId);
+        return { teamId, full };
+      })
+    );
+    for (const { teamId, full } of enriched) {
+      if (full && !isIFAGenericPage(full) && titleMatchesQuery(full, q)) {
+        const entry = clubMap.get(teamId);
+        if (entry) clubMap.set(teamId, { clubName: full, fromSerp: false });
+      }
+    }
+  }
+
+  const finalClubs = Array.from(clubMap.entries())
+    .filter(([, { clubName }]) => !isIFAGenericPage(clubName) && titleMatchesQuery(clubName, q))
+    .map(([teamId, { clubName }]) => ({
+    clubName,
+    clubCountry: 'Israel',
+    clubTmProfile: `${IFA_BASE}/team-details/?team_id=${teamId}&season_id=${CURRENT_SEASON_ID}`,
+  }));
+
+  return finalClubs;
+}
+
 /** Optional: crawl IFA pages for player links matching query. Uses known team-details URLs when SerpAPI returns few results. */
 async function crawlIFARosterForQuery(query: string): Promise<string[]> {
   const q = query.toLowerCase().trim();
