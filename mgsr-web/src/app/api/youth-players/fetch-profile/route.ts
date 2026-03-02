@@ -7,7 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { fetchIFAProfile, isValidIfaUrl, normalizeIfaUrl, type IFAPlayerProfile } from '@/lib/ifa';
 
 export const dynamic = 'force-dynamic';
-export const maxDuration = 60; // Scout server cold start can take 60–90s
+export const maxDuration = 120; // Scout cold start + retry can take ~2 min
 
 export async function POST(request: NextRequest) {
   try {
@@ -42,24 +42,30 @@ export async function POST(request: NextRequest) {
         stats: data.stats,
       });
 
-    // Prefer scout server when configured — Playwright bypasses 403, more reliable
-    const scoutBase = (process.env.SCOUT_SERVER_URL || '').trim();
-    if (scoutBase) {
+    // Scout server (Playwright) bypasses 403 — use same default as other scout routes
+    const scoutBase = (process.env.SCOUT_SERVER_URL || 'https://football-scout-server-l38w.onrender.com').trim();
+    const base = scoutBase.replace(/\/$/, '');
+    const scoutFetch = () =>
+      fetch(`${base}/ifa/fetch-profile`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: normalizedUrl }),
+        signal: AbortSignal.timeout(90000), // 90s — Render cold start can take 60–90s
+      });
+
+    for (let attempt = 0; attempt < 2; attempt++) {
       try {
-        const base = scoutBase.replace(/\/$/, '');
-        const res = await fetch(`${base}/ifa/fetch-profile`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ url: normalizedUrl }),
-          signal: AbortSignal.timeout(60000), // 60s — Render cold start can take 60–90s
-        });
+        const res = await scoutFetch();
         if (res.ok) {
           const data = (await res.json()) as IFAPlayerProfile;
           return toResponse(data);
         }
+        if (res.status !== 502 && res.status !== 503) break;
       } catch (scoutErr) {
-        console.warn('[youth-fetch-profile] Scout server failed, trying direct:', scoutErr);
+        if (attempt === 0) console.warn('[youth-fetch-profile] Scout attempt 1 failed, retrying:', scoutErr);
+        else console.warn('[youth-fetch-profile] Scout server failed:', scoutErr);
       }
+      if (attempt === 0) await new Promise((r) => setTimeout(r, 3000));
     }
 
     // Direct fetch (or fallback when scout fails)
