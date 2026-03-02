@@ -57,7 +57,6 @@ export default function AddYouthPlayerForm() {
 
   // Player info
   const [fullName, setFullName] = useState('');
-  const [fullNameHe, setFullNameHe] = useState('');
   const [positions, setPositions] = useState<string[]>([]);
   const [currentClub, setCurrentClub] = useState('');
   const [academy, setAcademy] = useState('');
@@ -143,8 +142,7 @@ export default function AddYouthPlayerForm() {
   }, []);
 
   const applyProfileData = (data: Record<string, unknown>, url?: string) => {
-    setFullName(String(data.fullName ?? ''));
-    setFullNameHe(String(data.fullNameHe ?? ''));
+    setFullName(String(data.fullName ?? data.fullNameHe ?? ''));
     setCurrentClub(String(data.currentClub ?? ''));
     setAcademy(String(data.academy ?? ''));
     setNationality(String(data.nationality ?? ''));
@@ -185,8 +183,7 @@ export default function AddYouthPlayerForm() {
         const msg = err instanceof Error ? err.message : 'Failed to load profile';
         setError(msg);
         // Fallback from search result
-        setFullName(r.fullName);
-        setFullNameHe(r.fullNameHe ?? '');
+        setFullName((r.fullName || r.fullNameHe) ?? '');
         setCurrentClub(r.currentClub ?? '');
         setIfaUrl(r.ifaUrl ?? '');
         setIfaPlayerId(r.ifaPlayerId ?? '');
@@ -194,8 +191,7 @@ export default function AddYouthPlayerForm() {
         setLoadingProfile(false);
       }
     } else {
-      setFullName(r.fullName);
-      setFullNameHe(r.fullNameHe ?? '');
+      setFullName((r.fullName || r.fullNameHe) ?? '');
       setCurrentClub(r.currentClub ?? '');
       setIfaUrl(r.ifaUrl ?? '');
       setIfaPlayerId(r.ifaPlayerId ?? '');
@@ -204,7 +200,6 @@ export default function AddYouthPlayerForm() {
 
   const clearForm = () => {
     setFullName('');
-    setFullNameHe('');
     setPositions([]);
     setCurrentClub('');
     setAcademy('');
@@ -259,7 +254,7 @@ export default function AddYouthPlayerForm() {
   };
 
   const handleSearchImage = async () => {
-    const name = fullName.trim() || fullNameHe.trim();
+    const name = fullName.trim();
     if (!name) return;
     setSearchingImage(true);
     setError('');
@@ -365,7 +360,6 @@ export default function AddYouthPlayerForm() {
 
       const playerId = await addYouthPlayer({
         fullName: fullName.trim(),
-        fullNameHe: fullNameHe.trim() || undefined,
         positions: positions.length > 0 ? positions : undefined,
         currentClub: currentClub.trim() ? { clubName: currentClub.trim() } : undefined,
         academy: academy.trim() || undefined,
@@ -619,29 +613,16 @@ export default function AddYouthPlayerForm() {
             {/* Names */}
             <div className="youth-glass-card rounded-2xl p-6 space-y-4">
               <h3 className="text-sm font-semibold youth-gradient-text uppercase tracking-wider">{t('youth_add_identity')}</h3>
-              <div className="grid sm:grid-cols-2 gap-4">
-                <div>
-                  <label className={glassLabel}>{t('youth_add_name_en')}</label>
-                  <input
-                    type="text"
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    placeholder="e.g. Lior Cohen"
-                    required
-                    className={glassInputSm}
-                  />
-                </div>
-                <div>
-                  <label className={glassLabel}>{t('youth_add_name_he')}</label>
-                  <input
-                    type="text"
-                    value={fullNameHe}
-                    onChange={(e) => setFullNameHe(e.target.value)}
-                    placeholder="ליאור כהן"
-                    dir="rtl"
-                    className={glassInputSm}
-                  />
-                </div>
+              <div>
+                <label className={glassLabel}>{t('youth_add_name')}</label>
+                <input
+                  type="text"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  placeholder="e.g. Lior Cohen / ליאור כהן"
+                  required
+                  className={glassInputSm}
+                />
               </div>
             </div>
 
@@ -740,7 +721,7 @@ export default function AddYouthPlayerForm() {
                     <button
                       type="button"
                       onClick={handleSearchImage}
-                      disabled={searchingImage || (!fullName.trim() && !fullNameHe.trim())}
+                      disabled={searchingImage || !fullName.trim()}
                       className="px-4 py-3 rounded-2xl text-sm font-medium bg-[var(--youth-violet)]/15 text-[var(--youth-violet)] hover:bg-[var(--youth-violet)]/25 disabled:opacity-50 disabled:cursor-not-allowed transition border border-[var(--youth-violet)]/20 shrink-0"
                     >
                       {searchingImage ? t('youth_add_searching_photo') : `🔍 ${t('youth_add_find_photo')}`}

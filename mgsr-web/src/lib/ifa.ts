@@ -3,8 +3,12 @@
  *
  * Hebrew pages render server-side; English pages are blocked by a consent wall.
  * Strategy:
- *   - Search: SerpAPI Google search with site:football.org.il
+ *   - Search: SerpAPI Google search with site:football.org.il (IFA has no public search API)
  *   - Profile: fetch Hebrew player page and parse with cheerio
+ *   - Image search: SerpAPI is also used for player headshots (separate endpoint)
+ *
+ * Why SerpAPI for player search: football.org.il does not expose a search API.
+ * We use Google (via SerpAPI) to find player pages, then scrape profiles for details.
  *
  * Player URL format:
  *   https://www.football.org.il/players/player/?player_id={INT}&season_id={INT}
@@ -77,6 +81,96 @@ async function fetchIfaHtml(url: string): Promise<string> {
   return res.text();
 }
 
+/** Israeli club name prefixes — fallback when profile fetch fails */
+const CLUB_PREFIXES = /^(Hapoel|Maccabi|Beitar|Bnei|הפועל|מכבי|בני)\s+/i;
+
+const PROFILE_FETCH_CONCURRENCY = 5;
+
+/** Extract player_id from link if it's a valid IFA player page */
+function extractPlayerIdFromLink(link: string): string | null {
+  if (!link.includes('/players/player/') || !link.includes('player_id=')) return null;
+  const m = link.match(/player_id=(\d+)/);
+  return m?.[1] ?? null;
+}
+
+/** Fallback: extract player name from title when profile fetch fails */
+function fallbackNameFromTitle(title: string): string {
+  const trimmed = title
+    .split('|')[0]
+    ?.replace(/\s*-\s*football\.org\.il.*$/i, '')
+    .replace(/\s*\|\s*התאחדות.*$/i, '')
+    .replace(/\s*-\s*ההתאחדות.*$/i, '')
+    .trim() ?? title;
+  if (!trimmed) return trimmed;
+  if (trimmed.includes(' - ')) {
+    const parts = trimmed.split(/\s*-\s*/).map((p) => p.trim()).filter(Boolean);
+    return parts.length >= 2 ? parts[parts.length - 1] : trimmed;
+  }
+  if (CLUB_PREFIXES.test(trimmed)) {
+    const rest = trimmed.replace(CLUB_PREFIXES, '');
+    const words = rest.split(/\s+/).filter(Boolean);
+    if (words.length > 2) return words.slice(2).join(' ');
+    if (words.length > 1) return words.slice(1).join(' ');
+  }
+  return trimmed;
+}
+
+/** Fetch profiles in batches to limit concurrency */
+async function fetchProfilesWithLimit(
+  urls: string[],
+  concurrency: number
+): Promise<Map<string, IFAPlayerProfile | null>> {
+  const map = new Map<string, IFAPlayerProfile | null>();
+  for (let i = 0; i < urls.length; i += concurrency) {
+    const batch = urls.slice(i, i + concurrency);
+    const profiles = await Promise.all(
+      batch.map(async (url) => {
+        try {
+          return await fetchIFAProfile(url);
+        } catch {
+          return null;
+        }
+      })
+    );
+    batch.forEach((url, j) => map.set(url, profiles[j]));
+  }
+  return map;
+}
+
+/** Collect player IDs from SerpAPI response (main results + sitelinks) */
+function collectPlayerUrlsFromSerpData(data: {
+  organic_results?: Array<{
+    title?: string;
+    link?: string;
+    snippet?: string;
+    sitelinks?: {
+      inline?: Array<{ title?: string; link?: string }>;
+      expanded?: Array<{ title?: string; link?: string; snippet?: string }>;
+    };
+  }>;
+}): Map<string, { title?: string; snippet?: string }> {
+  const map = new Map<string, { title?: string; snippet?: string }>();
+  const add = (link: string, title?: string, snippet?: string) => {
+    const pid = extractPlayerIdFromLink(link);
+    if (!pid) return;
+    const ifaUrl = `${IFA_BASE}/players/player/?player_id=${pid}&season_id=${CURRENT_SEASON_ID}`;
+    if (map.has(ifaUrl)) return;
+    map.set(ifaUrl, { title, snippet });
+  };
+
+  for (const r of data.organic_results ?? []) {
+    const link = r.link ?? '';
+    add(link, r.title, r.snippet);
+    for (const sl of r.sitelinks?.inline ?? []) {
+      add(sl.link ?? '', sl.title);
+    }
+    for (const sl of r.sitelinks?.expanded ?? []) {
+      add(sl.link ?? '', sl.title, sl.snippet);
+    }
+  }
+  return map;
+}
+
 /** ─── SEARCH (via SerpAPI) ─── */
 export async function searchIFA(query: string): Promise<IFASearchResult[]> {
   const q = query.trim();
@@ -88,10 +182,9 @@ export async function searchIFA(query: string): Promise<IFASearchResult[]> {
     return [];
   }
 
-  const seen = new Set<string>();
-  const results: IFASearchResult[] = [];
+  const isHebrew = /[\u0590-\u05FF]/.test(q);
+  const playerUrlMap = new Map<string, { title?: string; snippet?: string }>();
 
-  // Helper: run a single SerpAPI search and collect player results
   const runSearch = async (searchQuery: string, extraParams?: Record<string, string>) => {
     try {
       const url = new URL('https://serpapi.com/search.json');
@@ -99,10 +192,10 @@ export async function searchIFA(query: string): Promise<IFASearchResult[]> {
       url.searchParams.set('q', searchQuery);
       url.searchParams.set('api_key', serpKey.trim());
       url.searchParams.set('num', '15');
-      // Target Israeli results in Hebrew for better IFA coverage
       url.searchParams.set('gl', 'il');
-      url.searchParams.set('hl', 'he');
+      url.searchParams.set('hl', extraParams?.hl ?? (isHebrew ? 'he' : 'en'));
       for (const [k, v] of Object.entries(extraParams ?? {})) {
+        if (k === 'hl') continue;
         url.searchParams.set(k, v);
       }
 
@@ -110,87 +203,121 @@ export async function searchIFA(query: string): Promise<IFASearchResult[]> {
         headers: { 'User-Agent': 'MGSR/1.0' },
         signal: AbortSignal.timeout(15000),
       });
-      const data = (await res.json()) as {
-        organic_results?: Array<{
-          title?: string;
-          link?: string;
-          snippet?: string;
-        }>;
-      };
-
-      for (const r of data.organic_results ?? []) {
-        const link = r.link ?? '';
-        // Only player pages — must have player_id= parameter
-        if (!link.includes('player_id=')) continue;
-
-        const playerIdMatch = link.match(/player_id=(\d+)/);
-        const playerId = playerIdMatch?.[1];
-        if (!playerId || seen.has(playerId)) continue;
-        seen.add(playerId);
-
-        // Parse name from title — typically "שם השחקן | התאחדות לכדורגל"
-        const title = r.title ?? '';
-        const nameParts = title.split('|')[0]?.trim() ?? title;
-        const hebrewName = nameParts
-          .replace(/\s*-\s*football\.org\.il.*$/i, '')
-          .replace(/\s*\|\s*התאחדות.*$/i, '')
-          .replace(/\s*-\s*ההתאחדות.*$/i, '')
-          .trim();
-
-        // Try to extract English name from snippet or title
-        const snippet = r.snippet ?? '';
-        const englishNameMatch = snippet.match(/([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)/) ??
-          title.match(/([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)/);
-
-        // Try to extract DOB from snippet (format: DD/MM/YYYY or DD.MM.YYYY)
-        const dobSnippetMatch = snippet.match(/תאריך לידה[:\s]*(\d{1,2}[./]\d{1,2}[./]\d{4})/) ??
-          snippet.match(/(\d{1,2}[./]\d{1,2}[./]\d{4})/);
-        const dateOfBirth = dobSnippetMatch?.[1];
-
-        // Try to extract club from snippet
-        const clubSnippetMatch = snippet.match(/קבוצה[:\s]*([^\n,.]+)/) ??
-          snippet.match(/מועדון[:\s]*([^\n,.]+)/);
-        const currentClub = clubSnippetMatch?.[1]?.trim();
-
-        // Normalize IFA URL to include current season
-        const ifaUrl = `${IFA_BASE}/players/player/?player_id=${playerId}&season_id=${CURRENT_SEASON_ID}`;
-
-        results.push({
-          fullName: englishNameMatch?.[0] ?? hebrewName,
-          fullNameHe: /[\u0590-\u05FF]/.test(hebrewName) ? hebrewName : undefined,
-          currentClub,
-          dateOfBirth,
-          ifaUrl,
-          ifaPlayerId: playerId,
-          source: 'ifa',
-        });
-      }
+      const data = (await res.json()) as Parameters<typeof collectPlayerUrlsFromSerpData>[0];
+      const collected = collectPlayerUrlsFromSerpData(data);
+      collected.forEach((meta, ifaUrl) => {
+        if (!playerUrlMap.has(ifaUrl)) playerUrlMap.set(ifaUrl, meta);
+      });
     } catch (err) {
       console.error('[IFA] Search error:', err);
     }
   };
 
-  // Primary search: site-scoped with inurl:player_id for precise player targeting
-  const isHebrew = /[\u0590-\u05FF]/.test(q);
+  // Primary search
   await runSearch(`site:football.org.il inurl:player_id ${q}`);
 
-  // If few results, try with player keyword in the query language
-  if (results.length < 3) {
+  // Dual search for English: also run with hl=he and Hebrew keyword for better IFA coverage
+  if (!isHebrew) {
+    await runSearch(`site:football.org.il inurl:player_id ${q} שחקן`, { hl: 'he' });
+  }
+
+  // If few results, try with player keyword
+  if (playerUrlMap.size < 3) {
     const keyword = isHebrew ? 'שחקן' : 'player';
     await runSearch(`site:football.org.il inurl:player_id ${q} ${keyword}`);
   }
 
-  // If still few results and query is English, try adding Hebrew keyword for better IFA coverage
-  if (results.length < 3 && !isHebrew) {
-    await runSearch(`site:football.org.il inurl:player_id ${q} שחקן`);
+  if (playerUrlMap.size < 3 && !isHebrew) {
+    await runSearch(`site:football.org.il inurl:player_id ${q} שחקן`, { hl: 'he' });
   }
 
-  // If still few results and query is Hebrew, try broader site search (still player-filtered by URL check)
-  if (results.length < 3 && isHebrew) {
-    await runSearch(`site:football.org.il ${q} שחקן כדורגל`);
+  if (playerUrlMap.size < 3 && isHebrew) {
+    await runSearch(`site:football.org.il inurl:player_id ${q} שחקן כדורגל`);
   }
 
-  return results.slice(0, 20);
+  // Optional: IFA roster crawl fallback when SerpAPI returns very few results
+  if (playerUrlMap.size < 2 && q.length >= 3) {
+    const rosterUrls = await crawlIFARosterForQuery(q);
+    for (const ifaUrl of rosterUrls) {
+      if (!playerUrlMap.has(ifaUrl)) playerUrlMap.set(ifaUrl, {});
+    }
+  }
+
+  const urls = Array.from(playerUrlMap.keys()).slice(0, 20);
+  if (urls.length === 0) return [];
+
+  // Fetch profile for every result to get accurate names (Part 1)
+  const profileMap = await fetchProfilesWithLimit(urls, PROFILE_FETCH_CONCURRENCY);
+
+  const results: IFASearchResult[] = [];
+  for (const ifaUrl of urls) {
+    const profile = profileMap.get(ifaUrl);
+    const meta = playerUrlMap.get(ifaUrl);
+    const pid = extractPlayerIdFromLink(ifaUrl);
+    if (!pid) continue;
+
+    let fullName: string;
+    let fullNameHe: string | undefined;
+    let currentClub: string | undefined;
+    let dateOfBirth: string | undefined;
+
+    if (profile && (profile.fullName || profile.fullNameHe)) {
+      fullName = profile.fullName || profile.fullNameHe || 'Unknown';
+      fullNameHe = profile.fullNameHe;
+      currentClub = profile.currentClub;
+      dateOfBirth = profile.dateOfBirth;
+    } else {
+      fullName = fallbackNameFromTitle(meta?.title ?? '') || 'Unknown';
+      fullNameHe = /[\u0590-\u05FF]/.test(fullName) ? fullName : undefined;
+    }
+
+    results.push({
+      fullName,
+      fullNameHe,
+      currentClub,
+      dateOfBirth,
+      ifaUrl,
+      ifaPlayerId: pid,
+      source: 'ifa',
+    });
+  }
+
+  return results;
+}
+
+/** Optional: crawl IFA pages for player links matching query. Uses known team-details URLs when SerpAPI returns few results. */
+async function crawlIFARosterForQuery(query: string): Promise<string[]> {
+  const q = query.toLowerCase().trim();
+  if (!q || q.length < 2) return [];
+
+  const teamIds = [6861, 5, 18];
+  const results: string[] = [];
+  const seen = new Set<string>();
+
+  try {
+    for (const teamId of teamIds) {
+      const url = `https://www.football.org.il/team-details/?season_id=${CURRENT_SEASON_ID}&team_id=${teamId}`;
+      const html = await fetchIfaHtml(url);
+      const $ = cheerio.load(html);
+      $('a[href*="player_id="]').each(function (this: cheerio.Element) {
+        const href = $(this).attr('href') ?? '';
+        const text = $(this).text().trim();
+        if (!href.includes('/players/player/') || !href.includes('player_id=')) return;
+        const pid = extractPlayerIdFromLink(href);
+        if (!pid || seen.has(pid)) return;
+        const nameMatch =
+          text.toLowerCase().includes(q) || q.split(/\s+/).some((w) => w.length >= 2 && text.toLowerCase().includes(w));
+        if (nameMatch) {
+          seen.add(pid);
+          results.push(`${IFA_BASE}/players/player/?player_id=${pid}&season_id=${CURRENT_SEASON_ID}`);
+        }
+      });
+      if (results.length >= 5) break;
+    }
+    return results.slice(0, 10);
+  } catch {
+    return [];
+  }
 }
 
 /** ─── PROFILE PARSING ─── */
