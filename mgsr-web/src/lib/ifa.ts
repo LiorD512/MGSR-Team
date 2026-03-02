@@ -23,12 +23,32 @@ const CURRENT_SEASON_ID = '27';
 const USER_AGENTS = [
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0',
 ];
 
 const FETCH_TIMEOUT_MS = 20000;
 
 function getRandomUA(): string {
   return USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
+}
+
+/** Browser-like headers to reduce 403 from football.org.il (blocks datacenter IPs) */
+function getIfaFetchHeaders(userAgent: string): Record<string, string> {
+  return {
+    'User-Agent': userAgent,
+    Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+    'Accept-Language': 'he-IL,he;q=0.9,en-US;q=0.8,en;q=0.7',
+    'Accept-Encoding': 'gzip, deflate, br',
+    Referer: `${IFA_BASE}/`,
+    'Sec-Ch-Ua': '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
+    'Sec-Ch-Ua-Mobile': '?0',
+    'Sec-Ch-Ua-Platform': '"Windows"',
+    'Upgrade-Insecure-Requests': '1',
+    'Sec-Fetch-Dest': 'document',
+    'Sec-Fetch-Mode': 'navigate',
+    'Sec-Fetch-Site': 'same-origin',
+    'Sec-Fetch-User': '?1',
+  };
 }
 
 /** ─── TYPES ─── */
@@ -68,17 +88,42 @@ export interface IFAPlayerProfile {
 
 /** ─── HTML FETCHING ─── */
 async function fetchIfaHtml(url: string): Promise<string> {
+  const ua = getRandomUA();
   const res = await fetch(url, {
-    headers: {
-      'User-Agent': getRandomUA(),
-      Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-      'Accept-Language': 'he-IL,he;q=0.9,en-US;q=0.8',
-    },
+    headers: getIfaFetchHeaders(ua),
     cache: 'no-store',
     signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
   });
-  if (!res.ok) throw new Error(`IFA HTTP ${res.status}`);
-  return res.text();
+
+  if (res.ok) return res.text();
+
+  // Retry once with different UA on 403 (football.org.il blocks datacenter IPs in production)
+  if (res.status === 403) {
+    const retryRes = await fetch(url, {
+      headers: getIfaFetchHeaders(USER_AGENTS.find((a) => a !== ua) ?? ua),
+      cache: 'no-store',
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+    });
+    if (retryRes.ok) return retryRes.text();
+  }
+
+  // Optional: ScraperAPI bypass when direct fetch blocked (e.g. Vercel datacenter IP)
+  const scraperKey = process.env.SCRAPER_API_KEY?.trim();
+  if ((res.status === 403 || res.status === 429) && scraperKey) {
+    try {
+      const proxyUrl = `https://api.scraperapi.com?api_key=${scraperKey}&url=${encodeURIComponent(url)}&country_code=il`;
+      const proxyRes = await fetch(proxyUrl, {
+        headers: { 'User-Agent': ua },
+        cache: 'no-store',
+        signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+      });
+      if (proxyRes.ok) return proxyRes.text();
+    } catch (e) {
+      console.warn('[IFA] ScraperAPI fallback failed:', e);
+    }
+  }
+
+  throw new Error(`IFA HTTP ${res.status}`);
 }
 
 /** Israeli club name prefixes — fallback when profile fetch fails */

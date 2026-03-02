@@ -47,11 +47,14 @@ export async function POST(request: NextRequest) {
     const msg = err instanceof Error ? err.message : 'Failed to fetch profile';
     const isTimeout = msg.includes('abort') || msg.includes('timeout') || msg.includes('Timeout');
     const isNetwork = msg.includes('fetch') || msg.includes('ECONNREFUSED') || msg.includes('ENOTFOUND');
-    const userMsg = isTimeout
-      ? 'Request timed out. IFA site may be slow — try again.'
-      : isNetwork
-        ? 'Could not reach football.org.il. Check your connection and try again.'
-        : msg;
+    const is403 = msg.includes('403') || msg.includes('Forbidden');
+    const userMsg = is403
+      ? 'football.org.il blocked our server. Basic info from search was used — you can edit details manually.'
+      : isTimeout
+        ? 'Request timed out. IFA site may be slow — try again.'
+        : isNetwork
+          ? 'Could not reach football.org.il. Check your connection and try again.'
+          : msg;
     return NextResponse.json({ error: userMsg }, { status: 500 });
   }
 }
