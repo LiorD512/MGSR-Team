@@ -129,6 +129,17 @@ const CLUB_PREFIXES = /^(Hapoel|Maccabi|Beitar|Bnei|הפועל|מכבי|בני)\
 
 const PROFILE_FETCH_CONCURRENCY = 5;
 
+/** Extract club from SerpAPI snippet (e.g. "קבוצה: מכבי פ\"ת" or "Maccabi PT") */
+function extractClubFromSnippet(snippet: string | undefined): string | undefined {
+  if (!snippet?.trim()) return undefined;
+  const s = snippet.trim();
+  const clubMatch =
+    s.match(/קבוצה[:\s]*([^\n·|]+)/) ||
+    s.match(/(?:מכבי|הפועל|בני|ביתר|עירוני|הכח)\s+[^\n·|]{2,30}/) ||
+    s.match(/(?:Maccabi|Hapoel|Beitar|Bnei)\s+[A-Za-z\s]{2,40}/);
+  return clubMatch ? clubMatch[1]?.trim() || clubMatch[0]?.trim() : undefined;
+}
+
 /** Extract player_id from link if it's a valid IFA player page */
 function extractPlayerIdFromLink(link: string): string | null {
   if (!link.includes('/players/player/') || !link.includes('player_id=')) return null;
@@ -259,66 +270,35 @@ export async function searchIFA(query: string): Promise<IFASearchResult[]> {
   // Primary search
   await runSearch(`site:football.org.il inurl:player_id ${q}`);
 
-  // Dual search for English: also run with hl=he and Hebrew keyword for better IFA coverage
-  if (!isHebrew) {
-    await runSearch(`site:football.org.il inurl:player_id ${q} שחקן`, { hl: 'he' });
-  }
-
-  // If few results, try with player keyword
-  if (playerUrlMap.size < 3) {
+  // Fallbacks only when few results (max 2 extra calls for speed)
+  if (playerUrlMap.size < 5) {
     const keyword = isHebrew ? 'שחקן' : 'player';
     await runSearch(`site:football.org.il inurl:player_id ${q} ${keyword}`);
   }
-
-  if (playerUrlMap.size < 3 && !isHebrew) {
+  if (playerUrlMap.size < 5 && !isHebrew) {
     await runSearch(`site:football.org.il inurl:player_id ${q} שחקן`, { hl: 'he' });
-  }
-
-  if (playerUrlMap.size < 3 && isHebrew) {
-    await runSearch(`site:football.org.il inurl:player_id ${q} שחקן כדורגל`);
-  }
-
-  // Optional: IFA roster crawl fallback when SerpAPI returns very few results
-  if (playerUrlMap.size < 2 && q.length >= 3) {
-    const rosterUrls = await crawlIFARosterForQuery(q);
-    for (const ifaUrl of rosterUrls) {
-      if (!playerUrlMap.has(ifaUrl)) playerUrlMap.set(ifaUrl, {});
-    }
   }
 
   const urls = Array.from(playerUrlMap.keys()).slice(0, 20);
   if (urls.length === 0) return [];
 
-  // Fetch profile for every result to get accurate names (Part 1)
-  const profileMap = await fetchProfilesWithLimit(urls, PROFILE_FETCH_CONCURRENCY);
-
+  // Fast path: use SerpAPI title/snippet only — no profile fetch (saves 40–120s)
+  // Profile is fetched on select via fetch-profile API
   const results: IFASearchResult[] = [];
   for (const ifaUrl of urls) {
-    const profile = profileMap.get(ifaUrl);
     const meta = playerUrlMap.get(ifaUrl);
     const pid = extractPlayerIdFromLink(ifaUrl);
     if (!pid) continue;
 
-    let fullName: string;
-    let fullNameHe: string | undefined;
-    let currentClub: string | undefined;
-    let dateOfBirth: string | undefined;
-
-    if (profile && (profile.fullName || profile.fullNameHe)) {
-      fullName = profile.fullName || profile.fullNameHe || 'Unknown';
-      fullNameHe = profile.fullNameHe;
-      currentClub = profile.currentClub;
-      dateOfBirth = profile.dateOfBirth;
-    } else {
-      fullName = fallbackNameFromTitle(meta?.title ?? '') || 'Unknown';
-      fullNameHe = /[\u0590-\u05FF]/.test(fullName) ? fullName : undefined;
-    }
+    const fullName = fallbackNameFromTitle(meta?.title ?? '') || 'Unknown';
+    const fullNameHe = /[\u0590-\u05FF]/.test(fullName) ? fullName : undefined;
+    const currentClub = extractClubFromSnippet(meta?.snippet);
 
     results.push({
       fullName,
       fullNameHe,
       currentClub,
-      dateOfBirth,
+      dateOfBirth: undefined,
       ifaUrl,
       ifaPlayerId: pid,
       source: 'ifa',
