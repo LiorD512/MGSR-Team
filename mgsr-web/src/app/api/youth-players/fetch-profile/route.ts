@@ -7,7 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { fetchIFAProfile, isValidIfaUrl, normalizeIfaUrl, type IFAPlayerProfile } from '@/lib/ifa';
 
 export const dynamic = 'force-dynamic';
-export const maxDuration = 25;
+export const maxDuration = 60; // Scout server cold start can take 60–90s
 
 export async function POST(request: NextRequest) {
   try {
@@ -24,66 +24,60 @@ export async function POST(request: NextRequest) {
     // Normalize to Hebrew URL for reliable scraping (strip /en/ prefix)
     const normalizedUrl = normalizeIfaUrl(url);
 
+    const toResponse = (data: IFAPlayerProfile) =>
+      NextResponse.json({
+        fullName: data.fullName,
+        fullNameHe: data.fullNameHe,
+        dateOfBirth: data.dateOfBirth,
+        age: data.age,
+        nationality: data.nationality,
+        currentClub: data.currentClub,
+        academy: data.academy,
+        positions: data.positions,
+        ifaUrl: data.ifaUrl,
+        ifaPlayerId: data.ifaPlayerId,
+        profileImage: data.profileImage,
+        foot: data.foot,
+        height: data.height,
+        stats: data.stats,
+      });
+
+    // Prefer scout server when configured — Playwright bypasses 403, more reliable
+    const scoutBase = (process.env.SCOUT_SERVER_URL || '').trim();
+    if (scoutBase) {
+      try {
+        const base = scoutBase.replace(/\/$/, '');
+        const res = await fetch(`${base}/ifa/fetch-profile`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: normalizedUrl }),
+          signal: AbortSignal.timeout(60000), // 60s — Render cold start can take 60–90s
+        });
+        if (res.ok) {
+          const data = (await res.json()) as IFAPlayerProfile;
+          return toResponse(data);
+        }
+      } catch (scoutErr) {
+        console.warn('[youth-fetch-profile] Scout server failed, trying direct:', scoutErr);
+      }
+    }
+
+    // Direct fetch (or fallback when scout fails)
     let profile: IFAPlayerProfile;
     try {
       profile = await fetchIFAProfile(normalizedUrl);
     } catch (directErr) {
       const msg = directErr instanceof Error ? directErr.message : '';
-      // Free fallback: football-scout-server with Playwright (add /ifa router from docs/ifa_fetch_for_scout_server.py)
       if (msg.includes('403')) {
-        const scoutBase = (process.env.SCOUT_SERVER_URL || '').trim();
-        if (scoutBase) {
-          try {
-            const base = scoutBase.replace(/\/$/, '');
-            const res = await fetch(`${base}/ifa/fetch-profile`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ url: normalizedUrl }),
-              signal: AbortSignal.timeout(25000),
-            });
-            if (res.ok) {
-              const data = (await res.json()) as IFAPlayerProfile;
-              return NextResponse.json({
-                fullName: data.fullName,
-                fullNameHe: data.fullNameHe,
-                dateOfBirth: data.dateOfBirth,
-                age: data.age,
-                nationality: data.nationality,
-                currentClub: data.currentClub,
-                academy: data.academy,
-                positions: data.positions,
-                ifaUrl: data.ifaUrl,
-                ifaPlayerId: data.ifaPlayerId,
-                profileImage: data.profileImage,
-                foot: data.foot,
-                height: data.height,
-                stats: data.stats,
-              });
-            }
-          } catch (scoutErr) {
-            console.warn('[youth-fetch-profile] Scout server IFA fallback failed:', scoutErr);
-          }
-        }
+        return NextResponse.json(
+          { error: 'football.org.il blocked our server. Basic info from search was used — you can edit details manually.' },
+          { status: 500 }
+        );
       }
       throw directErr;
     }
 
-    return NextResponse.json({
-      fullName: profile.fullName,
-      fullNameHe: profile.fullNameHe,
-      dateOfBirth: profile.dateOfBirth,
-      age: profile.age,
-      nationality: profile.nationality,
-      currentClub: profile.currentClub,
-      academy: profile.academy,
-      positions: profile.positions,
-      ifaUrl: profile.ifaUrl,
-      ifaPlayerId: profile.ifaPlayerId,
-      profileImage: profile.profileImage,
-      foot: profile.foot,
-      height: profile.height,
-      stats: profile.stats,
-    });
+    return toResponse(profile);
   } catch (err) {
     console.error('[youth-fetch-profile]', err);
     const msg = err instanceof Error ? err.message : 'Failed to fetch profile';
