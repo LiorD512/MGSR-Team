@@ -911,14 +911,18 @@ export default function WarRoomPage() {
                                 key={p.id}
                                 className="flex gap-3 p-3 rounded-lg bg-mgsr-dark border border-mgsr-border hover:border-mgsr-teal/40 transition"
                               >
-                                <img
-                                  src={getPlayerImageUrl(p.profileImage ?? undefined, p.tmProfileUrl)}
-                                  alt=""
-                                  className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg object-cover bg-mgsr-border shrink-0"
-                                  onError={(e) => {
-                                    (e.target as HTMLImageElement).src = 'https://img.a.transfermarkt.technology/portrait/medium/0.jpg';
-                                  }}
-                                />
+                                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg bg-mgsr-border shrink-0 overflow-hidden flex items-center justify-center">
+                                  <img
+                                    src={getPlayerImageUrl(p.profileImage ?? undefined, p.tmProfileUrl)}
+                                    alt=""
+                                    loading="lazy"
+                                    decoding="async"
+                                    className="w-full h-full object-cover"
+                                    onError={(e) => {
+                                      (e.target as HTMLImageElement).src = 'https://img.a.transfermarkt.technology/portrait/medium/0.jpg';
+                                    }}
+                                  />
+                                </div>
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-start justify-between gap-2 mb-1">
                                     <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-mgsr-teal/25 text-mgsr-teal border border-mgsr-teal/40">

@@ -112,8 +112,8 @@ export async function GET(request: NextRequest) {
       (a, b) => (b.lastRefreshedAt ?? 0) - (a.lastRefreshedAt ?? 0)
     );
 
-    // Enrich first 20 profiles with real images from Transfermarkt (like Discovery)
-    const toEnrich = profiles.slice(0, 20);
+    // Enrich first 50 profiles with real images from Transfermarkt (like Discovery)
+    const toEnrich = profiles.slice(0, 50);
     const imageMap = new Map<string, string>();
     for (let i = 0; i < toEnrich.length; i += IMAGE_FETCH_CONCURRENCY) {
       const chunk = toEnrich.slice(i, i + IMAGE_FETCH_CONCURRENCY);

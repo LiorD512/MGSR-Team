@@ -39,7 +39,12 @@ const LEAGUE_TO_AGENT = {
   "raiffeisen super league": "switzerland",
   "chance liga": "czech",
   "fortuna liga": "czech",
+  "danish superliga": "denmark",
+  "superligaen": "denmark",
+  "3f superliga": "denmark",
   "superliga": "romania",
+  "liga 1 romania": "romania",
+  "romanian superliga": "romania",
   "efbet liga": "bulgaria",
   "nemzeti bajnoksag": "hungary",
   "premier liga": "ukraine",
@@ -53,9 +58,26 @@ const LEAGUE_TO_AGENT = {
   "championnat national": "france",
   "national": "france",
   "scottish premiership": "scotland",
+  "hnl": "croatia",
+  "prva hnl": "croatia",
+  "1. hnl": "croatia",
+  "croatian first football league": "croatia",
+  "prvaliga": "slovenia",
+  "slovenian prvaliga": "slovenia",
+  "prva liga slovenije": "slovenia",
+  "premier league bih": "bosnia",
+  "bh telecom": "bosnia",
+  "premier liga bih": "bosnia",
+  "first league": "macedonia",
+  "macedonian first league": "macedonia",
+  "prva makedonska liga": "macedonia",
+  "first league montenegro": "montenegro",
+  "prva crnogorska liga": "montenegro",
+  "superliga kosovo": "kosovo",
+  "kosovo superleague": "kosovo",
 };
 
-/** Fallback: league contains country keyword -> agentId */
+/** Fallback: league contains country keyword -> agentId. Denmark before Romania to avoid "superliga" clash. */
 const LEAGUE_CONTAINS_AGENT = [
   [["portugal", "portuguese", "liga portugal"], "portugal"],
   [["serbia", "serbian", "srbije"], "serbia"],
@@ -68,7 +90,8 @@ const LEAGUE_CONTAINS_AGENT = [
   [["sweden", "swedish", "allsvenskan"], "sweden"],
   [["switzerland", "swiss", "super league"], "switzerland"],
   [["czech", "chance liga", "fortuna liga"], "czech"],
-  [["romania", "romanian", "superliga"], "romania"],
+  [["denmark", "danish", "superligaen"], "denmark"],
+  [["romania", "romanian", "liga 1", "liga i"], "romania"],
   [["bulgaria", "bulgarian", "efbet"], "bulgaria"],
   [["hungary", "hungarian", "nemzeti"], "hungary"],
   [["ukraine", "ukrainian", "premier liga"], "ukraine"],
@@ -78,13 +101,20 @@ const LEAGUE_CONTAINS_AGENT = [
   [["spain", "spanish", "laliga"], "spain"],
   [["france", "french", "ligue", "championnat national"], "france"],
   [["scotland", "scottish", "premiership"], "scotland"],
+  [["croatia", "croatian", "hnl", "prva hnl"], "croatia"],
+  [["slovenia", "slovenian", "prvaliga"], "slovenia"],
+  [["bosnia", "bosnian", "bih", "premier liga bih"], "bosnia"],
+  [["macedonia", "macedonian", "prva makedonska"], "macedonia"],
+  [["montenegro", "crnogorska"], "montenegro"],
+  [["kosovo", "kosovar"], "kosovo"],
 ];
 
 const POSITIONS = ["CF", "AM", "CM", "CB", "DM", "LW", "RW", "LB", "RB", "SS"];
 const AGENT_IDS = [
   "portugal", "serbia", "poland", "greece", "belgium", "netherlands", "turkey", "austria",
-  "sweden", "switzerland", "czech", "romania", "bulgaria", "hungary", "ukraine",
+  "sweden", "switzerland", "czech", "denmark", "romania", "bulgaria", "hungary", "ukraine",
   "england", "germany", "italy", "spain", "france", "scotland",
+  "croatia", "slovenia", "bosnia", "macedonia", "montenegro", "kosovo",
 ];
 
 function sleep(ms) {
@@ -146,7 +176,9 @@ function matchesProfile(p, profileType, valEuro, ageNum, leagueTier, paramsOverr
 
   switch (profileType) {
     case "HIGH_VALUE_BENCHED":
-      return valEuro >= 800_000 && valEuro <= 3_000_000 && ageNum != null && ageNum <= 30;
+      // Benched = few minutes (< ~10 full games). If minutes missing/0, skip (don't assume benched).
+      if (minutes90s <= 0) return false;
+      return valEuro >= 800_000 && valEuro <= 3_000_000 && ageNum != null && ageNum <= 30 && minutes90s < 10;
     case "LOW_VALUE_STARTER": {
       const min = minMinutes90s ?? 5;
       return valEuro <= 500_000 && valEuro > 0 && ageNum != null && ageNum <= 28 && minutes90s >= min;
@@ -187,11 +219,13 @@ function buildMatchReason(p, profileType, valEuro, ageNum) {
   return parts.join(" · ") || "Matches profile criteria";
 }
 
+const SORT_OPTIONS = ["score", "market_value", "age"];
+
 async function fetchRecruitment(params) {
   const search = new URLSearchParams(params);
   search.set("value_max", String(LIGAT_HAAL_VALUE_MAX));
-  search.set("limit", "20");
-  search.set("sort_by", "score");
+  search.set("limit", "30");
+  search.set("sort_by", params.sort_by || "score");
   search.set("lang", "en");
   search.set("_t", String(Date.now()));
 
@@ -203,6 +237,11 @@ async function fetchRecruitment(params) {
   if (!res.ok) return [];
   const data = await res.json().catch(() => ({}));
   return data.results || [];
+}
+
+function normalizePlayerUrl(url) {
+  if (!url || typeof url !== "string") return "";
+  return url.trim().toLowerCase().replace(/\/$/, "");
 }
 
 /**
@@ -233,6 +272,39 @@ async function runScoutAgent() {
     }
   }
 
+  // Exclude players already shown in last 7 days (ScoutProfiles + Shortlist)
+  const EXCLUDE_DAYS = 7;
+  const cutoff = startTime - EXCLUDE_DAYS * 24 * 60 * 60 * 1000;
+  const excludeUrls = new Set();
+  const recentProfiles = await profilesRef.where("lastRefreshedAt", ">=", cutoff).get();
+  for (const doc of recentProfiles.docs) {
+    const u = doc.data().tmProfileUrl;
+    if (u) excludeUrls.add(normalizePlayerUrl(u));
+  }
+  const shortlistSnap = await db.collection("Shortlists").doc("team").get();
+  const entries = shortlistSnap.data()?.entries || [];
+  for (const e of entries) {
+    const u = e.tmProfileUrl;
+    if (u && (e.addedAt || 0) >= cutoff) excludeUrls.add(normalizePlayerUrl(u));
+  }
+  console.log(`[ScoutAgent] Excluding ${excludeUrls.size} already-shown URLs`);
+
+  // Exclude profiles thumbs-downed by users
+  const rejectedProfileIds = new Set();
+  const feedbackSnap = await db.collection("ScoutProfileFeedback").get();
+  for (const doc of feedbackSnap.docs) {
+    const fb = doc.data().feedback || {};
+    for (const [profileId, val] of Object.entries(fb)) {
+      const f = typeof val === "object" && val?.feedback ? val.feedback : val;
+      if (f === "down") rejectedProfileIds.add(profileId);
+    }
+  }
+  console.log(`[ScoutAgent] Excluding ${rejectedProfileIds.size} thumbs-downed profiles`);
+
+  // Rotate sort_by across runs for variety
+  const sortBy = SORT_OPTIONS[Math.floor(startTime / (6 * 60 * 60 * 1000)) % SORT_OPTIONS.length];
+  console.log(`[ScoutAgent] Using sort_by=${sortBy}`);
+
   console.log("[ScoutAgent] Starting AI Scout Agent Network run");
 
   for (const pos of POSITIONS) {
@@ -241,12 +313,14 @@ async function runScoutAgent() {
       const results = await fetchRecruitment({
         position: pos,
         age_max: "28",
+        sort_by: sortBy,
       });
       leaguesScanned += 1;
 
       for (const p of results) {
         const url = (p.url || "").trim();
         if (!url) continue;
+        if (excludeUrls.has(normalizePlayerUrl(url))) continue;
 
         const valEuro = parseMarketValue(p.market_value);
         if (valEuro > LIGAT_HAAL_VALUE_MAX) continue;
@@ -277,6 +351,7 @@ async function runScoutAgent() {
           const urlHash = Buffer.from(url).toString("base64").replace(/[+/=]/g, "_").slice(0, 40);
           const docId = `${agentId}_${urlHash}_${profileType}`;
           if (seen.has(docId)) continue;
+          if (rejectedProfileIds.has(docId)) continue;
           seen.set(docId, true);
 
           const matchReason = buildMatchReason(p, profileType, valEuro, ageNum);

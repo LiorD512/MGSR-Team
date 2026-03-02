@@ -15,6 +15,7 @@ export const AGENT_IDS = [
   'sweden',
   'switzerland',
   'czech',
+  'denmark',
   'romania',
   'bulgaria',
   'hungary',
@@ -25,6 +26,12 @@ export const AGENT_IDS = [
   'spain',
   'france',
   'scotland',
+  'croatia',
+  'slovenia',
+  'bosnia',
+  'macedonia',
+  'montenegro',
+  'kosovo',
 ] as const;
 
 export type AgentId = (typeof AGENT_IDS)[number];
@@ -91,6 +98,20 @@ const LEAGUE_URLS: Record<string, string> = {
   'championnat-national': 'https://www.transfermarkt.com/championnat-national/startseite/wettbewerb/FR3',
   // Scotland
   'scottish-premiership': 'https://www.transfermarkt.com/scottish-premiership/startseite/wettbewerb/SC1',
+  // Denmark
+  'superliga-dk': 'https://www.transfermarkt.com/superliga/startseite/wettbewerb/DK1',
+  // Croatia
+  'hnl': 'https://www.transfermarkt.com/hnl/startseite/wettbewerb/KR1',
+  // Slovenia
+  'prvaliga': 'https://www.transfermarkt.com/prvaliga/startseite/wettbewerb/SL1',
+  // Bosnia
+  'premier-liga-bih': 'https://www.transfermarkt.com/premier-liga-bosne-i-hercegovine/startseite/wettbewerb/BOS1',
+  // North Macedonia
+  'prva-makedonska-liga': 'https://www.transfermarkt.com/prva-makedonska-liga/startseite/wettbewerb/MAC1',
+  // Montenegro
+  'prva-crnogorska-liga': 'https://www.transfermarkt.com/prva-crnogorska-liga/startseite/wettbewerb/MON1',
+  // Kosovo
+  'superliga-kosovo': 'https://www.transfermarkt.com/superliga-e-kosoves/startseite/wettbewerb/KOS1',
 };
 
 export const AGENTS_CONFIG: Record<AgentId, AgentConfig> = {
@@ -182,6 +203,14 @@ export const AGENTS_CONFIG: Record<AgentId, AgentConfig> = {
     leagueUrls: [LEAGUE_URLS['chance-liga'], LEAGUE_URLS['first-league-cz']],
     leagueNames: ['Chance Liga', 'Fortuna Liga'],
   },
+  denmark: {
+    id: 'denmark',
+    name: 'Denmark',
+    nameHe: 'דנמרק',
+    flag: '🇩🇰',
+    leagueUrls: [LEAGUE_URLS['superliga-dk']],
+    leagueNames: ['Superliga'],
+  },
   romania: {
     id: 'romania',
     name: 'Romania',
@@ -261,6 +290,54 @@ export const AGENTS_CONFIG: Record<AgentId, AgentConfig> = {
     flag: '🏴',
     leagueUrls: [LEAGUE_URLS['scottish-premiership']],
     leagueNames: ['Scottish Premiership'],
+  },
+  croatia: {
+    id: 'croatia',
+    name: 'Croatia',
+    nameHe: 'קרואטיה',
+    flag: '🇭🇷',
+    leagueUrls: [LEAGUE_URLS['hnl']],
+    leagueNames: ['HNL'],
+  },
+  slovenia: {
+    id: 'slovenia',
+    name: 'Slovenia',
+    nameHe: 'סלובניה',
+    flag: '🇸🇮',
+    leagueUrls: [LEAGUE_URLS['prvaliga']],
+    leagueNames: ['PrvaLiga'],
+  },
+  bosnia: {
+    id: 'bosnia',
+    name: 'Bosnia',
+    nameHe: 'בוסניה',
+    flag: '🇧🇦',
+    leagueUrls: [LEAGUE_URLS['premier-liga-bih']],
+    leagueNames: ['Premier Liga BiH'],
+  },
+  macedonia: {
+    id: 'macedonia',
+    name: 'North Macedonia',
+    nameHe: 'מקדוניה הצפונית',
+    flag: '🇲🇰',
+    leagueUrls: [LEAGUE_URLS['prva-makedonska-liga']],
+    leagueNames: ['Prva Makedonska Liga'],
+  },
+  montenegro: {
+    id: 'montenegro',
+    name: 'Montenegro',
+    nameHe: 'מונטנגרו',
+    flag: '🇲🇪',
+    leagueUrls: [LEAGUE_URLS['prva-crnogorska-liga']],
+    leagueNames: ['Prva Crnogorska Liga'],
+  },
+  kosovo: {
+    id: 'kosovo',
+    name: 'Kosovo',
+    nameHe: 'קוסובו',
+    flag: '🇽🇰',
+    leagueUrls: [LEAGUE_URLS['superliga-kosovo']],
+    leagueNames: ['Superliga Kosovo'],
   },
 };
 
