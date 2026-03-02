@@ -85,22 +85,31 @@ export default function AddYouthPlayerForm() {
   const [searchingImage, setSearchingImage] = useState(false);
 
   const debouncedSearch = useDebounce(searchQuery.trim(), DEBOUNCE_MS);
+  const searchRequestRef = useRef<string | null>(null);
 
-  // ── Search IFA ──
+  // ── Search IFA ── (ignore stale responses when user typed a new query)
   const runSearch = useCallback(async (q: string) => {
     if (q.length < MIN_SEARCH_LEN) {
+      searchRequestRef.current = null;
       setSearchResults([]);
       return;
     }
+    searchRequestRef.current = q;
     setLoadingSearch(true);
     try {
       const res = await fetch(`/api/youth-players/search?q=${encodeURIComponent(q)}`);
       const data = (await res.json()) as { results?: YouthPlayerSearchResult[] };
-      setSearchResults(data.results ?? []);
+      if (searchRequestRef.current === q) {
+        setSearchResults(data.results ?? []);
+      }
     } catch {
-      setSearchResults([]);
+      if (searchRequestRef.current === q) {
+        setSearchResults([]);
+      }
     } finally {
-      setLoadingSearch(false);
+      if (searchRequestRef.current === q) {
+        setLoadingSearch(false);
+      }
     }
   }, []);
 
