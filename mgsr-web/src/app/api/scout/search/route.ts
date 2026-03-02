@@ -1,13 +1,21 @@
 /**
- * AI Scout free-text search API.
- * Rule-based parsing (no Gemini) → Scout server search over 17k players.
- * Features: cache (5 min), progressive loading (5 first, then more).
+ * AI Scout Hybrid Search Pipeline.
+ * Three-layer search: Rule-based parse + Gemini AI parse + Scout server.
+ * Features: progressive loading, AI-enriched interpretation, goals filtering.
+ *
+ * Pipeline:
+ *   Step 1 (instant): Rule-based parse → structured params
+ *   Step 2 (parallel): Scout server /recruitment + Gemini AI parse (enriches notes)
+ *   Step 3 (merge):    Combine results, deduplicate, re-rank
+ *   Step 4 (fallback): If < 5 results and complex query → Gemini-first suggestions
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { parseFreeQuery } from '@/lib/parseFreeQuery';
 import { getScoutBaseUrl } from '@/lib/scoutServerUrl';
 import { getLeagueAvgMarketValue } from '@/lib/transfermarkt';
 import { translateHebrewToEnglish } from '@/lib/translateQuery';
+import { parseScoutQueryWithGemini } from '@/lib/aiQueryParser';
+import { SCOUT_PERSONA, SEARCH_PERSONA_EXT } from '@/lib/scoutPersona';
 
 export const dynamic = 'force-dynamic';
 const FREESEARCH_URL = process.env.SCOUT_FREESEARCH_URL; // When set: use freesearch proxy (Python parse)
@@ -94,11 +102,22 @@ async function fetchFreesearch(
 /** Map query to league for market filter display */
 function getTargetLeagueCode(query: string): string | null {
   const q = query.toLowerCase();
-  if (/(שוק\s*ה?ישראלי|israeli market|israel market|ליגה\s*ה?ישראלית)/i.test(q)) return 'ISR1';
+  if (/(שוק\s*ה?ישראלי|israeli market|israel market|ליגה\s*ה?ישראלית|ligat\s*ha.?al)/i.test(q)) return 'ISR1';
   if (/(שוק\s*פולני|polish market|poland market)/i.test(q)) return 'PL1';
   if (/(שוק\s*יווני|greek market|greece market)/i.test(q)) return 'GR1';
   if (/(שוק\s*בלגי|belgian market|belgium market)/i.test(q)) return 'BE1';
   return null;
+}
+
+/** Parse market value string like "€2.50m", "€500k", "€100,000" to euro number */
+function _parseMarketValue(val: string): number {
+  if (!val?.trim()) return 0;
+  const s = val.trim().replace(/,/g, '').toLowerCase();
+  const num = parseFloat(s.replace(/[^\d.]/g, ''));
+  if (isNaN(num)) return 0;
+  if (s.includes('m') || s.includes('million') || s.includes('mio')) return num * 1_000_000;
+  if (s.includes('k') || s.includes('thousand') || s.includes('th')) return num * 1_000;
+  return num;
 }
 
 export async function POST(request: NextRequest) {
@@ -142,11 +161,12 @@ export async function POST(request: NextRequest) {
         if (freesearchRes) {
           return freesearchRes;
         }
-        // Fallback to mgsr-web parse if freesearch fails
-        console.log('[AI Scout] Freesearch failed, falling back to local parse');
+        console.log('[AI Scout] Freesearch failed, falling back to hybrid pipeline');
       }
 
-      // 1. Translate Hebrew → English for better parsing & backend handling
+      // ═══════════════════════════════════════════════════════════════════
+      // STEP 1: Translate + Rule-based parse (instant)
+      // ═══════════════════════════════════════════════════════════════════
       let queryForParsing = query;
       let translatedQuery: string | undefined;
       if (lang === 'he') {
@@ -158,15 +178,11 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      // 2. Rule-based parse: query → structured params
-      //    Parse BOTH original Hebrew (for Hebrew-specific patterns) and English translation
-      console.log('[AI Scout] Parsing query (rule-based):', queryForParsing.slice(0, 60) + '...');
+      console.log('[AI Scout] Step 1: Rule-based parse:', queryForParsing.slice(0, 60) + '...');
       const parsedHebrew = lang === 'he' ? parseFreeQuery(query, 'he') : null;
-      const parsedEnglish = translatedQuery ? parseFreeQuery(translatedQuery, 'en') : null;
       const parsedMain = translatedQuery ? parseFreeQuery(queryForParsing, 'en') : parseFreeQuery(query, lang);
 
-      // Merge: prefer Hebrew extraction for structured fields (position, age, nationality, foot)
-      // since Hebrew patterns are more precise. Use English translation for notes.
+      // Merge: prefer Hebrew extraction for structured fields, English for notes
       const parsed = {
         ...parsedMain,
         position: parsedHebrew?.position || parsedMain.position,
@@ -179,51 +195,184 @@ export async function POST(request: NextRequest) {
         transferFee: parsedHebrew?.transferFee || parsedMain.transferFee,
         valueMin: parsedHebrew?.valueMin ?? parsedMain.valueMin,
         valueMax: parsedHebrew?.valueMax ?? parsedMain.valueMax,
-        // Combine notes from both parses (English translation often has richer keywords)
         notes: _mergeNotes(parsedHebrew?.notes, parsedMain.notes),
-        // Keep Hebrew interpretation for Hebrew users
         interpretation: parsedHebrew?.interpretation || parsedMain.interpretation,
       };
-      if (translatedQuery) {
-        parsed.interpretation = (parsed.interpretation || '') +
-          (lang === 'he' ? `\n🔄 תרגום: "${translatedQuery.slice(0, 100)}"` : '');
+
+      // ═══════════════════════════════════════════════════════════════════
+      // Israeli market / league-specific value caps
+      // When a user says "שוק ישראלי" or "Israeli market", enforce a
+      // realistic value ceiling. No scout in 40 years would suggest Højlund
+      // or Orban for Ligat Ha'Al.
+      // ═══════════════════════════════════════════════════════════════════
+      const MARKET_VALUE_CAPS: Record<string, number> = {
+        ISR1: 2_500_000,   // Ligat Ha'Al — max ~€2.5M
+        PL1:  5_000_000,   // Ekstraklasa
+        GR1:  5_000_000,   // Super League Greece
+        BE1: 10_000_000,   // Jupiler Pro League
+      };
+
+      const targetLeague = getTargetLeagueCode(query);
+      const marketCap = targetLeague ? MARKET_VALUE_CAPS[targetLeague] : undefined;
+
+      // Force value_max if market detected and user didn't set their own
+      if (marketCap && parsed.valueMax == null) {
+        parsed.valueMax = marketCap;
+        console.log(`[AI Scout] Market cap applied: ${targetLeague} → value_max €${marketCap.toLocaleString()}`);
       }
 
-      // Progressive loading: first request uses limit=5 for faster response
+      // Progressive loading settings
       const requestedTotal = parsed.limit ?? 15;
       const fetchLimit = initial ? Math.min(5, requestedTotal) : requestedTotal;
       const hasMore = initial && requestedTotal > 5;
-
-      // When minGoals: request more from scout (we filter client-side) so we have enough after filtering
       const minGoals = parsed.minGoals;
-      const scoutLimit = minGoals != null ? Math.min(25, Math.max(fetchLimit * 3, 15)) : fetchLimit;
-
-      const targetLeague = getTargetLeagueCode(query);
+      // If we have market cap or minGoals, fetch extra to have enough after filtering
+      const needsOverfetch = minGoals != null || marketCap != null;
+      const scoutLimit = needsOverfetch ? Math.min(30, Math.max(fetchLimit * 3, 15)) : fetchLimit;
       const leagueAvgPromise = targetLeague
         ? getLeagueAvgMarketValue(targetLeague, 2025).catch(() => null)
         : Promise.resolve(null);
 
-      // 2. Always fetch fresh from scout server (no cache) — backend randomizes
-      //    results on every request for variety across searches.
-      let scoutResponse: { results?: Record<string, unknown>[] };
-      let leagueAvg: number | null = null;
-      [scoutResponse, leagueAvg] = await Promise.all([
-        fetchScoutRecruitment({ ...parsed, limit: scoutLimit, excludeUrls }, lang),
+      // ═══════════════════════════════════════════════════════════════════
+      // STEP 2: Parallel — Scout server fetch + Gemini AI parse (enrichment)
+      // ═══════════════════════════════════════════════════════════════════
+      const geminiApiKey = process.env.GEMINI_API_KEY;
+      const isComplexQuery = _isComplexQuery(query);
+
+      // Fire scout server request immediately with rule-based params
+      const scoutPromise = fetchScoutRecruitment({ ...parsed, limit: scoutLimit, excludeUrls }, lang);
+
+      // In parallel: Gemini AI parse for complex queries (enriches notes & catches nuances)
+      let geminiEnrichment: {
+        notes?: string;
+        interpretation?: string;
+        position?: string;
+        ageMax?: number;
+        transferFee?: string;
+      } | null = null;
+
+      const geminiPromise = (geminiApiKey && isComplexQuery && !initial)
+        ? parseScoutQueryWithGemini(query, lang, geminiApiKey)
+            .then((aiParsed) => {
+              console.log('[AI Scout] Step 2: Gemini parse completed:', aiParsed.interpretation?.slice(0, 60));
+              return aiParsed;
+            })
+            .catch((err) => {
+              console.warn('[AI Scout] Gemini parse failed (non-fatal):', err instanceof Error ? err.message : err);
+              return null;
+            })
+        : Promise.resolve(null);
+
+      // Wait for both to complete
+      const [scoutResponse, geminiResult, leagueAvg] = await Promise.all([
+        scoutPromise,
+        geminiPromise,
         leagueAvgPromise,
       ]);
-      let results = scoutResponse.results ?? [];
 
-      // Filter by min_goals (scout server doesn't support it - we filter client-side)
+      geminiEnrichment = geminiResult;
+
+      // ═══════════════════════════════════════════════════════════════════
+      // STEP 3: Merge results — if Gemini enriched notes, do a second
+      //         scout fetch with richer query (only if notes differ significantly)
+      // ═══════════════════════════════════════════════════════════════════
+      let results = scoutResponse.results ?? [];
+      let enrichedScoutResults: Record<string, unknown>[] | null = null;
+
+      if (geminiEnrichment?.notes && geminiEnrichment.notes !== parsed.notes) {
+        // Gemini caught nuances the regex missed — do a refined search
+        const enrichedNotes = _mergeNotes(parsed.notes, geminiEnrichment.notes);
+        const enrichedPosition = geminiEnrichment.position || parsed.position;
+        const enrichedAgeMax = geminiEnrichment.ageMax ?? parsed.ageMax;
+        const enrichedTransferFee = geminiEnrichment.transferFee || parsed.transferFee;
+
+        // Only fetch if the enrichment actually changes the query
+        const notesChanged = enrichedNotes !== parsed.notes;
+        const posChanged = enrichedPosition !== parsed.position;
+        if (notesChanged || posChanged) {
+          console.log('[AI Scout] Step 3: Enriched search with Gemini notes:', enrichedNotes?.slice(0, 60));
+          try {
+            const enrichedResponse = await fetchScoutRecruitment(
+              {
+                ...parsed,
+                notes: enrichedNotes,
+                position: enrichedPosition,
+                ageMax: enrichedAgeMax,
+                transferFee: enrichedTransferFee,
+                limit: scoutLimit,
+                excludeUrls,
+              },
+              lang
+            );
+            enrichedScoutResults = enrichedResponse.results ?? [];
+          } catch (err) {
+            console.warn('[AI Scout] Enriched fetch failed (non-fatal):', err);
+          }
+        }
+      }
+
+      // Merge: deduplicate by URL, boost players found in BOTH searches
+      if (enrichedScoutResults && enrichedScoutResults.length > 0) {
+        const urlSet = new Set<string>();
+        const merged: Record<string, unknown>[] = [];
+        const enrichedUrlSet = new Set(enrichedScoutResults.map((p) => (p.url as string || '').trim().toLowerCase()));
+
+        // Add all primary results, marking those also found by enriched search
+        for (const p of results) {
+          const url = (p.url as string || '').trim().toLowerCase();
+          if (urlSet.has(url)) continue;
+          urlSet.add(url);
+          // Boost: if found in both, increase smart_score by 10%
+          if (enrichedUrlSet.has(url)) {
+            const score = Number(p.smart_score || p.scouting_score || 0);
+            if (score > 0) p.smart_score = Math.min(100, Math.round(score * 1.1));
+          }
+          merged.push(p);
+        }
+
+        // Add enriched-only results (new discoveries) at the end
+        for (const p of enrichedScoutResults) {
+          const url = (p.url as string || '').trim().toLowerCase();
+          if (urlSet.has(url)) continue;
+          urlSet.add(url);
+          merged.push(p);
+        }
+
+        results = merged;
+        console.log('[AI Scout] Merged results:', results.length, '(primary + enriched)');
+      }
+
+      // ═══════════════════════════════════════════════════════════════════
+      // Post-filtering: goals + market value enforcement
+      // Even if scout server returns high-value players, filter them out
+      // when a market cap is active. A 40-year scout knows the market.
+      // ═══════════════════════════════════════════════════════════════════
+      if (marketCap != null && marketCap > 0) {
+        const before = results.length;
+        results = results.filter((p) => {
+          const mv = p.market_value;
+          if (mv == null || mv === '') return true; // Keep if no value data
+          const valEuro = _parseMarketValue(String(mv));
+          return valEuro <= marketCap;
+        });
+        if (results.length < before) {
+          console.log(`[AI Scout] Market cap filter (€${marketCap.toLocaleString()}): ${before} → ${results.length} results`);
+        }
+      }
+
+      // Filter by min_goals (scout server doesn't support it)
       if (minGoals != null && minGoals > 0) {
         results = results.filter((p) => {
           const goals = p.fbref_goals;
-          if (goals == null) return false; // no FBref data = exclude when goals required
+          if (goals == null) return false;
           const n = typeof goals === 'string' ? parseInt(goals, 10) : Number(goals);
           return !isNaN(n) && n >= minGoals;
         });
         console.log('[AI Scout] Filtered by min_goals:', minGoals, '→', results.length, 'results');
-        results = results.slice(0, fetchLimit); // trim to requested count
       }
+
+      results = results.slice(0, fetchLimit);
+
       const leagueAvgEuro =
         targetLeague && leagueAvg != null && leagueAvg > 0 ? leagueAvg : 398_000;
 
@@ -237,31 +386,63 @@ export async function POST(request: NextRequest) {
             }
           : undefined;
 
-      const requestedCount = fetchLimit;
-      let interpretation =
-        parsed.interpretation ||
-        (lang === 'he'
-          ? `מצאתי ${results.length} שחקנים תואמים מתוך מאגר השחקנים.`
-          : `Found ${results.length} matching players from the player database.`);
-      if (results.length < requestedTotal && requestedTotal > 0) {
-        interpretation +=
-          lang === 'he'
-            ? ` (ביקשת ${requestedTotal}, נמצאו ${results.length} תואמים${hasMore ? ' – הרחב לחיפוש מלא' : ''})`
-            : ` (you asked for ${requestedTotal}, found ${results.length} matching${hasMore ? ' – expand for full search' : ''})`;
-      }
-      if (results.length === 0) {
-        interpretation +=
-          lang === 'he'
-            ? ' חיפוש בוצע במאגר השחקנים.'
-            : ' Search was performed in the player database.';
+      // ═══════════════════════════════════════════════════════════════════
+      // Build interpretation — rich, insightful, scout-like
+      // ═══════════════════════════════════════════════════════════════════
+      let interpretation = '';
+
+      // Use Gemini interpretation if available (richer understanding)
+      if (geminiEnrichment?.interpretation) {
+        interpretation = geminiEnrichment.interpretation;
+      } else {
+        interpretation = parsed.interpretation || '';
       }
 
+      // Add search metadata
+      if (!interpretation) {
+        interpretation = lang === 'he'
+          ? `מצאתי ${results.length} שחקנים תואמים מתוך מאגר של 17,000+ שחקנים.`
+          : `Found ${results.length} matching players from a database of 17,000+ players.`;
+      }
+
+      if (translatedQuery) {
+        interpretation += lang === 'he'
+          ? `\n🔄 תרגום: "${translatedQuery.slice(0, 100)}"`
+          : '';
+      }
+
+      if (results.length < requestedTotal && requestedTotal > 0) {
+        interpretation += lang === 'he'
+          ? ` (ביקשת ${requestedTotal}, נמצאו ${results.length} תואמים${hasMore ? ' – הרחב לחיפוש מלא' : ''})`
+          : ` (you asked for ${requestedTotal}, found ${results.length} matching${hasMore ? ' – expand for full search' : ''})`;
+      }
+
+      if (results.length === 0) {
+        interpretation += lang === 'he'
+          ? ' חיפוש בוצע במאגר השחקנים.'
+          : ' Search was performed in the player database.';
+      }
+
+      // Market cap indicator — let the user know we filtered for realism
+      if (marketCap != null && marketCap > 0) {
+        const capStr = marketCap >= 1_000_000
+          ? `€${(marketCap / 1_000_000).toFixed(1)}M`
+          : `€${(marketCap / 1_000).toFixed(0)}K`;
+        const leagueName = targetLeague ? (LEAGUE_NAMES[targetLeague] || targetLeague) : '';
+        interpretation += lang === 'he'
+          ? `\n💰 סינון ריאלי ל${leagueName ? leagueName : 'שוק יעד'} — שווי שוק עד ${capStr}`
+          : `\n💰 Realistic filter for ${leagueName || 'target market'} — value up to ${capStr}`;
+      }
+
+      // Add search method indicator
+      const searchMethod = geminiEnrichment ? 'hybrid' : 'rule-based';
       console.log(
-        '[AI Scout] Scout server returned',
+        `[AI Scout] ${searchMethod} search returned`,
         results.length,
         'results for',
         parsed.position || 'any',
-        targetLeague ? `(league ${targetLeague})` : ''
+        targetLeague ? `(league ${targetLeague})` : '',
+        geminiEnrichment ? '(Gemini-enriched)' : ''
       );
 
       return NextResponse.json(
@@ -272,6 +453,7 @@ export async function POST(request: NextRequest) {
           leagueInfo,
           hasMore,
           requestedTotal,
+          searchMethod,
         },
         {
           headers: {
@@ -305,6 +487,29 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+/**
+ * Detect if a query is "complex" enough to benefit from Gemini AI parsing.
+ * Simple queries like "CF under 23" don't need AI — regex handles them fine.
+ * Complex queries have playing style descriptors, comparisons, or nuanced requirements.
+ */
+function _isComplexQuery(query: string): boolean {
+  const q = query.toLowerCase();
+  // Style descriptors
+  if (/target\s*man|playmaker|box[\s-]to[\s-]box|deep[\s-]lying|false\s*9|inverted/i.test(q)) return true;
+  if (/דמוי|כמו|סגנון|טרגט|פלייסמייקר|בוקס|עמוק/i.test(q)) return true;
+  // Player comparisons ("like Drogba", "next Messi")
+  if (/like\s+\w+|כמו\s+\w+|next\s+\w+|הבא\s+של|דומה\s+ל/i.test(q)) return true;
+  // Tactical context
+  if (/counter[\s-]attack|press|possession|4[\s-]?[23][\s-]?[123]|3[\s-]?[45][\s-]?[123]/i.test(q)) return true;
+  if (/הגנתי|התקפי|לחץ|החזקה|קונטרה|מערך/i.test(q)) return true;
+  // Multiple style attributes (more than regex can handle well)
+  const styleWords = q.match(/(fast|pace|quick|strong|physical|aerial|creative|technical|dribbl|pass|shoot|מהיר|חזק|טכני|אווירי|יצירתי|דריבל)/gi) || [];
+  if (styleWords.length >= 3) return true;
+  // Long complex query
+  if (q.split(/\s+/).length >= 10) return true;
+  return false;
 }
 
 /** Merge notes from Hebrew parse and English parse, de-duplicating */

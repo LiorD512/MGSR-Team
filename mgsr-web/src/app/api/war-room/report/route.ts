@@ -9,6 +9,12 @@ import { handlePlayer } from '@/lib/transfermarkt';
 import { extractPlayerIdFromUrl } from '@/lib/api';
 
 import { getScoutBaseUrl } from '@/lib/scoutServerUrl';
+import {
+  SCOUT_PERSONA,
+  WAR_ROOM_PERSONA_EXT,
+  buildStatsContext,
+  buildFmContext,
+} from '@/lib/scoutPersona';
 
 function samePlayer(url1: string, url2: string): boolean {
   const id1 = extractPlayerIdFromUrl(url1);
@@ -85,7 +91,10 @@ export async function POST(request: NextRequest) {
 
   try {
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+    const model = genAI.getGenerativeModel({
+      model: 'gemini-2.5-flash',
+      systemInstruction: SCOUT_PERSONA + WAR_ROOM_PERSONA_EXT,
+    });
 
     // 1. Fetch TM data (direct from transfermarkt lib)
     const tmData = await handlePlayer(playerUrl).catch(() => null);
@@ -102,6 +111,9 @@ export async function POST(request: NextRequest) {
     const contractExpires = (tmData as Record<string, unknown>).contractExpires as string || '';
     const height = (tmData as Record<string, unknown>).height as string || '';
     const foot = (tmData as Record<string, unknown>).foot as string || '';
+    const playingStyle = (tmData as Record<string, unknown>).playingStyle as string || '';
+    const nationality = (tmData as Record<string, unknown>).nationality as string ||
+      ((tmData as Record<string, unknown>).nationalities as string[])?.[0] || '';
 
     // 2. Fetch similar players + FM intelligence in parallel
     const [similarData, fmData] = await Promise.all([
@@ -117,38 +129,69 @@ export async function POST(request: NextRequest) {
     const playerMatch = similarResults.find((r) => samePlayer((r.url as string) || '', playerUrl));
     const statsSource = playerMatch ?? similarResults[0];
     const statsContext = statsSource
-      ? `Goals/90: ${statsSource.fbref_goals ?? statsSource.fbref_goals_per90 ?? '?'}, Assists/90: ${statsSource.fbref_assists ?? statsSource.fbref_assists_per90 ?? '?'}, Progressive carries: ${statsSource.fbref_progressive_carries ?? statsSource.fbref_progressive_carries_per90 ?? '?'}, Key passes: ${statsSource.fbref_key_passes ?? statsSource.fbref_key_passes_per90 ?? '?'}`
+      ? buildStatsContext(statsSource)
       : 'No FBref stats available';
-    const fmContext = fmData && !fmData.error
-      ? `CA: ${fmData.ca}, PA: ${fmData.pa}, Tier: ${fmData.tier}`
-      : 'N/A';
+    const fmContext = buildFmContext(fmData as Record<string, unknown> | null);
     const similarSummary = (similarData?.results || [])
+      .filter((p: Record<string, unknown>) => !samePlayer((p.url as string) || '', playerUrl))
       .slice(0, 5)
-      .map((p: Record<string, unknown>) => `${p.name} (${p.market_value}, ${p.club})`)
+      .map((p: Record<string, unknown>) => {
+        const pStyle = (p.playing_style as string) || '';
+        return `${p.name} (${p.market_value}, ${p.club}, ${p.age}yo${pStyle ? `, style: ${pStyle}` : ''})`;
+      })
       .join('; ');
 
     const outputLang = lang === 'he' ? 'Hebrew' : 'English';
 
-    // Call 1: Combined Stats + Market + Tactics (reduces from 4 to 1 API call for free-tier quota)
-    const combinedPrompt = `You are a scouting war room for Ligat Ha'Al (Israeli league). Analyze this player and output a single JSON with three keys: "stats", "market", "tactics".
+    // Call 1: Deep Analysis — Stats + Market + Tactics + Player Profile (with elite persona)
+    const combinedPrompt = `Analyze this player for a Ligat Ha'Al club. Produce a War Room brief.
 
 PLAYER: ${name}, ${age}, ${position}
+NATIONALITY: ${nationality}
 CLUB: ${club}, ${league}
 MARKET VALUE: ${marketValue}
 CONTRACT: ${contractExpires}
 HEIGHT: ${height}, FOOT: ${foot}
+${playingStyle ? `PLAYING STYLE: ${playingStyle}` : ''}
 STATS (per 90): ${statsContext}
-FM: ${fmContext}
-SIMILAR PLAYERS: ${similarSummary || 'None'}
+FM INTELLIGENCE: ${fmContext}
+COMPARABLE PLAYERS: ${similarSummary || 'None available'}
 
-Output this exact JSON structure (write in ${outputLang}):
+Output a single JSON with three keys (write in ${outputLang}):
 {
-  "stats": {"strengths": ["s1","s2"], "weaknesses": ["w1"], "key_metrics": ["m1: val"], "summary": "2-3 sentence statistical profile"},
-  "market": {"market_position": "undervalued|fair|overvalued", "rationale": "1-2 sentences", "comparable_range": "€X–€Y", "contract_leverage": "high|medium|low", "summary": "2-3 sentence market analysis"},
-  "tactics": {"best_role": "e.g. lone striker in 4-3-3", "best_system": "e.g. counter-attacking", "ligat_haal_fit": "START|ROTATION|SQUAD|BENEATH", "club_fit": ["Maccabi Haifa: ..."], "summary": "2-3 sentence tactical analysis"}
+  "stats": {
+    "strengths": ["strength with metric if available"],
+    "weaknesses": ["weakness with evidence"],
+    "key_metrics": ["metric: value — context"],
+    "playing_minutes_assessment": "Is he a regular starter? How many minutes?",
+    "summary": "3-4 sentence statistical profile. Be specific about what the numbers tell you."
+  },
+  "market": {
+    "market_position": "undervalued|fair|overvalued",
+    "rationale": "2-3 sentences with specific comparisons",
+    "comparable_range": "€X–€Y based on similar players",
+    "contract_leverage": "high|medium|low",
+    "suggested_bid": "€X opening / €Y max based on contract and market",
+    "summary": "2-3 sentence market analysis"
+  },
+  "tactics": {
+    "best_role": "specific role in specific formation",
+    "best_system": "tactical system where he thrives",
+    "ligat_haal_fit": "START|ROTATION|SQUAD|BENEATH",
+    "club_fit": ["Club Name: why he fits their specific needs"],
+    "comparison_player": "He reminds me of [player] because [reason]",
+    "ceiling_assessment": "Best case outcome in 2-3 years",
+    "floor_assessment": "Worst case / what could go wrong",
+    "summary": "2-3 sentence tactical fit analysis"
+  }
 }
 
-Base analysis ONLY on the data provided. Never invent stats. Israeli clubs typically pay €100k–€2.5m.`;
+CRITICAL RULES:
+- Base analysis ONLY on data provided. Never invent stats.
+- Israeli clubs typically pay €100K–€2.5M. A player valued at €500K in Belgium who performs like a €1.5M player = undervalued.
+- If a player in Eredivisie/Belgian league is ROTATION, they are likely STARTER in Ligat Ha'Al.
+- For comparison_player: use a well-known player the sporting director would recognize. Explain the specific similarity.
+- Be decisive and opinionated. Don't hedge with "could be good" — say "IS good because X."`;
 
     const combinedText = await generateWithRetry(model, combinedPrompt);
     const combined = parseJson(combinedText) as { stats?: Record<string, unknown>; market?: Record<string, unknown>; tactics?: Record<string, unknown> };
@@ -156,17 +199,34 @@ Base analysis ONLY on the data provided. Never invent stats. Israeli clubs typic
     const marketAnalysis = JSON.stringify(combined.market ?? {});
     const tacticsAnalysis = JSON.stringify(combined.tactics ?? {});
 
-    // Call 2: Synthesis
-    const synthesisPrompt = `You are the SYNTHESIS AGENT. Combine these three specialist reports into one unified War Room report for Ligat Ha'Al.
+    // Call 2: Synthesis — Executive brief with confidence and actionable intelligence
+    const synthesisPrompt = `You are the Chief Scout making the final call. Combine these three analyses into a decisive War Room verdict.
 
-STATS: ${statsAnalysis}
-MARKET: ${marketAnalysis}
-TACTICS: ${tacticsAnalysis}
+STATS ANALYSIS: ${statsAnalysis}
+MARKET ANALYSIS: ${marketAnalysis}
+TACTICAL ANALYSIS: ${tacticsAnalysis}
 
-Output JSON:
-{"executive_summary": "3-4 sentence overview", "recommendation": "SIGN|MONITOR|PASS", "recommendation_rationale": "1-2 sentences", "key_risks": ["r1","r2"], "key_opportunities": ["o1","o2"]}
+PLAYER CONTEXT: ${name}, ${age}, ${position}, ${club} (${league}), ${marketValue}
 
-Write in ${outputLang}. Be decisive. Reconcile contradictions.`;
+Output JSON (write in ${outputLang}):
+{
+  "executive_summary": "4-5 sentence overview written with authority. Open with the verdict, then justify it.",
+  "recommendation": "SIGN|MONITOR|PASS",
+  "recommendation_rationale": "2-3 sentences — why this specific recommendation, spoken as if to the sporting director",
+  "confidence_level": 75,
+  "confidence_explanation": "1 sentence explaining what data supports/undermines your confidence",
+  "action_timeline": "e.g. 'SIGN within 2 months — contract leverage is high' or 'MONITOR until winter window'",
+  "key_risks": ["specific, actionable risk with mitigation"],
+  "key_opportunities": ["specific opportunity with why it's time-sensitive"],
+  "negotiation_leverage": "1-2 sentences on how to approach a deal based on contract, market position",
+  "one_liner": "The one sentence that makes the sporting director pick up the phone — or close the file"
+}
+
+RULES:
+- Be DECISIVE. No "maybe" or "possibly." You're staking your reputation.
+- confidence_level is 0-100. Below 50 = insufficient data. 50-70 = reasonable bet. 70-90 = strong conviction. 90+ = once-in-a-window opportunity.
+- The one_liner should be memorable. It's the kind of thing scouts say in transfer meetings.
+- Reconcile any contradictions between the three analyses. If stats say SIGN but market says PASS, resolve it.`;
 
     const synthesisText = await generateWithRetry(model, synthesisPrompt);
 

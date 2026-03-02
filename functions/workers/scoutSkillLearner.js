@@ -1,16 +1,22 @@
 /**
- * Scout Skill Learner — after each run, each agent updates its SKILL.md.
- * Collects run stats, shortlist adds, feedback; calls Gemini; writes to ScoutAgentSkills.
+ * Scout Skill Learner — Elite Agent Intelligence.
+ *
+ * After each scout run, each country agent reflects on its performance:
+ * 1. Analyzes run stats (profiles by type, by league, match scores)
+ * 2. Reviews user feedback (thumbs up/down, shortlist adds)
+ * 3. Calls Gemini to update its SKILL.md (strategy document) and tuning params
+ * 4. Learns from cross-agent detections (players spotted by multiple agents)
+ * 5. Generates scouting priorities for next run
  */
 
 const { getFirestore } = require("firebase-admin/firestore");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 
-const FEEDBACK_DAYS = 7;
+const FEEDBACK_DAYS = 14; // Extended from 7 — more data for better learning
 
 /**
  * Run post-scout learning for each agent that had profiles.
- * @param {Object} runResult - { profilesFound, durationMs, profilesByAgent: { agentId: [{ docId, profileType, league }] } }
+ * @param {Object} runResult - { profilesFound, durationMs, profilesByAgent, crossLeagueDetections }
  * @param {string} runId - ScoutAgentRuns doc ID
  */
 async function runScoutSkillLearning(runResult, runId) {
@@ -32,7 +38,7 @@ async function runScoutSkillLearning(runResult, runId) {
   const now = Date.now();
   const cutoff = now - FEEDBACK_DAYS * 24 * 60 * 60 * 1000;
 
-  // Shortlist adds with sourceAgentId (last 7 days)
+  // Shortlist adds with sourceAgentId (last 14 days)
   const shortlistSnap = await db.collection("Shortlists").doc("team").get();
   const entries = (shortlistSnap.data()?.entries || []).filter((e) => (e.addedAt || 0) >= cutoff);
   const shortlistByAgent = {};
@@ -46,6 +52,7 @@ async function runScoutSkillLearning(runResult, runId) {
   // Feedback from ScoutProfileFeedback (all users)
   const feedbackSnap = await db.collection("ScoutProfileFeedback").get();
   const feedbackByAgent = {};
+  const feedbackDetails = {}; // Track which profile types get thumbs up/down
   for (const doc of feedbackSnap.docs) {
     const data = doc.data();
     const fb = data.feedback || {};
@@ -56,44 +63,84 @@ async function runScoutSkillLearning(runResult, runId) {
       if (f === "up" || f === "down") {
         feedbackByAgent[agentId] = feedbackByAgent[agentId] || { up: 0, down: 0 };
         feedbackByAgent[agentId][f]++;
+        // Track profile type feedback
+        const profileType = typeof val === "object" && val?.profileType ? val.profileType : null;
+        if (profileType) {
+          feedbackDetails[agentId] = feedbackDetails[agentId] || {};
+          feedbackDetails[agentId][profileType] = feedbackDetails[agentId][profileType] || { up: 0, down: 0 };
+          feedbackDetails[agentId][profileType][f]++;
+        }
       }
     }
   }
 
   const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+  const model = genAI.getGenerativeModel({
+    model: "gemini-2.0-flash",
+    systemInstruction: `You are an elite scouting director managing AI scout agents. Each agent covers a country/league. Your job is to help each agent improve its scouting strategy based on performance data. Be specific and actionable — vague advice like "find better players" is useless. Focus on tuning profile parameters, identifying blind spots, and learning from user feedback patterns.`,
+  });
 
   for (const agentId of agentIds) {
     try {
       const profiles = profilesByAgent[agentId] || [];
       const byType = {};
       const byLeague = {};
+      const scoreSum = {};
+      const scoreCount = {};
       for (const p of profiles) {
         byType[p.profileType] = (byType[p.profileType] || 0) + 1;
         byLeague[p.league || "?"] = (byLeague[p.league || "?"] || 0) + 1;
+        scoreSum[p.profileType] = (scoreSum[p.profileType] || 0) + (p.matchScore || 0);
+        scoreCount[p.profileType] = (scoreCount[p.profileType] || 0) + 1;
       }
+      const avgScores = {};
+      for (const type of Object.keys(scoreSum)) {
+        avgScores[type] = Math.round(scoreSum[type] / scoreCount[type]);
+      }
+
       const shortlistAdds = shortlistByAgent[agentId] || 0;
       const fb = feedbackByAgent[agentId] || { up: 0, down: 0 };
+      const fbDetails = feedbackDetails[agentId] || {};
 
       const skillDoc = await skillsRef.doc(agentId).get();
       const currentSkill = (skillDoc.data()?.skillMarkdown || "").trim();
       const currentParams = (skillDoc.data()?.paramsJson || "{}").trim();
+      const version = skillDoc.data()?.version || 0;
 
-      const prompt = `You are the ${agentId} AI Scout. After each run, you update your SKILL.md to improve.
+      const prompt = `You are the ${agentId.toUpperCase()} AI Scout Agent — league specialist.
 
-Current skill:
-${currentSkill || "(none yet)"}
+Your current SKILL.md (version ${version}):
+${currentSkill || "(first run — no skill yet)"}
 
-This run's stats:
-- Profiles found: ${profiles.length} (by type: ${JSON.stringify(byType)}, by league: ${JSON.stringify(byLeague)})
+Current tuning params:
+${currentParams}
+
+═══ THIS RUN ═══
+- Profiles found: ${profiles.length}
+- By type: ${JSON.stringify(byType)}
+- By league: ${JSON.stringify(byLeague)}
+- Avg match scores by type: ${JSON.stringify(avgScores)}
 - Run duration: ${runResult.durationMs || 0}ms
+- Cross-league detections (global): ${runResult.crossLeagueDetections || 0}
 
-Shortlist adds (last ${FEEDBACK_DAYS} days) for your profiles: ${shortlistAdds}
-Manual feedback: ${fb.up} up, ${fb.down} down
+═══ USER FEEDBACK (last ${FEEDBACK_DAYS} days) ═══
+- Shortlist adds from your profiles: ${shortlistAdds}
+- Thumbs: ${fb.up} 👍, ${fb.down} 👎
+${Object.keys(fbDetails).length > 0 ? `- By profile type: ${JSON.stringify(fbDetails)}` : "- No per-type feedback yet"}
+
+═══ AVAILABLE PROFILE TYPES ═══
+HIGH_VALUE_BENCHED, LOW_VALUE_STARTER, YOUNG_STRIKER_HOT, CONTRACT_EXPIRING,
+HIDDEN_GEM, LOWER_LEAGUE_RISER, BREAKOUT_SEASON (new!), UNDERVALUED_BY_FM (new!)
+
+═══ INSTRUCTIONS ═══
+Analyze the data and produce:
+1. Updated SKILL.md — lessons learned, what to focus on next run, which profile types work best in your leagues
+2. Updated params — adjust thresholds based on feedback (e.g. if HIDDEN_GEM gets 👎, raise FM PA threshold)
+3. Scouting priorities — which positions/profiles should be emphasized next run
 
 Produce a JSON object with exactly two keys:
-1. "skillMarkdown": string — Updated SKILL.md content with clear instructions, rules, and lessons learned. Be specific. If no changes needed, return the current skill.
-2. "paramsJson": string — JSON string of overrides for profile matching. Use "{}" if no changes. Example: {"LOW_VALUE_STARTER":{"minMinutes90s":8},"leagueWeights":{"eredivisie":1.2}}
+1. "skillMarkdown": string — Updated SKILL.md. Start with "# ${agentId.charAt(0).toUpperCase() + agentId.slice(1)} Scout Agent". Include: Strategy, Lessons, Priorities, Known Issues.
+2. "paramsJson": string — JSON string of overrides. Example: {"LOW_VALUE_STARTER":{"minMinutes90s":8},"BREAKOUT_SEASON":{"minMinutes90s":10},"priorities":["HIDDEN_GEM","BREAKOUT_SEASON"]}
 
 Return ONLY valid JSON, no markdown code blocks.`;
 
@@ -116,12 +163,20 @@ Return ONLY valid JSON, no markdown code blocks.`;
           skillMarkdown,
           paramsJson,
           lastUpdatedAt: now,
-          version: (skillDoc.data()?.version || 0) + 1,
+          version: version + 1,
           lastRunId: runId,
+          lastRunStats: {
+            profilesFound: profiles.length,
+            byType,
+            avgScores,
+            shortlistAdds,
+            feedbackUp: fb.up,
+            feedbackDown: fb.down,
+          },
         },
         { merge: true }
       );
-      console.log(`[ScoutSkillLearner] Updated skill for ${agentId}`);
+      console.log(`[ScoutSkillLearner] Updated skill for ${agentId} (v${version + 1})`);
     } catch (err) {
       console.error(`[ScoutSkillLearner] Error for ${agentId}:`, err.message);
     }

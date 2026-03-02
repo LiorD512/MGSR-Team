@@ -114,7 +114,7 @@ interface DiscoveryCandidate {
   club?: string;
   nationality?: string;
   profileImage?: string;
-  source: 'request_match' | 'hidden_gem' | 'general';
+  source: 'request_match' | 'hidden_gem' | 'general' | 'agent_pick';
   sourceLabel: string;
   requestId?: string;
   clubName?: string;
@@ -128,6 +128,11 @@ interface DiscoveryCandidate {
   fbrefGoalsPer90?: number;
   fbrefAssistsPer90?: number;
   fbrefMinutes90s?: string | number;
+  // New: Scout Agent intelligence
+  scoutNarrative?: string;
+  matchScore?: number;
+  profileType?: string;
+  agentId?: string;
 }
 
 function parseMarketValueToEuro(val: string | undefined): number {
@@ -225,6 +230,59 @@ export async function GET(request: NextRequest) {
   try {
     const seen = new Set<string>();
     const candidates: DiscoveryCandidate[] = [];
+
+    // 0. Load top agent picks (ScoutProfiles with high matchScore + narrative)
+    let agentPicks: DiscoveryCandidate[] = [];
+    try {
+      const { getFirebaseAdmin } = await import('@/lib/firebaseAdmin');
+      const app = getFirebaseAdmin();
+      if (app) {
+        const { getFirestore } = await import('firebase-admin/firestore');
+        const db = getFirestore(app);
+        const cutoff = Date.now() - 3 * 24 * 60 * 60 * 1000; // Last 3 days
+        const agentSnap = await db.collection('ScoutProfiles')
+          .where('matchScore', '>=', 70)
+          .where('lastRefreshedAt', '>=', cutoff)
+          .orderBy('matchScore', 'desc')
+          .limit(8)
+          .get();
+        for (const doc of agentSnap.docs) {
+          const d = doc.data();
+          const url = d.tmProfileUrl || '';
+          if (!url || seen.has(url)) continue;
+          seen.add(url);
+          const id = extractPlayerId(url);
+          const derivedImage = id ? `https://img.a.transfermarkt.technology/portrait/medium/${id}.jpg` : undefined;
+          const profileLabel = (d.profileType || '').replace(/_/g, ' ').toLowerCase();
+          agentPicks.push({
+            name: d.playerName || '',
+            position: d.position || '',
+            age: String(d.age || ''),
+            marketValue: d.marketValue || '',
+            transfermarktUrl: url,
+            league: d.league || undefined,
+            club: d.club || undefined,
+            nationality: d.nationality || undefined,
+            profileImage: d.profileImage || derivedImage,
+            source: 'agent_pick',
+            sourceLabel: `Agent ${(d.agentId || '').charAt(0).toUpperCase() + (d.agentId || '').slice(1)} · ${profileLabel}`,
+            fmPa: d.fmPa ?? undefined,
+            fmCa: d.fmCa ?? undefined,
+            fmPotentialGap: d.fmPa && d.fmCa ? d.fmPa - d.fmCa : undefined,
+            scoutNarrative: d.scoutNarrative || undefined,
+            matchScore: d.matchScore ?? undefined,
+            profileType: d.profileType || undefined,
+            agentId: d.agentId || undefined,
+          });
+        }
+        console.log(`[War Room Discovery] Loaded ${agentPicks.length} agent picks (score ≥ 70)`);
+      }
+    } catch (err) {
+      console.warn('[War Room Discovery] Agent picks load failed (non-fatal):', err);
+    }
+
+    // Add agent picks first — they're the highest quality
+    candidates.push(...agentPicks);
 
     // 1. Request matches (if Firestore available)
     let requests: { id: string; position?: string; minAge?: number; maxAge?: number; dominateFoot?: string; transferFee?: string; clubName?: string }[] = [];

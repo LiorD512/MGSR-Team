@@ -152,14 +152,15 @@ function extractLimit(query: string): number | undefined {
   return undefined;
 }
 
-/** Check for Israeli market → transfer_fee + notes */
-function extractIsraeliMarket(query: string): { transferFee?: string; notes?: string } {
+/** Check for Israeli market → transfer_fee + notes + value cap */
+function extractIsraeliMarket(query: string): { transferFee?: string; notes?: string; valueMax?: number } {
   const hasIsraeli =
-    /(שוק\s*ה?ישראלי|israeli (?:market|league)|israel (?:market|league)|ל?ליגה\s*ה?ישראלית)/i.test(query);
+    /(שוק\s*ה?ישראלי|israeli (?:market|league)|israel (?:market|league)|ל?ליגה\s*ה?ישראלית|ligat\s*ha.?al)/i.test(query);
   if (!hasIsraeli) return {};
   return {
     transferFee: '300-600',
-    notes: 'Israeli market fit, affordable, lower leagues',
+    valueMax: 2_500_000, // Ligat Ha'Al realistic ceiling — same as War Room
+    notes: 'Israeli market fit, affordable, lower leagues, realistic for Ligat HaAl',
   };
 }
 

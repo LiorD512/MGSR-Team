@@ -115,10 +115,7 @@ function buildPlayerContext(player: PlayerPayload, scoutData?: ScoutData): strin
     if (p.fbref_interceptions_per90 != null) parts.push(`Interceptions/90: ${p.fbref_interceptions_per90}`);
     if (p.fbref_goals_per90 != null) parts.push(`Goals/90: ${p.fbref_goals_per90}`);
     if (p.fbref_assists_per90 != null) parts.push(`Assists/90: ${p.fbref_assists_per90}`);
-    if (p.fbref_progressive_carries_per90 != null || p.fbref_progressive_carries != null)
-      parts.push(`Progressive carries/90: ${p.fbref_progressive_carries_per90 ?? p.fbref_progressive_carries ?? '?'}`);
-    if (p.fbref_key_passes_per90 != null || p.fbref_key_passes != null)
-      parts.push(`Key passes/90: ${p.fbref_key_passes_per90 ?? p.fbref_key_passes ?? '?'}`);
+    // NOTE: progressive_carries and key_passes removed — not available on free FBref tier
     if (p.player_style) parts.push(`Playing style: ${p.player_style}`);
   }
   if (scoutData?.fm && !scoutData.fm.error) {
