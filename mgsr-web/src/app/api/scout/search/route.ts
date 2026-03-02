@@ -5,12 +5,11 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { parseFreeQuery } from '@/lib/parseFreeQuery';
+import { getScoutBaseUrl } from '@/lib/scoutServerUrl';
 import { getLeagueAvgMarketValue } from '@/lib/transfermarkt';
 import { translateHebrewToEnglish } from '@/lib/translateQuery';
 
 export const dynamic = 'force-dynamic';
-
-const SCOUT_BASE = process.env.SCOUT_SERVER_URL || 'https://football-scout-server-l38w.onrender.com';
 const FREESEARCH_URL = process.env.SCOUT_FREESEARCH_URL; // When set: use freesearch proxy (Python parse)
 
 const LEAGUE_NAMES: Record<string, string> = {
@@ -362,7 +361,7 @@ async function fetchScoutRecruitment(
   params.set('limit', String(parsed.limit ?? 15));
   params.set('_t', String(Date.now()));
 
-  const url = `${SCOUT_BASE}/recruitment?${params.toString()}`;
+  const url = `${getScoutBaseUrl()}/recruitment?${params.toString()}`;
   console.log('[AI Scout] Fetching:', url);
 
   const res = await fetch(url, {

@@ -4,6 +4,7 @@
 
 ### 1. Scout Server (Render)
 - **URL:** https://football-scout-server-l38w.onrender.com
+- **SCOUT_SERVER_URL:** Set in Vercel/Firebase without trailing slash (e.g. `https://...onrender.com` not `...com/`). The app normalizes this; double-slash URLs cause 404.
 - **Test:** `curl "https://football-scout-server-l38w.onrender.com/recruitment?position=CF&transfer_fee=Free%2FFree%20loan&request_id=test1&limit=3"`
 - **Expected:** Different players for `request_id=test1` vs `request_id=test2`
 - **Latest commits:** Result rotation, Free/loan availability scoring, salary_range, request_id

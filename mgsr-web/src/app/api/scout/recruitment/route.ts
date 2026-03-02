@@ -2,15 +2,14 @@
  * Proxy for football-scout-server. Avoids CORS when app runs on Vercel.
  */
 import { NextRequest, NextResponse } from 'next/server';
-
-const SCOUT_BASE = process.env.SCOUT_SERVER_URL || 'https://football-scout-server-l38w.onrender.com';
+import { getScoutBaseUrl } from '@/lib/scoutServerUrl';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = request.nextUrl;
-    const url = `${SCOUT_BASE}/recruitment?${searchParams.toString()}`;
+    const url = `${getScoutBaseUrl()}/recruitment?${searchParams.toString()}`;
     const res = await fetch(url, {
       headers: { Accept: 'application/json' },
       cache: 'no-store',
@@ -31,7 +30,7 @@ export async function GET(request: NextRequest) {
     const msg = err instanceof Error ? err.message : 'Scout API failed';
     console.error('Scout proxy error:', msg, err);
     const hint =
-      SCOUT_BASE.includes('localhost') && msg.includes('fetch')
+      getScoutBaseUrl().includes('localhost') && msg.includes('fetch')
         ? ' (Is the scout server running? Run: cd football_scout_server && source venv/bin/activate && uvicorn server:app --port 8000)'
         : '';
     return NextResponse.json(

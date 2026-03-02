@@ -2,15 +2,14 @@
  * Proxy for football-scout-server /fm_intelligence endpoint.
  */
 import { NextRequest, NextResponse } from 'next/server';
-
-const SCOUT_BASE = process.env.SCOUT_SERVER_URL || 'https://football-scout-server-l38w.onrender.com';
+import { getScoutBaseUrl } from '@/lib/scoutServerUrl';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = request.nextUrl;
-    const url = `${SCOUT_BASE}/fm_intelligence?${searchParams.toString()}`;
+    const url = `${getScoutBaseUrl()}/fm_intelligence?${searchParams.toString()}`;
     const res = await fetch(url, {
       headers: { Accept: 'application/json' },
       cache: 'no-store',

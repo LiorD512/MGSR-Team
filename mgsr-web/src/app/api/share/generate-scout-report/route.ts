@@ -12,7 +12,7 @@ import { fetchIFAProfile, normalizeIfaUrl, isValidIfaUrl } from '@/lib/ifa';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
-const SCOUT_BASE = process.env.SCOUT_SERVER_URL || 'https://football-scout-server-l38w.onrender.com';
+import { getScoutBaseUrl } from '@/lib/scoutServerUrl';
 
 interface PlayerPayload {
   fullName?: string;
@@ -63,11 +63,11 @@ async function fetchScoutData(
   fmParams.set('_t', String(Date.now()));
 
   const [similarRes, fmRes] = await Promise.all([
-    fetch(`${SCOUT_BASE}/similar_players?player_url=${encodeURIComponent(tmProfile)}&lang=${lang}&limit=5`, {
+    fetch(`${getScoutBaseUrl()}/similar_players?player_url=${encodeURIComponent(tmProfile)}&lang=${lang}&limit=5`, {
       cache: 'no-store',
       signal: AbortSignal.timeout(8000),
     }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
-    fetch(`${SCOUT_BASE}/fm_intelligence?${fmParams.toString()}`, {
+    fetch(`${getScoutBaseUrl()}/fm_intelligence?${fmParams.toString()}`, {
       cache: 'no-store',
       signal: AbortSignal.timeout(8000),
     }).then((r) => (r.ok ? r.json() : null)).catch(() => null),

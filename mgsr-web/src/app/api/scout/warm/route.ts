@@ -4,13 +4,12 @@
  * GET /api/scout/warm
  */
 import { NextResponse } from 'next/server';
+import { getScoutBaseUrl } from '@/lib/scoutServerUrl';
 
 export const dynamic = 'force-dynamic';
 
-const SCOUT_BASE = process.env.SCOUT_SERVER_URL || 'https://football-scout-server-l38w.onrender.com';
-
 export async function GET() {
-  const url = `${SCOUT_BASE}/recruitment?position=CF&limit=1&lang=en`;
+  const url = `${getScoutBaseUrl()}/recruitment?position=CF&limit=1&lang=en`;
   const start = Date.now();
 
   try {

@@ -8,7 +8,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { handlePlayer } from '@/lib/transfermarkt';
 import { extractPlayerIdFromUrl } from '@/lib/api';
 
-const SCOUT_BASE = process.env.SCOUT_SERVER_URL || 'https://football-scout-server-l38w.onrender.com';
+import { getScoutBaseUrl } from '@/lib/scoutServerUrl';
 
 function samePlayer(url1: string, url2: string): boolean {
   const id1 = extractPlayerIdFromUrl(url1);
@@ -106,10 +106,10 @@ export async function POST(request: NextRequest) {
     // 2. Fetch similar players + FM intelligence in parallel
     const [similarData, fmData] = await Promise.all([
       fetchJson<{ results?: Record<string, unknown>[] }>(
-        `${SCOUT_BASE}/similar_players?player_url=${encodeURIComponent(playerUrl)}&lang=${lang}&limit=5`
+        `${getScoutBaseUrl()}/similar_players?player_url=${encodeURIComponent(playerUrl)}&lang=${lang}&limit=5`
       ),
       fetchJson<Record<string, unknown>>(
-        `${SCOUT_BASE}/fm_intelligence?player_name=${encodeURIComponent(name)}`
+        `${getScoutBaseUrl()}/fm_intelligence?player_name=${encodeURIComponent(name)}`
       ),
     ]);
 

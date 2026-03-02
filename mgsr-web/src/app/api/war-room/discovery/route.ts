@@ -5,9 +5,8 @@
  * Varies queries each request for fresh discovery.
  */
 import { NextRequest, NextResponse } from 'next/server';
+import { getScoutBaseUrl } from '@/lib/scoutServerUrl';
 import { handlePlayer, getLastTransferFee } from '@/lib/transfermarkt';
-
-const SCOUT_BASE = process.env.SCOUT_SERVER_URL || 'https://football-scout-server-l38w.onrender.com';
 const IMAGE_FETCH_CONCURRENCY = 3;
 const LIGAT_HAAL_VALUE_MAX = 2_500_000;
 const LIGAT_HAAL_LAST_TRANSFER_MAX = 2_500_000;
@@ -148,7 +147,7 @@ async function fetchRecruitment(params: Record<string, string>): Promise<Record<
   search.set('sort_by', 'score');
   search.set('_t', String(Date.now()));
 
-  const url = `${SCOUT_BASE}/recruitment?${search.toString()}`;
+  const url = `${getScoutBaseUrl()}/recruitment?${search.toString()}`;
   const res = await fetch(url, {
     headers: { Accept: 'application/json' },
     cache: 'no-store',

@@ -3,13 +3,12 @@
  * GET /api/scout/search/test - verifies the scout server is reachable.
  */
 import { NextResponse } from 'next/server';
+import { getScoutBaseUrl } from '@/lib/scoutServerUrl';
 
 export const dynamic = 'force-dynamic';
 
-const SCOUT_BASE = process.env.SCOUT_SERVER_URL || 'https://football-scout-server-l38w.onrender.com';
-
 export async function GET() {
-  const url = `${SCOUT_BASE}/recruitment?position=CF&age_max=25&limit=3&lang=en&request_id=debug-test`;
+  const url = `${getScoutBaseUrl()}/recruitment?position=CF&age_max=25&limit=3&lang=en&request_id=debug-test`;
   const start = Date.now();
 
   try {

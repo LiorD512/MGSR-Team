@@ -6,7 +6,10 @@
 
 const { getFirestore } = require("firebase-admin/firestore");
 
-const SCOUT_BASE = process.env.SCOUT_SERVER_URL || "https://football-scout-server-l38w.onrender.com";
+function getScoutBaseUrl() {
+  const url = process.env.SCOUT_SERVER_URL || "https://football-scout-server-l38w.onrender.com";
+  return url.trim().replace(/\/$/, "");
+}
 const LIGAT_HAAL_VALUE_MAX = 2_500_000;
 const DELAY_BETWEEN_REQUESTS_MS = 3000;
 
@@ -229,7 +232,7 @@ async function fetchRecruitment(params) {
   search.set("lang", "en");
   search.set("_t", String(Date.now()));
 
-  const url = `${SCOUT_BASE}/recruitment?${search.toString()}`;
+  const url = `${getScoutBaseUrl()}/recruitment?${search.toString()}`;
   const res = await fetch(url, {
     headers: { Accept: "application/json" },
     signal: AbortSignal.timeout(90000),
