@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import {
@@ -64,7 +64,15 @@ export default function YouthPlayerPage() {
   const { t, isRtl } = useLanguage();
   const router = useRouter();
   const params = useParams();
+  const searchParams = useSearchParams();
   const id = params?.id as string | undefined;
+  const fromPath = searchParams.get('from') || '/players';
+  const scrollTo = searchParams.get('scrollTo');
+  const isFromDashboard = fromPath === '/dashboard';
+  const backHref = isFromDashboard && scrollTo
+    ? `/dashboard?scrollTo=${encodeURIComponent(scrollTo)}`
+    : fromPath;
+  const backLabel = isFromDashboard ? t('player_info_back_dashboard') : t('youth_detail_back_to_players');
 
   const [player, setPlayer] = useState<YouthPlayer | null>(null);
   const [loadingPlayer, setLoadingPlayer] = useState(true);
@@ -652,7 +660,7 @@ export default function YouthPlayerPage() {
       <AppLayout>
         <div className="max-w-2xl mx-auto py-12">
           <p className="text-mgsr-muted mb-6">{t('youth_detail_not_found')}</p>
-          <Link href="/players" className="text-[var(--youth-cyan)] hover:underline">← {t('youth_detail_back_to_players')}</Link>
+          <Link href={backHref} className="text-[var(--youth-cyan)] hover:underline">← {backLabel}</Link>
         </div>
       </AppLayout>
     );
@@ -663,9 +671,9 @@ export default function YouthPlayerPage() {
       <div dir={isRtl ? 'rtl' : 'ltr'} className="max-w-5xl mx-auto">
         {/* Top bar */}
         <div className="flex items-center justify-between mb-8">
-          <Link href="/players" className="hidden lg:inline-flex items-center gap-2 text-mgsr-muted hover:text-[var(--youth-cyan)] transition-colors group">
+          <Link href={backHref} className="hidden lg:inline-flex items-center gap-2 text-mgsr-muted hover:text-[var(--youth-cyan)] transition-colors group">
             <span className={`transition-transform group-hover:-translate-x-1 ${isRtl ? 'rotate-180' : ''}`}>←</span>
-            <span className="text-sm font-medium">{t('youth_detail_back_link')}</span>
+            <span className="text-sm font-medium">{backLabel}</span>
           </Link>
           <div className="flex items-center gap-2 flex-wrap">
             <button type="button" onClick={() => setShowAddTaskModal(true)} className={`px-4 py-2 rounded-xl text-sm font-medium bg-white/5 border border-[var(--youth-violet)]/30 ${violetBtn} transition`}>

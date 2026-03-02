@@ -124,6 +124,11 @@ export default function PlayerInfoPage() {
   const searchParams = useSearchParams();
   const id = params.id as string;
   const fromPath = searchParams.get('from') || '/players';
+  const scrollTo = searchParams.get('scrollTo');
+  const isFromDashboard = fromPath === '/dashboard';
+  const backHref = isFromDashboard && scrollTo
+    ? `/dashboard?scrollTo=${encodeURIComponent(scrollTo)}`
+    : fromPath;
   const backLabelKey =
     fromPath === '/requests'
       ? 'player_info_back_requests'
@@ -135,7 +140,9 @@ export default function PlayerInfoPage() {
             ? 'player_info_back_shadow_teams'
             : fromPath === '/tasks'
               ? 'player_info_back_tasks'
-              : 'player_info_back_players';
+              : fromPath === '/dashboard'
+                ? 'player_info_back_dashboard'
+                : 'player_info_back_players';
   const [player, setPlayer] = useState<Player | null>(null);
   const [liveData, setLiveData] = useState<PlayerDetails | null>(null);
   const [documents, setDocuments] = useState<PlayerDocument[]>([]);
@@ -1033,7 +1040,7 @@ export default function PlayerInfoPage() {
         <div dir={isRtl ? 'rtl' : 'ltr'} className="max-w-3xl mx-auto text-center py-20">
           <p className="text-mgsr-muted text-lg mb-6">{t('player_info_not_found')}</p>
           <Link
-            href={fromPath}
+            href={backHref}
             className="inline-flex items-center gap-2 text-mgsr-teal hover:underline"
           >
             <span className={isRtl ? 'rotate-180' : ''}>←</span>
@@ -1053,7 +1060,7 @@ export default function PlayerInfoPage() {
         {/* Back + actions */}
         <div className="flex items-center justify-between mb-6">
           <Link
-            href={fromPath}
+            href={backHref}
             className="hidden lg:inline-flex items-center gap-2 text-mgsr-teal hover:underline"
           >
             <span className={isRtl ? 'rotate-180' : ''}>←</span>

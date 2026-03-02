@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { getScreenCache, setScreenCache } from '@/lib/screenCache';
 import { useLanguage, translateType } from '@/contexts/LanguageContext';
@@ -29,6 +29,7 @@ import {
   Bar,
 } from 'recharts';
 import { parseMarketValue, parseAge } from '@/lib/releases';
+import { extractPlayerIdFromUrl } from '@/lib/api';
 import { useShortlistDocId, SHARED_SHORTLIST_DOC_ID } from '@/lib/accounts';
 import { useIsMobile } from '@/hooks/useMediaQuery';
 import { getCountryDisplayName } from '@/lib/countryTranslations';
@@ -93,6 +94,7 @@ interface AgentTask {
 
 interface RosteredPlayer {
   id: string;
+  tmProfile?: string;
   positions?: string[];
   age?: string;
   marketValue?: string;
@@ -226,6 +228,39 @@ const resolveAgentDisplayName = (
   return matched ? getDisplayName(matched, isRtl) : agentName.trim();
 };
 
+/** Returns href for feed event click. Player events → player info; SHORTLIST_ADDED → shortlist with highlight. Includes scrollTo so back returns to same feed item. */
+function getFeedEventLink(
+  ev: FeedEvent,
+  rosterPlayers: RosteredPlayer[],
+  womenPlayers: WomanPlayer[],
+  youthPlayers: YouthPlayer[],
+  platform: string
+): { href: string; hasLink: boolean } {
+  const scrollTo = `scrollTo=${encodeURIComponent(ev.id)}`;
+  const isShortlistAdded = ev.type === 'SHORTLIST_ADDED';
+  if (isShortlistAdded && (ev.playerTmProfile || ev.playerWomenId || ev.playerYouthId)) {
+    const highlight = ev.playerTmProfile || ev.playerWomenId || ev.playerYouthId || '';
+    return { href: `/shortlist?highlight=${encodeURIComponent(highlight)}`, hasLink: true };
+  }
+  if (ev.playerWomenId) {
+    return { href: `/players/women/${ev.playerWomenId}?from=/dashboard&${scrollTo}`, hasLink: true };
+  }
+  if (ev.playerYouthId) {
+    return { href: `/players/youth/${ev.playerYouthId}?from=/dashboard&${scrollTo}`, hasLink: true };
+  }
+  if (ev.playerTmProfile && platform === 'men') {
+    const tmId = extractPlayerIdFromUrl(ev.playerTmProfile);
+    const rosterPlayer = tmId
+      ? rosterPlayers.find((p) => extractPlayerIdFromUrl(p.tmProfile) === tmId)
+      : undefined;
+    if (rosterPlayer) {
+      return { href: `/players/${rosterPlayer.id}?from=/dashboard&${scrollTo}`, hasLink: true };
+    }
+    return { href: `/players/add?url=${encodeURIComponent(ev.playerTmProfile)}&from=/dashboard&${scrollTo}`, hasLink: true };
+  }
+  return { href: '', hasLink: false };
+}
+
 interface DashboardCache {
   events: FeedEvent[];
   players: { id: string }[];
@@ -264,6 +299,24 @@ export default function DashboardPage() {
   const [womenPlayers, setWomenPlayers] = useState<WomanPlayer[]>([]);
   const [youthPlayers, setYouthPlayers] = useState<YouthPlayer[]>([]);
   const shortlistDocId = useShortlistDocId(user ?? null);
+  const searchParams = useSearchParams();
+
+  // When returning from player page with scrollTo, scroll to that feed item
+  const scrollToParam = searchParams.get('scrollTo');
+  useEffect(() => {
+    if (!scrollToParam || events.length === 0) return;
+    const el = document.getElementById(`feed-event-${scrollToParam}`);
+    if (el) {
+      requestAnimationFrame(() => {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      });
+    }
+    // Clear scrollTo from URL after scrolling
+    const t = setTimeout(() => {
+      router.replace('/dashboard', { scroll: false });
+    }, 600);
+    return () => clearTimeout(t);
+  }, [scrollToParam, events.length, router]);
 
   useEffect(() => {
     if (platform !== 'women') return;
@@ -1803,10 +1856,11 @@ export default function DashboardPage() {
                 {events.slice(0, 15).map((ev, i) => {
                   const color = getEventColor(ev.type || '');
                   const typeLabel = translateType(ev.type || '', t, platform) || ev.type;
+                  const { href, hasLink } = getFeedEventLink(ev, rosterPlayers, womenPlayers, youthPlayers, platform);
                   const cardContent = (
                     <div
                       className={`flex-1 min-w-0 rounded-xl border bg-mgsr-card/70 px-4 py-3.5 transition-all duration-200 ${
-                        (ev.playerTmProfile || ev.playerWomenId)
+                        hasLink
                           ? 'border-[var(--women-rose)]/25 hover:border-[var(--women-rose)]/50 hover:bg-mgsr-card/90 cursor-pointer'
                           : 'border-mgsr-border/80'
                       }`}
@@ -1851,6 +1905,7 @@ export default function DashboardPage() {
                   return (
                     <div
                       key={ev.id}
+                      id={`feed-event-${ev.id}`}
                       className="group relative flex gap-5 py-4 animate-slide-up"
                       style={{ animationDelay: `${i * 40}ms` }}
                     >
@@ -1876,12 +1931,8 @@ export default function DashboardPage() {
                           </span>
                         )}
                       </div>
-                      {ev.playerWomenId ? (
-                        <Link href={`/players/women/${ev.playerWomenId}`} className="flex-1 min-w-0 block">
-                          {cardContent}
-                        </Link>
-                      ) : ev.playerTmProfile ? (
-                        <Link href={`/players/add?url=${encodeURIComponent(ev.playerTmProfile)}`} className="flex-1 min-w-0 block">
+                      {hasLink ? (
+                        <Link href={href} className="flex-1 min-w-0 block">
                           {cardContent}
                         </Link>
                       ) : (
@@ -1903,9 +1954,12 @@ export default function DashboardPage() {
                 {events.slice(0, 15).map((ev, i) => {
                   const color = getEventColor(ev.type || '');
                   const typeLabel = translateType(ev.type || '', t, platform) || ev.type;
+                  const { href, hasLink } = getFeedEventLink(ev, rosterPlayers, womenPlayers, youthPlayers, platform);
                   const cardContent = (
                     <div
-                      className="flex-1 min-w-0 rounded-xl border bg-mgsr-card/40 backdrop-blur-sm px-4 py-3.5 transition-all duration-200 border-[var(--youth-cyan)]/15 hover:border-[var(--youth-cyan)]/40 hover:bg-mgsr-card/60 cursor-pointer"
+                      className={`flex-1 min-w-0 rounded-xl border bg-mgsr-card/40 backdrop-blur-sm px-4 py-3.5 transition-all duration-200 ${
+                        hasLink ? 'border-[var(--youth-cyan)]/15 hover:border-[var(--youth-cyan)]/40 hover:bg-mgsr-card/60 cursor-pointer' : ''
+                      }`}
                       style={{
                         borderInlineStartWidth: '3px',
                         borderInlineStartColor: color,
@@ -1944,6 +1998,7 @@ export default function DashboardPage() {
                   return (
                     <div
                       key={ev.id}
+                      id={`feed-event-${ev.id}`}
                       className="group relative flex gap-5 py-4 animate-slide-up"
                       style={{ animationDelay: `${i * 40}ms` }}
                     >
@@ -1962,8 +2017,8 @@ export default function DashboardPage() {
                           </span>
                         )}
                       </div>
-                      {ev.playerTmProfile ? (
-                        <Link href={`/players/add?url=${encodeURIComponent(ev.playerTmProfile)}`} className="flex-1 min-w-0 block">
+                      {hasLink ? (
+                        <Link href={href} className="flex-1 min-w-0 block">
                           {cardContent}
                         </Link>
                       ) : (
@@ -1985,12 +2040,11 @@ export default function DashboardPage() {
                 {events.slice(0, 15).map((ev, i) => {
                   const color = getEventColor(ev.type || '');
                   const typeLabel = translateType(ev.type || '', t, platform) || ev.type;
+                  const { href, hasLink } = getFeedEventLink(ev, rosterPlayers, womenPlayers, youthPlayers, platform);
                   const cardContent = (
                     <div
                       className={`flex-1 min-w-0 rounded-xl border border-mgsr-border bg-mgsr-card/60 px-4 py-3 transition-all duration-200 ${
-                        (ev.playerTmProfile || ev.playerWomenId)
-                          ? 'hover:border-mgsr-teal/40 hover:bg-mgsr-card/80 cursor-pointer'
-                          : ''
+                        hasLink ? 'hover:border-mgsr-teal/40 hover:bg-mgsr-card/80 cursor-pointer' : ''
                       }`}
                       style={{
                         borderInlineStartWidth: '3px',
@@ -2028,7 +2082,7 @@ export default function DashboardPage() {
                     </div>
                   );
                   return (
-                    <div key={ev.id} className="group relative flex gap-5 py-4 animate-slide-up" style={{ animationDelay: `${i * 40}ms` }}>
+                    <div key={ev.id} id={`feed-event-${ev.id}`} className="group relative flex gap-5 py-4 animate-slide-up" style={{ animationDelay: `${i * 40}ms` }}>
                       <div
                         className="relative z-10 shrink-0 flex items-center justify-center w-10 h-10 rounded-full border-2 border-mgsr-dark bg-mgsr-card shadow-lg"
                         style={{ borderColor: color, boxShadow: `0 0 0 1px ${color}40` }}
@@ -2041,12 +2095,8 @@ export default function DashboardPage() {
                           </span>
                         )}
                       </div>
-                      {ev.playerWomenId ? (
-                        <Link href={`/players/women/${ev.playerWomenId}`} className="flex-1 min-w-0 block">
-                          {cardContent}
-                        </Link>
-                      ) : ev.playerTmProfile ? (
-                        <Link href={`/players/add?url=${encodeURIComponent(ev.playerTmProfile)}`} className="flex-1 min-w-0 block">
+                      {hasLink ? (
+                        <Link href={href} className="flex-1 min-w-0 block">
                           {cardContent}
                         </Link>
                       ) : (

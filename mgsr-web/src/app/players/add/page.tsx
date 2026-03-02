@@ -51,6 +51,8 @@ export default function AddPlayerPage() {
   const forShortlist = searchParams.get('shortlist') === '1';
   const fromReleases = searchParams.get('from') === 'releases';
   const fromShortlist = searchParams.get('from') === 'shortlist';
+  const fromDashboard = searchParams.get('from') === '/dashboard';
+  const scrollTo = searchParams.get('scrollTo');
   const hasPreloadedUrl = !!(fromShortlist && searchParams.get('url'));
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -302,8 +304,20 @@ export default function AddPlayerPage() {
     );
   }
 
-  const backHref = fromReleases ? '/releases' : (forShortlist || fromShortlist) ? '/shortlist' : '/players';
-  const backLabel = fromReleases ? t('releases_title') : (forShortlist || fromShortlist) ? t('shortlist_title') : t('players');
+  const backHref = fromReleases
+    ? '/releases'
+    : fromDashboard
+      ? scrollTo ? `/dashboard?scrollTo=${encodeURIComponent(scrollTo)}` : '/dashboard'
+      : (forShortlist || fromShortlist)
+        ? '/shortlist'
+        : '/players';
+  const backLabel = fromReleases
+    ? t('releases_title')
+    : fromDashboard
+      ? t('player_info_back_dashboard')
+      : (forShortlist || fromShortlist)
+        ? t('shortlist_title')
+        : t('players');
   const pageTitle = forShortlist ? t('add_to_shortlist_title') : t('add_player_title');
 
   const showSearchSection = !hasPreloadedUrl;

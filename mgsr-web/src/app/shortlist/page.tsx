@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { usePlatform } from '@/contexts/PlatformContext';
@@ -79,6 +79,7 @@ export default function ShortlistPage() {
   const { t, isRtl } = useLanguage();
   const { platform } = usePlatform();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const shortlistDocId = useShortlistDocId(user ?? null);
   const shortlistsCollection = SHORTLISTS_COLLECTIONS[platform];
   const isWomen = platform === 'women';
@@ -92,10 +93,37 @@ export default function ShortlistPage() {
   const [teammatesCache, setTeammatesCache] = useState<Record<string, RosterTeammateMatch[]>>({});
   const [loadingTeammatesUrl, setLoadingTeammatesUrl] = useState<string | null>(null);
   const [expandedTeammatesUrl, setExpandedTeammatesUrl] = useState<string | null>(null);
+  const [highlightedUrl, setHighlightedUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (!loading && !user) router.replace('/login');
   }, [user, loading, router]);
+
+  // Handle ?highlight=url — scroll to and animate the matching shortlist entry
+  const highlightParam = searchParams.get('highlight');
+  useEffect(() => {
+    if (!highlightParam || entries.length === 0) return;
+    const decoded = decodeURIComponent(highlightParam);
+    const sorted = [...entries].sort((a, b) => (b.addedAt || 0) - (a.addedAt || 0));
+    const idx = sorted.findIndex((e) => e.tmProfileUrl === decoded || e.tmProfileUrl === highlightParam);
+    if (idx < 0) return;
+    setHighlightedUrl(decoded);
+    const el = document.getElementById(`shortlist-entry-${idx}`);
+    if (el) {
+      requestAnimationFrame(() => {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      });
+    }
+    // Clear highlight from URL and animation after a delay
+    const t1 = setTimeout(() => {
+      router.replace('/shortlist', { scroll: false });
+    }, 500);
+    const t2 = setTimeout(() => setHighlightedUrl(null), 2500);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
+  }, [highlightParam, entries.length, router]);
 
   useEffect(() => {
     if (!user || !shortlistDocId) return;
@@ -417,10 +445,14 @@ export default function ShortlistPage() {
               const isSoccerDonnaUrl = playerUrl?.includes('soccerdonna');
               const isFmInsideUrl = playerUrl?.includes('fminside');
 
+              const isHighlighted = highlightedUrl === entry.tmProfileUrl;
               return (
               <div
                 key={entry.tmProfileUrl}
+                id={`shortlist-entry-${i}`}
                 className={`group overflow-hidden transition-all duration-300 animate-fade-in ${
+                  isHighlighted ? 'shortlist-entry-highlight' : ''
+                } ${
                   isYouth
                     ? 'rounded-2xl border border-[var(--youth-cyan)]/25 bg-mgsr-card shadow-[0_0_30px_rgba(0,212,255,0.06)] hover:border-[var(--youth-cyan)]/40 hover:shadow-[0_0_30px_rgba(0,212,255,0.12)]'
                     : isWomen

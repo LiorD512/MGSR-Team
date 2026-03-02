@@ -311,3 +311,28 @@ body {
   color: var(--mgsr-accent);
   border-bottom-color: var(--mgsr-accent);
 }
+
+/* Shortlist entry highlight animation (from dashboard feed click) */
+@keyframes shortlist-highlight-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+  50% {
+    box-shadow: 0 0 0 3px var(--mgsr-teal), 0 0 24px rgba(77, 182, 172, 0.4);
+  }
+}
+
+[data-platform="women"] .shortlist-entry-highlight {
+  animation: shortlist-highlight-pulse 0.6s ease-out 3;
+  box-shadow: 0 0 0 2px var(--women-rose), 0 0 20px rgba(232, 160, 191, 0.35);
+}
+
+[data-platform="youth"] .shortlist-entry-highlight {
+  animation: shortlist-highlight-pulse 0.6s ease-out 3;
+  box-shadow: 0 0 0 2px var(--youth-cyan), 0 0 20px rgba(0, 212, 255, 0.35);
+}
+
+.shortlist-entry-highlight {
+  animation: shortlist-highlight-pulse 0.6s ease-out 3;
+  box-shadow: 0 0 0 2px var(--mgsr-teal), 0 0 20px rgba(77, 182, 172, 0.35);
+}
