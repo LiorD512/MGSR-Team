@@ -10,8 +10,9 @@ import { doc, onSnapshot, getDoc, setDoc, collection, addDoc, getDocs, query, or
 import { db } from '@/lib/firebase';
 import { getCurrentAccountForShortlist, useShortlistDocId, SHARED_SHORTLIST_DOC_ID } from '@/lib/accounts';
 import { getTeammates, extractPlayerIdFromUrl } from '@/lib/api';
-import { SHORTLISTS_COLLECTIONS, PLAYERS_COLLECTIONS } from '@/lib/platformCollections';
+import { SHORTLISTS_COLLECTIONS, PLAYERS_COLLECTIONS, FEED_EVENTS_COLLECTIONS } from '@/lib/platformCollections';
 import { subscribePlayersWomen, type WomanPlayer } from '@/lib/playersWomen';
+import { subscribePlayersYouth, type YouthPlayer } from '@/lib/playersYouth';
 import AppLayout from '@/components/AppLayout';
 import Link from 'next/link';
 
@@ -60,6 +61,19 @@ function womanToRosterPlayer(w: WomanPlayer): RosterPlayer {
   };
 }
 
+function youthToRosterPlayer(y: YouthPlayer): RosterPlayer {
+  return {
+    id: y.id,
+    fullName: y.fullName,
+    profileImage: y.profileImage,
+    positions: y.positions ?? [],
+    marketValue: y.marketValue,
+    currentClub: y.currentClub,
+    age: y.age,
+    tmProfile: y.ifaUrl ?? undefined,
+  };
+}
+
 export default function ShortlistPage() {
   const { user, loading } = useAuth();
   const { t, isRtl } = useLanguage();
@@ -68,6 +82,7 @@ export default function ShortlistPage() {
   const shortlistDocId = useShortlistDocId(user ?? null);
   const shortlistsCollection = SHORTLISTS_COLLECTIONS[platform];
   const isWomen = platform === 'women';
+  const isYouth = platform === 'youth';
   const shortlistCacheKey = user ? `shortlist_${platform}_${user.uid}` : undefined;
   const cached = shortlistCacheKey ? getScreenCache<ShortlistEntry[]>(shortlistCacheKey) : undefined;
   const [entries, setEntries] = useState<ShortlistEntry[]>(cached ?? []);
@@ -87,28 +102,33 @@ export default function ShortlistPage() {
     const teamRef = doc(db, shortlistsCollection, SHARED_SHORTLIST_DOC_ID);
 
     const migrateFromLegacy = async () => {
-      if (platform === 'women') return;
-      const teamSnap = await getDoc(teamRef);
-      const teamEntries = (teamSnap.data()?.entries as Record<string, unknown>[]) || [];
-      if (teamEntries.length > 0) return;
-      const allSnap = await getDocs(collection(db, shortlistsCollection));
-      const allEntries: Record<string, unknown>[] = [];
-      const seen = new Set<string>();
-      for (const d of allSnap.docs) {
-        if (d.id === SHARED_SHORTLIST_DOC_ID) continue;
-        const list = (d.data()?.entries as Record<string, unknown>[]) || [];
-        for (const e of list) {
-          const url = e.tmProfileUrl as string;
-          if (url && !seen.has(url)) {
-            seen.add(url);
-            allEntries.push(e);
+      // Skip migration for women and youth — no legacy data to migrate
+      if (platform === 'women' || platform === 'youth') return;
+      try {
+        const teamSnap = await getDoc(teamRef);
+        const teamEntries = (teamSnap.data()?.entries as Record<string, unknown>[]) || [];
+        if (teamEntries.length > 0) return;
+        const allSnap = await getDocs(collection(db, shortlistsCollection));
+        const allEntries: Record<string, unknown>[] = [];
+        const seen = new Set<string>();
+        for (const d of allSnap.docs) {
+          if (d.id === SHARED_SHORTLIST_DOC_ID) continue;
+          const list = (d.data()?.entries as Record<string, unknown>[]) || [];
+          for (const e of list) {
+            const url = e.tmProfileUrl as string;
+            if (url && !seen.has(url)) {
+              seen.add(url);
+              allEntries.push(e);
+            }
           }
         }
-      }
-      if (allEntries.length > 0) {
-        const sanitize = (x: Record<string, unknown>) =>
-          Object.fromEntries(Object.entries(x).map(([k, v]) => [k, v === undefined ? null : v]));
-        await setDoc(teamRef, { entries: allEntries.map(sanitize) }, { merge: true });
+        if (allEntries.length > 0) {
+          const sanitize = (x: Record<string, unknown>) =>
+            Object.fromEntries(Object.entries(x).map(([k, v]) => [k, v === undefined ? null : v]));
+          await setDoc(teamRef, { entries: allEntries.map(sanitize) }, { merge: true });
+        }
+      } catch (err) {
+        console.warn('[Shortlist] Migration skipped:', err);
       }
     };
 
@@ -153,6 +173,12 @@ export default function ShortlistPage() {
 
   // Load roster players for teammates matching
   useEffect(() => {
+    if (platform === 'youth') {
+      const unsub = subscribePlayersYouth((list) => {
+        setRosterPlayers(list.map(youthToRosterPlayer));
+      });
+      return unsub;
+    }
     if (platform === 'women') {
       const unsub = subscribePlayersWomen((list) => {
         setRosterPlayers(list.map(womanToRosterPlayer));
@@ -220,7 +246,7 @@ export default function ShortlistPage() {
         timestamp: Date.now(),
         agentName: account.name ?? null,
       };
-      await addDoc(collection(db, 'FeedEvents'), feedEvent);
+      await addDoc(collection(db, FEED_EVENTS_COLLECTIONS[platform]), feedEvent);
     } finally {
       setRemovingUrl(null);
     }
@@ -276,7 +302,7 @@ export default function ShortlistPage() {
   if (loading || !user) {
     return (
       <div className="min-h-screen bg-mgsr-dark flex items-center justify-center">
-        <div className={`animate-pulse font-display ${isWomen ? 'text-[var(--women-rose)]' : 'text-mgsr-teal'}`}>{t('loading')}</div>
+        <div className={`animate-pulse font-display ${isYouth ? 'text-[var(--youth-cyan)]' : isWomen ? 'text-[var(--women-rose)]' : 'text-mgsr-teal'}`}>{t('loading')}</div>
       </div>
     );
   }
@@ -295,7 +321,7 @@ export default function ShortlistPage() {
             </p>
           </div>
           <div className="flex flex-wrap gap-3">
-            {!isWomen && (
+            {platform === 'men' && (
               <>
                 <Link
                   href="/releases"
@@ -314,31 +340,33 @@ export default function ShortlistPage() {
             <Link
               href="/players/add?shortlist=1"
               className={`inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-semibold transition-all hover:scale-[1.02] ${
-                isWomen
-                  ? 'bg-[var(--women-gradient)] text-white shadow-[var(--women-glow)] hover:opacity-90'
-                  : 'bg-mgsr-teal text-mgsr-dark hover:bg-mgsr-teal/90'
+                isYouth
+                  ? 'bg-gradient-to-r from-[var(--youth-cyan)] to-[var(--youth-violet)] text-white shadow-[0_0_20px_rgba(0,212,255,0.2)] hover:opacity-90'
+                  : isWomen
+                    ? 'bg-[var(--women-gradient)] text-white shadow-[var(--women-glow)] hover:opacity-90'
+                    : 'bg-mgsr-teal text-mgsr-dark hover:bg-mgsr-teal/90'
               }`}
             >
               <span>+</span>
-              {t(isWomen ? 'shortlist_add_from_soccerdonna' : 'shortlist_add_from_tm')}
+              {isYouth ? t('shortlist_add_youth_player') : t(isWomen ? 'shortlist_add_from_soccerdonna' : 'shortlist_add_from_tm')}
             </Link>
           </div>
         </div>
 
         {loadingList ? (
           <div className="flex items-center justify-center py-20">
-            <div className={`flex items-center gap-3 ${isWomen ? 'text-[var(--women-rose)]/70' : 'text-mgsr-muted'}`}>
-              <div className={`w-3 h-3 rounded-full animate-pulse ${isWomen ? 'bg-[var(--women-rose)]/50' : 'bg-mgsr-teal/50'}`} />
+            <div className={`flex items-center gap-3 ${isYouth ? 'text-[var(--youth-cyan)]/70' : isWomen ? 'text-[var(--women-rose)]/70' : 'text-mgsr-muted'}`}>
+              <div className={`w-3 h-3 rounded-full animate-pulse ${isYouth ? 'bg-[var(--youth-cyan)]/50' : isWomen ? 'bg-[var(--women-rose)]/50' : 'bg-mgsr-teal/50'}`} />
               {isWomen ? t('shortlist_loading_women') : t('shortlist_loading')}
             </div>
           </div>
         ) : sorted.length === 0 ? (
-          <div className={`relative overflow-hidden p-16 bg-mgsr-card/50 border border-mgsr-border rounded-2xl text-center ${isWomen ? 'shadow-[0_0_30px_rgba(232,160,191,0.06)]' : ''}`}>
-            <div className={`absolute inset-0 ${isWomen ? 'bg-[radial-gradient(ellipse_at_center,rgba(232,160,191,0.08)_0%,transparent_70%)]' : 'bg-[radial-gradient(ellipse_at_center,rgba(77,182,172,0.06)_0%,transparent_70%)]'}`} />
+          <div className={`relative overflow-hidden p-16 bg-mgsr-card/50 border border-mgsr-border rounded-2xl text-center ${isYouth ? 'shadow-[0_0_30px_rgba(0,212,255,0.06)]' : isWomen ? 'shadow-[0_0_30px_rgba(232,160,191,0.06)]' : ''}`}>
+            <div className={`absolute inset-0 ${isYouth ? 'bg-[radial-gradient(ellipse_at_center,rgba(0,212,255,0.08)_0%,transparent_70%)]' : isWomen ? 'bg-[radial-gradient(ellipse_at_center,rgba(232,160,191,0.08)_0%,transparent_70%)]' : 'bg-[radial-gradient(ellipse_at_center,rgba(77,182,172,0.06)_0%,transparent_70%)]'}`} />
             <p className="text-mgsr-muted text-lg mb-6 relative">{isWomen ? t('shortlist_empty_women') : t('shortlist_empty')}</p>
-            <p className="text-mgsr-muted/80 text-sm mb-6 relative">{isWomen ? t('shortlist_empty_hint_women') : t('shortlist_empty_hint')}</p>
+            <p className="text-mgsr-muted/80 text-sm mb-6 relative">{isYouth ? t('shortlist_empty_hint_youth') : isWomen ? t('shortlist_empty_hint_women') : t('shortlist_empty_hint')}</p>
             <div className="flex flex-wrap justify-center gap-3 relative">
-              {!isWomen && (
+              {platform === 'men' && (
                 <>
                   <Link
                     href="/releases"
@@ -358,12 +386,14 @@ export default function ShortlistPage() {
               <Link
                 href="/players/add?shortlist=1"
                 className={`inline-block px-5 py-2.5 rounded-xl font-semibold transition ${
-                  isWomen
-                    ? 'bg-[var(--women-gradient)] text-white hover:opacity-90'
-                    : 'border border-mgsr-teal text-mgsr-teal hover:bg-mgsr-teal/10'
+                  isYouth
+                    ? 'bg-gradient-to-r from-[var(--youth-cyan)] to-[var(--youth-violet)] text-white hover:opacity-90'
+                    : isWomen
+                      ? 'bg-[var(--women-gradient)] text-white hover:opacity-90'
+                      : 'border border-mgsr-teal text-mgsr-teal hover:bg-mgsr-teal/10'
                 }`}
               >
-                {t(isWomen ? 'shortlist_add_from_soccerdonna' : 'shortlist_add_from_tm')}
+                {isYouth ? t('shortlist_add_youth_player') : t(isWomen ? 'shortlist_add_from_soccerdonna' : 'shortlist_add_from_tm')}
               </Link>
             </div>
           </div>
@@ -391,16 +421,65 @@ export default function ShortlistPage() {
               <div
                 key={entry.tmProfileUrl}
                 className={`group overflow-hidden transition-all duration-300 animate-fade-in ${
-                  isWomen
-                    ? 'rounded-2xl border border-[var(--women-rose)]/25 bg-mgsr-card shadow-[0_0_30px_rgba(232,160,191,0.06)] hover:border-[var(--women-rose)]/40 hover:shadow-[0_0_30px_rgba(232,160,191,0.12)]'
-                    : 'rounded-xl border border-mgsr-border bg-mgsr-card hover:border-mgsr-teal/30'
+                  isYouth
+                    ? 'rounded-2xl border border-[var(--youth-cyan)]/25 bg-mgsr-card shadow-[0_0_30px_rgba(0,212,255,0.06)] hover:border-[var(--youth-cyan)]/40 hover:shadow-[0_0_30px_rgba(0,212,255,0.12)]'
+                    : isWomen
+                      ? 'rounded-2xl border border-[var(--women-rose)]/25 bg-mgsr-card shadow-[0_0_30px_rgba(232,160,191,0.06)] hover:border-[var(--women-rose)]/40 hover:shadow-[0_0_30px_rgba(232,160,191,0.12)]'
+                      : 'rounded-xl border border-mgsr-border bg-mgsr-card hover:border-mgsr-teal/30'
                 }`}
                 style={{ animationDelay: `${i * 40}ms` }}
               >
+                {isYouth && (
+                  <div className="h-1 bg-gradient-to-r from-[var(--youth-cyan)] via-[var(--youth-violet)] to-[var(--youth-cyan)]/60" />
+                )}
                 {isWomen && (
                   <div className="h-1 bg-gradient-to-r from-[var(--women-rose)] via-[var(--women-blush)] to-[var(--women-rose)]/60" />
                 )}
-                {isWomen ? (
+                {isYouth ? (
+                  /* Youth: glassmorphism card — cyan/violet accent */
+                  <div className="p-4 space-y-4">
+                    <Link
+                      href={`/players/add?url=${encodeURIComponent(entry.tmProfileUrl)}&from=shortlist`}
+                      className="block group/link"
+                    >
+                      <div className="flex gap-4">
+                        <img
+                          src={entry.playerImage || 'https://placehold.co/64x64/1A2736/00D4FF?text=?'}
+                          alt=""
+                          className="w-16 h-16 rounded-2xl object-cover bg-mgsr-dark ring-2 ring-[var(--youth-cyan)]/20 group-hover/link:ring-[var(--youth-cyan)]/50 transition shrink-0"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = 'https://placehold.co/64x64/1A2736/00D4FF?text=?';
+                          }}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-lg font-bold text-mgsr-text truncate group-hover/link:text-[var(--youth-cyan)] transition">
+                            {entry.playerName || t('shortlist_unknown_player')}
+                          </h3>
+                          <p className="text-sm text-mgsr-muted mt-0.5 line-clamp-2">
+                            {infoParts.length > 0 ? infoParts.join(' • ') : t('shortlist_no_info')}
+                          </p>
+                          <p className="text-xs text-mgsr-muted/80 mt-2">
+                            {entry.addedAt
+                              ? t('shortlist_added_by_date')
+                                .replace('{agent}', getAgentDisplayName(entry))
+                                .replace('{date}', formatAddedDateShort(entry.addedAt))
+                              : `${t('shortlist_added_by')} ${getAgentDisplayName(entry)}`}
+                          </p>
+                        </div>
+                      </div>
+                    </Link>
+                    <div className="flex items-center justify-between gap-3 pt-2 border-t border-[var(--youth-cyan)]/10">
+                      <span />
+                      <button
+                        onClick={() => removeFromShortlist(entry)}
+                        disabled={removingUrl === entry.tmProfileUrl}
+                        className="px-4 py-2 rounded-xl text-sm font-medium text-mgsr-red hover:bg-mgsr-red/15 disabled:opacity-50 transition"
+                      >
+                        {removingUrl === entry.tmProfileUrl ? '...' : t('shortlist_remove')}
+                      </button>
+                    </div>
+                  </div>
+                ) : isWomen ? (
                   /* Women: editorial card — clear hierarchy, no cramping */
                   <div className="p-4 space-y-4">
                     <Link
@@ -505,8 +584,8 @@ export default function ShortlistPage() {
                 </div>
                 )}
 
-                {/* Roster teammates section — Transfermarkt only, hide for women */}
-                {!isWomen && (
+                {/* Roster teammates section — Transfermarkt only, men platform only */}
+                {platform === 'men' && (
                 <div className="px-4 pb-4">
                   <button
                     type="button"

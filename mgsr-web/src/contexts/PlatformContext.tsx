@@ -2,13 +2,14 @@
 
 import { createContext, useContext, useState, useCallback, useMemo } from 'react';
 
-export type Platform = 'men' | 'women';
+export type Platform = 'men' | 'women' | 'youth';
 
 interface PlatformContextValue {
   platform: Platform;
   setPlatform: (p: Platform) => void;
   isWomen: boolean;
   isMen: boolean;
+  isYouth: boolean;
 }
 
 const PlatformContext = createContext<PlatformContextValue | null>(null);
@@ -19,7 +20,7 @@ function getStoredPlatform(): Platform {
   if (typeof window === 'undefined') return 'men';
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored === 'women' || stored === 'men') return stored;
+    if (stored === 'women' || stored === 'men' || stored === 'youth') return stored as Platform;
   } catch {
     /* ignore */
   }
@@ -44,6 +45,7 @@ export function PlatformProvider({ children }: { children: React.ReactNode }) {
       setPlatform,
       isWomen: platform === 'women',
       isMen: platform === 'men',
+      isYouth: platform === 'youth',
     }),
     [platform, setPlatform]
   );

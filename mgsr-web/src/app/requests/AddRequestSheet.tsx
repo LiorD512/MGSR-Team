@@ -23,10 +23,12 @@ interface AddRequestSheetProps {
   onClose: () => void;
   onSaved: () => void;
   clubRequestsCollection?: string;
+  feedEventsCollection?: string;
   isWomen?: boolean;
+  isYouth?: boolean;
 }
 
-export default function AddRequestSheet({ open, onClose, onSaved, clubRequestsCollection = 'ClubRequests', isWomen = false }: AddRequestSheetProps) {
+export default function AddRequestSheet({ open, onClose, onSaved, clubRequestsCollection = 'ClubRequests', feedEventsCollection = 'FeedEvents', isWomen = false, isYouth = false }: AddRequestSheetProps) {
   const { t, isRtl, lang } = useLanguage();
   const { user } = useAuth();
   const isHebrew = lang === 'he';
@@ -69,40 +71,40 @@ export default function AddRequestSheet({ open, onClose, onSaved, clubRequestsCo
   }, []);
 
   useEffect(() => {
-    if (isWomen) return;
+    if (isWomen || isYouth) return;
     const timer = setTimeout(() => searchClubsDebounced(clubQuery), 300);
     return () => clearTimeout(timer);
-  }, [clubQuery, searchClubsDebounced, isWomen]);
+  }, [clubQuery, searchClubsDebounced, isWomen, isYouth]);
 
-  const canProceedStep0 = isWomen ? manualClubName.trim().length >= 2 : !!selectedClub;
+  const canProceedStep0 = (isWomen || isYouth) ? manualClubName.trim().length >= 2 : !!selectedClub;
   const canProceedStep1 = !!selectedPosition;
-  const canProceedStep2 = !!selectedSalary && !!selectedFee;
+  const canProceedStep2 = isYouth ? true : (!!selectedSalary && !!selectedFee);
 
   const handleSave = async () => {
-    const clubName = isWomen ? manualClubName.trim() : selectedClub?.clubName || '';
-    const clubCountry = isWomen ? manualClubCountry.trim() : selectedClub?.clubCountry || '';
-    if (!clubName || !selectedPosition || !selectedSalary || !selectedFee) return;
+    const clubName = (isWomen || isYouth) ? manualClubName.trim() : selectedClub?.clubName || '';
+    const clubCountry = (isWomen || isYouth) ? manualClubCountry.trim() : selectedClub?.clubCountry || '';
+    if (!clubName || !selectedPosition || (!isYouth && (!selectedSalary || !selectedFee))) return;
     setSaving(true);
     setError(null);
     try {
       const createdAt = Date.now();
       await addDoc(collection(db, clubRequestsCollection), {
-        clubTmProfile: isWomen ? '' : (selectedClub?.clubTmProfile || ''),
+        clubTmProfile: (isWomen || isYouth) ? '' : (selectedClub?.clubTmProfile || ''),
         clubName,
-        clubLogo: isWomen ? '' : (selectedClub?.clubLogo || ''),
+        clubLogo: (isWomen || isYouth) ? '' : (selectedClub?.clubLogo || ''),
         clubCountry,
-        clubCountryFlag: isWomen ? '' : (selectedClub?.clubCountryFlag || ''),
+        clubCountryFlag: (isWomen || isYouth) ? '' : (selectedClub?.clubCountryFlag || ''),
         contactId: '',
         contactName: '',
         contactPhoneNumber: '',
         position: selectedPosition,
         quantity: 1,
         notes: notes.trim() || '',
-        minAge: minAge ? parseInt(minAge, 10) : 0,
-        maxAge: maxAge ? parseInt(maxAge, 10) : 0,
-        ageDoesntMatter,
-        salaryRange: selectedSalary,
-        transferFee: selectedFee,
+        minAge: isYouth ? 0 : (minAge ? parseInt(minAge, 10) : 0),
+        maxAge: isYouth ? 0 : (maxAge ? parseInt(maxAge, 10) : 0),
+        ageDoesntMatter: isYouth ? true : ageDoesntMatter,
+        salaryRange: isYouth ? 'N/A' : selectedSalary,
+        transferFee: isYouth ? 'N/A' : selectedFee,
         dominateFoot: selectedFoot === 'any' ? '' : selectedFoot,
         createdAt,
         status: 'pending',
@@ -111,13 +113,13 @@ export default function AddRequestSheet({ open, onClose, onSaved, clubRequestsCo
       const feedEvent: Record<string, unknown> = {
         type: 'REQUEST_ADDED',
         playerName: clubName ?? null,
-        playerImage: isWomen ? null : (selectedClub?.clubLogo ?? null),
-        playerTmProfile: isWomen ? null : (selectedClub?.clubTmProfile ?? null),
+        playerImage: (isWomen || isYouth) ? null : (selectedClub?.clubLogo ?? null),
+        playerTmProfile: (isWomen || isYouth) ? null : (selectedClub?.clubTmProfile ?? null),
         newValue: selectedPosition,
         timestamp: createdAt,
         agentName,
       };
-      await addDoc(collection(db, 'FeedEvents'), feedEvent);
+      await addDoc(collection(db, feedEventsCollection), feedEvent);
       onSaved();
       onClose();
     } catch (err) {
@@ -182,7 +184,7 @@ export default function AddRequestSheet({ open, onClose, onSaved, clubRequestsCo
           {stepLabels.map((label, i) => (
             <div
               key={i}
-              className={`h-1.5 rounded-full flex-1 ${i <= step ? (isWomen ? 'bg-[var(--women-rose)]' : 'bg-mgsr-teal') : 'bg-mgsr-border'}`}
+              className={`h-1.5 rounded-full flex-1 ${i <= step ? (isYouth ? 'bg-[var(--youth-cyan)]' : isWomen ? 'bg-[var(--women-rose)]' : 'bg-mgsr-teal') : 'bg-mgsr-border'}`}
               title={label}
             />
           ))}
@@ -205,7 +207,7 @@ export default function AddRequestSheet({ open, onClose, onSaved, clubRequestsCo
                       value={manualClubName}
                       onChange={(e) => setManualClubName(e.target.value)}
                       placeholder={t('requests_search_club')}
-                      className={`w-full px-4 py-3 rounded-xl bg-mgsr-dark border border-mgsr-border text-mgsr-text placeholder-mgsr-muted focus:outline-none focus:border-[var(--women-rose)]`}
+                      className="w-full px-4 py-3 rounded-xl bg-mgsr-dark border border-mgsr-border text-mgsr-text placeholder-mgsr-muted focus:outline-none focus:border-[var(--women-rose)]"
                     />
                   </div>
                   <div>
@@ -216,6 +218,30 @@ export default function AddRequestSheet({ open, onClose, onSaved, clubRequestsCo
                       onChange={(e) => setManualClubCountry(e.target.value)}
                       placeholder={isHebrew ? 'ישראל, גרמניה...' : 'Israel, Germany...'}
                       className="w-full px-4 py-3 rounded-xl bg-mgsr-dark border border-mgsr-border text-mgsr-text placeholder-mgsr-muted focus:outline-none focus:border-[var(--women-rose)]"
+                    />
+                  </div>
+                </>
+              ) : isYouth ? (
+                <>
+                  <p className="text-sm text-mgsr-muted">{t('requests_manual_club_hint_youth')}</p>
+                  <div>
+                    <label className="block text-xs text-mgsr-muted mb-1.5">{t('requests_club_name')}</label>
+                    <input
+                      type="text"
+                      value={manualClubName}
+                      onChange={(e) => setManualClubName(e.target.value)}
+                      placeholder={t('requests_search_club')}
+                      className="w-full px-4 py-3 rounded-xl bg-mgsr-dark border border-mgsr-border text-mgsr-text placeholder-mgsr-muted focus:outline-none focus:border-[var(--youth-cyan)]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-mgsr-muted mb-1.5">{t('requests_club_country')}</label>
+                    <input
+                      type="text"
+                      value={manualClubCountry}
+                      onChange={(e) => setManualClubCountry(e.target.value)}
+                      placeholder={isHebrew ? 'ישראל, גרמניה...' : 'Israel, Germany...'}
+                      className="w-full px-4 py-3 rounded-xl bg-mgsr-dark border border-mgsr-border text-mgsr-text placeholder-mgsr-muted focus:outline-none focus:border-[var(--youth-cyan)]"
                     />
                   </div>
                 </>
@@ -295,7 +321,9 @@ export default function AddRequestSheet({ open, onClose, onSaved, clubRequestsCo
                     onClick={() => setSelectedPosition(pos)}
                     className={`px-4 py-3 rounded-xl text-sm font-medium border transition ${
                       selectedPosition === pos
-                        ? isWomen
+                        ? isYouth
+                          ? 'bg-[var(--youth-cyan)]/20 border-[var(--youth-cyan)] text-[var(--youth-cyan)]'
+                          : isWomen
                           ? 'bg-[var(--women-rose)]/20 border-[var(--women-rose)] text-[var(--women-rose)]'
                           : 'bg-mgsr-teal/20 border-mgsr-teal text-mgsr-teal'
                         : 'bg-mgsr-dark/50 border-mgsr-border text-mgsr-muted hover:text-mgsr-text hover:border-mgsr-teal/30'
@@ -310,6 +338,7 @@ export default function AddRequestSheet({ open, onClose, onSaved, clubRequestsCo
 
           {step === 2 && (
             <>
+              {!isYouth && (
               <div>
                 <p className="text-sm text-mgsr-muted mb-2">Age</p>
                 <label className="flex items-center gap-2 cursor-pointer">
@@ -344,6 +373,7 @@ export default function AddRequestSheet({ open, onClose, onSaved, clubRequestsCo
                   </div>
                 )}
               </div>
+              )}
 
               <div>
                 <p className="text-sm text-mgsr-muted mb-2">{t('requests_label_foot')}</p>
@@ -355,7 +385,7 @@ export default function AddRequestSheet({ open, onClose, onSaved, clubRequestsCo
                       onClick={() => setSelectedFoot(value)}
                       className={`flex-1 px-3 py-2 rounded-lg text-sm border ${
                         selectedFoot === value
-                          ? isWomen ? 'bg-[var(--women-rose)]/20 border-[var(--women-rose)] text-[var(--women-rose)]' : 'bg-mgsr-teal/20 border-mgsr-teal text-mgsr-teal'
+                          ? isYouth ? 'bg-[var(--youth-cyan)]/20 border-[var(--youth-cyan)] text-[var(--youth-cyan)]' : isWomen ? 'bg-[var(--women-rose)]/20 border-[var(--women-rose)] text-[var(--women-rose)]' : 'bg-mgsr-teal/20 border-mgsr-teal text-mgsr-teal'
                           : 'bg-mgsr-dark/50 border-mgsr-border text-mgsr-muted'
                       }`}
                     >
@@ -365,45 +395,49 @@ export default function AddRequestSheet({ open, onClose, onSaved, clubRequestsCo
                 </div>
               </div>
 
-              <div>
-                <p className="text-sm text-mgsr-muted mb-2">{t('requests_label_salary')}</p>
-                <div className="flex flex-wrap gap-2">
-                  {SALARY_OPTIONS.map((opt) => (
-                    <button
-                      key={opt}
-                      type="button"
-                      onClick={() => setSelectedSalary(opt)}
-                      className={`px-3 py-2 rounded-lg text-sm border ${
-                        selectedSalary === opt
-                          ? isWomen ? 'bg-[var(--women-rose)]/20 border-[var(--women-rose)] text-[var(--women-rose)]' : 'bg-mgsr-teal/20 border-mgsr-teal text-mgsr-teal'
-                          : 'bg-mgsr-dark/50 border-mgsr-border text-mgsr-muted'
-                      }`}
-                    >
-                      {opt}
-                    </button>
-                  ))}
+              {!isYouth && (
+                <div>
+                  <p className="text-sm text-mgsr-muted mb-2">{t('requests_label_salary')}</p>
+                  <div className="flex flex-wrap gap-2">
+                    {SALARY_OPTIONS.map((opt) => (
+                      <button
+                        key={opt}
+                        type="button"
+                        onClick={() => setSelectedSalary(opt)}
+                        className={`px-3 py-2 rounded-lg text-sm border ${
+                          selectedSalary === opt
+                            ? isWomen ? 'bg-[var(--women-rose)]/20 border-[var(--women-rose)] text-[var(--women-rose)]' : 'bg-mgsr-teal/20 border-mgsr-teal text-mgsr-teal'
+                            : 'bg-mgsr-dark/50 border-mgsr-border text-mgsr-muted'
+                        }`}
+                      >
+                        {opt}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
 
-              <div>
-                <p className="text-sm text-mgsr-muted mb-2">{t('requests_label_fee')}</p>
-                <div className="flex flex-wrap gap-2">
-                  {FEE_OPTIONS.map((opt) => (
-                    <button
-                      key={opt}
-                      type="button"
-                      onClick={() => setSelectedFee(opt)}
-                      className={`px-3 py-2 rounded-lg text-sm border ${
-                        selectedFee === opt
-                          ? isWomen ? 'bg-[var(--women-rose)]/20 border-[var(--women-rose)] text-[var(--women-rose)]' : 'bg-mgsr-teal/20 border-mgsr-teal text-mgsr-teal'
-                          : 'bg-mgsr-dark/50 border-mgsr-border text-mgsr-muted'
-                      }`}
-                    >
-                      {opt === 'Free/Free loan' ? t('requests_fee_free_loan') : opt}
-                    </button>
-                  ))}
+              {!isYouth && (
+                <div>
+                  <p className="text-sm text-mgsr-muted mb-2">{t('requests_label_fee')}</p>
+                  <div className="flex flex-wrap gap-2">
+                    {FEE_OPTIONS.map((opt) => (
+                      <button
+                        key={opt}
+                        type="button"
+                        onClick={() => setSelectedFee(opt)}
+                        className={`px-3 py-2 rounded-lg text-sm border ${
+                          selectedFee === opt
+                            ? isWomen ? 'bg-[var(--women-rose)]/20 border-[var(--women-rose)] text-[var(--women-rose)]' : 'bg-mgsr-teal/20 border-mgsr-teal text-mgsr-teal'
+                            : 'bg-mgsr-dark/50 border-mgsr-border text-mgsr-muted'
+                        }`}
+                      >
+                        {opt === 'Free/Free loan' ? t('requests_fee_free_loan') : opt}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
             </>
           )}
 
@@ -416,7 +450,7 @@ export default function AddRequestSheet({ open, onClose, onSaved, clubRequestsCo
                 placeholder={t('requests_notes_placeholder')}
                 rows={4}
                 dir={isHebrew ? 'rtl' : 'ltr'}
-                className={`w-full px-4 py-3 rounded-xl bg-mgsr-dark border border-mgsr-border text-mgsr-text placeholder-mgsr-muted focus:outline-none resize-none ${isWomen ? 'focus:border-[var(--women-rose)]' : 'focus:border-mgsr-teal'}`}
+                className={`w-full px-4 py-3 rounded-xl bg-mgsr-dark border border-mgsr-border text-mgsr-text placeholder-mgsr-muted focus:outline-none resize-none ${isYouth ? 'focus:border-[var(--youth-cyan)]' : isWomen ? 'focus:border-[var(--women-rose)]' : 'focus:border-mgsr-teal'}`}
               />
             </>
           )}
@@ -432,7 +466,7 @@ export default function AddRequestSheet({ open, onClose, onSaved, clubRequestsCo
                 (step === 1 && !canProceedStep1) ||
                 (step === 2 && !canProceedStep2)
               }
-              className={`w-full py-3 rounded-xl font-semibold disabled:opacity-50 disabled:cursor-not-allowed ${isWomen ? 'bg-[var(--women-gradient)] text-white shadow-[var(--women-glow)]' : 'bg-mgsr-teal text-mgsr-dark'}`}
+              className={`w-full py-3 rounded-xl font-semibold disabled:opacity-50 disabled:cursor-not-allowed ${isYouth ? 'bg-gradient-to-r from-[var(--youth-cyan)] to-[var(--youth-violet)] text-white shadow-[0_0_20px_rgba(0,212,255,0.3)]' : isWomen ? 'bg-[var(--women-gradient)] text-white shadow-[var(--women-glow)]' : 'bg-mgsr-teal text-mgsr-dark'}`}
             >
               {t('requests_next')}
             </button>
@@ -441,7 +475,7 @@ export default function AddRequestSheet({ open, onClose, onSaved, clubRequestsCo
               type="button"
               onClick={handleSave}
               disabled={saving}
-              className={`w-full py-3 rounded-xl font-semibold disabled:opacity-50 ${isWomen ? 'bg-[var(--women-gradient)] text-white shadow-[var(--women-glow)]' : 'bg-mgsr-teal text-mgsr-dark'}`}
+              className={`w-full py-3 rounded-xl font-semibold disabled:opacity-50 ${isYouth ? 'bg-gradient-to-r from-[var(--youth-cyan)] to-[var(--youth-violet)] text-white shadow-[0_0_20px_rgba(0,212,255,0.3)]' : isWomen ? 'bg-[var(--women-gradient)] text-white shadow-[var(--women-glow)]' : 'bg-mgsr-teal text-mgsr-dark'}`}
             >
               {saving ? '…' : t('requests_save')}
             </button>

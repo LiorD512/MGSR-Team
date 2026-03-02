@@ -18,6 +18,7 @@ import {
 import { auth, db } from '@/lib/firebase';
 import { createShare } from '@/lib/shareApi';
 import type { PortfolioItem } from '@/lib/portfolioApi';
+import { PORTFOLIO_COLLECTIONS } from '@/lib/platformCollections';
 
 interface Account {
   id: string;
@@ -28,7 +29,6 @@ interface Account {
 }
 
 const PORTFOLIO_COLLECTION = 'Portfolio';
-const PORTFOLIO_WOMEN_COLLECTION = 'PortfolioWomen';
 
 export default function PortfolioPage() {
   const { user, loading } = useAuth();
@@ -39,12 +39,14 @@ export default function PortfolioPage() {
   const fromPlayerId = searchParams.get('fromPlayer');
   const platformFromUrl = searchParams.get('platform');
   const isWomen = platform === 'women';
+  const isYouth = platform === 'youth';
 
   useEffect(() => {
-    if (platformFromUrl === 'women' && platform !== 'women') setPlatform('women');
+    if (platformFromUrl === 'youth' && platform !== 'youth') setPlatform('youth');
+    else if (platformFromUrl === 'women' && platform !== 'women') setPlatform('women');
     else if (platformFromUrl === 'men' && platform !== 'men') setPlatform('men');
   }, [platformFromUrl, platform, setPlatform]);
-  const portfolioColl = isWomen ? PORTFOLIO_WOMEN_COLLECTION : PORTFOLIO_COLLECTION;
+  const portfolioColl = PORTFOLIO_COLLECTIONS[platform];
   const [items, setItems] = useState<PortfolioItem[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loadingItems, setLoadingItems] = useState(true);
@@ -125,7 +127,7 @@ export default function PortfolioPage() {
             lang,
             includePlayerContact: attachPlayer,
             includeAgencyContact: attachAgency,
-            platform: isWomen ? 'women' : 'men',
+            platform: platform,
           },
           () =>
             user ? auth.currentUser?.getIdToken() ?? Promise.resolve(null) : Promise.resolve(null)
@@ -135,7 +137,7 @@ export default function PortfolioPage() {
           lang === 'he'
             ? (item.player.fullNameHe || item.player.fullName || '—')
             : (item.player.fullName || item.player.fullNameHe || '—');
-        const brand = isWomen ? 'MGSR Women' : 'MGSR';
+        const brand = isYouth ? 'MGSR Youth' : isWomen ? 'MGSR Women' : 'MGSR';
         const shareText =
           lang === 'he'
             ? `פרופיל חדש נשלח אלייך מ - ${brand}.\n${displayName}\n${url}`
@@ -186,13 +188,13 @@ export default function PortfolioPage() {
             scoutReport: item.scoutReport,
             highlights: item.highlights,
             lang,
-            platform: isWomen ? 'women' : 'men',
+            platform: platform,
           },
           () =>
             user ? auth.currentUser?.getIdToken() ?? Promise.resolve(null) : Promise.resolve(null)
         );
 
-        router.push(`/p/${token}?from=portfolio${isWomen ? '&platform=women' : ''}`);
+        router.push(`/p/${token}?from=portfolio${platform !== 'men' ? `&platform=${platform}` : ''}`);
       } catch (e) {
         console.error('Portfolio view failed:', e);
       } finally {
@@ -204,11 +206,11 @@ export default function PortfolioPage() {
 
   const handleRemove = useCallback(async (id: string) => {
     const msg = isRtl
-      ? (isWomen ? 'להסיר שחקנית זו מהפורטפוליו?' : 'להסיר שחקן זה מהפורטפוליו?')
+      ? (isYouth ? 'להסיר שחקן זה מהפורטפוליו?' : isWomen ? 'להסיר שחקנית זו מהפורטפוליו?' : 'להסיר שחקן זה מהפורטפוליו?')
       : 'Remove this player from portfolio?';
     if (!confirm(msg)) return;
     await deleteDoc(doc(db, portfolioColl, id));
-  }, [isRtl, isWomen, portfolioColl]);
+  }, [isRtl, isWomen, isYouth, portfolioColl]);
 
   if (loading || !user) return null;
 
@@ -216,10 +218,10 @@ export default function PortfolioPage() {
     <AppLayout>
       <div className="max-w-6xl mx-auto">
         {/* Hero header */}
-        <div className={`relative overflow-hidden rounded-3xl mb-10 ${isWomen ? 'shadow-[0_0_40px_rgba(232,160,191,0.12)]' : ''}`}>
-          <div className={`absolute inset-0 ${isWomen ? 'bg-gradient-to-br from-[var(--women-rose)]/15 via-mgsr-card to-mgsr-dark' : 'bg-gradient-to-br from-mgsr-teal/20 via-mgsr-card to-mgsr-dark'}`} />
-          <div className={`absolute inset-0 ${isWomen ? 'bg-[radial-gradient(ellipse_at_70%_0%,rgba(232,160,191,0.25)_0%,transparent_60%)]' : 'bg-[radial-gradient(ellipse_at_70%_0%,rgba(77,182,172,0.25)_0%,transparent_60%)]'}`} />
-          <div className={`absolute inset-0 ${isWomen ? 'bg-[radial-gradient(ellipse_at_20%_100%,rgba(232,160,191,0.15)_0%,transparent_50%)]' : 'bg-[radial-gradient(ellipse_at_20%_100%,rgba(77,182,172,0.15)_0%,transparent_50%)]'}`} />
+        <div className={`relative overflow-hidden rounded-3xl mb-10 ${isYouth ? 'shadow-[0_0_40px_rgba(0,212,255,0.12)]' : isWomen ? 'shadow-[0_0_40px_rgba(232,160,191,0.12)]' : ''}`}>
+          <div className={`absolute inset-0 ${isYouth ? 'bg-gradient-to-br from-[var(--youth-cyan)]/15 via-mgsr-card to-mgsr-dark' : isWomen ? 'bg-gradient-to-br from-[var(--women-rose)]/15 via-mgsr-card to-mgsr-dark' : 'bg-gradient-to-br from-mgsr-teal/20 via-mgsr-card to-mgsr-dark'}`} />
+          <div className={`absolute inset-0 ${isYouth ? 'bg-[radial-gradient(ellipse_at_70%_0%,rgba(0,212,255,0.25)_0%,transparent_60%)]' : isWomen ? 'bg-[radial-gradient(ellipse_at_70%_0%,rgba(232,160,191,0.25)_0%,transparent_60%)]' : 'bg-[radial-gradient(ellipse_at_70%_0%,rgba(77,182,172,0.25)_0%,transparent_60%)]'}`} />
+          <div className={`absolute inset-0 ${isYouth ? 'bg-[radial-gradient(ellipse_at_20%_100%,rgba(168,85,247,0.15)_0%,transparent_50%)]' : isWomen ? 'bg-[radial-gradient(ellipse_at_20%_100%,rgba(232,160,191,0.15)_0%,transparent_50%)]' : 'bg-[radial-gradient(ellipse_at_20%_100%,rgba(77,182,172,0.15)_0%,transparent_50%)]'}`} />
           <div className="relative px-4 sm:px-8 py-8 sm:py-16">
             <h1 className="text-2xl sm:text-4xl font-display font-bold text-mgsr-text tracking-tight">
               {t('portfolio_title')}
@@ -229,8 +231,8 @@ export default function PortfolioPage() {
             </p>
             {fromPlayerId && (
               <Link
-                href={isWomen ? `/players/women/${fromPlayerId}` : `/players/${fromPlayerId}`}
-                className={`mt-4 inline-flex items-center gap-2 font-medium transition ${isWomen ? 'text-[var(--women-rose)] hover:text-[var(--women-rose)]/80' : 'text-mgsr-teal hover:text-mgsr-teal/80'}`}
+                href={isYouth ? `/players/youth/${fromPlayerId}` : isWomen ? `/players/women/${fromPlayerId}` : `/players/${fromPlayerId}`}
+                className={`mt-4 inline-flex items-center gap-2 font-medium transition ${isYouth ? 'text-[var(--youth-cyan)] hover:text-[var(--youth-cyan)]/80' : isWomen ? 'text-[var(--women-rose)] hover:text-[var(--women-rose)]/80' : 'text-mgsr-teal hover:text-mgsr-teal/80'}`}
               >
                 <svg className={`w-5 h-5 ${isRtl ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -243,13 +245,13 @@ export default function PortfolioPage() {
 
         {loadingItems ? (
           <div className="flex items-center justify-center py-24">
-            <div className={`w-12 h-12 border-2 border-t-transparent rounded-full animate-spin ${isWomen ? 'border-[var(--women-rose)]' : 'border-mgsr-teal'}`} />
+            <div className={`w-12 h-12 border-2 border-t-transparent rounded-full animate-spin ${isYouth ? 'border-[var(--youth-cyan)]' : isWomen ? 'border-[var(--women-rose)]' : 'border-mgsr-teal'}`} />
           </div>
         ) : items.length === 0 ? (
-          <div className={`text-center py-20 px-6 rounded-2xl border bg-mgsr-card/50 ${isWomen ? 'border-[var(--women-rose)]/20' : 'border-mgsr-border'}`}>
-            <div className={`w-20 h-20 mx-auto mb-6 rounded-2xl flex items-center justify-center ${isWomen ? 'bg-[var(--women-rose)]/10' : 'bg-mgsr-teal/10'}`}>
+          <div className={`text-center py-20 px-6 rounded-2xl border bg-mgsr-card/50 ${isYouth ? 'border-[var(--youth-cyan)]/20' : isWomen ? 'border-[var(--women-rose)]/20' : 'border-mgsr-border'}`}>
+            <div className={`w-20 h-20 mx-auto mb-6 rounded-2xl flex items-center justify-center ${isYouth ? 'bg-[var(--youth-cyan)]/10' : isWomen ? 'bg-[var(--women-rose)]/10' : 'bg-mgsr-teal/10'}`}>
               <svg
-                className={`w-10 h-10 ${isWomen ? 'text-[var(--women-rose)]' : 'text-mgsr-teal'}`}
+                className={`w-10 h-10 ${isYouth ? 'text-[var(--youth-cyan)]' : isWomen ? 'text-[var(--women-rose)]' : 'text-mgsr-teal'}`}
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -270,7 +272,7 @@ export default function PortfolioPage() {
             </p>
             <Link
               href="/players"
-              className={`inline-flex items-center gap-2 px-6 py-3 rounded-xl font-medium transition ${isWomen ? 'bg-[var(--women-rose)] text-mgsr-dark hover:opacity-90' : 'bg-mgsr-teal text-mgsr-dark hover:bg-mgsr-teal/90'}`}
+              className={`inline-flex items-center gap-2 px-6 py-3 rounded-xl font-medium transition ${isYouth ? 'bg-[var(--youth-cyan)] text-mgsr-dark hover:opacity-90' : isWomen ? 'bg-[var(--women-rose)] text-mgsr-dark hover:opacity-90' : 'bg-mgsr-teal text-mgsr-dark hover:bg-mgsr-teal/90'}`}
             >
               {t(isWomen ? 'portfolio_browse_players_women' : 'portfolio_browse_players')}
             </Link>
@@ -290,14 +292,16 @@ export default function PortfolioPage() {
                 <div
                   key={item.id}
                   className={`group relative rounded-2xl border bg-mgsr-card transition-all duration-300 ${
-                    isWomen
-                      ? 'border-[var(--women-rose)]/20 hover:border-[var(--women-rose)]/50 hover:shadow-[0_0_40px_-10px_rgba(232,160,191,0.2)]'
-                      : 'border-mgsr-border hover:border-mgsr-teal/40 hover:shadow-[0_0_40px_-10px_rgba(77,182,172,0.2)]'
+                    isYouth
+                      ? 'border-[var(--youth-cyan)]/20 hover:border-[var(--youth-cyan)]/50 hover:shadow-[0_0_40px_-10px_rgba(0,212,255,0.2)]'
+                      : isWomen
+                        ? 'border-[var(--women-rose)]/20 hover:border-[var(--women-rose)]/50 hover:shadow-[0_0_40px_-10px_rgba(232,160,191,0.2)]'
+                        : 'border-mgsr-border hover:border-mgsr-teal/40 hover:shadow-[0_0_40px_-10px_rgba(77,182,172,0.2)]'
                   }`}
                 >
                   {/* Card gradient accent */}
                   <div className={`absolute top-0 inset-x-0 h-1 opacity-0 group-hover:opacity-100 transition-opacity ${
-                    isWomen ? 'bg-gradient-to-r from-[var(--women-rose)]/60 via-[var(--women-rose)] to-[var(--women-rose)]/60' : 'bg-gradient-to-r from-mgsr-teal/60 via-mgsr-teal to-mgsr-teal/60'
+                    isYouth ? 'bg-gradient-to-r from-[var(--youth-cyan)]/60 via-[var(--youth-violet)] to-[var(--youth-cyan)]/60' : isWomen ? 'bg-gradient-to-r from-[var(--women-rose)]/60 via-[var(--women-rose)] to-[var(--women-rose)]/60' : 'bg-gradient-to-r from-mgsr-teal/60 via-mgsr-teal to-mgsr-teal/60'
                   }`} />
 
                   <div className="p-5">
@@ -316,7 +320,7 @@ export default function PortfolioPage() {
                         <h3 className="font-display font-bold text-mgsr-text text-lg truncate">
                           {displayName}
                         </h3>
-                        <span className={`inline-block mt-1 px-2 py-0.5 rounded text-xs font-medium ${isWomen ? 'bg-[var(--women-rose)]/15 text-[var(--women-rose)]' : 'bg-mgsr-teal/15 text-mgsr-teal'}`}>
+                        <span className={`inline-block mt-1 px-2 py-0.5 rounded text-xs font-medium ${isYouth ? 'bg-[var(--youth-cyan)]/15 text-[var(--youth-cyan)]' : isWomen ? 'bg-[var(--women-rose)]/15 text-[var(--women-rose)]' : 'bg-mgsr-teal/15 text-mgsr-teal'}`}>
                           {item.lang === 'he' ? t('portfolio_version_hebrew') : t('portfolio_version_english')}
                         </span>
                         <p className="text-sm text-mgsr-muted mt-0.5">
@@ -329,7 +333,7 @@ export default function PortfolioPage() {
                           </p>
                         )}
                         {item.player.marketValue && (
-                          <p className={`font-semibold mt-2 ${isWomen ? 'text-[var(--women-rose)]' : 'text-mgsr-teal'}`}>
+                          <p className={`font-semibold mt-2 ${isYouth ? 'text-[var(--youth-cyan)]' : isWomen ? 'text-[var(--women-rose)]' : 'text-mgsr-teal'}`}>
                             {item.player.marketValue}
                           </p>
                         )}
@@ -351,7 +355,7 @@ export default function PortfolioPage() {
                           setShowShareModal(item.id);
                         }}
                         disabled={isSharing}
-                        className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-medium disabled:opacity-50 transition ${isWomen ? 'bg-[var(--women-rose)]/20 text-[var(--women-rose)] hover:bg-[var(--women-rose)]/30' : 'bg-mgsr-teal/20 text-mgsr-teal hover:bg-mgsr-teal/30'}`}
+                        className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-medium disabled:opacity-50 transition ${isYouth ? 'bg-[var(--youth-cyan)]/20 text-[var(--youth-cyan)] hover:bg-[var(--youth-cyan)]/30' : isWomen ? 'bg-[var(--women-rose)]/20 text-[var(--women-rose)] hover:bg-[var(--women-rose)]/30' : 'bg-mgsr-teal/20 text-mgsr-teal hover:bg-mgsr-teal/30'}`}
                       >
                         {isSharing ? (
                           <>
@@ -379,7 +383,7 @@ export default function PortfolioPage() {
                       >
                             {viewingId ? (
                           <>
-                            <div className={`w-4 h-4 border-2 border-t-transparent rounded-full animate-spin ${isWomen ? 'border-[var(--women-rose)]' : 'border-mgsr-teal'}`} />
+                            <div className={`w-4 h-4 border-2 border-t-transparent rounded-full animate-spin ${isYouth ? 'border-[var(--youth-cyan)]' : isWomen ? 'border-[var(--women-rose)]' : 'border-mgsr-teal'}`} />
                             {isRtl ? 'טוען...' : 'Loading...'}
                           </>
                         ) : (
@@ -438,7 +442,7 @@ export default function PortfolioPage() {
                                   type="checkbox"
                                   checked={includePlayerContact}
                                   onChange={(e) => setIncludePlayerContact(e.target.checked)}
-                                  className={`mt-1 w-4 h-4 rounded border-mgsr-border focus:ring-mgsr-teal ${isWomen ? 'text-[var(--women-rose)]' : 'text-mgsr-teal'}`}
+                                  className={`mt-1 w-4 h-4 rounded border-mgsr-border focus:ring-mgsr-teal ${isYouth ? 'text-[var(--youth-cyan)]' : isWomen ? 'text-[var(--women-rose)]' : 'text-mgsr-teal'}`}
                                 />
                                 <span className="text-sm text-mgsr-text">
                                   {t('portfolio_share_attach_player_contact')}
@@ -457,7 +461,7 @@ export default function PortfolioPage() {
                                   type="checkbox"
                                   checked={includeAgencyContact}
                                   onChange={(e) => setIncludeAgencyContact(e.target.checked)}
-                                  className={`mt-1 w-4 h-4 rounded border-mgsr-border focus:ring-mgsr-teal ${isWomen ? 'text-[var(--women-rose)]' : 'text-mgsr-teal'}`}
+                                  className={`mt-1 w-4 h-4 rounded border-mgsr-border focus:ring-mgsr-teal ${isYouth ? 'text-[var(--youth-cyan)]' : isWomen ? 'text-[var(--women-rose)]' : 'text-mgsr-teal'}`}
                                 />
                                 <span className="text-sm text-mgsr-text">
                                   {t('portfolio_share_attach_agency_contact')}
@@ -488,7 +492,7 @@ export default function PortfolioPage() {
                             type="button"
                             onClick={() => handleShare(item, includePlayerContact, includeAgencyContact)}
                             disabled={isSharing}
-                            className={`flex-1 px-4 py-2.5 rounded-xl font-medium disabled:opacity-50 flex items-center justify-center gap-2 ${isWomen ? 'bg-[var(--women-rose)] text-mgsr-dark hover:opacity-90' : 'bg-mgsr-teal text-mgsr-dark hover:bg-mgsr-teal/90'}`}
+                            className={`flex-1 px-4 py-2.5 rounded-xl font-medium disabled:opacity-50 flex items-center justify-center gap-2 ${isYouth ? 'bg-[var(--youth-cyan)] text-mgsr-dark hover:opacity-90' : isWomen ? 'bg-[var(--women-rose)] text-mgsr-dark hover:opacity-90' : 'bg-mgsr-teal text-mgsr-dark hover:bg-mgsr-teal/90'}`}
                           >
                             {isSharing ? (
                               <>
@@ -521,7 +525,7 @@ export default function PortfolioPage() {
               dir={isRtl ? 'rtl' : 'ltr'}
               className="flex flex-col items-center gap-4 px-8 py-6 rounded-2xl bg-mgsr-card border border-mgsr-border"
             >
-              <div className={`w-10 h-10 border-2 border-t-transparent rounded-full animate-spin ${isWomen ? 'border-[var(--women-rose)]' : 'border-mgsr-teal'}`} />
+              <div className={`w-10 h-10 border-2 border-t-transparent rounded-full animate-spin ${isYouth ? 'border-[var(--youth-cyan)]' : isWomen ? 'border-[var(--women-rose)]' : 'border-mgsr-teal'}`} />
               <p className="text-mgsr-text font-medium">
                 {isRtl ? 'מכין דף תצוגה...' : 'Preparing preview...'}
               </p>
@@ -561,7 +565,7 @@ export default function PortfolioPage() {
                     setShowShareSetupModal(false);
                     setPendingShareUrl(null);
                   }}
-                  className={`flex-1 px-4 py-2.5 rounded-xl font-medium ${isWomen ? 'bg-[var(--women-rose)] text-mgsr-dark hover:opacity-90' : 'bg-mgsr-teal text-mgsr-dark hover:bg-mgsr-teal/90'}`}
+                  className={`flex-1 px-4 py-2.5 rounded-xl font-medium ${isYouth ? 'bg-[var(--youth-cyan)] text-mgsr-dark hover:opacity-90' : isWomen ? 'bg-[var(--women-rose)] text-mgsr-dark hover:opacity-90' : 'bg-mgsr-teal text-mgsr-dark hover:bg-mgsr-teal/90'}`}
                 >
                   {isRtl ? 'פתח WhatsApp בכל זאת' : 'Open WhatsApp anyway'}
                 </button>

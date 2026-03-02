@@ -10,6 +10,7 @@ import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { getCurrentAccountForShortlist } from '@/lib/accounts';
 import { subscribePlayersWomen, type WomanPlayer } from '@/lib/playersWomen';
+import { subscribePlayersYouth, type YouthPlayer } from '@/lib/playersYouth';
 import AppLayout from '@/components/AppLayout';
 import FilterBottomSheet from '@/components/mobile/FilterBottomSheet';
 import { useIsMobileOrTablet } from '@/hooks/useMediaQuery';
@@ -96,8 +97,10 @@ export default function PlayersPage() {
   const cached = getScreenCache<PlayersCache>('players');
   const [players, setPlayers] = useState<Player[]>(cached?.players ?? []);
   const [womenPlayers, setWomenPlayers] = useState<WomanPlayer[]>([]);
+  const [youthPlayers, setYouthPlayers] = useState<YouthPlayer[]>([]);
   const [playersLoading, setPlayersLoading] = useState(cached === undefined);
   const [womenLoading, setWomenLoading] = useState(true);
+  const [youthLoading, setYouthLoading] = useState(true);
   const [search, setSearch] = useState(cached?.search ?? '');
   const [positionFilter, setPositionFilter] = useState<string | null>(cached?.positionFilter ?? null);
   const [freeAgents, setFreeAgents] = useState(cached?.freeAgents ?? false);
@@ -151,6 +154,14 @@ export default function PlayersPage() {
   }, []);
 
   useEffect(() => {
+    const unsub = subscribePlayersYouth((list) => {
+      setYouthPlayers(list);
+      setYouthLoading(false);
+    });
+    return () => unsub();
+  }, []);
+
+  useEffect(() => {
     setScreenCache<PlayersCache>('players', {
       players,
       search,
@@ -167,6 +178,28 @@ export default function PlayersPage() {
   }, [players, search, positionFilter, freeAgents, contractExpiring, withMandate, myPlayersOnly, loanPlayersOnly, withoutRegisteredAgent, withNotes, footFilter]);
 
   const filtered = useMemo(() => {
+    if (platform === 'youth') {
+      let result = youthPlayers;
+      if (search.trim()) {
+        const q = search.toLowerCase().trim();
+        result = result.filter(
+          (p) =>
+            p.fullName?.toLowerCase().includes(q) ||
+            p.fullNameHe?.includes(q) ||
+            p.positions?.some((pos) => pos?.toLowerCase().includes(q)) ||
+            p.currentClub?.clubName?.toLowerCase().includes(q) ||
+            p.ageGroup?.toLowerCase().includes(q) ||
+            p.academy?.toLowerCase().includes(q)
+        );
+      }
+      if (positionFilter && POSITION_CODES[positionFilter]) {
+        const codes = POSITION_CODES[positionFilter];
+        result = result.filter((p) =>
+          p.positions?.some((pos) => pos && codes.has(pos.toUpperCase()))
+        );
+      }
+      return result;
+    }
     if (platform === 'women') {
       let result = womenPlayers;
       if (search.trim()) {
@@ -264,6 +297,7 @@ export default function PlayersPage() {
   }, [
     players,
     womenPlayers,
+    youthPlayers,
     platform,
     search,
     positionFilter,
@@ -302,19 +336,22 @@ export default function PlayersPage() {
     setFootFilter(null);
   }, []);
 
-  const displayList = platform === 'women' ? filtered : filtered;
-  const isLoading = platform === 'women' ? womenLoading : playersLoading;
+  const displayList = filtered;
+  const isLoading = platform === 'youth' ? youthLoading : platform === 'women' ? womenLoading : playersLoading;
   const dataSourceLabel =
-    platform === 'women'
-      ? 'Wosostat · SoccerDonna · FMInside'
-      : 'Transfermarkt · Scout Server · FMInside';
+    platform === 'youth'
+      ? 'IFA · football.org.il'
+      : platform === 'women'
+        ? 'Wosostat · SoccerDonna · FMInside'
+        : 'Transfermarkt · Scout Server · FMInside';
 
   const isWomen = platform === 'women';
+  const isYouth = platform === 'youth';
 
   if (loading || !user) {
     return (
       <div className="min-h-screen bg-mgsr-dark flex items-center justify-center">
-        <div className={`animate-pulse font-display ${isWomen ? 'text-[var(--women-rose)]' : 'text-mgsr-teal'}`}>{t('loading')}</div>
+        <div className={`animate-pulse font-display ${isYouth ? 'youth-gradient-text' : isWomen ? 'text-[var(--women-rose)]' : 'text-mgsr-teal'}`}>{t('loading')}</div>
       </div>
     );
   }
@@ -325,6 +362,14 @@ export default function PlayersPage() {
         dir={isRtl ? 'rtl' : 'ltr'}
         className={`max-w-6xl mx-auto ${isWomen ? 'p-6 md:p-10' : ''}`}
       >
+        {/* Youth: glassmorphism glow */}
+        {isYouth && (
+          <div className="relative mb-10 overflow-hidden pointer-events-none">
+            <div className="absolute -top-20 -right-20 w-80 h-80 rounded-full opacity-15" style={{ background: 'radial-gradient(circle, var(--youth-cyan) 0%, transparent 70%)' }} />
+            <div className="absolute -bottom-10 -left-10 w-60 h-60 rounded-full opacity-10" style={{ background: 'radial-gradient(circle, var(--youth-violet) 0%, transparent 70%)' }} />
+          </div>
+        )}
+
         {/* Women: curved hero with gradient */}
         {isWomen && (
           <div className="relative mb-10 overflow-hidden">
@@ -348,15 +393,15 @@ export default function PlayersPage() {
           <div>
             <h1
               className={`font-display font-bold text-mgsr-text tracking-tight ${
-                isWomen ? 'text-4xl md:text-5xl font-extrabold' : 'text-3xl'
+                isYouth ? 'text-4xl md:text-5xl font-extrabold' : isWomen ? 'text-4xl md:text-5xl font-extrabold' : 'text-3xl'
               }`}
             >
-              {t(isWomen ? 'players_title_women' : 'players_title')}
+              {isYouth ? <span className="youth-gradient-text">{t('players_title_youth')}</span> : t(isWomen ? 'players_title_women' : 'players_title')}
             </h1>
             <p className="text-mgsr-muted mt-1 text-sm">
-              {platform === 'women' ? womenPlayers.length : players.length} {t(isWomen ? 'players_women' : 'players')}
-              {filtered.length !== (platform === 'women' ? womenPlayers.length : players.length) && (
-                <span className={isWomen ? 'text-[var(--women-rose)]' : 'text-[var(--mgsr-accent)]'}>{` → ${filtered.length}`}</span>
+              {platform === 'youth' ? youthPlayers.length : platform === 'women' ? womenPlayers.length : players.length} {isYouth ? t('players_subtitle_youth') : t(isWomen ? 'players_women' : 'players')}
+              {filtered.length !== (platform === 'youth' ? youthPlayers.length : platform === 'women' ? womenPlayers.length : players.length) && (
+                <span className={isYouth ? 'text-[var(--youth-cyan)]' : isWomen ? 'text-[var(--women-rose)]' : 'text-[var(--mgsr-accent)]'}>{` → ${filtered.length}`}</span>
               )}
               <span className="block text-xs text-mgsr-muted/80 mt-0.5">{dataSourceLabel}</span>
             </p>
@@ -364,13 +409,16 @@ export default function PlayersPage() {
           <Link
             href="/players/add"
             className={`inline-flex items-center justify-center gap-2 font-semibold transition-all hover:scale-[1.02] active:scale-[0.98] ${
-              isWomen
-                ? 'px-6 py-3 rounded-2xl bg-[var(--women-gradient)] text-white shadow-[var(--women-glow)] hover:opacity-90'
-                : 'px-5 py-2.5 rounded-xl bg-[var(--mgsr-accent)] text-mgsr-dark hover:opacity-90'
+              isYouth
+                ? 'px-6 py-3 rounded-2xl text-white shadow-[0_0_30px_rgba(0,212,255,0.15)] hover:shadow-[0_0_40px_rgba(0,212,255,0.25)]'
+                : isWomen
+                  ? 'px-6 py-3 rounded-2xl bg-[var(--women-gradient)] text-white shadow-[var(--women-glow)] hover:opacity-90'
+                  : 'px-5 py-2.5 rounded-xl bg-[var(--mgsr-accent)] text-mgsr-dark hover:opacity-90'
             }`}
+            style={isYouth ? { background: 'linear-gradient(135deg, var(--youth-cyan), var(--youth-violet))' } : undefined}
           >
             <span>+</span>
-            {t(isWomen ? 'players_add_women' : 'players_add')}
+            {isYouth ? t('players_add_youth') : t(isWomen ? 'players_add_women' : 'players_add')}
           </Link>
         </div>
 
@@ -380,11 +428,13 @@ export default function PlayersPage() {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder={t('search_placeholder')}
+            placeholder={isYouth ? t('players_search_youth') : t('search_placeholder')}
             className={`flex-1 lg:max-w-md text-mgsr-text placeholder-mgsr-muted focus:outline-none transition ${
-              isWomen
-                ? 'px-5 py-3.5 rounded-2xl bg-mgsr-card border border-mgsr-border focus:border-[var(--women-rose)]/50 focus:ring-2 focus:ring-[var(--women-rose)]/20'
-                : 'px-4 py-3 rounded-xl bg-mgsr-card border border-mgsr-border focus:border-mgsr-teal/60 focus:ring-1 focus:ring-mgsr-teal/30'
+              isYouth
+                ? 'px-5 py-3.5 rounded-2xl youth-glass-input'
+                : isWomen
+                  ? 'px-5 py-3.5 rounded-2xl bg-mgsr-card border border-mgsr-border focus:border-[var(--women-rose)]/50 focus:ring-2 focus:ring-[var(--women-rose)]/20'
+                  : 'px-4 py-3 rounded-xl bg-mgsr-card border border-mgsr-border focus:border-mgsr-teal/60 focus:ring-1 focus:ring-mgsr-teal/30'
             }`}
           />
           {/* Mobile: filter button */}
@@ -418,12 +468,16 @@ export default function PlayersPage() {
                   isWomen ? 'rounded-xl' : 'rounded-lg'
                 } ${
                   positionFilter === pos
-                    ? isWomen
-                      ? 'bg-[var(--women-rose)] text-mgsr-dark shadow-sm shadow-[var(--women-rose)]/20'
-                      : 'bg-[var(--mgsr-accent)] text-mgsr-dark shadow-sm'
-                    : isWomen
-                      ? 'bg-mgsr-card border border-mgsr-border text-mgsr-muted hover:text-mgsr-text hover:border-[var(--women-rose)]/40'
-                      : 'bg-mgsr-card border border-mgsr-border text-mgsr-muted hover:text-mgsr-text hover:border-[var(--mgsr-accent)]/40'
+                    ? isYouth
+                      ? 'bg-[var(--youth-cyan)]/20 text-[var(--youth-cyan)] border border-[var(--youth-cyan)]/40 shadow-[0_0_12px_rgba(0,212,255,0.15)]'
+                      : isWomen
+                        ? 'bg-[var(--women-rose)] text-mgsr-dark shadow-sm shadow-[var(--women-rose)]/20'
+                        : 'bg-[var(--mgsr-accent)] text-mgsr-dark shadow-sm'
+                    : isYouth
+                      ? 'bg-white/5 border border-white/10 text-mgsr-muted hover:text-mgsr-text hover:border-[var(--youth-cyan)]/30'
+                      : isWomen
+                        ? 'bg-mgsr-card border border-mgsr-border text-mgsr-muted hover:text-mgsr-text hover:border-[var(--women-rose)]/40'
+                        : 'bg-mgsr-card border border-mgsr-border text-mgsr-muted hover:text-mgsr-text hover:border-[var(--mgsr-accent)]/40'
                 }`}
               >
                 {t(isWomen && pos.toLowerCase() === 'gk' ? 'players_filter_position_gk_women' : `players_filter_position_${pos.toLowerCase()}`)}
@@ -581,37 +635,44 @@ export default function PlayersPage() {
 
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-20 gap-3">
-            <div className="animate-pulse text-mgsr-muted">{t(isWomen ? 'players_loading_women' : 'players_loading')}</div>
+            <div className={`animate-pulse ${isYouth ? 'youth-gradient-text' : 'text-mgsr-muted'}`}>{isYouth ? t('players_loading_youth') : t(isWomen ? 'players_loading_women' : 'players_loading')}</div>
           </div>
         ) : displayList.length === 0 ? (
           <div
             className={`relative overflow-hidden p-16 border text-center ${
-              isWomen
-                ? 'bg-mgsr-card/50 border-mgsr-border rounded-3xl'
-                : 'bg-mgsr-card/50 border-mgsr-border rounded-2xl'
+              isYouth
+                ? 'youth-glass-card rounded-3xl'
+                : isWomen
+                  ? 'bg-mgsr-card/50 border-mgsr-border rounded-3xl'
+                  : 'bg-mgsr-card/50 border-mgsr-border rounded-2xl'
             }`}
           >
             <div
               className="absolute inset-0"
               style={{
-                background: isWomen
-                  ? 'radial-gradient(ellipse at center, rgba(232,160,191,0.08) 0%, transparent 70%)'
-                  : 'radial-gradient(ellipse at center, rgba(77,182,172,0.06) 0%, transparent 70%)',
+                background: isYouth
+                  ? 'radial-gradient(ellipse at center, rgba(0,212,255,0.08) 0%, transparent 70%)'
+                  : isWomen
+                    ? 'radial-gradient(ellipse at center, rgba(232,160,191,0.08) 0%, transparent 70%)'
+                    : 'radial-gradient(ellipse at center, rgba(77,182,172,0.06) 0%, transparent 70%)',
               }}
             />
             <p className="text-mgsr-muted text-lg mb-4 relative">
-              {search.trim() || hasActiveFilters ? t('search_no_results') : t(isWomen ? 'players_empty_women' : 'players_empty')}
+              {search.trim() || hasActiveFilters ? t('search_no_results') : isYouth ? t('players_empty_youth') : t(isWomen ? 'players_empty_women' : 'players_empty')}
             </p>
             {!search.trim() && !hasActiveFilters && (
               <Link
                 href="/players/add"
                 className={`inline-block px-6 py-3 font-semibold transition relative ${
-                  isWomen
-                    ? 'rounded-2xl bg-[var(--women-gradient)] text-white hover:opacity-90'
-                    : 'rounded-xl bg-mgsr-teal text-mgsr-dark hover:bg-mgsr-teal/90'
+                  isYouth
+                    ? 'rounded-2xl text-white hover:opacity-90 shadow-[0_0_20px_rgba(0,212,255,0.15)]'
+                    : isWomen
+                      ? 'rounded-2xl bg-[var(--women-gradient)] text-white hover:opacity-90'
+                      : 'rounded-xl bg-mgsr-teal text-mgsr-dark hover:bg-mgsr-teal/90'
                 }`}
+                style={isYouth ? { background: 'linear-gradient(135deg, var(--youth-cyan), var(--youth-violet))' } : undefined}
               >
-                {t(isWomen ? 'players_empty_hint_women' : 'players_empty_hint')}
+                {isYouth ? t('players_empty_hint_youth') : t(isWomen ? 'players_empty_hint_women' : 'players_empty_hint')}
               </Link>
             )}
             {hasActiveFilters && (
@@ -629,14 +690,18 @@ export default function PlayersPage() {
               <Link
                 key={p.id}
                 href={
-                  platform === 'women'
-                    ? `/players/women/${p.id}?from=/players`
-                    : `/players/${p.id}?from=/players`
+                  platform === 'youth'
+                    ? `/players/youth/${p.id}?from=/players`
+                    : platform === 'women'
+                      ? `/players/women/${p.id}?from=/players`
+                      : `/players/${p.id}?from=/players`
                 }
-                className={`group flex items-center gap-4 p-4 bg-mgsr-card border border-mgsr-border hover:bg-mgsr-card/80 transition-all duration-300 animate-fade-in ${
-                  isWomen
-                    ? 'rounded-2xl hover:border-[var(--women-rose)]/40 hover:shadow-[0_0_30px_rgba(232,160,191,0.12)]'
-                    : 'rounded-xl hover:border-[var(--mgsr-accent)]/40'
+                className={`group flex items-center gap-4 p-4 border transition-all duration-300 animate-fade-in ${
+                  isYouth
+                    ? 'youth-glass-card rounded-2xl hover:border-[var(--youth-cyan)]/40 hover:shadow-[0_0_20px_rgba(0,212,255,0.1)]'
+                    : isWomen
+                      ? 'bg-mgsr-card border-mgsr-border hover:bg-mgsr-card/80 rounded-2xl hover:border-[var(--women-rose)]/40 hover:shadow-[0_0_30px_rgba(232,160,191,0.12)]'
+                      : 'bg-mgsr-card border-mgsr-border hover:bg-mgsr-card/80 rounded-xl hover:border-[var(--mgsr-accent)]/40'
                 }`}
                 style={{ animationDelay: `${i * 30}ms` }}
               >
@@ -644,12 +709,14 @@ export default function PlayersPage() {
                   <img
                     src={p.profileImage || '/placeholder-player.png'}
                     alt=""
-                    className={`w-14 h-14 rounded-full object-cover bg-mgsr-dark ring-2 ring-mgsr-border transition ${isWomen ? 'group-hover:ring-[var(--women-rose)]/40' : 'group-hover:ring-mgsr-teal/40'}`}
+                    className={`w-14 h-14 rounded-full object-cover bg-mgsr-dark ring-2 transition ${isYouth ? 'ring-[var(--youth-cyan)]/20 group-hover:ring-[var(--youth-cyan)]/40' : isWomen ? 'ring-mgsr-border group-hover:ring-[var(--women-rose)]/40' : 'ring-mgsr-border group-hover:ring-mgsr-teal/40'}`}
                     onError={(e) => {
                       (e.target as HTMLImageElement).src =
-                        platform === 'women'
-                          ? 'https://placehold.co/56x56/1A2736/E8A0BF?text=?'
-                          : 'https://via.placeholder.com/56?text=?';
+                        platform === 'youth'
+                          ? 'https://placehold.co/56x56/0A0F1C/00D4FF?text=?'
+                          : platform === 'women'
+                            ? 'https://placehold.co/56x56/1A2736/E8A0BF?text=?'
+                            : 'https://via.placeholder.com/56?text=?';
                     }}
                   />
                   {p.currentClub && 'clubLogo' in p.currentClub && p.currentClub.clubLogo && (
@@ -661,7 +728,7 @@ export default function PlayersPage() {
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className={`font-semibold text-mgsr-text truncate transition ${isWomen ? 'group-hover:text-[var(--women-rose)]' : 'group-hover:text-mgsr-teal'}`}>
+                  <p className={`font-semibold text-mgsr-text truncate transition ${isYouth ? 'group-hover:text-[var(--youth-cyan)]' : isWomen ? 'group-hover:text-[var(--women-rose)]' : 'group-hover:text-mgsr-teal'}`}>
                     {p.fullName || 'Unknown'}
                   </p>
                   <p className="text-sm text-mgsr-muted truncate">
@@ -675,7 +742,13 @@ export default function PlayersPage() {
                   </p>
                 </div>
                 <div className={`text-right shrink-0 ${isRtl ? 'text-left' : ''}`}>
-                  <p className={`font-semibold ${isWomen ? 'text-[var(--women-rose)]' : 'text-[var(--mgsr-accent)]'}`}>{p.marketValue || '—'}</p>
+                  {isYouth && ('ageGroup' in p) && (p as YouthPlayer).ageGroup ? (
+                    <span className="px-2 py-0.5 rounded-lg bg-[var(--youth-violet)]/15 text-[var(--youth-violet)] text-xs font-semibold border border-[var(--youth-violet)]/20">
+                      {(p as YouthPlayer).ageGroup}
+                    </span>
+                  ) : (
+                    <p className={`font-semibold ${isWomen ? 'text-[var(--women-rose)]' : 'text-[var(--mgsr-accent)]'}`}>{p.marketValue || '—'}</p>
+                  )}
                 </div>
               </Link>
             ))}

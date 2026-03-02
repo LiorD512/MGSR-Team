@@ -1,0 +1,914 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MGSR Youth — Glassmorphism / Futuristic Design</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════
+   MGSR YOUTH — GLASSMORPHISM / FUTURISTIC
+   Frosted glass, gradients, blur, cyan+violet
+   ═══════════════════════════════════════════ */
+
+:root {
+  --bg: #080B1A;
+  --bg2: #0C1024;
+  --glass: rgba(255, 255, 255, 0.04);
+  --glass-strong: rgba(255, 255, 255, 0.07);
+  --glass-hover: rgba(255, 255, 255, 0.1);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-border-hover: rgba(255, 255, 255, 0.15);
+  --text: #F0F2FF;
+  --text-secondary: #A0A8C8;
+  --text-muted: #5E6688;
+  --cyan: #00E5FF;
+  --cyan-dim: rgba(0, 229, 255, 0.1);
+  --cyan-glow: rgba(0, 229, 255, 0.2);
+  --violet: #B388FF;
+  --violet-dim: rgba(179, 136, 255, 0.1);
+  --violet-glow: rgba(179, 136, 255, 0.2);
+  --pink: #FF6EC7;
+  --pink-dim: rgba(255, 110, 199, 0.1);
+  --lime: #B2FF59;
+  --lime-dim: rgba(178, 255, 89, 0.1);
+  --success: #69F0AE;
+  --danger: #FF5252;
+  --warning: #FFD740;
+  --whatsapp: #25D366;
+  --gradient-primary: linear-gradient(135deg, #00E5FF 0%, #B388FF 100%);
+  --gradient-bg: radial-gradient(ellipse at 20% 0%, rgba(0, 229, 255, 0.08) 0%, transparent 50%),
+                 radial-gradient(ellipse at 80% 100%, rgba(179, 136, 255, 0.08) 0%, transparent 50%);
+  --font-display: 'Space Grotesk', sans-serif;
+  --font-body: 'Inter', sans-serif;
+  --r: 16px;
+  --r-sm: 10px;
+  --r-xs: 6px;
+  --blur: blur(24px) saturate(1.5);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  line-height: 1.5;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: var(--gradient-bg);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ─── TOP NAV ─── */
+.screen-nav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
+  background: rgba(8, 11, 26, 0.85);
+  backdrop-filter: var(--blur);
+  border-bottom: 1px solid var(--glass-border);
+  padding: 12px 24px;
+  display: flex; align-items: center; gap: 8px;
+}
+.screen-nav-brand {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 700;
+  background: var(--gradient-primary);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  margin-right: 20px;
+}
+.screen-nav a {
+  font-family: var(--font-display);
+  font-size: 0.78rem; font-weight: 600;
+  color: var(--text-muted);
+  text-decoration: none;
+  padding: 6px 14px;
+  border-radius: var(--r-xs);
+  border: 1px solid transparent;
+  transition: all 0.2s;
+}
+.screen-nav a:hover { color: var(--text-secondary); background: var(--glass); border-color: var(--glass-border); }
+.screen-nav a.active {
+  color: var(--cyan);
+  background: var(--cyan-dim);
+  border-color: rgba(0, 229, 255, 0.15);
+}
+
+/* ─── LAYOUT ─── */
+.screen-section { padding: 80px 0 40px; min-height: 100vh; position: relative; z-index: 1; }
+.screen-section + .screen-section { border-top: 1px solid var(--glass-border); }
+.screen-label {
+  font-family: var(--font-display);
+  font-size: 2rem; font-weight: 800;
+  background: var(--gradient-primary);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  text-align: center; margin-bottom: 4px;
+}
+.screen-sublabel { text-align: center; color: var(--text-muted); font-size: 0.82rem; margin-bottom: 28px; }
+
+.app-shell { display: grid; grid-template-columns: 220px 1fr; min-height: calc(100vh - 60px); max-width: 1400px; margin: 0 auto; padding: 0 20px; }
+
+/* ─── SIDEBAR ─── */
+.sidebar { padding: 20px 0; border-right: 1px solid var(--glass-border); }
+.sidebar-brand { display: flex; align-items: center; gap: 10px; padding: 0 16px 20px; margin-bottom: 8px; border-bottom: 1px solid var(--glass-border); }
+.sidebar-logo {
+  width: 36px; height: 36px;
+  background: var(--gradient-primary);
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-display); font-weight: 800; font-size: 0.85rem; color: #080B1A;
+}
+.sidebar-brand-text { font-family: var(--font-display); font-weight: 700; font-size: 0.9rem; }
+.sidebar-brand-text span { color: var(--cyan); }
+
+.platform-switcher {
+  margin: 0 12px 16px;
+  padding: 8px 12px;
+  border-radius: var(--r-sm);
+  background: var(--glass);
+  backdrop-filter: var(--blur);
+  border: 1px solid var(--glass-border);
+  display: flex; align-items: center; gap: 8px; cursor: pointer;
+  transition: all 0.25s;
+}
+.platform-switcher:hover { border-color: var(--cyan); box-shadow: 0 0 20px var(--cyan-dim); }
+.platform-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--cyan); box-shadow: 0 0 10px var(--cyan-glow); }
+.platform-switcher-label { font-family: var(--font-display); font-size: 0.78rem; font-weight: 600; color: var(--cyan); flex: 1; }
+.platform-switcher-chevron { color: var(--text-muted); font-size: 0.7rem; }
+
+.nav-items { list-style: none; padding: 0 8px; }
+.nav-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 12px; border-radius: var(--r-sm);
+  color: var(--text-secondary); font-size: 0.82rem; font-weight: 500;
+  cursor: pointer; transition: all 0.2s; margin-bottom: 2px;
+}
+.nav-item:hover { background: var(--glass); color: var(--text); }
+.nav-item.active { background: var(--cyan-dim); color: var(--cyan); }
+.nav-icon { width: 18px; text-align: center; font-size: 0.85rem; }
+.nav-badge {
+  margin-left: auto; font-size: 0.65rem; padding: 2px 7px;
+  border-radius: 10px; background: var(--violet-dim); color: var(--violet); font-weight: 600;
+}
+
+/* ─── MAIN ─── */
+.main-content { padding: 20px 24px; }
+.page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+.page-title { font-family: var(--font-display); font-size: 1.4rem; font-weight: 700; }
+
+/* ─── GLASS CARD ─── */
+.glass-card {
+  background: var(--glass);
+  backdrop-filter: var(--blur);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--r);
+  padding: 18px;
+  transition: all 0.25s;
+}
+.glass-card:hover { border-color: var(--glass-border-hover); background: var(--glass-strong); }
+
+/* ─── BUTTONS ─── */
+.btn {
+  font-family: var(--font-display); font-size: 0.78rem; font-weight: 600;
+  padding: 8px 16px; border-radius: var(--r-xs); border: none; cursor: pointer;
+  transition: all 0.2s; display: inline-flex; align-items: center; gap: 6px;
+}
+.btn-primary {
+  background: var(--gradient-primary); color: #080B1A;
+}
+.btn-primary:hover { box-shadow: 0 4px 24px var(--cyan-glow), 0 4px 24px var(--violet-glow); transform: translateY(-1px); }
+.btn-secondary {
+  background: var(--cyan-dim); color: var(--cyan); border: 1px solid rgba(0, 229, 255, 0.15);
+}
+.btn-ghost { background: var(--glass); color: var(--text-secondary); border: 1px solid var(--glass-border); }
+.btn-ghost:hover { border-color: var(--glass-border-hover); color: var(--text); }
+.btn-sm { padding: 5px 10px; font-size: 0.72rem; }
+
+/* ─── BADGES ─── */
+.badge {
+  font-family: var(--font-display); font-size: 0.68rem; font-weight: 600;
+  padding: 2px 8px; border-radius: var(--r-xs); display: inline-flex; align-items: center; gap: 4px;
+}
+.badge-cyan { background: var(--cyan-dim); color: var(--cyan); }
+.badge-violet { background: var(--violet-dim); color: var(--violet); }
+.badge-pink { background: var(--pink-dim); color: var(--pink); }
+.badge-lime { background: var(--lime-dim); color: var(--lime); }
+.badge-success { background: rgba(105, 240, 174, 0.1); color: var(--success); }
+.badge-danger { background: rgba(255, 82, 82, 0.1); color: var(--danger); }
+
+/* Age-group pill — frosted */
+.age-pill {
+  font-family: var(--font-display); font-size: 0.65rem; font-weight: 700;
+  padding: 3px 10px; border-radius: 20px;
+  background: var(--gradient-primary); color: #080B1A;
+  letter-spacing: 0.5px;
+}
+
+/* ─── GRADIENT DIVIDER ─── */
+.gradient-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--cyan), var(--violet), transparent);
+  margin: 24px 0; opacity: 0.3;
+}
+
+/* ─── STAT CARDS ─── */
+.stat-card {
+  background: var(--glass); backdrop-filter: var(--blur);
+  border: 1px solid var(--glass-border); border-radius: var(--r);
+  padding: 18px; position: relative; overflow: hidden;
+}
+.stat-card::before {
+  content: ''; position: absolute; inset: 0;
+  border-radius: var(--r); z-index: -1;
+}
+.stat-card.cyan::before { background: radial-gradient(circle at 0% 0%, var(--cyan-dim) 0%, transparent 60%); }
+.stat-card.violet::before { background: radial-gradient(circle at 0% 0%, var(--violet-dim) 0%, transparent 60%); }
+.stat-card.pink::before { background: radial-gradient(circle at 0% 0%, var(--pink-dim) 0%, transparent 60%); }
+.stat-card.lime::before { background: radial-gradient(circle at 0% 0%, var(--lime-dim) 0%, transparent 60%); }
+.stat-value { font-family: var(--font-display); font-size: 2.2rem; font-weight: 800; line-height: 1; margin-bottom: 4px; }
+.stat-value.cyan { color: var(--cyan); }
+.stat-value.violet { color: var(--violet); }
+.stat-value.pink { color: var(--pink); }
+.stat-value.lime { color: var(--lime); }
+.stat-label { font-size: 0.72rem; color: var(--text-muted); font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }
+.stat-delta { font-size: 0.68rem; font-weight: 600; margin-top: 6px; }
+.stat-delta.up { color: var(--success); }
+
+/* ─── SEARCH ─── */
+.search-bar {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--glass); backdrop-filter: var(--blur);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--r-sm); padding: 10px 14px;
+  transition: all 0.25s;
+}
+.search-bar:focus-within {
+  border-color: var(--cyan);
+  box-shadow: 0 0 30px var(--cyan-dim), inset 0 0 30px rgba(0, 229, 255, 0.03);
+}
+.search-bar input { background: none; border: none; color: var(--text); font-family: var(--font-body); font-size: 0.88rem; outline: none; flex: 1; }
+.search-bar input::placeholder { color: var(--text-muted); }
+
+/* ─── PLAYER CARDS ─── */
+.player-card {
+  background: var(--glass); backdrop-filter: var(--blur);
+  border: 1px solid var(--glass-border); border-radius: var(--r);
+  padding: 14px; display: flex; align-items: center; gap: 14px;
+  cursor: pointer; transition: all 0.25s; position: relative;
+}
+.player-card:hover {
+  border-color: var(--cyan);
+  background: var(--glass-hover);
+  box-shadow: 0 4px 30px rgba(0, 229, 255, 0.06);
+  transform: translateY(-1px);
+}
+.player-card-img {
+  width: 48px; height: 48px; border-radius: 12px;
+  background: var(--glass-strong); border: 1px solid var(--glass-border);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.3rem; flex-shrink: 0;
+}
+.player-card-img.linked { border-color: var(--cyan); box-shadow: 0 0 15px var(--cyan-dim); }
+.player-card-info { flex: 1; min-width: 0; }
+.player-card-name { font-family: var(--font-display); font-weight: 700; font-size: 0.92rem; }
+.player-card-name-he { font-size: 0.72rem; color: var(--text-muted); direction: rtl; }
+.player-card-meta { display: flex; align-items: center; gap: 8px; margin-top: 4px; flex-wrap: wrap; }
+.player-card-meta span { font-size: 0.72rem; color: var(--text-secondary); }
+.player-card-age-group { position: absolute; top: 10px; right: 10px; }
+.player-card-actions { display: flex; gap: 6px; flex-shrink: 0; }
+
+/* ─── FILTER CHIPS ─── */
+.filter-chips { display: flex; gap: 6px; margin-bottom: 16px; overflow-x: auto; scrollbar-width: none; }
+.filter-chips::-webkit-scrollbar { display: none; }
+.filter-chip {
+  font-family: var(--font-display); font-size: 0.72rem; font-weight: 600;
+  padding: 5px 12px; border-radius: 20px;
+  border: 1px solid var(--glass-border); background: var(--glass);
+  color: var(--text-muted); white-space: nowrap; cursor: pointer; transition: all 0.2s;
+}
+.filter-chip.active { border-color: var(--cyan); background: var(--cyan-dim); color: var(--cyan); }
+
+/* ─── FORMS ─── */
+.form-group { margin-bottom: 14px; }
+.form-label {
+  display: block; font-family: var(--font-display); font-size: 0.72rem; font-weight: 600;
+  color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 5px;
+}
+.form-input {
+  width: 100%; background: var(--glass); backdrop-filter: var(--blur);
+  border: 1px solid var(--glass-border); border-radius: var(--r-xs);
+  padding: 10px 12px; color: var(--text); font-family: var(--font-body); font-size: 0.88rem;
+  transition: all 0.25s; outline: none;
+}
+.form-input:focus { border-color: var(--cyan); box-shadow: 0 0 0 3px var(--cyan-dim); }
+.form-input::placeholder { color: var(--text-muted); }
+.form-input.filled { border-color: rgba(0, 229, 255, 0.25); background: rgba(0, 229, 255, 0.03); }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+.form-section {
+  background: var(--glass); backdrop-filter: var(--blur);
+  border: 1px solid var(--glass-border); border-radius: var(--r);
+  padding: 18px; margin-bottom: 16px; position: relative; overflow: hidden;
+}
+.form-section::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: var(--gradient-primary); opacity: 0.4;
+}
+.form-section.parent::before { background: linear-gradient(90deg, var(--violet), var(--pink)); }
+.form-section-title {
+  font-family: var(--font-display); font-size: 0.88rem; font-weight: 700;
+  margin-bottom: 14px; display: flex; align-items: center; gap: 8px;
+}
+
+/* Position grid */
+.position-grid { display: flex; flex-wrap: wrap; gap: 6px; }
+.position-tag {
+  font-family: var(--font-display); font-size: 0.72rem; font-weight: 600;
+  padding: 4px 10px; border-radius: 20px;
+  background: var(--glass); border: 1px solid var(--glass-border);
+  color: var(--text-muted); cursor: pointer; transition: all 0.2s;
+}
+.position-tag.selected { background: var(--cyan-dim); border-color: var(--cyan); color: var(--cyan); }
+
+/* Age group chips */
+.age-group-select { display: flex; gap: 6px; flex-wrap: wrap; }
+.age-group-chip {
+  font-family: var(--font-display); font-size: 0.7rem; font-weight: 700;
+  padding: 4px 12px; border-radius: 20px;
+  background: var(--glass); border: 1px solid var(--glass-border);
+  color: var(--text-muted); cursor: pointer; transition: all 0.2s;
+}
+.age-group-chip.selected { background: var(--gradient-primary); color: #080B1A; border-color: transparent; }
+
+/* ─── SEARCH DROPDOWN ─── */
+.search-dropdown {
+  background: rgba(12, 16, 36, 0.95); backdrop-filter: var(--blur);
+  border: 1px solid var(--cyan); border-radius: var(--r-sm);
+  margin-top: 4px; overflow: hidden;
+  box-shadow: 0 8px 40px rgba(0, 229, 255, 0.1);
+}
+.search-dropdown-header {
+  padding: 8px 12px; background: var(--cyan-dim);
+  font-size: 0.68rem; font-weight: 600; color: var(--cyan);
+  text-transform: uppercase; letter-spacing: 0.5px;
+  display: flex; align-items: center; gap: 6px;
+}
+.search-result-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 12px; cursor: pointer; transition: background 0.15s;
+  border-bottom: 1px solid var(--glass-border);
+}
+.search-result-item:last-child { border-bottom: none; }
+.search-result-item:hover, .search-result-item.selected { background: var(--cyan-dim); }
+.search-result-name { font-family: var(--font-display); font-size: 0.82rem; font-weight: 600; }
+.search-result-name-he { font-size: 0.7rem; color: var(--text-muted); direction: rtl; }
+.search-result-club { font-size: 0.7rem; color: var(--text-secondary); }
+.search-result-source {
+  font-size: 0.6rem; font-weight: 600; padding: 2px 6px;
+  border-radius: var(--r-xs); background: var(--cyan-dim); color: var(--cyan);
+}
+
+/* ─── CONTACT CARDS ─── */
+.contact-card {
+  background: var(--glass); backdrop-filter: var(--blur);
+  border: 1px solid var(--glass-border); border-radius: var(--r);
+  padding: 16px; position: relative; overflow: hidden;
+}
+.contact-card::before {
+  content: ''; position: absolute; top: 0; left: 0; bottom: 0; width: 3px;
+}
+.contact-card.player::before { background: var(--gradient-primary); }
+.contact-card.parent::before { background: linear-gradient(180deg, var(--violet), var(--pink)); }
+.contact-card-header { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; padding-left: 8px; }
+.contact-card-icon {
+  width: 32px; height: 32px; border-radius: var(--r-xs);
+  display: flex; align-items: center; justify-content: center; font-size: 0.9rem;
+}
+.contact-card-icon.player-icon { background: var(--cyan-dim); color: var(--cyan); }
+.contact-card-icon.parent-icon { background: var(--violet-dim); color: var(--violet); }
+.contact-card-title { font-family: var(--font-display); font-size: 0.82rem; font-weight: 700; }
+
+.contact-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 8px 8px 12px; border-top: 1px solid var(--glass-border);
+}
+.contact-row:first-of-type { border-top: none; }
+.contact-row-icon { width: 24px; text-align: center; color: var(--text-muted); font-size: 0.82rem; }
+.contact-row-label { font-size: 0.68rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+.contact-row-value { font-size: 0.82rem; color: var(--text); font-weight: 500; }
+.contact-wa-btn {
+  margin-left: auto; background: rgba(37, 211, 102, 0.1); color: var(--whatsapp);
+  border: none; border-radius: var(--r-xs); padding: 4px 8px; font-size: 0.72rem;
+  cursor: pointer; display: flex; align-items: center; gap: 4px;
+}
+
+/* ─── IFA STATS ─── */
+.ifa-stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.ifa-stat {
+  text-align: center; padding: 14px 8px;
+  background: var(--glass); border: 1px solid var(--glass-border); border-radius: var(--r-sm);
+}
+.ifa-stat-value { font-family: var(--font-display); font-size: 1.6rem; font-weight: 800; }
+.ifa-stat-value.goals { color: var(--cyan); }
+.ifa-stat-value.assists { color: var(--violet); }
+.ifa-stat-value.cards { color: var(--warning); }
+.ifa-stat-value.matches { color: var(--pink); }
+.ifa-stat-label { font-size: 0.62rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 2px; }
+
+/* ─── PLAYER HERO ─── */
+.player-hero { display: flex; gap: 24px; align-items: flex-start; margin-bottom: 24px; }
+.player-hero-img {
+  width: 120px; height: 120px; border-radius: 20px;
+  background: var(--glass); display: flex; align-items: center; justify-content: center;
+  font-size: 3.2rem; flex-shrink: 0;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  position: relative;
+}
+.player-hero-img::before {
+  content: ''; position: absolute; inset: -2px; border-radius: 22px;
+  background: var(--gradient-primary); z-index: -1;
+}
+.player-hero-img::after {
+  content: ''; position: absolute; inset: -2px; border-radius: 22px;
+  background: var(--gradient-primary); z-index: -2;
+  filter: blur(20px); opacity: 0.3;
+}
+.player-hero-info { flex: 1; }
+.player-hero-name { font-family: var(--font-display); font-size: 1.8rem; font-weight: 800; line-height: 1.1; }
+.player-hero-name-he { font-size: 0.95rem; color: var(--text-muted); direction: rtl; margin-top: 2px; }
+.player-hero-badges { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
+.player-hero-details { display: flex; gap: 16px; margin-top: 12px; flex-wrap: wrap; }
+.player-hero-detail { font-size: 0.78rem; color: var(--text-secondary); }
+.player-hero-detail strong { color: var(--text); font-weight: 600; }
+.player-hero-links { display: flex; gap: 8px; margin-top: 14px; }
+.link-btn {
+  font-family: var(--font-display); font-size: 0.7rem; font-weight: 600;
+  padding: 5px 12px; border-radius: var(--r-xs);
+  border: 1px solid var(--glass-border); background: var(--glass);
+  color: var(--text-secondary); display: flex; align-items: center; gap: 5px;
+  cursor: pointer; transition: all 0.2s;
+}
+.link-btn:hover { border-color: var(--cyan); color: var(--cyan); }
+
+/* ─── SECTION HEADER ─── */
+.section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.section-title {
+  font-family: var(--font-display); font-size: 0.92rem; font-weight: 700;
+  display: flex; align-items: center; gap: 8px;
+}
+.section-title-icon { color: var(--cyan); font-size: 0.82rem; }
+.section-count { font-size: 0.68rem; color: var(--text-muted); }
+
+/* ─── NOTES ─── */
+.note-item { display: flex; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--glass-border); }
+.note-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--cyan); margin-top: 6px; flex-shrink: 0; box-shadow: 0 0 10px var(--cyan-glow); }
+.note-text { font-size: 0.82rem; color: var(--text); line-height: 1.55; }
+.note-meta { font-size: 0.68rem; color: var(--text-muted); margin-top: 3px; display: flex; gap: 12px; }
+
+/* ─── ACTIVITY ─── */
+.activity-item { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--glass-border); }
+.activity-item:last-child { border-bottom: none; }
+.activity-icon {
+  width: 32px; height: 32px; border-radius: var(--r-xs);
+  display: flex; align-items: center; justify-content: center; font-size: 0.82rem; flex-shrink: 0;
+}
+.activity-icon.add { background: var(--cyan-dim); color: var(--cyan); }
+.activity-icon.note { background: var(--violet-dim); color: var(--violet); }
+.activity-icon.task { background: var(--pink-dim); color: var(--pink); }
+.activity-icon.mandate { background: var(--lime-dim); color: var(--lime); }
+.activity-text { font-size: 0.78rem; color: var(--text-secondary); flex: 1; }
+.activity-text strong { color: var(--text); font-weight: 600; }
+.activity-time { font-size: 0.68rem; color: var(--text-muted); flex-shrink: 0; }
+
+/* ─── AGE CHART ─── */
+.age-chart { display: flex; align-items: flex-end; gap: 8px; height: 100px; padding-top: 10px; }
+.age-bar { flex: 1; border-radius: 8px 8px 0 0; position: relative; min-width: 30px; transition: all 0.3s; }
+.age-bar-label { position: absolute; bottom: -18px; left: 50%; transform: translateX(-50%); font-size: 0.6rem; color: var(--text-muted); }
+.age-bar-value {
+  position: absolute; top: -18px; left: 50%; transform: translateX(-50%);
+  font-family: var(--font-display); font-size: 0.7rem; font-weight: 700;
+}
+
+/* ─── DOCUMENTS ─── */
+.doc-item {
+  display: flex; align-items: center; gap: 12px; padding: 10px;
+  background: var(--glass); border: 1px solid var(--glass-border); border-radius: var(--r-sm);
+}
+.doc-icon {
+  width: 36px; height: 36px; border-radius: var(--r-xs);
+  display: flex; align-items: center; justify-content: center; font-size: 1rem;
+}
+
+/* ─── HIGHLIGHT THUMBS ─── */
+.highlight-thumb {
+  width: 160px; height: 90px; border-radius: var(--r-sm);
+  background: var(--glass-strong); display: flex; align-items: center; justify-content: center;
+  overflow: hidden; flex-shrink: 0; border: 1px solid var(--glass-border); position: relative;
+}
+.highlight-play {
+  width: 36px; height: 36px; border-radius: 50%;
+  background: rgba(0, 0, 0, 0.5); backdrop-filter: blur(10px);
+  display: flex; align-items: center; justify-content: center; color: #fff; font-size: 0.9rem;
+}
+.highlight-duration {
+  position: absolute; bottom: 4px; right: 4px;
+  background: rgba(0,0,0,0.6); backdrop-filter: blur(8px);
+  padding: 1px 5px; border-radius: 4px; font-size: 0.62rem; color: #fff;
+}
+
+/* ─── SCROLLBAR ─── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--glass-border); border-radius: 3px; }
+
+@media (max-width: 900px) {
+  .app-shell { grid-template-columns: 1fr; }
+  .sidebar { display: none; }
+  .ifa-stats-grid { grid-template-columns: repeat(2, 1fr); }
+  .form-row { grid-template-columns: 1fr; }
+  .player-hero { flex-direction: column; align-items: center; text-align: center; }
+}
+</style>
+</head>
+<body>
+
+<nav class="screen-nav">
+  <span class="screen-nav-brand">MGSR YOUTH</span>
+  <a href="#dashboard" class="active" onclick="switchScreen('dashboard', this)">Dashboard</a>
+  <a href="#players" onclick="switchScreen('players', this)">Players List</a>
+  <a href="#add-player" onclick="switchScreen('add-player', this)">Add Player</a>
+  <a href="#player-detail" onclick="switchScreen('player-detail', this)">Player Detail</a>
+</nav>
+
+<!-- ═══════ SCREEN 1 — DASHBOARD ═══════ -->
+<section id="dashboard" class="screen-section">
+  <div class="screen-label">Dashboard</div>
+  <div class="screen-sublabel">Glassmorphism — frosted glass cards, gradient glows, cyan + violet</div>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="sidebar-brand"><div class="sidebar-logo">MY</div><div class="sidebar-brand-text">MGSR <span>Youth</span></div></div>
+      <div class="platform-switcher"><div class="platform-dot"></div><span class="platform-switcher-label">MGSR Youth</span><span class="platform-switcher-chevron">▾</span></div>
+      <ul class="nav-items">
+        <li class="nav-item active"><span class="nav-icon">📊</span> Dashboard</li>
+        <li class="nav-item"><span class="nav-icon">📋</span> Tasks <span class="nav-badge">3</span></li>
+        <li class="nav-item"><span class="nav-icon">⚽</span> Players <span class="nav-badge">24</span></li>
+        <li class="nav-item"><span class="nav-icon">⭐</span> Shortlist</li>
+        <li class="nav-item"><span class="nav-icon">👥</span> Contacts</li>
+        <li class="nav-item"><span class="nav-icon">📨</span> Requests</li>
+      </ul>
+    </aside>
+    <main class="main-content">
+      <div class="page-header">
+        <h1 class="page-title">Dashboard</h1>
+        <button class="btn btn-primary">+ Add Player</button>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 24px;">
+        <div class="stat-card cyan"><div class="stat-value cyan">24</div><div class="stat-label">Total Players</div><div class="stat-delta up">+3 this week</div></div>
+        <div class="stat-card violet"><div class="stat-value violet">8</div><div class="stat-label">With Mandate</div><div class="stat-delta up">+1 this month</div></div>
+        <div class="stat-card pink"><div class="stat-value pink">5</div><div class="stat-label">Active Tasks</div><div class="stat-delta" style="color: var(--text-muted);">2 overdue</div></div>
+        <div class="stat-card lime"><div class="stat-value lime">12</div><div class="stat-label">Club Requests</div><div class="stat-delta up">+4 new</div></div>
+      </div>
+      <div style="display: grid; grid-template-columns: 1fr 320px; gap: 20px;">
+        <div>
+          <div class="section-header"><div class="section-title"><span class="section-title-icon">🔥</span> Recent Activity</div><span class="section-count">Last 7 days</span></div>
+          <div class="glass-card">
+            <div class="activity-item"><div class="activity-icon add">+</div><div class="activity-text"><strong>Yarin Leibowitz</strong> added to players roster</div><div class="activity-time">2h ago</div></div>
+            <div class="activity-item"><div class="activity-icon note">✎</div><div class="activity-text">Note added for <strong>Noam Greenfeld</strong>: "Impressive U-17 league performance..."</div><div class="activity-time">5h ago</div></div>
+            <div class="activity-item"><div class="activity-icon task">⚡</div><div class="activity-text">Task completed: <strong>Contact parent of Amit Shalom</strong></div><div class="activity-time">1d ago</div></div>
+            <div class="activity-item"><div class="activity-icon mandate">📄</div><div class="activity-text">Mandate signed for <strong>Daniel Peretz Jr.</strong></div><div class="activity-time">2d ago</div></div>
+            <div class="activity-item"><div class="activity-icon add">+</div><div class="activity-text"><strong>Tom Avrahami</strong> added from IFA search</div><div class="activity-time">3d ago</div></div>
+          </div>
+        </div>
+        <div>
+          <div class="section-header"><div class="section-title"><span class="section-title-icon">📈</span> Age Groups</div></div>
+          <div class="glass-card" style="padding: 20px 16px 34px;">
+            <div class="age-chart">
+              <div class="age-bar" style="height: 15%; background: var(--cyan-dim); border: 1px solid rgba(0,229,255,0.15);"><span class="age-bar-value" style="color:var(--cyan);">1</span><span class="age-bar-label">U-13</span></div>
+              <div class="age-bar" style="height: 35%; background: var(--cyan-dim); border: 1px solid rgba(0,229,255,0.2);"><span class="age-bar-value" style="color:var(--cyan);">4</span><span class="age-bar-label">U-14</span></div>
+              <div class="age-bar" style="height: 60%; background: linear-gradient(180deg, rgba(0,229,255,0.3), rgba(179,136,255,0.15));"><span class="age-bar-value" style="color:var(--cyan);">7</span><span class="age-bar-label">U-15</span></div>
+              <div class="age-bar" style="height: 85%; background: linear-gradient(180deg, var(--cyan), var(--violet)); opacity: 0.7;"><span class="age-bar-value">9</span><span class="age-bar-label">U-17</span></div>
+              <div class="age-bar" style="height: 25%; background: var(--violet-dim); border: 1px solid rgba(179,136,255,0.2);"><span class="age-bar-value" style="color:var(--violet);">2</span><span class="age-bar-label">U-19</span></div>
+              <div class="age-bar" style="height: 10%; background: var(--pink-dim); border: 1px solid rgba(255,110,199,0.15);"><span class="age-bar-value" style="color:var(--pink);">1</span><span class="age-bar-label">U-21</span></div>
+            </div>
+          </div>
+          <div style="margin-top: 16px;">
+            <div class="section-header"><div class="section-title"><span class="section-title-icon">🏟️</span> Top Clubs</div></div>
+            <div class="glass-card" style="padding: 12px;">
+              <div style="display: flex; justify-content: space-between; padding: 7px 0; border-bottom: 1px solid var(--glass-border);"><span style="font-size: 0.8rem;">Maccabi Petah Tikva</span><span class="badge badge-cyan">6</span></div>
+              <div style="display: flex; justify-content: space-between; padding: 7px 0; border-bottom: 1px solid var(--glass-border);"><span style="font-size: 0.8rem;">Hapoel Tel Aviv</span><span class="badge badge-cyan">4</span></div>
+              <div style="display: flex; justify-content: space-between; padding: 7px 0; border-bottom: 1px solid var(--glass-border);"><span style="font-size: 0.8rem;">Maccabi Tel Aviv</span><span class="badge badge-cyan">3</span></div>
+              <div style="display: flex; justify-content: space-between; padding: 7px 0;"><span style="font-size: 0.8rem;">Beitar Jerusalem</span><span class="badge badge-cyan">2</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="gradient-divider"></div>
+    </main>
+  </div>
+</section>
+
+<!-- ═══════ SCREEN 2 — PLAYERS LIST ═══════ -->
+<section id="players" class="screen-section" style="display:none;">
+  <div class="screen-label">Players</div>
+  <div class="screen-sublabel">Glassmorphism — frosted glass cards, hover glows, gradient pills</div>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="sidebar-brand"><div class="sidebar-logo">MY</div><div class="sidebar-brand-text">MGSR <span>Youth</span></div></div>
+      <div class="platform-switcher"><div class="platform-dot"></div><span class="platform-switcher-label">MGSR Youth</span><span class="platform-switcher-chevron">▾</span></div>
+      <ul class="nav-items">
+        <li class="nav-item"><span class="nav-icon">📊</span> Dashboard</li>
+        <li class="nav-item"><span class="nav-icon">📋</span> Tasks</li>
+        <li class="nav-item active"><span class="nav-icon">⚽</span> Players <span class="nav-badge">24</span></li>
+        <li class="nav-item"><span class="nav-icon">⭐</span> Shortlist</li>
+        <li class="nav-item"><span class="nav-icon">👥</span> Contacts</li>
+        <li class="nav-item"><span class="nav-icon">📨</span> Requests</li>
+      </ul>
+    </aside>
+    <main class="main-content">
+      <div class="page-header">
+        <h1 class="page-title">Players <span style="color: var(--text-muted); font-size: 0.82rem; font-weight: 400;">24 players</span></h1>
+        <button class="btn btn-primary">+ Add Player</button>
+      </div>
+      <div class="search-bar" style="margin-bottom: 14px;"><span style="color: var(--text-muted);">🔍</span><input placeholder="Search players by name, club, or position..." /></div>
+      <div class="filter-chips">
+        <span class="filter-chip active">All</span><span class="filter-chip">U-13</span><span class="filter-chip">U-14</span><span class="filter-chip">U-15</span>
+        <span class="filter-chip">U-17</span><span class="filter-chip">U-19</span><span class="filter-chip">U-21</span>
+        <span class="filter-chip">⚡ With Mandate</span><span class="filter-chip">GK</span><span class="filter-chip">CM</span><span class="filter-chip">ST</span>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 8px;">
+        <div class="player-card">
+          <div class="player-card-img linked">⚽</div>
+          <div class="player-card-info"><div class="player-card-name">Yarin Leibowitz</div><div class="player-card-name-he" dir="rtl">ירין ליבוביץ</div><div class="player-card-meta"><span>🇮🇱 Israel</span><span>·</span><span>Maccabi Petah Tikva</span><span>·</span><span style="color:var(--cyan);">CM, AM</span><span>·</span><span>Born 01/2011</span></div></div>
+          <div class="player-card-age-group"><span class="age-pill">U-15</span></div>
+          <div class="player-card-actions"><button class="btn btn-sm btn-ghost">📄</button><button class="btn btn-sm btn-ghost">✏️</button></div>
+        </div>
+        <div class="player-card">
+          <div class="player-card-img">⚽</div>
+          <div class="player-card-info"><div class="player-card-name">Noam Greenfeld</div><div class="player-card-name-he" dir="rtl">נועם גרינפלד</div><div class="player-card-meta"><span>🇮🇱 Israel</span><span>·</span><span>Hapoel Tel Aviv</span><span>·</span><span style="color:var(--cyan);">LW</span><span>·</span><span>Born 05/2008</span></div></div>
+          <div class="player-card-age-group"><span class="age-pill">U-17</span></div>
+          <div style="margin-right: 8px;"><span class="badge badge-success" style="font-size: 0.62rem;">📄 Mandate</span></div>
+          <div class="player-card-actions"><button class="btn btn-sm btn-ghost">📄</button><button class="btn btn-sm btn-ghost">✏️</button></div>
+        </div>
+        <div class="player-card">
+          <div class="player-card-img">⚽</div>
+          <div class="player-card-info"><div class="player-card-name">Daniel Peretz Jr.</div><div class="player-card-name-he" dir="rtl">דניאל פרץ ג'וניור</div><div class="player-card-meta"><span>🇮🇱 Israel</span><span>·</span><span>Maccabi Tel Aviv</span><span>·</span><span style="color:var(--cyan);">GK</span><span>·</span><span>Born 11/2009</span></div></div>
+          <div class="player-card-age-group"><span class="age-pill">U-17</span></div>
+          <div style="margin-right: 8px;"><span class="badge badge-success" style="font-size: 0.62rem;">📄 Mandate</span></div>
+          <div class="player-card-actions"><button class="btn btn-sm btn-ghost">📄</button><button class="btn btn-sm btn-ghost">✏️</button></div>
+        </div>
+        <div class="player-card">
+          <div class="player-card-img">⚽</div>
+          <div class="player-card-info"><div class="player-card-name">Amit Shalom</div><div class="player-card-name-he" dir="rtl">עמית שלום</div><div class="player-card-meta"><span>🇮🇱 Israel</span><span>·</span><span>Beitar Jerusalem</span><span>·</span><span style="color:var(--cyan);">CB</span><span>·</span><span>Born 03/2010</span></div></div>
+          <div class="player-card-age-group"><span class="age-pill">U-15</span></div>
+          <div class="player-card-actions"><button class="btn btn-sm btn-ghost">📄</button><button class="btn btn-sm btn-ghost">✏️</button></div>
+        </div>
+        <div class="player-card">
+          <div class="player-card-img linked">⚽</div>
+          <div class="player-card-info"><div class="player-card-name">Tom Avrahami</div><div class="player-card-name-he" dir="rtl">תום אברהמי</div><div class="player-card-meta"><span>🇮🇱 Israel</span><span>·</span><span>Maccabi Petah Tikva</span><span>·</span><span style="color:var(--cyan);">ST</span><span>·</span><span>Born 07/2009</span></div></div>
+          <div class="player-card-age-group"><span class="age-pill">U-17</span></div>
+          <div class="player-card-actions"><button class="btn btn-sm btn-ghost">📄</button><button class="btn btn-sm btn-ghost">✏️</button></div>
+        </div>
+        <div class="player-card">
+          <div class="player-card-img">⚽</div>
+          <div class="player-card-info"><div class="player-card-name">Omer Raz</div><div class="player-card-name-he" dir="rtl">עומר רז</div><div class="player-card-meta"><span>🇮🇱 Israel</span><span>·</span><span>Hapoel Be'er Sheva</span><span>·</span><span style="color:var(--cyan);">LW, RW</span><span>·</span><span>Born 02/2012</span></div></div>
+          <div class="player-card-age-group"><span class="age-pill">U-14</span></div>
+          <div class="player-card-actions"><button class="btn btn-sm btn-ghost">📄</button><button class="btn btn-sm btn-ghost">✏️</button></div>
+        </div>
+        <div class="player-card">
+          <div class="player-card-img">⚽</div>
+          <div class="player-card-info"><div class="player-card-name">Eyal Cohen</div><div class="player-card-name-he" dir="rtl">אייל כהן</div><div class="player-card-meta"><span>🇮🇱 Israel</span><span>·</span><span>Maccabi Haifa</span><span>·</span><span style="color:var(--cyan);">DM</span><span>·</span><span>Born 09/2007</span></div></div>
+          <div class="player-card-age-group"><span class="age-pill">U-19</span></div>
+          <div style="margin-right: 8px;"><span class="badge badge-success" style="font-size: 0.62rem;">📄 Mandate</span></div>
+          <div class="player-card-actions"><button class="btn btn-sm btn-ghost">📄</button><button class="btn btn-sm btn-ghost">✏️</button></div>
+        </div>
+      </div>
+      <div class="gradient-divider"></div>
+    </main>
+  </div>
+</section>
+
+<!-- ═══════ SCREEN 3 — ADD PLAYER ═══════ -->
+<section id="add-player" class="screen-section" style="display:none;">
+  <div class="screen-label">Add Player</div>
+  <div class="screen-sublabel">Glassmorphism — glass form fields, gradient top-border sections</div>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="sidebar-brand"><div class="sidebar-logo">MY</div><div class="sidebar-brand-text">MGSR <span>Youth</span></div></div>
+      <div class="platform-switcher"><div class="platform-dot"></div><span class="platform-switcher-label">MGSR Youth</span><span class="platform-switcher-chevron">▾</span></div>
+      <ul class="nav-items">
+        <li class="nav-item"><span class="nav-icon">📊</span> Dashboard</li>
+        <li class="nav-item"><span class="nav-icon">📋</span> Tasks</li>
+        <li class="nav-item active"><span class="nav-icon">⚽</span> Players</li>
+        <li class="nav-item"><span class="nav-icon">⭐</span> Shortlist</li>
+        <li class="nav-item"><span class="nav-icon">👥</span> Contacts</li>
+        <li class="nav-item"><span class="nav-icon">📨</span> Requests</li>
+      </ul>
+    </aside>
+    <main class="main-content">
+      <div class="page-header"><h1 class="page-title" style="display:flex; align-items:center; gap:8px;"><span style="color:var(--text-muted); cursor:pointer;">← Players</span><span style="color:var(--text-muted);">/</span>Add Player</h1></div>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+        <div>
+          <div class="form-section">
+            <div class="form-section-title"><span style="color:var(--cyan);">🔍</span> Search IFA Database</div>
+            <div class="search-bar"><span style="color:var(--text-muted);">🇮🇱</span><input placeholder="Search player name on football.org.il..." value="ירין ליבוב" /><span style="font-size:0.68rem; color:var(--cyan);">searching...</span></div>
+            <div class="search-dropdown" style="margin-top: 6px;">
+              <div class="search-dropdown-header"><span>🇮🇱</span> IFA Results — 4 players found</div>
+              <div class="search-result-item selected">
+                <div style="font-size:1rem;">🇮🇱</div>
+                <div style="flex:1;"><div class="search-result-name">Yarin Leibowitz</div><div class="search-result-name-he">ירין ליבוביץ</div><div class="search-result-club">Maccabi Petah Tikva · נערים ג' על</div></div>
+                <span class="search-result-source">IFA</span>
+              </div>
+              <div class="search-result-item">
+                <div style="font-size:1rem;">🇮🇱</div>
+                <div style="flex:1;"><div class="search-result-name">Yarin Lev</div><div class="search-result-name-he">ירין לב</div><div class="search-result-club">Hapoel Haifa · נערים א'</div></div>
+                <span class="search-result-source">IFA</span>
+              </div>
+              <div class="search-result-item">
+                <div style="font-size:1rem;">🇮🇱</div>
+                <div style="flex:1;"><div class="search-result-name">Yarin Liberzon</div><div class="search-result-name-he">ירין ליברזון</div><div class="search-result-club">Maccabi Netanya · ילדים ב'</div></div>
+                <span class="search-result-source">IFA</span>
+              </div>
+            </div>
+          </div>
+          <div class="form-section" style="opacity: 0.6;">
+            <div class="form-section-title"><span style="color:var(--text-muted);">🔗</span> Or Paste IFA URL</div>
+            <div style="display:flex; gap: 8px;"><input class="form-input" placeholder="https://www.football.org.il/players/player/?player_id=..." style="flex:1;" /><button class="btn btn-secondary">Load</button></div>
+          </div>
+          <div class="form-section" style="opacity:0.5;">
+            <div class="form-section-title"><span style="color:var(--violet);">🌐</span> Transfermarkt Enrichment <span class="badge badge-violet" style="margin-left:auto;">Optional</span></div>
+            <p style="font-size:0.75rem; color:var(--text-muted); margin-bottom:10px;">Search for additional data from Transfermarkt.</p>
+            <button class="btn btn-ghost" style="width:100%;">🔍 Search on Transfermarkt</button>
+          </div>
+        </div>
+        <div>
+          <div class="form-section">
+            <div class="form-section-title"><span style="color:var(--cyan);">👤</span> Basic Info</div>
+            <div class="form-row" style="margin-bottom:12px;"><div class="form-group"><label class="form-label">Full Name (English)</label><input class="form-input filled" value="Yarin Leibowitz" /></div><div class="form-group"><label class="form-label">Full Name (Hebrew)</label><input class="form-input filled" value="ירין ליבוביץ" dir="rtl" /></div></div>
+            <div class="form-row" style="margin-bottom:12px;"><div class="form-group"><label class="form-label">Date of Birth</label><input class="form-input filled" value="01/2011" /></div><div class="form-group"><label class="form-label">Nationality</label><input class="form-input filled" value="🇮🇱 Israel" /></div></div>
+            <div class="form-row" style="margin-bottom:12px;"><div class="form-group"><label class="form-label">Current Club</label><input class="form-input filled" value="Maccabi Petah Tikva" /></div><div class="form-group"><label class="form-label">Academy</label><input class="form-input" placeholder="Academy name (optional)" /></div></div>
+            <div class="form-group"><label class="form-label">Age Group</label><div class="age-group-select"><span class="age-group-chip">U-13</span><span class="age-group-chip">U-14</span><span class="age-group-chip selected">U-15</span><span class="age-group-chip">U-17</span><span class="age-group-chip">U-19</span><span class="age-group-chip">U-21</span></div></div>
+            <div class="form-group" style="margin-top:12px;"><label class="form-label">Positions</label><div class="position-grid"><span class="position-tag">GK</span><span class="position-tag">CB</span><span class="position-tag">LB</span><span class="position-tag">RB</span><span class="position-tag">DM</span><span class="position-tag selected">CM</span><span class="position-tag selected">AM</span><span class="position-tag">LW</span><span class="position-tag">RW</span><span class="position-tag">ST</span></div></div>
+          </div>
+          <div class="form-section">
+            <div class="form-section-title"><span style="color:var(--cyan);">📱</span> Player Contact</div>
+            <div class="form-row"><div class="form-group"><label class="form-label">Phone Number</label><input class="form-input" placeholder="+972..." /></div><div class="form-group"><label class="form-label">Email</label><input class="form-input" placeholder="player@email.com" /></div></div>
+          </div>
+          <div class="form-section parent">
+            <div class="form-section-title"><span style="color:var(--violet);">👨‍👩‍👦</span> Parent / Guardian Contact</div>
+            <div class="form-row" style="margin-bottom:12px;"><div class="form-group"><label class="form-label">Parent Name</label><input class="form-input" placeholder="Full name" /></div><div class="form-group"><label class="form-label">Relationship</label><div style="display:flex; gap:6px;"><span class="filter-chip active" style="font-size:0.7rem; padding:4px 10px;">Father</span><span class="filter-chip" style="font-size:0.7rem; padding:4px 10px;">Mother</span><span class="filter-chip" style="font-size:0.7rem; padding:4px 10px;">Guardian</span></div></div></div>
+            <div class="form-row"><div class="form-group"><label class="form-label">Phone Number</label><input class="form-input" placeholder="+972..." /></div><div class="form-group"><label class="form-label">Email</label><input class="form-input" placeholder="parent@email.com" /></div></div>
+          </div>
+          <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:8px;">
+            <button class="btn btn-ghost">Cancel</button>
+            <button class="btn btn-primary" style="padding:10px 24px; font-size:0.82rem;">⚡ Add to Roster</button>
+          </div>
+        </div>
+      </div>
+      <div class="gradient-divider"></div>
+    </main>
+  </div>
+</section>
+
+<!-- ═══════ SCREEN 4 — PLAYER DETAIL ═══════ -->
+<section id="player-detail" class="screen-section" style="display:none;">
+  <div class="screen-label">Player Detail</div>
+  <div class="screen-sublabel">Glassmorphism — gradient avatar border, frosted sections, glow hover</div>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="sidebar-brand"><div class="sidebar-logo">MY</div><div class="sidebar-brand-text">MGSR <span>Youth</span></div></div>
+      <div class="platform-switcher"><div class="platform-dot"></div><span class="platform-switcher-label">MGSR Youth</span><span class="platform-switcher-chevron">▾</span></div>
+      <ul class="nav-items">
+        <li class="nav-item"><span class="nav-icon">📊</span> Dashboard</li>
+        <li class="nav-item"><span class="nav-icon">📋</span> Tasks</li>
+        <li class="nav-item active"><span class="nav-icon">⚽</span> Players</li>
+        <li class="nav-item"><span class="nav-icon">⭐</span> Shortlist</li>
+        <li class="nav-item"><span class="nav-icon">👥</span> Contacts</li>
+        <li class="nav-item"><span class="nav-icon">📨</span> Requests</li>
+      </ul>
+    </aside>
+    <main class="main-content">
+      <div class="page-header">
+        <h1 class="page-title" style="font-size:0.88rem; font-weight:500;"><span style="color:var(--text-muted); cursor:pointer;">Players</span><span style="color:var(--text-muted); margin:0 6px;">/</span>Yarin Leibowitz</h1>
+        <div style="display:flex; gap:8px;"><button class="btn btn-ghost btn-sm">🗑️ Delete</button><button class="btn btn-secondary btn-sm">✏️ Edit</button><button class="btn btn-primary btn-sm">📤 Share</button></div>
+      </div>
+      <div class="player-hero">
+        <div class="player-hero-img">⚽</div>
+        <div class="player-hero-info">
+          <div class="player-hero-name">Yarin Leibowitz</div>
+          <div class="player-hero-name-he" dir="rtl">ירין ליבוביץ</div>
+          <div class="player-hero-badges"><span class="age-pill">U-15</span><span class="badge badge-cyan">CM</span><span class="badge badge-cyan">AM</span><span class="badge badge-success">📄 Mandate Active</span></div>
+          <div class="player-hero-details"><div class="player-hero-detail"><strong>Born:</strong> 01/2011</div><div class="player-hero-detail"><strong>Age:</strong> 15</div><div class="player-hero-detail"><strong>Nationality:</strong> 🇮🇱 Israel</div><div class="player-hero-detail"><strong>Club:</strong> Maccabi Petah Tikva</div></div>
+          <div class="player-hero-links"><button class="link-btn">🇮🇱 IFA Profile</button><button class="link-btn">⚽ Transfermarkt</button><button class="link-btn">📋 Add Task</button></div>
+        </div>
+      </div>
+      <div class="gradient-divider" style="margin:16px 0;"></div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:20px;">
+        <div class="contact-card player">
+          <div class="contact-card-header"><div class="contact-card-icon player-icon">📱</div><div class="contact-card-title">Player Contact</div></div>
+          <div class="contact-row"><div class="contact-row-icon">📞</div><div><div class="contact-row-label">Phone</div><div class="contact-row-value">+972 52-123-4567</div></div><button class="contact-wa-btn">💬 WhatsApp</button></div>
+          <div class="contact-row"><div class="contact-row-icon">✉️</div><div><div class="contact-row-label">Email</div><div class="contact-row-value">yarin.l@gmail.com</div></div></div>
+        </div>
+        <div class="contact-card parent">
+          <div class="contact-card-header"><div class="contact-card-icon parent-icon">👨‍👩‍👦</div><div class="contact-card-title">Parent Contact</div><span class="badge badge-violet" style="margin-left:auto;">Father</span></div>
+          <div class="contact-row"><div class="contact-row-icon">👤</div><div><div class="contact-row-label">Name</div><div class="contact-row-value">David Leibowitz</div></div></div>
+          <div class="contact-row"><div class="contact-row-icon">📞</div><div><div class="contact-row-label">Phone</div><div class="contact-row-value">+972 54-987-6543</div></div><button class="contact-wa-btn">💬 WhatsApp</button></div>
+          <div class="contact-row"><div class="contact-row-icon">✉️</div><div><div class="contact-row-label">Email</div><div class="contact-row-value">david.leib@gmail.com</div></div></div>
+        </div>
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:20px;">
+        <div>
+          <div class="section-header"><div class="section-title"><span class="section-title-icon">🇮🇱</span> IFA Season Stats</div><span class="badge badge-cyan" style="font-size:0.62rem;">Season 2025/26</span></div>
+          <div class="glass-card">
+            <div class="ifa-stats-grid">
+              <div class="ifa-stat"><div class="ifa-stat-value goals">7</div><div class="ifa-stat-label">Goals</div></div>
+              <div class="ifa-stat"><div class="ifa-stat-value assists">4</div><div class="ifa-stat-label">Assists</div></div>
+              <div class="ifa-stat"><div class="ifa-stat-value cards">2</div><div class="ifa-stat-label">Yellow</div></div>
+              <div class="ifa-stat"><div class="ifa-stat-value matches">18</div><div class="ifa-stat-label">Matches</div></div>
+            </div>
+            <div style="margin-top:14px; padding-top:14px; border-top: 1px solid var(--glass-border);">
+              <div style="font-size:0.7rem; font-weight:600; color:var(--text-muted); margin-bottom:8px; text-transform:uppercase; letter-spacing:0.5px;">Recent Matches</div>
+              <div style="display:flex; flex-direction:column; gap:6px;">
+                <div style="display:flex; align-items:center; gap:10px; padding:6px 8px; background:var(--glass); border-radius:var(--r-xs); font-size:0.75rem;"><span style="color:var(--cyan);">⚽</span><span style="flex:1;">vs Hapoel Haifa U-15</span><span style="color:var(--cyan); font-weight:600;">1 goal</span><span style="color:var(--text-muted); font-size:0.68rem;">Feb 25</span></div>
+                <div style="display:flex; align-items:center; gap:10px; padding:6px 8px; background:var(--glass); border-radius:var(--r-xs); font-size:0.75rem;"><span>🟢</span><span style="flex:1;">vs Maccabi Haifa U-15</span><span style="color:var(--text-muted);">0 goals</span><span style="color:var(--text-muted); font-size:0.68rem;">Feb 18</span></div>
+                <div style="display:flex; align-items:center; gap:10px; padding:6px 8px; background:var(--glass); border-radius:var(--r-xs); font-size:0.75rem;"><span style="color:var(--cyan);">⚽⚽</span><span style="flex:1;">vs Bnei Yehuda U-15</span><span style="color:var(--cyan); font-weight:600;">2 goals</span><span style="color:var(--text-muted); font-size:0.68rem;">Feb 11</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="section-header"><div class="section-title"><span class="section-title-icon">📝</span> Notes</div><button class="btn btn-sm btn-secondary">+ Add Note</button></div>
+          <div class="glass-card">
+            <div class="note-item"><div class="note-dot"></div><div><div class="note-text">Very technical midfielder. Excellent vision for his age, reads the game well. Great in tight spaces.</div><div class="note-meta"><span>Lior Dahan</span><span>Feb 26, 2026</span></div></div></div>
+            <div class="note-item"><div class="note-dot" style="background:var(--violet); box-shadow:0 0 10px var(--violet-glow);"></div><div><div class="note-text">Watched him in the U-15 league match. Dominated the midfield. Needs physicality work.</div><div class="note-meta"><span>Lior Dahan</span><span>Feb 20, 2026</span></div></div></div>
+            <div class="note-item"><div class="note-dot"></div><div><div class="note-text">Parents are supportive. Father played semi-pro. Interested in options abroad in 2-3 years.</div><div class="note-meta"><span>Lior Dahan</span><span>Feb 10, 2026</span></div></div></div>
+          </div>
+        </div>
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:20px;">
+        <div>
+          <div class="section-header"><div class="section-title"><span class="section-title-icon">🎬</span> Highlights</div><button class="btn btn-sm btn-ghost">🔍 Search</button></div>
+          <div class="glass-card">
+            <div style="display:flex; gap:12px; margin-bottom:12px;">
+              <div class="highlight-thumb"><div class="highlight-play">▶</div><div class="highlight-duration">3:42</div></div>
+              <div style="flex:1;"><div style="font-size:0.8rem; font-weight:600; margin-bottom:4px;">Yarin Leibowitz - Season Highlights 2025/26</div><div style="font-size:0.68rem; color:var(--text-muted);">MaccabiPTFC Youth · 2.4K views</div><div style="margin-top:6px;"><span class="badge badge-cyan" style="font-size:0.58rem;">📌 Pinned</span></div></div>
+            </div>
+            <div style="display:flex; gap:12px;">
+              <div class="highlight-thumb"><div class="highlight-play">▶</div><div class="highlight-duration">2:15</div></div>
+              <div style="flex:1;"><div style="font-size:0.8rem; font-weight:600; margin-bottom:4px;">U-15 League: Maccabi PT vs Hapoel TA</div><div style="font-size:0.68rem; color:var(--text-muted);">IFA Official · 890 views</div></div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="section-header"><div class="section-title"><span class="section-title-icon">📁</span> Documents</div><button class="btn btn-sm btn-secondary">+ Upload</button></div>
+          <div class="glass-card">
+            <div style="display:flex; flex-direction:column; gap:8px;">
+              <div class="doc-item"><div class="doc-icon" style="background:var(--pink-dim); color:var(--pink);">📄</div><div style="flex:1;"><div style="font-size:0.8rem; font-weight:600;">Representation Mandate</div><div style="font-size:0.68rem; color:var(--text-muted);">Signed Feb 1, 2026 · Expires Feb 1, 2027</div></div><span class="badge badge-success">Active</span></div>
+              <div class="doc-item"><div class="doc-icon" style="background:var(--cyan-dim); color:var(--cyan);">📋</div><div style="flex:1;"><div style="font-size:0.8rem; font-weight:600;">Player Passport Scan</div><div style="font-size:0.68rem; color:var(--text-muted);">Uploaded Jan 28, 2026</div></div><span class="badge badge-cyan">ID</span></div>
+              <div class="doc-item"><div class="doc-icon" style="background:var(--lime-dim); color:var(--lime);">📊</div><div style="flex:1;"><div style="font-size:0.8rem; font-weight:600;">Scouting Report — Feb 2026</div><div style="font-size:0.68rem; color:var(--text-muted);">Uploaded Feb 22, 2026</div></div><span class="badge badge-lime">Report</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="section-header"><div class="section-title"><span class="section-title-icon">🎯</span> Matching Club Requests</div><span class="section-count">2 matches</span></div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:20px;">
+        <div class="glass-card" style="display:flex; align-items:center; gap:14px;">
+          <div style="width:44px; height:44px; background:var(--cyan-dim); border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:1.1rem;">🏟️</div>
+          <div style="flex:1;"><div style="font-family:var(--font-display); font-weight:700; font-size:0.88rem;">Hapoel Kfar Saba Youth</div><div style="font-size:0.72rem; color:var(--text-secondary);">Looking for: U-15 Midfielder · 5 days ago</div></div>
+          <span class="badge badge-cyan">92%</span>
+        </div>
+        <div class="glass-card" style="display:flex; align-items:center; gap:14px;">
+          <div style="width:44px; height:44px; background:var(--violet-dim); border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:1.1rem;">🏟️</div>
+          <div style="flex:1;"><div style="font-family:var(--font-display); font-weight:700; font-size:0.88rem;">Maccabi Netanya Academy</div><div style="font-size:0.72rem; color:var(--text-secondary);">Looking for: Young Creative Midfielder · 2 weeks ago</div></div>
+          <span class="badge badge-violet">78%</span>
+        </div>
+      </div>
+      <div class="gradient-divider"></div>
+    </main>
+  </div>
+</section>
+
+<script>
+function switchScreen(id, linkEl) {
+  document.querySelectorAll('.screen-section').forEach(s => s.style.display = 'none');
+  document.getElementById(id).style.display = 'block';
+  document.querySelectorAll('.screen-nav a').forEach(a => a.classList.remove('active'));
+  if (linkEl) linkEl.classList.add('active');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+function handleHash() { const h = window.location.hash.replace('#',''); if (h) { const l = document.querySelector(`.screen-nav a[href="#${h}"]`); if (l) switchScreen(h, l); } }
+window.addEventListener('hashchange', handleHash);
+window.addEventListener('load', handleHash);
+document.querySelectorAll('.filter-chip').forEach(c => c.addEventListener('click', () => { if (c.closest('.filter-chips')) c.closest('.filter-chips').querySelectorAll('.filter-chip').forEach(x => x.classList.remove('active')); c.classList.toggle('active'); }));
+document.querySelectorAll('.position-tag').forEach(t => t.addEventListener('click', () => t.classList.toggle('selected')));
+document.querySelectorAll('.age-group-chip').forEach(c => c.addEventListener('click', () => { c.closest('.age-group-select').querySelectorAll('.age-group-chip').forEach(x => x.classList.remove('selected')); c.classList.add('selected'); }));
+document.querySelectorAll('.nav-item').forEach(i => i.addEventListener('click', () => { i.closest('.nav-items').querySelectorAll('.nav-item').forEach(x => x.classList.remove('active')); i.classList.add('active'); }));
+document.querySelectorAll('.player-card').forEach(c => c.addEventListener('click', (e) => { if (e.target.closest('.btn')) return; switchScreen('player-detail', document.querySelector('.screen-nav a[href="#player-detail"]')); window.location.hash = 'player-detail'; }));
+</script>
+</body>
+</html>

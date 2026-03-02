@@ -355,7 +355,7 @@ export default function AddWomanPlayerForm() {
           addedByAgentHebrewName: account.hebrewName ?? null,
         };
         await setDoc(docRef, { entries: [...current, entry] }, { merge: true });
-        await addDoc(collection(db, 'FeedEvents'), {
+        await addDoc(collection(db, 'FeedEventsWomen'), {
           type: 'SHORTLIST_ADDED',
           playerName: fullName.trim(),
           playerImage: profileImage.trim() || null,
@@ -404,7 +404,7 @@ export default function AddWomanPlayerForm() {
           .filter((e) => (e.tmProfileUrl as string) !== preloadUrl)
           .map((e) => Object.fromEntries(Object.entries(e).map(([k, v]) => [k, v === undefined ? null : v])));
         await setDoc(docRef, { entries: filtered }, { merge: true });
-        await addDoc(collection(db, 'FeedEvents'), {
+        await addDoc(collection(db, 'FeedEventsWomen'), {
           type: 'SHORTLIST_REMOVED',
           playerName: fullName.trim(),
           playerImage: profileImage.trim() || null,

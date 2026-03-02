@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { usePlatform } from '@/contexts/PlatformContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { menMoreItems, womenMoreItems } from './MobileBottomTabBar';
+import { menMoreItems, womenMoreItems, youthMoreItems } from './MobileBottomTabBar';
 import { useEffect } from 'react';
 
 /* ── Icon map for secondary nav items ── */
@@ -70,7 +70,7 @@ export function MoreSheet({ onClose }: { onClose: () => void }) {
   const { t } = useLanguage();
   const { user, signOut } = useAuth();
   const { platform } = usePlatform();
-  const moreItems = platform === 'women' ? womenMoreItems : menMoreItems;
+  const moreItems = platform === 'youth' ? youthMoreItems : platform === 'women' ? womenMoreItems : menMoreItems;
 
   // Prevent body scroll while sheet is open
   useEffect(() => {
@@ -115,6 +115,7 @@ export function MoreSheet({ onClose }: { onClose: () => void }) {
             const active = pathname === item.href || pathname.startsWith(item.href + '/');
             const Icon = icons[item.href] || DefaultIcon;
             const isWomen = platform === 'women';
+            const isYouth = platform === 'youth';
             return (
               <Link
                 key={item.href}
@@ -122,9 +123,11 @@ export function MoreSheet({ onClose }: { onClose: () => void }) {
                 onClick={onClose}
                 className={`flex flex-col items-center justify-center gap-1.5 p-3 rounded-xl min-h-[72px] transition ${
                   active
-                    ? isWomen
-                      ? 'bg-[var(--women-rose)]/15 text-[var(--women-rose)]'
-                      : 'bg-[var(--mgsr-accent-dim)] text-[var(--mgsr-accent)]'
+                    ? isYouth
+                      ? 'bg-[var(--youth-cyan)]/15 text-[var(--youth-cyan)]'
+                      : isWomen
+                        ? 'bg-[var(--women-rose)]/15 text-[var(--women-rose)]'
+                        : 'bg-[var(--mgsr-accent-dim)] text-[var(--mgsr-accent)]'
                     : 'bg-mgsr-dark/40 text-mgsr-muted hover:text-mgsr-text hover:bg-mgsr-dark/60'
                 }`}
               >

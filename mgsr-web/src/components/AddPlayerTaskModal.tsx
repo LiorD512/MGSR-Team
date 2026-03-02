@@ -34,8 +34,8 @@ interface AddPlayerTaskModalProps {
   accounts: Account[];
   currentUserId: string;
   getDisplayName: (a: Account, isRtl: boolean) => string;
-  /** Firestore collection for tasks (AgentTasks or AgentTasksWomen) */
-  taskCollection?: 'AgentTasks' | 'AgentTasksWomen';
+  /** Firestore collection for tasks (AgentTasks or AgentTasksWomen or AgentTasksYouth) */
+  taskCollection?: 'AgentTasks' | 'AgentTasksWomen' | 'AgentTasksYouth';
 }
 
 const PRIORITY_COLORS = {

@@ -1,12 +1,13 @@
 /**
  * POST /api/share/generate-scout-report
  * Generates a promotional scout report for sharing with clubs.
- * Uses all available tools: similar_players (5), full FM intelligence, market history.
- * Output: structured markdown with sections.
+ * Men/Women: Uses Transfermarkt + scout server (similar_players, FM intelligence).
+ * Youth: Uses IFA (football.org.il) profile and stats when ifaUrl provided.
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { extractPlayerIdFromUrl } from '@/lib/api';
+import { fetchIFAProfile, normalizeIfaUrl, isValidIfaUrl } from '@/lib/ifa';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -22,6 +23,8 @@ interface PlayerPayload {
   marketValueHistory?: { value?: string; date?: number }[];
   currentClub?: { clubName?: string; clubLogo?: string; clubCountry?: string };
   age?: string;
+  ageGroup?: string;
+  dateOfBirth?: string;
   height?: string;
   nationality?: string;
   contractExpired?: string;
@@ -30,6 +33,8 @@ interface PlayerPayload {
   onLoanFromClub?: string;
   agency?: string;
   tmProfile?: string;
+  ifaUrl?: string;
+  ifaStats?: { season?: string; matches?: number; goals?: number; assists?: number; yellowCards?: number; redCards?: number };
 }
 
 interface ScoutData {
@@ -153,6 +158,37 @@ function buildPlayerContext(player: PlayerPayload, scoutData?: ScoutData): strin
   return parts.join('\n');
 }
 
+/** Build player context from IFA (football.org.il) profile and stats — for youth players */
+function buildIFAPlayerContext(
+  player: PlayerPayload,
+  ifaProfile: { fullName?: string; fullNameHe?: string; currentClub?: string; positions?: string[]; dateOfBirth?: string; nationality?: string; height?: string; foot?: string; stats?: { matches?: number; goals?: number; assists?: number; yellowCards?: number; redCards?: number } }
+): string {
+  const parts: string[] = [];
+  const name = player.fullName || ifaProfile.fullName || player.fullNameHe || ifaProfile.fullNameHe || '—';
+  parts.push(`Name: ${name}`);
+  if (player.ageGroup) parts.push(`Age group: ${player.ageGroup}`);
+  if (player.age) parts.push(`Age: ${player.age}`);
+  if (player.positions?.length) parts.push(`Positions: ${player.positions.filter(Boolean).join(', ')}`);
+  else if (ifaProfile.positions?.length) parts.push(`Positions: ${ifaProfile.positions.join(', ')}`);
+  if (player.height || ifaProfile.height) parts.push(`Height: ${player.height || ifaProfile.height}`);
+  if (player.foot || ifaProfile.foot) parts.push(`Preferred foot: ${player.foot || ifaProfile.foot}`);
+  if (player.nationality || ifaProfile.nationality) parts.push(`Nationality: ${player.nationality || ifaProfile.nationality}`);
+  const club = player.currentClub?.clubName || (typeof player.currentClub === 'string' ? player.currentClub : null) || ifaProfile.currentClub;
+  if (club) parts.push(`Current club: ${club}`);
+  if (player.dateOfBirth || ifaProfile.dateOfBirth) parts.push(`Date of birth: ${player.dateOfBirth || ifaProfile.dateOfBirth}`);
+  if (player.agency) parts.push(`Agency: ${player.agency}`);
+
+  const stats = player.ifaStats ?? ifaProfile.stats;
+  if (stats) {
+    if (stats.matches != null) parts.push(`Matches (season): ${stats.matches}`);
+    if (stats.goals != null) parts.push(`Goals: ${stats.goals}`);
+    if (stats.assists != null) parts.push(`Assists: ${stats.assists}`);
+    if (stats.yellowCards != null) parts.push(`Yellow cards: ${stats.yellowCards}`);
+    if (stats.redCards != null) parts.push(`Red cards: ${stats.redCards}`);
+  }
+  return parts.join('\n');
+}
+
 /** Template-based scout report when Gemini fails. Outputs structured markdown. */
 function buildTemplateScoutReport(
   player: PlayerPayload,
@@ -261,6 +297,43 @@ function buildTemplateScoutReport(
   return sections.join('\n\n');
 }
 
+/** Youth-specific template when no Transfermarkt/FM data — uses IFA stats */
+function buildYouthTemplateScoutReport(
+  player: PlayerPayload,
+  ifaProfile: { fullName?: string; fullNameHe?: string; currentClub?: string; positions?: string[]; stats?: { matches?: number; goals?: number; assists?: number } },
+  lang: 'he' | 'en'
+): string {
+  const isHe = lang === 'he';
+  const name = (isHe ? player.fullNameHe || player.fullName : player.fullName || player.fullNameHe) || ifaProfile.fullName || ifaProfile.fullNameHe || '—';
+  const pos = player.positions?.filter(Boolean).join(', ') || ifaProfile.positions?.join(', ') || '—';
+  const club = player.currentClub?.clubName || (typeof player.currentClub === 'string' ? player.currentClub : null) || ifaProfile.currentClub || '—';
+  const ageGroup = player.ageGroup || '—';
+  const nat = player.nationality || '—';
+  const stats = player.ifaStats ?? ifaProfile.stats;
+
+  const L = isHe
+    ? { exec: 'סיכום', strengths: 'חוזקות מרכזיות', stats: 'סטטיסטיקות עונה', fit: 'התאמה', matches: 'משחקים', goals: 'שערים', assists: 'בישולים' }
+    : { exec: 'Executive Summary', strengths: 'Key Strengths', stats: 'Season Stats', fit: 'Tactical Fit', matches: 'matches', goals: 'goals', assists: 'assists' };
+
+  const sections: string[] = [];
+  const execLine = `${name} — ${ageGroup}, ${pos}. ${club}. ${nat}.`;
+  sections.push(`## ${L.exec}\n\n${execLine}`);
+
+  const strengths: string[] = [];
+  if (stats) {
+    if (stats.matches != null) strengths.push(`**${stats.matches}** ${L.matches}`);
+    if (stats.goals != null) strengths.push(`**${stats.goals}** ${L.goals}`);
+    if (stats.assists != null) strengths.push(`**${stats.assists}** ${L.assists}`);
+  }
+  if (strengths.length) sections.push(`## ${L.strengths}\n\n- ${strengths.join('\n- ')}`);
+  if (stats && (stats.matches != null || stats.goals != null)) {
+    sections.push(`## ${L.stats}\n\n${stats.matches ?? 0} ${L.matches}, ${stats.goals ?? 0} ${L.goals}, ${stats.assists ?? 0} ${L.assists}.`);
+  }
+  sections.push(`## ${L.fit}\n\n${isHe ? 'שחקן נוער מבטיח עם פוטנציאל להתפתחות בליגות הבכירות.' : 'Promising youth player with potential to develop in senior leagues.'}`);
+
+  return sections.join('\n\n');
+}
+
 const SCOUT_REPORT_PROMPT = `You are a professional scout presenting a player to clubs. Your job is to showcase the player in the best light — promotional, engaging, data-driven. NO verdict, NO sign/monitor/pass decision. Just present the player attractively.
 
 OUTPUT FORMAT:
@@ -288,16 +361,50 @@ Best role (from FM best_position), Ligat Ha'Al fit (rotation/squad/starter for t
 
 Use ONLY data from the profile below. Never invent stats. Israeli clubs typically pay €100k–€2.5m.`;
 
+const YOUTH_SCOUT_PROMPT = `You are a professional scout presenting a youth player to clubs. Showcase the player attractively using IFA (Israel Football Association) data. Promotional tone, data-driven. NO verdict. Write in {outputLang}.
+
+OUTPUT FORMAT:
+- Structured markdown with ## section headers.
+- Use **bold** for key numbers (matches, goals, assists).
+- ~150–250 words.
+- Use ONLY data from the profile below. Never invent stats.
+
+REQUIRED SECTIONS:
+## Executive Summary — 1–2 sentences: age group, position, club, nationality. Highlight standout stats if available.
+## Key Strengths — 2–4 bullet points citing specific numbers from IFA stats (matches, goals, assists).
+## Tactical Fit — 1–2 sentences on potential and fit for youth academies / senior development.`;
+
 export async function POST(request: NextRequest) {
   try {
-    const body = (await request.json()) as { player: PlayerPayload; lang?: string };
-    const { player, lang = 'en' } = body;
+    const body = (await request.json()) as { player: PlayerPayload; lang?: string; platform?: string };
+    const { player, lang = 'en', platform } = body;
     if (!player) return NextResponse.json({ scoutReport: '' });
 
     const langKey = (lang === 'he' || lang === 'iw' ? 'he' : 'en') as 'he' | 'en';
+    const isYouth = platform === 'youth';
+
+    let ifaProfile: { fullName?: string; fullNameHe?: string; currentClub?: string; positions?: string[]; dateOfBirth?: string; nationality?: string; height?: string; foot?: string; stats?: { matches?: number; goals?: number; assists?: number; yellowCards?: number; redCards?: number } } | null = null;
+    if (isYouth && player.ifaUrl && isValidIfaUrl(player.ifaUrl)) {
+      try {
+        const profile = await fetchIFAProfile(normalizeIfaUrl(player.ifaUrl));
+        ifaProfile = {
+          fullName: profile.fullName,
+          fullNameHe: profile.fullNameHe,
+          currentClub: profile.currentClub,
+          positions: profile.positions,
+          dateOfBirth: profile.dateOfBirth,
+          nationality: profile.nationality,
+          height: profile.height,
+          foot: profile.foot,
+          stats: profile.stats,
+        };
+      } catch (e) {
+        console.error('[share] IFA profile fetch failed for youth:', e);
+      }
+    }
 
     let scoutData: ScoutData | undefined;
-    if (player.tmProfile && player.fullName) {
+    if (!isYouth && player.tmProfile && player.fullName) {
       try {
         scoutData = await fetchScoutData(
           player.tmProfile,
@@ -316,17 +423,22 @@ export async function POST(request: NextRequest) {
     const apiKey = process.env.GEMINI_API_KEY;
     if (apiKey) {
       try {
-        const playerContext = buildPlayerContext(player, scoutData);
         const outputLang = langKey === 'he' ? 'Hebrew' : 'English';
+        const playerContext = isYouth
+          ? buildIFAPlayerContext(player, ifaProfile ?? {})
+          : buildPlayerContext(player, scoutData);
+
+        const promptTemplate = isYouth ? YOUTH_SCOUT_PROMPT : SCOUT_REPORT_PROMPT;
+        const prompt = `${promptTemplate.replace('{outputLang}', outputLang)}
+
+Player profile (ONLY use data below — never invent):
+${playerContext}`;
+
         const genAI = new GoogleGenerativeAI(apiKey);
         const model = genAI.getGenerativeModel({
           model: 'gemini-2.5-flash',
           generationConfig: { temperature: 0.4, topP: 0.9 },
         });
-        const prompt = `${SCOUT_REPORT_PROMPT.replace('{outputLang}', outputLang)}
-
-Player profile (ONLY use data below — never invent):
-${playerContext}`;
         const result = await model.generateContent(prompt);
         scoutReport = result.response.text()?.trim() || '';
       } catch (e) {
@@ -335,7 +447,11 @@ ${playerContext}`;
     }
 
     if (!scoutReport) {
-      scoutReport = buildTemplateScoutReport(player, scoutData, langKey);
+      if (isYouth) {
+        scoutReport = buildYouthTemplateScoutReport(player, ifaProfile ?? {}, langKey);
+      } else {
+        scoutReport = buildTemplateScoutReport(player, scoutData, langKey);
+      }
     }
 
     return NextResponse.json({ scoutReport });

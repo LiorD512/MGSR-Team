@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { usePlatform } from '@/contexts/PlatformContext';
 import AddWomanPlayerForm from './AddWomanPlayerForm';
+import AddYouthPlayerForm from './AddYouthPlayerForm';
 import {
   collection,
   addDoc,
@@ -43,6 +44,9 @@ export default function AddPlayerPage() {
 
   if (platform === 'women') {
     return <AddWomanPlayerForm />;
+  }
+  if (platform === 'youth') {
+    return <AddYouthPlayerForm />;
   }
   const forShortlist = searchParams.get('shortlist') === '1';
   const fromReleases = searchParams.get('from') === 'releases';
