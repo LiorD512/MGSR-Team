@@ -105,21 +105,19 @@ async function fetchIfaHtml(url: string): Promise<string> {
       signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
     });
     if (retryRes.ok) return retryRes.text();
-  }
 
-  // Optional: ScraperAPI bypass when direct fetch blocked (e.g. Vercel datacenter IP)
-  const scraperKey = process.env.SCRAPER_API_KEY?.trim();
-  if ((res.status === 403 || res.status === 429) && scraperKey) {
+    // Free proxy fallback — AllOrigins uses different IPs, may bypass block
     try {
-      const proxyUrl = `https://api.scraperapi.com?api_key=${scraperKey}&url=${encodeURIComponent(url)}&country_code=il`;
-      const proxyRes = await fetch(proxyUrl, {
-        headers: { 'User-Agent': ua },
-        cache: 'no-store',
-        signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-      });
-      if (proxyRes.ok) return proxyRes.text();
-    } catch (e) {
-      console.warn('[IFA] ScraperAPI fallback failed:', e);
+      const proxyRes = await fetch(
+        `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+        { cache: 'no-store', signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) }
+      );
+      if (proxyRes.ok) {
+        const text = await proxyRes.text();
+        if (text.includes('player_id') || text.includes('football.org.il')) return text;
+      }
+    } catch {
+      /* ignore */
     }
   }
 

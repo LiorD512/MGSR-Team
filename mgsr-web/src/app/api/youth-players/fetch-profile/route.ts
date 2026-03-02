@@ -24,7 +24,49 @@ export async function POST(request: NextRequest) {
     // Normalize to Hebrew URL for reliable scraping (strip /en/ prefix)
     const normalizedUrl = normalizeIfaUrl(url);
 
-    const profile: IFAPlayerProfile = await fetchIFAProfile(normalizedUrl);
+    let profile: IFAPlayerProfile;
+    try {
+      profile = await fetchIFAProfile(normalizedUrl);
+    } catch (directErr) {
+      const msg = directErr instanceof Error ? directErr.message : '';
+      // Free fallback: football-scout-server with Playwright (add /ifa router from docs/ifa_fetch_for_scout_server.py)
+      if (msg.includes('403')) {
+        const scoutBase = (process.env.SCOUT_SERVER_URL || '').trim();
+        if (scoutBase) {
+          try {
+            const base = scoutBase.replace(/\/$/, '');
+            const res = await fetch(`${base}/ifa/fetch-profile`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ url: normalizedUrl }),
+              signal: AbortSignal.timeout(25000),
+            });
+            if (res.ok) {
+              const data = (await res.json()) as IFAPlayerProfile;
+              return NextResponse.json({
+                fullName: data.fullName,
+                fullNameHe: data.fullNameHe,
+                dateOfBirth: data.dateOfBirth,
+                age: data.age,
+                nationality: data.nationality,
+                currentClub: data.currentClub,
+                academy: data.academy,
+                positions: data.positions,
+                ifaUrl: data.ifaUrl,
+                ifaPlayerId: data.ifaPlayerId,
+                profileImage: data.profileImage,
+                foot: data.foot,
+                height: data.height,
+                stats: data.stats,
+              });
+            }
+          } catch (scoutErr) {
+            console.warn('[youth-fetch-profile] Scout server IFA fallback failed:', scoutErr);
+          }
+        }
+      }
+      throw directErr;
+    }
 
     return NextResponse.json({
       fullName: profile.fullName,

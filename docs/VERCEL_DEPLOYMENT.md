@@ -36,6 +36,15 @@ The web app includes the Transfermarkt backend as Next.js API routes. Deploy **o
 
 ---
 
+## Optional: Fix IFA 403 (MGSR Youth player search)
+
+When selecting a player from IFA search, football.org.il may block Vercel (403). **Free options:**
+
+1. **AllOrigins proxy** — Tried automatically; no config.
+2. **football-scout-server** — If you have `SCOUT_SERVER_URL` set, add the IFA router from [docs/ifa_fetch_for_scout_server.py](./ifa_fetch_for_scout_server.py) to your scout server. It uses Playwright to bypass the block.
+
+---
+
 ## Add Vercel Domain to Firebase
 
 1. Firebase Console → **Authentication** → **Settings** → **Authorized domains**
