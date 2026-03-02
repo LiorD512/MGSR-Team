@@ -256,6 +256,12 @@ export default function AddYouthPlayerForm() {
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to load profile';
       setError(msg);
+      // Keep IFA URL so user can edit other fields manually
+      const pid = url.match(/player_id=(\d+)/)?.[1];
+      if (pid) {
+        setIfaUrl(url);
+        setIfaPlayerId(pid);
+      }
     } finally {
       setLoadingUrl(false);
       setLoadingProfile(false);

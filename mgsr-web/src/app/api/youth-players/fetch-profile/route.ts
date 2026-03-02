@@ -4,7 +4,13 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { fetchIFAProfile, isValidIfaUrl, normalizeIfaUrl, type IFAPlayerProfile } from '@/lib/ifa';
+import {
+  fetchIFAProfile,
+  fetchIFAProfileViaProxy,
+  isValidIfaUrl,
+  normalizeIfaUrl,
+  type IFAPlayerProfile,
+} from '@/lib/ifa';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 120; // Scout cold start + retry can take ~2 min
@@ -75,8 +81,15 @@ export async function POST(request: NextRequest) {
     } catch (directErr) {
       const msg = directErr instanceof Error ? directErr.message : '';
       if (msg.includes('403')) {
+        // Try AllOrigins proxy — free, no config
+        try {
+          profile = await fetchIFAProfileViaProxy(normalizedUrl);
+          return toResponse(profile);
+        } catch (proxyErr) {
+          console.warn('[youth-fetch-profile] Proxy fallback failed:', proxyErr);
+        }
         return NextResponse.json(
-          { error: 'football.org.il blocked our server. Basic info from search was used — you can edit details manually.' },
+          { error: 'Could not load profile from football.org.il. Enter details manually or try again later.' },
           { status: 500 }
         );
       }
@@ -91,7 +104,7 @@ export async function POST(request: NextRequest) {
     const isNetwork = msg.includes('fetch') || msg.includes('ECONNREFUSED') || msg.includes('ENOTFOUND');
     const is403 = msg.includes('403') || msg.includes('Forbidden');
     const userMsg = is403
-      ? 'football.org.il blocked our server. Basic info from search was used — you can edit details manually.'
+      ? 'Could not load profile from football.org.il. Enter details manually or try again later.'
       : isTimeout
         ? 'Request timed out. IFA site may be slow — try again.'
         : isNetwork

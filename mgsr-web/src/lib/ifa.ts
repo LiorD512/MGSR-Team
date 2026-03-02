@@ -537,6 +537,21 @@ export async function fetchIFAProfile(url: string): Promise<IFAPlayerProfile> {
   return parseIFAProfile(html, url);
 }
 
+/** Fetch IFA profile via AllOrigins proxy (bypasses 403 when direct fetch blocked) */
+export async function fetchIFAProfileViaProxy(url: string): Promise<IFAPlayerProfile> {
+  const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
+  const res = await fetch(proxyUrl, {
+    cache: 'no-store',
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+  });
+  if (!res.ok) throw new Error(`Proxy HTTP ${res.status}`);
+  const html = await res.text();
+  if (!html.includes('player_id') && !html.includes('football.org.il')) {
+    throw new Error('Proxy returned invalid page');
+  }
+  return parseIFAProfile(html, url);
+}
+
 function parseIFAProfile(html: string, url: string): IFAPlayerProfile {
   const $ = cheerio.load(html);
   const profile: IFAPlayerProfile = { fullName: '', ifaUrl: url };
