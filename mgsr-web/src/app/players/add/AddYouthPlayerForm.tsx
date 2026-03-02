@@ -387,12 +387,12 @@ export default function AddYouthPlayerForm() {
         notes: notes.trim() || undefined,
         playerPhoneNumber: playerPhone.trim() || undefined,
         playerEmail: playerEmail.trim() || undefined,
-        parentContact: (parentName.trim() || parentPhone.trim())
+        parentContact: (parentName.trim() || parentPhone.trim() || parentRelationship.trim() || parentEmail.trim())
           ? {
-              parentName: parentName.trim() || undefined,
-              parentRelationship: parentRelationship.trim() || undefined,
-              parentPhoneNumber: parentPhone.trim() || undefined,
-              parentEmail: parentEmail.trim() || undefined,
+              ...(parentName.trim() && { parentName: parentName.trim() }),
+              ...(parentRelationship.trim() && { parentRelationship: parentRelationship.trim() }),
+              ...(parentPhone.trim() && { parentPhoneNumber: parentPhone.trim() }),
+              ...(parentEmail.trim() && { parentEmail: parentEmail.trim() }),
             }
           : undefined,
         agentInChargeId: user.uid,

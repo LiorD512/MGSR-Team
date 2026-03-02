@@ -128,6 +128,20 @@ export function subscribePlayersYouth(
   return unsub;
 }
 
+/** Recursively remove undefined (Firestore rejects it) */
+function removeUndefined(obj: Record<string, unknown>): Record<string, unknown> {
+  return Object.fromEntries(
+    Object.entries(obj)
+      .filter(([, v]) => v !== undefined)
+      .map(([k, v]) => [
+        k,
+        v != null && typeof v === 'object' && !Array.isArray(v) && !(v instanceof Date)
+          ? removeUndefined(v as Record<string, unknown>)
+          : v,
+      ])
+  );
+}
+
 export async function addYouthPlayer(
   data: Omit<YouthPlayer, 'id' | 'createdAt'>
 ): Promise<string> {
@@ -135,10 +149,7 @@ export async function addYouthPlayer(
     ...data,
     createdAt: Date.now(),
   };
-  // Firestore rejects undefined; remove any undefined values
-  const sanitized = Object.fromEntries(
-    Object.entries(payload).filter(([, v]) => v !== undefined)
-  );
+  const sanitized = removeUndefined(payload as Record<string, unknown>);
   const docRef = await addDoc(collection(db, PLAYERS_YOUTH_COLLECTION), sanitized);
   return docRef.id;
 }
