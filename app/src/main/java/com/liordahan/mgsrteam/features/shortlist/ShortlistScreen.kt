@@ -31,6 +31,8 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Person
@@ -50,6 +52,8 @@ import androidx.compose.material3.ModalBottomSheetProperties
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.PlainTooltip
 import androidx.compose.material3.Text
 import androidx.compose.material3.TooltipBox
@@ -166,6 +170,13 @@ fun ShortlistScreen(
     var showAddPlayerBottomSheet by remember { mutableStateOf(false) }
     var addPlayerTmUrl by remember { mutableStateOf<String?>(null) }
     var entryToDelete by remember { mutableStateOf<ShortlistEntry?>(null) }
+
+    // Notes feature
+    var noteDialogEntry by remember { mutableStateOf<ShortlistEntry?>(null) }
+    var noteDialogMode by remember { mutableStateOf("add") } // "add" or "edit"
+    var noteDialogText by remember { mutableStateOf("") }
+    var noteDialogEditIndex by remember { mutableStateOf(-1) }
+    var expandedNotesUrl by remember { mutableStateOf<String?>(null) }
 
     // Roster teammates feature (same as Releases)
     val rosterPlayers by playersRepository.playersFlow().collectAsState(initial = emptyList())
@@ -304,6 +315,25 @@ fun ShortlistScreen(
                                         navController.navigate("${Screens.PlayerInfoScreen.route}/${Uri.encode(profile)}")
                                     }
                                 },
+                                isNotesExpanded = playerUrl == expandedNotesUrl,
+                                onToggleNotesExpand = {
+                                    expandedNotesUrl = if (playerUrl == expandedNotesUrl) null else playerUrl
+                                },
+                                onAddNote = {
+                                    noteDialogEntry = entry
+                                    noteDialogMode = "add"
+                                    noteDialogText = ""
+                                    noteDialogEditIndex = -1
+                                },
+                                onEditNote = { noteIndex, currentText ->
+                                    noteDialogEntry = entry
+                                    noteDialogMode = "edit"
+                                    noteDialogText = currentText
+                                    noteDialogEditIndex = noteIndex
+                                },
+                                onDeleteNote = { noteIndex ->
+                                    viewModel.deleteNote(entry.tmProfileUrl, noteIndex)
+                                },
                                 onAddToAgency = {
                                     addPlayerTmUrl = entry.tmProfileUrl
                                     showAddPlayerBottomSheet = true
@@ -376,6 +406,30 @@ fun ShortlistScreen(
                 onRemoveClicked = {
                     viewModel.remove(entry)
                     entryToDelete = null
+                }
+            )
+        }
+
+        noteDialogEntry?.let { entry ->
+            NoteDialog(
+                context = context,
+                entry = entry,
+                mode = noteDialogMode,
+                initialText = noteDialogText,
+                onDismiss = {
+                    noteDialogEntry = null
+                    noteDialogText = ""
+                    noteDialogEditIndex = -1
+                },
+                onSave = { text ->
+                    if (noteDialogMode == "edit" && noteDialogEditIndex >= 0) {
+                        viewModel.updateNote(entry.tmProfileUrl, noteDialogEditIndex, text)
+                    } else {
+                        viewModel.addNote(entry.tmProfileUrl, text)
+                    }
+                    noteDialogEntry = null
+                    noteDialogText = ""
+                    noteDialogEditIndex = -1
                 }
             )
         }
@@ -518,6 +572,11 @@ private fun ShortlistCard(
     isTeammatesExpanded: Boolean = false,
     onToggleTeammatesExpand: () -> Unit = {},
     onRosterTeammateClick: (Player) -> Unit = {},
+    isNotesExpanded: Boolean = false,
+    onToggleNotesExpand: () -> Unit = {},
+    onAddNote: () -> Unit = {},
+    onEditNote: (noteIndex: Int, currentText: String) -> Unit = { _, _ -> },
+    onDeleteNote: (noteIndex: Int) -> Unit = {},
     onAddToAgency: () -> Unit,
     onOpenTm: () -> Unit,
     onRemove: () -> Unit
@@ -701,6 +760,89 @@ private fun ShortlistCard(
                 thickness = 1.dp,
                 modifier = Modifier.padding(horizontal = 12.dp)
             )
+
+            // ── Notes section ──
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 8.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(HomeDarkBackground)
+                    .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(12.dp))
+                    .clickWithNoRipple {
+                        if (entry.notes.isEmpty()) onAddNote() else onToggleNotesExpand()
+                    }
+                    .padding(8.dp, 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    Icons.Default.EditNote,
+                    contentDescription = null,
+                    tint = HomeOrangeAccent,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    text = if (entry.notes.isEmpty())
+                        stringResource(R.string.shortlist_notes_tap_to_add)
+                    else
+                        stringResource(R.string.shortlist_notes_count, entry.notes.size),
+                    style = regularTextStyle(HomeTextPrimary, 13.sp)
+                )
+                Spacer(Modifier.weight(1f))
+                if (entry.notes.isNotEmpty()) {
+                    Icon(
+                        Icons.Default.ExpandMore,
+                        contentDescription = if (isNotesExpanded) "Collapse" else "Expand",
+                        tint = HomeTextSecondary,
+                        modifier = Modifier
+                            .size(20.dp)
+                            .graphicsLayer { rotationZ = if (isNotesExpanded) 180f else 0f }
+                    )
+                }
+            }
+            if (isNotesExpanded) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 12.dp, end = 12.dp, bottom = 8.dp)
+                ) {
+                    entry.notes.forEachIndexed { idx, note ->
+                        ShortlistNoteItem(
+                            context = context,
+                            note = note,
+                            onEdit = { onEditNote(idx, note.text) },
+                            onDelete = { onDeleteNote(idx) }
+                        )
+                    }
+                    // Add note button
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 4.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(HomeOrangeAccent.copy(alpha = 0.1f))
+                            .border(1.dp, HomeOrangeAccent.copy(alpha = 0.3f), RoundedCornerShape(10.dp))
+                            .clickWithNoRipple { onAddNote() }
+                            .padding(10.dp),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Rounded.Add,
+                            contentDescription = null,
+                            tint = HomeOrangeAccent,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            text = stringResource(R.string.shortlist_notes_add),
+                            style = boldTextStyle(HomeOrangeAccent, 12.sp)
+                        )
+                    }
+                }
+            }
+
             // Roster teammates section (same as Releases)
             Row(
                 modifier = Modifier
@@ -902,6 +1044,256 @@ private fun ShortlistRosterTeammateRow(
             tint = HomeTextSecondary,
             modifier = Modifier.size(20.dp)
         )
+    }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+//  NOTE ITEM
+// ═════════════════════════════════════════════════════════════════════════════
+
+@Composable
+private fun ShortlistNoteItem(
+    context: Context,
+    note: ShortlistNote,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit
+) {
+    val isHebrew = LocaleManager.isHebrew(context)
+    val authorName = if (isHebrew)
+        (note.createdByHebrewName ?: note.createdBy).orEmpty()
+    else
+        (note.createdBy ?: note.createdByHebrewName).orEmpty()
+    val daysAgo = ((System.currentTimeMillis() - note.createdAt) / (24 * 60 * 60 * 1000)).toInt()
+    val timeLabel = when {
+        daysAgo < 1 -> stringResource(R.string.shortlist_added_today)
+        daysAgo == 1 -> stringResource(R.string.shortlist_added_yesterday)
+        else -> stringResource(R.string.shortlist_notes_days_ago, daysAgo)
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 6.dp)
+            .clip(RoundedCornerShape(10.dp))
+            .background(HomeDarkBackground)
+            .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(10.dp))
+            .padding(10.dp)
+    ) {
+        Text(
+            text = note.text,
+            style = regularTextStyle(HomeTextPrimary, 13.sp),
+            modifier = Modifier.fillMaxWidth()
+        )
+        Spacer(Modifier.height(6.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = buildString {
+                    if (authorName.isNotBlank()) append("$authorName · ")
+                    append(timeLabel)
+                },
+                style = regularTextStyle(HomeTextSecondary, 10.sp),
+                modifier = Modifier.weight(1f)
+            )
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(HomeDarkCardBorder.copy(alpha = 0.3f))
+                    .clickWithNoRipple { onEdit() },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    Icons.Default.Edit,
+                    contentDescription = stringResource(R.string.shortlist_notes_edit),
+                    tint = HomeTextSecondary,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+            Spacer(Modifier.width(6.dp))
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(HomeRedAccent.copy(alpha = 0.1f))
+                    .clickWithNoRipple { onDelete() },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    Icons.Default.Delete,
+                    contentDescription = stringResource(R.string.shortlist_notes_delete),
+                    tint = HomeRedAccent.copy(alpha = 0.7f),
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+        }
+    }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+//  NOTE DIALOG (Add / Edit)
+// ═════════════════════════════════════════════════════════════════════════════
+
+@Composable
+private fun NoteDialog(
+    context: Context,
+    entry: ShortlistEntry,
+    mode: String,
+    initialText: String,
+    onDismiss: () -> Unit,
+    onSave: (String) -> Unit
+) {
+    var text by remember(initialText) { mutableStateOf(initialText) }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            shape = RoundedCornerShape(20.dp),
+            elevation = CardDefaults.cardElevation(8.dp),
+            colors = CardDefaults.cardColors(containerColor = HomeDarkCard),
+            border = BorderStroke(1.dp, HomeDarkCardBorder)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(20.dp)
+            ) {
+                // Title
+                Text(
+                    text = stringResource(
+                        if (mode == "edit") R.string.shortlist_notes_edit_title
+                        else R.string.shortlist_notes_add_title
+                    ),
+                    style = boldTextStyle(HomeTextPrimary, 18.sp)
+                )
+                Spacer(Modifier.height(12.dp))
+
+                // Player context
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(HomeDarkBackground)
+                        .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(12.dp))
+                        .padding(10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (!entry.playerImage.isNullOrBlank()) {
+                        AsyncImage(
+                            model = entry.playerImage,
+                            contentDescription = null,
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(CircleShape),
+                            contentScale = ContentScale.Crop
+                        )
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(CircleShape)
+                                .background(HomeDarkCardBorder),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                Icons.Default.Person,
+                                contentDescription = null,
+                                tint = HomeTextSecondary,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    }
+                    Spacer(Modifier.width(10.dp))
+                    Column {
+                        Text(
+                            text = formatShortlistProfileDisplay(entry),
+                            style = boldTextStyle(HomeTextPrimary, 13.sp),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        val subtitle = listOfNotNull(entry.playerPosition, entry.clubJoinedName)
+                            .filter { it.isNotBlank() }.joinToString(" · ")
+                        if (subtitle.isNotBlank()) {
+                            Text(
+                                text = subtitle,
+                                style = regularTextStyle(HomeTextSecondary, 11.sp),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(16.dp))
+
+                // Text input
+                OutlinedTextField(
+                    value = text,
+                    onValueChange = { text = it },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(120.dp),
+                    placeholder = {
+                        Text(
+                            text = stringResource(R.string.shortlist_notes_placeholder),
+                            style = regularTextStyle(HomeTextSecondary.copy(alpha = 0.6f), 14.sp)
+                        )
+                    },
+                    textStyle = regularTextStyle(HomeTextPrimary, 14.sp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = HomeOrangeAccent,
+                        unfocusedBorderColor = HomeDarkCardBorder,
+                        cursorColor = HomeOrangeAccent,
+                        focusedContainerColor = HomeDarkBackground,
+                        unfocusedContainerColor = HomeDarkBackground
+                    )
+                )
+
+                Spacer(Modifier.height(20.dp))
+
+                // Actions
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(100.dp))
+                            .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(100.dp))
+                            .clickWithNoRipple { onDismiss() }
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = stringResource(R.string.cancel),
+                            style = boldTextStyle(HomeTextPrimary, 13.sp)
+                        )
+                    }
+                    Spacer(Modifier.width(8.dp))
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(100.dp))
+                            .background(
+                                if (text.isNotBlank()) HomeOrangeAccent
+                                else HomeOrangeAccent.copy(alpha = 0.4f)
+                            )
+                            .clickWithNoRipple {
+                                if (text.isNotBlank()) onSave(text.trim())
+                            }
+                            .padding(horizontal = 20.dp, vertical = 8.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = stringResource(R.string.shortlist_notes_save),
+                            style = boldTextStyle(Color.White, 13.sp)
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 

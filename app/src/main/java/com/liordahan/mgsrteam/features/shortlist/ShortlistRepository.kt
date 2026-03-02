@@ -14,6 +14,14 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
 
+data class ShortlistNote(
+    val text: String,
+    val createdBy: String? = null,
+    val createdByHebrewName: String? = null,
+    val createdById: String? = null,
+    val createdAt: Long = System.currentTimeMillis()
+)
+
 data class ShortlistEntry(
     val tmProfileUrl: String,
     val addedAt: Long = System.currentTimeMillis(),
@@ -29,7 +37,8 @@ data class ShortlistEntry(
     val marketValue: String? = null,
     val addedByAgentId: String? = null,
     val addedByAgentName: String? = null,
-    val addedByAgentHebrewName: String? = null
+    val addedByAgentHebrewName: String? = null,
+    val notes: List<ShortlistNote> = emptyList()
 ) {
     /** Converts to LatestTransferModel for display in ReleaseListItem-style UI. */
     fun toLatestTransferModel(): LatestTransferModel = LatestTransferModel(
@@ -86,6 +95,17 @@ class ShortlistRepository(
     private fun parseEntryFromMap(map: Map<String, Any>): ShortlistEntry? {
         val url = map["tmProfileUrl"] as? String ?: return null
         val addedAt = (map["addedAt"] as? Number)?.toLong() ?: 0L
+        @Suppress("UNCHECKED_CAST")
+        val notesList = (map["notes"] as? List<Map<String, Any>>)?.mapNotNull { noteMap ->
+            val text = noteMap["text"] as? String ?: return@mapNotNull null
+            ShortlistNote(
+                text = text,
+                createdBy = noteMap["createdBy"] as? String,
+                createdByHebrewName = noteMap["createdByHebrewName"] as? String,
+                createdById = noteMap["createdById"] as? String,
+                createdAt = (noteMap["createdAt"] as? Number)?.toLong() ?: 0L
+            )
+        } ?: emptyList()
         return ShortlistEntry(
             tmProfileUrl = url,
             addedAt = addedAt,
@@ -101,7 +121,8 @@ class ShortlistRepository(
             marketValue = map["marketValue"] as? String,
             addedByAgentId = map["addedByAgentId"] as? String,
             addedByAgentName = map["addedByAgentName"] as? String,
-            addedByAgentHebrewName = map["addedByAgentHebrewName"] as? String
+            addedByAgentHebrewName = map["addedByAgentHebrewName"] as? String,
+            notes = notesList
         )
     }
 
@@ -282,5 +303,72 @@ class ShortlistRepository(
     suspend fun isInShortlist(tmProfileUrl: String): Boolean {
         val snapshot = shortlistDocRef().get().await()
         return snapshot.getEntriesList().any { (it["tmProfileUrl"] as? String) == tmProfileUrl }
+    }
+
+    // ── Notes CRUD ──────────────────────────────────────────────────────────
+
+    @Suppress("UNCHECKED_CAST")
+    suspend fun addNoteToEntry(tmProfileUrl: String, noteText: String) {
+        val docRef = shortlistDocRef()
+        val account = getCurrentUserAccount()
+        store.runTransaction { transaction ->
+            val snapshot = transaction.get(docRef)
+            val current = (snapshot.get("entries") as? List<Map<String, Any>>)?.map { it.toMutableMap() }?.toMutableList() ?: return@runTransaction
+            val idx = current.indexOfFirst { (it["tmProfileUrl"] as? String) == tmProfileUrl }
+            if (idx == -1) return@runTransaction
+            val entry = current[idx].toMutableMap()
+            val notes = ((entry["notes"] as? List<Map<String, Any>>) ?: emptyList()).map { it.toMutableMap() }.toMutableList()
+            val noteMap = mutableMapOf<String, Any>(
+                "text" to noteText,
+                "createdAt" to System.currentTimeMillis()
+            )
+            account?.let { acc ->
+                acc.id?.let { noteMap["createdById"] = it }
+                acc.name?.takeIf { it.isNotBlank() }?.let { noteMap["createdBy"] = it }
+                acc.hebrewName?.takeIf { it.isNotBlank() }?.let { noteMap["createdByHebrewName"] = it }
+            }
+            notes.add(noteMap)
+            entry["notes"] = notes
+            current[idx] = entry
+            transaction.set(docRef, mapOf("entries" to current))
+        }.await()
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    suspend fun updateNoteInEntry(tmProfileUrl: String, noteIndex: Int, newText: String) {
+        val docRef = shortlistDocRef()
+        store.runTransaction { transaction ->
+            val snapshot = transaction.get(docRef)
+            val current = (snapshot.get("entries") as? List<Map<String, Any>>)?.map { it.toMutableMap() }?.toMutableList() ?: return@runTransaction
+            val idx = current.indexOfFirst { (it["tmProfileUrl"] as? String) == tmProfileUrl }
+            if (idx == -1) return@runTransaction
+            val entry = current[idx].toMutableMap()
+            val notes = ((entry["notes"] as? List<Map<String, Any>>) ?: emptyList()).map { it.toMutableMap() }.toMutableList()
+            if (noteIndex !in notes.indices) return@runTransaction
+            val updatedNote = notes[noteIndex].toMutableMap()
+            updatedNote["text"] = newText
+            notes[noteIndex] = updatedNote
+            entry["notes"] = notes
+            current[idx] = entry
+            transaction.set(docRef, mapOf("entries" to current))
+        }.await()
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    suspend fun deleteNoteFromEntry(tmProfileUrl: String, noteIndex: Int) {
+        val docRef = shortlistDocRef()
+        store.runTransaction { transaction ->
+            val snapshot = transaction.get(docRef)
+            val current = (snapshot.get("entries") as? List<Map<String, Any>>)?.map { it.toMutableMap() }?.toMutableList() ?: return@runTransaction
+            val idx = current.indexOfFirst { (it["tmProfileUrl"] as? String) == tmProfileUrl }
+            if (idx == -1) return@runTransaction
+            val entry = current[idx].toMutableMap()
+            val notes = ((entry["notes"] as? List<Map<String, Any>>) ?: emptyList()).map { it.toMutableMap() }.toMutableList()
+            if (noteIndex !in notes.indices) return@runTransaction
+            notes.removeAt(noteIndex)
+            entry["notes"] = notes
+            current[idx] = entry
+            transaction.set(docRef, mapOf("entries" to current))
+        }.await()
     }
 }

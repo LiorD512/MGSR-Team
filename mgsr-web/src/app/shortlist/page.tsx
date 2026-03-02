@@ -16,6 +16,14 @@ import { subscribePlayersYouth, type YouthPlayer } from '@/lib/playersYouth';
 import AppLayout from '@/components/AppLayout';
 import Link from 'next/link';
 
+interface ShortlistNote {
+  text: string;
+  createdBy?: string;
+  createdByHebrewName?: string;
+  createdById?: string;
+  createdAt?: number;
+}
+
 interface ShortlistEntry {
   tmProfileUrl: string;
   addedAt?: number;
@@ -30,6 +38,7 @@ interface ShortlistEntry {
   addedByAgentId?: string;
   addedByAgentName?: string;
   addedByAgentHebrewName?: string;
+  notes?: ShortlistNote[];
 }
 
 interface RosterPlayer {
@@ -94,6 +103,14 @@ export default function ShortlistPage() {
   const [loadingTeammatesUrl, setLoadingTeammatesUrl] = useState<string | null>(null);
   const [expandedTeammatesUrl, setExpandedTeammatesUrl] = useState<string | null>(null);
   const [highlightedUrl, setHighlightedUrl] = useState<string | null>(null);
+
+  // ── Notes state ──
+  const [noteModalEntry, setNoteModalEntry] = useState<ShortlistEntry | null>(null);
+  const [noteModalMode, setNoteModalMode] = useState<'add' | 'edit'>('add');
+  const [noteModalText, setNoteModalText] = useState('');
+  const [noteModalEditIndex, setNoteModalEditIndex] = useState(-1);
+  const [savingNote, setSavingNote] = useState(false);
+  const [expandedNotesUrl, setExpandedNotesUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (!loading && !user) router.replace('/login');
@@ -185,6 +202,15 @@ export default function ShortlistPage() {
             addedByAgentId: (e.addedByAgentId as string) ?? undefined,
             addedByAgentName: (e.addedByAgentName as string) ?? undefined,
             addedByAgentHebrewName: (e.addedByAgentHebrewName as string) ?? undefined,
+            notes: Array.isArray(e.notes)
+              ? (e.notes as Record<string, unknown>[]).map((n) => ({
+                  text: (n.text as string) ?? '',
+                  createdBy: (n.createdBy as string) ?? undefined,
+                  createdByHebrewName: (n.createdByHebrewName as string) ?? undefined,
+                  createdById: (n.createdById as string) ?? undefined,
+                  createdAt: (n.createdAt as number) ?? undefined,
+                }))
+              : [],
           };
         });
         setEntries(mapped);
@@ -249,10 +275,117 @@ export default function ShortlistPage() {
   const sanitizeForFirestore = (obj: Record<string, unknown>): Record<string, unknown> => {
     const out: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(obj)) {
-      out[k] = v === undefined ? null : v;
+      if (v === undefined) {
+        out[k] = null;
+      } else if (Array.isArray(v)) {
+        out[k] = v.map((item) =>
+          typeof item === 'object' && item !== null
+            ? sanitizeForFirestore(item as Record<string, unknown>)
+            : item === undefined ? null : item
+        );
+      } else {
+        out[k] = v;
+      }
     }
     return out;
   };
+
+  // ── Notes CRUD ──
+  const addNoteToEntry = useCallback(async (entry: ShortlistEntry, noteText: string) => {
+    if (!user || !shortlistDocId) return;
+    setSavingNote(true);
+    try {
+      const account = await getCurrentAccountForShortlist(user);
+      const docRef = doc(db, shortlistsCollection, SHARED_SHORTLIST_DOC_ID);
+      const snap = await getDoc(docRef);
+      const current = (snap.data()?.entries as Record<string, unknown>[]) || [];
+      const idx = current.findIndex((e) => e.tmProfileUrl === entry.tmProfileUrl);
+      if (idx < 0) return;
+      const entryData = { ...current[idx] };
+      const existingNotes = Array.isArray(entryData.notes) ? [...(entryData.notes as Record<string, unknown>[])] : [];
+      existingNotes.push({
+        text: noteText,
+        createdBy: account.name ?? 'Unknown',
+        createdByHebrewName: account.hebrewName ?? null,
+        createdById: account.id,
+        createdAt: Date.now(),
+      });
+      entryData.notes = existingNotes;
+      current[idx] = entryData;
+      await setDoc(docRef, { entries: current.map((e) => sanitizeForFirestore(e as Record<string, unknown>)) }, { merge: true });
+    } finally {
+      setSavingNote(false);
+    }
+  }, [user, shortlistDocId, shortlistsCollection]);
+
+  const updateNoteInEntry = useCallback(async (entry: ShortlistEntry, noteIndex: number, newText: string) => {
+    if (!user || !shortlistDocId) return;
+    setSavingNote(true);
+    try {
+      const docRef = doc(db, shortlistsCollection, SHARED_SHORTLIST_DOC_ID);
+      const snap = await getDoc(docRef);
+      const current = (snap.data()?.entries as Record<string, unknown>[]) || [];
+      const idx = current.findIndex((e) => e.tmProfileUrl === entry.tmProfileUrl);
+      if (idx < 0) return;
+      const entryData = { ...current[idx] };
+      const existingNotes = Array.isArray(entryData.notes) ? [...(entryData.notes as Record<string, unknown>[])] : [];
+      if (noteIndex < 0 || noteIndex >= existingNotes.length) return;
+      existingNotes[noteIndex] = { ...existingNotes[noteIndex], text: newText, updatedAt: Date.now() };
+      entryData.notes = existingNotes;
+      current[idx] = entryData;
+      await setDoc(docRef, { entries: current.map((e) => sanitizeForFirestore(e as Record<string, unknown>)) }, { merge: true });
+    } finally {
+      setSavingNote(false);
+    }
+  }, [user, shortlistDocId, shortlistsCollection]);
+
+  const deleteNoteFromEntry = useCallback(async (entry: ShortlistEntry, noteIndex: number) => {
+    if (!user || !shortlistDocId) return;
+    try {
+      const docRef = doc(db, shortlistsCollection, SHARED_SHORTLIST_DOC_ID);
+      const snap = await getDoc(docRef);
+      const current = (snap.data()?.entries as Record<string, unknown>[]) || [];
+      const idx = current.findIndex((e) => e.tmProfileUrl === entry.tmProfileUrl);
+      if (idx < 0) return;
+      const entryData = { ...current[idx] };
+      const existingNotes = Array.isArray(entryData.notes) ? [...(entryData.notes as Record<string, unknown>[])] : [];
+      existingNotes.splice(noteIndex, 1);
+      entryData.notes = existingNotes;
+      current[idx] = entryData;
+      await setDoc(docRef, { entries: current.map((e) => sanitizeForFirestore(e as Record<string, unknown>)) }, { merge: true });
+    } catch (err) {
+      console.error('Delete note error:', err);
+    }
+  }, [user, shortlistDocId, shortlistsCollection]);
+
+  const handleSaveNote = useCallback(async () => {
+    if (!noteModalEntry || !noteModalText.trim()) return;
+    if (noteModalMode === 'edit' && noteModalEditIndex >= 0) {
+      await updateNoteInEntry(noteModalEntry, noteModalEditIndex, noteModalText.trim());
+    } else {
+      await addNoteToEntry(noteModalEntry, noteModalText.trim());
+    }
+    setNoteModalEntry(null);
+    setNoteModalText('');
+    setNoteModalEditIndex(-1);
+  }, [noteModalEntry, noteModalText, noteModalMode, noteModalEditIndex, addNoteToEntry, updateNoteInEntry]);
+
+  const formatNoteDate = useCallback((timestamp?: number) => {
+    if (!timestamp) return '';
+    const now = Date.now();
+    const diff = now - timestamp;
+    const days = Math.floor(diff / (24 * 60 * 60 * 1000));
+    if (days < 1) return t('shortlist_date_today');
+    if (days === 1) return t('shortlist_date_yesterday');
+    if (days < 7) return t('shortlist_notes_days_ago').replace('{n}', String(days));
+    return new Date(timestamp).toLocaleDateString();
+  }, [t]);
+
+  const getNoteAuthor = useCallback((note: ShortlistNote) =>
+    isRtl
+      ? note.createdByHebrewName || note.createdBy || '—'
+      : note.createdBy || note.createdByHebrewName || '—',
+  [isRtl]);
 
   const removeFromShortlist = async (entry: ShortlistEntry) => {
     if (!user || !shortlistDocId) return;
@@ -446,6 +579,8 @@ export default function ShortlistPage() {
               const isFmInsideUrl = playerUrl?.includes('fminside');
 
               const isHighlighted = highlightedUrl === entry.tmProfileUrl;
+              const isNotesExpanded = expandedNotesUrl === entry.tmProfileUrl;
+              const notes = entry.notes ?? [];
               return (
               <div
                 key={entry.tmProfileUrl}
@@ -616,6 +751,76 @@ export default function ShortlistPage() {
                 </div>
                 )}
 
+                {/* ── Notes Section — all platforms ── */}
+                {(() => {
+                  const accentText = isYouth ? 'text-[var(--youth-cyan)]' : isWomen ? 'text-[var(--women-rose)]' : 'text-orange-400';
+                  const accentBorder = isYouth ? 'border-[var(--youth-cyan)]/20' : isWomen ? 'border-[var(--women-rose)]/20' : 'border-orange-400/20';
+                  return (
+                    <div className="px-4 pb-3">
+                      <button
+                        type="button"
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setExpandedNotesUrl(isNotesExpanded ? null : entry.tmProfileUrl); }}
+                        className="w-full flex items-center gap-2 py-2 px-3 rounded-xl bg-mgsr-dark/40 border border-mgsr-border/60 hover:border-mgsr-border transition-all text-left rtl:text-right"
+                      >
+                        <svg className={`w-4 h-4 shrink-0 ${accentText}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                        <span className="text-sm text-mgsr-text flex-1">
+                          {notes.length === 0
+                            ? t('shortlist_notes_tap_to_add')
+                            : t('shortlist_notes_count').replace('{n}', String(notes.length))}
+                        </span>
+                        {notes.length > 0 && (
+                          <svg
+                            className={`w-4 h-4 text-mgsr-muted shrink-0 transition-transform duration-200 ${isNotesExpanded ? 'rotate-180' : ''}`}
+                            fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        )}
+                      </button>
+
+                      {(isNotesExpanded || notes.length === 0) && (
+                        <div className="mt-2 space-y-2">
+                          {notes.map((note, ni) => (
+                            <div
+                              key={ni}
+                              className={`p-3 rounded-xl bg-mgsr-dark/50 border ${accentBorder}`}
+                            >
+                              <p className="text-sm text-mgsr-text whitespace-pre-wrap">{note.text}</p>
+                              <div className="flex items-center justify-between mt-2">
+                                <span className="text-xs text-mgsr-muted">
+                                  {getNoteAuthor(note)} · {formatNoteDate(note.createdAt)}
+                                </span>
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    onClick={(ev) => { ev.preventDefault(); ev.stopPropagation(); setNoteModalEntry(entry); setNoteModalMode('edit'); setNoteModalText(note.text); setNoteModalEditIndex(ni); }}
+                                    className="text-xs text-mgsr-muted hover:text-mgsr-text transition"
+                                  >
+                                    {t('shortlist_notes_edit')}
+                                  </button>
+                                  <button
+                                    onClick={(ev) => { ev.preventDefault(); ev.stopPropagation(); deleteNoteFromEntry(entry, ni); }}
+                                    className="text-xs text-mgsr-red/70 hover:text-mgsr-red transition"
+                                  >
+                                    {t('shortlist_notes_delete')}
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                          <button
+                            onClick={(ev) => { ev.preventDefault(); ev.stopPropagation(); setNoteModalEntry(entry); setNoteModalMode('add'); setNoteModalText(''); setNoteModalEditIndex(-1); }}
+                            className={`w-full py-2.5 rounded-xl text-sm font-medium ${accentText} ${isYouth ? 'bg-[var(--youth-cyan)]/10' : isWomen ? 'bg-[var(--women-rose)]/10' : 'bg-orange-400/10'} transition hover:opacity-80`}
+                          >
+                            {t('shortlist_notes_add')}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+
                 {/* Roster teammates section — Transfermarkt only, men platform only */}
                 {platform === 'men' && (
                 <div className="px-4 pb-4">
@@ -696,6 +901,91 @@ export default function ShortlistPage() {
           </div>
         )}
       </div>
+
+      {/* ── Note Add/Edit Modal ── */}
+      {noteModalEntry && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={() => { setNoteModalEntry(null); setNoteModalText(''); setNoteModalEditIndex(-1); }}>
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className={`w-full max-w-md rounded-2xl border p-6 shadow-2xl ${
+              isYouth
+                ? 'bg-mgsr-card border-[var(--youth-cyan)]/30'
+                : isWomen
+                  ? 'bg-mgsr-card border-[var(--women-rose)]/30'
+                  : 'bg-mgsr-card border-mgsr-border'
+            }`}
+          >
+            {/* Title */}
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-mgsr-text">
+                {noteModalMode === 'edit' ? t('shortlist_notes_edit_title') : t('shortlist_notes_add_title')}
+              </h3>
+              <button onClick={() => { setNoteModalEntry(null); setNoteModalText(''); setNoteModalEditIndex(-1); }} className="text-mgsr-muted hover:text-mgsr-text transition">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Player context */}
+            <div className="flex items-center gap-3 mb-4 p-3 rounded-xl bg-mgsr-dark/50 border border-mgsr-border/60">
+              <img
+                src={noteModalEntry.playerImage || 'https://via.placeholder.com/40'}
+                alt=""
+                className="w-10 h-10 rounded-full object-cover bg-mgsr-dark"
+              />
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-mgsr-text truncate">
+                  {noteModalEntry.playerName || t('shortlist_unknown_player')}
+                </p>
+                <p className="text-xs text-mgsr-muted truncate">
+                  {[noteModalEntry.playerPosition, noteModalEntry.clubJoinedName].filter(Boolean).join(' · ')}
+                </p>
+              </div>
+            </div>
+
+            {/* Text input */}
+            <textarea
+              value={noteModalText}
+              onChange={(e) => setNoteModalText(e.target.value)}
+              placeholder={t('shortlist_notes_placeholder')}
+              rows={4}
+              autoFocus
+              className={`w-full rounded-xl border p-3 text-sm text-mgsr-text bg-mgsr-dark/60 placeholder:text-mgsr-muted/60 resize-none focus:outline-none transition ${
+                isYouth
+                  ? 'border-[var(--youth-cyan)]/30 focus:border-[var(--youth-cyan)]/60'
+                  : isWomen
+                    ? 'border-[var(--women-rose)]/30 focus:border-[var(--women-rose)]/60'
+                    : 'border-mgsr-border focus:border-orange-400/60'
+              }`}
+              dir="auto"
+            />
+
+            {/* Actions */}
+            <div className="flex justify-end gap-3 mt-4">
+              <button
+                onClick={() => { setNoteModalEntry(null); setNoteModalText(''); setNoteModalEditIndex(-1); }}
+                className="px-4 py-2 rounded-xl text-sm font-medium text-mgsr-muted border border-mgsr-border hover:text-mgsr-text transition"
+              >
+                {t('common_cancel')}
+              </button>
+              <button
+                onClick={handleSaveNote}
+                disabled={!noteModalText.trim() || savingNote}
+                className={`px-5 py-2 rounded-xl text-sm font-semibold text-white disabled:opacity-40 transition ${
+                  isYouth
+                    ? 'bg-gradient-to-r from-[var(--youth-cyan)] to-[var(--youth-violet)]'
+                    : isWomen
+                      ? 'bg-[var(--women-rose)]'
+                      : 'bg-orange-500 hover:bg-orange-600'
+                }`}
+              >
+                {savingNote ? '...' : t('shortlist_notes_save')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </AppLayout>
   );
 }

@@ -18,6 +18,9 @@ interface IShortlistViewModel {
     fun remove(entry: ShortlistEntry)
     fun removeByUrl(tmProfileUrl: String)
     fun addByUrl(tmProfileUrl: String)
+    fun addNote(tmProfileUrl: String, text: String)
+    fun updateNote(tmProfileUrl: String, noteIndex: Int, newText: String)
+    fun deleteNote(tmProfileUrl: String, noteIndex: Int)
 }
 
 class ShortlistViewModel(
@@ -50,6 +53,24 @@ class ShortlistViewModel(
     override fun addByUrl(tmProfileUrl: String) {
         viewModelScope.launch {
             repository.addToShortlist(tmProfileUrl)
+        }
+    }
+
+    override fun addNote(tmProfileUrl: String, text: String) {
+        viewModelScope.launch {
+            repository.addNoteToEntry(tmProfileUrl, text)
+        }
+    }
+
+    override fun updateNote(tmProfileUrl: String, noteIndex: Int, newText: String) {
+        viewModelScope.launch {
+            repository.updateNoteInEntry(tmProfileUrl, noteIndex, newText)
+        }
+    }
+
+    override fun deleteNote(tmProfileUrl: String, noteIndex: Int) {
+        viewModelScope.launch {
+            repository.deleteNoteFromEntry(tmProfileUrl, noteIndex)
         }
     }
 }

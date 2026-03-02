@@ -111,6 +111,16 @@
     <string name="shortlist_added_weeks_ago">Added %d weeks ago</string>
     <string name="shortlist_added_months_ago">Added %d months ago</string>
     <string name="shortlist_added_by">Added by %1$s</string>
+    <string name="shortlist_notes_count">%d notes</string>
+    <string name="shortlist_notes_tap_to_add">Tap to add a note</string>
+    <string name="shortlist_notes_add">Add Note</string>
+    <string name="shortlist_notes_add_title">Add Note</string>
+    <string name="shortlist_notes_edit_title">Edit Note</string>
+    <string name="shortlist_notes_edit">Edit</string>
+    <string name="shortlist_notes_delete">Delete</string>
+    <string name="shortlist_notes_save">Save</string>
+    <string name="shortlist_notes_placeholder">Write your note here…</string>
+    <string name="shortlist_notes_days_ago">%d days ago</string>
 
     <string name="contacts_screen_search_hint">Search by name, club or country</string>
     <string name="contacts_filter_all">All</string>
