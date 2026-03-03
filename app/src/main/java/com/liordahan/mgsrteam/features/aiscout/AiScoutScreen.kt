@@ -1195,50 +1195,168 @@ private fun LeagueInfoBanner(info: LeagueInfo) {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 /**
- * Parses scout analysis text into bullet items.
- * Splits by newlines and pipe (|). Strips any ":FM" / " FM" suffix so Hebrew text (e.g. סיבולת, האצה) is clean.
- * Returns pair: (regular items, FM-only items for separate "FM stats" section).
+ * Structured parse result for scout analysis text.
+ * Separates the jumbled blob into three clean categories:
+ *  - scoutNotes: scouting insight lines (profile, league context, recommendations)
+ *  - realStats:  fbref / real-world per-90 stats and percentile data
+ *  - fmStats:    Football Manager attribute scores (positioning: 80, tackling: 75, CA/PA)
  */
-private fun parseScoutAnalysisBullets(text: String): Pair<List<String>, List<String>> {
+private data class ParsedAnalysis(
+    val scoutNotes: List<String>,
+    val realStats: List<String>,
+    val fmStats: List<FmStatItem>
+)
+
+/** A single FM stat with a label and numeric value for grid display */
+private data class FmStatItem(
+    val label: String,
+    val value: Int?,
+    val raw: String   // fallback: the full text if we can't parse label:value
+)
+
+/**
+ * Parses scout analysis text into structured sections.
+ * The scout server sends one big blob mixing scouting insight, fbref stats,
+ * and FM attributes. This function classifies each line into the right bucket.
+ */
+private fun parseScoutAnalysisStructured(text: String): ParsedAnalysis {
     val fmSuffixRegex = Regex("""\s*[:\u058A\uFF1A]?\s*FM\s*$""", RegexOption.IGNORE_CASE)
-    // Known FM attribute keywords (Hebrew & English) — items matching these belong under FM Stats
+
+    // ── Comprehensive FM attribute keywords ──────────────────────────
+    // Every Football Manager attribute name in Hebrew and English.
     val fmKeywords = listOf(
-        // Hebrew FM attribute names
-        "סיבולת", "האצה", "קצב עבודה", "צנטורים", "תיקול", "תיקולים",
-        "ציונים", "כדרור", "מסירות", "מהירות", "חוזק", "ראייה", "החלטות",
-        "אגרסיביות", "כושר", "ריכוז", "יצירתיות", "מסירה", "נגיחות",
-        "זריזות", "קפיצה", "מיצוב",
-        // English FM attribute names
-        "stamina", "acceleration", "work rate", "crossing", "tackling",
-        "dribbling", "passing", "pace", "strength", "vision", "decisions",
-        "aggression", "fitness", "concentration", "creativity", "heading",
-        "agility", "jumping", "positioning",
-        // "שווי בסיוות ריאלי" (market value in realistic terms) — also FM-origin
-        "שווי בסיוות",
+        // Hebrew FM technical
+        "תיקול", "תיקולים", "כדרור", "מסירה", "מסירות", "צנטורים", "כדרור",
+        "סיום", "שליטה בכדור", "טכניקה", "כדורים ארוכים", "זריקה ארוכה",
+        "ראש", "נגיחות", "כישרון", "פנדלים", "בעיטות חופשיות",
+        // Hebrew FM mental
+        "אגרסיביות", "אומץ", "ריכוז", "החלטות", "נחישות", "ראייה",
+        "יצירתיות", "מנהיגות", "קור רוח", "עבודה ללא כדור", "קצב עבודה",
+        "אנטיציפציה", "מיצוב", "מיקום", "פלייר",
+        // Hebrew FM physical
+        "כוח", "חוזק", "מהירות", "האצה", "סיבולת", "כושר", "זריזות",
+        "קפיצה", "איזון", "כושר גופני",
+        // Hebrew FM GK
+        "תפיסה", "בעיטה", "חלוקת כדורים", "מיקום שוער", "רפלקסים",
+        "יציאה אחד על אחד", "יציאה",
+        // Hebrew other FM terms
+        "כיסוי", "ציונים", "הגנה", "התקפה",
+        // English FM technical
+        "tackling", "dribbling", "passing", "crossing", "finishing",
+        "first touch", "technique", "long shots", "long throws",
+        "heading", "free kick", "penalty", "corners", "marking",
+        // English FM mental
+        "aggression", "bravery", "composure", "concentration", "decisions",
+        "determination", "flair", "vision", "creativity", "leadership",
+        "off the ball", "work rate", "teamwork", "anticipation", "positioning",
+        // English FM physical
+        "strength", "pace", "acceleration", "stamina", "fitness", "agility",
+        "jumping", "balance", "natural fitness",
+        // English FM GK
+        "handling", "kicking", "reflexes", "one on ones", "command of area",
+        "communication", "eccentricity", "rushing out", "throwing",
+        // Other
+        "overall", "potential",
     )
-    // Regex for a numeric score pattern like ":85", ": 80", "70" at end of line — typical FM stat format
-    val fmScorePattern = Regex("""[:\s]\s*\d{1,3}\s*$""")
-    val regular = mutableListOf<String>()
-    val fmOnly = mutableListOf<String>()
+
+    // ── fbref / real-stat patterns ────────────────────────────────────
+    // per-90 stats, percentile mentions, or stats with /90 suffix
+    val realStatPatterns = listOf(
+        Regex("""/90""", RegexOption.IGNORE_CASE),                      // tackles/90, interceptions/90
+        Regex("""אחוזון\s*\d+"""),                                     // (אחוזון 96)
+        Regex("""percentile\s*\d+""", RegexOption.IGNORE_CASE),         // percentile 96
+        Regex("""(?:top|bottom)\s*\d+\s*%""", RegexOption.IGNORE_CASE), // top 5%
+        Regex("""יירוטים"""),                                           // interceptions (real stats term)
+        Regex("""(?:xG|xA|npxG|SCA|GCA)\b"""),                         // advanced metrics
+        Regex("""קילומטרים|km\b""", RegexOption.IGNORE_CASE),          // distance covered
+        Regex("""חוזקות\s*:"""),                                        // "חוזקות:" is a fbref section header
+    )
+
+    // ── CA/PA pattern (FM ability scores) ─────────────────────────────
+    val caPaPattern = Regex("""CA\s*\d+|PA\s*\d+|\bCA\b|\bPA\b""", RegexOption.IGNORE_CASE)
+
+    // ── FM-style "label: number" or "label number" (short, 1–3 words + score) ──
+    val fmLabelValuePattern = Regex("""^(.{2,25}?)\s*[:：]\s*(\d{1,3})\s*$""")
+    val fmLabelValueNoColon = Regex("""^([א-ת\s]{2,20})\s+(\d{1,3})\s*$""")
+
+    // ── Classification ──────────────────────────────────────────────
+    val scoutNotes = mutableListOf<String>()
+    val realStats = mutableListOf<String>()
+    val fmStats = mutableListOf<FmStatItem>()
+
     for (line in text.split("\n")) {
         val trimmed = line.trim()
         if (trimmed.isBlank()) continue
         for (part in trimmed.split("|").map { it.trim() }.filter { it.isNotBlank() }) {
-            // Check if original text has FM suffix before stripping it
             val hadFmSuffix = fmSuffixRegex.containsMatchIn(part)
             val cleaned = fmSuffixRegex.replace(part, "").trim()
             if (cleaned.isBlank()) continue
-            val hasCaPa = cleaned.contains("CA ") || cleaned.contains(" PA ") ||
-                cleaned.contains("CA-") || cleaned.contains("PA-") ||
-                Regex("""CA\s*[\d]+\s*[-–]\s*PA""").containsMatchIn(cleaned) ||
-                Regex("""\d+\s*[-–]\s*PA\s*\d+""").containsMatchIn(cleaned)
+
+            // 1) Check for CA/PA (always FM)
+            val hasCaPa = caPaPattern.containsMatchIn(cleaned)
+
+            // 2) Check real-stat patterns (fbref)
+            val isRealStat = !hasCaPa && realStatPatterns.any { it.containsMatchIn(cleaned) }
+
+            // 3) Check FM keyword match
             val matchesFmKeyword = fmKeywords.any { kw ->
                 cleaned.contains(kw, ignoreCase = true)
             }
-            val isFmStat = hadFmSuffix || hasCaPa || matchesFmKeyword
-            if (isFmStat) fmOnly.add(cleaned) else regular.add(cleaned)
+
+            // 4) Check FM label:value format  (e.g. "מיקום: 80", "כוח 85")
+            val labelValueMatch = fmLabelValuePattern.find(cleaned)
+                ?: fmLabelValueNoColon.find(cleaned)
+
+            when {
+                isRealStat -> {
+                    realStats.add(cleaned)
+                }
+                hasCaPa || hadFmSuffix -> {
+                    // CA/PA line — try to extract as FM stat
+                    fmStats.add(parseFmStatItem(cleaned))
+                }
+                matchesFmKeyword -> {
+                    fmStats.add(parseFmStatItem(cleaned))
+                }
+                labelValueMatch != null && !isRealStat -> {
+                    // Short label + number — likely FM if the label is short
+                    val label = labelValueMatch.groupValues[1].trim()
+                    val value = labelValueMatch.groupValues[2].toIntOrNull()
+                    if (value != null && value in 1..200) {
+                        fmStats.add(FmStatItem(label, value, cleaned))
+                    } else {
+                        scoutNotes.add(cleaned)
+                    }
+                }
+                else -> {
+                    scoutNotes.add(cleaned)
+                }
+            }
         }
     }
+    return ParsedAnalysis(scoutNotes, realStats, fmStats)
+}
+
+/** Parse a single line into an FmStatItem, trying to extract label:value */
+private fun parseFmStatItem(text: String): FmStatItem {
+    // Try "label: 80" or "label 80"
+    val m = Regex("""^(.+?)\s*[:：]\s*(\d{1,3})\s*$""").find(text)
+        ?: Regex("""^(.+?)\s+(\d{1,3})\s*$""").find(text)
+    return if (m != null) {
+        FmStatItem(m.groupValues[1].trim(), m.groupValues[2].toIntOrNull(), text)
+    } else {
+        FmStatItem(text, null, text)
+    }
+}
+
+/**
+ * Legacy wrapper — returns (regular, fmOnly) pair for backward compatibility.
+ * Merges scoutNotes + realStats into "regular", fmStats raw text into "fmOnly".
+ */
+private fun parseScoutAnalysisBullets(text: String): Pair<List<String>, List<String>> {
+    val parsed = parseScoutAnalysisStructured(text)
+    val regular = parsed.scoutNotes + parsed.realStats
+    val fmOnly = parsed.fmStats.map { it.raw }
     return regular to fmOnly
 }
 
@@ -1388,7 +1506,7 @@ private fun PlayerResultCard(
                 }
         }
 
-        // Scout analysis — bullets; strip FM from text (e.g. סיבולת 70 :FM → סיבולת 70); FM stats under own heading
+        // Scout analysis — structured into 3 sections: Scout Notes → Real Stats → FM Stats
         if (player.scoutAnalysis.isNotBlank()) {
             Spacer(Modifier.height(8.dp))
             Box(
@@ -1398,9 +1516,10 @@ private fun PlayerResultCard(
                     .background(HomeDarkCardBorder.copy(alpha = 0.6f))
             )
             Spacer(Modifier.height(8.dp))
-            val (regularItems, fmItems) = parseScoutAnalysisBullets(player.scoutAnalysis)
+            val parsed = parseScoutAnalysisStructured(player.scoutAnalysis)
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                regularItems.forEach { item ->
+                // ── Scout Notes (scouting insights, profile info) ─────
+                parsed.scoutNotes.forEach { item ->
                     Text(
                         text = "• $item",
                         style = regularTextStyle(
@@ -1412,23 +1531,107 @@ private fun PlayerResultCard(
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
-                if (fmItems.isNotEmpty()) {
-                    Spacer(Modifier.height(10.dp))
+
+                // ── Real Stats (fbref per-90, percentiles) ────────────
+                if (parsed.realStats.isNotEmpty()) {
+                    Spacer(Modifier.height(8.dp))
                     Text(
-                        text = stringResource(R.string.ai_scout_fm_stats),
+                        text = "📊  " + stringResource(R.string.ai_scout_real_stats),
+                        style = boldTextStyle(Color(0xFF4FC3F7), 13.sp),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(Color(0xFF4FC3F7).copy(alpha = 0.06f))
+                            .padding(horizontal = 10.dp, vertical = 6.dp),
+                        verticalArrangement = Arrangement.spacedBy(3.dp)
+                    ) {
+                        parsed.realStats.forEach { item ->
+                            Text(
+                                text = "▸ $item",
+                                style = regularTextStyle(
+                                    HomeTextPrimary,
+                                    12.sp,
+                                    direction = TextDirection.Content
+                                ),
+                                lineHeight = 18.sp,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                    }
+                }
+
+                // ── FM Stats (game attributes in a 2-column grid) ─────
+                if (parsed.fmStats.isNotEmpty()) {
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        text = "🎮  " + stringResource(R.string.ai_scout_fm_stats),
                         style = boldTextStyle(HomeTealAccent, 13.sp),
                         modifier = Modifier.fillMaxWidth()
                     )
                     Spacer(Modifier.height(4.dp))
-                    fmItems.forEach { item ->
+
+                    // Separate stats with numeric values (grid) from text-only (bullets)
+                    val gridStats = parsed.fmStats.filter { it.value != null }
+                    val textStats = parsed.fmStats.filter { it.value == null }
+
+                    if (gridStats.isNotEmpty()) {
+                        // 2-column grid for label:value FM stats
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(HomeTealAccent.copy(alpha = 0.06f))
+                                .padding(horizontal = 10.dp, vertical = 6.dp),
+                            verticalArrangement = Arrangement.spacedBy(2.dp)
+                        ) {
+                            gridStats.chunked(2).forEach { row ->
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    row.forEach { stat ->
+                                        Row(
+                                            modifier = Modifier.weight(1f),
+                                            horizontalArrangement = Arrangement.SpaceBetween
+                                        ) {
+                                            Text(
+                                                text = stat.label,
+                                                style = regularTextStyle(HomeTextSecondary, 12.sp),
+                                                modifier = Modifier.weight(1f)
+                                            )
+                                            Text(
+                                                text = stat.value.toString(),
+                                                style = boldTextStyle(
+                                                    fmStatColor(stat.value!!),
+                                                    12.sp
+                                                ),
+                                                modifier = Modifier.padding(start = 4.dp, end = 8.dp)
+                                            )
+                                        }
+                                    }
+                                    // Pad empty cell if odd number
+                                    if (row.size == 1) {
+                                        Spacer(Modifier.weight(1f))
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Text-only FM items (CA/PA lines, complex entries)
+                    textStats.forEach { item ->
                         Text(
-                            text = "• $item",
+                            text = "• ${item.raw}",
                             style = regularTextStyle(
                                 HomeTextPrimary,
-                                13.sp,
+                                12.sp,
                                 direction = TextDirection.Content
                             ),
-                            lineHeight = 20.sp,
+                            lineHeight = 18.sp,
                             modifier = Modifier.fillMaxWidth()
                         )
                     }
@@ -1436,6 +1639,16 @@ private fun PlayerResultCard(
             }
         }
     }
+}
+
+/** Color-code FM stat values: red <50, meh 50-64, decent 65-74, good 75-84, great 85+ */
+@Composable
+private fun fmStatColor(value: Int): Color = when {
+    value >= 85 -> HomeTealAccent       // Elite
+    value >= 75 -> HomeGreenAccent      // Good
+    value >= 65 -> Color(0xFFFFC107)    // Decent (amber)
+    value >= 50 -> HomeOrangeAccent     // Average
+    else -> Color(0xFFE57373)           // Weak (red-ish)
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════

@@ -861,6 +861,7 @@
     <string name="ai_scout_league_info">ליגה: %1$s</string>
     <string name="ai_scout_fm_tier">FM %1$s</string>
     <string name="ai_scout_fm_stats">סטטיסטיקות FM</string>
+    <string name="ai_scout_real_stats">נתונים אמיתיים</string>
     <string name="ai_scout_tab_scout">🔍 AI Scout</string>
     <string name="ai_scout_tab_find_next">🧠 מצא את הבא</string>
     <string name="ai_scout_find_next_hero_title">מצא לי את הבא…</string>
