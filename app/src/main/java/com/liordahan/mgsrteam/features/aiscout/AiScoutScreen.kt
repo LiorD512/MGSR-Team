@@ -1289,7 +1289,10 @@ private fun parseScoutAnalysisStructured(text: String): ParsedAnalysis {
         if (trimmed.isBlank()) continue
         for (part in trimmed.split("|").map { it.trim() }.filter { it.isNotBlank() }) {
             val hadFmSuffix = fmSuffixRegex.containsMatchIn(part)
+            // Strip FM suffix AND any stray "FM" / ":FM" / "FM:" in the middle of the text
             val cleaned = fmSuffixRegex.replace(part, "").trim()
+                .replace(Regex("""\s*[:：]?\s*FM\s*[:：]?\s*""", RegexOption.IGNORE_CASE), " ")
+                .replace(Regex("""\s{2,}"""), " ").trim()
             if (cleaned.isBlank()) continue
 
             // 1) Check for CA/PA (always FM)
@@ -1343,9 +1346,16 @@ private fun parseFmStatItem(text: String): FmStatItem {
     val m = Regex("""^(.+?)\s*[:：]\s*(\d{1,3})\s*$""").find(text)
         ?: Regex("""^(.+?)\s+(\d{1,3})\s*$""").find(text)
     return if (m != null) {
-        FmStatItem(m.groupValues[1].trim(), m.groupValues[2].toIntOrNull(), text)
+        // Strip any residual "FM" from the label
+        val label = m.groupValues[1].trim()
+            .replace(Regex("""\s*[:：]?\s*FM\s*[:：]?\s*""", RegexOption.IGNORE_CASE), " ")
+            .replace(Regex("""\s{2,}"""), " ").trim()
+        FmStatItem(label, m.groupValues[2].toIntOrNull(), text)
     } else {
-        FmStatItem(text, null, text)
+        val label = text
+            .replace(Regex("""\s*[:：]?\s*FM\s*[:：]?\s*""", RegexOption.IGNORE_CASE), " ")
+            .replace(Regex("""\s{2,}"""), " ").trim()
+        FmStatItem(label, null, text)
     }
 }
 
