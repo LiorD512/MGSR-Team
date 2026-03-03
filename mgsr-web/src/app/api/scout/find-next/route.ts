@@ -33,15 +33,22 @@ interface FindNextResult {
 /**
  * Generate scout narratives for the top Find Next results using Gemini.
  * Non-blocking: if Gemini fails, original results are returned unchanged.
+ * When lang is 'he' or 'iw', narratives are generated in Hebrew.
  */
 async function enrichWithScoutNarrative(
   results: FindNextResult[],
   referenceName: string,
   apiKey: string,
+  lang: string,
 ): Promise<FindNextResult[]> {
   if (results.length === 0) return results;
 
-  const top = results.slice(0, 5); // Only narrate top 5
+  const isHebrew = lang === 'he' || lang === 'iw';
+  const langInstruction = isHebrew
+    ? '\n\nCRITICAL — OUTPUT LANGUAGE: You MUST write every scout_narrative in HEBREW (עברית). The user\'s app is set to Hebrew. Write like an Israeli scout would speak: natural, direct, with football terminology in Hebrew. Do NOT write in English.'
+    : '';
+
+  const top = results.slice(0, 15); // Narrate all results (up to 15) for consistent language
   const playerSummaries = top.map((p, i) => {
     const stats = buildStatsContext(p);
     const fm = buildFmContext(p);
@@ -58,6 +65,7 @@ For each of the ${top.length} players, write a 1-2 sentence scout narrative expl
 - WHY they remind you of ${referenceName} (playing characteristics, physical profile, stats pattern)
 - What makes them an exciting prospect or a realistic target
 - Any red flags or caveats a scout should know
+${langInstruction}
 
 Players:
 ${playerSummaries}
@@ -67,9 +75,11 @@ Return ONLY valid JSON, no markdown code blocks.`;
 
   try {
     const genAI = new GoogleGenerativeAI(apiKey);
+    const systemInstruction = SCOUT_PERSONA + '\n' + FIND_NEXT_PERSONA_EXT +
+      (isHebrew ? '\n\nOUTPUT LANGUAGE: Always respond in Hebrew (עברית). The user\'s interface is in Hebrew.' : '');
     const model = genAI.getGenerativeModel({
       model: 'gemini-2.5-flash',
-      systemInstruction: SCOUT_PERSONA + '\n' + FIND_NEXT_PERSONA_EXT,
+      systemInstruction,
     });
     const result = await model.generateContent(prompt);
     const text = result.response?.text?.() || '';
@@ -111,9 +121,10 @@ export async function GET(request: NextRequest) {
     // Gemini enrichment: add scout narratives for top results
     const geminiApiKey = process.env.GEMINI_API_KEY;
     const referenceName = data.reference_player?.name || searchParams.get('player_name') || '';
+    const lang = searchParams.get('lang') || 'en';
     if (geminiApiKey && data.results && data.results.length > 0 && referenceName) {
-      console.log(`[Find Next] Enriching ${data.results.length} results with scout narratives for "${referenceName}"`);
-      data.results = await enrichWithScoutNarrative(data.results, referenceName, geminiApiKey);
+      console.log(`[Find Next] Enriching ${data.results.length} results with scout narratives for "${referenceName}" (lang=${lang})`);
+      data.results = await enrichWithScoutNarrative(data.results, referenceName, geminiApiKey, lang);
     }
 
     return NextResponse.json(data, {

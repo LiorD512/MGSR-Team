@@ -53,6 +53,8 @@ import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.PersonOff
+import androidx.compose.material.icons.filled.Psychology
+import androidx.compose.material.icons.filled.Radar
 import androidx.compose.material.icons.filled.RequestQuote
 import androidx.compose.material.icons.filled.SportsSoccer
 import androidx.compose.material.icons.filled.Search
@@ -634,6 +636,30 @@ private fun QuickActionsRow(navController: NavController) {
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         modifier = Modifier.padding(vertical = 14.dp)
     ) {
+        item {
+            QuickActionChip(
+                icon = Icons.Default.Radar,
+                label = stringResource(R.string.quick_action_ai_scout),
+                color = HomeTealAccent,
+                onClick = {
+                    navController.navigate(Screens.AiScoutScreen.route) {
+                        launchSingleTop = true
+                    }
+                }
+            )
+        }
+        item {
+            QuickActionChip(
+                icon = Icons.Default.Psychology,
+                label = stringResource(R.string.quick_action_war_room),
+                color = HomePurpleAccent,
+                onClick = {
+                    navController.navigate(Screens.WarRoomScreen.route) {
+                        launchSingleTop = true
+                    }
+                }
+            )
+        }
         item {
             QuickActionChip(
                 icon = Icons.Default.People,

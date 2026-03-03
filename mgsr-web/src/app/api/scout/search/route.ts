@@ -196,7 +196,7 @@ export async function POST(request: NextRequest) {
         transferFee: parsedHebrew?.transferFee || parsedMain.transferFee,
         valueMin: parsedHebrew?.valueMin ?? parsedMain.valueMin,
         valueMax: parsedHebrew?.valueMax ?? parsedMain.valueMax,
-        notes: _mergeNotes(parsedHebrew?.notes, parsedMain.notes),
+        notes: _mergeNotes(parsedHebrew?.notes, parsedMain?.notes),
         interpretation: parsedHebrew?.interpretation || parsedMain.interpretation,
       };
 

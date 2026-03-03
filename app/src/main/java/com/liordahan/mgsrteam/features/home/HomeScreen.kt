@@ -42,8 +42,11 @@ import com.liordahan.mgsrteam.features.releases.ReleasesScreen
 import com.liordahan.mgsrteam.features.requests.RequestsScreen
 import com.liordahan.mgsrteam.features.returnee.ReturneeScreen
 import com.liordahan.mgsrteam.features.add.IAddPlayerViewModel
+import com.liordahan.mgsrteam.features.aiscout.AiScoutScreen
 import com.liordahan.mgsrteam.features.shadowteams.ShadowTeamsScreen
 import com.liordahan.mgsrteam.features.shortlist.ShortlistScreen
+import com.liordahan.mgsrteam.features.warroom.WarRoomScreen
+import com.liordahan.mgsrteam.features.warroom.WarRoomReportScreen
 import com.liordahan.mgsrteam.BuildConfig
 import com.liordahan.mgsrteam.navigation.NavigationTransitions
 import com.liordahan.mgsrteam.navigation.Screens
@@ -317,6 +320,34 @@ fun HomeScreen(
                 route = Screens.ShadowTeamsScreen.route
             ) {
                 ShadowTeamsScreen(navController = navController)
+            }
+
+            composable(
+                route = Screens.AiScoutScreen.route
+            ) {
+                AiScoutScreen(navController = navController)
+            }
+
+            composable(
+                route = Screens.WarRoomScreen.route
+            ) {
+                WarRoomScreen(navController = navController)
+            }
+
+            composable(
+                route = Screens.WarRoomReportScreen.route,
+                arguments = listOf(
+                    navArgument("tmUrl") { type = NavType.StringType },
+                    navArgument("playerName") { type = NavType.StringType }
+                )
+            ) { backStackEntry ->
+                val tmUrl = Uri.decode(backStackEntry.arguments?.getString("tmUrl") ?: "")
+                val playerName = backStackEntry.arguments?.getString("playerName") ?: ""
+                WarRoomReportScreen(
+                    transfermarktUrl = tmUrl,
+                    playerName = playerName,
+                    navController = navController
+                )
             }
         }
     }
