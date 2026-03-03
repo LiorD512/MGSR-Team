@@ -1171,18 +1171,41 @@ private fun LeagueInfoBanner(info: LeagueInfo) {
  */
 private fun parseScoutAnalysisBullets(text: String): Pair<List<String>, List<String>> {
     val fmSuffixRegex = Regex("""\s*[:\u058A\uFF1A]?\s*FM\s*$""", RegexOption.IGNORE_CASE)
+    // Known FM attribute keywords (Hebrew & English) — items matching these belong under FM Stats
+    val fmKeywords = listOf(
+        // Hebrew FM attribute names
+        "סיבולת", "האצה", "קצב עבודה", "צנטורים", "תיקול", "תיקולים",
+        "ציונים", "כדרור", "מסירות", "מהירות", "חוזק", "ראייה", "החלטות",
+        "אגרסיביות", "כושר", "ריכוז", "יצירתיות", "מסירה", "נגיחות",
+        "זריזות", "קפיצה", "מיצוב",
+        // English FM attribute names
+        "stamina", "acceleration", "work rate", "crossing", "tackling",
+        "dribbling", "passing", "pace", "strength", "vision", "decisions",
+        "aggression", "fitness", "concentration", "creativity", "heading",
+        "agility", "jumping", "positioning",
+        // "שווי בסיוות ריאלי" (market value in realistic terms) — also FM-origin
+        "שווי בסיוות",
+    )
+    // Regex for a numeric score pattern like ":85", ": 80", "70" at end of line — typical FM stat format
+    val fmScorePattern = Regex("""[:\s]\s*\d{1,3}\s*$""")
     val regular = mutableListOf<String>()
     val fmOnly = mutableListOf<String>()
     for (line in text.split("\n")) {
         val trimmed = line.trim()
         if (trimmed.isBlank()) continue
         for (part in trimmed.split("|").map { it.trim() }.filter { it.isNotBlank() }) {
+            // Check if original text has FM suffix before stripping it
+            val hadFmSuffix = fmSuffixRegex.containsMatchIn(part)
             val cleaned = fmSuffixRegex.replace(part, "").trim()
             if (cleaned.isBlank()) continue
-            val isFmStat = cleaned.contains("CA ") || cleaned.contains(" PA ") ||
+            val hasCaPa = cleaned.contains("CA ") || cleaned.contains(" PA ") ||
                 cleaned.contains("CA-") || cleaned.contains("PA-") ||
                 Regex("""CA\s*[\d]+\s*[-–]\s*PA""").containsMatchIn(cleaned) ||
                 Regex("""\d+\s*[-–]\s*PA\s*\d+""").containsMatchIn(cleaned)
+            val matchesFmKeyword = fmKeywords.any { kw ->
+                cleaned.contains(kw, ignoreCase = true)
+            }
+            val isFmStat = hadFmSuffix || hasCaPa || matchesFmKeyword
             if (isFmStat) fmOnly.add(cleaned) else regular.add(cleaned)
         }
     }
@@ -1219,6 +1242,7 @@ private fun PlayerResultCard(
             .padding(14.dp)
     ) {
         // Circle first in reading order: left in LTR, right in RTL; then name
+        val layoutDir = LocalLayoutDirection.current
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
@@ -1228,7 +1252,12 @@ private fun PlayerResultCard(
             Spacer(Modifier.width(10.dp))
             Text(
                 text = player.name,
-                style = boldTextStyle(HomeTextPrimary, 16.sp),
+                // Use layout-direction-aware alignment so the name sits close to the
+                // score circle even when the text content is LTR in an RTL layout.
+                style = boldTextStyle(
+                    HomeTextPrimary, 16.sp,
+                    textAlign = if (layoutDir == LayoutDirection.Rtl) TextAlign.Right else TextAlign.Left
+                ),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f)

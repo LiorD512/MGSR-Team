@@ -14,6 +14,14 @@ const MYMEMORY_EMAIL = process.env.MYMEMORY_EMAIL || '';
 
 /** Football glossary: Hebrew → English (prevents "בלם"→brake, ensures correct positions) */
 const FOOTBALL_GLOSSARY: [RegExp, string][] = [
+  // ── Compound phrases — must come BEFORE individual word entries ──
+  // "בלם רגל שמאל" = left-footed centre back (NOT "left foot brake")
+  [/בלם\s*רגל\s*שמאל/g, 'left-footed centre back'],
+  [/בלם\s*רגל\s*ימין/g, 'right-footed centre back'],
+  // "שחקן חופשי" must be matched BEFORE "שחקנים?" strips "שחקן"
+  [/שחקנים?\s*חופשיי?ם?/g, 'free agent'],
+  [/שחקן\s*חופשי/g, 'free agent'],
+  [/חופשיים/g, 'free agent'],
   // Positions — order matters: specific before generic
   [/מגן\s*שמאל|שמאלי\s*מגן/g, 'left back'],
   [/מגן\s*ימין|ימני\s*מגן/g, 'right back'],
@@ -30,10 +38,11 @@ const FOOTBALL_GLOSSARY: [RegExp, string][] = [
   [/רגל\s*שמאל/g, 'left foot'],
   [/רגל\s*ימין/g, 'right foot'],
   [/דו[- ]?רגלי/g, 'two-footed'],
-  // Common words
-  [/שחקנים?/g, 'players'],
+  // Common words — AFTER compound phrases to avoid partial consumption
+  [/שחקנים/g, 'players'],
+  [/שחקן(?!\s*חופשי)/g, 'player'],
   [/שחקניות?/g, 'players'],
-  [/שחקן\s*חופשי|חופשיים|חופשי/g, 'free agent'],
+  [/חופשי/g, 'free agent'],
 ];
 
 /**
