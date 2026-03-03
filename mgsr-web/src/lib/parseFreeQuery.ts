@@ -11,6 +11,7 @@ export interface ParsedScoutParams {
   minGoals?: number;
   foot?: string;
   nationality?: string;
+  freeAgent?: boolean;
   notes?: string;
   transferFee?: string;
   valueMin?: number;
@@ -36,8 +37,10 @@ const POSITION_PATTERNS: { pattern: RegExp; position: string }[] = [
   { pattern: /קשר\s*(?:התקפי|עילי)|\b(?:attacking\s*mid(?:fielder)?s?|cam|am|no\.?\s*10|number\s*10|trequartista)\b/i, position: 'AM' },
   { pattern: /קשר\s*(?:הגנתי|שורשי|אחורי)|קשרים\s*(?:הגנתיים|שורשיים|אחוריים)|\b(?:defensive\s*mid(?:fielder)?s?|holding\s*mid(?:fielder)?s?|cdm|dm|anchor|pivot|no\.?\s*6|number\s*6)\b/i, position: 'DM' },
   { pattern: /קשר|קשרים|\b(?:midfielders?|midfield|cm|no\.?\s*8|number\s*8)\b/i, position: 'CM' },
-  { pattern: /מגן\s*שמאל|שמאלי\s*(?:מגן|בלם)|\b(?:left.?backs?|lb|left\s*full.?backs?)\b/i, position: 'LB' },
-  { pattern: /מגן\s*ימין|ימני\s*(?:מגן|בלם)|\b(?:right.?backs?|rb|right\s*full.?backs?)\b/i, position: 'RB' },
+  // LB/RB: only מגן שמאל/ימין or שמאלי/ימני מגן — NOT שמאלי בלם (that's left-footed CB)
+  { pattern: /מגן\s*שמאל|שמאלי\s*מגן|\b(?:left.?backs?|lb|left\s*full.?backs?)\b/i, position: 'LB' },
+  { pattern: /מגן\s*ימין|ימני\s*מגן|\b(?:right.?backs?|rb|right\s*full.?backs?)\b/i, position: 'RB' },
+  // CB: בלם (centre-back) — must come after LB/RB so "מגן שמאל" doesn't become CB
   { pattern: /בלם|בלמים|מגן\s*מרכזי|מגנים\s*מרכזיי?ם|\b(?:defenders?|centre.?backs?|center.?backs?|cb)\b/i, position: 'CB' },
   { pattern: /שוער|שוערים|\b(?:goalkeepers?|goalie|gk|keeper)\b/i, position: 'GK' },
   // Generic מגן/מגנים last — must NOT match 'מגן שמאל/ימין/מרכזי'
@@ -155,7 +158,7 @@ function extractLimit(query: string): number | undefined {
 /** Check for Israeli market → transfer_fee + notes + value cap */
 function extractIsraeliMarket(query: string): { transferFee?: string; notes?: string; valueMax?: number } {
   const hasIsraeli =
-    /(שוק\s*ה?ישראלי|israeli (?:market|league)|israel (?:market|league)|ל?ליגה\s*ה?ישראלית|ligat\s*ha.?al)/i.test(query);
+    /(שוק\s*ה?ישראלי|israeli (?:market|league)|israel (?:market|league)|ל?ליגה\s*ה?ישראלית|ליגת\s*העל|ligat\s*ha.?al)/i.test(query);
   if (!hasIsraeli) return {};
   return {
     transferFee: '300-600',
@@ -425,13 +428,18 @@ function extractFoot(query: string): string | undefined {
   return undefined;
 }
 
+/** Extract free agent intent: שחקן חופשי, חופשיים, free agent(s) — avoid "משחק חופשי" (free kick) */
+function extractFreeAgent(query: string): boolean {
+  return /(?:שחקן\s*חופשי|חופשיים|\bfree\s*agents?\b)/i.test(query);
+}
+
 /**
  * Extract playing style notes — comprehensive, aligned with server's _NOTE_KEYWORDS.
  * Covers: speed, dribbling, physical, aerial, finishing, creativity, crossing, defense,
  * aggression, work rate, technical, box-to-box, progressive, hold-up, false 9,
  * inverted, counter-attack, ball-playing, impact, bargain, experience, youth, etc.
  */
-function extractNotes(query: string, minGoals?: number, israeliNotes?: string): string {
+function extractNotes(query: string, minGoals?: number, israeliNotes?: string, freeAgent?: boolean): string {
   const parts: string[] = [];
 
   if (minGoals != null) {
@@ -439,6 +447,10 @@ function extractNotes(query: string, minGoals?: number, israeliNotes?: string): 
   }
   if (israeliNotes) {
     parts.push(israeliNotes);
+  }
+
+  if (freeAgent) {
+    parts.push('free agent');
   }
 
   const stylePatterns: { pattern: RegExp; note: string }[] = [
@@ -553,6 +565,9 @@ function buildInterpretation(
     };
     const f = footNames[parsed.foot] || { en: parsed.foot, he: parsed.foot };
     parts.push(lang === 'he' ? f.he : f.en);
+  }
+  if (parsed.freeAgent) {
+    parts.push(lang === 'he' ? 'שחקנים חופשיים' : 'free agents');
   }
   if (parsed.nationality) {
     // Map internal codes to display names (superset)
@@ -687,10 +702,11 @@ export function parseFreeQuery(query: string, lang: 'en' | 'he' = 'en'): ParsedS
   // Israeli market fee takes priority if both match; otherwise use value-based fee
   const transferFee = israeliFee || valueFee;
 
-  const notes = extractNotes(q, minGoals, israeliNotes);
+  const freeAgent = extractFreeAgent(q);
+  const notes = extractNotes(q, minGoals, israeliNotes, freeAgent);
 
   const interpretation = buildInterpretation(
-    { position, ageMin, ageMax, foot, nationality, notes, transferFee, valueMin, valueMax, limit },
+    { position, ageMin, ageMax, foot, nationality, freeAgent, notes, transferFee, valueMin, valueMax, limit },
     lang
   );
 
@@ -701,6 +717,7 @@ export function parseFreeQuery(query: string, lang: 'en' | 'he' = 'en'): ParsedS
     minGoals,
     foot,
     nationality: nationality || undefined,
+    freeAgent: freeAgent || undefined,
     notes: notes || undefined,
     transferFee: transferFee || undefined,
     valueMin: valueMin || undefined,

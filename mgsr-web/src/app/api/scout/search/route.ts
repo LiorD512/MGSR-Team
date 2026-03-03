@@ -102,7 +102,7 @@ async function fetchFreesearch(
 /** Map query to league for market filter display */
 function getTargetLeagueCode(query: string): string | null {
   const q = query.toLowerCase();
-  if (/(שוק\s*ה?ישראלי|israeli market|israel market|ליגה\s*ה?ישראלית|ligat\s*ha.?al)/i.test(q)) return 'ISR1';
+  if (/(שוק\s*ה?ישראלי|israeli market|israel market|ליגה\s*ה?ישראלית|ליגת\s*העל|ligat\s*ha.?al)/i.test(q)) return 'ISR1';
   if (/(שוק\s*פולני|polish market|poland market)/i.test(q)) return 'PL1';
   if (/(שוק\s*יווני|greek market|greece market)/i.test(q)) return 'GR1';
   if (/(שוק\s*בלגי|belgian market|belgium market)/i.test(q)) return 'BE1';
@@ -190,6 +190,7 @@ export async function POST(request: NextRequest) {
         ageMax: parsedHebrew?.ageMax ?? parsedMain.ageMax,
         foot: parsedHebrew?.foot || parsedMain.foot,
         nationality: parsedHebrew?.nationality || parsedMain.nationality,
+        freeAgent: parsedHebrew?.freeAgent ?? parsedMain.freeAgent,
         limit: parsedHebrew?.limit ?? parsedMain.limit,
         minGoals: parsedHebrew?.minGoals ?? parsedMain.minGoals,
         transferFee: parsedHebrew?.transferFee || parsedMain.transferFee,
@@ -369,6 +370,20 @@ export async function POST(request: NextRequest) {
           return !isNaN(n) && n >= minGoals;
         });
         console.log('[AI Scout] Filtered by min_goals:', minGoals, '→', results.length, 'results');
+      }
+
+      // Filter by free agent: only players without club or "Without Club" / "Vereinslos" / "free agent"
+      const wantsFreeAgent = parsed.freeAgent === true || /free\s*agent/i.test(parsed.notes ?? '');
+      if (wantsFreeAgent) {
+        const before = results.length;
+        const freeAgentPattern = /^(without\s*club|vereinslos|free\s*agent|ללא\s*מועדון|שחקן\s*חופשי|—|\s*)$/i;
+        results = results.filter((p) => {
+          const club = (p.club ?? p.current_club ?? '').toString().trim();
+          return !club || freeAgentPattern.test(club);
+        });
+        if (results.length < before) {
+          console.log('[AI Scout] Filtered by free agent:', before, '→', results.length, 'results');
+        }
       }
 
       results = results.slice(0, fetchLimit);
