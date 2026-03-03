@@ -65,6 +65,7 @@ interface FindNextResult {
   contract_bonus: number;
   age_bonus: number;
   explanation: string;
+  scout_narrative?: string;
 }
 
 interface FindNextResponse {
@@ -495,13 +496,13 @@ export default function FindNextTab() {
                       )}
                     </div>
 
-                    {/* Explanation */}
-                    {player.explanation && (
+                    {/* Explanation: prefer scout_narrative (Gemini, locale-aware) over explanation (Python, English) */}
+                    {(player.scout_narrative || player.explanation) && (
                       <div
                         className="text-xs text-mgsr-muted mt-2 space-y-0.5"
                         dir={isHe ? 'rtl' : 'ltr'}
                       >
-                        {player.explanation.split('\n').map((line, i) => (
+                        {(player.scout_narrative || player.explanation || '').split('\n').map((line, i) => (
                           <p
                             key={i}
                             className={i === 0 ? 'font-medium text-mgsr-text/80' : ''}

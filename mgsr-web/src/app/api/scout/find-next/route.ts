@@ -45,7 +45,7 @@ async function enrichWithScoutNarrative(
 
   const isHebrew = lang === 'he' || lang === 'iw';
   const langInstruction = isHebrew
-    ? '\n\nCRITICAL: Write the scout_narrative for EACH player in HEBREW. Use natural scouting Hebrew — the way Israeli scouts actually talk.'
+    ? '\n\nCRITICAL — OUTPUT LANGUAGE: You MUST write every scout_narrative in HEBREW (עברית). The user\'s app is set to Hebrew. Write like an Israeli scout would speak: natural, direct, with football terminology in Hebrew. Do NOT write in English.'
     : '';
 
   const top = results.slice(0, 15); // Narrate all results (up to 15) for consistent language
@@ -75,9 +75,11 @@ Return ONLY valid JSON, no markdown code blocks.`;
 
   try {
     const genAI = new GoogleGenerativeAI(apiKey);
+    const systemInstruction = SCOUT_PERSONA + '\n' + FIND_NEXT_PERSONA_EXT +
+      (isHebrew ? '\n\nOUTPUT LANGUAGE: Always respond in Hebrew (עברית). The user\'s interface is in Hebrew.' : '');
     const model = genAI.getGenerativeModel({
       model: 'gemini-2.5-flash',
-      systemInstruction: SCOUT_PERSONA + '\n' + FIND_NEXT_PERSONA_EXT,
+      systemInstruction,
     });
     const result = await model.generateContent(prompt);
     const text = result.response?.text?.() || '';
