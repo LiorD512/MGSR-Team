@@ -21,6 +21,9 @@ sealed class Screens(val route: String) {
     data object TasksScreen : Screens(ScreenName.TASKS)
     data object TaskDetailScreen : Screens(ScreenName.TASK_DETAIL)
     data object ShadowTeamsScreen : Screens(ScreenName.SHADOW_TEAMS)
+    data object AiScoutScreen : Screens(ScreenName.AI_SCOUT)
+    data object WarRoomScreen : Screens(ScreenName.WAR_ROOM)
+    data object WarRoomReportScreen : Screens("${ScreenName.WAR_ROOM_REPORT}/{tmUrl}/{playerName}")
 
     companion object {
         fun addPlayerWithTmProfileRoute(tmProfileUrl: String) = "${ScreenName.ADD_PLAYER}/$tmProfileUrl"
@@ -30,6 +33,8 @@ sealed class Screens(val route: String) {
         fun taskDetailRoute(taskId: String) = "${ScreenName.TASK_DETAIL}/$taskId"
         fun playersRoute(myPlayersOnly: Boolean = false) =
             if (myPlayersOnly) "${ScreenName.PLAYERS}?myPlayersOnly=true" else ScreenName.PLAYERS
+        fun fullReportRoute(tmUrl: String, playerName: String) =
+            "${ScreenName.WAR_ROOM_REPORT}/$tmUrl/$playerName"
     }
 }
 
@@ -53,4 +58,7 @@ object ScreenName {
     const val TASKS = "tasks"
     const val TASK_DETAIL = "task_detail"
     const val SHADOW_TEAMS = "shadow_teams"
+    const val AI_SCOUT = "ai_scout"
+    const val WAR_ROOM = "war_room"
+    const val WAR_ROOM_REPORT = "war_room_report"
 }

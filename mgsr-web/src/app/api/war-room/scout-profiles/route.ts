@@ -83,6 +83,7 @@ export async function GET(request: NextRequest) {
         discoveredAt: d.discoveredAt ?? 0,
         lastRefreshedAt: d.lastRefreshedAt ?? 0,
         agentName: agentCfg?.name || d.agentId || '',
+        agentNameHe: agentCfg?.nameHe || agentCfg?.name || d.agentId || '',
         agentFlag: agentCfg?.flag || '🌍',
         scoutExplanationEn: profileCfg?.explanationEn || '',
         scoutExplanationHe: profileCfg?.explanationHe || '',

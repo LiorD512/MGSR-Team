@@ -18,11 +18,16 @@ object LocaleManager {
 
     fun getSavedLanguage(context: Context): String {
         val prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
-        val lang = prefs.getString(KEY_LANGUAGE, LANG_ENGLISH) ?: LANG_ENGLISH
-        // Migrate old "iw" to "he"
-        val normalizedLang = if (lang == "iw") "he" else lang
-        android.util.Log.d("LocaleManager", "getSavedLanguage: $normalizedLang (original: $lang)")
-        return normalizedLang
+        val saved = prefs.getString(KEY_LANGUAGE, null)
+        val lang = if (saved != null) {
+            if (saved == "iw") "he" else saved
+        } else {
+            // No preference saved — use device locale so Hebrew users see Hebrew by default
+            val deviceLang = context.resources.configuration.locales[0].language
+            if (deviceLang == "iw" || deviceLang == "he") "he" else LANG_ENGLISH
+        }
+        android.util.Log.d("LocaleManager", "getSavedLanguage: $lang (saved: $saved)")
+        return lang
     }
 
     fun saveLanguage(context: Context, languageCode: String) {

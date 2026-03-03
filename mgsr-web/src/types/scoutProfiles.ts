@@ -23,6 +23,7 @@ export interface ScoutProfileResponse {
   discoveredAt: number;
   lastRefreshedAt: number;
   agentName: string;
+  agentNameHe: string;
   agentFlag: string;
   scoutExplanationEn?: string;
   scoutExplanationHe?: string;

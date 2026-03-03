@@ -1,0 +1,825 @@
+package com.liordahan.mgsrteam.features.aiscout
+
+import android.content.Intent
+import android.net.Uri
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.NavController
+import com.liordahan.mgsrteam.R
+import com.liordahan.mgsrteam.ui.theme.HomeDarkBackground
+import com.liordahan.mgsrteam.ui.theme.HomeDarkCard
+import com.liordahan.mgsrteam.ui.theme.HomeDarkCardBorder
+import com.liordahan.mgsrteam.ui.theme.HomeTealAccent
+import com.liordahan.mgsrteam.ui.theme.HomePurpleAccent
+import com.liordahan.mgsrteam.ui.theme.HomeTextPrimary
+import com.liordahan.mgsrteam.ui.theme.HomeTextSecondary
+import com.liordahan.mgsrteam.ui.theme.HomeBlueAccent
+import com.liordahan.mgsrteam.ui.theme.HomeOrangeAccent
+import com.liordahan.mgsrteam.ui.utils.boldTextStyle
+import com.liordahan.mgsrteam.ui.utils.regularTextStyle
+import org.koin.androidx.compose.koinViewModel
+
+private val SyneFamily = FontFamily(Font(R.font.takeaway_sans_bold, FontWeight.Bold))
+
+@Composable
+fun AiScoutScreen(
+    navController: NavController,
+    viewModel: IAiScoutViewModel = koinViewModel()
+) {
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(HomeDarkBackground)
+    ) {
+        // Top Bar
+        AiScoutTopBar(onBack = { navController.popBackStack() })
+
+        if (!state.hasSearched || (state.results.isEmpty() && !state.isLoading)) {
+            // Empty state — show search input + examples
+            AiScoutEmptyState(state = state, viewModel = viewModel)
+        } else {
+            // Results state
+            AiScoutResultsState(state = state, viewModel = viewModel)
+        }
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  TOP BAR
+// ═══════════════════════════════════════════════════════════════════════════════
+
+@Composable
+private fun AiScoutTopBar(onBack: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(HomeDarkCard)
+            .padding(horizontal = 8.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        IconButton(onClick = onBack) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                contentDescription = stringResource(R.string.player_info_cd_collapse),
+                tint = HomeTealAccent
+            )
+        }
+        Text(
+            text = stringResource(R.string.ai_scout_title),
+            style = boldTextStyle(HomeTextPrimary, 18.sp),
+            modifier = Modifier.weight(1f),
+            textAlign = TextAlign.Center
+        )
+        Spacer(Modifier.width(48.dp)) // Balance the back button
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  EMPTY STATE
+// ═══════════════════════════════════════════════════════════════════════════════
+
+@Composable
+private fun AiScoutEmptyState(state: AiScoutUiState, viewModel: IAiScoutViewModel) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(bottom = 32.dp)
+    ) {
+        // Hero
+        item {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(64.dp)
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(
+                            Brush.linearGradient(
+                                colors = listOf(
+                                    HomeTealAccent.copy(alpha = 0.2f),
+                                    HomePurpleAccent.copy(alpha = 0.15f)
+                                )
+                            )
+                        )
+                        .border(1.dp, HomeTealAccent.copy(alpha = 0.3f), RoundedCornerShape(20.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("🔍", fontSize = 28.sp)
+                }
+                Spacer(Modifier.height(16.dp))
+                Text(
+                    text = stringResource(R.string.ai_scout_hero_title),
+                    style = boldTextStyle(HomeTextPrimary, 24.sp),
+                    textAlign = TextAlign.Center
+                )
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = stringResource(R.string.ai_scout_hero_subtitle),
+                    style = regularTextStyle(HomeTextSecondary, 14.sp),
+                    textAlign = TextAlign.Center,
+                    lineHeight = 20.sp
+                )
+            }
+        }
+
+        // Search Box
+        item {
+            SearchInputBox(state = state, viewModel = viewModel)
+        }
+
+        // Error message
+        if (state.errorMessage != null) {
+            item {
+                Text(
+                    text = state.errorMessage,
+                    style = regularTextStyle(Color(0xFFE53935), 13.sp),
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                )
+            }
+        }
+
+        // Example Chips
+        item {
+            ExampleChipsSection(viewModel = viewModel)
+        }
+
+        // Radar illustration
+        item {
+            RadarIllustration()
+        }
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  SEARCH INPUT BOX
+// ═══════════════════════════════════════════════════════════════════════════════
+
+@Composable
+private fun SearchInputBox(state: AiScoutUiState, viewModel: IAiScoutViewModel) {
+    Column(
+        modifier = Modifier
+            .padding(horizontal = 16.dp)
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(HomeDarkCard)
+            .border(1.5.dp, HomeDarkCardBorder, RoundedCornerShape(16.dp))
+            .padding(14.dp)
+    ) {
+        BasicTextField(
+            value = state.query,
+            onValueChange = { viewModel.updateQuery(it) },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(72.dp),
+            textStyle = regularTextStyle(HomeTextPrimary, 15.sp),
+            decorationBox = { innerTextField ->
+                Box {
+                    if (state.query.isEmpty()) {
+                        Text(
+                            text = stringResource(R.string.ai_scout_search_hint),
+                            style = regularTextStyle(HomeTextSecondary, 15.sp)
+                        )
+                    }
+                    innerTextField()
+                }
+            }
+        )
+
+        Spacer(Modifier.height(10.dp))
+
+        // Divider
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .height(1.dp)
+                .background(HomeDarkCardBorder)
+        )
+
+        Spacer(Modifier.height(10.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "${state.query.length} / 500",
+                style = regularTextStyle(HomeTextSecondary, 12.sp)
+            )
+
+            Row(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(HomeTealAccent)
+                    .clickable(enabled = !state.isLoading && state.query.isNotBlank()) {
+                        viewModel.search()
+                    }
+                    .padding(horizontal = 20.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (state.isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(16.dp),
+                        color = HomeDarkBackground,
+                        strokeWidth = 2.dp
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Default.Search,
+                        contentDescription = null,
+                        tint = HomeDarkBackground,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+                Spacer(Modifier.width(6.dp))
+                Text(
+                    text = stringResource(R.string.ai_scout_search_button),
+                    style = boldTextStyle(HomeDarkBackground, 14.sp)
+                )
+            }
+        }
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  EXAMPLE CHIPS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+@Composable
+private fun ExampleChipsSection(viewModel: IAiScoutViewModel) {
+    Column(modifier = Modifier.padding(top = 20.dp)) {
+        Text(
+            text = stringResource(R.string.ai_scout_try_examples),
+            style = regularTextStyle(HomeTextSecondary, 12.sp),
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 0.dp),
+            letterSpacing = 0.5.sp
+        )
+        Spacer(Modifier.height(10.dp))
+        LazyRow(
+            contentPadding = PaddingValues(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            val examples = listOf(
+                "⚡" to "Young CF from Balkans under €1M",
+                "🎯" to "Creative AM, Scandinavian, U23",
+                "🛡️" to "Left-footed CB, free agent",
+                "🏃" to "Fast winger for Ligat Ha'Al"
+            )
+            items(examples) { (emoji, text) ->
+                Row(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(HomeDarkCard)
+                        .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(10.dp))
+                        .clickable { viewModel.useExample(text) }
+                        .padding(horizontal = 14.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(emoji, fontSize = 14.sp)
+                    Spacer(Modifier.width(4.dp))
+                    Text(text, style = regularTextStyle(HomeTextPrimary, 13.sp), maxLines = 1)
+                }
+            }
+        }
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  RADAR ILLUSTRATION
+// ═══════════════════════════════════════════════════════════════════════════════
+
+@Composable
+private fun RadarIllustration() {
+    val infiniteTransition = rememberInfiniteTransition(label = "radar")
+    val sweepAngle by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 360f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(3000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "sweep"
+    )
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Box(
+            modifier = Modifier
+                .size(100.dp)
+                .drawBehind {
+                    val center = Offset(size.width / 2, size.height / 2)
+                    val tealAlpha = HomeTealAccent.copy(alpha = 0.15f)
+
+                    // Radar circles
+                    drawCircle(tealAlpha, radius = size.minDimension / 2, style = Stroke(1.dp.toPx()))
+                    drawCircle(tealAlpha, radius = size.minDimension / 3, style = Stroke(1.dp.toPx()))
+                    drawCircle(tealAlpha, radius = size.minDimension / 6, style = Stroke(1.dp.toPx()))
+
+                    // Sweep line
+                    val sweepRad = Math.toRadians(sweepAngle.toDouble())
+                    val lineEnd = Offset(
+                        center.x + (size.minDimension / 2) * kotlin.math.cos(sweepRad).toFloat(),
+                        center.y + (size.minDimension / 2) * kotlin.math.sin(sweepRad).toFloat()
+                    )
+                    drawLine(HomeTealAccent.copy(alpha = 0.4f), center, lineEnd, strokeWidth = 1.5.dp.toPx())
+                }
+        )
+
+        Spacer(Modifier.height(16.dp))
+
+        Text(
+            text = stringResource(R.string.ai_scout_powered_title),
+            style = boldTextStyle(HomeTextPrimary, 14.sp),
+            textAlign = TextAlign.Center
+        )
+        Spacer(Modifier.height(4.dp))
+        Text(
+            text = stringResource(R.string.ai_scout_powered_subtitle),
+            style = regularTextStyle(HomeTextSecondary, 13.sp),
+            textAlign = TextAlign.Center,
+            lineHeight = 18.sp
+        )
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  RESULTS STATE
+// ═══════════════════════════════════════════════════════════════════════════════
+
+@Composable
+private fun AiScoutResultsState(state: AiScoutUiState, viewModel: IAiScoutViewModel) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(bottom = 32.dp)
+    ) {
+        // Collapsed search bar
+        item {
+            CollapsedSearchBar(query = state.query, onEdit = { viewModel.clearSearch() })
+        }
+
+        // Interpretation
+        if (state.interpretation.isNotBlank()) {
+            item {
+                InterpretationBanner(text = state.interpretation)
+            }
+        }
+
+        // League Info
+        state.leagueInfo?.let { info ->
+            item {
+                LeagueInfoBanner(info = info)
+            }
+        }
+
+        // Results count
+        item {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = stringResource(R.string.ai_scout_showing_results, state.results.size, state.requestedTotal),
+                    style = regularTextStyle(HomeTextSecondary, 13.sp)
+                )
+            }
+        }
+
+        // Player result cards
+        items(state.results, key = { it.transfermarktUrl.ifBlank { it.name } }) { player ->
+            PlayerResultCard(player = player)
+        }
+
+        // Loading indicator
+        if (state.isLoading) {
+            item {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(24.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(color = HomeTealAccent, strokeWidth = 3.dp)
+                }
+            }
+        }
+
+        // Load more / Search again buttons
+        if (!state.isLoading && state.results.isNotEmpty()) {
+            item {
+                Column(
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    if (state.hasMore) {
+                        ActionButton(
+                            text = stringResource(R.string.ai_scout_load_all, state.requestedTotal),
+                            icon = "📋",
+                            bgColor = HomeTealAccent.copy(alpha = 0.15f),
+                            borderColor = HomeTealAccent.copy(alpha = 0.3f),
+                            textColor = HomeTealAccent,
+                            onClick = { viewModel.loadMore() }
+                        )
+                    }
+                    ActionButton(
+                        text = stringResource(R.string.ai_scout_search_again),
+                        icon = "🔄",
+                        bgColor = HomePurpleAccent.copy(alpha = 0.1f),
+                        borderColor = HomePurpleAccent.copy(alpha = 0.25f),
+                        textColor = HomePurpleAccent,
+                        onClick = { viewModel.clearSearch() }
+                    )
+                }
+            }
+        }
+
+        // Error
+        if (state.errorMessage != null && !state.isLoading) {
+            item {
+                Text(
+                    text = state.errorMessage,
+                    style = regularTextStyle(Color(0xFFE53935), 13.sp),
+                    modifier = Modifier.padding(16.dp)
+                )
+            }
+        }
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  COLLAPSED SEARCH BAR
+// ═══════════════════════════════════════════════════════════════════════════════
+
+@Composable
+private fun CollapsedSearchBar(query: String, onEdit: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .padding(horizontal = 16.dp, vertical = 12.dp)
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(HomeDarkCard)
+            .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(12.dp))
+            .clickable { onEdit() }
+            .padding(12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(Icons.Default.Search, null, tint = HomeTealAccent, modifier = Modifier.size(16.dp))
+        Spacer(Modifier.width(10.dp))
+        Text(
+            text = query,
+            style = regularTextStyle(HomeTextPrimary, 14.sp),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f)
+        )
+        Icon(Icons.Default.Edit, null, tint = HomeTealAccent, modifier = Modifier.size(16.dp))
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  INTERPRETATION BANNER
+// ═══════════════════════════════════════════════════════════════════════════════
+
+@Composable
+private fun InterpretationBanner(text: String) {
+    Column(
+        modifier = Modifier
+            .padding(horizontal = 16.dp)
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(10.dp))
+            .background(HomeOrangeAccent.copy(alpha = 0.08f))
+            .border(1.dp, HomeOrangeAccent.copy(alpha = 0.2f), RoundedCornerShape(10.dp))
+            .padding(10.dp)
+    ) {
+        Text(
+            text = stringResource(R.string.ai_scout_interpretation),
+            style = boldTextStyle(HomeOrangeAccent, 11.sp),
+            letterSpacing = 0.5.sp
+        )
+        Spacer(Modifier.height(4.dp))
+        Text(
+            text = text,
+            style = regularTextStyle(HomeTextPrimary, 13.sp),
+            lineHeight = 18.sp
+        )
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  LEAGUE INFO BANNER
+// ═══════════════════════════════════════════════════════════════════════════════
+
+@Composable
+private fun LeagueInfoBanner(info: LeagueInfo) {
+    Row(
+        modifier = Modifier
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(10.dp))
+            .background(HomeTealAccent.copy(alpha = 0.08f))
+            .border(1.dp, HomeTealAccent.copy(alpha = 0.2f), RoundedCornerShape(10.dp))
+            .padding(10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text("🏟️", fontSize = 14.sp)
+        Spacer(Modifier.width(8.dp))
+        Column {
+            Text(info.name, style = boldTextStyle(HomeTealAccent, 12.sp))
+            val details = buildString {
+                info.avgValue?.let { append("Avg $it") }
+                info.minValue?.let { append(" · Min $it") }
+                info.maxValue?.let { append(" · Max $it") }
+            }
+            if (details.isNotBlank()) {
+                Text(details, style = regularTextStyle(HomeTextSecondary, 12.sp))
+            }
+        }
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  PLAYER RESULT CARD
+// ═══════════════════════════════════════════════════════════════════════════════
+
+@Composable
+private fun PlayerResultCard(player: ScoutPlayerResult) {
+    val context = LocalContext.current
+
+    Column(
+        modifier = Modifier
+            .padding(horizontal = 16.dp, vertical = 6.dp)
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .background(HomeDarkCard)
+            .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(14.dp))
+            .padding(14.dp)
+    ) {
+        Row(verticalAlignment = Alignment.Top) {
+            // Match percentage ring
+            MatchPercentRing(percent = player.matchPercent, size = 50)
+
+            Spacer(Modifier.width(12.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                // Name + TM link
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = player.name,
+                        style = boldTextStyle(HomeTextPrimary, 16.sp),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false)
+                    )
+                    if (player.transfermarktUrl.isNotBlank()) {
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            text = "↗ TM",
+                            style = boldTextStyle(HomeBlueAccent, 12.sp),
+                            modifier = Modifier.clickable {
+                                context.startActivity(
+                                    Intent(Intent.ACTION_VIEW, Uri.parse(player.transfermarktUrl))
+                                )
+                            }
+                        )
+                    }
+                }
+
+                Spacer(Modifier.height(2.dp))
+
+                // Meta row: age · position · value · club · nationality
+                Text(
+                    text = buildString {
+                        append(player.age)
+                        append(" · ")
+                        append(player.position)
+                        append(" · ")
+                        append(player.marketValue)
+                        append(" · ")
+                        append(player.club)
+                        if (player.nationality.isNotBlank()) {
+                            append(" · ")
+                            append(player.nationality)
+                        }
+                    },
+                    style = regularTextStyle(HomeTextSecondary, 13.sp),
+                    maxLines = 2
+                )
+
+                // FM badge
+                if (player.fmCurrentAbility != null || player.fmPotentialAbility != null) {
+                    Spacer(Modifier.height(6.dp))
+                    FmBadge(
+                        ca = player.fmCurrentAbility,
+                        pa = player.fmPotentialAbility,
+                        tier = player.fmTier
+                    )
+                }
+            }
+        }
+
+        // Scout analysis
+        if (player.scoutAnalysis.isNotBlank()) {
+            Spacer(Modifier.height(8.dp))
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .height(1.dp)
+                    .background(HomeDarkCardBorder.copy(alpha = 0.6f))
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = player.scoutAnalysis,
+                style = regularTextStyle(HomeTextPrimary, 13.sp),
+                lineHeight = 20.sp
+            )
+        }
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  MATCH PERCENT RING
+// ═══════════════════════════════════════════════════════════════════════════════
+
+@Composable
+private fun MatchPercentRing(percent: Int, size: Int = 50) {
+    val ringColor = when {
+        percent >= 85 -> HomeTealAccent
+        percent >= 70 -> HomeOrangeAccent
+        else -> HomeTextSecondary
+    }
+
+    Box(
+        modifier = Modifier
+            .size(size.dp)
+            .drawBehind {
+                val strokeWidth = 4.dp.toPx()
+                val radius = (this.size.minDimension - strokeWidth) / 2
+
+                // Background circle
+                drawCircle(
+                    color = HomeDarkCardBorder,
+                    radius = radius,
+                    style = Stroke(strokeWidth)
+                )
+
+                // Progress arc
+                drawArc(
+                    color = ringColor,
+                    startAngle = -90f,
+                    sweepAngle = 360f * (percent / 100f),
+                    useCenter = false,
+                    style = Stroke(strokeWidth, cap = StrokeCap.Round)
+                )
+            },
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = "${percent}%",
+            style = boldTextStyle(ringColor, 13.sp),
+            textAlign = TextAlign.Center
+        )
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  FM BADGE
+// ═══════════════════════════════════════════════════════════════════════════════
+
+@Composable
+fun FmBadge(ca: Int?, pa: Int?, tier: String?) {
+    Row(
+        modifier = Modifier
+            .clip(RoundedCornerShape(6.dp))
+            .background(HomePurpleAccent.copy(alpha = 0.12f))
+            .border(1.dp, HomePurpleAccent.copy(alpha = 0.25f), RoundedCornerShape(6.dp))
+            .padding(horizontal = 8.dp, vertical = 3.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text("FM", style = boldTextStyle(HomePurpleAccent, 11.sp))
+        Spacer(Modifier.width(4.dp))
+        ca?.let { Text("$it", style = regularTextStyle(HomeTextSecondary, 11.sp)) }
+        if (ca != null && pa != null) {
+            Text(" → ", style = regularTextStyle(HomePurpleAccent, 11.sp))
+        }
+        pa?.let { Text("$it", style = boldTextStyle(HomeTextPrimary, 11.sp)) }
+
+        tier?.let { tierStr ->
+            Spacer(Modifier.width(6.dp))
+            val (tierBg, tierColor) = when (tierStr.lowercase()) {
+                "gold" -> HomeOrangeAccent.copy(alpha = 0.2f) to HomeOrangeAccent
+                else -> HomeTextSecondary.copy(alpha = 0.2f) to HomeTextSecondary
+            }
+            Text(
+                text = tierStr,
+                style = boldTextStyle(tierColor, 10.sp),
+                modifier = Modifier
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(tierBg)
+                    .padding(horizontal = 6.dp, vertical = 2.dp)
+            )
+        }
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  ACTION BUTTON
+// ═══════════════════════════════════════════════════════════════════════════════
+
+@Composable
+private fun ActionButton(
+    text: String,
+    icon: String,
+    bgColor: Color,
+    borderColor: Color,
+    textColor: Color,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(bgColor)
+            .border(1.dp, borderColor, RoundedCornerShape(12.dp))
+            .clickable { onClick() }
+            .padding(12.dp),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(icon, fontSize = 14.sp)
+        Spacer(Modifier.width(6.dp))
+        Text(text, style = boldTextStyle(textColor, 14.sp))
+    }
+}

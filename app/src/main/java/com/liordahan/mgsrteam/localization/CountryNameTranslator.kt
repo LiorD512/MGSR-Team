@@ -2,6 +2,7 @@ package com.liordahan.mgsrteam.localization
 
 import android.content.Context
 import java.text.Normalizer
+import java.util.Locale
 
 /**
  * Translates country names from English (Transfermarkt format) to Hebrew when app is in Hebrew.
@@ -25,6 +26,7 @@ object CountryNameTranslator {
         "Belarus" to "בלארוס",
         "Belgium" to "בלגיה",
         "Belize" to "בליז",
+        "Bosnia" to "בוסניה",
         "Bosnia and Herzegovina" to "בוסניה והרצגובינה",
         "Bosnia-Herzegovina" to "בוסניה והרצגובינה",
         "Botswana" to "בוטסואנה",
@@ -35,6 +37,13 @@ object CountryNameTranslator {
         "Chile" to "צ'ילה",
         "China" to "סין",
         "Colombia" to "קולומביה",
+        "Congo" to "קונגו",
+        "Congo DR" to "קונגו הדמוקרטית",
+        "DR Congo" to "קונגו הדמוקרטית",
+        "Democratic Republic of the Congo" to "קונגו הדמוקרטית",
+        "Republic of the Congo" to "קונגו",
+        "Curaçao" to "קוראסאו",
+        "Curacao" to "קוראסאו",
         "Costa Rica" to "קוסטה ריקה",
         "Croatia" to "קרואטיה",
         "Cuba" to "קובה",
@@ -50,6 +59,8 @@ object CountryNameTranslator {
         "France" to "צרפת",
         "Georgia" to "גאורגיה",
         "Germany" to "גרמניה",
+        "Guadeloupe" to "גוואדלופ",
+        "French Guiana" to "גיאנה הצרפתית",
         "Ghana" to "גאנה",
         "Greece" to "יוון",
         "Hungary" to "הונגריה",
@@ -67,6 +78,7 @@ object CountryNameTranslator {
         "Jordan" to "ירדן",
         "Kazakhstan" to "קזחסטן",
         "Kenya" to "קניה",
+        "Kosovo" to "קוסובו",
         "Kuwait" to "כווית",
         "Latvia" to "לטביה",
         "Lebanon" to "לבנון",
@@ -76,6 +88,7 @@ object CountryNameTranslator {
         "Luxembourg" to "לוקסמבורג",
         "Malaysia" to "מלזיה",
         "Malta" to "מלטה",
+        "Martinique" to "מרטיניק",
         "Mexico" to "מקסיקו",
         "Moldova" to "מולדובה",
         "Monaco" to "מונאקו",
@@ -89,6 +102,8 @@ object CountryNameTranslator {
         "Northern Ireland" to "צפון אירלנד",
         "Norway" to "נורווגיה",
         "Oman" to "עומאן",
+        "Réunion" to "ראוניון",
+        "Reunion" to "ראוניון",
         "Other" to "אחר",
         "Pakistan" to "פקיסטן",
         "Panama" to "פנמה",
@@ -233,13 +248,24 @@ object CountryNameTranslator {
     }
 
     /**
-     * Returns the country name in Hebrew when app is set to Hebrew, otherwise returns the original.
+     * Returns the country name in Hebrew when isHebrew is true, otherwise returns the original.
+     * Use this overload when you have an explicit isHebrew flag (e.g. from stringResource).
      */
-    fun getDisplayName(context: Context, country: String?): String {
+    fun getDisplayName(country: String?, isHebrew: Boolean): String {
         if (country.isNullOrBlank()) return ""
-        if (!LocaleManager.isHebrew(context)) return country
+        if (!isHebrew) return country
         return ENGLISH_TO_HEBREW[country.trim()] ?: ENGLISH_TO_HEBREW.entries
             .firstOrNull { (en, _) -> en.equals(country.trim(), ignoreCase = true) }?.value
             ?: country
+    }
+
+    /**
+     * Returns the country name in Hebrew when app is Hebrew, otherwise returns the original.
+     */
+    fun getDisplayName(context: Context, country: String?): String {
+        val isHebrew = LocaleManager.isHebrew(context) ||
+            Locale.getDefault().language in listOf("he", "iw") ||
+            context.resources.configuration.locales[0].language in listOf("he", "iw")
+        return getDisplayName(country, isHebrew)
     }
 }
