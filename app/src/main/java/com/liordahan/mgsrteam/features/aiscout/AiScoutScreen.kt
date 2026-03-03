@@ -142,7 +142,7 @@ fun AiScoutContentBody(
         // Tab Content
         when (selectedTab) {
             AiScoutTab.SCOUT -> {
-                if (!state.hasSearched || (state.results.isEmpty() && !state.isLoading)) {
+                if (!state.hasSearched) {
                     AiScoutEmptyState(state = state, viewModel = viewModel)
                 } else {
                     AiScoutResultsState(state = state, viewModel = viewModel)
@@ -984,18 +984,48 @@ private fun AiScoutResultsState(state: AiScoutUiState, viewModel: IAiScoutViewMo
             }
         }
 
-        // Results count
-        item {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(
-                    text = stringResource(R.string.ai_scout_showing_results, state.results.size, state.requestedTotal),
-                    style = regularTextStyle(HomeTextSecondary, 13.sp)
-                )
+        // Results count / No results
+        if (!state.isLoading && state.results.isEmpty()) {
+            item {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 32.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Text(
+                        text = "🔍",
+                        style = regularTextStyle(HomeTextSecondary, 40.sp)
+                    )
+                    Text(
+                        text = stringResource(R.string.ai_scout_no_results),
+                        style = regularTextStyle(HomeTextSecondary, 15.sp),
+                        textAlign = TextAlign.Center
+                    )
+                    ActionButton(
+                        text = stringResource(R.string.ai_scout_search_again),
+                        icon = "🔄",
+                        bgColor = HomePurpleAccent.copy(alpha = 0.1f),
+                        borderColor = HomePurpleAccent.copy(alpha = 0.25f),
+                        textColor = HomePurpleAccent,
+                        onClick = { viewModel.clearSearch() }
+                    )
+                }
+            }
+        } else {
+            item {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = stringResource(R.string.ai_scout_showing_results, state.results.size, state.requestedTotal),
+                        style = regularTextStyle(HomeTextSecondary, 13.sp)
+                    )
+                }
             }
         }
 
