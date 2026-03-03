@@ -11,6 +11,7 @@ export interface ParsedScoutParams {
   minGoals?: number;
   foot?: string;
   nationality?: string;
+  freeAgent?: boolean;
   notes?: string;
   transferFee?: string;
   valueMin?: number;
@@ -427,13 +428,18 @@ function extractFoot(query: string): string | undefined {
   return undefined;
 }
 
+/** Extract free agent intent: שחקן חופשי, חופשיים, free agent(s) — avoid "משחק חופשי" (free kick) */
+function extractFreeAgent(query: string): boolean {
+  return /(?:שחקן\s*חופשי|חופשיים|\bfree\s*agents?\b)/i.test(query);
+}
+
 /**
  * Extract playing style notes — comprehensive, aligned with server's _NOTE_KEYWORDS.
  * Covers: speed, dribbling, physical, aerial, finishing, creativity, crossing, defense,
  * aggression, work rate, technical, box-to-box, progressive, hold-up, false 9,
  * inverted, counter-attack, ball-playing, impact, bargain, experience, youth, etc.
  */
-function extractNotes(query: string, minGoals?: number, israeliNotes?: string): string {
+function extractNotes(query: string, minGoals?: number, israeliNotes?: string, freeAgent?: boolean): string {
   const parts: string[] = [];
 
   if (minGoals != null) {
@@ -441,6 +447,10 @@ function extractNotes(query: string, minGoals?: number, israeliNotes?: string): 
   }
   if (israeliNotes) {
     parts.push(israeliNotes);
+  }
+
+  if (freeAgent) {
+    parts.push('free agent');
   }
 
   const stylePatterns: { pattern: RegExp; note: string }[] = [
@@ -555,6 +565,9 @@ function buildInterpretation(
     };
     const f = footNames[parsed.foot] || { en: parsed.foot, he: parsed.foot };
     parts.push(lang === 'he' ? f.he : f.en);
+  }
+  if (parsed.freeAgent) {
+    parts.push(lang === 'he' ? 'שחקנים חופשיים' : 'free agents');
   }
   if (parsed.nationality) {
     // Map internal codes to display names (superset)
@@ -689,10 +702,11 @@ export function parseFreeQuery(query: string, lang: 'en' | 'he' = 'en'): ParsedS
   // Israeli market fee takes priority if both match; otherwise use value-based fee
   const transferFee = israeliFee || valueFee;
 
-  const notes = extractNotes(q, minGoals, israeliNotes);
+  const freeAgent = extractFreeAgent(q);
+  const notes = extractNotes(q, minGoals, israeliNotes, freeAgent);
 
   const interpretation = buildInterpretation(
-    { position, ageMin, ageMax, foot, nationality, notes, transferFee, valueMin, valueMax, limit },
+    { position, ageMin, ageMax, foot, nationality, freeAgent, notes, transferFee, valueMin, valueMax, limit },
     lang
   );
 
@@ -703,6 +717,7 @@ export function parseFreeQuery(query: string, lang: 'en' | 'he' = 'en'): ParsedS
     minGoals,
     foot,
     nationality: nationality || undefined,
+    freeAgent: freeAgent || undefined,
     notes: notes || undefined,
     transferFee: transferFee || undefined,
     valueMin: valueMin || undefined,

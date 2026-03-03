@@ -33,6 +33,7 @@ const FOOTBALL_GLOSSARY: [RegExp, string][] = [
   // Common words
   [/שחקנים?/g, 'players'],
   [/שחקניות?/g, 'players'],
+  [/שחקן\s*חופשי|חופשיים|חופשי/g, 'free agent'],
 ];
 
 /**

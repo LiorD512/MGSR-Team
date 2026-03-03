@@ -190,12 +190,13 @@ export async function POST(request: NextRequest) {
         ageMax: parsedHebrew?.ageMax ?? parsedMain.ageMax,
         foot: parsedHebrew?.foot || parsedMain.foot,
         nationality: parsedHebrew?.nationality || parsedMain.nationality,
+        freeAgent: parsedHebrew?.freeAgent ?? parsedMain.freeAgent,
         limit: parsedHebrew?.limit ?? parsedMain.limit,
         minGoals: parsedHebrew?.minGoals ?? parsedMain.minGoals,
         transferFee: parsedHebrew?.transferFee || parsedMain.transferFee,
         valueMin: parsedHebrew?.valueMin ?? parsedMain.valueMin,
         valueMax: parsedHebrew?.valueMax ?? parsedMain.valueMax,
-        notes: _mergeNotes(parsedHebrew?.notes, parsedMain.notes),
+        notes: _mergeNotes(parsedHebrew?.notes, parsedMain?.notes),
         interpretation: parsedHebrew?.interpretation || parsedMain.interpretation,
       };
 
@@ -369,6 +370,20 @@ export async function POST(request: NextRequest) {
           return !isNaN(n) && n >= minGoals;
         });
         console.log('[AI Scout] Filtered by min_goals:', minGoals, '→', results.length, 'results');
+      }
+
+      // Filter by free agent: only players without club or "Without Club" / "Vereinslos" / "free agent"
+      const wantsFreeAgent = parsed.freeAgent === true || /free\s*agent/i.test(parsed.notes ?? '');
+      if (wantsFreeAgent) {
+        const before = results.length;
+        const freeAgentPattern = /^(without\s*club|vereinslos|free\s*agent|ללא\s*מועדון|שחקן\s*חופשי|—|\s*)$/i;
+        results = results.filter((p) => {
+          const club = (p.club ?? p.current_club ?? '').toString().trim();
+          return !club || freeAgentPattern.test(club);
+        });
+        if (results.length < before) {
+          console.log('[AI Scout] Filtered by free agent:', before, '→', results.length, 'results');
+        }
       }
 
       results = results.slice(0, fetchLimit);

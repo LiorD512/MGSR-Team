@@ -917,6 +917,7 @@
     <string name="ai_scout_error_empty">Please enter a search query</string>
     <string name="ai_scout_league_info">League: %1$s</string>
     <string name="ai_scout_fm_tier">FM %1$s</string>
+    <string name="ai_scout_fm_stats">FM stats</string>
     <string name="ai_scout_tab_scout">🔍 AI Scout</string>
     <string name="ai_scout_tab_find_next">🧠 Find The Next</string>
     <string name="ai_scout_find_next_hero_title">Find Me The Next…</string>

@@ -74,6 +74,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
@@ -81,6 +82,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -1164,18 +1166,27 @@ private fun LeagueInfoBanner(info: LeagueInfo) {
 
 /**
  * Parses scout analysis text into bullet items.
- * Splits by newlines and pipe (|) separators for clear, scannable presentation.
+ * Splits by newlines and pipe (|). Strips any ":FM" / " FM" suffix so Hebrew text (e.g. סיבולת, האצה) is clean.
+ * Returns pair: (regular items, FM-only items for separate "FM stats" section).
  */
-private fun parseScoutAnalysisBullets(text: String): List<String> {
-    val items = mutableListOf<String>()
+private fun parseScoutAnalysisBullets(text: String): Pair<List<String>, List<String>> {
+    val fmSuffixRegex = Regex("""\s*[:\u058A\uFF1A]?\s*FM\s*$""", RegexOption.IGNORE_CASE)
+    val regular = mutableListOf<String>()
+    val fmOnly = mutableListOf<String>()
     for (line in text.split("\n")) {
         val trimmed = line.trim()
         if (trimmed.isBlank()) continue
-        // Split by pipe for pipe-separated stats (e.g. "שערים: 3 | בישולים: 1")
-        val parts = trimmed.split("|").map { it.trim() }.filter { it.isNotBlank() }
-        items.addAll(parts)
+        for (part in trimmed.split("|").map { it.trim() }.filter { it.isNotBlank() }) {
+            val cleaned = fmSuffixRegex.replace(part, "").trim()
+            if (cleaned.isBlank()) continue
+            val isFmStat = cleaned.contains("CA ") || cleaned.contains(" PA ") ||
+                cleaned.contains("CA-") || cleaned.contains("PA-") ||
+                Regex("""CA\s*[\d]+\s*[-–]\s*PA""").containsMatchIn(cleaned) ||
+                Regex("""\d+\s*[-–]\s*PA\s*\d+""").containsMatchIn(cleaned)
+            if (isFmStat) fmOnly.add(cleaned) else regular.add(cleaned)
+        }
     }
-    return items
+    return regular to fmOnly
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -1207,25 +1218,21 @@ private fun PlayerResultCard(
             .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(14.dp))
             .padding(14.dp)
     ) {
-        // Name + score circle — RTL: right-aligned (start); LTR: left-aligned (start)
+        // Circle first in reading order: left in LTR, right in RTL; then name
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.weight(1f, fill = false)
-            ) {
-                Text(
-                    text = player.name,
-                    style = boldTextStyle(HomeTextPrimary, 16.sp),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Spacer(Modifier.width(10.dp))
-                MatchPercentRing(percent = player.matchPercent, size = 50)
-            }
-            Spacer(Modifier.weight(1f))
+            // First child = start = left in LTR, right in RTL → circle is first in reading order
+            MatchPercentRing(percent = player.matchPercent, size = 50)
+            Spacer(Modifier.width(10.dp))
+            Text(
+                text = player.name,
+                style = boldTextStyle(HomeTextPrimary, 16.sp),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f)
+            )
         }
 
         Spacer(Modifier.height(6.dp))
@@ -1322,7 +1329,7 @@ private fun PlayerResultCard(
                 }
         }
 
-        // Scout analysis — bullets for clear data presentation (split by | and newlines)
+        // Scout analysis — bullets; strip FM from text (e.g. סיבולת 70 :FM → סיבולת 70); FM stats under own heading
         if (player.scoutAnalysis.isNotBlank()) {
             Spacer(Modifier.height(8.dp))
             Box(
@@ -1332,8 +1339,9 @@ private fun PlayerResultCard(
                     .background(HomeDarkCardBorder.copy(alpha = 0.6f))
             )
             Spacer(Modifier.height(8.dp))
+            val (regularItems, fmItems) = parseScoutAnalysisBullets(player.scoutAnalysis)
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                parseScoutAnalysisBullets(player.scoutAnalysis).forEach { item ->
+                regularItems.forEach { item ->
                     Text(
                         text = "• $item",
                         style = regularTextStyle(
@@ -1344,6 +1352,27 @@ private fun PlayerResultCard(
                         lineHeight = 20.sp,
                         modifier = Modifier.fillMaxWidth()
                     )
+                }
+                if (fmItems.isNotEmpty()) {
+                    Spacer(Modifier.height(10.dp))
+                    Text(
+                        text = stringResource(R.string.ai_scout_fm_stats),
+                        style = boldTextStyle(HomeTealAccent, 13.sp),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    fmItems.forEach { item ->
+                        Text(
+                            text = "• $item",
+                            style = regularTextStyle(
+                                HomeTextPrimary,
+                                13.sp,
+                                direction = TextDirection.Content
+                            ),
+                            lineHeight = 20.sp,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
                 }
             }
         }
