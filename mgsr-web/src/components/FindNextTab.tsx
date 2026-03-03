@@ -1,7 +1,18 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { doc, getDoc, setDoc, addDoc, collection, onSnapshot } from 'firebase/firestore';
+import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { getCurrentAccountForShortlist, SHARED_SHORTLIST_DOC_ID } from '@/lib/accounts';
+import { db } from '@/lib/firebase';
+import { getPlayerDetails, extractPlayerIdFromUrl } from '@/lib/api';
+
+function samePlayer(url1: string, url2: string): boolean {
+  const id1 = extractPlayerIdFromUrl(url1);
+  const id2 = extractPlayerIdFromUrl(url2);
+  return !!id1 && id1 === id2;
+}
 
 /* ─── helpers ─── */
 
@@ -111,7 +122,8 @@ const VALUE_PRESETS = [
 ];
 
 export default function FindNextTab() {
-  const { isRtl, lang } = useLanguage();
+  const { user } = useAuth();
+  const { isRtl, lang, t } = useLanguage();
 
   const [playerName, setPlayerName] = useState('');
   const [ageMax, setAgeMax] = useState(23);
@@ -121,6 +133,86 @@ export default function FindNextTab() {
   const [searching, setSearching] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [examples, setExamples] = useState<string[]>([]);
+  const [addingToShortlistUrl, setAddingToShortlistUrl] = useState<string | null>(null);
+  const [shortlistError, setShortlistError] = useState<string | null>(null);
+  const [shortlistUrls, setShortlistUrls] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (!user) return;
+    const shortlistRef = doc(db, 'Shortlists', SHARED_SHORTLIST_DOC_ID);
+    const unsub = onSnapshot(shortlistRef, (snap) => {
+      const entries = (snap.data()?.entries as { tmProfileUrl?: string }[]) || [];
+      setShortlistUrls(new Set(entries.map((e) => e.tmProfileUrl).filter((u): u is string => !!u)));
+    });
+    return () => unsub();
+  }, [user]);
+
+  const addToShortlist = useCallback(
+    async (player: FindNextResult, e: React.MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const url = player.url;
+      if (!user || !url) return;
+      setShortlistError(null);
+      setAddingToShortlistUrl(url);
+      try {
+        const account = await getCurrentAccountForShortlist(user);
+        const docRef = doc(db, 'Shortlists', SHARED_SHORTLIST_DOC_ID);
+        const snap = await getDoc(docRef);
+        const current = (snap.data()?.entries as Record<string, unknown>[]) || [];
+        const exists = current.some((e) => samePlayer((e.tmProfileUrl as string) || '', url));
+        if (!exists) {
+          let entry: Record<string, unknown>;
+          try {
+            const details = await getPlayerDetails(url);
+            entry = {
+              tmProfileUrl: url,
+              addedAt: Date.now(),
+              playerImage: details.profileImage ?? null,
+              playerName: details.fullName ?? null,
+              playerPosition: details.positions?.[0] ?? null,
+              playerAge: details.age ?? null,
+              playerNationality: details.nationality ?? null,
+              playerNationalityFlag: details.nationalityFlag ?? null,
+              clubJoinedName: details.currentClub?.clubName ?? null,
+              marketValue: details.marketValue ?? null,
+              addedByAgentId: account.id,
+              addedByAgentName: account.name ?? null,
+              addedByAgentHebrewName: account.hebrewName ?? null,
+            };
+          } catch {
+            entry = {
+              tmProfileUrl: url,
+              addedAt: Date.now(),
+              playerName: player.name ?? null,
+              playerPosition: player.position ?? null,
+              playerAge: player.age ?? null,
+              playerNationality: player.citizenship ?? null,
+              clubJoinedName: player.club ?? player.fbref_team ?? null,
+              marketValue: player.market_value ?? null,
+              addedByAgentId: account.id,
+              addedByAgentName: account.name ?? null,
+              addedByAgentHebrewName: account.hebrewName ?? null,
+            };
+          }
+          await setDoc(docRef, { entries: [...current, entry] }, { merge: true });
+          await addDoc(collection(db, 'FeedEvents'), {
+            type: 'SHORTLIST_ADDED',
+            playerName: entry.playerName ?? null,
+            playerImage: entry.playerImage ?? null,
+            playerTmProfile: url,
+            timestamp: Date.now(),
+            agentName: account.name ?? null,
+          });
+        }
+      } catch (err) {
+        setShortlistError(err instanceof Error ? err.message : 'Failed to add');
+      } finally {
+        setAddingToShortlistUrl(null);
+      }
+    },
+    [user]
+  );
 
   // Shuffle example badges on mount
   useEffect(() => {
@@ -403,47 +495,85 @@ export default function FindNextTab() {
 
         {/* Results */}
         {response && response.results.length > 0 && (
-          <div className="space-y-3">
-            {response.results.map((player) => {
-              const pct = Math.round(player.find_next_score);
-              const url = player.url;
-              return (
-                <div
-                  key={url || player.name}
-                  className="flex items-start gap-5 p-5 rounded-2xl bg-mgsr-card border border-mgsr-border hover:border-purple-500/30 hover:shadow-lg hover:shadow-black/20 transition-all duration-250"
-                >
-                  {/* Score ring */}
+          <>
+            {shortlistError && (
+              <div className="mb-4 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
+                {shortlistError}
+              </div>
+            )}
+            <div className="space-y-3">
+              {response.results.map((player) => {
+                const pct = Math.round(player.find_next_score);
+                const url = player.url;
+                const isAdding = addingToShortlistUrl === url;
+                const inShortlist = url ? Array.from(shortlistUrls).some((u) => samePlayer(u, url)) : false;
+                return (
                   <div
-                    className="w-12 h-12 shrink-0 rounded-full flex items-center justify-center"
-                    style={{
-                      background: `conic-gradient(#a855f7 0deg ${pct * 3.6}deg, #253545 ${pct * 3.6}deg 360deg)`,
-                    }}
+                    key={url || player.name}
+                    className="flex items-start gap-5 p-5 rounded-2xl bg-mgsr-card border border-mgsr-border hover:border-purple-500/30 hover:shadow-lg hover:shadow-black/20 transition-all duration-250"
                   >
-                    <div className="w-[38px] h-[38px] rounded-full bg-mgsr-card flex items-center justify-center">
-                      <span className="font-display font-bold text-sm text-purple-400">
-                        {pct}
-                      </span>
+                    {/* Score ring */}
+                    <div
+                      className="w-12 h-12 shrink-0 rounded-full flex items-center justify-center"
+                      style={{
+                        background: `conic-gradient(#a855f7 0deg ${pct * 3.6}deg, #253545 ${pct * 3.6}deg 360deg)`,
+                      }}
+                    >
+                      <div className="w-[38px] h-[38px] rounded-full bg-mgsr-card flex items-center justify-center">
+                        <span className="font-display font-bold text-sm text-purple-400">
+                          {pct}
+                        </span>
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="flex-1 min-w-0">
-                    {/* Name + link */}
-                    {url ? (
-                      <a
-                        href={url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="block hover:underline"
-                      >
-                        <p className="font-semibold text-mgsr-text truncate">
-                          {player.name || '—'}
-                        </p>
-                      </a>
-                    ) : (
-                      <p className="font-semibold text-mgsr-text truncate">
-                        {player.name || '—'}
-                      </p>
-                    )}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          {url ? (
+                            <a
+                              href={url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="block hover:underline"
+                            >
+                              <p className="font-semibold text-mgsr-text truncate">
+                                {player.name || '—'}
+                              </p>
+                            </a>
+                          ) : (
+                            <p className="font-semibold text-mgsr-text truncate">
+                              {player.name || '—'}
+                            </p>
+                          )}
+                        </div>
+                        {url && user && (
+                          <button
+                            type="button"
+                            onClick={(e) => !inShortlist && addToShortlist(player, e)}
+                            disabled={!!addingToShortlistUrl}
+                            className={`group/bookmark flex items-center gap-2 px-3 py-1.5 rounded-full border shrink-0 transition-all duration-200 ${
+                              inShortlist
+                                ? 'border-emerald-500/40 bg-emerald-500/15 text-emerald-400 cursor-default'
+                                : 'border-mgsr-border/80 bg-mgsr-dark/40 text-mgsr-muted hover:border-amber-500/40 hover:text-amber-400/90 hover:bg-amber-500/5 disabled:opacity-60'
+                            }`}
+                          >
+                            {isAdding ? (
+                              <span className="w-4 h-4 border-2 border-amber-400/40 border-t-amber-400 rounded-full animate-spin shrink-0" />
+                            ) : inShortlist ? (
+                              <svg className="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                              </svg>
+                            ) : (
+                              <svg className="w-4 h-4 shrink-0 opacity-70 group-hover/bookmark:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                              </svg>
+                            )}
+                            <span className="text-xs font-medium">
+                              {isAdding ? t('shortlist_adding') : inShortlist ? t('shortlist_already_added') : t('shortlist_add')}
+                            </span>
+                          </button>
+                        )}
+                      </div>
 
                     {/* Meta line */}
                     <p className="text-sm text-mgsr-muted mt-0.5">
@@ -517,6 +647,7 @@ export default function FindNextTab() {
               );
             })}
           </div>
+          </>
         )}
 
         {/* No results */}

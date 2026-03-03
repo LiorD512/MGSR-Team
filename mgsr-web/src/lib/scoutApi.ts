@@ -123,16 +123,25 @@ function parseResult(p: Record<string, unknown>): ScoutPlayerSuggestion {
     height: (p.height as string) || undefined,
     contractEnd: (p.contract as string) || undefined,
     foot: (p.foot as string) || undefined,
-    fmCa: typeof p.fm_ca === 'number' ? p.fm_ca : typeof p.fmi_ca === 'number' ? (p.fmi_ca as number) : undefined,
-    fmPa: typeof p.fm_pa === 'number' ? p.fm_pa : typeof p.fmi_pa === 'number' ? (p.fmi_pa as number) : undefined,
-    fmPotentialGap: typeof p.fm_potential_gap === 'number'
-      ? p.fm_potential_gap
-      : (typeof p.fmi_pa === 'number' && typeof p.fmi_ca === 'number')
-        ? ((p.fmi_pa as number) - (p.fmi_ca as number))
-        : undefined,
-    fmTier: (p.fm_tier as string) || classifyFmTier(
-      typeof p.fm_ca === 'number' ? p.fm_ca : typeof p.fmi_ca === 'number' ? (p.fmi_ca as number) : 0
-    ),
+    ...(function caPa() {
+      const rawCa = typeof p.fm_ca === 'number' ? p.fm_ca : typeof p.fmi_ca === 'number' ? (p.fmi_ca as number) : undefined;
+      const rawPa = typeof p.fm_pa === 'number' ? p.fm_pa : typeof p.fmi_pa === 'number' ? (p.fmi_pa as number) : undefined;
+      // Backend may return CA/PA swapped; swap so CA (current) <= PA (potential) when both present
+      const fmCa = rawCa != null && rawPa != null && rawCa > rawPa ? rawPa : rawCa;
+      const fmPa = rawCa != null && rawPa != null && rawCa > rawPa ? rawCa : rawPa;
+      const fmPotentialGap =
+        typeof p.fm_potential_gap === 'number'
+          ? p.fm_potential_gap
+          : fmCa != null && fmPa != null
+            ? fmPa - fmCa
+            : undefined;
+      return {
+        fmCa,
+        fmPa,
+        fmPotentialGap,
+        fmTier: (p.fm_tier as string) || classifyFmTier(fmCa ?? 0),
+      };
+    })(),
   };
 }
 

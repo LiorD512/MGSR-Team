@@ -1,12 +1,22 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { doc, getDoc, setDoc, addDoc, collection, onSnapshot } from 'firebase/firestore';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import AppLayout from '@/components/AppLayout';
 import FindNextTab from '@/components/FindNextTab';
 import { aiScoutSearch, type ScoutPlayerSuggestion } from '@/lib/scoutApi';
+import { getCurrentAccountForShortlist, SHARED_SHORTLIST_DOC_ID } from '@/lib/accounts';
+import { db } from '@/lib/firebase';
+import { getPlayerDetails, extractPlayerIdFromUrl } from '@/lib/api';
+
+function samePlayer(url1: string, url2: string): boolean {
+  const id1 = extractPlayerIdFromUrl(url1);
+  const id2 = extractPlayerIdFromUrl(url2);
+  return !!id1 && id1 === id2;
+}
 
 function shortenPosition(pos: string | undefined): string {
   if (!pos?.trim()) return '—';
@@ -73,6 +83,86 @@ export default function AiScoutPage() {
   const [seenUrls, setSeenUrls] = useState<string[]>([]);
   const [searchingOther, setSearchingOther] = useState(false);
   const [lastSearchedQuery, setLastSearchedQuery] = useState<string | null>(null);
+  const [addingToShortlistUrl, setAddingToShortlistUrl] = useState<string | null>(null);
+  const [shortlistError, setShortlistError] = useState<string | null>(null);
+  const [shortlistUrls, setShortlistUrls] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (!user) return;
+    const shortlistRef = doc(db, 'Shortlists', SHARED_SHORTLIST_DOC_ID);
+    const unsub = onSnapshot(shortlistRef, (snap) => {
+      const entries = (snap.data()?.entries as { tmProfileUrl?: string }[]) || [];
+      setShortlistUrls(new Set(entries.map((e) => e.tmProfileUrl).filter((u): u is string => !!u)));
+    });
+    return () => unsub();
+  }, [user]);
+
+  const addToShortlist = useCallback(
+    async (s: ScoutPlayerSuggestion, e: React.MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const url = s.transfermarktUrl;
+      if (!user || !url) return;
+      setShortlistError(null);
+      setAddingToShortlistUrl(url);
+      try {
+        const account = await getCurrentAccountForShortlist(user);
+        const docRef = doc(db, 'Shortlists', SHARED_SHORTLIST_DOC_ID);
+        const snap = await getDoc(docRef);
+        const current = (snap.data()?.entries as Record<string, unknown>[]) || [];
+        const exists = current.some((e) => samePlayer((e.tmProfileUrl as string) || '', url));
+        if (!exists) {
+          let entry: Record<string, unknown>;
+          try {
+            const details = await getPlayerDetails(url);
+            entry = {
+              tmProfileUrl: url,
+              addedAt: Date.now(),
+              playerImage: details.profileImage ?? null,
+              playerName: details.fullName ?? null,
+              playerPosition: details.positions?.[0] ?? null,
+              playerAge: details.age ?? null,
+              playerNationality: details.nationality ?? null,
+              playerNationalityFlag: details.nationalityFlag ?? null,
+              clubJoinedName: details.currentClub?.clubName ?? null,
+              marketValue: details.marketValue ?? null,
+              addedByAgentId: account.id,
+              addedByAgentName: account.name ?? null,
+              addedByAgentHebrewName: account.hebrewName ?? null,
+            };
+          } catch {
+            entry = {
+              tmProfileUrl: url,
+              addedAt: Date.now(),
+              playerName: s.name ?? null,
+              playerPosition: s.position ?? null,
+              playerAge: s.age ?? null,
+              playerNationality: s.nationality ?? null,
+              clubJoinedName: s.club ?? null,
+              marketValue: s.marketValue ?? null,
+              addedByAgentId: account.id,
+              addedByAgentName: account.name ?? null,
+              addedByAgentHebrewName: account.hebrewName ?? null,
+            };
+          }
+          await setDoc(docRef, { entries: [...current, entry] }, { merge: true });
+          await addDoc(collection(db, 'FeedEvents'), {
+            type: 'SHORTLIST_ADDED',
+            playerName: entry.playerName ?? null,
+            playerImage: entry.playerImage ?? null,
+            playerTmProfile: url,
+            timestamp: Date.now(),
+            agentName: account.name ?? null,
+          });
+        }
+      } catch (err) {
+        setShortlistError(err instanceof Error ? err.message : 'Failed to add');
+      } finally {
+        setAddingToShortlistUrl(null);
+      }
+    },
+    [user]
+  );
 
   const runConnectionTest = async () => {
     setConnectionTest(null);
@@ -386,10 +476,17 @@ export default function AiScoutPage() {
                 </div>
               </div>
 
+              {shortlistError && (
+                <div className="mb-4 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
+                  {shortlistError}
+                </div>
+              )}
               <div className="space-y-3">
                 {results.map((s) => {
                   const url = s.transfermarktUrl;
                   const pct = s.matchPercent ?? 0;
+                  const isAdding = addingToShortlistUrl === url;
+                  const inShortlist = url ? Array.from(shortlistUrls).some((u) => samePlayer(u, url)) : false;
                   const content = (
                     <div className="flex items-start gap-5 p-5 rounded-2xl bg-mgsr-card border border-mgsr-border hover:border-mgsr-teal/30 hover:shadow-lg hover:shadow-black/20 transition-all duration-250">
                       {/* Match ring */}
@@ -404,18 +501,49 @@ export default function AiScoutPage() {
                         </div>
                       </div>
                       <div className="flex-1 min-w-0">
-                        {url ? (
-                          <a
-                            href={url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="block hover:underline"
-                          >
-                            <p className="font-semibold text-mgsr-text truncate">{s.name || '—'}</p>
-                          </a>
-                        ) : (
-                          <p className="font-semibold text-mgsr-text truncate">{s.name || '—'}</p>
-                        )}
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0 flex-1">
+                            {url ? (
+                              <a
+                                href={url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="block hover:underline"
+                              >
+                                <p className="font-semibold text-mgsr-text truncate">{s.name || '—'}</p>
+                              </a>
+                            ) : (
+                              <p className="font-semibold text-mgsr-text truncate">{s.name || '—'}</p>
+                            )}
+                          </div>
+                          {url && (
+                            <button
+                              type="button"
+                              onClick={(e) => !inShortlist && addToShortlist(s, e)}
+                              disabled={!!addingToShortlistUrl}
+                              className={`group/bookmark flex items-center gap-2 px-3 py-1.5 rounded-full border shrink-0 transition-all duration-200 ${
+                                inShortlist
+                                  ? 'border-emerald-500/40 bg-emerald-500/15 text-emerald-400 cursor-default'
+                                  : 'border-mgsr-border/80 bg-mgsr-dark/40 text-mgsr-muted hover:border-amber-500/40 hover:text-amber-400/90 hover:bg-amber-500/5 disabled:opacity-60'
+                              }`}
+                            >
+                              {isAdding ? (
+                                <span className="w-4 h-4 border-2 border-amber-400/40 border-t-amber-400 rounded-full animate-spin shrink-0" />
+                              ) : inShortlist ? (
+                                <svg className="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                </svg>
+                              ) : (
+                                <svg className="w-4 h-4 shrink-0 opacity-70 group-hover/bookmark:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                                </svg>
+                              )}
+                              <span className="text-xs font-medium">
+                                {isAdding ? t('shortlist_adding') : inShortlist ? t('shortlist_already_added') : t('shortlist_add')}
+                              </span>
+                            </button>
+                          )}
+                        </div>
                         <p className="text-sm text-mgsr-muted mt-0.5">
                           {s.age ? t('players_age_display').replace('{age}', s.age) : '—'}
                           <span className="mx-1.5">·</span>
@@ -429,16 +557,16 @@ export default function AiScoutPage() {
                             </>
                           )}
                         </p>
-                        {/* FM Data Badge */}
+                        {/* FM Data Badge - dir="ltr" ensures CA → PA always shows 55→65 not reversed in RTL */}
                         {s.fmCa != null && s.fmCa > 0 && (
-                          <div className="flex items-center gap-2 mt-2 flex-wrap">
+                          <div className="flex items-center justify-end gap-2 mt-2 flex-wrap" dir="ltr">
                             <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-500/15 border border-indigo-500/30">
                               <span className="text-[10px] font-semibold text-indigo-400 uppercase tracking-wider">FM</span>
-                              <span className="text-xs font-bold text-indigo-300">
-                                {s.fmCa}
+                              <span className="text-xs font-normal text-indigo-300">
+                                CA {s.fmCa}
                               </span>
-                              {s.fmPa != null && s.fmPa > s.fmCa && (
-                                <span className="text-[10px] text-indigo-400/70">→ {s.fmPa}</span>
+                              {s.fmPa != null && (
+                                <span className="text-xs font-bold text-indigo-400">→ PA {s.fmPa}</span>
                               )}
                             </div>
                             {s.fmPotentialGap != null && s.fmPotentialGap > 0 && (
