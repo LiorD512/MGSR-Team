@@ -227,9 +227,13 @@ export async function POST(request: NextRequest) {
       const fetchLimit = initial ? Math.min(5, requestedTotal) : requestedTotal;
       const hasMore = initial && requestedTotal > 5;
       const minGoals = parsed.minGoals;
-      // If we have market cap or minGoals, fetch extra to have enough after filtering
-      const needsOverfetch = minGoals != null || marketCap != null;
-      const scoutLimit = needsOverfetch ? Math.min(30, Math.max(fetchLimit * 3, 15)) : fetchLimit;
+      // If we have market cap, minGoals, or freeAgent filter → fetch extra to have enough after filtering
+      const wantsFreeAgentEarly = parsed.freeAgent === true || /free\s*agent/i.test(parsed.notes ?? '');
+      const needsOverfetch = minGoals != null || marketCap != null || wantsFreeAgentEarly;
+      // Free agents are rare — fetch aggressively (up to 80) to maximize chance of finding some
+      const scoutLimit = wantsFreeAgentEarly
+        ? Math.min(80, Math.max(fetchLimit * 10, 40))
+        : needsOverfetch ? Math.min(30, Math.max(fetchLimit * 3, 15)) : fetchLimit;
       const leagueAvgPromise = targetLeague
         ? getLeagueAvgMarketValue(targetLeague, 2025).catch(() => null)
         : Promise.resolve(null);
@@ -374,15 +378,23 @@ export async function POST(request: NextRequest) {
 
       // Filter by free agent: only players without club or "Without Club" / "Vereinslos" / "free agent"
       const wantsFreeAgent = parsed.freeAgent === true || /free\s*agent/i.test(parsed.notes ?? '');
+      let freeAgentFallbackNote = '';
       if (wantsFreeAgent) {
         const before = results.length;
         const freeAgentPattern = /^(without\s*club|vereinslos|free\s*agent|ללא\s*מועדון|שחקן\s*חופשי|—|\s*)$/i;
-        results = results.filter((p) => {
+        const freeAgentResults = results.filter((p) => {
           const club = (p.club ?? p.current_club ?? '').toString().trim();
           return !club || freeAgentPattern.test(club);
         });
-        if (results.length < before) {
+        if (freeAgentResults.length > 0) {
+          results = freeAgentResults;
           console.log('[AI Scout] Filtered by free agent:', before, '→', results.length, 'results');
+        } else {
+          // No free agents found — keep all results but add note to interpretation
+          console.log('[AI Scout] No free agents found among', before, 'results — showing all with note');
+          freeAgentFallbackNote = lang === 'he'
+            ? '\n⚠️ לא נמצאו שחקנים חופשיים התואמים לקריטריונים — מציג שחקנים עם מועדון'
+            : '\n⚠️ No free agents found matching criteria — showing players with clubs';
         }
       }
 
@@ -447,6 +459,11 @@ export async function POST(request: NextRequest) {
         interpretation += lang === 'he'
           ? `\n💰 סינון ריאלי ל${leagueName ? leagueName : 'שוק יעד'} — שווי שוק עד ${capStr}`
           : `\n💰 Realistic filter for ${leagueName || 'target market'} — value up to ${capStr}`;
+      }
+
+      // Append free agent fallback note if no free agents were found
+      if (freeAgentFallbackNote) {
+        interpretation += freeAgentFallbackNote;
       }
 
       // Add search method indicator
