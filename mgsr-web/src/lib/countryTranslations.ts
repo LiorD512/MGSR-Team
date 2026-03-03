@@ -34,6 +34,7 @@ export const COUNTRY_EN_TO_HE: Record<string, string> = {
   'Czech Republic': "צ'כיה",
   Czechia: "צ'כיה",
   Denmark: 'דנמרק',
+  Ecuador: 'אקוואדור',
   Egypt: 'מצרים',
   England: 'אנגליה',
   Estonia: 'אסטוניה',

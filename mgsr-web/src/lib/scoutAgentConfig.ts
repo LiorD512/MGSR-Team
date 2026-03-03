@@ -32,6 +32,13 @@ export const AGENT_IDS = [
   'macedonia',
   'montenegro',
   'kosovo',
+  'brazil',
+  'argentina',
+  'colombia',
+  'chile',
+  'uruguay',
+  'ecuador',
+  'peru',
 ] as const;
 
 export type AgentId = (typeof AGENT_IDS)[number];
@@ -112,6 +119,15 @@ const LEAGUE_URLS: Record<string, string> = {
   'prva-crnogorska-liga': 'https://www.transfermarkt.com/prva-crnogorska-liga/startseite/wettbewerb/MON1',
   // Kosovo
   'superliga-kosovo': 'https://www.transfermarkt.com/superliga-e-kosoves/startseite/wettbewerb/KOS1',
+  // South America
+  'campeonato-brasileiro-serie-a': 'https://www.transfermarkt.com/campeonato-brasileiro-serie-a/startseite/wettbewerb/BRA1',
+  'campeonato-brasileiro-serie-b': 'https://www.transfermarkt.com/campeonato-brasileiro-serie-b/startseite/wettbewerb/BRA2',
+  'torneo-apertura': 'https://www.transfermarkt.com/torneo-apertura/startseite/wettbewerb/ARG1',
+  'liga-dimayor': 'https://www.transfermarkt.com/liga-dimayor-apertura/startseite/wettbewerb/COLP',
+  'liga-primera-cl': 'https://www.transfermarkt.com/liga-de-primera/startseite/wettbewerb/CLPD',
+  'liga-auf': 'https://www.transfermarkt.com/liga-auf-apertura/startseite/wettbewerb/URU1',
+  'ligapro-serie-a': 'https://www.transfermarkt.com/ligapro-serie-a/startseite/wettbewerb/EC1N',
+  'liga-1-peru': 'https://www.transfermarkt.com/liga-1-apertura/startseite/wettbewerb/TDeA',
 };
 
 export const AGENTS_CONFIG: Record<AgentId, AgentConfig> = {
@@ -338,6 +354,62 @@ export const AGENTS_CONFIG: Record<AgentId, AgentConfig> = {
     flag: '🇽🇰',
     leagueUrls: [LEAGUE_URLS['superliga-kosovo']],
     leagueNames: ['Superliga Kosovo'],
+  },
+  brazil: {
+    id: 'brazil',
+    name: 'Brazil',
+    nameHe: 'ברזיל',
+    flag: '🇧🇷',
+    leagueUrls: [LEAGUE_URLS['campeonato-brasileiro-serie-a'], LEAGUE_URLS['campeonato-brasileiro-serie-b']],
+    leagueNames: ['Série A', 'Série B'],
+  },
+  argentina: {
+    id: 'argentina',
+    name: 'Argentina',
+    nameHe: 'ארגנטינה',
+    flag: '🇦🇷',
+    leagueUrls: [LEAGUE_URLS['torneo-apertura']],
+    leagueNames: ['Liga Profesional'],
+  },
+  colombia: {
+    id: 'colombia',
+    name: 'Colombia',
+    nameHe: 'קולומביה',
+    flag: '🇨🇴',
+    leagueUrls: [LEAGUE_URLS['liga-dimayor']],
+    leagueNames: ['Liga DIMAYOR'],
+  },
+  chile: {
+    id: 'chile',
+    name: 'Chile',
+    nameHe: "צ'ילה",
+    flag: '🇨🇱',
+    leagueUrls: [LEAGUE_URLS['liga-primera-cl']],
+    leagueNames: ['Liga Primera'],
+  },
+  uruguay: {
+    id: 'uruguay',
+    name: 'Uruguay',
+    nameHe: 'אורוגוואי',
+    flag: '🇺🇾',
+    leagueUrls: [LEAGUE_URLS['liga-auf']],
+    leagueNames: ['Liga AUF'],
+  },
+  ecuador: {
+    id: 'ecuador',
+    name: 'Ecuador',
+    nameHe: 'אקוואדור',
+    flag: '🇪🇨',
+    leagueUrls: [LEAGUE_URLS['ligapro-serie-a']],
+    leagueNames: ['LigaPro Serie A'],
+  },
+  peru: {
+    id: 'peru',
+    name: 'Peru',
+    nameHe: 'פרו',
+    flag: '🇵🇪',
+    leagueUrls: [LEAGUE_URLS['liga-1-peru']],
+    leagueNames: ['Liga 1'],
   },
 };
 
