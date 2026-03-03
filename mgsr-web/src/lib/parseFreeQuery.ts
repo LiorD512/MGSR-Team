@@ -36,8 +36,10 @@ const POSITION_PATTERNS: { pattern: RegExp; position: string }[] = [
   { pattern: /קשר\s*(?:התקפי|עילי)|\b(?:attacking\s*mid(?:fielder)?s?|cam|am|no\.?\s*10|number\s*10|trequartista)\b/i, position: 'AM' },
   { pattern: /קשר\s*(?:הגנתי|שורשי|אחורי)|קשרים\s*(?:הגנתיים|שורשיים|אחוריים)|\b(?:defensive\s*mid(?:fielder)?s?|holding\s*mid(?:fielder)?s?|cdm|dm|anchor|pivot|no\.?\s*6|number\s*6)\b/i, position: 'DM' },
   { pattern: /קשר|קשרים|\b(?:midfielders?|midfield|cm|no\.?\s*8|number\s*8)\b/i, position: 'CM' },
-  { pattern: /מגן\s*שמאל|שמאלי\s*(?:מגן|בלם)|\b(?:left.?backs?|lb|left\s*full.?backs?)\b/i, position: 'LB' },
-  { pattern: /מגן\s*ימין|ימני\s*(?:מגן|בלם)|\b(?:right.?backs?|rb|right\s*full.?backs?)\b/i, position: 'RB' },
+  // LB/RB: only מגן שמאל/ימין or שמאלי/ימני מגן — NOT שמאלי בלם (that's left-footed CB)
+  { pattern: /מגן\s*שמאל|שמאלי\s*מגן|\b(?:left.?backs?|lb|left\s*full.?backs?)\b/i, position: 'LB' },
+  { pattern: /מגן\s*ימין|ימני\s*מגן|\b(?:right.?backs?|rb|right\s*full.?backs?)\b/i, position: 'RB' },
+  // CB: בלם (centre-back) — must come after LB/RB so "מגן שמאל" doesn't become CB
   { pattern: /בלם|בלמים|מגן\s*מרכזי|מגנים\s*מרכזיי?ם|\b(?:defenders?|centre.?backs?|center.?backs?|cb)\b/i, position: 'CB' },
   { pattern: /שוער|שוערים|\b(?:goalkeepers?|goalie|gk|keeper)\b/i, position: 'GK' },
   // Generic מגן/מגנים last — must NOT match 'מגן שמאל/ימין/מרכזי'

@@ -1159,6 +1159,26 @@ private fun LeagueInfoBanner(info: LeagueInfo) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
+//  SCOUT ANALYSIS PARSING
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Parses scout analysis text into bullet items.
+ * Splits by newlines and pipe (|) separators for clear, scannable presentation.
+ */
+private fun parseScoutAnalysisBullets(text: String): List<String> {
+    val items = mutableListOf<String>()
+    for (line in text.split("\n")) {
+        val trimmed = line.trim()
+        if (trimmed.isBlank()) continue
+        // Split by pipe for pipe-separated stats (e.g. "שערים: 3 | בישולים: 1")
+        val parts = trimmed.split("|").map { it.trim() }.filter { it.isNotBlank() }
+        items.addAll(parts)
+    }
+    return items
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
 //  PLAYER RESULT CARD
 // ═══════════════════════════════════════════════════════════════════════════════
 
@@ -1187,20 +1207,25 @@ private fun PlayerResultCard(
             .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(14.dp))
             .padding(14.dp)
     ) {
-        // Name + score circle grouped together (name close to circle)
+        // Name + score circle — RTL: right-aligned (start); LTR: left-aligned (start)
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            MatchPercentRing(percent = player.matchPercent, size = 50)
-            Spacer(Modifier.width(10.dp))
-            Text(
-                text = player.name,
-                style = boldTextStyle(HomeTextPrimary, 16.sp),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f)
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.weight(1f, fill = false)
+            ) {
+                Text(
+                    text = player.name,
+                    style = boldTextStyle(HomeTextPrimary, 16.sp),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(Modifier.width(10.dp))
+                MatchPercentRing(percent = player.matchPercent, size = 50)
+            }
+            Spacer(Modifier.weight(1f))
         }
 
         Spacer(Modifier.height(6.dp))
@@ -1297,7 +1322,7 @@ private fun PlayerResultCard(
                 }
         }
 
-        // Scout analysis — split by newlines for clearer structure, Content direction for mixed Hebrew/English
+        // Scout analysis — bullets for clear data presentation (split by | and newlines)
         if (player.scoutAnalysis.isNotBlank()) {
             Spacer(Modifier.height(8.dp))
             Box(
@@ -1307,22 +1332,19 @@ private fun PlayerResultCard(
                     .background(HomeDarkCardBorder.copy(alpha = 0.6f))
             )
             Spacer(Modifier.height(8.dp))
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                player.scoutAnalysis
-                    .split("\n")
-                    .map { it.trim() }
-                    .filter { it.isNotBlank() }
-                    .forEach { line ->
-                        Text(
-                            text = line,
-                            style = regularTextStyle(
-                                HomeTextPrimary,
-                                13.sp,
-                                direction = TextDirection.Content
-                            ),
-                            lineHeight = 20.sp
-                        )
-                    }
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                parseScoutAnalysisBullets(player.scoutAnalysis).forEach { item ->
+                    Text(
+                        text = "• $item",
+                        style = regularTextStyle(
+                            HomeTextPrimary,
+                            13.sp,
+                            direction = TextDirection.Content
+                        ),
+                        lineHeight = 20.sp,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
             }
         }
     }

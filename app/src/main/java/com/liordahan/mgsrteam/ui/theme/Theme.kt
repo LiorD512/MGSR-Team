@@ -12,9 +12,13 @@ import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.core.view.WindowCompat
+import com.liordahan.mgsrteam.localization.LocaleManager
 
 private val DarkColorScheme = darkColorScheme(
     primary = Purple80,
@@ -72,11 +76,19 @@ fun MGSRTeamTheme(
     }
     val colorScheme = baseColorScheme.copy(background = HomeDarkBackground)
 
-    MaterialTheme(
-        colorScheme = colorScheme,
-        typography = Typography,
-        content = content
-    )
+    val layoutDirection = if (LocaleManager.isHebrew(LocalContext.current)) {
+        LayoutDirection.Rtl
+    } else {
+        LayoutDirection.Ltr
+    }
+
+    CompositionLocalProvider(LocalLayoutDirection provides layoutDirection) {
+        MaterialTheme(
+            colorScheme = colorScheme,
+            typography = Typography,
+            content = content
+        )
+    }
 }
 
 private fun Context.findWindow(): android.view.Window? {
