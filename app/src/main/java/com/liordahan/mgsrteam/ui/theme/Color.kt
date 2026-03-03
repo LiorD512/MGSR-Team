@@ -36,6 +36,7 @@ val HomeRedAccent = Color(0xFFE53935)
 val HomeBlueAccent = Color(0xFF42A5F5)
 val HomePurpleAccent = Color(0xFFAB47BC)
 val HomeRoseAccent = Color(0xFFF48FB1)   // soft rose/pink for notes - distinct from other accents
+val HomeAmberAccent = Color(0xFFFFB300)   // warm amber-gold for contract finisher
 val HomeLiveRed = Color(0xFFFF1744)
 /** War Room command center — indigo for strategic/tactical hub (unused elsewhere) */
 val WarRoomAccent = Color(0xFF6366F1)

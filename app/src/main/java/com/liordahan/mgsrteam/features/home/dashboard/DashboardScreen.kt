@@ -129,6 +129,7 @@ import com.liordahan.mgsrteam.ui.theme.HomeDarkCard
 import com.liordahan.mgsrteam.ui.theme.HomeDarkCardBorder
 import com.liordahan.mgsrteam.ui.theme.HomeGreenAccent
 import com.liordahan.mgsrteam.ui.theme.HomeOrangeAccent
+import com.liordahan.mgsrteam.ui.theme.HomeAmberAccent
 import com.liordahan.mgsrteam.ui.theme.HomeRoseAccent
 import com.liordahan.mgsrteam.ui.theme.WarRoomAccent
 import com.liordahan.mgsrteam.ui.theme.HomePurpleAccent
@@ -683,7 +684,7 @@ private fun QuickActionsRow(navController: NavController) {
                     else
                         R.string.quick_action_contract_finisher_winter
                 ),
-                color = HomeOrangeAccent,
+                color = HomeAmberAccent,
                 onClick = {
                     navController.navigate(Screens.ContractFinisherScreen.route) {
                         launchSingleTop = true
