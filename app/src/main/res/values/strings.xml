@@ -913,6 +913,18 @@
     <string name="ai_scout_error_empty">Please enter a search query</string>
     <string name="ai_scout_league_info">League: %1$s</string>
     <string name="ai_scout_fm_tier">FM %1$s</string>
+    <string name="ai_scout_tab_scout">🔍 AI Scout</string>
+    <string name="ai_scout_tab_find_next">🧠 Find The Next</string>
+    <string name="ai_scout_find_next_hero_title">Find Me The Next…</string>
+    <string name="ai_scout_find_next_hero_subtitle">Find young, affordable players showing early statistical signs of star potential</string>
+    <string name="ai_scout_find_next_player_label">Reference player name</string>
+    <string name="ai_scout_find_next_placeholder">e.g. Mohamed Salah</string>
+    <string name="ai_scout_find_next_age_max">Max age: %d</string>
+    <string name="ai_scout_find_next_value_max">Max market value</string>
+    <string name="ai_scout_find_next_no_limit">No limit</string>
+    <string name="ai_scout_find_next_search_button">Find The Next</string>
+    <string name="ai_scout_find_next_found_count">Found %1$d young players (from %2$d candidates)</string>
+    <string name="ai_scout_find_next_no_results">No young players found matching this profile. Try increasing the age or value cap.</string>
 
     <!-- War Room -->
     <string name="war_room_title">War Room</string>

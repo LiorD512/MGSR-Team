@@ -73,6 +73,7 @@ import com.liordahan.mgsrteam.ui.theme.HomeBlueAccent
 import com.liordahan.mgsrteam.ui.theme.HomeOrangeAccent
 import com.liordahan.mgsrteam.ui.theme.HomeGreenAccent
 import com.liordahan.mgsrteam.ui.theme.HomeRedAccent
+import com.liordahan.mgsrteam.ui.utils.clickWithNoRipple
 import com.liordahan.mgsrteam.ui.utils.boldTextStyle
 import com.liordahan.mgsrteam.ui.utils.regularTextStyle
 import org.koin.androidx.compose.koinViewModel
@@ -142,7 +143,11 @@ fun WarRoomScreen(
             .background(HomeDarkBackground)
     ) {
         // Top Bar
-        WarRoomTopBar(onBack = { navController.popBackStack() })
+        WarRoomTopBar(onBack = {
+            if (!navController.popBackStack(Screens.DashboardScreen.route, false)) {
+                navController.popBackStack()
+            }
+        })
 
         // Tab Row
         WarRoomTabBar(
@@ -168,14 +173,20 @@ private fun WarRoomTopBar(onBack: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .background(HomeDarkCard)
-            .padding(horizontal = 8.dp, vertical = 8.dp),
+            .padding(start = 12.dp, end = 12.dp, top = 48.dp, bottom = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        IconButton(onClick = onBack) {
+        Box(
+            modifier = Modifier
+                .size(48.dp)
+                .clickWithNoRipple { onBack() },
+            contentAlignment = Alignment.Center
+        ) {
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                 contentDescription = null,
-                tint = WarPurple
+                tint = HomeTealAccent,
+                modifier = Modifier.size(24.dp)
             )
         }
         Text(

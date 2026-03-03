@@ -89,6 +89,39 @@ class MgsrWebApiClient(
             }
         }
 
+    // ─── Find Next (Find Me The Next...) ────────────────────────────────────
+
+    suspend fun findNext(request: FindNextRequest): Result<FindNextResponse> =
+        withContext(Dispatchers.IO) {
+            runCatching {
+                val params = buildString {
+                    append("player_name=${java.net.URLEncoder.encode(request.playerName, "UTF-8")}")
+                    append("&age_max=${request.ageMax}")
+                    append("&lang=${request.lang}")
+                    append("&limit=15")
+                    if (request.valueMax > 0) {
+                        append("&value_max=${request.valueMax}")
+                    }
+                }
+
+                val httpRequest = Request.Builder()
+                    .url("$baseUrl/api/scout/find-next?$params")
+                    .get()
+                    .build()
+
+                Log.d(TAG, "Find Next: ${request.playerName}")
+                val response = client.newCallAsync(httpRequest)
+                val responseBody = response.body?.string()
+                    ?: throw IOException("Empty response from find-next")
+
+                if (!response.isSuccessful) {
+                    throw IOException("Find Next failed: ${response.code} — $responseBody")
+                }
+
+                parseFindNextResponse(responseBody)
+            }
+        }
+
     // ─── War Room Discovery ────────────────────────────────────────────────
 
     suspend fun getDiscovery(): Result<DiscoveryResponse> =
@@ -171,6 +204,81 @@ class MgsrWebApiClient(
         }
 
     // ─── Private Parsing ───────────────────────────────────────────────────
+
+    private fun parseFindNextResponse(json: String): FindNextResponse {
+        val obj = JSONObject(json)
+        val refObj = obj.optJSONObject("reference_player")
+        val referencePlayer = refObj?.let { r ->
+            ReferencePlayer(
+                name = r.optString("name", "Unknown"),
+                position = r.optString("position", ""),
+                age = r.optString("age", ""),
+                marketValue = r.optString("market_value", ""),
+                league = r.optString("league", ""),
+                club = r.optString("club", ""),
+                foot = r.optString("foot", ""),
+                height = r.optString("height", ""),
+                nationality = r.optString("nationality", ""),
+                playingStyle = r.optString("playing_style", null).takeIf { !it.isNullOrBlank() },
+                url = r.optString("url", "")
+            )
+        }
+
+        val sigArr = obj.optJSONArray("signature_stats")
+        val signatureStats = mutableListOf<SignatureStat>()
+        if (sigArr != null) {
+            for (i in 0 until sigArr.length()) {
+                val s = sigArr.getJSONObject(i)
+                signatureStats.add(
+                    SignatureStat(
+                        statKey = s.optString("stat_key", ""),
+                        label = s.optString("label", s.optString("label_en", "")),
+                        percentile = s.optInt("percentile", 0),
+                        value = s.optDouble("value", 0.0)
+                    )
+                )
+            }
+        }
+
+        val resultsArr = obj.optJSONArray("results") ?: JSONArray()
+        val results = mutableListOf<FindNextResult>()
+        for (i in 0 until resultsArr.length()) {
+            val p = resultsArr.getJSONObject(i)
+            results.add(
+                FindNextResult(
+                    name = p.optString("name", "Unknown"),
+                    position = p.optString("position", ""),
+                    age = p.optString("age", ""),
+                    marketValue = p.optString("market_value", ""),
+                    url = p.optString("url", ""),
+                    league = p.optString("league", ""),
+                    club = p.optString("club", null).takeIf { !it.isNullOrBlank() },
+                    citizenship = p.optString("citizenship", ""),
+                    foot = p.optString("foot", ""),
+                    height = p.optString("height", ""),
+                    contract = p.optString("contract", ""),
+                    playingStyle = p.optString("playing_style", null).takeIf { !it.isNullOrBlank() },
+                    findNextScore = p.optInt("find_next_score", 0),
+                    signatureMatch = p.optInt("signature_match", 0),
+                    styleMatchBonus = p.optInt("style_match_bonus", 0),
+                    valueGapBonus = p.optInt("value_gap_bonus", 0),
+                    contractBonus = p.optInt("contract_bonus", 0),
+                    ageBonus = p.optInt("age_bonus", 0),
+                    explanation = p.optString("explanation", ""),
+                    scoutNarrative = p.optString("scout_narrative", null).takeIf { !it.isNullOrBlank() }
+                )
+            )
+        }
+
+        return FindNextResponse(
+            referencePlayer = referencePlayer,
+            signatureStats = signatureStats.ifEmpty { null },
+            results = results,
+            resultCount = obj.optInt("result_count", results.size),
+            totalCandidatesScanned = obj.optInt("total_candidates_scanned", 0).takeIf { it > 0 },
+            error = obj.optString("error", null).takeIf { !it.isNullOrBlank() }
+        )
+    }
 
     private fun parseScoutSearchResponse(json: String): AiScoutSearchResponse {
         val obj = JSONObject(json)

@@ -42,12 +42,21 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
+import androidx.compose.material3.TabRowDefaults
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -84,12 +93,16 @@ import org.koin.androidx.compose.koinViewModel
 
 private val SyneFamily = FontFamily(Font(R.font.takeaway_sans_bold, FontWeight.Bold))
 
+private enum class AiScoutTab { SCOUT, FIND_NEXT }
+
 @Composable
 fun AiScoutScreen(
     navController: NavController,
     viewModel: IAiScoutViewModel = koinViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val findNextState by viewModel.findNextState.collectAsStateWithLifecycle()
+    var selectedTab by remember { mutableStateOf(AiScoutTab.SCOUT) }
 
     Column(
         modifier = Modifier
@@ -99,12 +112,411 @@ fun AiScoutScreen(
         // Top Bar
         AiScoutTopBar(onBack = { navController.popBackStack() })
 
-        if (!state.hasSearched || (state.results.isEmpty() && !state.isLoading)) {
-            // Empty state — show search input + examples
-            AiScoutEmptyState(state = state, viewModel = viewModel)
-        } else {
-            // Results state
-            AiScoutResultsState(state = state, viewModel = viewModel)
+        // Tab Row
+        AiScoutTabBar(
+            selectedTab = selectedTab,
+            onTabSelected = { selectedTab = it }
+        )
+
+        // Tab Content
+        when (selectedTab) {
+            AiScoutTab.SCOUT -> {
+                if (!state.hasSearched || (state.results.isEmpty() && !state.isLoading)) {
+                    AiScoutEmptyState(state = state, viewModel = viewModel)
+                } else {
+                    AiScoutResultsState(state = state, viewModel = viewModel)
+                }
+            }
+            AiScoutTab.FIND_NEXT -> {
+                FindNextTabContent(state = findNextState, viewModel = viewModel)
+            }
+        }
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  TAB BAR
+// ═══════════════════════════════════════════════════════════════════════════════
+
+@Composable
+private fun AiScoutTabBar(selectedTab: AiScoutTab, onTabSelected: (AiScoutTab) -> Unit) {
+    TabRow(
+        selectedTabIndex = if (selectedTab == AiScoutTab.SCOUT) 0 else 1,
+        containerColor = HomeDarkCard,
+        contentColor = HomeTealAccent,
+        indicator = { tabPositions ->
+            TabRowDefaults.SecondaryIndicator(
+                modifier = Modifier.tabIndicatorOffset(tabPositions[if (selectedTab == AiScoutTab.SCOUT) 0 else 1]),
+                color = HomeTealAccent,
+                height = 3.dp
+            )
+        },
+        divider = {
+            Box(Modifier.fillMaxWidth().height(1.dp).background(HomeDarkCardBorder))
+        }
+    ) {
+        Tab(
+            selected = selectedTab == AiScoutTab.SCOUT,
+            onClick = { onTabSelected(AiScoutTab.SCOUT) },
+            text = {
+                Text(
+                    stringResource(R.string.ai_scout_tab_scout),
+                    style = boldTextStyle(
+                        if (selectedTab == AiScoutTab.SCOUT) HomeTealAccent else HomeTextSecondary,
+                        14.sp
+                    )
+                )
+            }
+        )
+        Tab(
+            selected = selectedTab == AiScoutTab.FIND_NEXT,
+            onClick = { onTabSelected(AiScoutTab.FIND_NEXT) },
+            text = {
+                Text(
+                    stringResource(R.string.ai_scout_tab_find_next),
+                    style = boldTextStyle(
+                        if (selectedTab == AiScoutTab.FIND_NEXT) HomePurpleAccent else HomeTextSecondary,
+                        14.sp
+                    )
+                )
+            }
+        )
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  FIND NEXT TAB
+// ═══════════════════════════════════════════════════════════════════════════════
+
+private val FIND_NEXT_EXAMPLE_PLAYERS = listOf(
+    "Mohamed Salah", "Erling Haaland", "Jude Bellingham",
+    "Florian Wirtz", "Bukayo Saka", "Phil Foden", "Rodri"
+)
+
+private val VALUE_PRESETS = listOf(
+    500_000 to "€500K",
+    1_000_000 to "€1M",
+    3_000_000 to "€3M",
+    5_000_000 to "€5M",
+    10_000_000 to "€10M",
+    0 to "No limit"
+)
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun FindNextTabContent(state: FindNextUiState, viewModel: IAiScoutViewModel) {
+    val context = LocalContext.current
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(bottom = 32.dp)
+    ) {
+        // Hero
+        item {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text("🧠", fontSize = 32.sp)
+                Spacer(Modifier.height(12.dp))
+                Text(
+                    text = stringResource(R.string.ai_scout_find_next_hero_title),
+                    style = boldTextStyle(HomeTextPrimary, 22.sp),
+                    textAlign = TextAlign.Center
+                )
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    text = stringResource(R.string.ai_scout_find_next_hero_subtitle),
+                    style = regularTextStyle(HomeTextSecondary, 14.sp),
+                    textAlign = TextAlign.Center,
+                    lineHeight = 20.sp
+                )
+            }
+        }
+
+        // Search form
+        item {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(HomeDarkCard)
+                    .border(1.5.dp, HomeDarkCardBorder, RoundedCornerShape(16.dp))
+                    .padding(16.dp)
+            ) {
+                Text(
+                    text = stringResource(R.string.ai_scout_find_next_player_label),
+                    style = boldTextStyle(HomeTextPrimary, 13.sp),
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+                BasicTextField(
+                    value = state.playerName,
+                    onValueChange = { viewModel.updateFindNextPlayerName(it) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(HomeDarkBackground)
+                        .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(10.dp))
+                        .padding(horizontal = 12.dp, vertical = 12.dp),
+                    textStyle = regularTextStyle(HomeTextPrimary, 15.sp),
+                    decorationBox = { inner ->
+                        Box {
+                            if (state.playerName.isEmpty()) {
+                                Text(
+                                    stringResource(R.string.ai_scout_find_next_placeholder),
+                                    style = regularTextStyle(HomeTextSecondary, 15.sp)
+                                )
+                            }
+                            inner()
+                        }
+                    }
+                )
+                Spacer(Modifier.height(12.dp))
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    FIND_NEXT_EXAMPLE_PLAYERS.take(5).forEach { name ->
+                        Row(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(HomeDarkBackground)
+                                .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(8.dp))
+                                .clickable { viewModel.updateFindNextPlayerName(name) }
+                                .padding(horizontal = 10.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(name, style = regularTextStyle(HomeTextPrimary, 12.sp), maxLines = 1)
+                        }
+                    }
+                }
+                Spacer(Modifier.height(16.dp))
+                Text(
+                    text = stringResource(R.string.ai_scout_find_next_age_max, state.ageMax),
+                    style = regularTextStyle(HomeTextSecondary, 12.sp)
+                )
+                Slider(
+                    value = state.ageMax.toFloat(),
+                    onValueChange = { viewModel.updateFindNextAgeMax(it.toInt()) },
+                    valueRange = 17f..27f,
+                    steps = 9,
+                    colors = SliderDefaults.colors(
+                        thumbColor = HomePurpleAccent,
+                        activeTrackColor = HomePurpleAccent.copy(alpha = 0.6f),
+                        inactiveTrackColor = HomeDarkCardBorder
+                    )
+                )
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = stringResource(R.string.ai_scout_find_next_value_max),
+                    style = regularTextStyle(HomeTextSecondary, 12.sp)
+                )
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
+                ) {
+                    VALUE_PRESETS.forEach { (value, label) ->
+                        val isSelected = state.valueMax == value
+                        Row(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(if (isSelected) HomePurpleAccent.copy(alpha = 0.2f) else HomeDarkBackground)
+                                .border(
+                                    1.dp,
+                                    if (isSelected) HomePurpleAccent.copy(alpha = 0.5f) else HomeDarkCardBorder,
+                                    RoundedCornerShape(8.dp)
+                                )
+                                .clickable { viewModel.updateFindNextValueMax(value) }
+                                .padding(horizontal = 10.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                if (value == 0) stringResource(R.string.ai_scout_find_next_no_limit) else label,
+                                style = boldTextStyle(
+                                    if (isSelected) HomePurpleAccent else HomeTextPrimary,
+                                    12.sp
+                                )
+                            )
+                        }
+                    }
+                }
+                Spacer(Modifier.height(16.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(HomePurpleAccent)
+                            .clickable(enabled = !state.isSearching && state.playerName.isNotBlank()) {
+                                viewModel.findNextSearch()
+                            }
+                            .padding(horizontal = 20.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        if (state.isSearching) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                color = HomeDarkBackground,
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            Icon(Icons.Default.Search, null, tint = HomeDarkBackground, modifier = Modifier.size(16.dp))
+                        }
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            text = stringResource(R.string.ai_scout_find_next_search_button),
+                            style = boldTextStyle(HomeDarkBackground, 14.sp)
+                        )
+                    }
+                }
+            }
+        }
+
+        // Error
+        if (state.errorMessage != null) {
+            item {
+                Text(
+                    text = state.errorMessage!!,
+                    style = regularTextStyle(Color(0xFFE53935), 13.sp),
+                    modifier = Modifier.padding(16.dp)
+                )
+            }
+        }
+
+        // Reference player
+        state.response?.referencePlayer?.let { ref ->
+            item {
+                Column(
+                    modifier = Modifier
+                        .padding(16.dp)
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(HomePurpleAccent.copy(alpha = 0.1f))
+                        .border(1.dp, HomePurpleAccent.copy(alpha = 0.3f), RoundedCornerShape(12.dp))
+                        .padding(12.dp)
+                ) {
+                    Text("⭐", fontSize = 14.sp)
+                    Spacer(Modifier.height(4.dp))
+                    Text(ref.name, style = boldTextStyle(HomeTextPrimary, 16.sp))
+                    Text(
+                        "${shortenPosition(ref.position)} · ${ref.age} · ${ref.marketValue}",
+                        style = regularTextStyle(HomeTextSecondary, 13.sp)
+                    )
+                    state.response?.let { r ->
+                        if (r.resultCount > 0) {
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                stringResource(R.string.ai_scout_find_next_found_count, r.resultCount, r.totalCandidatesScanned ?: 0),
+                                style = regularTextStyle(HomeTextSecondary, 12.sp)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        // Results
+        state.response?.results?.let { results ->
+            items(results, key = { it.url.ifBlank { it.name } }) { player ->
+                FindNextPlayerCard(player = player, context = context)
+            }
+        }
+
+        // No results
+        if (state.response != null && state.response!!.results.isEmpty() && state.errorMessage == null) {
+            item {
+                Text(
+                    text = stringResource(R.string.ai_scout_find_next_no_results),
+                    style = regularTextStyle(HomeTextSecondary, 14.sp),
+                    modifier = Modifier.padding(24.dp),
+                    textAlign = TextAlign.Center
+                )
+            }
+        }
+    }
+}
+
+private fun shortenPosition(pos: String): String {
+    if (pos.isBlank()) return "—"
+    return when {
+        pos.contains("Centre-Forward") || pos.contains("Center-Forward") -> "CF"
+        pos.contains("Second Striker") -> "SS"
+        pos.contains("Centre-Back") || pos.contains("Center-Back") -> "CB"
+        pos.contains("Left-Back") -> "LB"
+        pos.contains("Right-Back") -> "RB"
+        pos.contains("Defensive Midfield") -> "DM"
+        pos.contains("Central Midfield") -> "CM"
+        pos.contains("Attacking Midfield") -> "AM"
+        pos.contains("Left Wing") || pos.contains("Left Winger") -> "LW"
+        pos.contains("Right Wing") || pos.contains("Right Winger") -> "RW"
+        pos.contains("Goalkeeper") -> "GK"
+        else -> pos.split(" - ").lastOrNull() ?: pos
+    }
+}
+
+@Composable
+private fun FindNextPlayerCard(player: FindNextResult, context: android.content.Context) {
+    Column(
+        modifier = Modifier
+            .padding(horizontal = 16.dp, vertical = 6.dp)
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .background(HomeDarkCard)
+            .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(14.dp))
+            .clickable {
+                if (player.url.isNotBlank()) {
+                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(player.url)))
+                }
+            }
+            .padding(14.dp)
+    ) {
+        Row(verticalAlignment = Alignment.Top) {
+            MatchPercentRing(percent = player.findNextScore, size = 50)
+            Spacer(Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = player.name,
+                    style = boldTextStyle(HomeTextPrimary, 16.sp),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    text = buildString {
+                        append(player.age)
+                        append(" · ")
+                        append(shortenPosition(player.position))
+                        append(" · ")
+                        append(player.marketValue)
+                        append(" · ")
+                        append(player.club ?: player.league)
+                    },
+                    style = regularTextStyle(HomeTextSecondary, 13.sp),
+                    maxLines = 2
+                )
+                player.scoutNarrative?.let { narrative ->
+                    if (narrative.isNotBlank()) {
+                        Spacer(Modifier.height(6.dp))
+                        Text(
+                            text = narrative,
+                            style = regularTextStyle(HomeTextPrimary, 12.sp),
+                            lineHeight = 18.sp
+                        )
+                    }
+                } ?: player.explanation.takeIf { it.isNotBlank() }?.let { exp ->
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        text = exp,
+                        style = regularTextStyle(HomeTextSecondary, 12.sp),
+                        lineHeight = 18.sp
+                    )
+                }
+            }
         }
     }
 }

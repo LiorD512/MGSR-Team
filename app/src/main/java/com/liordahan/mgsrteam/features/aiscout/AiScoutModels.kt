@@ -51,3 +51,65 @@ data class LeagueInfo(
     val minValue: String?,
     val maxValue: String?
 )
+
+// ─── Find Next (Find Me The Next...) ────────────────────────────────────────
+
+data class FindNextRequest(
+    val playerName: String,
+    val ageMax: Int = 23,
+    val valueMax: Int = 3_000_000,
+    val lang: String = "en"
+)
+
+data class FindNextResponse(
+    val referencePlayer: ReferencePlayer?,
+    val signatureStats: List<SignatureStat>?,
+    val results: List<FindNextResult>,
+    val resultCount: Int,
+    val totalCandidatesScanned: Int?,
+    val error: String?
+)
+
+data class ReferencePlayer(
+    val name: String,
+    val position: String,
+    val age: String,
+    val marketValue: String,
+    val league: String,
+    val club: String,
+    val foot: String,
+    val height: String,
+    val nationality: String,
+    val playingStyle: String?,
+    val url: String
+)
+
+data class SignatureStat(
+    val statKey: String,
+    val label: String,
+    val percentile: Int,
+    val value: Number
+)
+
+data class FindNextResult(
+    val name: String,
+    val position: String,
+    val age: String,
+    val marketValue: String,
+    val url: String,
+    val league: String,
+    val club: String?,
+    val citizenship: String,
+    val foot: String,
+    val height: String,
+    val contract: String,
+    val playingStyle: String?,
+    val findNextScore: Int,
+    val signatureMatch: Int,
+    val styleMatchBonus: Int,
+    val valueGapBonus: Int,
+    val contractBonus: Int,
+    val ageBonus: Int,
+    val explanation: String,
+    val scoutNarrative: String?
+)
