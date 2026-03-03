@@ -66,7 +66,7 @@ export function containsHebrew(text: string): boolean {
 
 /**
  * Translate Hebrew text to English using MyMemory API.
- * Applies football glossary first so "בלם רגל שמאל" → "centre back left foot" (not "left foot brake").
+ * Applies football glossary first so "בלם רגל שמאל" → "left-footed centre back" (not "left foot brake").
  */
 export async function translateHebrewToEnglish(text: string): Promise<{
   translated: string;
@@ -79,7 +79,7 @@ export async function translateHebrewToEnglish(text: string): Promise<{
 
   const textForApi = applyFootballGlossary(text);
 
-  // If glossary replaced all Hebrew (e.g. "בלם רגל שמאל" → "centre back left foot"), use it directly
+  // If glossary replaced all Hebrew (e.g. "בלם רגל שמאל" → "left-footed centre back"), use it directly
   if (!containsHebrew(textForApi)) {
     return { translated: textForApi.trim(), wasTranslated: true };
   }
