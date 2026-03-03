@@ -41,6 +41,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.filled.BookmarkAdd
+import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
@@ -48,14 +51,18 @@ import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -86,10 +93,15 @@ import com.liordahan.mgsrteam.ui.theme.HomePurpleAccent
 import com.liordahan.mgsrteam.ui.theme.HomeTextPrimary
 import com.liordahan.mgsrteam.ui.theme.HomeTextSecondary
 import com.liordahan.mgsrteam.ui.theme.HomeBlueAccent
+import com.liordahan.mgsrteam.ui.theme.HomeGreenAccent
 import com.liordahan.mgsrteam.ui.theme.HomeOrangeAccent
 import com.liordahan.mgsrteam.ui.utils.boldTextStyle
 import com.liordahan.mgsrteam.ui.utils.regularTextStyle
+import com.liordahan.mgsrteam.features.shortlist.ShortlistRepository
+import com.liordahan.mgsrteam.ui.components.ToastManager
+import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
+import org.koin.compose.koinInject
 
 private val SyneFamily = FontFamily(Font(R.font.takeaway_sans_bold, FontWeight.Bold))
 
@@ -206,6 +218,14 @@ private val VALUE_PRESETS = listOf(
 @Composable
 private fun FindNextTabContent(state: FindNextUiState, viewModel: IAiScoutViewModel) {
     val context = LocalContext.current
+    val shortlistRepository: ShortlistRepository = koinInject()
+    val shortlistEntries by shortlistRepository.getShortlistFlow().collectAsState(initial = emptyList())
+    val shortlistUrls = remember(shortlistEntries) { shortlistEntries.map { it.tmProfileUrl }.toSet() }
+    var justAddedUrls by remember { mutableStateOf<Set<String>>(emptySet()) }
+    val shortlistPendingUrls by shortlistRepository.getShortlistPendingUrlsFlow()
+        .collectAsState(initial = emptySet())
+    val coroutineScope = rememberCoroutineScope()
+
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(bottom = 32.dp)
@@ -423,7 +443,36 @@ private fun FindNextTabContent(state: FindNextUiState, viewModel: IAiScoutViewMo
         // Results
         state.response?.results?.let { results ->
             items(results, key = { it.url.ifBlank { it.name } }) { player ->
-                FindNextPlayerCard(player = player, context = context)
+                val tmUrl = player.transfermarktUrl
+                val profileUrl = tmUrl.ifBlank { player.url }
+                FindNextPlayerCard(
+                    player = player,
+                    context = context,
+                    profileUrl = profileUrl,
+                    transfermarktUrl = tmUrl,
+                    isInShortlist = tmUrl.isNotBlank() && (tmUrl in shortlistUrls || tmUrl in justAddedUrls),
+                    isShortlistPending = tmUrl in shortlistPendingUrls,
+                    onAddToShortlistClick = if (tmUrl.isNotBlank()) {
+                        {
+                            coroutineScope.launch {
+                                val inList = tmUrl in shortlistUrls || tmUrl in justAddedUrls
+                                if (inList) {
+                                    shortlistRepository.removeFromShortlist(tmUrl)
+                                    justAddedUrls = justAddedUrls - tmUrl
+                                } else {
+                                    when (shortlistRepository.addToShortlistByUrl(tmUrl)) {
+                                        is ShortlistRepository.AddToShortlistResult.Added ->
+                                            justAddedUrls = justAddedUrls + tmUrl
+                                        is ShortlistRepository.AddToShortlistResult.AlreadyInShortlist ->
+                                            ToastManager.showInfo(context.getString(R.string.add_player_already_in_shortlist))
+                                        is ShortlistRepository.AddToShortlistResult.AlreadyInRoster ->
+                                            ToastManager.showInfo(context.getString(R.string.add_player_already_in_roster))
+                                    }
+                                }
+                            }
+                        }
+                    } else null
+                )
             }
         }
 
@@ -460,7 +509,15 @@ private fun shortenPosition(pos: String): String {
 }
 
 @Composable
-private fun FindNextPlayerCard(player: FindNextResult, context: android.content.Context) {
+private fun FindNextPlayerCard(
+    player: FindNextResult,
+    context: android.content.Context,
+    profileUrl: String,
+    transfermarktUrl: String,
+    isInShortlist: Boolean,
+    isShortlistPending: Boolean,
+    onAddToShortlistClick: (() -> Unit)?
+) {
     Column(
         modifier = Modifier
             .padding(horizontal = 16.dp, vertical = 6.dp)
@@ -468,11 +525,6 @@ private fun FindNextPlayerCard(player: FindNextResult, context: android.content.
             .clip(RoundedCornerShape(14.dp))
             .background(HomeDarkCard)
             .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(14.dp))
-            .clickable {
-                if (player.url.isNotBlank()) {
-                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(player.url)))
-                }
-            }
             .padding(14.dp)
     ) {
         Row(verticalAlignment = Alignment.Top) {
@@ -515,6 +567,51 @@ private fun FindNextPlayerCard(player: FindNextResult, context: android.content.
                         style = regularTextStyle(HomeTextSecondary, 12.sp),
                         lineHeight = 18.sp
                     )
+                }
+
+                // Action buttons: Add to shortlist + Open Transfermarkt
+                if (profileUrl.isNotBlank() || onAddToShortlistClick != null) {
+                    Spacer(Modifier.height(8.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        onAddToShortlistClick?.let { onAdd ->
+                            IconButton(
+                                onClick = { onAdd() },
+                                modifier = Modifier.size(36.dp)
+                            ) {
+                                Icon(
+                                    imageVector = if (isInShortlist) Icons.Default.Bookmark else Icons.Default.BookmarkAdd,
+                                    contentDescription = if (isInShortlist) stringResource(R.string.shortlist_in_shortlist) else stringResource(R.string.shortlist_add_to_shortlist),
+                                    tint = if (isInShortlist) HomeGreenAccent else HomeTextSecondary
+                                )
+                            }
+                        }
+                        if (profileUrl.isNotBlank()) {
+                            TextButton(
+                                onClick = {
+                                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(profileUrl)))
+                                },
+                                modifier = Modifier.height(36.dp),
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
+                                colors = ButtonDefaults.textButtonColors(contentColor = HomeTealAccent)
+                            ) {
+                                Icon(
+                                    Icons.Default.Link,
+                                    contentDescription = null,
+                                    tint = HomeTealAccent,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(Modifier.width(6.dp))
+                                Text(
+                                    text = stringResource(R.string.shortlist_open_tm),
+                                    style = regularTextStyle(HomeTealAccent, 13.sp)
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }

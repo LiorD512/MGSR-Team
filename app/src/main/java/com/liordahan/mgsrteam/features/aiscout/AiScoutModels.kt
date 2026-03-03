@@ -97,6 +97,8 @@ data class FindNextResult(
     val age: String,
     val marketValue: String,
     val url: String,
+    /** Transfermarkt profile URL for shortlist; may equal url if url is TM. */
+    val transfermarktUrl: String,
     val league: String,
     val club: String?,
     val citizenship: String,

@@ -244,13 +244,18 @@ class MgsrWebApiClient(
         val results = mutableListOf<FindNextResult>()
         for (i in 0 until resultsArr.length()) {
             val p = resultsArr.getJSONObject(i)
+            val url = p.optString("url", "")
+            val tmUrl = p.optString("transfermarkt_url", p.optString("tm_profile_url", "")).takeIf { it.isNotBlank() }
+                ?: url.takeIf { it.contains("transfermarkt", ignoreCase = true) }
+                ?: ""
             results.add(
                 FindNextResult(
                     name = p.optString("name", "Unknown"),
                     position = p.optString("position", ""),
                     age = p.optString("age", ""),
                     marketValue = p.optString("market_value", ""),
-                    url = p.optString("url", ""),
+                    url = url,
+                    transfermarktUrl = tmUrl,
                     league = p.optString("league", ""),
                     club = p.optString("club", null).takeIf { !it.isNullOrBlank() },
                     citizenship = p.optString("citizenship", ""),
