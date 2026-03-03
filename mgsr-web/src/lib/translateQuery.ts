@@ -2,12 +2,60 @@
  * Free Hebrew → English translation for scout queries.
  * Uses MyMemory Translation API (free, no API key, 1000 words/day anonymous).
  * Fallback: returns original query if translation fails.
+ *
+ * Football glossary: replace Hebrew football terms before translation so
+ * "בלם" → "centre-back" (not "brake"), "מגן שמאל" → "left back", etc.
  */
 
 const MYMEMORY_URL = 'https://api.mymemory.translated.net/get';
 
 /** Optional: set an email for higher daily quota (10k words/day instead of 1k) */
 const MYMEMORY_EMAIL = process.env.MYMEMORY_EMAIL || '';
+
+/** Football glossary: Hebrew → English (prevents "בלם"→brake, ensures correct positions) */
+const FOOTBALL_GLOSSARY: [RegExp, string][] = [
+  // ── Compound phrases — must come BEFORE individual word entries ──
+  // "בלם רגל שמאל" = left-footed centre back (NOT "left foot brake")
+  [/בלם\s*רגל\s*שמאל/g, 'left-footed centre back'],
+  [/בלם\s*רגל\s*ימין/g, 'right-footed centre back'],
+  // "שחקן חופשי" must be matched BEFORE "שחקנים?" strips "שחקן"
+  [/שחקנים?\s*חופשיי?ם?/g, 'free agent'],
+  [/שחקן\s*חופשי/g, 'free agent'],
+  [/חופשיים/g, 'free agent'],
+  // Positions — order matters: specific before generic
+  [/מגן\s*שמאל|שמאלי\s*מגן/g, 'left back'],
+  [/מגן\s*ימין|ימני\s*מגן/g, 'right back'],
+  [/מגן\s*מרכזי|מגנים\s*מרכזיים/g, 'centre back'],
+  [/בלם|בלמים/g, 'centre back'],
+  [/כנף\s*שמאל|שמאלי\s*כנף/g, 'left winger'],
+  [/כנף\s*ימין|ימני\s*כנף/g, 'right winger'],
+  [/חלוץ|חלוצים/g, 'striker'],
+  [/קשר\s*התקפי|קשר\s*עילי/g, 'attacking midfielder'],
+  [/קשר\s*הגנתי|קשר\s*שורשי/g, 'defensive midfielder'],
+  [/קשר|קשרים/g, 'midfielder'],
+  [/שוער|שוערים/g, 'goalkeeper'],
+  // Foot
+  [/רגל\s*שמאל/g, 'left foot'],
+  [/רגל\s*ימין/g, 'right foot'],
+  [/דו[- ]?רגלי/g, 'two-footed'],
+  // Common words — AFTER compound phrases to avoid partial consumption
+  [/שחקנים/g, 'players'],
+  [/שחקן(?!\s*חופשי)/g, 'player'],
+  [/שחקניות?/g, 'players'],
+  [/חופשי/g, 'free agent'],
+];
+
+/**
+ * Pre-process Hebrew query: replace football terms with English equivalents
+ * so MyMemory doesn't mistranslate (e.g. בלם→brake). Keeps structure for parsing.
+ */
+function applyFootballGlossary(text: string): string {
+  let result = text;
+  for (const [pattern, replacement] of FOOTBALL_GLOSSARY) {
+    result = result.replace(pattern, replacement);
+  }
+  return result;
+}
 
 /**
  * Detect if a string contains Hebrew characters.
@@ -18,8 +66,7 @@ export function containsHebrew(text: string): boolean {
 
 /**
  * Translate Hebrew text to English using MyMemory API.
- * Returns the English translation, or the original text if translation fails.
- * Adds no latency if text is already English.
+ * Applies football glossary first so "בלם רגל שמאל" → "left-footed centre back" (not "left foot brake").
  */
 export async function translateHebrewToEnglish(text: string): Promise<{
   translated: string;
@@ -30,9 +77,16 @@ export async function translateHebrewToEnglish(text: string): Promise<{
     return { translated: text, wasTranslated: false };
   }
 
+  const textForApi = applyFootballGlossary(text);
+
+  // If glossary replaced all Hebrew (e.g. "בלם רגל שמאל" → "left-footed centre back"), use it directly
+  if (!containsHebrew(textForApi)) {
+    return { translated: textForApi.trim(), wasTranslated: true };
+  }
+
   try {
     const params = new URLSearchParams({
-      q: text,
+      q: textForApi,
       langpair: 'he|en',
     });
     if (MYMEMORY_EMAIL) {
