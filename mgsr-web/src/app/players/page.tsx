@@ -706,19 +706,38 @@ export default function PlayersPage() {
                 style={{ animationDelay: `${i * 30}ms` }}
               >
                 <div className="relative shrink-0">
-                  <img
-                    src={p.profileImage || '/placeholder-player.png'}
-                    alt=""
-                    className={`w-14 h-14 rounded-full object-cover bg-mgsr-dark ring-2 transition ${isYouth ? 'ring-[var(--youth-cyan)]/20 group-hover:ring-[var(--youth-cyan)]/40' : isWomen ? 'ring-mgsr-border group-hover:ring-[var(--women-rose)]/40' : 'ring-mgsr-border group-hover:ring-mgsr-teal/40'}`}
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).src =
-                        platform === 'youth'
-                          ? 'https://placehold.co/56x56/0A0F1C/00D4FF?text=?'
-                          : platform === 'women'
+                  {isYouth ? (
+                    <div className="relative w-14 h-14">
+                      {p.profileImage && (
+                        <img
+                          src={p.profileImage}
+                          alt=""
+                          className="absolute inset-0 w-full h-full rounded-full object-cover ring-2 ring-[var(--youth-cyan)]/20 group-hover:ring-[var(--youth-cyan)]/40 transition z-10"
+                          onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                        />
+                      )}
+                      <div
+                        className="w-full h-full rounded-full flex items-center justify-center ring-2 ring-[var(--youth-cyan)]/20 group-hover:ring-[var(--youth-cyan)]/40 transition"
+                        style={{ background: 'linear-gradient(135deg, #00D4FF, #A855F7)' }}
+                      >
+                        <span className="text-base font-extrabold text-white" style={{ textShadow: '0 1px 4px rgba(0,0,0,0.3)' }}>
+                          {(p.fullName || '?').split(' ').filter(Boolean).map(w => w[0]).join('').slice(0, 2).toUpperCase()}
+                        </span>
+                      </div>
+                    </div>
+                  ) : (
+                    <img
+                      src={p.profileImage || '/placeholder-player.png'}
+                      alt=""
+                      className={`w-14 h-14 rounded-full object-cover bg-mgsr-dark ring-2 transition ${isWomen ? 'ring-mgsr-border group-hover:ring-[var(--women-rose)]/40' : 'ring-mgsr-border group-hover:ring-mgsr-teal/40'}`}
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src =
+                          platform === 'women'
                             ? 'https://placehold.co/56x56/1A2736/E8A0BF?text=?'
                             : 'https://via.placeholder.com/56?text=?';
-                    }}
-                  />
+                      }}
+                    />
+                  )}
                   {p.currentClub && 'clubLogo' in p.currentClub && p.currentClub.clubLogo && (
                     <img
                       src={p.currentClub.clubLogo}

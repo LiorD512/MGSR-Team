@@ -695,11 +695,24 @@ export default function YouthPlayerPage() {
           <div className="absolute -bottom-10 -left-10 w-40 h-40 rounded-full opacity-8 pointer-events-none" style={{ background: 'radial-gradient(circle, var(--youth-violet) 0%, transparent 70%)' }} />
 
           <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 relative z-10">
-            <img
-              src={player.profileImage || 'https://placehold.co/120x120/0A0F1C/00D4FF?text=?'}
-              alt=""
-              className="w-20 h-20 sm:w-24 sm:h-24 rounded-xl object-cover bg-[var(--youth-cyan)]/5 border border-[var(--youth-cyan)]/20 shrink-0 self-center sm:self-start"
-            />
+            <div className="relative w-20 h-20 sm:w-24 sm:h-24 shrink-0 self-center sm:self-start">
+              {player.profileImage && (
+                <img
+                  src={player.profileImage}
+                  alt=""
+                  className="absolute inset-0 w-full h-full rounded-xl object-cover border border-[var(--youth-cyan)]/20 z-10"
+                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                />
+              )}
+              <div
+                className="w-full h-full rounded-xl flex items-center justify-center border-2 border-white/15"
+                style={{ background: 'linear-gradient(135deg, #00D4FF, #A855F7)' }}
+              >
+                <span className="text-2xl sm:text-3xl font-extrabold text-white" style={{ textShadow: '0 2px 8px rgba(0,0,0,0.3)' }}>
+                  {(player.fullName || '?').split(' ').filter(Boolean).map(w => w[0]).join('').slice(0, 2).toUpperCase()}
+                </span>
+              </div>
+            </div>
             <div className="flex-1 min-w-0">
               <h1 className="font-display font-bold text-2xl text-mgsr-text">{player.fullName}</h1>
               {player.fullNameHe && (

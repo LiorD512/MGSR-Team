@@ -746,15 +746,21 @@ export default function AddYouthPlayerForm() {
                 {profileImage && (
                   <div className="shrink-0">
                     <p className="text-xs font-medium text-mgsr-muted uppercase tracking-wider mb-2">{t('youth_add_preview')}</p>
-                    <div className="w-24 h-24 rounded-xl overflow-hidden border border-[var(--youth-cyan)]/20 bg-[var(--youth-cyan)]/5 flex items-center justify-center">
+                    <div className="relative w-24 h-24 rounded-xl overflow-hidden">
                       <img
                         src={profileImage}
                         alt=""
-                        className="w-full h-full object-cover"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).src = 'https://placehold.co/96/0A0F1C/00D4FF?text=?';
-                        }}
+                        className="absolute inset-0 w-full h-full object-cover z-10"
+                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                       />
+                      <div
+                        className="w-full h-full flex items-center justify-center border-2 border-white/15 rounded-xl"
+                        style={{ background: 'linear-gradient(135deg, #00D4FF, #A855F7)' }}
+                      >
+                        <span className="text-2xl font-extrabold text-white" style={{ textShadow: '0 2px 8px rgba(0,0,0,0.3)' }}>
+                          {(fullName || '?').split(' ').filter(Boolean).map(w => w[0]).join('').slice(0, 2).toUpperCase()}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 )}
