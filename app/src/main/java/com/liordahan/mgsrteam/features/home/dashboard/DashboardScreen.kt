@@ -87,6 +87,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
@@ -129,6 +130,7 @@ import com.liordahan.mgsrteam.ui.theme.HomeDarkCardBorder
 import com.liordahan.mgsrteam.ui.theme.HomeGreenAccent
 import com.liordahan.mgsrteam.ui.theme.HomeOrangeAccent
 import com.liordahan.mgsrteam.ui.theme.HomeRoseAccent
+import com.liordahan.mgsrteam.ui.theme.WarRoomAccent
 import com.liordahan.mgsrteam.ui.theme.HomePurpleAccent
 import com.liordahan.mgsrteam.ui.theme.HomeRedAccent
 import com.liordahan.mgsrteam.ui.theme.HomeTealAccent
@@ -638,30 +640,6 @@ private fun QuickActionsRow(navController: NavController) {
     ) {
         item {
             QuickActionChip(
-                icon = Icons.Default.Radar,
-                label = stringResource(R.string.quick_action_ai_scout),
-                color = HomeTealAccent,
-                onClick = {
-                    navController.navigate(Screens.AiScoutScreen.route) {
-                        launchSingleTop = true
-                    }
-                }
-            )
-        }
-        item {
-            QuickActionChip(
-                icon = Icons.Default.Psychology,
-                label = stringResource(R.string.quick_action_war_room),
-                color = HomePurpleAccent,
-                onClick = {
-                    navController.navigate(Screens.WarRoomScreen.route) {
-                        launchSingleTop = true
-                    }
-                }
-            )
-        }
-        item {
-            QuickActionChip(
                 icon = Icons.Default.People,
                 label = stringResource(R.string.quick_action_players),
                 color = HomeTealAccent,
@@ -727,6 +705,24 @@ private fun QuickActionsRow(navController: NavController) {
         }
         item {
             QuickActionChip(
+                icon = Icons.Default.Psychology,
+                label = stringResource(R.string.quick_action_war_room),
+                color = WarRoomAccent,
+                onClick = {
+                    navController.navigate(Screens.WarRoomScreen.route) {
+                        launchSingleTop = true
+                    }
+                },
+                gradientBg = Brush.horizontalGradient(
+                    colors = listOf(
+                        WarRoomAccent.copy(alpha = 0.25f),
+                        WarRoomAccent.copy(alpha = 0.12f)
+                    )
+                )
+            )
+        }
+        item {
+            QuickActionChip(
                 icon = Icons.Default.ContactPhone,
                 label = stringResource(R.string.quick_action_contacts),
                 color = HomeTealAccent,
@@ -769,12 +765,23 @@ private fun QuickActionChip(
     icon: ImageVector,
     label: String,
     color: Color,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    gradientBg: Brush? = null
 ) {
     Row(
         modifier = Modifier
             .clip(RoundedCornerShape(20.dp))
-            .background(color.copy(alpha = 0.15f))
+            .then(
+                if (gradientBg != null) Modifier.background(gradientBg)
+                else Modifier.background(color.copy(alpha = 0.15f))
+            )
+            .then(
+                if (gradientBg != null) Modifier.border(
+                    1.dp,
+                    color.copy(alpha = 0.4f),
+                    RoundedCornerShape(20.dp)
+                ) else Modifier
+            )
             .clickWithNoRipple { onClick() }
             .padding(horizontal = 16.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically

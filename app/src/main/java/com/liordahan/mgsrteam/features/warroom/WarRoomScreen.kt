@@ -44,6 +44,7 @@ import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -60,6 +61,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.liordahan.mgsrteam.R
+import com.liordahan.mgsrteam.features.aiscout.AiScoutContentBody
 import com.liordahan.mgsrteam.navigation.Screens
 import com.liordahan.mgsrteam.localization.CountryNameTranslator
 import com.liordahan.mgsrteam.ui.theme.HomeDarkBackground
@@ -133,9 +135,16 @@ private fun extractPlayerIdFromUrl(url: String): String? {
 @Composable
 fun WarRoomScreen(
     navController: NavController,
-    viewModel: IWarRoomViewModel = koinViewModel()
+    viewModel: IWarRoomViewModel = koinViewModel(),
+    initialTab: WarRoomTab? = null
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+
+    if (initialTab != null) {
+        LaunchedEffect(initialTab) {
+            viewModel.selectTab(initialTab)
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -159,6 +168,10 @@ fun WarRoomScreen(
         when (state.selectedTab) {
             WarRoomTab.DISCOVERY -> DiscoveryTab(state = state, viewModel = viewModel, navController = navController)
             WarRoomTab.AGENTS -> AgentsTab(state = state, viewModel = viewModel, navController = navController)
+            WarRoomTab.AI_SCOUT -> AiScoutContentBody(
+                navController = navController,
+                showTopBar = false
+            )
         }
     }
 }
@@ -203,15 +216,21 @@ private fun WarRoomTopBar(onBack: () -> Unit) {
 //  TAB BAR
 // ═══════════════════════════════════════════════════════════════════════════════
 
+private fun WarRoomTab.selectedIndex() = when (this) {
+    WarRoomTab.DISCOVERY -> 0
+    WarRoomTab.AGENTS -> 1
+    WarRoomTab.AI_SCOUT -> 2
+}
+
 @Composable
 private fun WarRoomTabBar(selectedTab: WarRoomTab, onTabSelected: (WarRoomTab) -> Unit) {
     TabRow(
-        selectedTabIndex = if (selectedTab == WarRoomTab.DISCOVERY) 0 else 1,
+        selectedTabIndex = selectedTab.selectedIndex(),
         containerColor = HomeDarkCard,
         contentColor = WarPurple,
         indicator = { tabPositions ->
             TabRowDefaults.SecondaryIndicator(
-                modifier = Modifier.tabIndicatorOffset(tabPositions[if (selectedTab == WarRoomTab.DISCOVERY) 0 else 1]),
+                modifier = Modifier.tabIndicatorOffset(tabPositions[selectedTab.selectedIndex()]),
                 color = WarPurple,
                 height = 3.dp
             )
@@ -241,6 +260,19 @@ private fun WarRoomTabBar(selectedTab: WarRoomTab, onTabSelected: (WarRoomTab) -
                     stringResource(R.string.war_room_tab_agents),
                     style = boldTextStyle(
                         if (selectedTab == WarRoomTab.AGENTS) WarPurple else HomeTextSecondary,
+                        14.sp
+                    )
+                )
+            }
+        )
+        Tab(
+            selected = selectedTab == WarRoomTab.AI_SCOUT,
+            onClick = { onTabSelected(WarRoomTab.AI_SCOUT) },
+            text = {
+                Text(
+                    stringResource(R.string.war_room_tab_ai_scout),
+                    style = boldTextStyle(
+                        if (selectedTab == WarRoomTab.AI_SCOUT) WarPurple else HomeTextSecondary,
                         14.sp
                     )
                 )

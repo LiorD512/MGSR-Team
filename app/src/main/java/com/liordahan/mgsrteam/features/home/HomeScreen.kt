@@ -42,7 +42,7 @@ import com.liordahan.mgsrteam.features.releases.ReleasesScreen
 import com.liordahan.mgsrteam.features.requests.RequestsScreen
 import com.liordahan.mgsrteam.features.returnee.ReturneeScreen
 import com.liordahan.mgsrteam.features.add.IAddPlayerViewModel
-import com.liordahan.mgsrteam.features.aiscout.AiScoutScreen
+import com.liordahan.mgsrteam.features.warroom.WarRoomTab
 import com.liordahan.mgsrteam.features.shadowteams.ShadowTeamsScreen
 import com.liordahan.mgsrteam.features.shortlist.ShortlistScreen
 import com.liordahan.mgsrteam.features.warroom.WarRoomScreen
@@ -325,7 +325,7 @@ fun HomeScreen(
             composable(
                 route = Screens.AiScoutScreen.route
             ) {
-                AiScoutScreen(navController = navController)
+                WarRoomScreen(navController = navController, initialTab = WarRoomTab.AI_SCOUT)
             }
 
             composable(

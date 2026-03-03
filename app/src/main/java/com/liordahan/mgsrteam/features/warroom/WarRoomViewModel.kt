@@ -44,7 +44,7 @@ data class WarRoomUiState(
     val loadingReportUrls: Set<String> = emptySet()
 )
 
-enum class WarRoomTab { DISCOVERY, AGENTS }
+enum class WarRoomTab { DISCOVERY, AGENTS, AI_SCOUT }
 
 // ── Interface ───────────────────────────────────────────────────────────────
 
@@ -95,6 +95,7 @@ class WarRoomViewModel(
                     loadScoutProfiles()
                 }
             }
+            WarRoomTab.AI_SCOUT -> { /* Content uses its own ViewModel */ }
         }
     }
 
