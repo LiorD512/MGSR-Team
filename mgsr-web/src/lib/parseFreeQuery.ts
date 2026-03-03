@@ -155,7 +155,7 @@ function extractLimit(query: string): number | undefined {
 /** Check for Israeli market → transfer_fee + notes + value cap */
 function extractIsraeliMarket(query: string): { transferFee?: string; notes?: string; valueMax?: number } {
   const hasIsraeli =
-    /(שוק\s*ה?ישראלי|israeli (?:market|league)|israel (?:market|league)|ל?ליגה\s*ה?ישראלית|ligat\s*ha.?al)/i.test(query);
+    /(שוק\s*ה?ישראלי|israeli (?:market|league)|israel (?:market|league)|ל?ליגה\s*ה?ישראלית|ליגת\s*העל|ligat\s*ha.?al)/i.test(query);
   if (!hasIsraeli) return {};
   return {
     transferFee: '300-600',

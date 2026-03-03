@@ -79,6 +79,7 @@ import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -107,10 +108,15 @@ private val SyneFamily = FontFamily(Font(R.font.takeaway_sans_bold, FontWeight.B
 
 private enum class AiScoutTab { SCOUT, FIND_NEXT }
 
+/**
+ * AI Scout content body — tabs + content. Can be used standalone (with top bar) or embedded in War Room.
+ */
 @Composable
-fun AiScoutScreen(
+fun AiScoutContentBody(
     navController: NavController,
-    viewModel: IAiScoutViewModel = koinViewModel()
+    viewModel: IAiScoutViewModel = koinViewModel(),
+    showTopBar: Boolean = true,
+    onBack: (() -> Unit)? = null
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val findNextState by viewModel.findNextState.collectAsStateWithLifecycle()
@@ -121,8 +127,9 @@ fun AiScoutScreen(
             .fillMaxSize()
             .background(HomeDarkBackground)
     ) {
-        // Top Bar
-        AiScoutTopBar(onBack = { navController.popBackStack() })
+        if (showTopBar) {
+            AiScoutTopBar(onBack = onBack ?: { navController.popBackStack(); kotlin.Unit })
+        }
 
         // Tab Row
         AiScoutTabBar(
@@ -144,6 +151,19 @@ fun AiScoutScreen(
             }
         }
     }
+}
+
+@Composable
+fun AiScoutScreen(
+    navController: NavController,
+    viewModel: IAiScoutViewModel = koinViewModel()
+) {
+    AiScoutContentBody(
+        navController = navController,
+        viewModel = viewModel,
+        showTopBar = true,
+        onBack = { navController.popBackStack() }
+    )
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -837,12 +857,13 @@ private fun ExampleChipsSection(viewModel: IAiScoutViewModel) {
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             val examples = listOf(
-                "⚡" to "Young CF from Balkans under €1M",
-                "🎯" to "Creative AM, Scandinavian, U23",
-                "🛡️" to "Left-footed CB, free agent",
-                "🏃" to "Fast winger for Ligat Ha'Al"
+                "⚡" to R.string.ai_scout_example_1,
+                "🎯" to R.string.ai_scout_example_2,
+                "🛡️" to R.string.ai_scout_example_3,
+                "🏃" to R.string.ai_scout_example_4
             )
-            items(examples) { (emoji, text) ->
+            items(examples) { (emoji, resId) ->
+                val text = stringResource(resId)
                 Row(
                     modifier = Modifier
                         .clip(RoundedCornerShape(10.dp))
@@ -929,6 +950,15 @@ private fun RadarIllustration() {
 
 @Composable
 private fun AiScoutResultsState(state: AiScoutUiState, viewModel: IAiScoutViewModel) {
+    val context = LocalContext.current
+    val shortlistRepository: ShortlistRepository = koinInject()
+    val shortlistEntries by shortlistRepository.getShortlistFlow().collectAsState(initial = emptyList())
+    val shortlistUrls = remember(shortlistEntries) { shortlistEntries.map { it.tmProfileUrl }.toSet() }
+    var justAddedUrls by remember { mutableStateOf<Set<String>>(emptySet()) }
+    val shortlistPendingUrls by shortlistRepository.getShortlistPendingUrlsFlow()
+        .collectAsState(initial = emptySet())
+    val coroutineScope = rememberCoroutineScope()
+
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(bottom = 32.dp)
@@ -969,7 +999,16 @@ private fun AiScoutResultsState(state: AiScoutUiState, viewModel: IAiScoutViewMo
 
         // Player result cards
         items(state.results, key = { it.transfermarktUrl.ifBlank { it.name } }) { player ->
-            PlayerResultCard(player = player)
+            val tmUrl = player.transfermarktUrl
+            PlayerResultCard(
+                player = player,
+                shortlistUrls = shortlistUrls,
+                shortlistPendingUrls = shortlistPendingUrls,
+                justAddedUrls = justAddedUrls,
+                shortlistRepository = shortlistRepository,
+                onJustAdded = { justAddedUrls = justAddedUrls + it },
+                onJustRemoved = { justAddedUrls = justAddedUrls - it }
+            )
         }
 
         // Loading indicator
@@ -1124,8 +1163,20 @@ private fun LeagueInfoBanner(info: LeagueInfo) {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 @Composable
-private fun PlayerResultCard(player: ScoutPlayerResult) {
+private fun PlayerResultCard(
+    player: ScoutPlayerResult,
+    shortlistUrls: Set<String>,
+    shortlistPendingUrls: Set<String>,
+    justAddedUrls: Set<String>,
+    shortlistRepository: ShortlistRepository,
+    onJustAdded: (String) -> Unit,
+    onJustRemoved: (String) -> Unit
+) {
     val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+    val tmUrl = player.transfermarktUrl
+    val isInShortlist = tmUrl.isNotBlank() && (tmUrl in shortlistUrls || tmUrl in justAddedUrls)
+    val isShortlistPending = tmUrl in shortlistPendingUrls
 
     Column(
         modifier = Modifier
@@ -1136,48 +1187,37 @@ private fun PlayerResultCard(player: ScoutPlayerResult) {
             .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(14.dp))
             .padding(14.dp)
     ) {
-        Row(verticalAlignment = Alignment.Top) {
-            // Match percentage ring
+        // Name + score circle grouped together (name close to circle)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             MatchPercentRing(percent = player.matchPercent, size = 50)
+            Spacer(Modifier.width(10.dp))
+            Text(
+                text = player.name,
+                style = boldTextStyle(HomeTextPrimary, 16.sp),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f)
+            )
+        }
 
-            Spacer(Modifier.width(12.dp))
+        Spacer(Modifier.height(6.dp))
 
-            Column(modifier = Modifier.weight(1f)) {
-                // Name + TM link
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = player.name,
-                        style = boldTextStyle(HomeTextPrimary, 16.sp),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f, fill = false)
-                    )
-                    if (player.transfermarktUrl.isNotBlank()) {
-                        Spacer(Modifier.width(6.dp))
-                        Text(
-                            text = "↗ TM",
-                            style = boldTextStyle(HomeBlueAccent, 12.sp),
-                            modifier = Modifier.clickable {
-                                context.startActivity(
-                                    Intent(Intent.ACTION_VIEW, Uri.parse(player.transfermarktUrl))
-                                )
-                            }
-                        )
-                    }
-                }
-
-                Spacer(Modifier.height(2.dp))
-
-                // Meta row: age · position · value · club · nationality
+        Column(modifier = Modifier.fillMaxWidth()) {
+                // Meta row: age · position · value · club · nationality (like web)
                 Text(
                     text = buildString {
-                        append(player.age)
+                        append(if (player.age > 0) player.age.toString() else "—")
                         append(" · ")
-                        append(player.position)
+                        append(shortenPosition(player.position))
                         append(" · ")
-                        append(player.marketValue)
-                        append(" · ")
-                        append(player.club)
+                        append(player.marketValue.ifBlank { "—" })
+                        if (player.club.isNotBlank()) {
+                            append(" · ")
+                            append(player.club)
+                        }
                         if (player.nationality.isNotBlank()) {
                             append(" · ")
                             append(player.nationality)
@@ -1187,7 +1227,7 @@ private fun PlayerResultCard(player: ScoutPlayerResult) {
                     maxLines = 2
                 )
 
-                // FM badge
+                // FM badge (CA/PA, tier)
                 if (player.fmCurrentAbility != null || player.fmPotentialAbility != null) {
                     Spacer(Modifier.height(6.dp))
                     FmBadge(
@@ -1196,10 +1236,68 @@ private fun PlayerResultCard(player: ScoutPlayerResult) {
                         tier = player.fmTier
                     )
                 }
-            }
+
+                // Action buttons: Add to shortlist + Open Transfermarkt
+                if (tmUrl.isNotBlank()) {
+                    Spacer(Modifier.height(8.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        IconButton(
+                            onClick = {
+                                if (isShortlistPending) return@IconButton
+                                coroutineScope.launch {
+                                    val inList = tmUrl in shortlistUrls || tmUrl in justAddedUrls
+                                    if (inList) {
+                                        shortlistRepository.removeFromShortlist(tmUrl)
+                                        onJustRemoved(tmUrl)
+                                    } else {
+                                        when (shortlistRepository.addToShortlistByUrl(tmUrl)) {
+                                            is ShortlistRepository.AddToShortlistResult.Added ->
+                                                onJustAdded(tmUrl)
+                                            is ShortlistRepository.AddToShortlistResult.AlreadyInShortlist ->
+                                                ToastManager.showInfo(context.getString(R.string.add_player_already_in_shortlist))
+                                            is ShortlistRepository.AddToShortlistResult.AlreadyInRoster ->
+                                                ToastManager.showInfo(context.getString(R.string.add_player_already_in_roster))
+                                        }
+                                    }
+                                }
+                            },
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Icon(
+                                imageVector = if (isInShortlist) Icons.Default.Bookmark else Icons.Default.BookmarkAdd,
+                                contentDescription = if (isInShortlist) stringResource(R.string.shortlist_in_shortlist) else stringResource(R.string.shortlist_add_to_shortlist),
+                                tint = if (isInShortlist) HomeGreenAccent else HomeTextSecondary
+                            )
+                        }
+                        TextButton(
+                            onClick = {
+                                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(tmUrl)))
+                            },
+                            modifier = Modifier.height(36.dp),
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
+                            colors = ButtonDefaults.textButtonColors(contentColor = HomeTealAccent)
+                        ) {
+                            Icon(
+                                Icons.Default.Link,
+                                contentDescription = null,
+                                tint = HomeTealAccent,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(Modifier.width(6.dp))
+                            Text(
+                                text = stringResource(R.string.shortlist_open_tm),
+                                style = regularTextStyle(HomeTealAccent, 13.sp)
+                            )
+                        }
+                    }
+                }
         }
 
-        // Scout analysis
+        // Scout analysis — split by newlines for clearer structure, Content direction for mixed Hebrew/English
         if (player.scoutAnalysis.isNotBlank()) {
             Spacer(Modifier.height(8.dp))
             Box(
@@ -1209,11 +1307,23 @@ private fun PlayerResultCard(player: ScoutPlayerResult) {
                     .background(HomeDarkCardBorder.copy(alpha = 0.6f))
             )
             Spacer(Modifier.height(8.dp))
-            Text(
-                text = player.scoutAnalysis,
-                style = regularTextStyle(HomeTextPrimary, 13.sp),
-                lineHeight = 20.sp
-            )
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                player.scoutAnalysis
+                    .split("\n")
+                    .map { it.trim() }
+                    .filter { it.isNotBlank() }
+                    .forEach { line ->
+                        Text(
+                            text = line,
+                            style = regularTextStyle(
+                                HomeTextPrimary,
+                                13.sp,
+                                direction = TextDirection.Content
+                            ),
+                            lineHeight = 20.sp
+                        )
+                    }
+            }
         }
     }
 }

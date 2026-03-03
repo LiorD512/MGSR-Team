@@ -102,7 +102,7 @@ async function fetchFreesearch(
 /** Map query to league for market filter display */
 function getTargetLeagueCode(query: string): string | null {
   const q = query.toLowerCase();
-  if (/(שוק\s*ה?ישראלי|israeli market|israel market|ליגה\s*ה?ישראלית|ligat\s*ha.?al)/i.test(q)) return 'ISR1';
+  if (/(שוק\s*ה?ישראלי|israeli market|israel market|ליגה\s*ה?ישראלית|ליגת\s*העל|ligat\s*ha.?al)/i.test(q)) return 'ISR1';
   if (/(שוק\s*פולני|polish market|poland market)/i.test(q)) return 'PL1';
   if (/(שוק\s*יווני|greek market|greece market)/i.test(q)) return 'GR1';
   if (/(שוק\s*בלגי|belgian market|belgium market)/i.test(q)) return 'BE1';

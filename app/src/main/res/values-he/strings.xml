@@ -846,6 +846,10 @@
     <string name="ai_scout_search_hint">לדוגמה: קשר שמאלי מתחת לגיל 23, מהיר, כדרור טוב…</string>
     <string name="ai_scout_search_button">חפש</string>
     <string name="ai_scout_try_examples">נסה דוגמה:</string>
+    <string name="ai_scout_example_1">חלוץ צעיר מהבלקן מתחת ל־€1M</string>
+    <string name="ai_scout_example_2">קשר התקפי יצירתי, סקנדינבי, U23</string>
+    <string name="ai_scout_example_3">בלם רגל שמאל, שחקן חופשי</string>
+    <string name="ai_scout_example_4">כנף מהירה לליגת העל</string>
     <string name="ai_scout_powered_title">סקאוטינג מונע AI</string>
     <string name="ai_scout_powered_subtitle">חיפוש בשפה חופשית ב-Transfermarkt + נתוני FM</string>
     <string name="ai_scout_interpretation">פרשנות AI</string>
@@ -873,6 +877,7 @@
     <string name="war_room_title">חדר מלחמה</string>
     <string name="war_room_tab_discovery">תגליות</string>
     <string name="war_room_tab_agents">סוכנים</string>
+    <string name="war_room_tab_ai_scout">AI Scout</string>
     <string name="war_room_discovery_title">גילוי שחקנים</string>
     <string name="war_room_discovery_subtitle">מועמדים שהתגלו על ידי AI מהבקשות שלך, יהלומים נסתרים ובחירות סוכנים.</string>
     <string name="war_room_refresh">רענן</string>

@@ -903,6 +903,10 @@
     <string name="ai_scout_search_hint">e.g. Left winger under 23, fast, good dribbler…</string>
     <string name="ai_scout_search_button">Search</string>
     <string name="ai_scout_try_examples">Try an example:</string>
+    <string name="ai_scout_example_1">Young CF from Balkans under €1M</string>
+    <string name="ai_scout_example_2">Creative AM, Scandinavian, U23</string>
+    <string name="ai_scout_example_3">Left-footed CB, free agent</string>
+    <string name="ai_scout_example_4">Fast winger for Ligat Ha\'Al</string>
     <string name="ai_scout_powered_title">AI-Powered Scouting</string>
     <string name="ai_scout_powered_subtitle">Natural language search across Transfermarkt + FM data</string>
     <string name="ai_scout_interpretation">AI interpretation</string>
@@ -930,6 +934,7 @@
     <string name="war_room_title">War Room</string>
     <string name="war_room_tab_discovery">Discovery</string>
     <string name="war_room_tab_agents">Agents</string>
+    <string name="war_room_tab_ai_scout">AI Scout</string>
     <string name="war_room_discovery_title">Player Discovery</string>
     <string name="war_room_discovery_subtitle">AI-discovered candidates from your requests, hidden gems, and agent picks.</string>
     <string name="war_room_refresh">Refresh</string>

@@ -292,26 +292,56 @@ class MgsrWebApiClient(
 
         for (i in 0 until arr.length()) {
             val p = arr.getJSONObject(i)
+            // Scout server returns snake_case; support both
+            val age = p.optInt("age", 0).takeIf { it > 0 }
+                ?: p.optString("age", "").toIntOrNull() ?: 0
+            val marketValue = p.optString("marketValue", "").ifBlank {
+                p.optString("market_value", "")
+            }
+            val club = p.optString("club", "").ifBlank {
+                p.optString("currentClub", p.optString("current_club", ""))
+            }
+            val nationality = p.optString("nationality", "").ifBlank {
+                p.optString("country", p.optString("citizenship", ""))
+            }
+            val transfermarktUrl = p.optString("transfermarktUrl", "").ifBlank {
+                p.optString("tmProfileUrl", p.optString("url", ""))
+            }
+            val matchPercent = p.optInt("matchPercent", -1).takeIf { it >= 0 }
+                ?: p.optInt("score", -1).takeIf { it >= 0 }
+                ?: p.optInt("smart_score", -1).takeIf { it >= 0 }
+                ?: p.optInt("scouting_score", -1).takeIf { it >= 0 }
+                ?: (p.optDouble("similarity_score", -1.0).takeIf { it >= 0 }?.times(100)?.toInt())
+                ?: 0
+            val scoutAnalysis = p.optString("scoutAnalysis", "").ifBlank {
+                p.optString("analysis", p.optString("explanation", ""))
+            }
             results.add(
                 ScoutPlayerResult(
                     name = p.optString("name", "Unknown"),
                     position = p.optString("position", ""),
-                    age = p.optInt("age", 0),
-                    marketValue = p.optString("marketValue", ""),
-                    club = p.optString("club", p.optString("currentClub", "")),
-                    nationality = p.optString("nationality", p.optString("country", "")),
-                    transfermarktUrl = p.optString("transfermarktUrl", p.optString("tmProfileUrl", "")),
-                    matchPercent = p.optInt("matchPercent", p.optInt("score", 0)),
-                    scoutAnalysis = p.optString("scoutAnalysis", p.optString("analysis", "")),
-                    fmCurrentAbility = p.optIntOrNull("fmCurrentAbility") ?: p.optIntOrNull("fmCa"),
-                    fmPotentialAbility = p.optIntOrNull("fmPotentialAbility") ?: p.optIntOrNull("fmPa"),
-                    fmTier = p.optString("fmTier", null),
-                    imageUrl = p.optString("imageUrl", null),
+                    age = age,
+                    marketValue = marketValue,
+                    club = club,
+                    nationality = nationality,
+                    transfermarktUrl = transfermarktUrl,
+                    matchPercent = matchPercent.coerceIn(0, 100),
+                    scoutAnalysis = scoutAnalysis,
+                    fmCurrentAbility = p.optIntOrNull("fmCurrentAbility") ?: p.optIntOrNull("fmCa") ?: p.optIntOrNull("fm_ca"),
+                    fmPotentialAbility = p.optIntOrNull("fmPotentialAbility") ?: p.optIntOrNull("fmPa") ?: p.optIntOrNull("fm_pa"),
+                    fmTier = (p.optString("fmTier", "").ifBlank { p.optString("fm_tier", "") }).takeIf { it.isNotBlank() },
+                    imageUrl = (p.optString("imageUrl", "").ifBlank { p.optString("image_url", "") }).takeIf { it.isNotBlank() },
                     scoreBreakdown = p.optJSONObject("scoreBreakdown")?.let { sb ->
                         ScoreBreakdown(
                             clubFit = sb.optIntOrNull("clubFit"),
                             realism = sb.optIntOrNull("realism"),
                             noteFit = sb.optIntOrNull("noteFit")
+                        )
+                    } ?: p.optJSONObject("score_breakdown")?.let { sb ->
+                        ScoreBreakdown(
+                            clubFit = sb.optIntOrNull("clubFit") ?: sb.optIntOrNull("club_fit"),
+                            realism = sb.optIntOrNull("realism") ?: sb.optIntOrNull("realism_score"),
+                            noteFit = sb.optIntOrNull("noteFit") ?: sb.optIntOrNull("note_fit_score")
                         )
                     }
                 )
