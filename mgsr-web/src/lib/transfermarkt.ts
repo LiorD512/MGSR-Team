@@ -509,11 +509,17 @@ export async function getPlayerPerformanceStats(
       if (nums.length >= 3) {
         appearances = nums[0] ?? 0;
         goals = nums[1] ?? 0;
-        assists = nums[2] ?? 0;
-        const last = nums[nums.length - 1];
-        if (last != null && last > 100) minutes = last;
-        else if (nums.length >= 6) minutes = nums[5] ?? 0;
-        else if (nums.length >= 4) minutes = nums[3] ?? 0;
+        // Compact view: Spiele, Tore, Minuten (no Vorlagen). Extended: Spiele, Tore, Vorlagen, Minuten.
+        if (nums.length === 3) {
+          assists = 0;
+          minutes = nums[2] ?? 0;
+        } else {
+          assists = nums[2] ?? 0;
+          const last = nums[nums.length - 1];
+          if (last != null && last > 100) minutes = last;
+          else if (nums.length >= 6) minutes = nums[5] ?? 0;
+          else if (nums.length >= 4) minutes = nums[3] ?? 0;
+        }
       }
       return false;
     });
