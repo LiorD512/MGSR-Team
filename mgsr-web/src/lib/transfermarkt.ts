@@ -454,13 +454,21 @@ export interface PlayerPerformanceStats {
   club?: string;
 }
 
+/** Current European season start year (Aug→next year = current year, Jan–Jul = previous year). */
+function getCurrentSeasonYear(): number {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = d.getMonth() + 1;
+  return month >= 8 ? year : year - 1;
+}
+
 /**
  * Scrape performance stats from Transfermarkt leistungsdaten page.
- * Uses last completed season (2024 = 2024/25) by default.
+ * Uses current season by default (e.g. March 2025 → 2024/25, Sep 2025 → 2025/26).
  */
 export async function getPlayerPerformanceStats(
   profileUrl: string,
-  seasonYear: number = 2024
+  seasonYear: number = getCurrentSeasonYear()
 ): Promise<PlayerPerformanceStats | null> {
   const id = extractPlayerIdFromUrl(profileUrl);
   if (!id) return null;

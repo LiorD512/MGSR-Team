@@ -151,6 +151,41 @@ export async function getTeammates(playerProfileUrl: string): Promise<TeammateIn
   return data.teammates || [];
 }
 
+export interface PlayerPerformanceStats {
+  season: string;
+  appearances: number;
+  goals: number;
+  assists: number;
+  minutes: number;
+  club?: string;
+}
+
+/** Current European season start year (e.g. March 2025 → 2024 for 24/25, Aug 2025 → 2025 for 25/26). */
+export function getCurrentSeasonYear(): number {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = d.getMonth() + 1; // 1–12
+  return month >= 8 ? year : year - 1;
+}
+
+/** Current season label (e.g. "24/25", "25/26"). */
+export function getCurrentSeasonLabel(): string {
+  const y = getCurrentSeasonYear();
+  return `${y}/${String(y + 1).slice(-2)}`;
+}
+
+export async function getPlayerPerformanceStats(
+  profileUrl: string,
+  seasonYear = getCurrentSeasonYear()
+): Promise<PlayerPerformanceStats | null> {
+  const res = await fetchBackend(
+    `/api/transfermarkt/performance?url=${encodeURIComponent(profileUrl)}&season=${seasonYear}`
+  );
+  const data = await res.json();
+  if (!data || (data.appearances === 0 && data.goals === 0 && data.assists === 0)) return null;
+  return data;
+}
+
 /** Extract Transfermarkt player ID from profile URL for matching. */
 export function extractPlayerIdFromUrl(url: string | undefined): string | null {
   if (!url || typeof url !== 'string') return null;

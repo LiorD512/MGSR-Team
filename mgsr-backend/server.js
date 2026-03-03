@@ -311,6 +311,158 @@ app.get('/api/ifa/club-search', async (req, res) => {
   }
 });
 
+// ─── IFA player profile fetch (Playwright — bypasses 403 when Vercel direct fetch blocked) ───
+function mapHebrewPositionIFA(raw) {
+  const posMap = {
+    שוער: 'GK', 'בלם מרכזי': 'CB', 'מגן ימני': 'RB', 'מגן שמאלי': 'LB',
+    'קשר הגנתי': 'DM', 'קשר מרכזי': 'CM', 'קשר התקפי': 'AM',
+    'כנף ימני': 'RW', 'כנף שמאלי': 'LW', 'חלוץ מרכזי': 'CF', חלוץ: 'ST',
+    'חלוץ משני': 'SS', בלם: 'CB', מגן: 'CB', קשר: 'CM', כנף: 'RW',
+  };
+  const lower = (raw || '').trim();
+  if (posMap[lower]) return [posMap[lower]];
+  const positions = [];
+  for (const [he, code] of Object.entries(posMap)) {
+    if (lower.includes(he) && !positions.includes(code)) positions.push(code);
+  }
+  return positions.length ? positions : [raw];
+}
+
+function parseIFAProfileHtml(html, url) {
+  const $ = cheerio.load(html);
+  const profile = { fullName: '', ifaUrl: url };
+  const pidMatch = url.match(/player_id=(\d+)/);
+  if (pidMatch) profile.ifaPlayerId = pidMatch[1];
+
+  const cardTitle = $('.new-player-card_title').first().text().trim();
+  const h1 = cardTitle || $('h1').first().text().trim();
+  if (h1) {
+    profile.fullNameHe = h1;
+    const parts = h1.split(/\s*[-–]\s*/);
+    const hePart = parts.find((p) => /[\u0590-\u05FF]/.test(p));
+    const enPart = parts.find((p) => /^[A-Za-z\s]+$/.test((p || '').trim()));
+    if (hePart) profile.fullNameHe = hePart.trim();
+    if (enPart) profile.fullName = enPart.trim();
+    else profile.fullName = h1;
+  }
+  if (!profile.fullName) {
+    const nameEl = $('.player-name, .player-header-name').first().text().trim();
+    if (nameEl) {
+      profile.fullName = nameEl;
+      if (/[\u0590-\u05FF]/.test(nameEl)) profile.fullNameHe = nameEl;
+    }
+  }
+
+  const imgSrc = $('.new-player-card_img-container img').first().attr('src') ||
+    $('.player-image img, .player-photo img, .player-header img').first().attr('src');
+  if (imgSrc && imgSrc.trim()) {
+    profile.profileImage = imgSrc.startsWith('http') ? imgSrc : IFA_BASE + imgSrc;
+  }
+
+  $('.new-player-card_data-list li').each((_, el) => {
+    const text = $(el).text().trim();
+    const dobM = text.match(/תאריך לידה[:\s]*(\d{1,2}\/\d{4}|\d{1,2}[./]\d{1,2}[./]\d{4})/);
+    if (dobM) {
+      profile.dateOfBirth = dobM[1];
+      const parts = dobM[1].split(/[./]/);
+      if (parts.length >= 2) {
+        const year = parseInt(parts[parts.length - 1], 10);
+        profile.age = String(new Date().getFullYear() - year);
+      }
+    }
+    const natM = text.match(/אזרחות[:\s]*(.+)/);
+    if (natM) profile.nationality = natM[1].trim();
+  });
+
+  const infoText = $('body').text();
+  if (!profile.dateOfBirth) {
+    const dobM = infoText.match(/תאריך לידה[:\s]*(\d{1,2}[./]\d{1,2}[./]\d{4})/) ||
+      infoText.match(/תאריך לידה[:\s]*(\d{1,2}\/\d{4})/);
+    if (dobM) {
+      profile.dateOfBirth = dobM[1];
+      const parts = dobM[1].split(/[./]/);
+      if (parts.length >= 2) {
+        const year = parseInt(parts[parts.length - 1], 10);
+        profile.age = String(new Date().getFullYear() - year);
+      }
+    }
+  }
+  if (!profile.nationality) {
+    const natM = infoText.match(/אזרחות[:\s]*([^\n,]+)/);
+    if (natM) profile.nationality = natM[1].trim();
+  }
+
+  const teamSpan = $('.new-player-data_title .js-container-title span, .new-player-data_title span').first().text().trim();
+  if (teamSpan) profile.currentClub = teamSpan;
+  if (!profile.currentClub) {
+    const clubM = infoText.match(/קבוצה[:\s]*([^\n,]+)/);
+    if (clubM) profile.currentClub = clubM[1].trim();
+  }
+  const divM = infoText.match(/מחלקה[:\s]*([^\n,]+)/) || infoText.match(/מסגרת[:\s]*([^\n,]+)/);
+  if (divM) profile.academy = divM[1].trim();
+  const posM = infoText.match(/תפקיד[:\s]*([^\n,]+)/) || infoText.match(/עמדה[:\s]*([^\n,]+)/);
+  if (posM) profile.positions = mapHebrewPositionIFA(posM[1]);
+  const footM = infoText.match(/רגל[:\s]*(ימין|שמאל|שתיים)/);
+  if (footM) profile.foot = { ימין: 'Right', שמאל: 'Left', שתיים: 'Both' }[footM[1]] || footM[1];
+  const heightM = infoText.match(/גובה[:\s]*(\d{2,3})/);
+  if (heightM) profile.height = heightM[1] + ' cm';
+
+  const stats = { season: IFA_CURRENT_SEASON_ID };
+  const statsTable = $('table').filter((_, t) => $(t).text().includes('משחקים') || $(t).text().includes('שערים')).first();
+  if (statsTable.length) {
+    const cells = statsTable.find('tr').eq(1).find('td');
+    if (cells.length >= 3) {
+      stats.matches = parseInt(cells.eq(0).text().trim(), 10) || 0;
+      stats.goals = parseInt(cells.eq(1).text().trim(), 10) || 0;
+      stats.assists = parseInt(cells.eq(2).text().trim(), 10) || 0;
+      if (cells.length >= 4) stats.yellowCards = parseInt(cells.eq(3).text().trim(), 10) || 0;
+      if (cells.length >= 5) stats.redCards = parseInt(cells.eq(4).text().trim(), 10) || 0;
+    }
+  }
+  if (!stats.matches) {
+    const mm = infoText.match(/משחקים[:\s]*(\d+)/);
+    const gm = infoText.match(/שערים[:\s]*(\d+)/);
+    const am = infoText.match(/בישולים[:\s]*(\d+)/) || infoText.match(/מסירות מכריעות[:\s]*(\d+)/);
+    if (mm) stats.matches = parseInt(mm[1], 10);
+    if (gm) stats.goals = parseInt(gm[1], 10);
+    if (am) stats.assists = parseInt(am[1], 10);
+  }
+  if (stats.matches || stats.goals) profile.stats = stats;
+
+  return profile;
+}
+
+app.post('/api/ifa/fetch-profile', async (req, res) => {
+  let browser;
+  try {
+    const url = (req.body?.url || '').trim();
+    if (!url || !/^https?:\/\/(www\.)?football\.org\.il\/(en\/)?players\/player\/\?player_id=\d+/.test(url)) {
+      return res.status(400).json({ error: 'Invalid IFA profile URL' });
+    }
+    const normalizedUrl = url.replace(/football\.org\.il\/en\/players\//, 'football.org.il/players/');
+
+    browser = await chromium.launch({
+      headless: true,
+      args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    });
+    const page = await browser.newPage({
+      userAgent: getRandomUserAgent(),
+      extraHTTPHeaders: { 'Accept-Language': 'he-IL,he;q=0.9,en-US;q=0.8' },
+    });
+    await page.goto(normalizedUrl, { waitUntil: 'domcontentloaded', timeout: 15000 });
+    const html = await page.content();
+    await browser.close();
+    browser = null;
+
+    const profile = parseIFAProfileHtml(html, normalizedUrl);
+    res.json(profile);
+  } catch (err) {
+    if (browser) await browser.close().catch(() => {});
+    console.error('[IFA fetch-profile]', err.message);
+    res.status(500).json({ error: err.message || 'Failed to fetch IFA profile' });
+  }
+});
+
 // ─── Club search (for Add Request) ───────────────────────────────────────────
 app.get('/api/transfermarkt/club-search', async (req, res) => {
   try {
@@ -466,6 +618,82 @@ app.get('/api/transfermarkt/player', async (req, res) => {
   } catch (err) {
     console.error('Player details error:', err.message);
     res.status(500).json({ error: err.message || 'Failed to fetch player' });
+  }
+});
+
+// ─── Player performance stats (leistungsdaten) ─────────────────────────────────
+app.get('/api/transfermarkt/performance', async (req, res) => {
+  try {
+    let url = req.query.url || '';
+    url = url.trim();
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth() + 1;
+    const currentSeason = month >= 8 ? year : year - 1;
+    const seasonYear = parseInt(req.query.season, 10) || currentSeason;
+    if (!url) {
+      return res.status(400).json({ error: 'Missing url parameter' });
+    }
+    if (!url.startsWith('http')) {
+      url = url.startsWith('/') ? TRANSFERMARKT_BASE + url : TRANSFERMARKT_BASE + '/' + url;
+    }
+    const perfUrl = url
+      .replace(/\/profil\//, '/leistungsdaten/')
+      .replace(/\/player\//, '/leistungsdaten/');
+    const urlWithSeason = perfUrl.includes('saison')
+      ? perfUrl
+      : `${perfUrl.replace(/\/$/, '')}/saison/${seasonYear}`;
+
+    const html = await fetchHtmlWithRetry(urlWithSeason);
+    const $ = cheerio.load(html);
+
+    let appearances = 0;
+    let goals = 0;
+    let assists = 0;
+    let minutes = 0;
+
+    $('table.items tbody tr, table.items tr').each((_, row) => {
+      const $row = $(row);
+      const firstCell = $row.find('td').first().text().trim().toLowerCase();
+      if (!firstCell.includes('total') && !firstCell.includes('gesamt')) return;
+
+      const tds = $row.find('td');
+      if (tds.length < 4) return;
+
+      const nums = [];
+      tds.slice(1).each((__, td) => {
+        const raw = $(td).text().trim();
+        const t = raw.replace(/['\s]/g, '').replace(/\./g, '').replace(/,/g, '');
+        const n = parseInt(t, 10);
+        if (!isNaN(n)) nums.push(n);
+      });
+
+      if (nums.length >= 3) {
+        appearances = nums[0] ?? 0;
+        goals = nums[1] ?? 0;
+        assists = nums[2] ?? 0;
+        const last = nums[nums.length - 1];
+        if (last != null && last > 100) minutes = last;
+        else if (nums.length >= 6) minutes = nums[5] ?? 0;
+        else if (nums.length >= 4) minutes = nums[3] ?? 0;
+      }
+      return false;
+    });
+
+    if (appearances === 0 && goals === 0 && assists === 0) {
+      return res.json(null);
+    }
+
+    res.json({
+      season: `${seasonYear}/${String(seasonYear + 1).slice(-2)}`,
+      appearances,
+      goals,
+      assists,
+      minutes,
+    });
+  } catch (err) {
+    console.error('Performance stats error:', err.message);
+    res.status(500).json({ error: err.message || 'Failed to fetch performance' });
   }
 });
 

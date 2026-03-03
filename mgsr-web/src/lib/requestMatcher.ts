@@ -1,7 +1,10 @@
 /**
  * Matches roster players to a request based on position, age, dominate foot, salary range, and transfer fee.
  * Logic matches Android RequestMatcher.kt.
+ * Smarter matching: market value vs transfer fee range (exclude players clearly above budget).
  */
+
+import { parseMarketValueToEuros } from './shortlistIntelligence';
 
 const SALARY_RANGES = ['>5', '6-10', '11-15', '16-20', '20-25', '26-30', '30+'];
 
@@ -28,6 +31,7 @@ export interface ClubRequest {
   dominateFoot?: string;
   salaryRange?: string;
   transferFee?: string;
+  clubTmProfile?: string;
 }
 
 function matchesPosition(player: RosterPlayer, requestPosition: string): boolean {
@@ -85,6 +89,37 @@ function matchesTransferFee(player: RosterPlayer, request: ClubRequest): boolean
   return playerFee.toLowerCase() === reqFee.toLowerCase();
 }
 
+/** Transfer fee string to (min, max) value range in euros. Matches Android AiHelperService. */
+function transferFeeToValueRange(transferFee: string): { min: number; max: number } {
+  const lower = transferFee.trim().toLowerCase();
+  switch (lower) {
+    case 'free/free loan':
+      return { min: 0, max: 150_000 };
+    case '<200':
+      return { min: 0, max: 200_000 };
+    case '300-600':
+      return { min: 250_000, max: 650_000 };
+    case '700-900':
+      return { min: 650_000, max: 950_000 };
+    case '1m+':
+      return { min: 900_000, max: Number.MAX_SAFE_INTEGER };
+    default:
+      return { min: 0, max: Number.MAX_SAFE_INTEGER };
+  }
+}
+
+/** Exclude players whose market value is clearly above the request's budget (e.g. €2M player vs 300-600 request). */
+function matchesMarketValueVsTransferFee(player: RosterPlayer, request: ClubRequest): boolean {
+  const reqFee = request.transferFee?.trim();
+  if (!reqFee) return true;
+  const playerValue = player.marketValue ? parseMarketValueToEuros(player.marketValue) : 0;
+  if (playerValue <= 0) return matchesTransferFee(player, request); // fallback to string match
+  const { max } = transferFeeToValueRange(reqFee);
+  if (max >= Number.MAX_SAFE_INTEGER) return true; // 1m+ has no upper bound
+  if (playerValue > max * 2) return false; // clearly over budget
+  return true;
+}
+
 export function matchRequestToPlayers(request: ClubRequest, players: RosterPlayer[]): RosterPlayer[] {
   const position = request.position?.trim();
   if (!position) return [];
@@ -94,6 +129,7 @@ export function matchRequestToPlayers(request: ClubRequest, players: RosterPlaye
     if (!matchesDominateFoot(player, request)) return false;
     if (!matchesSalaryRange(player, request)) return false;
     if (!matchesTransferFee(player, request)) return false;
+    if (!matchesMarketValueVsTransferFee(player, request)) return false;
     return true;
   });
 }
