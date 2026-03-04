@@ -93,13 +93,7 @@ import com.liordahan.mgsrteam.transfermarket.PlayerSearchModel
 import com.liordahan.mgsrteam.ui.components.AppTextField
 import com.liordahan.mgsrteam.ui.components.DarkSystemBarsForBottomSheet
 import com.liordahan.mgsrteam.ui.components.PrimaryButtonNewDesign
-import com.liordahan.mgsrteam.ui.theme.HomeDarkBackground
-import com.liordahan.mgsrteam.ui.theme.HomeDarkCard
-import com.liordahan.mgsrteam.ui.theme.HomeDarkCardBorder
-import com.liordahan.mgsrteam.ui.theme.HomeRedAccent
-import com.liordahan.mgsrteam.ui.theme.HomeTealAccent
-import com.liordahan.mgsrteam.ui.theme.HomeTextPrimary
-import com.liordahan.mgsrteam.ui.theme.HomeTextSecondary
+import com.liordahan.mgsrteam.ui.theme.PlatformColors
 import com.liordahan.mgsrteam.ui.components.SkeletonPlayerCardList
 import com.liordahan.mgsrteam.ui.utils.boldTextStyle
 import com.liordahan.mgsrteam.ui.utils.clickWithNoRipple
@@ -212,7 +206,7 @@ fun AddPlayerScreen(
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
-        containerColor = HomeDarkBackground,
+        containerColor = PlatformColors.palette.background,
         snackbarHost = {
             SnackbarHost(
                 hostState = snackBarHostState,
@@ -286,7 +280,7 @@ fun AddPlayerScreen(
                                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                     Text(
                                         stringResource(R.string.women_paste_url),
-                                        style = boldTextStyle(HomeTextSecondary, 12.sp)
+                                        style = boldTextStyle(PlatformColors.palette.textSecondary, 12.sp)
                                     )
                                     AppTextField(
                                         modifier = Modifier.fillMaxWidth(),
@@ -317,7 +311,7 @@ fun AddPlayerScreen(
                             item {
                                 HorizontalDivider(
                                     thickness = 1.dp,
-                                    color = HomeDarkCardBorder,
+                                    color = PlatformColors.palette.cardBorder,
                                     modifier = Modifier.padding(vertical = 4.dp)
                                 )
                             }
@@ -327,7 +321,7 @@ fun AddPlayerScreen(
                                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                     Text(
                                         stringResource(R.string.women_full_name),
-                                        style = boldTextStyle(HomeTextSecondary, 12.sp)
+                                        style = boldTextStyle(PlatformColors.palette.textSecondary, 12.sp)
                                     )
                                     AppTextField(
                                         modifier = Modifier.fillMaxWidth(),
@@ -347,7 +341,7 @@ fun AddPlayerScreen(
                                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                     Text(
                                         stringResource(R.string.women_positions),
-                                        style = boldTextStyle(HomeTextSecondary, 12.sp)
+                                        style = boldTextStyle(PlatformColors.palette.textSecondary, 12.sp)
                                     )
                                     FlowRow(
                                         modifier = Modifier.fillMaxWidth(),
@@ -359,7 +353,7 @@ fun AddPlayerScreen(
                                             Text(
                                                 text = pos,
                                                 style = boldTextStyle(
-                                                    if (isSelected) HomeDarkBackground else HomeTextSecondary,
+                                                    if (isSelected) PlatformColors.palette.background else PlatformColors.palette.textSecondary,
                                                     11.sp
                                                 ),
                                                 modifier = Modifier
@@ -371,7 +365,7 @@ fun AddPlayerScreen(
                                                     .border(
                                                         1.dp,
                                                         if (isSelected) currentPlatform.accent
-                                                        else HomeDarkCardBorder,
+                                                        else PlatformColors.palette.cardBorder,
                                                         RoundedCornerShape(20.dp)
                                                     )
                                                     .clickWithNoRipple {
@@ -399,7 +393,7 @@ fun AddPlayerScreen(
                                     ) {
                                         Text(
                                             stringResource(R.string.women_club),
-                                            style = boldTextStyle(HomeTextSecondary, 12.sp)
+                                            style = boldTextStyle(PlatformColors.palette.textSecondary, 12.sp)
                                         )
                                         AppTextField(
                                             textInput = TextFieldValue(womanForm.currentClub),
@@ -419,7 +413,7 @@ fun AddPlayerScreen(
                                     ) {
                                         Text(
                                             stringResource(R.string.women_age),
-                                            style = boldTextStyle(HomeTextSecondary, 12.sp)
+                                            style = boldTextStyle(PlatformColors.palette.textSecondary, 12.sp)
                                         )
                                         AppTextField(
                                             textInput = TextFieldValue(womanForm.age),
@@ -451,7 +445,7 @@ fun AddPlayerScreen(
                                     ) {
                                         Text(
                                             stringResource(R.string.women_nationality),
-                                            style = boldTextStyle(HomeTextSecondary, 12.sp)
+                                            style = boldTextStyle(PlatformColors.palette.textSecondary, 12.sp)
                                         )
                                         AppTextField(
                                             textInput = TextFieldValue(womanForm.nationality),
@@ -471,7 +465,7 @@ fun AddPlayerScreen(
                                     ) {
                                         Text(
                                             stringResource(R.string.women_market_value),
-                                            style = boldTextStyle(HomeTextSecondary, 12.sp)
+                                            style = boldTextStyle(PlatformColors.palette.textSecondary, 12.sp)
                                         )
                                         AppTextField(
                                             textInput = TextFieldValue(womanForm.marketValue),
@@ -493,7 +487,7 @@ fun AddPlayerScreen(
                                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                     Text(
                                         stringResource(R.string.women_soccerdonna_url),
-                                        style = boldTextStyle(HomeTextSecondary, 12.sp)
+                                        style = boldTextStyle(PlatformColors.palette.textSecondary, 12.sp)
                                     )
                                     AppTextField(
                                         modifier = Modifier.fillMaxWidth(),
@@ -518,7 +512,7 @@ fun AddPlayerScreen(
                                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                     Text(
                                         stringResource(R.string.women_profile_image_url),
-                                        style = boldTextStyle(HomeTextSecondary, 12.sp)
+                                        style = boldTextStyle(PlatformColors.palette.textSecondary, 12.sp)
                                     )
                                     AppTextField(
                                         modifier = Modifier.fillMaxWidth(),
@@ -550,7 +544,7 @@ fun AddPlayerScreen(
                                     ) {
                                         Text(
                                             stringResource(R.string.women_player_phone),
-                                            style = boldTextStyle(HomeTextSecondary, 12.sp)
+                                            style = boldTextStyle(PlatformColors.palette.textSecondary, 12.sp)
                                         )
                                         AppTextField(
                                             textInput = TextFieldValue(womanForm.playerPhone),
@@ -573,7 +567,7 @@ fun AddPlayerScreen(
                                     ) {
                                         Text(
                                             stringResource(R.string.women_agent_phone),
-                                            style = boldTextStyle(HomeTextSecondary, 12.sp)
+                                            style = boldTextStyle(PlatformColors.palette.textSecondary, 12.sp)
                                         )
                                         AppTextField(
                                             textInput = TextFieldValue(womanForm.agentPhone),
@@ -598,7 +592,7 @@ fun AddPlayerScreen(
                                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                     Text(
                                         stringResource(R.string.women_notes),
-                                        style = boldTextStyle(HomeTextSecondary, 12.sp)
+                                        style = boldTextStyle(PlatformColors.palette.textSecondary, 12.sp)
                                     )
                                     AppTextField(
                                         modifier = Modifier.fillMaxWidth(),
@@ -640,7 +634,7 @@ fun AddPlayerScreen(
                                     .padding(horizontal = 12.dp)
                                     .heightIn(max = 320.dp),
                                 shape = RoundedCornerShape(12.dp),
-                                colors = CardDefaults.cardColors(containerColor = HomeDarkCard),
+                                colors = CardDefaults.cardColors(containerColor = PlatformColors.palette.card),
                                 elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
                             ) {
                                 LazyColumn {
@@ -684,7 +678,7 @@ fun AddPlayerScreen(
                             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                 Text(
                                     stringResource(R.string.youth_full_name) + " *",
-                                    style = boldTextStyle(HomeTextSecondary, 12.sp)
+                                    style = boldTextStyle(PlatformColors.palette.textSecondary, 12.sp)
                                 )
                                 AppTextField(
                                     modifier = Modifier.fillMaxWidth(),
@@ -704,7 +698,7 @@ fun AddPlayerScreen(
                             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                 Text(
                                     stringResource(R.string.youth_full_name_he),
-                                    style = boldTextStyle(HomeTextSecondary, 12.sp)
+                                    style = boldTextStyle(PlatformColors.palette.textSecondary, 12.sp)
                                 )
                                 AppTextField(
                                     modifier = Modifier.fillMaxWidth(),
@@ -724,7 +718,7 @@ fun AddPlayerScreen(
                             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Text(
                                     stringResource(R.string.youth_positions),
-                                    style = boldTextStyle(HomeTextSecondary, 12.sp)
+                                    style = boldTextStyle(PlatformColors.palette.textSecondary, 12.sp)
                                 )
                                 FlowRow(
                                     modifier = Modifier.fillMaxWidth(),
@@ -736,7 +730,7 @@ fun AddPlayerScreen(
                                         Text(
                                             text = pos,
                                             style = boldTextStyle(
-                                                if (isSelected) HomeDarkBackground else HomeTextSecondary,
+                                                if (isSelected) PlatformColors.palette.background else PlatformColors.palette.textSecondary,
                                                 11.sp
                                             ),
                                             modifier = Modifier
@@ -748,7 +742,7 @@ fun AddPlayerScreen(
                                                 .border(
                                                     1.dp,
                                                     if (isSelected) currentPlatform.accent
-                                                    else HomeDarkCardBorder,
+                                                    else PlatformColors.palette.cardBorder,
                                                     RoundedCornerShape(20.dp)
                                                 )
                                                 .clickWithNoRipple {
@@ -776,7 +770,7 @@ fun AddPlayerScreen(
                                 ) {
                                     Text(
                                         stringResource(R.string.youth_club),
-                                        style = boldTextStyle(HomeTextSecondary, 12.sp)
+                                        style = boldTextStyle(PlatformColors.palette.textSecondary, 12.sp)
                                     )
                                     AppTextField(
                                         textInput = TextFieldValue(youthForm.currentClub),
@@ -794,7 +788,7 @@ fun AddPlayerScreen(
                                 ) {
                                     Text(
                                         stringResource(R.string.youth_academy),
-                                        style = boldTextStyle(HomeTextSecondary, 12.sp)
+                                        style = boldTextStyle(PlatformColors.palette.textSecondary, 12.sp)
                                     )
                                     AppTextField(
                                         textInput = TextFieldValue(youthForm.academy),
@@ -821,7 +815,7 @@ fun AddPlayerScreen(
                                 ) {
                                     Text(
                                         stringResource(R.string.youth_date_of_birth),
-                                        style = boldTextStyle(HomeTextSecondary, 12.sp)
+                                        style = boldTextStyle(PlatformColors.palette.textSecondary, 12.sp)
                                     )
                                     AppTextField(
                                         textInput = TextFieldValue(youthForm.dateOfBirth),
@@ -848,7 +842,7 @@ fun AddPlayerScreen(
                                 ) {
                                     Text(
                                         stringResource(R.string.youth_age_group),
-                                        style = boldTextStyle(HomeTextSecondary, 12.sp)
+                                        style = boldTextStyle(PlatformColors.palette.textSecondary, 12.sp)
                                     )
                                     Box {
                                         AppTextField(
@@ -866,7 +860,7 @@ fun AddPlayerScreen(
                                         androidx.compose.material3.DropdownMenu(
                                             expanded = showAgeGroupDropdown,
                                             onDismissRequest = { showAgeGroupDropdown = false },
-                                            containerColor = HomeDarkCard
+                                            containerColor = PlatformColors.palette.card
                                         ) {
                                             YouthPlayerFormState.AGE_GROUPS.forEach { group ->
                                                 androidx.compose.material3.DropdownMenuItem(
@@ -874,7 +868,7 @@ fun AddPlayerScreen(
                                                         Text(
                                                             group,
                                                             style = regularTextStyle(
-                                                                HomeTextPrimary, 14.sp
+                                                                PlatformColors.palette.textPrimary, 14.sp
                                                             )
                                                         )
                                                     },
@@ -895,7 +889,7 @@ fun AddPlayerScreen(
                             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                 Text(
                                     stringResource(R.string.youth_nationality),
-                                    style = boldTextStyle(HomeTextSecondary, 12.sp)
+                                    style = boldTextStyle(PlatformColors.palette.textSecondary, 12.sp)
                                 )
                                 AppTextField(
                                     modifier = Modifier.fillMaxWidth(),
@@ -922,7 +916,7 @@ fun AddPlayerScreen(
                                 ) {
                                     Text(
                                         stringResource(R.string.youth_profile_image_url),
-                                        style = boldTextStyle(HomeTextSecondary, 12.sp)
+                                        style = boldTextStyle(PlatformColors.palette.textSecondary, 12.sp)
                                     )
                                     AppTextField(
                                         textInput = TextFieldValue(youthForm.profileImage),
@@ -943,7 +937,7 @@ fun AddPlayerScreen(
                                 ) {
                                     Text(
                                         stringResource(R.string.youth_ifa_url),
-                                        style = boldTextStyle(HomeTextSecondary, 12.sp)
+                                        style = boldTextStyle(PlatformColors.palette.textSecondary, 12.sp)
                                     )
                                     AppTextField(
                                         textInput = TextFieldValue(youthForm.ifaUrl),
@@ -973,7 +967,7 @@ fun AddPlayerScreen(
                                 ) {
                                     Text(
                                         stringResource(R.string.youth_player_phone),
-                                        style = boldTextStyle(HomeTextSecondary, 12.sp)
+                                        style = boldTextStyle(PlatformColors.palette.textSecondary, 12.sp)
                                     )
                                     AppTextField(
                                         textInput = TextFieldValue(youthForm.playerPhone),
@@ -994,7 +988,7 @@ fun AddPlayerScreen(
                                 ) {
                                     Text(
                                         stringResource(R.string.youth_player_email),
-                                        style = boldTextStyle(HomeTextSecondary, 12.sp)
+                                        style = boldTextStyle(PlatformColors.palette.textSecondary, 12.sp)
                                     )
                                     AppTextField(
                                         textInput = TextFieldValue(youthForm.playerEmail),
@@ -1016,7 +1010,7 @@ fun AddPlayerScreen(
                         item {
                             HorizontalDivider(
                                 thickness = 1.dp,
-                                color = HomeDarkCardBorder,
+                                color = PlatformColors.palette.cardBorder,
                                 modifier = Modifier.padding(vertical = 4.dp)
                             )
                             Spacer(modifier = Modifier.height(4.dp))
@@ -1038,7 +1032,7 @@ fun AddPlayerScreen(
                                 ) {
                                     Text(
                                         stringResource(R.string.youth_parent_name),
-                                        style = boldTextStyle(HomeTextSecondary, 12.sp)
+                                        style = boldTextStyle(PlatformColors.palette.textSecondary, 12.sp)
                                     )
                                     AppTextField(
                                         textInput = TextFieldValue(youthForm.parentName),
@@ -1056,7 +1050,7 @@ fun AddPlayerScreen(
                                 ) {
                                     Text(
                                         stringResource(R.string.youth_parent_relationship),
-                                        style = boldTextStyle(HomeTextSecondary, 12.sp)
+                                        style = boldTextStyle(PlatformColors.palette.textSecondary, 12.sp)
                                     )
                                     Box {
                                         AppTextField(
@@ -1074,7 +1068,7 @@ fun AddPlayerScreen(
                                         androidx.compose.material3.DropdownMenu(
                                             expanded = showRelationshipDropdown,
                                             onDismissRequest = { showRelationshipDropdown = false },
-                                            containerColor = HomeDarkCard
+                                            containerColor = PlatformColors.palette.card
                                         ) {
                                             YouthPlayerFormState.PARENT_RELATIONSHIPS.forEach { rel ->
                                                 androidx.compose.material3.DropdownMenuItem(
@@ -1082,7 +1076,7 @@ fun AddPlayerScreen(
                                                         Text(
                                                             rel,
                                                             style = regularTextStyle(
-                                                                HomeTextPrimary, 14.sp
+                                                                PlatformColors.palette.textPrimary, 14.sp
                                                             )
                                                         )
                                                     },
@@ -1110,7 +1104,7 @@ fun AddPlayerScreen(
                                 ) {
                                     Text(
                                         stringResource(R.string.youth_parent_phone),
-                                        style = boldTextStyle(HomeTextSecondary, 12.sp)
+                                        style = boldTextStyle(PlatformColors.palette.textSecondary, 12.sp)
                                     )
                                     AppTextField(
                                         textInput = TextFieldValue(youthForm.parentPhone),
@@ -1131,7 +1125,7 @@ fun AddPlayerScreen(
                                 ) {
                                     Text(
                                         stringResource(R.string.youth_parent_email),
-                                        style = boldTextStyle(HomeTextSecondary, 12.sp)
+                                        style = boldTextStyle(PlatformColors.palette.textSecondary, 12.sp)
                                     )
                                     AppTextField(
                                         textInput = TextFieldValue(youthForm.parentEmail),
@@ -1153,13 +1147,13 @@ fun AddPlayerScreen(
                         item {
                             HorizontalDivider(
                                 thickness = 1.dp,
-                                color = HomeDarkCardBorder,
+                                color = PlatformColors.palette.cardBorder,
                                 modifier = Modifier.padding(vertical = 4.dp)
                             )
                             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                 Text(
                                     stringResource(R.string.youth_notes),
-                                    style = boldTextStyle(HomeTextSecondary, 12.sp)
+                                    style = boldTextStyle(PlatformColors.palette.textSecondary, 12.sp)
                                 )
                                 AppTextField(
                                     modifier = Modifier.fillMaxWidth(),
@@ -1227,11 +1221,11 @@ fun AddPlayerScreen(
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .background(HomeDarkBackground.copy(alpha = 0.7f)),
+                            .background(PlatformColors.palette.background.copy(alpha = 0.7f)),
                         contentAlignment = Alignment.Center
                     ) {
                         CircularProgressIndicator(
-                            color = HomeTealAccent,
+                            color = PlatformColors.palette.accent,
                             strokeWidth = 3.dp,
                             modifier = Modifier.size(44.dp)
                         )
@@ -1271,14 +1265,14 @@ fun SearchListItem(
             .fillMaxWidth()
             .clickWithNoRipple { onCardClicked(playerSearchModel) },
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = HomeDarkCard)
+        colors = CardDefaults.cardColors(containerColor = PlatformColors.palette.card)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .drawBehind {
                     drawRect(
-                        color = HomeTealAccent,
+                        color = PlatformColors.palette.accent,
                         topLeft = Offset.Zero,
                         size = androidx.compose.ui.geometry.Size(
                             width = 3.dp.toPx(),
@@ -1299,14 +1293,14 @@ fun SearchListItem(
                     modifier = Modifier
                         .size(52.dp)
                         .clip(CircleShape)
-                        .border(2.dp, HomeDarkCardBorder, CircleShape),
+                        .border(2.dp, PlatformColors.palette.cardBorder, CircleShape),
                     contentScale = ContentScale.Crop
                 )
                 Spacer(modifier = Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         playerSearchModel.playerName ?: "Unknown",
-                        style = boldTextStyle(HomeTextPrimary, 14.sp)
+                        style = boldTextStyle(PlatformColors.palette.textPrimary, 14.sp)
                     )
                     val clubName = playerSearchModel.currentClub?.takeIf { it.isNotBlank() }
                     val metaParts = buildList {
@@ -1317,7 +1311,7 @@ fun SearchListItem(
                     }
                     Text(
                         text = metaParts.joinToString(" • "),
-                        style = regularTextStyle(HomeTextSecondary, 12.sp),
+                        style = regularTextStyle(PlatformColors.palette.textSecondary, 12.sp),
                         modifier = Modifier.padding(top = 2.dp)
                     )
                 }
@@ -1342,7 +1336,7 @@ fun WomenSearchListItem(
             .fillMaxWidth()
             .clickWithNoRipple { onCardClicked(result) },
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = HomeDarkCard)
+        colors = CardDefaults.cardColors(containerColor = PlatformColors.palette.card)
     ) {
         Column(
             modifier = Modifier
@@ -1370,7 +1364,7 @@ fun WomenSearchListItem(
                         .size(52.dp)
                         .clip(CircleShape)
                         .background(accentColor.copy(alpha = 0.15f))
-                        .border(2.dp, HomeDarkCardBorder, CircleShape),
+                        .border(2.dp, PlatformColors.palette.cardBorder, CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
@@ -1382,7 +1376,7 @@ fun WomenSearchListItem(
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         result.fullName,
-                        style = boldTextStyle(HomeTextPrimary, 14.sp)
+                        style = boldTextStyle(PlatformColors.palette.textPrimary, 14.sp)
                     )
                     val meta = buildList {
                         result.currentClub?.let { add(it) }
@@ -1390,14 +1384,14 @@ fun WomenSearchListItem(
                     }
                     Text(
                         text = meta.joinToString(" • "),
-                        style = regularTextStyle(HomeTextSecondary, 12.sp),
+                        style = regularTextStyle(PlatformColors.palette.textSecondary, 12.sp),
                         modifier = Modifier.padding(top = 2.dp)
                     )
                 }
                 Icon(
                     imageVector = Icons.Default.ChevronRight,
                     contentDescription = null,
-                    tint = HomeTextSecondary,
+                    tint = PlatformColors.palette.textSecondary,
                     modifier = Modifier.size(20.dp)
                 )
             }
@@ -1467,7 +1461,7 @@ fun AddPlayerContactFormContent(
     ) {
         Text(
             text = stringResource(R.string.add_player_contact_title),
-            style = boldTextStyle(HomeTextPrimary, 20.sp)
+            style = boldTextStyle(PlatformColors.palette.textPrimary, 20.sp)
         )
         val subtitle = buildString {
             selectedPlayer?.fullName?.let { append(it) }
@@ -1477,13 +1471,13 @@ fun AddPlayerContactFormContent(
         if (subtitle.isNotEmpty()) {
             Text(
                 text = subtitle,
-                style = regularTextStyle(HomeTextSecondary, 13.sp),
+                style = regularTextStyle(PlatformColors.palette.textSecondary, 13.sp),
                 modifier = Modifier.padding(top = 4.dp)
             )
         }
         HorizontalDivider(
             thickness = 1.dp,
-            color = HomeDarkCardBorder,
+            color = PlatformColors.palette.cardBorder,
             modifier = Modifier.padding(vertical = 16.dp)
         )
 
@@ -1520,7 +1514,7 @@ fun AddPlayerContactFormContent(
             isEnabled = true,
             showProgress = false,
             onButtonClicked = { viewModel.onSavePlayerClicked() },
-            containerColor = HomeTealAccent
+            containerColor = PlatformColors.palette.accent
         )
     }
 }
@@ -1547,7 +1541,7 @@ fun AddToShortlistBottomSheetContent(
         modifier = modifier,
         onDismissRequest = onDismissRequest,
         sheetState = sheetState,
-        containerColor = HomeDarkCard,
+        containerColor = PlatformColors.palette.card,
         shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
         tonalElevation = 8.dp,
         properties = ModalBottomSheetProperties(
@@ -1565,7 +1559,7 @@ fun AddToShortlistBottomSheetContent(
         ) {
             Text(
                 text = stringResource(R.string.add_player_to_shortlist),
-                style = boldTextStyle(HomeTextPrimary, 20.sp)
+                style = boldTextStyle(PlatformColors.palette.textPrimary, 20.sp)
             )
             selectedPlayer?.let { player ->
                 val subtitle = buildString {
@@ -1576,7 +1570,7 @@ fun AddToShortlistBottomSheetContent(
                 if (subtitle.isNotEmpty()) {
                     Text(
                         text = subtitle,
-                        style = regularTextStyle(HomeTextSecondary, 13.sp),
+                        style = regularTextStyle(PlatformColors.palette.textSecondary, 13.sp),
                         modifier = Modifier.padding(top = 4.dp)
                     )
                 }
@@ -1584,14 +1578,14 @@ fun AddToShortlistBottomSheetContent(
             errorMessage?.let { msg ->
                 Text(
                     text = msg,
-                    style = regularTextStyle(HomeRedAccent, 13.sp),
+                    style = regularTextStyle(PlatformColors.palette.red, 13.sp),
                     modifier = Modifier.padding(bottom = 8.dp),
                     textAlign = TextAlign.Center
                 )
             }
             HorizontalDivider(
                 thickness = 1.dp,
-                color = HomeDarkCardBorder,
+                color = PlatformColors.palette.cardBorder,
                 modifier = Modifier.padding(vertical = 16.dp)
             )
             PrimaryButtonNewDesign(
@@ -1627,7 +1621,7 @@ fun AddToShortlistBottomSheetContent(
                         }
                     }
                 },
-                containerColor = HomeTealAccent
+                containerColor = PlatformColors.palette.accent
             )
         }
     }
@@ -1650,7 +1644,7 @@ fun SavePlayerBottomSheetContent(
         modifier = modifier,
         onDismissRequest = { onDismissRequest() },
         sheetState = sheetState,
-        containerColor = HomeDarkCard,
+        containerColor = PlatformColors.palette.card,
         shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
         tonalElevation = 8.dp,
         properties = ModalBottomSheetProperties(
@@ -1675,8 +1669,8 @@ fun ContactPickerRow(
         shape = RoundedCornerShape(12.dp),
         modifier = Modifier
             .fillMaxWidth()
-            .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(12.dp)),
-        colors = CardDefaults.cardColors(containerColor = HomeDarkBackground)
+            .border(1.dp, PlatformColors.palette.cardBorder, RoundedCornerShape(12.dp)),
+        colors = CardDefaults.cardColors(containerColor = PlatformColors.palette.background)
     ) {
         Row(
             modifier = Modifier
@@ -1687,19 +1681,19 @@ fun ContactPickerRow(
             Icon(
                 imageVector = Icons.Default.AddIcCall,
                 contentDescription = null,
-                tint = HomeTealAccent,
+                tint = PlatformColors.palette.accent,
                 modifier = Modifier.size(20.dp)
             )
             Spacer(modifier = Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Text(
                     text = label,
-                    style = boldTextStyle(HomeTextPrimary, 14.sp)
+                    style = boldTextStyle(PlatformColors.palette.textPrimary, 14.sp)
                 )
                 Text(
                     text = value.takeIf { !it.isNullOrEmpty() } ?: stringResource(R.string.add_player_tap_to_select),
                     style = regularTextStyle(
-                        if (value.isNullOrEmpty()) HomeTextSecondary else HomeTextPrimary,
+                        if (value.isNullOrEmpty()) PlatformColors.palette.textSecondary else PlatformColors.palette.textPrimary,
                         14.sp,
                         direction = if (value.isNullOrEmpty()) TextDirection.Content else TextDirection.Ltr
                     )
@@ -1708,7 +1702,7 @@ fun ContactPickerRow(
             Icon(
                 imageVector = Icons.Default.ChevronRight,
                 contentDescription = null,
-                tint = HomeTextSecondary,
+                tint = PlatformColors.palette.textSecondary,
                 modifier = Modifier.size(20.dp)
             )
         }
@@ -1786,7 +1780,7 @@ fun AddPlayerHeader(
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                 contentDescription = null,
-                tint = HomeTextSecondary,
+                tint = PlatformColors.palette.textSecondary,
                 modifier = Modifier
                     .size(24.dp)
                     .clickWithNoRipple { onBackClicked() }
@@ -1795,7 +1789,7 @@ fun AddPlayerHeader(
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = if (platform == Platform.WOMEN) stringResource(R.string.women_add_player_title) else stringResource(R.string.add_player_title),
-                    style = boldTextStyle(HomeTextPrimary, 26.sp)
+                    style = boldTextStyle(PlatformColors.palette.textPrimary, 26.sp)
                 )
                 Text(
                     text = when {
@@ -1804,7 +1798,7 @@ fun AddPlayerHeader(
                         platform == Platform.YOUTH -> stringResource(R.string.youth_search_subtitle)
                         else -> stringResource(R.string.add_player_search_roster)
                     },
-                    style = regularTextStyle(HomeTextSecondary, 12.sp),
+                    style = regularTextStyle(PlatformColors.palette.textSecondary, 12.sp),
                     modifier = Modifier.padding(top = 4.dp)
                 )
             }
@@ -1840,17 +1834,17 @@ private fun AddPlayerEmptyState(modifier: Modifier = Modifier) {
             imageVector = Icons.Default.Search,
             contentDescription = null,
             modifier = Modifier.size(48.dp),
-            tint = HomeTextSecondary.copy(alpha = 0.4f)
+            tint = PlatformColors.palette.textSecondary.copy(alpha = 0.4f)
         )
         Spacer(modifier = Modifier.height(16.dp))
         Text(
             text = stringResource(R.string.add_player_search_hint_title),
-            style = boldTextStyle(HomeTextPrimary, 16.sp)
+            style = boldTextStyle(PlatformColors.palette.textPrimary, 16.sp)
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
             text = stringResource(R.string.add_player_search_desc),
-            style = regularTextStyle(HomeTextSecondary, 13.sp)
+            style = regularTextStyle(PlatformColors.palette.textSecondary, 13.sp)
         )
     }
 }
@@ -1861,12 +1855,12 @@ fun SnakeBarMessage(
 ) {
     Snackbar(
         modifier = Modifier.padding(16.dp),
-        containerColor = HomeDarkCard,
-        contentColor = HomeTextPrimary
+        containerColor = PlatformColors.palette.card,
+        contentColor = PlatformColors.palette.textPrimary
     ) {
         Text(
             text = message,
-            style = regularTextStyle(HomeTextPrimary, 14.sp),
+            style = regularTextStyle(PlatformColors.palette.textPrimary, 14.sp),
             textAlign = TextAlign.Start
         )
     }

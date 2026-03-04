@@ -313,7 +313,35 @@
     <string name="my_hub_upcoming_tasks">משימות קרובות</string>
     <string name="my_hub_view_all_tasks">הצג הכל</string>
     <string name="my_hub_view_my_players">השחקנים שלי</string>
-    <string name="women_my_hub_view_my_players">השחקניות שלי</string>
+    <string name="women_my_hub_view_my_players">הספורטאיות שלי</string>
+
+    <!-- ATHENA Women Dashboard — שפה מעצימה -->
+    <string name="women_dashboard_greeting_tagline">מובילות את המשחק</string>
+    <string name="women_stat_athletes">ספורטאיות</string>
+    <string name="women_stat_represented">מיוצגות</string>
+    <string name="women_stat_available">זמינות</string>
+    <string name="women_stat_inquiries">פניות</string>
+    <string name="women_quick_athletes">הספורטאיות שלנו</string>
+    <string name="women_quick_watchlist">רשימת מעקב</string>
+    <string name="women_quick_connections">קשרים</string>
+    <string name="women_quick_inquiries">פניות מועדונים</string>
+    <string name="women_quick_goals">יעדים ומשימות</string>
+    <string name="women_hub_title">מרכז הפיקוד שלי</string>
+    <string name="women_hub_athletes">ספורטאיות</string>
+    <string name="women_hub_represented">מיוצגות</string>
+    <string name="women_hub_available">זמינות</string>
+    <string name="women_hub_expiring">מסיימות חוזה</string>
+    <string name="women_hub_tasks_completed">הושלמו</string>
+    <string name="women_hub_upcoming_goals">יעדים קרובים</string>
+    <string name="women_hub_view_all">הצג הכל</string>
+    <string name="women_feed_title">פיד פעילות</string>
+    <string name="women_feed_empty">אין פעילות אחרונה — זמן לעשות מהלכים! 💪</string>
+    <string name="women_empty_state_title">הרשימה שלך מחכה</string>
+    <string name="women_empty_state_subtitle">הוסיפי את הספורטאית הראשונה שלך והתחילי לבנות את האימפריה</string>
+    <string name="women_inspire_quote_1">שוברות מחסומים, בונות מורשת</string>
+    <string name="women_inspire_quote_2">כל אלופה הייתה פעם מתחרה שסירבה לוותר</string>
+    <string name="women_inspire_quote_3">העתיד של הכדורגל כאן</string>
+
     <string name="widget_agent_dashboard_description">הלוח שלך במבט אחד: שחקנים, משימות, התראות</string>
     <string name="widget_tap_to_open">לחץ לפתיחה</string>
     <string name="widget_updated_just_now">עכשיו</string>

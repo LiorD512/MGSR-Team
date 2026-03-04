@@ -66,17 +66,7 @@ import com.liordahan.mgsrteam.R
 import com.liordahan.mgsrteam.features.home.IHomeScreenViewModel
 import com.liordahan.mgsrteam.features.home.models.AgentTask
 import com.liordahan.mgsrteam.features.login.models.Account
-import com.liordahan.mgsrteam.ui.theme.HomeDarkBackground
-import com.liordahan.mgsrteam.ui.theme.HomeDarkCard
-import com.liordahan.mgsrteam.ui.theme.HomeDarkCardBorder
-import com.liordahan.mgsrteam.ui.theme.HomeGreenAccent
-import com.liordahan.mgsrteam.ui.theme.HomeOrangeAccent
-import com.liordahan.mgsrteam.ui.theme.HomeRedAccent
-import com.liordahan.mgsrteam.ui.theme.HomeTealAccent
-import com.liordahan.mgsrteam.ui.theme.HomeTextPrimary
-import com.liordahan.mgsrteam.ui.theme.HomeTextSecondary
-import com.liordahan.mgsrteam.ui.theme.HomeBlueAccent
-import com.liordahan.mgsrteam.ui.theme.HomePurpleAccent
+import com.liordahan.mgsrteam.ui.theme.PlatformColors
 import com.liordahan.mgsrteam.utils.datePickerMillisToLocalMidnight
 import com.liordahan.mgsrteam.utils.localMidnightToDatePickerMillis
 import com.liordahan.mgsrteam.ui.utils.boldTextStyle
@@ -87,8 +77,8 @@ import java.util.Date
 import java.util.Locale
 
 private val agentAccentColors = listOf(
-    HomeTealAccent, HomeBlueAccent, HomeOrangeAccent,
-    HomePurpleAccent, HomeGreenAccent, HomeRedAccent
+    PlatformColors.palette.accent, PlatformColors.palette.blue, PlatformColors.palette.orange,
+    PlatformColors.palette.purple, PlatformColors.palette.green, PlatformColors.palette.red
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -108,12 +98,12 @@ fun TaskDetailScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(HomeDarkBackground),
+                .background(PlatformColors.palette.background),
             contentAlignment = Alignment.Center
         ) {
             Text(
                 text = stringResource(R.string.tasks_empty),
-                style = regularTextStyle(HomeTextSecondary, 14.sp)
+                style = regularTextStyle(PlatformColors.palette.textSecondary, 14.sp)
             )
         }
         return
@@ -135,13 +125,13 @@ fun TaskDetailScreen(
             editedAgentId != task.agentId
 
     Scaffold(
-        containerColor = HomeDarkBackground,
+        containerColor = PlatformColors.palette.background,
         topBar = {
             TopAppBar(
                 title = {
                     Text(
                         text = stringResource(R.string.tasks_detail_title),
-                        style = boldTextStyle(HomeTextPrimary, 18.sp)
+                        style = boldTextStyle(PlatformColors.palette.textPrimary, 18.sp)
                     )
                 },
                 navigationIcon = {
@@ -149,7 +139,7 @@ fun TaskDetailScreen(
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = null,
-                            tint = HomeTextPrimary
+                            tint = PlatformColors.palette.textPrimary
                         )
                     }
                 },
@@ -174,12 +164,12 @@ fun TaskDetailScreen(
                         }) {
                             Text(
                                 stringResource(R.string.tasks_save),
-                                style = boldTextStyle(HomeTealAccent, 14.sp)
+                                style = boldTextStyle(PlatformColors.palette.accent, 14.sp)
                             )
                         }
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = HomeDarkBackground)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = PlatformColors.palette.background)
             )
         }
     ) { padding ->
@@ -196,20 +186,20 @@ fun TaskDetailScreen(
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = HomeDarkCard)
+                colors = CardDefaults.cardColors(containerColor = PlatformColors.palette.card)
             ) {
                 OutlinedTextField(
                     value = editedTitle,
                     onValueChange = { editedTitle = it },
-                    textStyle = boldTextStyle(HomeTextPrimary, 18.sp),
+                    textStyle = boldTextStyle(PlatformColors.palette.textPrimary, 18.sp),
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = Color.Transparent,
                         unfocusedBorderColor = Color.Transparent,
-                        cursorColor = HomeTealAccent,
-                        focusedContainerColor = HomeDarkCard,
-                        unfocusedContainerColor = HomeDarkCard
+                        cursorColor = PlatformColors.palette.accent,
+                        focusedContainerColor = PlatformColors.palette.card,
+                        unfocusedContainerColor = PlatformColors.palette.card
                     ),
                     singleLine = false,
                     maxLines = 3
@@ -222,7 +212,7 @@ fun TaskDetailScreen(
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = HomeDarkCard)
+                colors = CardDefaults.cardColors(containerColor = PlatformColors.palette.card)
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     // Agent
@@ -245,7 +235,7 @@ fun TaskDetailScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(1.dp)
-                                .background(HomeDarkCardBorder)
+                                .background(PlatformColors.palette.cardBorder)
                         )
                         Spacer(Modifier.height(12.dp))
                         Row(
@@ -263,25 +253,25 @@ fun TaskDetailScreen(
                             Icon(
                                 Icons.Default.Person,
                                 contentDescription = null,
-                                tint = HomeTealAccent,
+                                tint = PlatformColors.palette.accent,
                                 modifier = Modifier.size(20.dp)
                             )
                             Spacer(Modifier.width(12.dp))
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
                                     text = stringResource(R.string.tasks_linked_player),
-                                    style = regularTextStyle(HomeTextSecondary, 11.sp)
+                                    style = regularTextStyle(PlatformColors.palette.textSecondary, 11.sp)
                                 )
                                 Spacer(Modifier.height(2.dp))
                                 Text(
                                     text = task.playerName,
-                                    style = regularTextStyle(HomeTealAccent, 14.sp)
+                                    style = regularTextStyle(PlatformColors.palette.accent, 14.sp)
                                 )
                             }
                             Icon(
                                 Icons.AutoMirrored.Filled.OpenInNew,
                                 contentDescription = null,
-                                tint = HomeTealAccent,
+                                tint = PlatformColors.palette.accent,
                                 modifier = Modifier.size(18.dp)
                             )
                         }
@@ -305,7 +295,7 @@ fun TaskDetailScreen(
                                         .clip(CircleShape)
                                         .background(
                                             if (selected) accentColor.copy(alpha = 0.3f)
-                                            else HomeDarkBackground
+                                            else PlatformColors.palette.background
                                         )
                                         .clickable {
                                             editedAgentId = account.id ?: ""
@@ -316,7 +306,7 @@ fun TaskDetailScreen(
                                     Text(
                                         text = name.take(1).uppercase(),
                                         style = boldTextStyle(
-                                            if (selected) accentColor else HomeTextSecondary,
+                                            if (selected) accentColor else PlatformColors.palette.textSecondary,
                                             14.sp
                                         )
                                     )
@@ -330,7 +320,7 @@ fun TaskDetailScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(1.dp)
-                            .background(HomeDarkCardBorder)
+                            .background(PlatformColors.palette.cardBorder)
                     )
                     Spacer(Modifier.height(12.dp))
 
@@ -341,7 +331,7 @@ fun TaskDetailScreen(
                         value = if (editedDueDate > 0L)
                             SimpleDateFormat("MMM d, yyyy", Locale.getDefault()).format(Date(editedDueDate))
                         else stringResource(R.string.tasks_section_no_date),
-                        valueColor = if (editedDueDate > 0L) HomeTextPrimary else HomeTextSecondary,
+                        valueColor = if (editedDueDate > 0L) PlatformColors.palette.textPrimary else PlatformColors.palette.textSecondary,
                         onClick = { showDatePicker = true }
                     )
 
@@ -350,7 +340,7 @@ fun TaskDetailScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(1.dp)
-                            .background(HomeDarkCardBorder)
+                            .background(PlatformColors.palette.cardBorder)
                     )
                     Spacer(Modifier.height(12.dp))
 
@@ -359,30 +349,30 @@ fun TaskDetailScreen(
                         Icon(
                             Icons.Default.Flag,
                             contentDescription = null,
-                            tint = HomeTextSecondary,
+                            tint = PlatformColors.palette.textSecondary,
                             modifier = Modifier.size(20.dp)
                         )
                         Spacer(Modifier.width(12.dp))
                         Text(
                             text = stringResource(R.string.tasks_priority),
-                            style = regularTextStyle(HomeTextSecondary, 13.sp)
+                            style = regularTextStyle(PlatformColors.palette.textSecondary, 13.sp)
                         )
                     }
                     Spacer(Modifier.height(10.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         val priorities = listOf(
-                            Triple(0, R.string.tasks_priority_low, HomeGreenAccent),
-                            Triple(1, R.string.tasks_priority_medium, HomeOrangeAccent),
-                            Triple(2, R.string.tasks_priority_high, HomeRedAccent)
+                            Triple(0, R.string.tasks_priority_low, PlatformColors.palette.green),
+                            Triple(1, R.string.tasks_priority_medium, PlatformColors.palette.orange),
+                            Triple(2, R.string.tasks_priority_high, PlatformColors.palette.red)
                         )
                         priorities.forEach { (value, labelRes, color) ->
                             val selected = editedPriority == value
                             val bgColor by animateColorAsState(
-                                if (selected) color.copy(alpha = 0.2f) else HomeDarkBackground,
+                                if (selected) color.copy(alpha = 0.2f) else PlatformColors.palette.background,
                                 label = "detail_priority_bg"
                             )
                             val textColor by animateColorAsState(
-                                if (selected) color else HomeTextSecondary,
+                                if (selected) color else PlatformColors.palette.textSecondary,
                                 label = "detail_priority_text"
                             )
                             Box(
@@ -408,7 +398,7 @@ fun TaskDetailScreen(
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = HomeDarkCard)
+                colors = CardDefaults.cardColors(containerColor = PlatformColors.palette.card)
             ) {
                 OutlinedTextField(
                     value = editedNotes,
@@ -416,10 +406,10 @@ fun TaskDetailScreen(
                     placeholder = {
                         Text(
                             stringResource(R.string.tasks_notes_hint),
-                            style = regularTextStyle(HomeTextSecondary, 14.sp)
+                            style = regularTextStyle(PlatformColors.palette.textSecondary, 14.sp)
                         )
                     },
-                    textStyle = regularTextStyle(HomeTextPrimary, 14.sp),
+                    textStyle = regularTextStyle(PlatformColors.palette.textPrimary, 14.sp),
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(120.dp),
@@ -427,9 +417,9 @@ fun TaskDetailScreen(
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = Color.Transparent,
                         unfocusedBorderColor = Color.Transparent,
-                        cursorColor = HomeTealAccent,
-                        focusedContainerColor = HomeDarkCard,
-                        unfocusedContainerColor = HomeDarkCard
+                        cursorColor = PlatformColors.palette.accent,
+                        focusedContainerColor = PlatformColors.palette.card,
+                        unfocusedContainerColor = PlatformColors.palette.card
                     ),
                     maxLines = 6
                 )
@@ -443,7 +433,7 @@ fun TaskDetailScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(14.dp))
-                    .background(HomeTealAccent)
+                    .background(PlatformColors.palette.accent)
                     .clickable {
                         viewModel.toggleTaskCompleted(task)
                         navController.popBackStack()
@@ -466,14 +456,14 @@ fun TaskDetailScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(14.dp))
-                    .border(1.dp, HomeRedAccent.copy(alpha = 0.5f), RoundedCornerShape(14.dp))
+                    .border(1.dp, PlatformColors.palette.red.copy(alpha = 0.5f), RoundedCornerShape(14.dp))
                     .clickable { showDeleteDialog = true }
                     .padding(vertical = 14.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = stringResource(R.string.delete_task),
-                    style = boldTextStyle(HomeRedAccent, 15.sp)
+                    style = boldTextStyle(PlatformColors.palette.red, 15.sp)
                 )
             }
 
@@ -493,12 +483,12 @@ fun TaskDetailScreen(
                     datePickerState.selectedDateMillis?.let { editedDueDate = datePickerMillisToLocalMidnight(it) }
                     showDatePicker = false
                 }) {
-                    Text(stringResource(R.string.ok), style = boldTextStyle(HomeTealAccent, 14.sp))
+                    Text(stringResource(R.string.ok), style = boldTextStyle(PlatformColors.palette.accent, 14.sp))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showDatePicker = false }) {
-                    Text(stringResource(R.string.cancel), style = boldTextStyle(HomeTextSecondary, 14.sp))
+                    Text(stringResource(R.string.cancel), style = boldTextStyle(PlatformColors.palette.textSecondary, 14.sp))
                 }
             }
         ) {
@@ -513,13 +503,13 @@ fun TaskDetailScreen(
             title = {
                 Text(
                     stringResource(R.string.tasks_delete_confirm_title),
-                    style = boldTextStyle(HomeTextPrimary, 18.sp)
+                    style = boldTextStyle(PlatformColors.palette.textPrimary, 18.sp)
                 )
             },
             text = {
                 Text(
                     stringResource(R.string.tasks_delete_confirm_message),
-                    style = regularTextStyle(HomeTextSecondary, 14.sp)
+                    style = regularTextStyle(PlatformColors.palette.textSecondary, 14.sp)
                 )
             },
             confirmButton = {
@@ -530,7 +520,7 @@ fun TaskDetailScreen(
                 }) {
                     Text(
                         stringResource(R.string.delete_task),
-                        style = boldTextStyle(HomeRedAccent, 14.sp)
+                        style = boldTextStyle(PlatformColors.palette.red, 14.sp)
                     )
                 }
             },
@@ -538,11 +528,11 @@ fun TaskDetailScreen(
                 TextButton(onClick = { showDeleteDialog = false }) {
                     Text(
                         stringResource(R.string.cancel),
-                        style = boldTextStyle(HomeTextSecondary, 14.sp)
+                        style = boldTextStyle(PlatformColors.palette.textSecondary, 14.sp)
                     )
                 }
             },
-            containerColor = HomeDarkCard,
+            containerColor = PlatformColors.palette.card,
             shape = RoundedCornerShape(20.dp)
         )
     }
@@ -553,7 +543,7 @@ private fun DetailInfoRow(
     icon: ImageVector,
     label: String,
     value: String,
-    valueColor: Color = HomeTextPrimary,
+    valueColor: Color = PlatformColors.palette.textPrimary,
     onClick: (() -> Unit)? = null
 ) {
     Row(
@@ -566,14 +556,14 @@ private fun DetailInfoRow(
         Icon(
             icon,
             contentDescription = null,
-            tint = HomeTextSecondary,
+            tint = PlatformColors.palette.textSecondary,
             modifier = Modifier.size(20.dp)
         )
         Spacer(Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = label,
-                style = regularTextStyle(HomeTextSecondary, 11.sp)
+                style = regularTextStyle(PlatformColors.palette.textSecondary, 11.sp)
             )
             Spacer(Modifier.height(2.dp))
             Text(

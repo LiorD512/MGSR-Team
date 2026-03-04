@@ -138,6 +138,7 @@ import com.liordahan.mgsrteam.ui.theme.HomeRedAccent
 import com.liordahan.mgsrteam.ui.theme.HomeTealAccent
 import com.liordahan.mgsrteam.ui.theme.HomeTextPrimary
 import com.liordahan.mgsrteam.ui.theme.HomeTextSecondary
+import com.liordahan.mgsrteam.ui.theme.WomenColors
 import com.liordahan.mgsrteam.ui.components.SkeletonDashboardLayout
 import com.liordahan.mgsrteam.ui.components.ToastManager
 import com.liordahan.mgsrteam.utils.datePickerMillisToLocalMidnight
@@ -176,11 +177,14 @@ fun DashboardScreen(
         viewModel.refreshTransferWindows()
     }
 
+    val isWomenPlatform = currentPlatform == Platform.WOMEN
+    val dashboardBg = if (isWomenPlatform) WomenColors.Background else HomeDarkBackground
+
     if (state.isLoading) {
         SkeletonDashboardLayout(
             modifier = Modifier
                 .fillMaxSize()
-                .background(HomeDarkBackground)
+                .background(dashboardBg)
         )
         return
     }
@@ -188,7 +192,7 @@ fun DashboardScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(HomeDarkBackground)
+            .background(dashboardBg)
     ) {
         // ── Sticky top section (does NOT scroll) ─────────────────────────
         GreetingHeader(
@@ -196,6 +200,12 @@ fun DashboardScreen(
             isHebrew = isHebrew,
             onLanguageClick = { showLanguageDialog = true }
         )
+
+        // ── Women tagline (empowering subtitle) ─────────────────────────
+        if (isWomenPlatform) {
+            WomenGreetingTagline()
+            Spacer(Modifier.height(4.dp))
+        }
 
         // ── Platform switcher (Men / Women / Youth) ─────────────────────
         Box(
@@ -213,8 +223,14 @@ fun DashboardScreen(
             )
         }
 
-        StatsRow(state, currentPlatform)
-        QuickActionsRow(navController = navController, platform = currentPlatform)
+        // ── Stats & Quick Actions (women vs default) ─────────────────────
+        if (isWomenPlatform) {
+            WomenStatsRow(state)
+            WomenQuickActionsRow(navController = navController)
+        } else {
+            StatsRow(state, currentPlatform)
+            QuickActionsRow(navController = navController, platform = currentPlatform)
+        }
 
         // ── Pre-compute filtered data (cached across recompositions) ─────
         val filteredEvents = remember(state.feedEvents, state.selectedFeedFilter) {
@@ -247,32 +263,59 @@ fun DashboardScreen(
             // ── My Agent Hub (personal dashboard) ─────────────────────
             item {
                 val overview = state.myAgentOverview
-                when {
-                    overview != null && overview.totalPlayers > 0 -> {
-                        MyAgentHubSection(
-                            overview = overview,
-                            navController = navController,
-                            onTaskToggle = { viewModel.toggleTaskCompleted(it) }
-                        )
+                if (isWomenPlatform) {
+                    when {
+                        overview != null && overview.totalPlayers > 0 -> {
+                            WomenAgentHubSection(
+                                overview = overview,
+                                navController = navController,
+                                onTaskToggle = { viewModel.toggleTaskCompleted(it) }
+                            )
+                        }
+                        overview != null -> WomenAgentEmptyState()
+                        else -> MyBoardLoadingPlaceholder()
                     }
-                    overview != null -> MyAgentEmptyState()
-                    else -> MyBoardLoadingPlaceholder()
+                } else {
+                    when {
+                        overview != null && overview.totalPlayers > 0 -> {
+                            MyAgentHubSection(
+                                overview = overview,
+                                navController = navController,
+                                onTaskToggle = { viewModel.toggleTaskCompleted(it) }
+                            )
+                        }
+                        overview != null -> MyAgentEmptyState()
+                        else -> MyBoardLoadingPlaceholder()
+                    }
                 }
             }
 
             // ── Activity Feed ────────────────────────────────────────────
             item {
-                FeedSectionHeader(
-                    selectedFilter = state.selectedFeedFilter,
-                    onFilterSelected = { viewModel.selectFeedFilter(it) }
-                )
+                if (isWomenPlatform) {
+                    WomenFeedSectionHeader(
+                        selectedFilter = state.selectedFeedFilter,
+                        onFilterSelected = { viewModel.selectFeedFilter(it) }
+                    )
+                } else {
+                    FeedSectionHeader(
+                        selectedFilter = state.selectedFeedFilter,
+                        onFilterSelected = { viewModel.selectFeedFilter(it) }
+                    )
+                }
             }
 
             if (filteredEvents.isEmpty()) {
                 item {
                     Text(
-                        text = stringResource(R.string.feed_empty),
-                        style = regularTextStyle(HomeTextSecondary, 13.sp, textAlign = TextAlign.Center),
+                        text = stringResource(
+                            if (isWomenPlatform) R.string.women_feed_empty else R.string.feed_empty
+                        ),
+                        style = regularTextStyle(
+                            if (isWomenPlatform) WomenColors.TextSecondary else HomeTextSecondary,
+                            13.sp,
+                            textAlign = TextAlign.Center
+                        ),
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(vertical = 32.dp, horizontal = 16.dp)

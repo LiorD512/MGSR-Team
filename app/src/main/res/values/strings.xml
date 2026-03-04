@@ -390,7 +390,35 @@
     <string name="my_hub_upcoming_tasks">Upcoming Tasks</string>
     <string name="my_hub_view_all_tasks">View All</string>
     <string name="my_hub_view_my_players">My Players</string>
-    <string name="women_my_hub_view_my_players">My Players</string>
+    <string name="women_my_hub_view_my_players">My Athletes</string>
+
+    <!-- ATHENA Women Dashboard — Empowering Language -->
+    <string name="women_dashboard_greeting_tagline">Empowering the game</string>
+    <string name="women_stat_athletes">Athletes</string>
+    <string name="women_stat_represented">Represented</string>
+    <string name="women_stat_available">Available</string>
+    <string name="women_stat_inquiries">Inquiries</string>
+    <string name="women_quick_athletes">Our Athletes</string>
+    <string name="women_quick_watchlist">Watchlist</string>
+    <string name="women_quick_connections">Connections</string>
+    <string name="women_quick_inquiries">Club Inquiries</string>
+    <string name="women_quick_goals">Goals &amp; Tasks</string>
+    <string name="women_hub_title">My Command Center</string>
+    <string name="women_hub_athletes">Athletes</string>
+    <string name="women_hub_represented">Represented</string>
+    <string name="women_hub_available">Available</string>
+    <string name="women_hub_expiring">Expiring</string>
+    <string name="women_hub_tasks_completed">Completed</string>
+    <string name="women_hub_upcoming_goals">Upcoming Goals</string>
+    <string name="women_hub_view_all">View All</string>
+    <string name="women_feed_title">Activity Feed</string>
+    <string name="women_feed_empty">No recent activity — time to make moves! 💪</string>
+    <string name="women_empty_state_title">Your roster awaits</string>
+    <string name="women_empty_state_subtitle">Add your first athlete to start building your women\'s football empire</string>
+    <string name="women_inspire_quote_1">Breaking barriers, building legacies</string>
+    <string name="women_inspire_quote_2">Every champion was once a contender who refused to give up</string>
+    <string name="women_inspire_quote_3">The future of football is here</string>
+
     <string name="widget_agent_dashboard_description">Your dashboard at a glance: players, tasks, alerts</string>
     <string name="widget_tap_to_open">Tap to open</string>
     <string name="widget_updated_just_now">Just now</string>

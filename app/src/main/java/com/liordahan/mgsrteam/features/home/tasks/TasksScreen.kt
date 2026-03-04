@@ -77,17 +77,7 @@ import com.liordahan.mgsrteam.features.home.IHomeScreenViewModel
 import com.liordahan.mgsrteam.features.home.models.AgentTask
 import com.liordahan.mgsrteam.features.login.models.Account
 import com.liordahan.mgsrteam.navigation.Screens
-import com.liordahan.mgsrteam.ui.theme.HomeDarkBackground
-import com.liordahan.mgsrteam.ui.theme.HomeDarkCard
-import com.liordahan.mgsrteam.ui.theme.HomeDarkCardBorder
-import com.liordahan.mgsrteam.ui.theme.HomeGreenAccent
-import com.liordahan.mgsrteam.ui.theme.HomeOrangeAccent
-import com.liordahan.mgsrteam.ui.theme.HomeRedAccent
-import com.liordahan.mgsrteam.ui.theme.HomeTealAccent
-import com.liordahan.mgsrteam.ui.theme.HomeTextPrimary
-import com.liordahan.mgsrteam.ui.theme.HomeTextSecondary
-import com.liordahan.mgsrteam.ui.theme.HomeBlueAccent
-import com.liordahan.mgsrteam.ui.theme.HomePurpleAccent
+import com.liordahan.mgsrteam.ui.theme.PlatformColors
 import com.liordahan.mgsrteam.utils.daysBetweenCalendarDays
 import com.liordahan.mgsrteam.ui.utils.boldTextStyle
 import com.liordahan.mgsrteam.ui.utils.regularTextStyle
@@ -102,8 +92,8 @@ private enum class TaskViewMode { TIMELINE, BY_AGENT }
 private enum class TaskTimeFilter { ALL, TODAY, WEEK, OVERDUE }
 
 private val agentAccentColors = listOf(
-    HomeTealAccent, HomeBlueAccent, HomeOrangeAccent,
-    HomePurpleAccent, HomeGreenAccent, HomeRedAccent
+    PlatformColors.palette.accent, PlatformColors.palette.blue, PlatformColors.palette.orange,
+    PlatformColors.palette.purple, PlatformColors.palette.green, PlatformColors.palette.red
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -129,13 +119,13 @@ fun TasksScreen(
     val deletedLabel = stringResource(R.string.tasks_deleted)
 
     Scaffold(
-        containerColor = HomeDarkBackground,
+        containerColor = PlatformColors.palette.background,
         topBar = {
             TopAppBar(
                 title = {
                     Text(
                         text = stringResource(R.string.tasks_title),
-                        style = boldTextStyle(HomeTextPrimary, 20.sp)
+                        style = boldTextStyle(PlatformColors.palette.textPrimary, 20.sp)
                     )
                 },
                 navigationIcon = {
@@ -143,18 +133,18 @@ fun TasksScreen(
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = null,
-                            tint = HomeTextPrimary
+                            tint = PlatformColors.palette.textPrimary
                         )
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = HomeDarkBackground)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = PlatformColors.palette.background)
             )
         },
         floatingActionButton = {
             FloatingActionButton(
                 onClick = { showAddSheet = true },
-                containerColor = HomeTealAccent,
-                contentColor = HomeDarkBackground,
+                containerColor = PlatformColors.palette.accent,
+                contentColor = PlatformColors.palette.background,
                 shape = CircleShape,
                 modifier = Modifier.size(56.dp)
             ) {
@@ -217,7 +207,7 @@ fun TasksScreen(
                                 item(key = "header_$section") {
                                     Text(
                                         text = section,
-                                        style = boldTextStyle(HomeTextSecondary, 13.sp),
+                                        style = boldTextStyle(PlatformColors.palette.textSecondary, 13.sp),
                                         modifier = Modifier.padding(
                                             start = 20.dp, end = 20.dp,
                                             top = 16.dp, bottom = 6.dp
@@ -362,7 +352,7 @@ private fun ViewModeToggle(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
-            .background(HomeDarkCard),
+            .background(PlatformColors.palette.card),
         horizontalArrangement = Arrangement.Center
     ) {
         val modes = listOf(
@@ -372,11 +362,11 @@ private fun ViewModeToggle(
         modes.forEach { (mode, labelRes) ->
             val selected = mode == current
             val bgColor by animateColorAsState(
-                if (selected) HomeTealAccent else Color.Transparent,
+                if (selected) PlatformColors.palette.accent else Color.Transparent,
                 label = "toggle_bg"
             )
             val textColor by animateColorAsState(
-                if (selected) HomeDarkBackground else HomeTextSecondary,
+                if (selected) PlatformColors.palette.background else PlatformColors.palette.textSecondary,
                 label = "toggle_text"
             )
             Box(
@@ -419,11 +409,11 @@ private fun TimeFilterChips(
         items(filters) { (filter, labelRes) ->
             val selected = filter == current
             val bgColor by animateColorAsState(
-                if (selected) HomeTealAccent else HomeDarkCard,
+                if (selected) PlatformColors.palette.accent else PlatformColors.palette.card,
                 label = "chip_bg"
             )
             val textColor by animateColorAsState(
-                if (selected) HomeDarkBackground else HomeTextSecondary,
+                if (selected) PlatformColors.palette.background else PlatformColors.palette.textSecondary,
                 label = "chip_text"
             )
             Box(
@@ -479,7 +469,7 @@ private fun AgentSelector(
                         .clip(CircleShape)
                         .background(
                             if (selected) accentColor.copy(alpha = 0.2f)
-                            else HomeDarkCard
+                            else PlatformColors.palette.card
                         )
                         .then(
                             if (selected) Modifier.background(Color.Transparent)
@@ -513,7 +503,7 @@ private fun AgentSelector(
                 Text(
                     text = name,
                     style = regularTextStyle(
-                        if (selected) HomeTextPrimary else HomeTextSecondary,
+                        if (selected) PlatformColors.palette.textPrimary else PlatformColors.palette.textSecondary,
                         11.sp
                     ),
                     maxLines = 1
@@ -546,7 +536,7 @@ private fun AgentProgressBar(
         ) {
             Text(
                 text = stringResource(R.string.tasks_completed_count, completed, total),
-                style = regularTextStyle(HomeTextSecondary, 12.sp)
+                style = regularTextStyle(PlatformColors.palette.textSecondary, 12.sp)
             )
         }
         Spacer(Modifier.height(6.dp))
@@ -557,7 +547,7 @@ private fun AgentProgressBar(
                 .height(6.dp)
                 .clip(RoundedCornerShape(3.dp)),
             color = accentColor,
-            trackColor = HomeDarkCardBorder,
+            trackColor = PlatformColors.palette.cardBorder,
         )
     }
 }
@@ -603,8 +593,8 @@ private fun SwipeableTaskRow(
             val direction = dismissState.dismissDirection
             val color by animateColorAsState(
                 when (direction) {
-                    SwipeToDismissBoxValue.StartToEnd -> HomeGreenAccent.copy(alpha = 0.3f)
-                    SwipeToDismissBoxValue.EndToStart -> HomeRedAccent.copy(alpha = 0.3f)
+                    SwipeToDismissBoxValue.StartToEnd -> PlatformColors.palette.green.copy(alpha = 0.3f)
+                    SwipeToDismissBoxValue.EndToStart -> PlatformColors.palette.red.copy(alpha = 0.3f)
                     else -> Color.Transparent
                 },
                 label = "swipe_bg"
@@ -618,8 +608,8 @@ private fun SwipeableTaskRow(
                 else -> Icons.Default.Delete
             }
             val iconTint = when (direction) {
-                SwipeToDismissBoxValue.StartToEnd -> HomeGreenAccent
-                else -> HomeRedAccent
+                SwipeToDismissBoxValue.StartToEnd -> PlatformColors.palette.green
+                else -> PlatformColors.palette.red
             }
 
             Box(
@@ -663,7 +653,7 @@ private fun TaskRowCard(
             .padding(horizontal = 16.dp, vertical = 3.dp)
             .clickable { onClick() },
         shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = HomeDarkCard)
+        colors = CardDefaults.cardColors(containerColor = PlatformColors.palette.card)
     ) {
         Row(
             modifier = Modifier
@@ -675,9 +665,9 @@ private fun TaskRowCard(
                 checked = task.isCompleted,
                 onCheckedChange = { onToggle() },
                 colors = CheckboxDefaults.colors(
-                    checkedColor = HomeTealAccent,
-                    uncheckedColor = HomeTextSecondary,
-                    checkmarkColor = HomeDarkBackground
+                    checkedColor = PlatformColors.palette.accent,
+                    uncheckedColor = PlatformColors.palette.textSecondary,
+                    checkmarkColor = PlatformColors.palette.background
                 ),
                 modifier = Modifier.size(48.dp)
             )
@@ -698,11 +688,11 @@ private fun TaskRowCard(
                     text = task.title,
                     style = if (task.isCompleted) {
                         regularTextStyle(
-                            HomeTextSecondary.copy(alpha = 0.5f), 14.sp,
+                            PlatformColors.palette.textSecondary.copy(alpha = 0.5f), 14.sp,
                             decoration = TextDecoration.LineThrough
                         )
                     } else {
-                        regularTextStyle(HomeTextPrimary, 14.sp)
+                        regularTextStyle(PlatformColors.palette.textPrimary, 14.sp)
                     },
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
@@ -710,7 +700,7 @@ private fun TaskRowCard(
                 if (showAgent && task.agentName.isNotBlank()) {
                     Text(
                         text = task.agentName,
-                        style = regularTextStyle(HomeTextSecondary, 11.sp),
+                        style = regularTextStyle(PlatformColors.palette.textSecondary, 11.sp),
                         maxLines = 1
                     )
                 }
@@ -719,7 +709,7 @@ private fun TaskRowCard(
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(8.dp))
-                            .background(HomeTealAccent.copy(alpha = 0.2f))
+                            .background(PlatformColors.palette.accent.copy(alpha = 0.2f))
                             .clickable {
                                 val navId = task.playerTmProfile.takeIf { it.isNotBlank() } ?: task.playerId
                                 if (navId.isNotBlank()) {
@@ -730,7 +720,7 @@ private fun TaskRowCard(
                     ) {
                         Text(
                             text = task.playerName,
-                            style = boldTextStyle(HomeTealAccent, 11.sp),
+                            style = boldTextStyle(PlatformColors.palette.accent, 11.sp),
                             maxLines = 1
                         )
                     }
@@ -766,12 +756,12 @@ private fun EmptyTasksState(modifier: Modifier = Modifier) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
                 text = stringResource(R.string.tasks_empty),
-                style = boldTextStyle(HomeTextSecondary, 16.sp)
+                style = boldTextStyle(PlatformColors.palette.textSecondary, 16.sp)
             )
             Spacer(Modifier.height(6.dp))
             Text(
                 text = stringResource(R.string.tasks_empty_hint),
-                style = regularTextStyle(HomeTextSecondary.copy(alpha = 0.6f), 13.sp)
+                style = regularTextStyle(PlatformColors.palette.textSecondary.copy(alpha = 0.6f), 13.sp)
             )
         }
     }
@@ -780,9 +770,9 @@ private fun EmptyTasksState(modifier: Modifier = Modifier) {
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 private fun priorityColor(priority: Int): Color = when (priority) {
-    2 -> HomeRedAccent
-    1 -> HomeOrangeAccent
-    else -> HomeGreenAccent
+    2 -> PlatformColors.palette.red
+    1 -> PlatformColors.palette.orange
+    else -> PlatformColors.palette.green
 }
 
 @Composable
@@ -801,15 +791,15 @@ private fun formatDueDate(epochMillis: Long): String {
 }
 
 private fun dueDateColor(epochMillis: Long, isCompleted: Boolean): Color {
-    if (isCompleted) return HomeGreenAccent
-    if (epochMillis <= 0L) return HomeTextSecondary
+    if (isCompleted) return PlatformColors.palette.green
+    if (epochMillis <= 0L) return PlatformColors.palette.textSecondary
     val now = System.currentTimeMillis()
     val diffDays = daysBetweenCalendarDays(epochMillis, now)
     return when {
-        diffDays < 0 -> HomeRedAccent
-        diffDays <= 2 -> HomeOrangeAccent
+        diffDays < 0 -> PlatformColors.palette.red
+        diffDays <= 2 -> PlatformColors.palette.orange
         diffDays <= 7 -> Color(0xFFFDD835)
-        else -> HomeTextSecondary
+        else -> PlatformColors.palette.textSecondary
     }
 }
 

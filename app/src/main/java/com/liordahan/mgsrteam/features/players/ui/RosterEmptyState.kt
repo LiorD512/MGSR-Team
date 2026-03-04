@@ -28,10 +28,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.liordahan.mgsrteam.R
-import com.liordahan.mgsrteam.ui.theme.HomeDarkBackground
-import com.liordahan.mgsrteam.ui.theme.HomeTealAccent
-import com.liordahan.mgsrteam.ui.theme.HomeTextPrimary
-import com.liordahan.mgsrteam.ui.theme.HomeTextSecondary
+import com.liordahan.mgsrteam.ui.theme.PlatformColors
 import com.liordahan.mgsrteam.ui.utils.boldTextStyle
 import com.liordahan.mgsrteam.ui.utils.clickWithNoRipple
 import com.liordahan.mgsrteam.ui.utils.regularTextStyle
@@ -47,7 +44,7 @@ fun RosterEmptyState(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(HomeDarkBackground)
+            .background(PlatformColors.palette.background)
     ) {
         Column(
             modifier = Modifier
@@ -60,14 +57,14 @@ fun RosterEmptyState(
                 contentDescription = null,
                 modifier = Modifier.size(80.dp),
                 contentScale = ContentScale.Fit,
-                colorFilter = ColorFilter.tint(HomeTealAccent)
+                colorFilter = ColorFilter.tint(PlatformColors.palette.accent)
             )
 
             Spacer(modifier = Modifier.height(24.dp))
 
             Text(
                 text = stringResource(R.string.players_no_players_found),
-                style = boldTextStyle(HomeTextPrimary, 20.sp),
+                style = boldTextStyle(PlatformColors.palette.textPrimary, 20.sp),
                 textAlign = TextAlign.Center
             )
 
@@ -75,7 +72,7 @@ fun RosterEmptyState(
 
             Text(
                 text = stringResource(R.string.players_empty_hint),
-                style = regularTextStyle(HomeTextSecondary, 14.sp),
+                style = regularTextStyle(PlatformColors.palette.textSecondary, 14.sp),
                 textAlign = TextAlign.Center
             )
 
@@ -90,7 +87,7 @@ fun RosterEmptyState(
                     modifier = Modifier
                         .weight(1f)
                         .clip(RoundedCornerShape(12.dp))
-                        .background(HomeTealAccent)
+                        .background(PlatformColors.palette.accent)
                         .clickWithNoRipple { onAddPlayerClick() }
                         .padding(vertical = 14.dp),
                     contentAlignment = Alignment.Center
@@ -106,14 +103,14 @@ fun RosterEmptyState(
                     modifier = Modifier
                         .weight(1f)
                         .clip(RoundedCornerShape(12.dp))
-                        .border(1.dp, HomeTealAccent, RoundedCornerShape(12.dp))
+                        .border(1.dp, PlatformColors.palette.accent, RoundedCornerShape(12.dp))
                         .clickWithNoRipple { onResetFiltersClicked() }
                         .padding(vertical = 14.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = stringResource(R.string.players_reset_filters),
-                        style = boldTextStyle(HomeTealAccent, 14.sp)
+                        style = boldTextStyle(PlatformColors.palette.accent, 14.sp)
                     )
                 }
             }

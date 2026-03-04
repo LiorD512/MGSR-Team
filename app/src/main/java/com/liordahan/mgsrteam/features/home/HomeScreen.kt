@@ -51,9 +51,13 @@ import com.liordahan.mgsrteam.BuildConfig
 import com.liordahan.mgsrteam.navigation.NavigationTransitions
 import com.liordahan.mgsrteam.navigation.Screens
 import com.liordahan.mgsrteam.ui.theme.HomeDarkBackground
+import com.liordahan.mgsrteam.ui.theme.LocalPlatformPalette
+import com.liordahan.mgsrteam.ui.theme.PlatformThemeProvider
+import com.liordahan.mgsrteam.features.platform.PlatformManager
 import com.liordahan.mgsrteam.utils.extractTransfermarktUrlFromIntent
 import kotlinx.coroutines.flow.collectLatest
 import org.koin.androidx.compose.koinViewModel
+import org.koin.compose.koinInject
 
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @Composable
@@ -153,11 +157,15 @@ fun HomeScreen(
         }
     }
 
+    val platformManager: PlatformManager = koinInject()
+    val currentPlatform by platformManager.current.collectAsStateWithLifecycle()
+
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         containerColor = HomeDarkBackground
     ) {
 
+        PlatformThemeProvider(platform = currentPlatform) {
         NavHost(
             navController = navController,
             startDestination = Screens.DashboardScreen.route,
@@ -350,5 +358,6 @@ fun HomeScreen(
                 )
             }
         }
+        } // PlatformThemeProvider
     }
 }

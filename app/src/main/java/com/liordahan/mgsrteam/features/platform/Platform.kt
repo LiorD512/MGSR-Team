@@ -1,6 +1,7 @@
 package com.liordahan.mgsrteam.features.platform
 
 import androidx.annotation.StringRes
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import com.liordahan.mgsrteam.R
@@ -43,9 +44,9 @@ enum class Platform(
     ),
     WOMEN(
         labelRes = R.string.platform_women,
-        emoji = "🌸",
-        accent = Color(0xFFE8A0BF),           // rose / pink (web --women-rose)
-        accentSecondary = Color(0xFFD4A5A5),   // blush (web --women-blush)
+        emoji = "�",
+        accent = Color(0xFFB24BF3),           // ATHENA deep orchid — power & creativity
+        accentSecondary = Color(0xFFF5A623),   // ATHENA warm gold — excellence & achievement
         playersCollection = "PlayersWomen",
         clubRequestsCollection = "ClubRequestsWomen",
         shortlistsCollection = "ShortlistsWomen",
@@ -70,13 +71,29 @@ enum class Platform(
         shadowTeamsCollection = "ShadowTeamsYouth",
     );
 
-    /** Horizontal gradient from [accent] → [accentSecondary]. */
+    /** Horizontal gradient from [accent] → [accentSecondary].
+     *  Women uses a diagonal gradient for visual distinction. */
     val gradient: Brush
-        get() = Brush.horizontalGradient(listOf(accent, accentSecondary))
+        get() = when (this) {
+            WOMEN -> Brush.linearGradient(
+                colors = listOf(accent, accentSecondary),
+                start = Offset(0f, 0f),
+                end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
+            )
+            else -> Brush.horizontalGradient(listOf(accent, accentSecondary))
+        }
 
-    /** Soft background-tinted gradient for card surfaces. */
+    /** Soft background-tinted gradient for card surfaces.
+     *  Women uses a diagonal shimmer. */
     val surfaceGradient: Brush
-        get() = Brush.horizontalGradient(
-            listOf(accent.copy(alpha = 0.15f), accentSecondary.copy(alpha = 0.08f))
-        )
+        get() = when (this) {
+            WOMEN -> Brush.linearGradient(
+                listOf(accent.copy(alpha = 0.15f), accentSecondary.copy(alpha = 0.08f)),
+                start = Offset(0f, 0f),
+                end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
+            )
+            else -> Brush.horizontalGradient(
+                listOf(accent.copy(alpha = 0.15f), accentSecondary.copy(alpha = 0.08f))
+            )
+        }
 }

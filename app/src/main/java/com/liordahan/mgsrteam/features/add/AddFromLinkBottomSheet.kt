@@ -40,11 +40,7 @@ import com.liordahan.mgsrteam.features.shortlist.ShortlistRepository
 import com.liordahan.mgsrteam.transfermarket.LatestTransferModel
 import com.liordahan.mgsrteam.ui.components.DarkSystemBarsForBottomSheet
 import com.liordahan.mgsrteam.ui.components.ToastManager
-import com.liordahan.mgsrteam.ui.theme.HomeDarkCard
-import com.liordahan.mgsrteam.ui.theme.HomeDarkCardBorder
-import com.liordahan.mgsrteam.ui.theme.HomeTealAccent
-import com.liordahan.mgsrteam.ui.theme.HomeTextPrimary
-import com.liordahan.mgsrteam.ui.theme.HomeTextSecondary
+import com.liordahan.mgsrteam.ui.theme.PlatformColors
 import com.liordahan.mgsrteam.ui.utils.boldTextStyle
 import com.liordahan.mgsrteam.ui.utils.regularTextStyle
 import kotlinx.coroutines.launch
@@ -91,7 +87,7 @@ fun AddFromLinkBottomSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
-        containerColor = HomeDarkCard,
+        containerColor = PlatformColors.palette.card,
         shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
         tonalElevation = 8.dp,
         properties = ModalBottomSheetProperties(
@@ -114,14 +110,14 @@ fun AddFromLinkBottomSheet(
                         modifier = Modifier.fillMaxWidth(),
                         contentAlignment = Alignment.Center
                     ) {
-                        CircularProgressIndicator(color = HomeTealAccent)
+                        CircularProgressIndicator(color = PlatformColors.palette.accent)
                     }
                     Spacer(Modifier.height(24.dp))
                 }
                 showAddRosterForm -> {
                     Text(
                         text = stringResource(R.string.shortlist_could_not_load),
-                        style = regularTextStyle(HomeTextSecondary, 14.sp)
+                        style = regularTextStyle(PlatformColors.palette.textSecondary, 14.sp)
                     )
                 }
                 !showAddRosterForm && addPlayerState.showPlayerSelectedSearchProgress -> {
@@ -129,25 +125,25 @@ fun AddFromLinkBottomSheet(
                         modifier = Modifier.fillMaxWidth(),
                         contentAlignment = Alignment.Center
                     ) {
-                        CircularProgressIndicator(color = HomeTealAccent)
+                        CircularProgressIndicator(color = PlatformColors.palette.accent)
                     }
                     Spacer(Modifier.height(24.dp))
                     Text(
                         text = stringResource(R.string.add_player_from_link_title),
-                        style = boldTextStyle(HomeTextSecondary, 14.sp)
+                        style = boldTextStyle(PlatformColors.palette.textSecondary, 14.sp)
                     )
                 }
                 !showAddRosterForm && selectedPlayer == null -> {
                     Text(
                         text = stringResource(R.string.shortlist_could_not_load),
-                        style = regularTextStyle(HomeTextSecondary, 14.sp),
+                        style = regularTextStyle(PlatformColors.palette.textSecondary, 14.sp),
                         modifier = Modifier.padding(24.dp)
                     )
                 }
                 else -> {
                     Text(
                         text = stringResource(R.string.add_player_from_link_title),
-                        style = boldTextStyle(HomeTextPrimary, 18.sp)
+                        style = boldTextStyle(PlatformColors.palette.textPrimary, 18.sp)
                     )
                     Spacer(Modifier.height(20.dp))
                     TextButton(
@@ -183,11 +179,11 @@ fun AddFromLinkBottomSheet(
                         modifier = Modifier.fillMaxWidth(),
                         enabled = selectedPlayer != null
                     ) {
-                        Icon(Icons.Filled.Person, contentDescription = null, tint = HomeTealAccent, modifier = Modifier.size(24.dp))
+                        Icon(Icons.Filled.Person, contentDescription = null, tint = PlatformColors.palette.accent, modifier = Modifier.size(24.dp))
                         Spacer(Modifier.width(12.dp))
                         Text(
                             text = stringResource(R.string.add_player_from_link_shortlist),
-                            style = regularTextStyle(HomeTextPrimary, 16.sp)
+                            style = regularTextStyle(PlatformColors.palette.textPrimary, 16.sp)
                         )
                     }
                     TextButton(
@@ -195,11 +191,11 @@ fun AddFromLinkBottomSheet(
                         modifier = Modifier.fillMaxWidth(),
                         enabled = selectedPlayer != null
                     ) {
-                        Icon(Icons.Filled.PersonAdd, contentDescription = null, tint = HomeTealAccent, modifier = Modifier.size(24.dp))
+                        Icon(Icons.Filled.PersonAdd, contentDescription = null, tint = PlatformColors.palette.accent, modifier = Modifier.size(24.dp))
                         Spacer(Modifier.width(12.dp))
                         Text(
                             text = stringResource(R.string.add_player_from_link_roster),
-                            style = regularTextStyle(HomeTextPrimary, 16.sp)
+                            style = regularTextStyle(PlatformColors.palette.textPrimary, 16.sp)
                         )
                     }
                     Spacer(Modifier.height(8.dp))
@@ -210,7 +206,7 @@ fun AddFromLinkBottomSheet(
                         },
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text(stringResource(android.R.string.cancel), style = regularTextStyle(HomeTextSecondary, 14.sp))
+                        Text(stringResource(android.R.string.cancel), style = regularTextStyle(PlatformColors.palette.textSecondary, 14.sp))
                     }
                 }
             }

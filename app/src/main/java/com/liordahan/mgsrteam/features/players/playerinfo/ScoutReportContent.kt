@@ -21,10 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.liordahan.mgsrteam.ui.theme.HomeDarkBackground
-import com.liordahan.mgsrteam.ui.theme.HomeTealAccent
-import com.liordahan.mgsrteam.ui.theme.HomeTextPrimary
-import com.liordahan.mgsrteam.ui.theme.HomeTextSecondary
+import com.liordahan.mgsrteam.ui.theme.PlatformColors
 import com.liordahan.mgsrteam.ui.utils.boldTextStyle
 import com.liordahan.mgsrteam.ui.utils.regularTextStyle
 
@@ -125,7 +122,7 @@ fun ScoutReportContent(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(10.dp))
-            .background(HomeDarkBackground)
+            .background(PlatformColors.palette.background)
             .padding(18.dp)
     ) {
         displayBlocks.forEachIndexed { index, block ->
@@ -134,7 +131,7 @@ fun ScoutReportContent(
                     if (index > 0) {
                         Spacer(Modifier.height(20.dp))
                         HorizontalDivider(
-                            color = HomeTextSecondary.copy(alpha = 0.25f),
+                            color = PlatformColors.palette.textSecondary.copy(alpha = 0.25f),
                             thickness = 1.dp,
                             modifier = Modifier.padding(vertical = 10.dp)
                         )
@@ -148,20 +145,20 @@ fun ScoutReportContent(
                                 modifier = Modifier
                                     .size(28.dp)
                                     .clip(RoundedCornerShape(6.dp))
-                                    .background(HomeTealAccent.copy(alpha = 0.25f))
-                                    .border(1.dp, HomeTealAccent.copy(alpha = 0.5f), RoundedCornerShape(6.dp)),
+                                    .background(PlatformColors.palette.accent.copy(alpha = 0.25f))
+                                    .border(1.dp, PlatformColors.palette.accent.copy(alpha = 0.5f), RoundedCornerShape(6.dp)),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
                                     text = "$num",
-                                    style = boldTextStyle(HomeTealAccent, 12.sp)
+                                    style = boldTextStyle(PlatformColors.palette.accent, 12.sp)
                                 )
                             }
                             Spacer(Modifier.width(12.dp))
                         }
                         Text(
                             text = block.title,
-                            style = boldTextStyle(HomeTextPrimary, 17.sp),
+                            style = boldTextStyle(PlatformColors.palette.textPrimary, 17.sp),
                             modifier = Modifier.weight(1f)
                         )
                     }
@@ -171,7 +168,7 @@ fun ScoutReportContent(
                     Spacer(Modifier.height(10.dp))
                     Text(
                         text = block.text,
-                        style = boldTextStyle(HomeTextSecondary, 14.sp),
+                        style = boldTextStyle(PlatformColors.palette.textSecondary, 14.sp),
                         modifier = Modifier.fillMaxWidth()
                     )
                     Spacer(Modifier.height(6.dp))
@@ -185,7 +182,7 @@ fun ScoutReportContent(
                 is ReportBlock.Paragraph -> {
                     Text(
                         text = block.text,
-                        style = regularTextStyle(HomeTextPrimary, 14.sp).copy(lineHeight = 22.sp),
+                        style = regularTextStyle(PlatformColors.palette.textPrimary, 14.sp).copy(lineHeight = 22.sp),
                         modifier = Modifier.fillMaxWidth()
                     )
                     Spacer(Modifier.height(8.dp))
@@ -206,12 +203,12 @@ private fun RowWithBullet(
     ) {
         Text(
             text = "$BULLET ",
-            style = regularTextStyle(HomeTealAccent, 13.sp),
+            style = regularTextStyle(PlatformColors.palette.accent, 13.sp),
             modifier = Modifier.padding(end = 4.dp)
         )
         Text(
             text = text,
-            style = regularTextStyle(HomeTextPrimary, 14.sp).copy(lineHeight = 22.sp),
+            style = regularTextStyle(PlatformColors.palette.textPrimary, 14.sp).copy(lineHeight = 22.sp),
             modifier = Modifier.weight(1f)
         )
     }

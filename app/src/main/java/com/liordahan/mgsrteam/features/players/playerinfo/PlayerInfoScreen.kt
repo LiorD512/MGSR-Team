@@ -156,17 +156,7 @@ import com.liordahan.mgsrteam.navigation.Screens
 import com.liordahan.mgsrteam.transfermarket.LatestTransferModel
 import com.liordahan.mgsrteam.ui.components.DarkSystemBarsForBottomSheet
 import com.liordahan.mgsrteam.ui.components.ToastManager
-import com.liordahan.mgsrteam.ui.theme.HomeBlueAccent
-import com.liordahan.mgsrteam.ui.theme.HomeDarkBackground
-import com.liordahan.mgsrteam.ui.theme.HomeDarkCard
-import com.liordahan.mgsrteam.ui.theme.HomeDarkCardBorder
-import com.liordahan.mgsrteam.ui.theme.HomeGreenAccent
-import com.liordahan.mgsrteam.ui.theme.HomeOrangeAccent
-import com.liordahan.mgsrteam.ui.theme.HomePurpleAccent
-import com.liordahan.mgsrteam.ui.theme.HomeRedAccent
-import com.liordahan.mgsrteam.ui.theme.HomeTealAccent
-import com.liordahan.mgsrteam.ui.theme.HomeTextPrimary
-import com.liordahan.mgsrteam.ui.theme.HomeTextSecondary
+import com.liordahan.mgsrteam.ui.theme.PlatformColors
 import com.liordahan.mgsrteam.ui.theme.contentDefault
 import com.liordahan.mgsrteam.ui.theme.dividerColor
 import com.liordahan.mgsrteam.ui.theme.redErrorColor
@@ -180,6 +170,8 @@ import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.koinInject
 import com.liordahan.mgsrteam.features.platform.Platform
 import com.liordahan.mgsrteam.features.platform.PlatformManager
+import com.liordahan.mgsrteam.ui.components.WomenGlowPhotoRing
+import com.liordahan.mgsrteam.ui.components.WomenSectionHeader
 import com.liordahan.mgsrteam.ui.theme.PlatformWomenAccent
 import com.liordahan.mgsrteam.ui.theme.PlatformYouthAccent
 import com.liordahan.mgsrteam.ui.theme.PlatformYouthSecondary
@@ -390,14 +382,14 @@ fun PlayerInfoScreen(
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
-        containerColor = HomeDarkBackground
+        containerColor = PlatformColors.palette.background
     ) { paddingValues ->
 
         if (showLoader) {
             SkeletonPlayerInfoLayout(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(HomeDarkBackground)
+                    .background(PlatformColors.palette.background)
             )
             return@Scaffold
         }
@@ -639,11 +631,11 @@ fun PlayerInfoScreen(
                                 modifier = Modifier.size(24.dp),
                                 painter = painterResource(R.drawable.ic_height),
                                 contentDescription = null,
-                                tint = HomeTextSecondary
+                                tint = PlatformColors.palette.textSecondary
                             )
                         })
                     HorizontalDivider(
-                        color = HomeDarkCardBorder,
+                        color = PlatformColors.palette.cardBorder,
                         thickness = 0.5.dp,
                         modifier = Modifier.padding(vertical = 8.dp)
                     )
@@ -656,7 +648,7 @@ fun PlayerInfoScreen(
                                 modifier = Modifier.size(24.dp),
                                 imageVector = Icons.Default.CalendarMonth,
                                 contentDescription = null,
-                                tint = HomeTextSecondary
+                                tint = PlatformColors.palette.textSecondary
                             )
                         })
                     HorizontalDivider(
@@ -674,12 +666,12 @@ fun PlayerInfoScreen(
                                 modifier = Modifier.size(24.dp),
                                 painter = painterResource(R.drawable.ic_soccer),
                                 contentDescription = null,
-                                tint = HomeTextSecondary
+                                tint = PlatformColors.palette.textSecondary
                             )
                         }
                     )
                     HorizontalDivider(
-                        color = HomeDarkCardBorder,
+                        color = PlatformColors.palette.cardBorder,
                         thickness = 0.5.dp,
                         modifier = Modifier.padding(vertical = 8.dp)
                     )
@@ -698,12 +690,12 @@ fun PlayerInfoScreen(
                                 modifier = Modifier.size(24.dp),
                                 painter = painterResource(R.drawable.ic_foot),
                                 contentDescription = null,
-                                tint = HomeTextSecondary
+                                tint = PlatformColors.palette.textSecondary
                             )
                         }
                     )
                     HorizontalDivider(
-                        color = HomeDarkCardBorder,
+                        color = PlatformColors.palette.cardBorder,
                         thickness = 0.5.dp,
                         modifier = Modifier.padding(vertical = 8.dp)
                     )
@@ -715,7 +707,7 @@ fun PlayerInfoScreen(
                     )
 
                     HorizontalDivider(
-                        color = HomeDarkCardBorder,
+                        color = PlatformColors.palette.cardBorder,
                         thickness = 0.5.dp,
                         modifier = Modifier.padding(vertical = 8.dp)
                     )
@@ -731,12 +723,12 @@ fun PlayerInfoScreen(
                                 modifier = Modifier.size(24.dp),
                                 painter = painterResource(R.drawable.ic_contract),
                                 contentDescription = null,
-                                tint = HomeTextSecondary
+                                tint = PlatformColors.palette.textSecondary
                             )
                         })
 
                     HorizontalDivider(
-                        color = HomeDarkCardBorder,
+                        color = PlatformColors.palette.cardBorder,
                         thickness = 0.5.dp,
                         modifier = Modifier.padding(vertical = 8.dp)
                     )
@@ -787,7 +779,7 @@ fun PlayerInfoScreen(
                                 modifier = Modifier.size(24.dp),
                                 painter = painterResource(R.drawable.ic_euro),
                                 contentDescription = null,
-                                tint = HomeTextSecondary
+                                tint = PlatformColors.palette.textSecondary
                             )
                         }
                     )
@@ -798,7 +790,7 @@ fun PlayerInfoScreen(
                             Spacer(Modifier.height(4.dp))
                             Text(
                                 text = stringResource(R.string.player_info_previously, it.value ?: "", SimpleDateFormat("dd.MM.yy", Locale.getDefault()).format(Date(it.date ?: 0))),
-                                style = regularTextStyle(HomeTextSecondary, 12.sp),
+                                style = regularTextStyle(PlatformColors.palette.textSecondary, 12.sp),
                                 modifier = Modifier.padding(start = 28.dp)
                             )
                         }
@@ -853,7 +845,7 @@ fun PlayerInfoScreen(
                         contentAlignment = Alignment.Center
                     ) {
                         CircularProgressIndicator(
-                            color = HomeTealAccent,
+                            color = PlatformColors.palette.accent,
                             strokeWidth = 3.dp,
                             modifier = Modifier.size(48.dp)
                         )
@@ -890,7 +882,7 @@ private fun ShareLanguageBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
         shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
-        containerColor = HomeDarkCard,
+        containerColor = PlatformColors.palette.card,
         properties = ModalBottomSheetProperties(
             isAppearanceLightStatusBars = true,
             isAppearanceLightNavigationBars = true
@@ -906,14 +898,14 @@ private fun ShareLanguageBottomSheet(
         ) {
             Text(
                 text = stringResource(R.string.player_info_share_language_title),
-                style = boldTextStyle(HomeTextPrimary, 20.sp),
+                style = boldTextStyle(PlatformColors.palette.textPrimary, 20.sp),
                 modifier = Modifier.padding(vertical = 8.dp)
             )
-            HorizontalDivider(color = HomeDarkCardBorder, thickness = 1.dp)
+            HorizontalDivider(color = PlatformColors.palette.cardBorder, thickness = 1.dp)
             Spacer(Modifier.height(16.dp))
             Text(
                 text = stringResource(R.string.player_info_share_language_subtitle),
-                style = regularTextStyle(HomeTextSecondary, 14.sp),
+                style = regularTextStyle(PlatformColors.palette.textSecondary, 14.sp),
                 modifier = Modifier.padding(bottom = 20.dp)
             )
             Row(
@@ -923,18 +915,18 @@ private fun ShareLanguageBottomSheet(
                 Button(
                     onClick = { onLangSelected("he") },
                     modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.buttonColors(containerColor = HomeTealAccent.copy(alpha = 0.2f)),
+                    colors = ButtonDefaults.buttonColors(containerColor = PlatformColors.palette.accent.copy(alpha = 0.2f)),
                     shape = RoundedCornerShape(12.dp)
                 ) {
-                    Text(stringResource(R.string.player_info_share_language_hebrew), style = boldTextStyle(HomeTealAccent, 16.sp))
+                    Text(stringResource(R.string.player_info_share_language_hebrew), style = boldTextStyle(PlatformColors.palette.accent, 16.sp))
                 }
                 Button(
                     onClick = { onLangSelected("en") },
                     modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.buttonColors(containerColor = HomeTealAccent.copy(alpha = 0.2f)),
+                    colors = ButtonDefaults.buttonColors(containerColor = PlatformColors.palette.accent.copy(alpha = 0.2f)),
                     shape = RoundedCornerShape(12.dp)
                 ) {
-                    Text(stringResource(R.string.player_info_share_language_english), style = boldTextStyle(HomeTealAccent, 16.sp))
+                    Text(stringResource(R.string.player_info_share_language_english), style = boldTextStyle(PlatformColors.palette.accent, 16.sp))
                 }
             }
         }
@@ -960,7 +952,7 @@ private fun SalaryTransferFeeBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
         shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
-        containerColor = HomeDarkCard,
+        containerColor = PlatformColors.palette.card,
         properties = ModalBottomSheetProperties(
             isAppearanceLightStatusBars = true,
             isAppearanceLightNavigationBars = true
@@ -976,15 +968,15 @@ private fun SalaryTransferFeeBottomSheet(
         ) {
             Text(
                 text = stringResource(R.string.player_info_salary_transfer_fee_sheet_title),
-                style = boldTextStyle(HomeTextPrimary, 20.sp),
+                style = boldTextStyle(PlatformColors.palette.textPrimary, 20.sp),
                 modifier = Modifier.padding(vertical = 8.dp)
             )
-            HorizontalDivider(color = HomeDarkCardBorder, thickness = 1.dp)
+            HorizontalDivider(color = PlatformColors.palette.cardBorder, thickness = 1.dp)
             Spacer(Modifier.height(16.dp))
 
             Text(
                 stringResource(R.string.requests_label_salary_range),
-                style = regularTextStyle(HomeTextSecondary, 11.sp),
+                style = regularTextStyle(PlatformColors.palette.textSecondary, 11.sp),
                 modifier = Modifier.padding(bottom = 10.dp)
             )
             Row(
@@ -997,11 +989,11 @@ private fun SalaryTransferFeeBottomSheet(
                     val isSelected = selectedSalaryRange == range
                     Text(
                         text = range,
-                        style = regularTextStyle(if (isSelected) HomeTealAccent else HomeTextSecondary, 12.sp),
+                        style = regularTextStyle(if (isSelected) PlatformColors.palette.accent else PlatformColors.palette.textSecondary, 12.sp),
                         modifier = Modifier
                             .clip(RoundedCornerShape(20.dp))
-                            .background(if (isSelected) HomeTealAccent.copy(alpha = 0.2f) else Color.Transparent)
-                            .border(1.dp, if (isSelected) HomeTealAccent else HomeDarkCardBorder, RoundedCornerShape(20.dp))
+                            .background(if (isSelected) PlatformColors.palette.accent.copy(alpha = 0.2f) else Color.Transparent)
+                            .border(1.dp, if (isSelected) PlatformColors.palette.accent else PlatformColors.palette.cardBorder, RoundedCornerShape(20.dp))
                             .clickWithNoRipple { selectedSalaryRange = if (isSelected) null else range }
                             .padding(horizontal = 14.dp, vertical = 8.dp)
                     )
@@ -1012,7 +1004,7 @@ private fun SalaryTransferFeeBottomSheet(
 
             Text(
                 stringResource(R.string.requests_label_transfer_fee),
-                style = regularTextStyle(HomeTextSecondary, 11.sp),
+                style = regularTextStyle(PlatformColors.palette.textSecondary, 11.sp),
                 modifier = Modifier.padding(bottom = 10.dp)
             )
             Row(
@@ -1030,11 +1022,11 @@ private fun SalaryTransferFeeBottomSheet(
                     }
                     Text(
                         text = displayFee,
-                        style = regularTextStyle(if (isSelected) HomeTealAccent else HomeTextSecondary, 12.sp),
+                        style = regularTextStyle(if (isSelected) PlatformColors.palette.accent else PlatformColors.palette.textSecondary, 12.sp),
                         modifier = Modifier
                             .clip(RoundedCornerShape(20.dp))
-                            .background(if (isSelected) HomeTealAccent.copy(alpha = 0.2f) else Color.Transparent)
-                            .border(1.dp, if (isSelected) HomeTealAccent else HomeDarkCardBorder, RoundedCornerShape(20.dp))
+                            .background(if (isSelected) PlatformColors.palette.accent.copy(alpha = 0.2f) else Color.Transparent)
+                            .border(1.dp, if (isSelected) PlatformColors.palette.accent else PlatformColors.palette.cardBorder, RoundedCornerShape(20.dp))
                             .clickWithNoRipple { selectedTransferFee = if (isSelected) null else fee }
                             .padding(horizontal = 14.dp, vertical = 8.dp)
                     )
@@ -1048,7 +1040,7 @@ private fun SalaryTransferFeeBottomSheet(
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 TextButton(onClick = onDismiss, modifier = Modifier.weight(1f)) {
-                    Text(stringResource(R.string.cancel), style = regularTextStyle(HomeTextSecondary, 14.sp))
+                    Text(stringResource(R.string.cancel), style = regularTextStyle(PlatformColors.palette.textSecondary, 14.sp))
                 }
                 Button(
                     onClick = {
@@ -1057,7 +1049,7 @@ private fun SalaryTransferFeeBottomSheet(
                     modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = HomeTealAccent,
+                        containerColor = PlatformColors.palette.accent,
                         contentColor = Color.White
                     )
                 ) {
@@ -1091,8 +1083,21 @@ private fun PlayerInfoHeroCard(
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = HomeDarkCard),
-        border = BorderStroke(1.dp, HomeDarkCardBorder)
+        colors = CardDefaults.cardColors(containerColor = PlatformColors.palette.card),
+        border = if (currentPlatform == Platform.WOMEN) {
+            BorderStroke(
+                1.dp,
+                Brush.linearGradient(
+                    listOf(
+                        com.liordahan.mgsrteam.ui.theme.WomenColors.Orchid.copy(alpha = 0.4f),
+                        com.liordahan.mgsrteam.ui.theme.WomenColors.Gold.copy(alpha = 0.2f),
+                        com.liordahan.mgsrteam.ui.theme.WomenColors.RoseCoral.copy(alpha = 0.3f)
+                    )
+                )
+            )
+        } else {
+            BorderStroke(1.dp, PlatformColors.palette.cardBorder)
+        }
     ) {
         Column(
             modifier = Modifier
@@ -1100,19 +1105,32 @@ private fun PlayerInfoHeroCard(
                 .padding(20.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            AsyncImage(
-                model = player.profileImage ?: "",
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .size(96.dp)
-                    .clip(CircleShape)
-                    .border(2.dp, HomeDarkCardBorder, CircleShape)
-            )
+            if (currentPlatform == Platform.WOMEN) {
+                WomenGlowPhotoRing(modifier = Modifier.size(100.dp)) {
+                    AsyncImage(
+                        model = player.profileImage ?: "",
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .size(92.dp)
+                            .clip(CircleShape)
+                    )
+                }
+            } else {
+                AsyncImage(
+                    model = player.profileImage ?: "",
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .size(96.dp)
+                        .clip(CircleShape)
+                        .border(2.dp, PlatformColors.palette.cardBorder, CircleShape)
+                )
+            }
             Spacer(Modifier.height(12.dp))
             Text(
                 text = player.fullName ?: stringResource(R.string.player_info_unknown),
-                style = boldTextStyle(HomeTextPrimary, 22.sp)
+                style = boldTextStyle(PlatformColors.palette.textPrimary, 22.sp)
             )
             if (player.isOnLoan) {
                 Spacer(Modifier.height(6.dp))
@@ -1128,18 +1146,18 @@ private fun PlayerInfoHeroCard(
                     player.age?.let { append(" • $it ${stringResource(R.string.player_info_years_short)}") }
                     player.currentClub?.clubName?.let { append(" • $it") }
                 }.ifEmpty { "—" },
-                style = regularTextStyle(HomeTextSecondary, 13.sp)
+                style = regularTextStyle(PlatformColors.palette.textSecondary, 13.sp)
             )
             Spacer(Modifier.height(2.dp))
             Text(
                 text = stringResource(R.string.player_info_added_by, player.agentInChargeName ?: "—"),
-                style = regularTextStyle(HomeTextSecondary.copy(alpha = 0.8f), 11.sp)
+                style = regularTextStyle(PlatformColors.palette.textSecondary.copy(alpha = 0.8f), 11.sp)
             )
             player.lastRefreshedAt?.takeIf { it > 0 }?.let { ts ->
                 Spacer(Modifier.height(4.dp))
                 Text(
                     text = playerInfoFormatLastRefreshed(resources, ts),
-                    style = regularTextStyle(HomeTextSecondary.copy(alpha = 0.7f), 11.sp)
+                    style = regularTextStyle(PlatformColors.palette.textSecondary.copy(alpha = 0.7f), 11.sp)
                 )
             }
             Spacer(Modifier.height(12.dp))
@@ -1156,9 +1174,9 @@ private fun PlayerInfoHeroCard(
                         },
                         style = boldTextStyle(
                             when {
-                                valueTrend > 0 -> HomeGreenAccent
-                                valueTrend < 0 -> HomeRedAccent
-                                else -> HomeTealAccent
+                                valueTrend > 0 -> PlatformColors.palette.green
+                                valueTrend < 0 -> PlatformColors.palette.red
+                                else -> PlatformColors.palette.accent
                             },
                             14.sp
                         )
@@ -1168,19 +1186,19 @@ private fun PlayerInfoHeroCard(
                             imageVector = if (valueTrend > 0) Icons.AutoMirrored.Filled.TrendingUp else Icons.AutoMirrored.Filled.TrendingDown,
                             contentDescription = null,
                             modifier = Modifier.size(16.dp),
-                            tint = if (valueTrend > 0) HomeGreenAccent else HomeRedAccent
+                            tint = if (valueTrend > 0) PlatformColors.palette.green else PlatformColors.palette.red
                         )
                     }
                 }
-                Box(modifier = Modifier.width(1.dp).height(14.dp).background(HomeDarkCardBorder))
+                Box(modifier = Modifier.width(1.dp).height(14.dp).background(PlatformColors.palette.cardBorder))
                 Text(
                     text = player.height?.replace(",", ".") ?: "—",
-                    style = regularTextStyle(HomeTextSecondary, 12.sp)
+                    style = regularTextStyle(PlatformColors.palette.textSecondary, 12.sp)
                 )
-                Box(modifier = Modifier.width(1.dp).height(14.dp).background(HomeDarkCardBorder))
+                Box(modifier = Modifier.width(1.dp).height(14.dp).background(PlatformColors.palette.cardBorder))
                 Text(
                     text = player.nationality ?: "—",
-                    style = regularTextStyle(HomeTextSecondary, 12.sp)
+                    style = regularTextStyle(PlatformColors.palette.textSecondary, 12.sp)
                 )
                 AsyncImage(
                     model = player.nationalityFlag,
@@ -1196,15 +1214,15 @@ private fun PlayerInfoHeroCard(
                     modifier = Modifier
                         .clip(RoundedCornerShape(8.dp))
                         .background(
-                            if (isExpired) HomeRedAccent.copy(alpha = 0.15f)
-                            else HomeOrangeAccent.copy(alpha = 0.15f)
+                            if (isExpired) PlatformColors.palette.red.copy(alpha = 0.15f)
+                            else PlatformColors.palette.orange.copy(alpha = 0.15f)
                         )
                         .padding(horizontal = 10.dp, vertical = 4.dp)
                 ) {
                     Text(
                         text = stringResource(R.string.player_info_contract, text),
                         style = boldTextStyle(
-                            if (isExpired) HomeRedAccent else HomeOrangeAccent,
+                            if (isExpired) PlatformColors.palette.red else PlatformColors.palette.orange,
                             11.sp
                         )
                     )
@@ -1215,8 +1233,8 @@ private fun PlayerInfoHeroCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(12.dp))
-                    .background(HomeDarkBackground)
-                    .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(12.dp))
+                    .background(PlatformColors.palette.background)
+                    .border(1.dp, PlatformColors.palette.cardBorder, RoundedCornerShape(12.dp))
                     .padding(horizontal = 14.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
@@ -1228,14 +1246,14 @@ private fun PlayerInfoHeroCard(
                         imageVector = Icons.Default.VerifiedUser,
                         contentDescription = null,
                         modifier = Modifier.size(20.dp),
-                        tint = if (isMandateOn) HomeBlueAccent else HomeTextSecondary
+                        tint = if (isMandateOn) PlatformColors.palette.blue else PlatformColors.palette.textSecondary
                     )
                     Spacer(Modifier.width(8.dp))
                     Column {
                         Text(
                             text = stringResource(R.string.player_info_mandate),
                             style = boldTextStyle(
-                                if (isMandateOn) HomeBlueAccent else HomeTextSecondary,
+                                if (isMandateOn) PlatformColors.palette.blue else PlatformColors.palette.textSecondary,
                                 16.sp
                             )
                         )
@@ -1246,7 +1264,7 @@ private fun PlayerInfoHeroCard(
                             Text(
                                 text = mandateExpiryStr,
                                 style = regularTextStyle(
-                                    if (isMandateOn) HomeBlueAccent else HomeTextSecondary,
+                                    if (isMandateOn) PlatformColors.palette.blue else PlatformColors.palette.textSecondary,
                                     11.sp
                                 )
                             )
@@ -1261,9 +1279,9 @@ private fun PlayerInfoHeroCard(
                     },
                     colors = SwitchDefaults.colors(
                         checkedThumbColor = Color.White,
-                        checkedTrackColor = HomeBlueAccent,
-                        uncheckedThumbColor = HomeTextSecondary,
-                        uncheckedTrackColor = HomeDarkCardBorder
+                        checkedTrackColor = PlatformColors.palette.blue,
+                        uncheckedThumbColor = PlatformColors.palette.textSecondary,
+                        uncheckedTrackColor = PlatformColors.palette.cardBorder
                     )
                 )
             }
@@ -1275,8 +1293,8 @@ private fun PlayerInfoHeroCard(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(12.dp))
-                        .background(HomeDarkBackground)
-                        .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(12.dp))
+                        .background(PlatformColors.palette.background)
+                        .border(1.dp, PlatformColors.palette.cardBorder, RoundedCornerShape(12.dp))
                         .padding(horizontal = 14.dp, vertical = 10.dp)
                         .combinedClickable(
                             onClick = onSalaryTransferFeeClicked,
@@ -1288,7 +1306,7 @@ private fun PlayerInfoHeroCard(
                     Column {
                         Text(
                             text = stringResource(R.string.player_info_salary_transfer_fee),
-                            style = boldTextStyle(HomeTextPrimary, 14.sp)
+                            style = boldTextStyle(PlatformColors.palette.textPrimary, 14.sp)
                         )
                         val salaryStr = player.salaryRange?.takeIf { it.isNotBlank() } ?: "—"
                         val feeDisplay = when (player.transferFee) {
@@ -1298,7 +1316,7 @@ private fun PlayerInfoHeroCard(
                         }
                         Text(
                             text = "$salaryStr • $feeDisplay",
-                            style = regularTextStyle(HomeTealAccent, 11.sp),
+                            style = regularTextStyle(PlatformColors.palette.accent, 11.sp),
                             modifier = Modifier.padding(top = 2.dp)
                         )
                     }
@@ -1306,13 +1324,13 @@ private fun PlayerInfoHeroCard(
                         imageVector = Icons.Default.Edit,
                         contentDescription = null,
                         modifier = Modifier.size(18.dp),
-                        tint = HomeTealAccent
+                        tint = PlatformColors.palette.accent
                     )
                 }
                 DropdownMenu(
                     expanded = showClearSalaryMenu,
                     onDismissRequest = { showClearSalaryMenu = false },
-                    containerColor = HomeDarkCard
+                    containerColor = PlatformColors.palette.card
                 ) {
                     DropdownMenuItem(
                         text = {
@@ -1321,12 +1339,12 @@ private fun PlayerInfoHeroCard(
                                     Icons.Default.Delete,
                                     contentDescription = null,
                                     modifier = Modifier.size(18.dp),
-                                    tint = HomeRedAccent
+                                    tint = PlatformColors.palette.red
                                 )
                                 Spacer(Modifier.width(12.dp))
                                 Text(
                                     stringResource(R.string.player_info_remove_salary_transfer_fee),
-                                    style = regularTextStyle(HomeRedAccent, 14.sp)
+                                    style = regularTextStyle(PlatformColors.palette.red, 14.sp)
                                 )
                             }
                         },
@@ -1348,7 +1366,7 @@ private fun PlayerInfoOnLoanPill(text: String) {
             .clip(RoundedCornerShape(12.dp))
             .background(
                 Brush.linearGradient(
-                    colors = listOf(HomePurpleAccent, Color(0xFF7B1FA2))
+                    colors = listOf(PlatformColors.palette.purple, Color(0xFF7B1FA2))
                 )
             )
             .padding(horizontal = 12.dp, vertical = 5.dp)
@@ -1379,8 +1397,8 @@ private fun PlayerInfoQuickActions(
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = HomeDarkCard),
-        border = BorderStroke(1.dp, HomeDarkCardBorder)
+        colors = CardDefaults.cardColors(containerColor = PlatformColors.palette.card),
+        border = BorderStroke(1.dp, PlatformColors.palette.cardBorder)
     ) {
         Row(
             modifier = Modifier
@@ -1403,7 +1421,7 @@ private fun PlayerInfoQuickActions(
                 modifier = Modifier
                     .width(1.dp)
                     .height(32.dp)
-                    .background(HomeDarkCardBorder)
+                    .background(PlatformColors.palette.cardBorder)
             )
 
             // Agent phone action
@@ -1421,7 +1439,7 @@ private fun PlayerInfoQuickActions(
                     modifier = Modifier
                         .width(1.dp)
                         .height(32.dp)
-                        .background(HomeDarkCardBorder)
+                        .background(PlatformColors.palette.cardBorder)
                 )
                 ContactActionChip(
                     modifier = Modifier.weight(1f),
@@ -1430,7 +1448,7 @@ private fun PlayerInfoQuickActions(
                             imageVector = Icons.Default.Link,
                             contentDescription = null,
                             modifier = Modifier.size(24.dp),
-                            tint = HomeTealAccent
+                            tint = PlatformColors.palette.accent
                         )
                     },
                     label = stringResource(R.string.player_info_tm_short),
@@ -1470,7 +1488,7 @@ private fun ContactActionChip(
         Spacer(Modifier.height(4.dp))
         Text(
             text = label,
-            style = boldTextStyle(HomeTextSecondary, 11.sp),
+            style = boldTextStyle(PlatformColors.palette.textSecondary, 11.sp),
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             textAlign = TextAlign.Center
@@ -1532,13 +1550,13 @@ private fun PlayerInfoPhoneAction(
                         imageVector = if (hasPhone) Icons.Default.Whatsapp else Icons.Default.PersonAddAlt,
                         contentDescription = null,
                         modifier = Modifier.size(24.dp),
-                        tint = HomeTealAccent
+                        tint = PlatformColors.palette.accent
                     )
                 }
                 Spacer(Modifier.height(4.dp))
                 Text(
                     text = label,
-                    style = boldTextStyle(HomeTextSecondary, 11.sp),
+                    style = boldTextStyle(PlatformColors.palette.textSecondary, 11.sp),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     textAlign = TextAlign.Center
@@ -1549,15 +1567,15 @@ private fun PlayerInfoPhoneAction(
         DropdownMenu(
             expanded = showMenu,
             onDismissRequest = { showMenu = false },
-            containerColor = HomeDarkCard,
+            containerColor = PlatformColors.palette.card,
             shape = RoundedCornerShape(12.dp),
-            border = BorderStroke(1.dp, HomeDarkCardBorder)
+            border = BorderStroke(1.dp, PlatformColors.palette.cardBorder)
         ) {
             DropdownMenuItem(
                 text = {
                     Text(
                         text = stringResource(R.string.player_info_message_whatsapp),
-                        style = regularTextStyle(HomeTextPrimary, 14.sp)
+                        style = regularTextStyle(PlatformColors.palette.textPrimary, 14.sp)
                     )
                 },
                 leadingIcon = {
@@ -1565,7 +1583,7 @@ private fun PlayerInfoPhoneAction(
                         imageVector = Icons.Default.Whatsapp,
                         contentDescription = null,
                         modifier = Modifier.size(20.dp),
-                        tint = HomeTealAccent
+                        tint = PlatformColors.palette.accent
                     )
                 },
                 onClick = {
@@ -1577,7 +1595,7 @@ private fun PlayerInfoPhoneAction(
                 }
             )
             HorizontalDivider(
-                color = HomeDarkCardBorder,
+                color = PlatformColors.palette.cardBorder,
                 thickness = 0.5.dp,
                 modifier = Modifier.padding(horizontal = 12.dp)
             )
@@ -1585,7 +1603,7 @@ private fun PlayerInfoPhoneAction(
                 text = {
                     Text(
                         text = stringResource(R.string.player_info_edit_number),
-                        style = regularTextStyle(HomeTextPrimary, 14.sp)
+                        style = regularTextStyle(PlatformColors.palette.textPrimary, 14.sp)
                     )
                 },
                 leadingIcon = {
@@ -1593,7 +1611,7 @@ private fun PlayerInfoPhoneAction(
                         imageVector = Icons.Default.Edit,
                         contentDescription = null,
                         modifier = Modifier.size(20.dp),
-                        tint = HomeTealAccent
+                        tint = PlatformColors.palette.accent
                     )
                 },
                 onClick = {
@@ -1602,7 +1620,7 @@ private fun PlayerInfoPhoneAction(
                 }
             )
             HorizontalDivider(
-                color = HomeDarkCardBorder,
+                color = PlatformColors.palette.cardBorder,
                 thickness = 0.5.dp,
                 modifier = Modifier.padding(horizontal = 12.dp)
             )
@@ -1610,7 +1628,7 @@ private fun PlayerInfoPhoneAction(
                 text = {
                     Text(
                         text = stringResource(R.string.player_info_remove_number),
-                        style = regularTextStyle(HomeRedAccent, 14.sp)
+                        style = regularTextStyle(PlatformColors.palette.red, 14.sp)
                     )
                 },
                 leadingIcon = {
@@ -1618,7 +1636,7 @@ private fun PlayerInfoPhoneAction(
                         imageVector = Icons.Default.Delete,
                         contentDescription = null,
                         modifier = Modifier.size(20.dp),
-                        tint = HomeRedAccent
+                        tint = PlatformColors.palette.red
                     )
                 },
                 onClick = {
@@ -1672,15 +1690,15 @@ private fun PlayerInfoAiHelperSection(
                     }
                 },
             shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = HomeDarkCard),
-            border = BorderStroke(1.dp, HomeDarkCardBorder)
+            colors = CardDefaults.cardColors(containerColor = PlatformColors.palette.card),
+            border = BorderStroke(1.dp, PlatformColors.palette.cardBorder)
         ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .drawBehind {
                         drawRect(
-                            color = if (hiddenGem != null && (hiddenGem?.score ?: 0) >= 60) Color(0xFFE6B800) else HomeTealAccent,
+                            color = if (hiddenGem != null && (hiddenGem?.score ?: 0) >= 60) Color(0xFFE6B800) else PlatformColors.palette.accent,
                             topLeft = Offset.Zero,
                             size = Size(3.dp.toPx(), size.height)
                         )
@@ -1692,39 +1710,39 @@ private fun PlayerInfoAiHelperSection(
                 Icon(
                     imageVector = Icons.Default.Star,
                     contentDescription = null,
-                    tint = if (hiddenGem != null && (hiddenGem?.score ?: 0) >= 60) Color(0xFFE6B800) else HomeTealAccent,
+                    tint = if (hiddenGem != null && (hiddenGem?.score ?: 0) >= 60) Color(0xFFE6B800) else PlatformColors.palette.accent,
                     modifier = Modifier.size(22.dp)
                 )
                 Spacer(modifier = Modifier.width(10.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = stringResource(R.string.player_info_ai_hidden_gem),
-                        style = boldTextStyle(HomeTextPrimary, 14.sp)
+                        style = boldTextStyle(PlatformColors.palette.textPrimary, 14.sp)
                     )
                     when {
                         isHiddenGemLoading -> Text(
                             text = stringResource(R.string.player_info_ai_generating_scout_diamond_report),
-                            style = regularTextStyle(HomeTextSecondary, 12.sp)
+                            style = regularTextStyle(PlatformColors.palette.textSecondary, 12.sp)
                         )
                         hiddenGem != null -> {
                             Text(
                                 text = stringResource(R.string.player_info_ai_hidden_gem_score, hiddenGem!!.score),
                                 style = boldTextStyle(
-                                    if (hiddenGem!!.score >= 60) Color(0xFFE6B800) else HomeTealAccent,
+                                    if (hiddenGem!!.score >= 60) Color(0xFFE6B800) else PlatformColors.palette.accent,
                                     13.sp
                                 )
                             )
                             hiddenGem!!.reason?.let { reason ->
                                 Text(
                                     text = reason,
-                                    style = regularTextStyle(HomeTextSecondary, 12.sp),
+                                    style = regularTextStyle(PlatformColors.palette.textSecondary, 12.sp),
                                     modifier = Modifier.padding(top = 4.dp)
                                 )
                             }
                         }
                         else -> Text(
                             text = stringResource(R.string.player_info_ai_hidden_gem_check),
-                            style = regularTextStyle(HomeTextSecondary, 12.sp)
+                            style = regularTextStyle(PlatformColors.palette.textSecondary, 12.sp)
                         )
                     }
                 }
@@ -1736,14 +1754,14 @@ private fun PlayerInfoAiHelperSection(
                     ) {
                         Text(
                             stringResource(R.string.player_info_ai_hidden_gem_refresh),
-                            style = regularTextStyle(HomeTealAccent, 12.sp)
+                            style = regularTextStyle(PlatformColors.palette.accent, 12.sp)
                         )
                     }
                 }
                 if (isHiddenGemLoading) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(20.dp),
-                        color = HomeTealAccent,
+                        color = PlatformColors.palette.accent,
                         strokeWidth = 2.dp
                     )
                 }
@@ -1761,8 +1779,8 @@ private fun PlayerInfoAiHelperSection(
                     }
                 },
             shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = HomeDarkCard),
-            border = BorderStroke(1.dp, HomeDarkCardBorder)
+            colors = CardDefaults.cardColors(containerColor = PlatformColors.palette.card),
+            border = BorderStroke(1.dp, PlatformColors.palette.cardBorder)
         ) {
             Column(modifier = Modifier.fillMaxWidth()) {
                 Row(
@@ -1770,7 +1788,7 @@ private fun PlayerInfoAiHelperSection(
                         .fillMaxWidth()
                         .drawBehind {
                             drawRect(
-                                color = HomeTealAccent,
+                                color = PlatformColors.palette.accent,
                                 topLeft = Offset.Zero,
                                 size = Size(3.dp.toPx(), size.height)
                             )
@@ -1781,20 +1799,20 @@ private fun PlayerInfoAiHelperSection(
                 ) {
                     Text(
                         text = stringResource(R.string.player_info_ai_find_similar_players),
-                        style = boldTextStyle(HomeTextPrimary, 15.sp),
+                        style = boldTextStyle(PlatformColors.palette.textPrimary, 15.sp),
                         modifier = Modifier.weight(1f)
                     )
                     if (similarPlayers.isNotEmpty()) {
                         Text(
                             "(${similarPlayers.size})",
-                            style = regularTextStyle(HomeTextSecondary, 12.sp),
+                            style = regularTextStyle(PlatformColors.palette.textSecondary, 12.sp),
                             modifier = Modifier.padding(end = 8.dp)
                         )
                     }
                     Icon(
                         Icons.Default.ExpandMore,
                         contentDescription = if (isFindSimilarExpanded) "Collapse" else "Expand",
-                        tint = HomeTextSecondary,
+                        tint = PlatformColors.palette.textSecondary,
                         modifier = Modifier
                             .size(22.dp)
                             .graphicsLayer { rotationZ = if (isFindSimilarExpanded) 180f else 0f }
@@ -1820,7 +1838,7 @@ private fun PlayerInfoAiHelperSection(
                                     )
                                 }
                             ) {
-                                Text(stringResource(R.string.player_info_ai_refresh), color = HomeTealAccent)
+                                Text(stringResource(R.string.player_info_ai_refresh), color = PlatformColors.palette.accent)
                             }
                         }
                         if (isSimilarLoading) {
@@ -1832,13 +1850,13 @@ private fun PlayerInfoAiHelperSection(
                             ) {
                                 CircularProgressIndicator(
                                     modifier = Modifier.size(24.dp),
-                                    color = HomeTealAccent,
+                                    color = PlatformColors.palette.accent,
                                     strokeWidth = 2.dp
                                 )
                                 Spacer(Modifier.width(12.dp))
                                 Text(
                                     stringResource(R.string.player_info_updating),
-                                    style = regularTextStyle(HomeTextSecondary, 13.sp)
+                                    style = regularTextStyle(PlatformColors.palette.textSecondary, 13.sp)
                                 )
                             }
                         } else if (similarPlayers.isEmpty()) {
@@ -1848,12 +1866,12 @@ private fun PlayerInfoAiHelperSection(
                             ) {
                                 Text(
                                     stringResource(R.string.player_info_ai_no_similar_players),
-                                    style = regularTextStyle(HomeTextSecondary, 12.sp)
+                                    style = regularTextStyle(PlatformColors.palette.textSecondary, 12.sp)
                                 )
                                 TextButton(
                                     onClick = { viewModel.findSimilarPlayers(player, LocaleManager.getSavedLanguage(context), similarPlayersOptions) }
                                 ) {
-                                    Text(stringResource(R.string.player_info_ai_refresh), color = HomeTealAccent)
+                                    Text(stringResource(R.string.player_info_ai_refresh), color = PlatformColors.palette.accent)
                                 }
                             }
                         } else {
@@ -1918,8 +1936,8 @@ private fun PlayerInfoAiHelperSection(
                     }
                 },
             shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = HomeDarkCard),
-            border = BorderStroke(1.dp, HomeDarkCardBorder)
+            colors = CardDefaults.cardColors(containerColor = PlatformColors.palette.card),
+            border = BorderStroke(1.dp, PlatformColors.palette.cardBorder)
         ) {
             Column(modifier = Modifier.fillMaxWidth()) {
                 Row(
@@ -1927,7 +1945,7 @@ private fun PlayerInfoAiHelperSection(
                         .fillMaxWidth()
                         .drawBehind {
                             drawRect(
-                                color = HomeTealAccent,
+                                color = PlatformColors.palette.accent,
                                 topLeft = Offset.Zero,
                                 size = Size(3.dp.toPx(), size.height)
                             )
@@ -1938,14 +1956,14 @@ private fun PlayerInfoAiHelperSection(
                 ) {
                     Text(
                         text = stringResource(R.string.player_info_ai_create_scout_report, player.fullName ?: stringResource(R.string.player_info_unknown)),
-                        style = boldTextStyle(HomeTextPrimary, 15.sp),
+                        style = boldTextStyle(PlatformColors.palette.textPrimary, 15.sp),
                         modifier = Modifier.weight(1f)
                     )
                     if (scoutReport != null) {
                         Icon(
                             Icons.Default.Share,
                             contentDescription = stringResource(R.string.player_info_share),
-                            tint = HomeTealAccent,
+                            tint = PlatformColors.palette.accent,
                             modifier = Modifier
                                 .size(22.dp)
                                 .clickWithNoRipple {
@@ -1966,7 +1984,7 @@ private fun PlayerInfoAiHelperSection(
                     Icon(
                         Icons.Default.ExpandMore,
                         contentDescription = if (isScoutReportExpanded) "Collapse" else "Expand",
-                        tint = HomeTextSecondary,
+                        tint = PlatformColors.palette.textSecondary,
                         modifier = Modifier
                             .size(22.dp)
                             .graphicsLayer { rotationZ = if (isScoutReportExpanded) 180f else 0f }
@@ -1983,7 +2001,7 @@ private fun PlayerInfoAiHelperSection(
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Text(
                                 stringResource(R.string.player_info_ai_options),
-                                style = regularTextStyle(HomeTextSecondary, 11.sp)
+                                style = regularTextStyle(PlatformColors.palette.textSecondary, 11.sp)
                             )
                             Row(
                                 modifier = Modifier
@@ -2000,14 +2018,14 @@ private fun PlayerInfoAiHelperSection(
                                     FilterChip(
                                         selected = scoutReportOptions.reportType == type,
                                         onClick = { scoutReportOptions = scoutReportOptions.copy(reportType = type) },
-                                        label = { Text(stringResource(resId), style = regularTextStyle(HomeTextPrimary, 11.sp)) },
+                                        label = { Text(stringResource(resId), style = regularTextStyle(PlatformColors.palette.textPrimary, 11.sp)) },
                                         colors = FilterChipDefaults.filterChipColors(
                                             containerColor = Color.Transparent,
-                                            labelColor = HomeTextPrimary,
-                                            selectedContainerColor = HomeTealAccent.copy(alpha = 0.4f),
-                                            selectedLabelColor = HomeTealAccent
+                                            labelColor = PlatformColors.palette.textPrimary,
+                                            selectedContainerColor = PlatformColors.palette.accent.copy(alpha = 0.4f),
+                                            selectedLabelColor = PlatformColors.palette.accent
                                         ),
-                                        border = BorderStroke(1.dp, if (scoutReportOptions.reportType == type) HomeTealAccent else HomeDarkCardBorder)
+                                        border = BorderStroke(1.dp, if (scoutReportOptions.reportType == type) PlatformColors.palette.accent else PlatformColors.palette.cardBorder)
                                     )
                                 }
                             }
@@ -2015,7 +2033,7 @@ private fun PlayerInfoAiHelperSection(
                                 TextButton(
                                     onClick = { viewModel.generateScoutReport(player, LocaleManager.getSavedLanguage(context), scoutReportOptions) }
                                 ) {
-                                    Text(stringResource(R.string.player_info_ai_refresh), color = HomeTealAccent)
+                                    Text(stringResource(R.string.player_info_ai_refresh), color = PlatformColors.palette.accent)
                                 }
                             }
                         }
@@ -2028,13 +2046,13 @@ private fun PlayerInfoAiHelperSection(
                             ) {
                                 CircularProgressIndicator(
                                     modifier = Modifier.size(24.dp),
-                                    color = HomeTealAccent,
+                                    color = PlatformColors.palette.accent,
                                     strokeWidth = 2.dp
                                 )
                                 Spacer(Modifier.width(12.dp))
                                 Text(
                                     stringResource(R.string.player_info_ai_generating_scout_report),
-                                    style = regularTextStyle(HomeTextSecondary, 13.sp)
+                                    style = regularTextStyle(PlatformColors.palette.textSecondary, 13.sp)
                                 )
                             }
                         } else if (scoutReport != null) {
@@ -2051,12 +2069,12 @@ private fun PlayerInfoAiHelperSection(
                             ) {
                                 Text(
                                     stringResource(R.string.player_info_ai_scout_report_error),
-                                    style = regularTextStyle(HomeTextSecondary, 12.sp)
+                                    style = regularTextStyle(PlatformColors.palette.textSecondary, 12.sp)
                                 )
                                 TextButton(
                                     onClick = { viewModel.generateScoutReport(player, LocaleManager.getSavedLanguage(context), scoutReportOptions) }
                                 ) {
-                                    Text(stringResource(R.string.contract_finisher_retry), color = HomeTealAccent)
+                                    Text(stringResource(R.string.contract_finisher_retry), color = PlatformColors.palette.accent)
                                 }
                             }
                         }
@@ -2082,8 +2100,8 @@ private fun SimilarPlayerSuggestionRow(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(10.dp))
-                .background(HomeDarkBackground)
-                .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(10.dp))
+                .background(PlatformColors.palette.background)
+                .border(1.dp, PlatformColors.palette.cardBorder, RoundedCornerShape(10.dp))
         ) {
         Row(
             modifier = Modifier
@@ -2096,12 +2114,12 @@ private fun SimilarPlayerSuggestionRow(
                 modifier = Modifier
                     .size(36.dp)
                     .clip(CircleShape)
-                    .background(HomeDarkCardBorder),
+                    .background(PlatformColors.palette.cardBorder),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     suggestion.name.take(2).uppercase(),
-                    style = boldTextStyle(HomeTextSecondary, 12.sp)
+                    style = boldTextStyle(PlatformColors.palette.textSecondary, 12.sp)
                 )
             }
             Spacer(Modifier.width(12.dp))
@@ -2112,16 +2130,16 @@ private fun SimilarPlayerSuggestionRow(
                 ) {
                     Text(
                         suggestion.name,
-                        style = boldTextStyle(HomeTextPrimary, 14.sp),
+                        style = boldTextStyle(PlatformColors.palette.textPrimary, 14.sp),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f, fill = false)
                     )
                     suggestion.matchPercent?.let { pct ->
                         val matchColor = when {
-                            pct >= 80 -> HomeGreenAccent
-                            pct >= 60 -> HomeTealAccent
-                            else -> HomeOrangeAccent
+                            pct >= 80 -> PlatformColors.palette.green
+                            pct >= 60 -> PlatformColors.palette.accent
+                            else -> PlatformColors.palette.orange
                         }
                         Text(
                             "${pct}%",
@@ -2135,7 +2153,7 @@ private fun SimilarPlayerSuggestionRow(
                 }
                 Text(
                     "${suggestion.age ?: "-"} • ${suggestion.position ?: "-"} • ${suggestion.marketValue ?: "-"}",
-                    style = regularTextStyle(HomeTextSecondary, 11.sp),
+                    style = regularTextStyle(PlatformColors.palette.textSecondary, 11.sp),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.padding(top = 2.dp)
@@ -2147,7 +2165,7 @@ private fun SimilarPlayerSuggestionRow(
             Icon(
                 Icons.Default.ExpandMore,
                 contentDescription = if (isExpanded) "Collapse" else "Expand",
-                tint = HomeTextSecondary,
+                tint = PlatformColors.palette.textSecondary,
                 modifier = Modifier
                     .size(20.dp)
                     .graphicsLayer { rotationZ = if (isExpanded) 180f else 0f }
@@ -2163,8 +2181,8 @@ private fun SimilarPlayerSuggestionRow(
                     .fillMaxWidth()
                     .padding(start = 10.dp, end = 10.dp, bottom = 10.dp)
                     .clip(RoundedCornerShape(8.dp))
-                    .background(HomeDarkCard)
-                    .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(8.dp))
+                    .background(PlatformColors.palette.card)
+                    .border(1.dp, PlatformColors.palette.cardBorder, RoundedCornerShape(8.dp))
                     .padding(12.dp),
                 verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
@@ -2178,19 +2196,19 @@ private fun SimilarPlayerSuggestionRow(
                         suggestion.playingStyle?.takeIf { it.isNotBlank() }?.let { style ->
                             Text(
                                 text = style,
-                                style = boldTextStyle(HomeTealAccent, 12.sp),
+                                style = boldTextStyle(PlatformColors.palette.accent, 12.sp),
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(6.dp))
-                                    .background(HomeTealAccent.copy(alpha = 0.12f))
-                                    .border(1.dp, HomeTealAccent.copy(alpha = 0.3f), RoundedCornerShape(6.dp))
+                                    .background(PlatformColors.palette.accent.copy(alpha = 0.12f))
+                                    .border(1.dp, PlatformColors.palette.accent.copy(alpha = 0.3f), RoundedCornerShape(6.dp))
                                     .padding(horizontal = 8.dp, vertical = 4.dp)
                             )
                         }
                         suggestion.matchPercent?.let { pct ->
                             val matchColor = when {
-                                pct >= 80 -> HomeGreenAccent
-                                pct >= 60 -> HomeTealAccent
-                                else -> HomeOrangeAccent
+                                pct >= 80 -> PlatformColors.palette.green
+                                pct >= 60 -> PlatformColors.palette.accent
+                                else -> PlatformColors.palette.orange
                             }
                             Text(
                                 text = "Match: $pct%",
@@ -2234,11 +2252,11 @@ private fun SimilarPlayerSuggestionRow(
                                 ) {
                                     Text(
                                         "$icon ",
-                                        style = regularTextStyle(HomeTextSecondary, 12.sp)
+                                        style = regularTextStyle(PlatformColors.palette.textSecondary, 12.sp)
                                     )
                                     Text(
                                         cleanPart,
-                                        style = regularTextStyle(HomeTextPrimary, 12.sp),
+                                        style = regularTextStyle(PlatformColors.palette.textPrimary, 12.sp),
                                         lineHeight = 18.sp
                                     )
                                 }
@@ -2253,7 +2271,7 @@ private fun SimilarPlayerSuggestionRow(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(1.dp)
-                                .background(HomeDarkCardBorder)
+                                .background(PlatformColors.palette.cardBorder)
                         )
                         Spacer(modifier = Modifier.height(4.dp))
 
@@ -2266,13 +2284,13 @@ private fun SimilarPlayerSuggestionRow(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .clip(RoundedCornerShape(4.dp))
-                                        .background(HomeDarkBackground.copy(alpha = 0.5f))
+                                        .background(PlatformColors.palette.background.copy(alpha = 0.5f))
                                         .padding(horizontal = 8.dp, vertical = 4.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Text(
                                         "⚡ ",
-                                        style = regularTextStyle(HomeTealAccent, 11.sp)
+                                        style = regularTextStyle(PlatformColors.palette.accent, 11.sp)
                                     )
                                     if (hasVs) {
                                         val colonIdx = cleanStat.indexOf(":")
@@ -2281,22 +2299,22 @@ private fun SimilarPlayerSuggestionRow(
                                             val values = cleanStat.substring(colonIdx + 1).trim()
                                             Text(
                                                 "$statName: ",
-                                                style = boldTextStyle(HomeTextSecondary, 11.sp)
+                                                style = boldTextStyle(PlatformColors.palette.textSecondary, 11.sp)
                                             )
                                             Text(
                                                 values,
-                                                style = regularTextStyle(HomeTealAccent, 11.sp)
+                                                style = regularTextStyle(PlatformColors.palette.accent, 11.sp)
                                             )
                                         } else {
                                             Text(
                                                 cleanStat,
-                                                style = regularTextStyle(HomeTextPrimary, 11.sp)
+                                                style = regularTextStyle(PlatformColors.palette.textPrimary, 11.sp)
                                             )
                                         }
                                     } else {
                                         Text(
                                             cleanStat,
-                                            style = regularTextStyle(HomeTextPrimary, 11.sp)
+                                            style = regularTextStyle(PlatformColors.palette.textPrimary, 11.sp)
                                         )
                                     }
                                 }
@@ -2309,7 +2327,7 @@ private fun SimilarPlayerSuggestionRow(
                 if (suggestion.scoutAnalysis.isNullOrBlank() && !suggestion.similarityReason.isNullOrBlank()) {
                     Text(
                         text = suggestion.similarityReason,
-                        style = regularTextStyle(HomeTextSecondary, 12.sp),
+                        style = regularTextStyle(PlatformColors.palette.textSecondary, 12.sp),
                         lineHeight = 18.sp
                     )
                 }
@@ -2330,7 +2348,7 @@ private fun SimilarPlayerSuggestionRow(
                                 Icon(
                                     imageVector = if (isInShortlist) Icons.Default.Bookmark else Icons.Default.BookmarkAdd,
                                     contentDescription = if (isInShortlist) stringResource(R.string.shortlist_in_shortlist) else stringResource(R.string.shortlist_add_to_shortlist),
-                                    tint = if (isInShortlist) HomeGreenAccent else HomeTextSecondary
+                                    tint = if (isInShortlist) PlatformColors.palette.green else PlatformColors.palette.textSecondary
                                 )
                             }
                         }
@@ -2338,18 +2356,18 @@ private fun SimilarPlayerSuggestionRow(
                             onClick = { onTmLinkClick() },
                             modifier = Modifier.height(36.dp),
                             contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
-                            colors = ButtonDefaults.textButtonColors(contentColor = HomeTealAccent)
+                            colors = ButtonDefaults.textButtonColors(contentColor = PlatformColors.palette.accent)
                         ) {
                             Icon(
                                 Icons.Default.Link,
                                 contentDescription = null,
-                                tint = HomeTealAccent,
+                                tint = PlatformColors.palette.accent,
                                 modifier = Modifier.size(16.dp)
                             )
                             Spacer(Modifier.width(6.dp))
                             Text(
                                 text = stringResource(R.string.shortlist_open_tm),
-                                style = regularTextStyle(HomeTealAccent, 13.sp)
+                                style = regularTextStyle(PlatformColors.palette.accent, 13.sp)
                             )
                         }
                     }
@@ -2366,7 +2384,7 @@ private fun SimilarPlayerSuggestionRow(
                 contentAlignment = Alignment.Center
             ) {
                 CircularProgressIndicator(
-                    color = HomeTealAccent,
+                    color = PlatformColors.palette.accent,
                     modifier = Modifier.size(28.dp),
                     strokeWidth = 2.dp
                 )
@@ -2385,15 +2403,15 @@ private fun AiHelperActionItem(
             .fillMaxWidth()
             .clickWithNoRipple { onClick() },
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = HomeDarkCard),
-        border = BorderStroke(1.dp, HomeDarkCardBorder)
+        colors = CardDefaults.cardColors(containerColor = PlatformColors.palette.card),
+        border = BorderStroke(1.dp, PlatformColors.palette.cardBorder)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .drawBehind {
                     drawRect(
-                        color = HomeTealAccent,
+                        color = PlatformColors.palette.accent,
                         topLeft = Offset.Zero,
                         size = Size(3.dp.toPx(), size.height)
                     )
@@ -2404,13 +2422,13 @@ private fun AiHelperActionItem(
         ) {
             Text(
                 text = title,
-                style = boldTextStyle(HomeTextPrimary, 15.sp),
+                style = boldTextStyle(PlatformColors.palette.textPrimary, 15.sp),
                 modifier = Modifier.weight(1f)
             )
             Icon(
                 Icons.AutoMirrored.Filled.KeyboardArrowRight,
                 contentDescription = null,
-                tint = HomeTextSecondary,
+                tint = PlatformColors.palette.textSecondary,
                 modifier = Modifier.size(22.dp)
             )
         }
@@ -2428,8 +2446,8 @@ private fun PlayerTasksSection(
     Card(
         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = HomeDarkCard),
-        border = BorderStroke(1.dp, HomeDarkCardBorder)
+        colors = CardDefaults.cardColors(containerColor = PlatformColors.palette.card),
+        border = BorderStroke(1.dp, PlatformColors.palette.cardBorder)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(
@@ -2439,14 +2457,14 @@ private fun PlayerTasksSection(
             ) {
                 Text(
                     text = stringResource(R.string.player_tasks_section),
-                    style = boldTextStyle(HomeTextPrimary, 16.sp)
+                    style = boldTextStyle(PlatformColors.palette.textPrimary, 16.sp)
                 )
                 TextButton(onClick = onAddTaskClick) {
-                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp), tint = HomeTealAccent)
+                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp), tint = PlatformColors.palette.accent)
                     Spacer(Modifier.width(4.dp))
                     Text(
                         text = stringResource(R.string.player_tasks_add),
-                        style = boldTextStyle(HomeTealAccent, 14.sp)
+                        style = boldTextStyle(PlatformColors.palette.accent, 14.sp)
                     )
                 }
             }
@@ -2456,14 +2474,14 @@ private fun PlayerTasksSection(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(12.dp))
-                        .background(HomeDarkBackground)
+                        .background(PlatformColors.palette.background)
                         .clickable(onClick = onAddTaskClick)
                         .padding(24.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = stringResource(R.string.player_tasks_empty),
-                        style = regularTextStyle(HomeTextSecondary, 14.sp)
+                        style = regularTextStyle(PlatformColors.palette.textSecondary, 14.sp)
                     )
                 }
             } else {
@@ -2472,7 +2490,7 @@ private fun PlayerTasksSection(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(12.dp))
-                            .background(HomeDarkBackground)
+                            .background(PlatformColors.palette.background)
                             .clickable(onClick = onTaskClick)
                             .padding(12.dp),
                         verticalAlignment = Alignment.CenterVertically
@@ -2480,13 +2498,13 @@ private fun PlayerTasksSection(
                         Checkbox(
                             checked = task.isCompleted,
                             onCheckedChange = { onToggleComplete(task) },
-                            colors = CheckboxDefaults.colors(checkedColor = HomeTealAccent, uncheckedColor = HomeTextSecondary)
+                            colors = CheckboxDefaults.colors(checkedColor = PlatformColors.palette.accent, uncheckedColor = PlatformColors.palette.textSecondary)
                         )
                         Spacer(Modifier.width(12.dp))
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = task.title.ifEmpty { "—" },
-                                style = if (task.isCompleted) regularTextStyle(HomeTextSecondary, 14.sp).copy(textDecoration = TextDecoration.LineThrough) else boldTextStyle(HomeTextPrimary, 14.sp)
+                                style = if (task.isCompleted) regularTextStyle(PlatformColors.palette.textSecondary, 14.sp).copy(textDecoration = TextDecoration.LineThrough) else boldTextStyle(PlatformColors.palette.textPrimary, 14.sp)
                             )
                             if (task.agentName.isNotBlank() || task.dueDate > 0) {
                                 Spacer(Modifier.height(2.dp))
@@ -2496,12 +2514,12 @@ private fun PlayerTasksSection(
                                         if (task.agentName.isNotBlank() && task.dueDate > 0) append(" • ")
                                         if (task.dueDate > 0) append(SimpleDateFormat("MMM d, yyyy", Locale.getDefault()).format(Date(task.dueDate)))
                                     },
-                                    style = regularTextStyle(HomeTextSecondary, 12.sp)
+                                    style = regularTextStyle(PlatformColors.palette.textSecondary, 12.sp)
                                 )
                             }
                         }
                         IconButton(onClick = onTaskClick) {
-                            Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null, tint = HomeTextSecondary, modifier = Modifier.size(20.dp))
+                            Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null, tint = PlatformColors.palette.textSecondary, modifier = Modifier.size(20.dp))
                         }
                     }
                     Spacer(Modifier.height(8.dp))
@@ -2513,6 +2531,7 @@ private fun PlayerTasksSection(
 
 @Composable
 private fun PlayerInfoSectionHeader(title: String) {
+    val isWomen = PlatformColors.palette.isWomen
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -2522,15 +2541,19 @@ private fun PlayerInfoSectionHeader(title: String) {
     ) {
         Text(
             text = title,
-            style = boldTextStyle(HomeTextPrimary, 18.sp)
+            style = boldTextStyle(PlatformColors.palette.textPrimary, 18.sp)
         )
-        Box(
-            modifier = Modifier
-                .width(40.dp)
-                .height(3.dp)
-                .clip(RoundedCornerShape(2.dp))
-                .background(HomeTealAccent)
-        )
+        if (isWomen) {
+            com.liordahan.mgsrteam.ui.components.WomenSectionAccentBar()
+        } else {
+            Box(
+                modifier = Modifier
+                    .width(40.dp)
+                    .height(3.dp)
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(PlatformColors.palette.accent)
+            )
+        }
     }
 }
 
@@ -2542,8 +2565,8 @@ private fun PlayerInfoCard(
     Card(
         modifier = modifier,
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = HomeDarkCard),
-        border = BorderStroke(1.dp, HomeDarkCardBorder)
+        colors = CardDefaults.cardColors(containerColor = PlatformColors.palette.card),
+        border = BorderStroke(1.dp, PlatformColors.palette.cardBorder)
     ) {
         Column(modifier = Modifier.padding(16.dp, 16.dp, 16.dp, 20.dp)) {
             content()
@@ -2563,7 +2586,7 @@ fun WhatsAppIcon(phoneNumber: String) {
             val intent = Intent(Intent.ACTION_VIEW, uri)
             context.startActivity(intent)
         },
-        tint = HomeTealAccent
+        tint = PlatformColors.palette.accent
     )
 }
 
@@ -2575,8 +2598,8 @@ fun InfoRow(
     darkTheme: Boolean = false,
     icon: @Composable (() -> Unit)? = null
 ) {
-    val labelColor = if (darkTheme) HomeTextSecondary else contentDefault
-    val valueColor = if (darkTheme) HomeTextPrimary else contentDefault
+    val labelColor = if (darkTheme) PlatformColors.palette.textSecondary else contentDefault
+    val valueColor = if (darkTheme) PlatformColors.palette.textPrimary else contentDefault
 
     Row(
         modifier = Modifier
@@ -2610,9 +2633,9 @@ fun ClubInfoRow(
     clubLogo: String?,
     darkTheme: Boolean = false
 ) {
-    val labelColor = if (darkTheme) HomeTextSecondary else contentDefault
+    val labelColor = if (darkTheme) PlatformColors.palette.textSecondary else contentDefault
     val valueColor = if (darkTheme) {
-        if (value.equals("Without club", true)) HomeRedAccent else HomeTextPrimary
+        if (value.equals("Without club", true)) PlatformColors.palette.red else PlatformColors.palette.textPrimary
     } else {
         if (value.equals("Without club", true)) redErrorColor else contentDefault
     }
@@ -2700,12 +2723,12 @@ fun AgencyInfoRow(
             modifier = Modifier.size(24.dp),
             painter = painterResource(R.drawable.ic_agency),
             contentDescription = null,
-            tint = HomeTextSecondary
+            tint = PlatformColors.palette.textSecondary
         )
         Spacer(Modifier.width(4.dp))
         Text(
             text = title,
-            style = regularTextStyle(HomeTextSecondary, 14.sp),
+            style = regularTextStyle(PlatformColors.palette.textSecondary, 14.sp),
             modifier = Modifier.weight(1f)
         )
         Row(
@@ -2715,7 +2738,7 @@ fun AgencyInfoRow(
             Text(
                 text = agencyName ?: "--",
                 style = boldTextStyle(
-                    if (url != null) HomeTealAccent else HomeTextPrimary,
+                    if (url != null) PlatformColors.palette.accent else PlatformColors.palette.textPrimary,
                     14.sp
                 ),
                 textAlign = TextAlign.End,
@@ -2727,7 +2750,7 @@ fun AgencyInfoRow(
                     imageVector = Icons.AutoMirrored.Filled.OpenInNew,
                     contentDescription = stringResource(R.string.player_info_cd_open_link),
                     modifier = Modifier.size(16.dp),
-                    tint = HomeTealAccent
+                    tint = PlatformColors.palette.accent
                 )
             }
         }
@@ -2737,15 +2760,15 @@ fun AgencyInfoRow(
         DropdownMenu(
             expanded = showMenu,
             onDismissRequest = { showMenu = false },
-            containerColor = HomeDarkCard,
+            containerColor = PlatformColors.palette.card,
             shape = RoundedCornerShape(12.dp),
-            border = BorderStroke(1.dp, HomeDarkCardBorder)
+            border = BorderStroke(1.dp, PlatformColors.palette.cardBorder)
         ) {
             DropdownMenuItem(
                 text = {
                     Text(
                         text = stringResource(R.string.player_info_remove_agency),
-                        style = regularTextStyle(HomeRedAccent, 14.sp)
+                        style = regularTextStyle(PlatformColors.palette.red, 14.sp)
                     )
                 },
                 leadingIcon = {
@@ -2753,7 +2776,7 @@ fun AgencyInfoRow(
                         imageVector = Icons.Default.Delete,
                         contentDescription = null,
                         modifier = Modifier.size(20.dp),
-                        tint = HomeRedAccent
+                        tint = PlatformColors.palette.red
                     )
                 },
                 onClick = {
@@ -2772,8 +2795,8 @@ fun NationalityInfoRow(
     nationalityFlag: String?,
     darkTheme: Boolean = false
 ) {
-    val labelColor = if (darkTheme) HomeTextSecondary else contentDefault
-    val valueColor = if (darkTheme) HomeTextPrimary else contentDefault
+    val labelColor = if (darkTheme) PlatformColors.palette.textSecondary else contentDefault
+    val valueColor = if (darkTheme) PlatformColors.palette.textPrimary else contentDefault
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -2785,7 +2808,7 @@ fun NationalityInfoRow(
             modifier = Modifier.size(24.dp),
             painter = painterResource(R.drawable.ic_world),
             contentDescription = null,
-            tint = if (darkTheme) HomeTextSecondary else contentDefault
+            tint = if (darkTheme) PlatformColors.palette.textSecondary else contentDefault
         )
         Spacer(Modifier.width(4.dp))
         Text(
@@ -2819,8 +2842,8 @@ fun NationalityInfoRow(
 
 @Composable
 fun UpdatePlayerUi(modifier: Modifier, message: String, useDarkTheme: Boolean = false) {
-    val indicatorColor = if (useDarkTheme) HomeTealAccent else Color.White
-    val textColor = if (useDarkTheme) HomeTextPrimary else Color.White
+    val indicatorColor = if (useDarkTheme) PlatformColors.palette.accent else Color.White
+    val textColor = if (useDarkTheme) PlatformColors.palette.textPrimary else Color.White
 
     Box(
         modifier = modifier
@@ -2864,7 +2887,7 @@ fun PlayerInfoHeader(onBackClicked: () -> Unit, currentPlatform: Platform = Plat
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                 contentDescription = null,
-                tint = HomeTextSecondary,
+                tint = PlatformColors.palette.textSecondary,
                 modifier = Modifier
                     .size(24.dp)
                     .clickWithNoRipple { onBackClicked() }
@@ -2873,11 +2896,11 @@ fun PlayerInfoHeader(onBackClicked: () -> Unit, currentPlatform: Platform = Plat
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = if (currentPlatform == Platform.WOMEN) stringResource(R.string.women_player_info_title) else stringResource(R.string.player_info_title),
-                    style = boldTextStyle(HomeTextPrimary, 26.sp)
+                    style = boldTextStyle(PlatformColors.palette.textPrimary, 26.sp)
                 )
                 Text(
                     text = if (currentPlatform == Platform.WOMEN) stringResource(R.string.women_player_info_subtitle) else stringResource(R.string.player_info_subtitle),
-                    style = regularTextStyle(HomeTextSecondary, 12.sp),
+                    style = regularTextStyle(PlatformColors.palette.textSecondary, 12.sp),
                     modifier = Modifier.padding(top = 4.dp)
                 )
             }
@@ -2898,8 +2921,8 @@ private fun PlayerInfoBottomBar(
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
-        colors = CardDefaults.cardColors(containerColor = HomeDarkCard),
-        border = BorderStroke(1.dp, HomeDarkCardBorder)
+        colors = CardDefaults.cardColors(containerColor = PlatformColors.palette.card),
+        border = BorderStroke(1.dp, PlatformColors.palette.cardBorder)
     ) {
         Row(
             modifier = Modifier
@@ -2922,13 +2945,13 @@ private fun PlayerInfoBottomBar(
                         imageVector = Icons.Default.VerifiedUser,
                         contentDescription = null,
                         modifier = Modifier.size(24.dp),
-                        tint = if (hasValidMandate) HomeTextSecondary.copy(alpha = 0.5f) else HomeTealAccent
+                        tint = if (hasValidMandate) PlatformColors.palette.textSecondary.copy(alpha = 0.5f) else PlatformColors.palette.accent
                     )
                     Spacer(Modifier.width(8.dp))
                     Text(
                         text = stringResource(R.string.player_info_generate_mandate),
                         style = boldTextStyle(
-                            if (hasValidMandate) HomeTextSecondary.copy(alpha = 0.5f) else HomeTextSecondary,
+                            if (hasValidMandate) PlatformColors.palette.textSecondary.copy(alpha = 0.5f) else PlatformColors.palette.textSecondary,
                             12.sp
                         )
                     )
@@ -2945,12 +2968,12 @@ private fun PlayerInfoBottomBar(
                     imageVector = Icons.Default.Share,
                     contentDescription = null,
                     modifier = Modifier.size(24.dp),
-                    tint = HomeTealAccent
+                    tint = PlatformColors.palette.accent
                 )
                 Spacer(Modifier.width(8.dp))
                 Text(
                     text = stringResource(R.string.player_info_share),
-                    style = boldTextStyle(HomeTextSecondary, 12.sp)
+                    style = boldTextStyle(PlatformColors.palette.textSecondary, 12.sp)
                 )
             }
             if (showDeletePlayerIcon) {
@@ -2965,12 +2988,12 @@ private fun PlayerInfoBottomBar(
                         imageVector = Icons.Default.Delete,
                         contentDescription = null,
                         modifier = Modifier.size(24.dp),
-                        tint = HomeTealAccent
+                        tint = PlatformColors.palette.accent
                     )
                     Spacer(Modifier.width(8.dp))
                     Text(
                         text = stringResource(R.string.player_info_delete),
-                        style = boldTextStyle(HomeTextSecondary, 12.sp)
+                        style = boldTextStyle(PlatformColors.palette.textSecondary, 12.sp)
                     )
                 }
             }
@@ -2986,8 +3009,8 @@ fun DeletePlayerDialog(onDismissRequest: () -> Unit, onDeletePlayerClicked: () -
         Card(
             shape = RoundedCornerShape(16.dp),
             elevation = CardDefaults.cardElevation(8.dp),
-            colors = CardDefaults.cardColors(containerColor = HomeDarkCard),
-            border = BorderStroke(1.dp, HomeDarkCardBorder)
+            colors = CardDefaults.cardColors(containerColor = PlatformColors.palette.card),
+            border = BorderStroke(1.dp, PlatformColors.palette.cardBorder)
         ) {
             Column(
                 modifier = Modifier
@@ -2996,7 +3019,7 @@ fun DeletePlayerDialog(onDismissRequest: () -> Unit, onDeletePlayerClicked: () -
             ) {
                 Text(
                     text = stringResource(R.string.player_info_delete_player_confirm),
-                    style = boldTextStyle(HomeTextPrimary, 16.sp),
+                    style = boldTextStyle(PlatformColors.palette.textPrimary, 16.sp),
                     textAlign = TextAlign.Center
                 )
                 Spacer(Modifier.height(24.dp))
@@ -3010,17 +3033,17 @@ fun DeletePlayerDialog(onDismissRequest: () -> Unit, onDeletePlayerClicked: () -
                     Box(
                         modifier = Modifier
                             .background(
-                                HomeDarkCard,
+                                PlatformColors.palette.card,
                                 shape = RoundedCornerShape(100.dp)
                             )
-                            .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(100.dp))
+                            .border(1.dp, PlatformColors.palette.cardBorder, RoundedCornerShape(100.dp))
                             .size(width = 80.dp, height = 30.dp)
                             .clickWithNoRipple { },
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
                             text = stringResource(R.string.cancel),
-                            style = boldTextStyle(HomeTextPrimary, 12.sp),
+                            style = boldTextStyle(PlatformColors.palette.textPrimary, 12.sp),
                             modifier = Modifier.clickWithNoRipple { onDismissRequest() }
                         )
                     }
@@ -3028,7 +3051,7 @@ fun DeletePlayerDialog(onDismissRequest: () -> Unit, onDeletePlayerClicked: () -
                     Box(
                         modifier = Modifier
                             .background(
-                                HomeRedAccent,
+                                PlatformColors.palette.red,
                                 shape = RoundedCornerShape(100.dp)
                             )
                             .size(width = 80.dp, height = 30.dp)
@@ -3057,8 +3080,8 @@ private fun DeleteDocumentDialog(
         Card(
             shape = RoundedCornerShape(16.dp),
             elevation = CardDefaults.cardElevation(8.dp),
-            colors = CardDefaults.cardColors(containerColor = HomeDarkCard),
-            border = BorderStroke(1.dp, HomeDarkCardBorder)
+            colors = CardDefaults.cardColors(containerColor = PlatformColors.palette.card),
+            border = BorderStroke(1.dp, PlatformColors.palette.cardBorder)
         ) {
             Column(
                 modifier = Modifier
@@ -3067,7 +3090,7 @@ private fun DeleteDocumentDialog(
             ) {
                 Text(
                     text = stringResource(R.string.player_info_delete_doc_confirm, documentName),
-                    style = boldTextStyle(HomeTextPrimary, 16.sp),
+                    style = boldTextStyle(PlatformColors.palette.textPrimary, 16.sp),
                     textAlign = TextAlign.Center
                 )
                 Spacer(Modifier.height(24.dp))
@@ -3081,17 +3104,17 @@ private fun DeleteDocumentDialog(
                     Box(
                         modifier = Modifier
                             .background(
-                                HomeDarkCard,
+                                PlatformColors.palette.card,
                                 shape = RoundedCornerShape(100.dp)
                             )
-                            .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(100.dp))
+                            .border(1.dp, PlatformColors.palette.cardBorder, RoundedCornerShape(100.dp))
                             .size(width = 80.dp, height = 30.dp)
                             .clickWithNoRipple { },
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
                             text = stringResource(R.string.cancel),
-                            style = boldTextStyle(HomeTextPrimary, 12.sp),
+                            style = boldTextStyle(PlatformColors.palette.textPrimary, 12.sp),
                             modifier = Modifier.clickWithNoRipple { onDismissRequest() }
                         )
                     }
@@ -3099,7 +3122,7 @@ private fun DeleteDocumentDialog(
                     Box(
                         modifier = Modifier
                             .background(
-                                HomeRedAccent,
+                                PlatformColors.palette.red,
                                 shape = RoundedCornerShape(100.dp)
                             )
                             .size(width = 80.dp, height = 30.dp)
@@ -3183,7 +3206,7 @@ private fun PlayerInfoYouthSection(player: Player) {
                 }
             )
             HorizontalDivider(
-                color = HomeDarkCardBorder,
+                color = PlatformColors.palette.cardBorder,
                 thickness = 0.5.dp,
                 modifier = Modifier.padding(vertical = 8.dp)
             )
@@ -3203,7 +3226,7 @@ private fun PlayerInfoYouthSection(player: Player) {
                 }
             )
             HorizontalDivider(
-                color = HomeDarkCardBorder,
+                color = PlatformColors.palette.cardBorder,
                 thickness = 0.5.dp,
                 modifier = Modifier.padding(vertical = 8.dp)
             )
@@ -3222,7 +3245,7 @@ private fun PlayerInfoYouthSection(player: Player) {
                 }
             )
             HorizontalDivider(
-                color = HomeDarkCardBorder,
+                color = PlatformColors.palette.cardBorder,
                 thickness = 0.5.dp,
                 modifier = Modifier.padding(vertical = 8.dp)
             )
@@ -3242,7 +3265,7 @@ private fun PlayerInfoYouthSection(player: Player) {
                 }
             )
             HorizontalDivider(
-                color = HomeDarkCardBorder,
+                color = PlatformColors.palette.cardBorder,
                 thickness = 0.5.dp,
                 modifier = Modifier.padding(vertical = 8.dp)
             )
@@ -3262,7 +3285,7 @@ private fun PlayerInfoYouthSection(player: Player) {
                 }
             )
             HorizontalDivider(
-                color = HomeDarkCardBorder,
+                color = PlatformColors.palette.cardBorder,
                 thickness = 0.5.dp,
                 modifier = Modifier.padding(vertical = 8.dp)
             )
@@ -3279,7 +3302,7 @@ private fun PlayerInfoYouthSection(player: Player) {
             if (!parent.parentName.isNullOrBlank()) {
                 InfoRow(stringResource(R.string.youth_detail_name), parent.parentName, darkTheme = true)
                 HorizontalDivider(
-                    color = HomeDarkCardBorder,
+                    color = PlatformColors.palette.cardBorder,
                     thickness = 0.5.dp,
                     modifier = Modifier.padding(vertical = 6.dp)
                 )
@@ -3287,7 +3310,7 @@ private fun PlayerInfoYouthSection(player: Player) {
             if (!parent.parentRelationship.isNullOrBlank()) {
                 InfoRow(stringResource(R.string.youth_parent_relationship), parent.parentRelationship, darkTheme = true)
                 HorizontalDivider(
-                    color = HomeDarkCardBorder,
+                    color = PlatformColors.palette.cardBorder,
                     thickness = 0.5.dp,
                     modifier = Modifier.padding(vertical = 6.dp)
                 )
@@ -3295,7 +3318,7 @@ private fun PlayerInfoYouthSection(player: Player) {
             if (!parent.parentPhoneNumber.isNullOrBlank()) {
                 InfoRow(stringResource(R.string.youth_detail_phone), parent.parentPhoneNumber, darkTheme = true)
                 HorizontalDivider(
-                    color = HomeDarkCardBorder,
+                    color = PlatformColors.palette.cardBorder,
                     thickness = 0.5.dp,
                     modifier = Modifier.padding(vertical = 6.dp)
                 )
@@ -3347,7 +3370,7 @@ private fun PlayerInfoWomenSection(player: Player, context: Context) {
                     )
                     Text(
                         text = player.soccerDonnaUrl.orEmpty(),
-                        style = regularTextStyle(HomeTextSecondary, 10.sp),
+                        style = regularTextStyle(PlatformColors.palette.textSecondary, 10.sp),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -3357,7 +3380,7 @@ private fun PlayerInfoWomenSection(player: Player, context: Context) {
 
         if (!player.soccerDonnaUrl.isNullOrBlank() && !player.fmInsideUrl.isNullOrBlank()) {
             HorizontalDivider(
-                color = HomeDarkCardBorder,
+                color = PlatformColors.palette.cardBorder,
                 thickness = 0.5.dp,
                 modifier = Modifier.padding(vertical = 6.dp)
             )
@@ -3389,7 +3412,7 @@ private fun PlayerInfoWomenSection(player: Player, context: Context) {
                     )
                     Text(
                         text = player.fmInsideUrl.orEmpty(),
-                        style = regularTextStyle(HomeTextSecondary, 10.sp),
+                        style = regularTextStyle(PlatformColors.palette.textSecondary, 10.sp),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )

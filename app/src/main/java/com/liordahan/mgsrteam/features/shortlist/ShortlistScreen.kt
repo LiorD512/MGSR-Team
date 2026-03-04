@@ -99,14 +99,7 @@ import com.liordahan.mgsrteam.navigation.Screens
 import com.liordahan.mgsrteam.transfermarket.TeammatesFetcher
 import com.liordahan.mgsrteam.transfermarket.TransfermarktResult
 import com.liordahan.mgsrteam.ui.components.DarkSystemBarsForBottomSheet
-import com.liordahan.mgsrteam.ui.theme.HomeDarkBackground
-import com.liordahan.mgsrteam.ui.theme.HomeDarkCard
-import com.liordahan.mgsrteam.ui.theme.HomeDarkCardBorder
-import com.liordahan.mgsrteam.ui.theme.HomeOrangeAccent
-import com.liordahan.mgsrteam.ui.theme.HomeRedAccent
-import com.liordahan.mgsrteam.ui.theme.HomeTealAccent
-import com.liordahan.mgsrteam.ui.theme.HomeTextPrimary
-import com.liordahan.mgsrteam.ui.theme.HomeTextSecondary
+import com.liordahan.mgsrteam.ui.theme.PlatformColors
 import com.liordahan.mgsrteam.ui.components.SkeletonPlayerCardList
 import com.liordahan.mgsrteam.ui.utils.boldTextStyle
 import com.liordahan.mgsrteam.ui.utils.clickWithNoRipple
@@ -261,7 +254,7 @@ fun ShortlistScreen(
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
-        containerColor = HomeDarkBackground,
+        containerColor = PlatformColors.palette.background,
         snackbarHost = {
             SnackbarHost(
                 hostState = snackBarHostState,
@@ -378,7 +371,7 @@ fun ShortlistScreen(
                     addPlayerViewModel.resetAfterAdd()
                 },
                 sheetState = sheetState,
-                containerColor = HomeDarkCard,
+                containerColor = PlatformColors.palette.card,
                 shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
                 tonalElevation = 8.dp,
                 properties = ModalBottomSheetProperties(
@@ -395,7 +388,7 @@ fun ShortlistScreen(
                                 .padding(32.dp),
                             contentAlignment = Alignment.Center
                         ) {
-                            CircularProgressIndicator(color = HomeTealAccent)
+                            CircularProgressIndicator(color = PlatformColors.palette.accent)
                         }
                     }
                     selectedPlayer != null -> {
@@ -407,7 +400,7 @@ fun ShortlistScreen(
                     else -> {
                         Text(
                             text = stringResource(R.string.shortlist_could_not_load),
-                            style = regularTextStyle(HomeTextSecondary, 14.sp),
+                            style = regularTextStyle(PlatformColors.palette.textSecondary, 14.sp),
                             modifier = Modifier.padding(24.dp)
                         )
                     }
@@ -470,7 +463,7 @@ private fun ShortlistHeader(
         Icon(
             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
             contentDescription = null,
-            tint = HomeTextSecondary,
+            tint = PlatformColors.palette.textSecondary,
             modifier = Modifier
                 .size(24.dp)
                 .clickWithNoRipple { onBackClicked() }
@@ -479,13 +472,13 @@ private fun ShortlistHeader(
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = stringResource(R.string.shortlist_title),
-                style = boldTextStyle(HomeTextPrimary, 26.sp)
+                style = boldTextStyle(PlatformColors.palette.textPrimary, 26.sp)
             )
             Text(
                 text = stringResource(
                     if (isWomen) R.string.women_shortlist_subtitle else R.string.shortlist_subtitle
                 ),
-                style = regularTextStyle(HomeTextSecondary, 12.sp),
+                style = regularTextStyle(PlatformColors.palette.textSecondary, 12.sp),
                 modifier = Modifier.padding(top = 4.dp)
             )
         }
@@ -496,7 +489,7 @@ private fun ShortlistHeader(
             Icon(
                 imageVector = Icons.Rounded.Add,
                 contentDescription = stringResource(R.string.shortlist_add_player),
-                tint = HomeTealAccent
+                tint = PlatformColors.palette.accent
             )
         }
     }
@@ -516,21 +509,21 @@ private fun ShortlistStatsStrip(
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp)
             .clip(RoundedCornerShape(16.dp))
-            .background(HomeDarkCard)
-            .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(16.dp)),
+            .background(PlatformColors.palette.card)
+            .border(1.dp, PlatformColors.palette.cardBorder, RoundedCornerShape(16.dp)),
         horizontalArrangement = Arrangement.SpaceEvenly
     ) {
         ShortlistStatItem(
             value = total.toString(),
             label = stringResource(R.string.players_stat_total),
-            accentColor = HomeTealAccent,
+            accentColor = PlatformColors.palette.accent,
             modifier = Modifier.weight(1f)
         )
         ShortlistStatsStripDivider()
         ShortlistStatItem(
             value = thisWeek.toString(),
             label = stringResource(R.string.shortlist_stat_this_week),
-            accentColor = HomeOrangeAccent,
+            accentColor = PlatformColors.palette.orange,
             modifier = Modifier.weight(1f)
         )
     }
@@ -556,11 +549,11 @@ private fun ShortlistStatItem(
         Spacer(Modifier.height(4.dp))
         Text(
             text = value,
-            style = boldTextStyle(HomeTextPrimary, 18.sp)
+            style = boldTextStyle(PlatformColors.palette.textPrimary, 18.sp)
         )
         Text(
             text = label,
-            style = regularTextStyle(HomeTextSecondary, 9.sp)
+            style = regularTextStyle(PlatformColors.palette.textSecondary, 9.sp)
         )
     }
 }
@@ -572,7 +565,7 @@ private fun ShortlistStatsStripDivider() {
             .width(1.dp)
             .height(40.dp)
             .padding(vertical = 4.dp)
-            .background(HomeDarkCardBorder)
+            .background(PlatformColors.palette.cardBorder)
     )
 }
 
@@ -613,15 +606,15 @@ private fun ShortlistCard(
                     onLongClick = { showMenu = true }
                 ),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = HomeDarkCard),
-        border = BorderStroke(1.dp, HomeDarkCardBorder)
+        colors = CardDefaults.cardColors(containerColor = PlatformColors.palette.card),
+        border = BorderStroke(1.dp, PlatformColors.palette.cardBorder)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .drawBehind {
                     drawRect(
-                        color = HomeTealAccent,
+                        color = PlatformColors.palette.accent,
                         topLeft = Offset.Zero,
                         size = androidx.compose.ui.geometry.Size(3.dp.toPx(), size.height)
                     )
@@ -641,7 +634,7 @@ private fun ShortlistCard(
                         modifier = Modifier
                             .size(52.dp)
                             .clip(CircleShape)
-                            .border(2.dp, HomeDarkCardBorder, CircleShape),
+                            .border(2.dp, PlatformColors.palette.cardBorder, CircleShape),
                         contentScale = ContentScale.Crop
                     )
                 } else {
@@ -649,13 +642,13 @@ private fun ShortlistCard(
                         modifier = Modifier
                             .size(52.dp)
                             .clip(CircleShape)
-                            .background(HomeDarkCardBorder),
+                            .background(PlatformColors.palette.cardBorder),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector = Icons.Default.Person,
                             contentDescription = null,
-                            tint = HomeTextSecondary,
+                            tint = PlatformColors.palette.textSecondary,
                             modifier = Modifier.size(24.dp)
                         )
                     }
@@ -669,7 +662,7 @@ private fun ShortlistCard(
                 ) {
                     Text(
                         text = formatShortlistProfileDisplay(entry),
-                        style = boldTextStyle(HomeTextPrimary, 14.sp),
+                        style = boldTextStyle(PlatformColors.palette.textPrimary, 14.sp),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -682,12 +675,12 @@ private fun ShortlistCard(
                             Box(
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(6.dp))
-                                    .background(HomeTealAccent.copy(alpha = 0.15f))
+                                    .background(PlatformColors.palette.accent.copy(alpha = 0.15f))
                                     .padding(horizontal = 8.dp, vertical = 2.dp)
                             ) {
                                 Text(
                                     text = pos,
-                                    style = boldTextStyle(HomeTealAccent, 10.sp)
+                                    style = boldTextStyle(PlatformColors.palette.accent, 10.sp)
                                 )
                             }
                         }
@@ -695,12 +688,12 @@ private fun ShortlistCard(
                             Box(
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(6.dp))
-                                    .background(HomeDarkCardBorder.copy(alpha = 0.5f))
+                                    .background(PlatformColors.palette.cardBorder.copy(alpha = 0.5f))
                                     .padding(horizontal = 8.dp, vertical = 2.dp)
                             ) {
                                 Text(
                                     text = "$age${stringResource(R.string.shortlist_years_suffix)}",
-                                    style = regularTextStyle(HomeTextSecondary, 10.sp)
+                                    style = regularTextStyle(PlatformColors.palette.textSecondary, 10.sp)
                                 )
                             }
                         }
@@ -711,7 +704,7 @@ private fun ShortlistCard(
                                     modifier = Modifier
                                         .widthIn(max = 140.dp)
                                         .clip(RoundedCornerShape(6.dp))
-                                        .background(HomeDarkCardBorder.copy(alpha = 0.5f))
+                                        .background(PlatformColors.palette.cardBorder.copy(alpha = 0.5f))
                                         .padding(horizontal = 6.dp, vertical = 2.dp),
                                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                                     verticalAlignment = Alignment.CenterVertically
@@ -727,7 +720,7 @@ private fun ShortlistCard(
                                     if (nat.isNotBlank()) {
                                         Text(
                                             text = nat,
-                                            style = regularTextStyle(HomeTextSecondary, 10.sp),
+                                            style = regularTextStyle(PlatformColors.palette.textSecondary, 10.sp),
                                             maxLines = 1,
                                             overflow = TextOverflow.Ellipsis
                                         )
@@ -756,18 +749,18 @@ private fun ShortlistCard(
                     release.marketValue?.takeIf { it.isNotBlank() }?.let { value ->
                         Text(
                             text = value,
-                            style = boldTextStyle(HomeTextPrimary, 14.sp)
+                            style = boldTextStyle(PlatformColors.palette.textPrimary, 14.sp)
                         )
                     }
                     Text(
                         text = formatRelativeDate(entry.addedAt),
-                        style = regularTextStyle(HomeTextSecondary, 10.sp),
+                        style = regularTextStyle(PlatformColors.palette.textSecondary, 10.sp),
                         modifier = Modifier.padding(top = 2.dp)
                     )
                     entry.getAddedByDisplayName(context)?.let { agentName ->
                         Text(
                             text = stringResource(R.string.shortlist_added_by, agentName),
-                            style = regularTextStyle(HomeTextSecondary, 9.sp),
+                            style = regularTextStyle(PlatformColors.palette.textSecondary, 9.sp),
                             modifier = Modifier.padding(top = 2.dp)
                         )
                     }
@@ -775,7 +768,7 @@ private fun ShortlistCard(
             }
 
             HorizontalDivider(
-                color = HomeDarkCardBorder.copy(alpha = 0.5f),
+                color = PlatformColors.palette.cardBorder.copy(alpha = 0.5f),
                 thickness = 1.dp,
                 modifier = Modifier.padding(horizontal = 12.dp)
             )
@@ -786,8 +779,8 @@ private fun ShortlistCard(
                     .fillMaxWidth()
                     .padding(horizontal = 12.dp, vertical = 8.dp)
                     .clip(RoundedCornerShape(12.dp))
-                    .background(HomeDarkBackground)
-                    .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(12.dp))
+                    .background(PlatformColors.palette.background)
+                    .border(1.dp, PlatformColors.palette.cardBorder, RoundedCornerShape(12.dp))
                     .clickWithNoRipple {
                         if (entry.notes.isEmpty()) onAddNote() else onToggleNotesExpand()
                     }
@@ -797,7 +790,7 @@ private fun ShortlistCard(
                 Icon(
                     Icons.Default.EditNote,
                     contentDescription = null,
-                    tint = HomeOrangeAccent,
+                    tint = PlatformColors.palette.orange,
                     modifier = Modifier.size(18.dp)
                 )
                 Spacer(Modifier.width(8.dp))
@@ -806,14 +799,14 @@ private fun ShortlistCard(
                         stringResource(R.string.shortlist_notes_tap_to_add)
                     else
                         stringResource(R.string.shortlist_notes_count, entry.notes.size),
-                    style = regularTextStyle(HomeTextPrimary, 13.sp)
+                    style = regularTextStyle(PlatformColors.palette.textPrimary, 13.sp)
                 )
                 Spacer(Modifier.weight(1f))
                 if (entry.notes.isNotEmpty()) {
                     Icon(
                         Icons.Default.ExpandMore,
                         contentDescription = if (isNotesExpanded) "Collapse" else "Expand",
-                        tint = HomeTextSecondary,
+                        tint = PlatformColors.palette.textSecondary,
                         modifier = Modifier
                             .size(20.dp)
                             .graphicsLayer { rotationZ = if (isNotesExpanded) 180f else 0f }
@@ -840,8 +833,8 @@ private fun ShortlistCard(
                             .fillMaxWidth()
                             .padding(top = 4.dp)
                             .clip(RoundedCornerShape(10.dp))
-                            .background(HomeOrangeAccent.copy(alpha = 0.1f))
-                            .border(1.dp, HomeOrangeAccent.copy(alpha = 0.3f), RoundedCornerShape(10.dp))
+                            .background(PlatformColors.palette.orange.copy(alpha = 0.1f))
+                            .border(1.dp, PlatformColors.palette.orange.copy(alpha = 0.3f), RoundedCornerShape(10.dp))
                             .clickWithNoRipple { onAddNote() }
                             .padding(10.dp),
                         horizontalArrangement = Arrangement.Center,
@@ -850,13 +843,13 @@ private fun ShortlistCard(
                         Icon(
                             Icons.Rounded.Add,
                             contentDescription = null,
-                            tint = HomeOrangeAccent,
+                            tint = PlatformColors.palette.orange,
                             modifier = Modifier.size(16.dp)
                         )
                         Spacer(Modifier.width(6.dp))
                         Text(
                             text = stringResource(R.string.shortlist_notes_add),
-                            style = boldTextStyle(HomeOrangeAccent, 12.sp)
+                            style = boldTextStyle(PlatformColors.palette.orange, 12.sp)
                         )
                     }
                 }
@@ -869,8 +862,8 @@ private fun ShortlistCard(
                     .fillMaxWidth()
                     .padding(horizontal = 12.dp, vertical = 8.dp)
                     .clip(RoundedCornerShape(12.dp))
-                    .background(HomeDarkBackground)
-                    .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(12.dp))
+                    .background(PlatformColors.palette.background)
+                    .border(1.dp, PlatformColors.palette.cardBorder, RoundedCornerShape(12.dp))
                     .clickWithNoRipple { onToggleTeammatesExpand() }
                     .padding(8.dp, 12.dp),
                 verticalAlignment = Alignment.CenterVertically
@@ -878,7 +871,7 @@ private fun ShortlistCard(
                 Icon(
                     Icons.Default.People,
                     contentDescription = null,
-                    tint = HomeTealAccent,
+                    tint = PlatformColors.palette.accent,
                     modifier = Modifier.size(18.dp)
                 )
                 Spacer(Modifier.width(8.dp))
@@ -888,13 +881,13 @@ private fun ShortlistCard(
                         isTeammatesExpanded && rosterTeammates != null -> if (rosterTeammates.size == 1) stringResource(R.string.releases_roster_teammates_one, rosterTeammates.size) else stringResource(R.string.releases_roster_teammates, rosterTeammates.size)
                         else -> stringResource(R.string.releases_roster_teammates_tap)
                     },
-                    style = regularTextStyle(HomeTextPrimary, 13.sp)
+                    style = regularTextStyle(PlatformColors.palette.textPrimary, 13.sp)
                 )
                 Spacer(Modifier.weight(1f))
                 Icon(
                     Icons.Default.ExpandMore,
                     contentDescription = if (isTeammatesExpanded) "Collapse" else "Expand",
-                    tint = HomeTextSecondary,
+                    tint = PlatformColors.palette.textSecondary,
                     modifier = Modifier
                         .size(20.dp)
                         .graphicsLayer { rotationZ = if (isTeammatesExpanded) 180f else 0f }
@@ -907,13 +900,13 @@ private fun ShortlistCard(
                             .fillMaxWidth()
                             .padding(start = 12.dp, end = 12.dp, bottom = 8.dp)
                             .clip(RoundedCornerShape(12.dp))
-                            .background(HomeDarkBackground)
-                            .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(12.dp))
+                            .background(PlatformColors.palette.background)
+                            .border(1.dp, PlatformColors.palette.cardBorder, RoundedCornerShape(12.dp))
                             .padding(16.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         CircularProgressIndicator(
-                            color = HomeTealAccent,
+                            color = PlatformColors.palette.accent,
                             modifier = Modifier.size(24.dp),
                             strokeWidth = 2.dp
                         )
@@ -921,13 +914,13 @@ private fun ShortlistCard(
                 } else if (rosterTeammates.isNullOrEmpty()) {
                     Text(
                         text = stringResource(R.string.releases_no_roster_teammates),
-                        style = regularTextStyle(HomeTextSecondary, 12.sp),
+                        style = regularTextStyle(PlatformColors.palette.textSecondary, 12.sp),
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(start = 12.dp, end = 12.dp, bottom = 8.dp)
                             .clip(RoundedCornerShape(12.dp))
-                            .background(HomeDarkBackground)
-                            .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(12.dp))
+                            .background(PlatformColors.palette.background)
+                            .border(1.dp, PlatformColors.palette.cardBorder, RoundedCornerShape(12.dp))
                             .padding(12.dp)
                     )
                 } else {
@@ -953,12 +946,12 @@ private fun ShortlistCard(
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(8.dp))
-                        .background(HomeTealAccent.copy(alpha = 0.15f))
+                        .background(PlatformColors.palette.accent.copy(alpha = 0.15f))
                         .padding(horizontal = 8.dp, vertical = 3.dp)
                 ) {
                     Text(
                         text = stringResource(R.string.shortlist_badge),
-                        style = boldTextStyle(HomeTealAccent, 10.sp)
+                        style = boldTextStyle(PlatformColors.palette.accent, 10.sp)
                     )
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -969,7 +962,7 @@ private fun ShortlistCard(
                         Icon(
                             imageVector = Icons.Default.PersonAdd,
                             contentDescription = stringResource(R.string.shortlist_add_to_agency),
-                            tint = HomeTealAccent
+                            tint = PlatformColors.palette.accent
                         )
                     }
                 }
@@ -979,15 +972,15 @@ private fun ShortlistCard(
     DropdownMenu(
         expanded = showMenu,
         onDismissRequest = { showMenu = false },
-        modifier = Modifier.background(HomeDarkCard),
-        containerColor = HomeDarkCard,
-        border = BorderStroke(1.dp, HomeDarkCardBorder)
+        modifier = Modifier.background(PlatformColors.palette.card),
+        containerColor = PlatformColors.palette.card,
+        border = BorderStroke(1.dp, PlatformColors.palette.cardBorder)
     ) {
         DropdownMenuItem(
             text = {
                 Text(
                     text = stringResource(R.string.shortlist_remove),
-                    style = regularTextStyle(HomeRedAccent, 14.sp)
+                    style = regularTextStyle(PlatformColors.palette.red, 14.sp)
                 )
             },
             leadingIcon = {
@@ -995,7 +988,7 @@ private fun ShortlistCard(
                     imageVector = Icons.Default.Delete,
                     contentDescription = null,
                     modifier = Modifier.size(20.dp),
-                    tint = HomeRedAccent
+                    tint = PlatformColors.palette.red
                 )
             },
             onClick = {
@@ -1018,8 +1011,8 @@ private fun ShortlistRosterTeammateRow(
             .fillMaxWidth()
             .padding(top = 6.dp)
             .clip(RoundedCornerShape(12.dp))
-            .background(HomeDarkBackground)
-            .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(12.dp))
+            .background(PlatformColors.palette.background)
+            .border(1.dp, PlatformColors.palette.cardBorder, RoundedCornerShape(12.dp))
             .clickWithNoRipple { onClick() }
             .padding(10.dp, 12.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -1038,12 +1031,12 @@ private fun ShortlistRosterTeammateRow(
                 modifier = Modifier
                     .size(36.dp)
                     .clip(CircleShape)
-                    .background(HomeDarkCardBorder),
+                    .background(PlatformColors.palette.cardBorder),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     (player.fullName?.take(2) ?: "?").uppercase(),
-                    style = boldTextStyle(HomeTextSecondary, 12.sp)
+                    style = boldTextStyle(PlatformColors.palette.textSecondary, 12.sp)
                 )
             }
         }
@@ -1051,18 +1044,18 @@ private fun ShortlistRosterTeammateRow(
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 player.fullName ?: "Unknown",
-                style = boldTextStyle(HomeTextPrimary, 14.sp)
+                style = boldTextStyle(PlatformColors.palette.textPrimary, 14.sp)
             )
             Text(
                 text = "${player.age ?: "-"} • ${player.positions?.firstOrNull()?.takeIf { it.isNotBlank() } ?: "-"} • ${player.marketValue ?: "-"} • ${stringResource(R.string.releases_games_together, matchesPlayedTogether)}",
-                style = regularTextStyle(HomeTextSecondary, 11.sp, direction = TextDirection.Ltr),
+                style = regularTextStyle(PlatformColors.palette.textSecondary, 11.sp, direction = TextDirection.Ltr),
                 modifier = Modifier.padding(top = 2.dp)
             )
         }
         Icon(
             Icons.AutoMirrored.Filled.KeyboardArrowRight,
             contentDescription = null,
-            tint = HomeTextSecondary,
+            tint = PlatformColors.palette.textSecondary,
             modifier = Modifier.size(20.dp)
         )
     }
@@ -1096,13 +1089,13 @@ private fun ShortlistNoteItem(
             .fillMaxWidth()
             .padding(bottom = 6.dp)
             .clip(RoundedCornerShape(10.dp))
-            .background(HomeDarkBackground)
-            .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(10.dp))
+            .background(PlatformColors.palette.background)
+            .border(1.dp, PlatformColors.palette.cardBorder, RoundedCornerShape(10.dp))
             .padding(10.dp)
     ) {
         Text(
             text = note.text,
-            style = regularTextStyle(HomeTextPrimary, 13.sp),
+            style = regularTextStyle(PlatformColors.palette.textPrimary, 13.sp),
             modifier = Modifier.fillMaxWidth()
         )
         Spacer(Modifier.height(6.dp))
@@ -1115,21 +1108,21 @@ private fun ShortlistNoteItem(
                     if (authorName.isNotBlank()) append("$authorName · ")
                     append(timeLabel)
                 },
-                style = regularTextStyle(HomeTextSecondary, 10.sp),
+                style = regularTextStyle(PlatformColors.palette.textSecondary, 10.sp),
                 modifier = Modifier.weight(1f)
             )
             Box(
                 modifier = Modifier
                     .size(32.dp)
                     .clip(RoundedCornerShape(8.dp))
-                    .background(HomeDarkCardBorder.copy(alpha = 0.3f))
+                    .background(PlatformColors.palette.cardBorder.copy(alpha = 0.3f))
                     .clickWithNoRipple { onEdit() },
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     Icons.Default.Edit,
                     contentDescription = stringResource(R.string.shortlist_notes_edit),
-                    tint = HomeTextSecondary,
+                    tint = PlatformColors.palette.textSecondary,
                     modifier = Modifier.size(16.dp)
                 )
             }
@@ -1138,14 +1131,14 @@ private fun ShortlistNoteItem(
                 modifier = Modifier
                     .size(32.dp)
                     .clip(RoundedCornerShape(8.dp))
-                    .background(HomeRedAccent.copy(alpha = 0.1f))
+                    .background(PlatformColors.palette.red.copy(alpha = 0.1f))
                     .clickWithNoRipple { onDelete() },
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     Icons.Default.Delete,
                     contentDescription = stringResource(R.string.shortlist_notes_delete),
-                    tint = HomeRedAccent.copy(alpha = 0.7f),
+                    tint = PlatformColors.palette.red.copy(alpha = 0.7f),
                     modifier = Modifier.size(16.dp)
                 )
             }
@@ -1172,8 +1165,8 @@ private fun NoteDialog(
         Card(
             shape = RoundedCornerShape(20.dp),
             elevation = CardDefaults.cardElevation(8.dp),
-            colors = CardDefaults.cardColors(containerColor = HomeDarkCard),
-            border = BorderStroke(1.dp, HomeDarkCardBorder)
+            colors = CardDefaults.cardColors(containerColor = PlatformColors.palette.card),
+            border = BorderStroke(1.dp, PlatformColors.palette.cardBorder)
         ) {
             Column(
                 modifier = Modifier
@@ -1186,7 +1179,7 @@ private fun NoteDialog(
                         if (mode == "edit") R.string.shortlist_notes_edit_title
                         else R.string.shortlist_notes_add_title
                     ),
-                    style = boldTextStyle(HomeTextPrimary, 18.sp)
+                    style = boldTextStyle(PlatformColors.palette.textPrimary, 18.sp)
                 )
                 Spacer(Modifier.height(12.dp))
 
@@ -1195,8 +1188,8 @@ private fun NoteDialog(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(12.dp))
-                        .background(HomeDarkBackground)
-                        .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(12.dp))
+                        .background(PlatformColors.palette.background)
+                        .border(1.dp, PlatformColors.palette.cardBorder, RoundedCornerShape(12.dp))
                         .padding(10.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -1214,13 +1207,13 @@ private fun NoteDialog(
                             modifier = Modifier
                                 .size(36.dp)
                                 .clip(CircleShape)
-                                .background(HomeDarkCardBorder),
+                                .background(PlatformColors.palette.cardBorder),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 Icons.Default.Person,
                                 contentDescription = null,
-                                tint = HomeTextSecondary,
+                                tint = PlatformColors.palette.textSecondary,
                                 modifier = Modifier.size(18.dp)
                             )
                         }
@@ -1229,7 +1222,7 @@ private fun NoteDialog(
                     Column {
                         Text(
                             text = formatShortlistProfileDisplay(entry),
-                            style = boldTextStyle(HomeTextPrimary, 13.sp),
+                            style = boldTextStyle(PlatformColors.palette.textPrimary, 13.sp),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
@@ -1238,7 +1231,7 @@ private fun NoteDialog(
                         if (subtitle.isNotBlank()) {
                             Text(
                                 text = subtitle,
-                                style = regularTextStyle(HomeTextSecondary, 11.sp),
+                                style = regularTextStyle(PlatformColors.palette.textSecondary, 11.sp),
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
@@ -1258,17 +1251,17 @@ private fun NoteDialog(
                     placeholder = {
                         Text(
                             text = stringResource(R.string.shortlist_notes_placeholder),
-                            style = regularTextStyle(HomeTextSecondary.copy(alpha = 0.6f), 14.sp)
+                            style = regularTextStyle(PlatformColors.palette.textSecondary.copy(alpha = 0.6f), 14.sp)
                         )
                     },
-                    textStyle = regularTextStyle(HomeTextPrimary, 14.sp),
+                    textStyle = regularTextStyle(PlatformColors.palette.textPrimary, 14.sp),
                     shape = RoundedCornerShape(12.dp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = HomeOrangeAccent,
-                        unfocusedBorderColor = HomeDarkCardBorder,
-                        cursorColor = HomeOrangeAccent,
-                        focusedContainerColor = HomeDarkBackground,
-                        unfocusedContainerColor = HomeDarkBackground
+                        focusedBorderColor = PlatformColors.palette.orange,
+                        unfocusedBorderColor = PlatformColors.palette.cardBorder,
+                        cursorColor = PlatformColors.palette.orange,
+                        focusedContainerColor = PlatformColors.palette.background,
+                        unfocusedContainerColor = PlatformColors.palette.background
                     )
                 )
 
@@ -1283,14 +1276,14 @@ private fun NoteDialog(
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(100.dp))
-                            .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(100.dp))
+                            .border(1.dp, PlatformColors.palette.cardBorder, RoundedCornerShape(100.dp))
                             .clickWithNoRipple { onDismiss() }
                             .padding(horizontal = 16.dp, vertical = 8.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
                             text = stringResource(R.string.cancel),
-                            style = boldTextStyle(HomeTextPrimary, 13.sp)
+                            style = boldTextStyle(PlatformColors.palette.textPrimary, 13.sp)
                         )
                     }
                     Spacer(Modifier.width(8.dp))
@@ -1298,8 +1291,8 @@ private fun NoteDialog(
                         modifier = Modifier
                             .clip(RoundedCornerShape(100.dp))
                             .background(
-                                if (text.isNotBlank()) HomeOrangeAccent
-                                else HomeOrangeAccent.copy(alpha = 0.4f)
+                                if (text.isNotBlank()) PlatformColors.palette.orange
+                                else PlatformColors.palette.orange.copy(alpha = 0.4f)
                             )
                             .clickWithNoRipple {
                                 if (text.isNotBlank()) onSave(text.trim())
@@ -1331,8 +1324,8 @@ private fun DeleteShortlistDialog(
         Card(
             shape = RoundedCornerShape(16.dp),
             elevation = CardDefaults.cardElevation(8.dp),
-            colors = CardDefaults.cardColors(containerColor = HomeDarkCard),
-            border = BorderStroke(1.dp, HomeDarkCardBorder)
+            colors = CardDefaults.cardColors(containerColor = PlatformColors.palette.card),
+            border = BorderStroke(1.dp, PlatformColors.palette.cardBorder)
         ) {
             Column(
                 modifier = Modifier
@@ -1341,7 +1334,7 @@ private fun DeleteShortlistDialog(
             ) {
                 Text(
                     text = stringResource(R.string.shortlist_remove_confirm),
-                    style = boldTextStyle(HomeTextPrimary, 16.sp),
+                    style = boldTextStyle(PlatformColors.palette.textPrimary, 16.sp),
                     textAlign = TextAlign.Center
                 )
                 Spacer(Modifier.height(24.dp))
@@ -1355,17 +1348,17 @@ private fun DeleteShortlistDialog(
                     Box(
                         modifier = Modifier
                             .background(
-                                HomeDarkCard,
+                                PlatformColors.palette.card,
                                 shape = RoundedCornerShape(100.dp)
                             )
-                            .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(100.dp))
+                            .border(1.dp, PlatformColors.palette.cardBorder, RoundedCornerShape(100.dp))
                             .size(width = 80.dp, height = 30.dp)
                             .clickWithNoRipple { },
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
                             text = stringResource(R.string.cancel),
-                            style = boldTextStyle(HomeTextPrimary, 12.sp),
+                            style = boldTextStyle(PlatformColors.palette.textPrimary, 12.sp),
                             modifier = Modifier.clickWithNoRipple { onDismissRequest() }
                         )
                     }
@@ -1373,7 +1366,7 @@ private fun DeleteShortlistDialog(
                     Box(
                         modifier = Modifier
                             .background(
-                                HomeRedAccent,
+                                PlatformColors.palette.red,
                                 shape = RoundedCornerShape(100.dp)
                             )
                             .size(width = 80.dp, height = 30.dp)
@@ -1411,19 +1404,19 @@ private fun ShortlistEmptyState(
         Icon(
             imageVector = Icons.Default.BookmarkBorder,
             contentDescription = null,
-            tint = HomeTextSecondary.copy(alpha = 0.5f),
+            tint = PlatformColors.palette.textSecondary.copy(alpha = 0.5f),
             modifier = Modifier.size(72.dp)
         )
         Spacer(Modifier.height(20.dp))
         Text(
             text = stringResource(R.string.shortlist_no_players),
-            style = boldTextStyle(HomeTextPrimary, 18.sp),
+            style = boldTextStyle(PlatformColors.palette.textPrimary, 18.sp),
             textAlign = TextAlign.Center
         )
         Spacer(Modifier.height(10.dp))
         Text(
             text = stringResource(R.string.shortlist_empty_hint),
-            style = regularTextStyle(HomeTextSecondary, 13.sp),
+            style = regularTextStyle(PlatformColors.palette.textSecondary, 13.sp),
             textAlign = TextAlign.Center
         )
         Spacer(Modifier.height(28.dp))
@@ -1435,7 +1428,7 @@ private fun ShortlistEmptyState(
                 modifier = Modifier
                     .weight(1f)
                     .clip(RoundedCornerShape(14.dp))
-                    .background(HomeTealAccent)
+                    .background(PlatformColors.palette.accent)
                     .clickWithNoRipple(onClick = onBrowseReleases)
                     .padding(vertical = 12.dp),
                 contentAlignment = Alignment.Center
@@ -1449,14 +1442,14 @@ private fun ShortlistEmptyState(
                 modifier = Modifier
                     .weight(1f)
                     .clip(RoundedCornerShape(14.dp))
-                    .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(14.dp))
+                    .border(1.dp, PlatformColors.palette.cardBorder, RoundedCornerShape(14.dp))
                     .clickWithNoRipple(onClick = onBrowseReturnees)
                     .padding(vertical = 12.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = stringResource(R.string.shortlist_browse_returnees),
-                    style = boldTextStyle(HomeTextPrimary, 14.sp)
+                    style = boldTextStyle(PlatformColors.palette.textPrimary, 14.sp)
                 )
             }
         }
