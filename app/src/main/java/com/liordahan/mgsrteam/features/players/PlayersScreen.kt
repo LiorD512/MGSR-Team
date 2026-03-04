@@ -227,7 +227,7 @@ fun PlayersScreen(
                 onSortOptionSelected = { viewModel.setSortOption(it) },
                 onResetSort = { viewModel.resetSortOption() },
                 platform = currentPlatform,
-                showSort = currentPlatform != Platform.WOMEN
+                showSort = currentPlatform == Platform.MEN
             )
 
             // ── Stats Strip ──────────────────────────────────────────────
@@ -236,7 +236,7 @@ fun PlayersScreen(
                 mandate = playersState.mandateCount,
                 expiring = playersState.expiringCount,
                 free = playersState.freeAgentCount,
-                isWomen = currentPlatform == Platform.WOMEN
+                hideExtras = currentPlatform != Platform.MEN
             )
 
             // ── Search Bar ───────────────────────────────────────────────
@@ -260,8 +260,8 @@ fun PlayersScreen(
                 platform = currentPlatform
             )
 
-            // ── Quick Filter Chips (hidden for Women — web parity) ───────
-            if (currentPlatform != Platform.WOMEN) {
+            // ── Quick Filter Chips (hidden for Women & Youth — web parity) ───────
+            if (currentPlatform == Platform.MEN) {
             QuickFilterChips(
                 freeAgentsSelected = playersState.quickFilterFreeAgents,
                 contractExpiringSelected = playersState.quickFilterContractExpiring,
@@ -590,7 +590,7 @@ private fun PlayersHeader(
 // ═════════════════════════════════════════════════════════════════════════════
 
 @Composable
-private fun StatsStrip(total: Int, mandate: Int, expiring: Int, free: Int, isWomen: Boolean = false) {
+private fun StatsStrip(total: Int, mandate: Int, expiring: Int, free: Int, hideExtras: Boolean = false) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -606,7 +606,7 @@ private fun StatsStrip(total: Int, mandate: Int, expiring: Int, free: Int, isWom
             accentColor = HomeTealAccent,
             modifier = Modifier.weight(1f)
         )
-        if (!isWomen) {
+        if (!hideExtras) {
             StatsStripDivider()
             StatsStripItem(
                 value = mandate.toString(),
@@ -1368,6 +1368,43 @@ private fun PlayerCardVariantA(
                                 onError = { showFallback = true }
                             )
                         }
+                    } else if (platform == Platform.YOUTH) {
+                        // Youth: show image with initials fallback
+                        var showFallback by remember { mutableStateOf(player.profileImage.isNullOrBlank()) }
+                        if (showFallback) {
+                            Box(
+                                modifier = Modifier
+                                    .size(52.dp)
+                                    .clip(CircleShape)
+                                    .background(
+                                        Brush.linearGradient(
+                                            colors = listOf(PlatformYouthAccent, PlatformYouthSecondary)
+                                        )
+                                    )
+                                    .border(2.dp, PlatformYouthAccent.copy(alpha = 0.4f), CircleShape),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = player.fullName
+                                        ?.split(" ")
+                                        ?.mapNotNull { it.firstOrNull()?.uppercase() }
+                                        ?.take(2)
+                                        ?.joinToString("") ?: "?",
+                                    style = boldTextStyle(Color.White, 18.sp)
+                                )
+                            }
+                        } else {
+                            AsyncImage(
+                                model = player.profileImage,
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .size(52.dp)
+                                    .clip(CircleShape)
+                                    .border(2.dp, PlatformYouthAccent.copy(alpha = 0.4f), CircleShape),
+                                contentScale = ContentScale.Crop,
+                                onError = { showFallback = true }
+                            )
+                        }
                     } else {
                         AsyncImage(
                             model = player.profileImage,
@@ -1506,13 +1543,7 @@ private fun PlayerCardVariantA(
                                     textColor = PlatformYouthAccent
                                 )
                             }
-                            if (!player.academy.isNullOrBlank()) {
-                                PlayerTag(
-                                    text = "🏟 ${player.academy}",
-                                    tagColor = PlatformYouthSecondary.copy(alpha = 0.12f),
-                                    textColor = PlatformYouthSecondary
-                                )
-                            }
+                            // Academy tag removed for Youth per design
                         }
 
                         // Women-specific indicator

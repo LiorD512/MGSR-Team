@@ -193,6 +193,7 @@ fun RequestsScreen(
     val platformManager: PlatformManager = koinInject()
     val currentPlatform by platformManager.current.collectAsState()
     val isWomen = currentPlatform == Platform.WOMEN
+    val isYouth = currentPlatform == Platform.YOUTH
     val state by viewModel.requestsState.collectAsStateWithLifecycle()
     val positions by viewModel.positions.collectAsStateWithLifecycle()
     var showAddSheet by remember { mutableStateOf(false) }
@@ -351,6 +352,7 @@ fun RequestsScreen(
                                                     justAddedUrls = justAddedUrls,
                                                     shortlistPendingUrls = shortlistPendingUrls,
                                                     isWomen = isWomen,
+                                                    isYouth = isYouth,
                                                     modifier = Modifier.padding(start = 12.dp, top = 6.dp),
                                                     onToggleExpand = {
                                                         val id = request.id ?: return@RequestCard
@@ -738,6 +740,7 @@ private fun RequestCard(
     justAddedUrls: Set<String>,
     shortlistPendingUrls: Set<String> = emptySet(),
     isWomen: Boolean = false,
+    isYouth: Boolean = false,
     modifier: Modifier = Modifier,
     onToggleExpand: () -> Unit,
     onToggleOnlineExpand: () -> Unit,
@@ -1023,8 +1026,8 @@ private fun RequestCard(
                     }
                 }
             }
-            // Row 2: Find players from TM (expandable, loader + list inside) — hidden for Women
-            if (!isWomen) {
+            // Row 2: Find players from TM (expandable, loader + list inside) — hidden for Women & Youth
+            if (!isWomen && !isYouth) {
             Spacer(Modifier.height(6.dp))
             Row(
                 modifier = Modifier
@@ -1159,7 +1162,7 @@ private fun RequestCard(
                     }
                 }
             }
-            } // end if (!isWomen) — hide AI Scout online search
+            } // end if (!isWomen && !isYouth) — hide AI Scout online search
         }
     }
 }

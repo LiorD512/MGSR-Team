@@ -583,6 +583,7 @@ fun PlayerInfoScreen(
                 PlayerInfoQuickActions(
                     player = player,
                     context = context,
+                    currentPlatform = currentPlatform,
                     onEditPlayerNumber = {
                         launchPlayerContactPicker(
                             context,
@@ -603,7 +604,7 @@ fun PlayerInfoScreen(
             }
 
             // Section: AI Helper
-            if (currentPlatform != Platform.WOMEN) {
+            if (currentPlatform != Platform.WOMEN && currentPlatform != Platform.YOUTH) {
                 playerToPresent?.let { player ->
                     PlayerInfoAiHelperSection(
                         player = player,
@@ -625,8 +626,11 @@ fun PlayerInfoScreen(
                 )
             }
 
-            // Section: General Info
-            PlayerInfoSectionHeader(stringResource(R.string.player_info_general_info))
+            // Section: General Info (or "Youth Details" for Youth platform)
+            PlayerInfoSectionHeader(
+                if (currentPlatform == Platform.YOUTH) "⚡ " + stringResource(R.string.youth_section_details)
+                else stringResource(R.string.player_info_general_info)
+            )
             PlayerInfoCard(
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
             ) {
@@ -810,7 +814,7 @@ fun PlayerInfoScreen(
             // ── Platform-specific sections ───────────────────────────────
             if (currentPlatform == Platform.YOUTH) {
                 playerToPresent?.let { player ->
-                    PlayerInfoYouthSection(player = player)
+                    PlayerInfoYouthSection(player = player, showHeader = false)
                 }
             }
             if (currentPlatform == Platform.WOMEN) {
@@ -1100,15 +1104,41 @@ private fun PlayerInfoHeroCard(
                 .padding(20.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            if ((currentPlatform == Platform.YOUTH || currentPlatform == Platform.WOMEN) && player.profileImage.isNullOrBlank()) {
+                // Initials placeholder on gradient for Youth/Women
+                val initials = (player.fullName ?: "?").split(" ")
+                    .filter { it.isNotBlank() }
+                    .take(2)
+                    .joinToString("") { it.first().uppercase() }
+                val gradientBrush = if (currentPlatform == Platform.YOUTH)
+                    Brush.linearGradient(listOf(PlatformYouthAccent, PlatformYouthSecondary))
+                else
+                    Brush.linearGradient(listOf(PlatformWomenAccent, PlatformWomenAccent.copy(alpha = 0.6f)))
+                Box(
+                    modifier = Modifier
+                        .size(96.dp)
+                        .align(Alignment.CenterHorizontally)
+                        .clip(CircleShape)
+                        .background(gradientBrush),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = initials,
+                        style = boldTextStyle(Color.White, 32.sp)
+                    )
+                }
+            } else {
             AsyncImage(
                 model = player.profileImage ?: "",
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
                     .size(96.dp)
+                    .align(Alignment.CenterHorizontally)
                     .clip(CircleShape)
                     .border(2.dp, HomeDarkCardBorder, CircleShape)
             )
+            }
             Spacer(Modifier.height(12.dp))
             Text(
                 text = player.fullName ?: stringResource(R.string.player_info_unknown),
@@ -1267,6 +1297,7 @@ private fun PlayerInfoHeroCard(
                     )
                 )
             }
+            if (currentPlatform != Platform.YOUTH) {
             Spacer(Modifier.height(8.dp))
             val hasSalaryOrFee = player.salaryRange?.isNotBlank() == true || player.transferFee?.isNotBlank() == true
             var showClearSalaryMenu by remember { mutableStateOf(false) }
@@ -1337,6 +1368,7 @@ private fun PlayerInfoHeroCard(
                     )
                 }
             }
+            } // end if (!YOUTH) salary/transfer fee
         }
     }
 }
@@ -1365,6 +1397,7 @@ private fun PlayerInfoOnLoanPill(text: String) {
 private fun PlayerInfoQuickActions(
     player: Player,
     context: Context,
+    currentPlatform: Platform = Platform.MEN,
     onEditPlayerNumber: () -> Unit,
     onRemovePlayerNumber: () -> Unit,
     onEditAgentNumber: () -> Unit,
@@ -1409,7 +1442,7 @@ private fun PlayerInfoQuickActions(
             // Agent phone action
             PlayerInfoPhoneAction(
                 modifier = Modifier.weight(1f),
-                label = stringResource(R.string.player_info_agent_label),
+                label = if (currentPlatform == Platform.YOUTH) stringResource(R.string.youth_parent_contact_label) else stringResource(R.string.player_info_agent_label),
                 phone = agentPhone,
                 context = context,
                 onEditNumber = onEditAgentNumber,
@@ -3163,8 +3196,11 @@ private fun getContractStatus(resources: android.content.res.Resources, expiryDa
 // ═════════════════════════════════════════════════════════════════════════════
 
 @Composable
-private fun PlayerInfoYouthSection(player: Player) {
-    PlayerInfoSectionHeader("⚡ " + stringResource(R.string.youth_section_details))
+private fun PlayerInfoYouthSection(player: Player, showHeader: Boolean = true) {
+    val context = LocalContext.current
+    if (showHeader) {
+        PlayerInfoSectionHeader("⚡ " + stringResource(R.string.youth_section_details))
+    }
     PlayerInfoCard(
         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
     ) {
@@ -3208,25 +3244,6 @@ private fun PlayerInfoYouthSection(player: Player) {
                 modifier = Modifier.padding(vertical = 8.dp)
             )
         }
-        if (!player.academy.isNullOrBlank()) {
-            InfoRow(
-                stringResource(R.string.youth_academy),
-                player.academy,
-                darkTheme = true,
-                icon = {
-                    Text(
-                        text = "🏟",
-                        fontSize = 18.sp,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-            )
-            HorizontalDivider(
-                color = HomeDarkCardBorder,
-                thickness = 0.5.dp,
-                modifier = Modifier.padding(vertical = 8.dp)
-            )
-        }
         if (!player.dateOfBirth.isNullOrBlank()) {
             InfoRow(
                 stringResource(R.string.youth_date_of_birth),
@@ -3247,20 +3264,31 @@ private fun PlayerInfoYouthSection(player: Player) {
                 modifier = Modifier.padding(vertical = 8.dp)
             )
         }
+        // IFA Profile — clickable button instead of raw URL
         if (!player.ifaUrl.isNullOrBlank()) {
-            InfoRow(
-                stringResource(R.string.youth_ifa_profile),
-                player.ifaUrl,
-                darkTheme = true,
-                icon = {
-                    Icon(
-                        modifier = Modifier.size(24.dp),
-                        imageVector = Icons.Default.Link,
-                        contentDescription = null,
-                        tint = PlatformYouthAccent
-                    )
-                }
-            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(8.dp))
+                    .clickable {
+                        val intent = Intent(Intent.ACTION_VIEW, player.ifaUrl.orEmpty().toUri())
+                        context.startActivity(intent)
+                    }
+                    .padding(vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.OpenInNew,
+                    contentDescription = null,
+                    tint = PlatformYouthAccent,
+                    modifier = Modifier.size(20.dp)
+                )
+                Text(
+                    text = stringResource(R.string.youth_ifa_profile),
+                    style = boldTextStyle(PlatformYouthAccent, 13.sp)
+                )
+            }
             HorizontalDivider(
                 color = HomeDarkCardBorder,
                 thickness = 0.5.dp,

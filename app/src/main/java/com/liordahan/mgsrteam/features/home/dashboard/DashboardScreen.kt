@@ -603,6 +603,7 @@ private fun StatsRow(state: HomeDashboardState, platform: Platform = Platform.ME
             label = stringResource(R.string.stat_players),
             accentColor = accent
         )
+        if (platform != Platform.YOUTH) {
         StatCard(
             modifier = Modifier.weight(1f),
             icon = Icons.Default.Handshake,
@@ -617,6 +618,7 @@ private fun StatsRow(state: HomeDashboardState, platform: Platform = Platform.ME
             label = stringResource(R.string.stat_free),
             accentColor = HomeRedAccent
         )
+        }
         StatCard(
             modifier = Modifier.weight(1f),
             icon = Icons.Default.RequestQuote,

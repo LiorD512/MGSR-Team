@@ -2,6 +2,7 @@ package com.liordahan.mgsrteam.features.add
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.liordahan.mgsrteam.features.aiscout.MgsrWebApiClient
 import com.liordahan.mgsrteam.features.home.models.FeedEvent
 import com.liordahan.mgsrteam.features.login.models.Account
 import com.liordahan.mgsrteam.features.players.models.Club
@@ -31,6 +32,8 @@ data class AddPlayerUiState(
     val playerSearchResults: List<PlayerSearchModel> = emptyList(),
     /** SoccerDonna search results for Women platform. */
     val womenSearchResults: List<SoccerDonnaSearchResult> = emptyList(),
+    /** IFA search results for Youth platform. */
+    val youthSearchResults: List<MgsrWebApiClient.IFASearchResult> = emptyList(),
     val showSearchProgress: Boolean = false,
     val showPlayerSelectedSearchProgress: Boolean = false
 )
@@ -121,6 +124,9 @@ abstract class IAddPlayerViewModel : ViewModel() {
     /** Call when closing the add-player sheet so the next open doesn't use stale state. */
     abstract fun resetAfterAdd()
 
+    /** Select an IFA search result (Youth): pre-fill youth form. */
+    abstract fun onYouthPlayerSelected(result: MgsrWebApiClient.IFASearchResult)
+
     // ── Women single-page form (matches web AddWomanPlayerForm) ──
     abstract val womanFormState: StateFlow<WomanPlayerFormState>
     abstract fun updateWomanForm(updater: (WomanPlayerFormState) -> WomanPlayerFormState)
@@ -141,7 +147,8 @@ class AddPlayerViewModel(
     private val playerSearch: PlayerSearch,
     private val soccerDonnaSearch: SoccerDonnaSearch,
     private val firebaseHandler: FirebaseHandler,
-    private val platformManager: PlatformManager
+    private val platformManager: PlatformManager,
+    private val webApiClient: MgsrWebApiClient
 ) : IAddPlayerViewModel() {
 
     private val _playerSearchStateFlow = MutableStateFlow(AddPlayerUiState())
@@ -168,6 +175,9 @@ class AddPlayerViewModel(
     private val isWomenPlatform: Boolean
         get() = platformManager.current.value == Platform.WOMEN
 
+    private val isYouthPlatform: Boolean
+        get() = platformManager.current.value == Platform.YOUTH
+
     init {
         viewModelScope.launch {
             searchQuery
@@ -176,6 +186,8 @@ class AddPlayerViewModel(
                 .collectLatest { query ->
                     if (isWomenPlatform) {
                         performWomenSearch(query)
+                    } else if (isYouthPlatform) {
+                        performYouthSearch(query)
                     } else {
                         performSearch(query)
                     }
@@ -219,6 +231,37 @@ class AddPlayerViewModel(
             _playerSearchStateFlow.update { it.copy(womenSearchResults = results) }
             updateProgress(false)
         }
+    }
+
+    // ── Youth: IFA search ──
+
+    private suspend fun performYouthSearch(query: String?) {
+        updateProgress(true)
+        if (query.isNullOrBlank()) {
+            _playerSearchStateFlow.update { it.copy(youthSearchResults = emptyList()) }
+            updateProgress(false)
+        } else {
+            val result = webApiClient.searchYouthIFA(query)
+            val results = result.getOrDefault(emptyList())
+            _playerSearchStateFlow.update { it.copy(youthSearchResults = results) }
+            updateProgress(false)
+        }
+    }
+
+    override fun onYouthPlayerSelected(result: MgsrWebApiClient.IFASearchResult) {
+        // Pre-fill the youth form with IFA data and clear search
+        _youthFormState.update {
+            YouthPlayerFormState(
+                fullName = result.fullName,
+                fullNameHe = result.fullNameHe ?: "",
+                currentClub = result.currentClub ?: "",
+                dateOfBirth = result.dateOfBirth ?: "",
+                ageGroup = result.dateOfBirth?.let { YouthPlayerFormState.computeAgeGroup(it) } ?: "",
+                ifaUrl = result.ifaUrl ?: ""
+            )
+        }
+        _searchQuery.update { "" }
+        _playerSearchStateFlow.update { it.copy(youthSearchResults = emptyList()) }
     }
 
     override fun onWomanPlayerSelected(result: SoccerDonnaSearchResult) {

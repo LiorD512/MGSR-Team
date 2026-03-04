@@ -87,6 +87,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.liordahan.mgsrteam.R
+import com.liordahan.mgsrteam.features.aiscout.MgsrWebApiClient
 import com.liordahan.mgsrteam.features.shortlist.ShortlistRepository
 import com.liordahan.mgsrteam.transfermarket.LatestTransferModel
 import com.liordahan.mgsrteam.transfermarket.PlayerSearchModel
@@ -129,6 +130,9 @@ fun AddPlayerScreen(
     val currentPlatform by platformManager.current.collectAsStateWithLifecycle()
 
     val snackBarHostState = remember { SnackbarHostState() }
+    val shortlistRepository: ShortlistRepository = koinInject()
+    val scope = rememberCoroutineScope()
+    var isSavingToShortlist by remember { mutableStateOf(false) }
 
     var showAddContactBottomSheet by remember {
         mutableStateOf(false)
@@ -152,6 +156,10 @@ fun AddPlayerScreen(
         mutableStateOf(listOf<SoccerDonnaSearchResult>())
     }
 
+    var youthSearchResults by remember {
+        mutableStateOf(listOf<MgsrWebApiClient.IFASearchResult>())
+    }
+
     var soccerDonnaUrlInput by remember { mutableStateOf("") }
 
     var manualNameInput by remember { mutableStateOf("") }
@@ -161,7 +169,7 @@ fun AddPlayerScreen(
     }
 
     LaunchedEffect(initialTmProfileUrl) {
-        if (initialTmProfileUrl.isNotBlank()) {
+        if (initialTmProfileUrl.isNotBlank() && currentPlatform != Platform.YOUTH) {
             viewModel.loadPlayerByTmProfileUrl(Uri.decode(initialTmProfileUrl))
         }
     }
@@ -172,6 +180,7 @@ fun AddPlayerScreen(
                 viewModel.playerSearchStateFlow.collect {
                     playerOptionsList = it.playerSearchResults
                     womenSearchResults = it.womenSearchResults
+                    youthSearchResults = it.youthSearchResults
                     showSearchProgress = it.showSearchProgress
                     showSelectedPlayerProgress = it.showPlayerSelectedSearchProgress
                 }
@@ -189,6 +198,9 @@ fun AddPlayerScreen(
                 viewModel.isPlayerAddedFlow.collect {
                     if (it && !forShortlist) {
                         showAddContactBottomSheet = false
+                        navController.popBackStack()
+                    } else if (it && forShortlist && (currentPlatform == Platform.WOMEN || currentPlatform == Platform.YOUTH)) {
+                        // Women/Youth shortlist save succeeded
                         navController.popBackStack()
                     }
                 }
@@ -233,7 +245,7 @@ fun AddPlayerScreen(
                 searchPlayerInput = searchText,
                 onValueChange = {
                     searchText = it
-                    if (currentPlatform == Platform.MEN || currentPlatform == Platform.WOMEN) {
+                    if (currentPlatform == Platform.MEN || currentPlatform == Platform.WOMEN || currentPlatform == Platform.YOUTH) {
                         viewModel.updateSearchQuery(searchText.text)
                     }
                 },
@@ -242,7 +254,7 @@ fun AddPlayerScreen(
                 platform = currentPlatform
             )
 
-            if (showSearchProgress && (currentPlatform == Platform.MEN || currentPlatform == Platform.WOMEN)) {
+            if (showSearchProgress && (currentPlatform == Platform.MEN || currentPlatform == Platform.WOMEN || currentPlatform == Platform.YOUTH)) {
                 SkeletonPlayerCardList(
                     modifier = Modifier.fillMaxSize(),
                     itemCount = 4
@@ -619,14 +631,44 @@ fun AddPlayerScreen(
                             item {
                                 Spacer(modifier = Modifier.height(8.dp))
                                 PrimaryButtonNewDesign(
-                                    buttonText = stringResource(R.string.women_save_player),
-                                    isEnabled = womanForm.fullName.isNotBlank() && !womanForm.isSaving,
-                                    showProgress = womanForm.isSaving,
+                                    buttonText = if (forShortlist) stringResource(R.string.add_player_to_shortlist) else stringResource(R.string.women_save_player),
+                                    isEnabled = womanForm.fullName.isNotBlank() && !womanForm.isSaving && !isSavingToShortlist,
+                                    showProgress = womanForm.isSaving || isSavingToShortlist,
                                     containerColor = currentPlatform.accent,
                                     onButtonClicked = {
                                         focusManager.clearFocus()
                                         keyboardController?.hide()
-                                        viewModel.saveWomanPlayer()
+                                        if (forShortlist) {
+                                            val url = womanForm.soccerDonnaUrl.takeIf { it.isNotBlank() } ?: "women-${womanForm.fullName.trim().lowercase().replace(" ", "-")}-${System.currentTimeMillis()}"
+                                            val release = LatestTransferModel(
+                                                playerImage = womanForm.profileImage.takeIf { it.isNotBlank() },
+                                                playerName = womanForm.fullName.trim(),
+                                                playerUrl = url,
+                                                playerPosition = womanForm.positions.firstOrNull(),
+                                                playerAge = womanForm.age.takeIf { it.isNotBlank() },
+                                                playerNationality = womanForm.nationality.takeIf { it.isNotBlank() },
+                                                clubJoinedName = womanForm.currentClub.takeIf { it.isNotBlank() },
+                                                marketValue = womanForm.marketValue.takeIf { it.isNotBlank() }
+                                            )
+                                            isSavingToShortlist = true
+                                            scope.launch {
+                                                when (shortlistRepository.addToShortlist(release)) {
+                                                    is ShortlistRepository.AddToShortlistResult.Added -> {
+                                                        navController.popBackStack()
+                                                    }
+                                                    is ShortlistRepository.AddToShortlistResult.AlreadyInShortlist -> {
+                                                        isSavingToShortlist = false
+                                                        snackBarHostState.showSnackbar("Player already in shortlist")
+                                                    }
+                                                    is ShortlistRepository.AddToShortlistResult.AlreadyInRoster -> {
+                                                        isSavingToShortlist = false
+                                                        snackBarHostState.showSnackbar("Player already in roster")
+                                                    }
+                                                }
+                                            }
+                                        } else {
+                                            viewModel.saveWomanPlayer()
+                                        }
                                     }
                                 )
                             }
@@ -669,6 +711,7 @@ fun AddPlayerScreen(
                     var showAgeGroupDropdown by remember { mutableStateOf(false) }
                     var showRelationshipDropdown by remember { mutableStateOf(false) }
 
+                    Box(modifier = Modifier.fillMaxSize()) {
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(
@@ -764,48 +807,25 @@ fun AddPlayerScreen(
                             }
                         }
 
-                        // Club + Academy row
+                        // Club row (full width)
                         item {
-                            Row(
+                            Column(
                                 modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                verticalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
-                                Column(
-                                    modifier = Modifier.weight(1f),
-                                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                                ) {
-                                    Text(
-                                        stringResource(R.string.youth_club),
-                                        style = boldTextStyle(HomeTextSecondary, 12.sp)
-                                    )
-                                    AppTextField(
-                                        textInput = TextFieldValue(youthForm.currentClub),
-                                        hint = "Club name",
-                                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-                                        onValueChange = { tf ->
-                                            viewModel.updateYouthForm { it.copy(currentClub = tf.text) }
-                                        },
-                                        darkTheme = true
-                                    )
-                                }
-                                Column(
-                                    modifier = Modifier.weight(1f),
-                                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                                ) {
-                                    Text(
-                                        stringResource(R.string.youth_academy),
-                                        style = boldTextStyle(HomeTextSecondary, 12.sp)
-                                    )
-                                    AppTextField(
-                                        textInput = TextFieldValue(youthForm.academy),
-                                        hint = "Academy name",
-                                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-                                        onValueChange = { tf ->
-                                            viewModel.updateYouthForm { it.copy(academy = tf.text) }
-                                        },
-                                        darkTheme = true
-                                    )
-                                }
+                                Text(
+                                    stringResource(R.string.youth_club),
+                                    style = boldTextStyle(HomeTextSecondary, 12.sp)
+                                )
+                                AppTextField(
+                                    textInput = TextFieldValue(youthForm.currentClub),
+                                    hint = "Club name",
+                                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                                    onValueChange = { tf ->
+                                        viewModel.updateYouthForm { it.copy(currentClub = tf.text) }
+                                    },
+                                    darkTheme = true
+                                )
                             }
                         }
 
@@ -910,54 +930,53 @@ fun AddPlayerScreen(
                             }
                         }
 
-                        // Profile Image URL + IFA URL
+                        // Profile Image URL (full width)
                         item {
-                            Row(
+                            Column(
                                 modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                verticalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
-                                Column(
-                                    modifier = Modifier.weight(1f),
-                                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                                ) {
-                                    Text(
-                                        stringResource(R.string.youth_profile_image_url),
-                                        style = boldTextStyle(HomeTextSecondary, 12.sp)
-                                    )
-                                    AppTextField(
-                                        textInput = TextFieldValue(youthForm.profileImage),
-                                        hint = "Image URL",
-                                        keyboardOptions = KeyboardOptions(
-                                            imeAction = ImeAction.Next,
-                                            keyboardType = KeyboardType.Uri
-                                        ),
-                                        onValueChange = { tf ->
-                                            viewModel.updateYouthForm { it.copy(profileImage = tf.text) }
-                                        },
-                                        darkTheme = true
-                                    )
-                                }
-                                Column(
-                                    modifier = Modifier.weight(1f),
-                                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                                ) {
-                                    Text(
-                                        stringResource(R.string.youth_ifa_url),
-                                        style = boldTextStyle(HomeTextSecondary, 12.sp)
-                                    )
-                                    AppTextField(
-                                        textInput = TextFieldValue(youthForm.ifaUrl),
-                                        hint = "football.org.il/…",
-                                        keyboardOptions = KeyboardOptions(
-                                            imeAction = ImeAction.Next,
-                                            keyboardType = KeyboardType.Uri
-                                        ),
-                                        onValueChange = { tf ->
-                                            viewModel.updateYouthForm { it.copy(ifaUrl = tf.text) }
-                                        },
-                                        darkTheme = true
-                                    )
-                                }
+                                Text(
+                                    stringResource(R.string.youth_profile_image_url),
+                                    style = boldTextStyle(HomeTextSecondary, 12.sp)
+                                )
+                                AppTextField(
+                                    textInput = TextFieldValue(youthForm.profileImage),
+                                    hint = "Image URL",
+                                    keyboardOptions = KeyboardOptions(
+                                        imeAction = ImeAction.Next,
+                                        keyboardType = KeyboardType.Uri
+                                    ),
+                                    onValueChange = { tf ->
+                                        viewModel.updateYouthForm { it.copy(profileImage = tf.text) }
+                                    },
+                                    darkTheme = true
+                                )
+                            }
+                        }
+
+                        // IFA Profile URL (full width)
+                        item {
+                            Column(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Text(
+                                    stringResource(R.string.youth_ifa_url),
+                                    style = boldTextStyle(HomeTextSecondary, 12.sp)
+                                )
+                                AppTextField(
+                                    textInput = TextFieldValue(youthForm.ifaUrl),
+                                    hint = "football.org.il/…",
+                                    keyboardOptions = KeyboardOptions(
+                                        imeAction = ImeAction.Next,
+                                        keyboardType = KeyboardType.Uri
+                                    ),
+                                    onValueChange = { tf ->
+                                        viewModel.updateYouthForm { it.copy(ifaUrl = tf.text) }
+                                    },
+                                    darkTheme = true
+                                )
                             }
                         }
 
@@ -1178,18 +1197,77 @@ fun AddPlayerScreen(
                         item {
                             Spacer(modifier = Modifier.height(8.dp))
                             PrimaryButtonNewDesign(
-                                buttonText = stringResource(R.string.youth_save_player),
-                                isEnabled = youthForm.fullName.isNotBlank() && !youthForm.isSaving,
-                                showProgress = youthForm.isSaving,
+                                buttonText = if (forShortlist) stringResource(R.string.add_player_to_shortlist) else stringResource(R.string.youth_save_player),
+                                isEnabled = youthForm.fullName.isNotBlank() && !youthForm.isSaving && !isSavingToShortlist,
+                                showProgress = youthForm.isSaving || isSavingToShortlist,
                                 containerColor = currentPlatform.accent,
                                 onButtonClicked = {
                                     focusManager.clearFocus()
                                     keyboardController?.hide()
-                                    viewModel.saveYouthPlayer()
+                                    if (forShortlist) {
+                                        val url = youthForm.ifaUrl.takeIf { it.isNotBlank() } ?: "youth-${youthForm.fullName.trim().lowercase().replace(" ", "-")}-${System.currentTimeMillis()}"
+                                        val release = LatestTransferModel(
+                                            playerImage = youthForm.profileImage.takeIf { it.isNotBlank() },
+                                            playerName = youthForm.fullName.trim(),
+                                            playerUrl = url,
+                                            playerPosition = youthForm.positions.firstOrNull(),
+                                            playerNationality = youthForm.nationality.takeIf { it.isNotBlank() },
+                                            clubJoinedName = youthForm.currentClub.takeIf { it.isNotBlank() }
+                                        )
+                                        isSavingToShortlist = true
+                                        scope.launch {
+                                            when (shortlistRepository.addToShortlist(release)) {
+                                                is ShortlistRepository.AddToShortlistResult.Added -> {
+                                                    navController.popBackStack()
+                                                }
+                                                is ShortlistRepository.AddToShortlistResult.AlreadyInShortlist -> {
+                                                    isSavingToShortlist = false
+                                                    snackBarHostState.showSnackbar("Player already in shortlist")
+                                                }
+                                                is ShortlistRepository.AddToShortlistResult.AlreadyInRoster -> {
+                                                    isSavingToShortlist = false
+                                                    snackBarHostState.showSnackbar("Player already in roster")
+                                                }
+                                            }
+                                        }
+                                    } else {
+                                        viewModel.saveYouthPlayer()
+                                    }
                                 }
                             )
                         }
                     }
+                    // IFA search results overlay
+                    if (youthSearchResults.isNotEmpty()) {
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 12.dp)
+                                .heightIn(max = 320.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = CardDefaults.cardColors(containerColor = HomeDarkCard),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+                        ) {
+                            LazyColumn {
+                                items(
+                                    youthSearchResults,
+                                    key = { it.ifaPlayerId ?: it.hashCode() }
+                                ) { result ->
+                                    YouthIFASearchListItem(
+                                        result = result,
+                                        accentColor = currentPlatform.accent,
+                                        onCardClicked = {
+                                            focusManager.clearFocus()
+                                            keyboardController?.hide()
+                                            viewModel.onYouthPlayerSelected(result)
+                                            searchText = TextFieldValue("")
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    } // end Box
                 } else {
                     // Men — Transfermarkt search
                     if (playerOptionsList.isNotEmpty()) {
@@ -1238,7 +1316,7 @@ fun AddPlayerScreen(
                     }
                 }
 
-                if (showAddContactBottomSheet && currentPlatform != Platform.WOMEN) {
+                if (showAddContactBottomSheet && currentPlatform != Platform.WOMEN && currentPlatform != Platform.YOUTH) {
                     if (forShortlist) {
                         AddToShortlistBottomSheetContent(
                             modifier = Modifier,
@@ -1391,6 +1469,87 @@ fun WomenSearchListItem(
                     Text(
                         text = meta.joinToString(" • "),
                         style = regularTextStyle(HomeTextSecondary, 12.sp),
+                        modifier = Modifier.padding(top = 2.dp)
+                    )
+                }
+                Icon(
+                    imageVector = Icons.Default.ChevronRight,
+                    contentDescription = null,
+                    tint = HomeTextSecondary,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun YouthIFASearchListItem(
+    result: MgsrWebApiClient.IFASearchResult,
+    accentColor: androidx.compose.ui.graphics.Color,
+    onCardClicked: (MgsrWebApiClient.IFASearchResult) -> Unit = {}
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickWithNoRipple { onCardClicked(result) },
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = HomeDarkCard)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .drawBehind {
+                    drawRect(
+                        color = accentColor,
+                        topLeft = Offset.Zero,
+                        size = androidx.compose.ui.geometry.Size(
+                            width = 3.dp.toPx(),
+                            height = size.height
+                        )
+                    )
+                }
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 12.dp, end = 12.dp, top = 12.dp, bottom = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(52.dp)
+                        .clip(CircleShape)
+                        .background(accentColor.copy(alpha = 0.15f))
+                        .border(2.dp, HomeDarkCardBorder, CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = result.fullName.firstOrNull()?.uppercase() ?: "?",
+                        style = boldTextStyle(accentColor, 20.sp)
+                    )
+                }
+                Spacer(modifier = Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        result.fullName,
+                        style = boldTextStyle(HomeTextPrimary, 14.sp)
+                    )
+                    if (!result.fullNameHe.isNullOrBlank()) {
+                        Text(
+                            result.fullNameHe,
+                            style = regularTextStyle(HomeTextSecondary, 12.sp),
+                            modifier = Modifier.padding(top = 1.dp)
+                        )
+                    }
+                    val meta = buildList {
+                        result.currentClub?.let { add(it) }
+                        result.dateOfBirth?.let { add(it) }
+                        add("IFA")
+                    }
+                    Text(
+                        text = meta.joinToString(" • "),
+                        style = regularTextStyle(HomeTextSecondary, 11.sp),
                         modifier = Modifier.padding(top = 2.dp)
                     )
                 }
@@ -1799,9 +1958,10 @@ fun AddPlayerHeader(
                 )
                 Text(
                     text = when {
-                        forShortlist -> stringResource(R.string.add_player_search_shortlist)
                         platform == Platform.WOMEN -> stringResource(R.string.women_search_subtitle)
+                        platform == Platform.YOUTH && forShortlist -> stringResource(R.string.youth_add_shortlist_subtitle)
                         platform == Platform.YOUTH -> stringResource(R.string.youth_search_subtitle)
+                        forShortlist -> stringResource(R.string.add_player_search_shortlist)
                         else -> stringResource(R.string.add_player_search_roster)
                     },
                     style = regularTextStyle(HomeTextSecondary, 12.sp),

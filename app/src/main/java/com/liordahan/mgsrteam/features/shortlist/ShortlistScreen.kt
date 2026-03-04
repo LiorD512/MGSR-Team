@@ -73,6 +73,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
@@ -115,6 +116,10 @@ import com.liordahan.mgsrteam.utils.extractPlayerIdFromUrl
 import com.liordahan.mgsrteam.localization.LocaleManager
 import com.liordahan.mgsrteam.features.platform.Platform
 import com.liordahan.mgsrteam.features.platform.PlatformManager
+import com.liordahan.mgsrteam.ui.theme.PlatformWomenAccent
+import com.liordahan.mgsrteam.ui.theme.PlatformWomenSecondary
+import com.liordahan.mgsrteam.ui.theme.PlatformYouthAccent
+import com.liordahan.mgsrteam.ui.theme.PlatformYouthSecondary
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.koinInject
@@ -169,6 +174,7 @@ fun ShortlistScreen(
     val state by viewModel.shortlistFlow.collectAsState()
     val currentPlatform by platformManager.current.collectAsStateWithLifecycle()
     val isWomen = currentPlatform == Platform.WOMEN
+    val isYouth = currentPlatform == Platform.YOUTH
     val context = LocalContext.current
     val oneWeekAgo = System.currentTimeMillis() - (7 * 24 * 60 * 60 * 1000)
     val thisWeekCount = state.entries.count { it.addedAt >= oneWeekAgo }
@@ -276,6 +282,7 @@ fun ShortlistScreen(
         ) {
             ShortlistHeader(
                 isWomen = isWomen,
+                isYouth = isYouth,
                 onAddClick = { navController.navigate(Screens.addToShortlistRoute()) },
                 onBackClicked = {
                     if (!navController.popBackStack(Screens.DashboardScreen.route, false)) {
@@ -312,6 +319,7 @@ fun ShortlistScreen(
                                 context = context,
                                 entry = entry,
                                 isWomen = isWomen,
+                                isYouth = isYouth,
                                 rosterTeammates = teammatesCache[playerUrl],
                                 isLoadingTeammates = loadingPlayerUrl == playerUrl,
                                 isTeammatesExpanded = isExpanded,
@@ -343,8 +351,8 @@ fun ShortlistScreen(
                                     viewModel.deleteNote(entry.tmProfileUrl, noteIndex)
                                 },
                                 onAddToAgency = {
-                                    if (isWomen) {
-                                        // Women: navigate to full AddPlayerScreen with pre-filled data
+                                    if (isWomen || isYouth) {
+                                        // Women/Youth: navigate to full AddPlayerScreen with pre-filled data
                                         navController.navigate(
                                             Screens.addPlayerWithTmProfileRoute(Uri.encode(entry.tmProfileUrl))
                                         )
@@ -458,6 +466,7 @@ fun ShortlistScreen(
 @Composable
 private fun ShortlistHeader(
     isWomen: Boolean = false,
+    isYouth: Boolean = false,
     onAddClick: () -> Unit,
     onBackClicked: () -> Unit
 ) {
@@ -483,7 +492,11 @@ private fun ShortlistHeader(
             )
             Text(
                 text = stringResource(
-                    if (isWomen) R.string.women_shortlist_subtitle else R.string.shortlist_subtitle
+                    when {
+                        isYouth -> R.string.youth_shortlist_subtitle
+                        isWomen -> R.string.women_shortlist_subtitle
+                        else -> R.string.shortlist_subtitle
+                    }
                 ),
                 style = regularTextStyle(HomeTextSecondary, 12.sp),
                 modifier = Modifier.padding(top = 4.dp)
@@ -586,6 +599,7 @@ private fun ShortlistCard(
     context: Context,
     entry: ShortlistEntry,
     isWomen: Boolean = false,
+    isYouth: Boolean = false,
     rosterTeammates: List<RosterTeammateMatch>? = null,
     isLoadingTeammates: Boolean = false,
     isTeammatesExpanded: Boolean = false,
@@ -644,6 +658,30 @@ private fun ShortlistCard(
                             .border(2.dp, HomeDarkCardBorder, CircleShape),
                         contentScale = ContentScale.Crop
                     )
+                } else if (isYouth || isWomen) {
+                    val accentColor = if (isYouth) PlatformYouthAccent else PlatformWomenAccent
+                    val secondaryColor = if (isYouth) PlatformYouthSecondary else PlatformWomenSecondary
+                    Box(
+                        modifier = Modifier
+                            .size(52.dp)
+                            .clip(CircleShape)
+                            .background(
+                                Brush.linearGradient(
+                                    colors = listOf(accentColor, secondaryColor)
+                                )
+                            )
+                            .border(2.dp, accentColor.copy(alpha = 0.4f), CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = (release.playerName ?: entry.playerName)
+                                ?.split(" ")
+                                ?.mapNotNull { it.firstOrNull()?.uppercase() }
+                                ?.take(2)
+                                ?.joinToString("") ?: "?",
+                            style = boldTextStyle(Color.White, 18.sp)
+                        )
+                    }
                 } else {
                     Box(
                         modifier = Modifier
@@ -862,8 +900,8 @@ private fun ShortlistCard(
                 }
             }
 
-            // Roster teammates section (same as Releases) — hidden for Women
-            if (!isWomen) {
+            // Roster teammates section (same as Releases) — hidden for Women & Youth
+            if (!isWomen && !isYouth) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -942,7 +980,7 @@ private fun ShortlistCard(
                     }
                 }
             }
-            } // end if (!isWomen)
+            } // end if (!isWomen && !isYouth)
             Row(
                 modifier = Modifier
                     .fillMaxWidth()

@@ -90,6 +90,9 @@
     <!-- Shortlist Screen -->
     <string name="shortlist_title">רשימת מעקב</string>
     <string name="shortlist_subtitle">פרופילים שמורים משחרורים וחזרו מהשאלה — הוסף לסוכנות כשמוכן</string>
+    <string name="youth_shortlist_subtitle">שחקנים למעקב לעתיד</string>
+    <string name="youth_parent_contact_label">הורה</string>
+    <string name="youth_add_shortlist_subtitle">חפש להוספה לרשימת מעקב</string>
     <string name="shortlist_add_player">הוסף שחקן</string>
     <string name="shortlist_stat_this_week">השבוע</string>
     <string name="shortlist_could_not_load">לא ניתן לטעון את השחקן. ייתכן שהוא כבר במאגר שלך.</string>

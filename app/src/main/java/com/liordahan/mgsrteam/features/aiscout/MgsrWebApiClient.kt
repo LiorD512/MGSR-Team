@@ -527,6 +527,56 @@ class MgsrWebApiClient(
         }
     }
 
+    // ─── Youth: IFA Search ────────────────────────────────────────────────
+
+    data class IFASearchResult(
+        val fullName: String,
+        val fullNameHe: String? = null,
+        val currentClub: String? = null,
+        val dateOfBirth: String? = null,
+        val ifaUrl: String? = null,
+        val ifaPlayerId: String? = null,
+        val source: String = "ifa"
+    )
+
+    suspend fun searchYouthIFA(query: String): Result<List<IFASearchResult>> =
+        withContext(Dispatchers.IO) {
+            runCatching {
+                val encoded = java.net.URLEncoder.encode(query, "UTF-8")
+                val httpRequest = Request.Builder()
+                    .url("$baseUrl/api/youth-players/search?q=$encoded")
+                    .get()
+                    .build()
+
+                Log.d(TAG, "IFA Youth search: $query")
+                val response = client.newCallAsync(httpRequest)
+                val responseBody = response.body?.string()
+                    ?: throw IOException("Empty response from IFA search")
+
+                if (!response.isSuccessful) {
+                    throw IOException("IFA search failed: ${response.code} — $responseBody")
+                }
+
+                val json = JSONObject(responseBody)
+                val arr = json.optJSONArray("results") ?: JSONArray()
+                val results = mutableListOf<IFASearchResult>()
+                for (i in 0 until arr.length()) {
+                    val obj = arr.getJSONObject(i)
+                    results.add(
+                        IFASearchResult(
+                            fullName = obj.optString("fullName", ""),
+                            fullNameHe = obj.optString("fullNameHe", null),
+                            currentClub = obj.optString("currentClub", null),
+                            dateOfBirth = obj.optString("dateOfBirth", null),
+                            ifaUrl = obj.optString("ifaUrl", null),
+                            ifaPlayerId = obj.optString("ifaPlayerId", null)
+                        )
+                    )
+                }
+                results
+            }
+        }
+
     private fun JSONObject.optIntOrNull(key: String): Int? =
         if (has(key) && !isNull(key)) optInt(key) else null
 
