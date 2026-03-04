@@ -40,3 +40,10 @@ val HomeAmberAccent = Color(0xFFEC407A)   // hot pink for contract finisher — 
 val HomeLiveRed = Color(0xFFFF1744)
 /** War Room command center — indigo for strategic/tactical hub (unused elsewhere) */
 val WarRoomAccent = Color(0xFF6366F1)
+
+// ── Platform accent colours (matched to web CSS variables) ──
+val PlatformMenAccent = HomeTealAccent            // 0xFF4DB6AC
+val PlatformWomenAccent = Color(0xFFE8A0BF)       // rose (web --women-rose)
+val PlatformWomenSecondary = Color(0xFFD4A5A5)    // blush (web --women-blush)
+val PlatformYouthAccent = Color(0xFF00D4FF)       // cyan (web --youth-cyan)
+val PlatformYouthSecondary = Color(0xFFA855F7)    // violet (web --youth-violet)

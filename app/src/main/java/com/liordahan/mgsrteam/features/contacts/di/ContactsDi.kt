@@ -17,6 +17,6 @@ val contactsModule = module {
     single { AgencySearch() }
     single { ClubDiscoveryService(get()) }
     single { AgencyDiscoveryService(get()) }
-    single { ContactsRepository(get()) } bind IContactsRepository::class
+    single { ContactsRepository(get(), get()) } bind IContactsRepository::class
     viewModel<IContactsViewModel> { ContactsViewModel(get(), get()) }
 }

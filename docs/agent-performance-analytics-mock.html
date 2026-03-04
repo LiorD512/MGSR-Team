@@ -1,0 +1,1371 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Agent Performance Analytics & Scouting Accuracy — MGSR</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Outfit:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --mgsr-dark: #0F1923; --mgsr-darker: #0A1219; --mgsr-card: #1A2736;
+      --mgsr-card-hover: #1F2F40; --mgsr-border: #253545;
+      --mgsr-teal: #4DB6AC; --mgsr-teal-dim: rgba(77,182,172,0.15);
+      --mgsr-text: #E8EAED; --mgsr-muted: #8C999B;
+      --mgsr-purple: #A855F7; --mgsr-purple-dim: rgba(168,85,247,0.15);
+      --mgsr-amber: #F59E0B; --mgsr-amber-dim: rgba(245,158,11,0.15);
+      --mgsr-green: #22c55e; --mgsr-green-dim: rgba(34,197,94,0.15);
+      --mgsr-red: #ef4444; --mgsr-red-dim: rgba(239,68,68,0.15);
+      --mgsr-blue: #3b82f6; --mgsr-blue-dim: rgba(59,130,246,0.15);
+      --mgsr-pink: #ec4899; --mgsr-pink-dim: rgba(236,72,153,0.15);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Outfit', sans-serif; background: var(--mgsr-dark); color: var(--mgsr-text); min-height: 100vh; line-height: 1.5; }
+    .mono { font-family: 'JetBrains Mono', monospace; }
+
+    .app-shell { display: flex; min-height: 100vh; }
+
+    /* Sidebar */
+    .sidebar { width: 224px; flex-shrink: 0; background: var(--mgsr-card); border-right: 1px solid var(--mgsr-border); display: flex; flex-direction: column; }
+    .sidebar-logo { padding: 1.25rem 1rem; border-bottom: 1px solid var(--mgsr-border); display: flex; align-items: center; gap: 0.75rem; }
+    .sidebar-logo .logo-icon { width: 36px; height: 36px; border-radius: 10px; background: linear-gradient(135deg, var(--mgsr-teal), var(--mgsr-purple)); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.85rem; color: #fff; }
+    .sidebar-logo span { font-family: 'Syne', sans-serif; font-size: 1.15rem; font-weight: 700; color: var(--mgsr-teal); }
+    .platform-switcher { display: flex; gap: 4px; padding: 4px; background: var(--mgsr-darker); border-radius: 10px; border: 1px solid var(--mgsr-border); margin: 0.75rem; }
+    .platform-btn { flex: 1; padding: 0.4rem; border-radius: 7px; font-size: 0.75rem; font-weight: 600; background: transparent; border: none; color: var(--mgsr-muted); cursor: pointer; font-family: 'Outfit', sans-serif; }
+    .platform-btn.active { background: var(--mgsr-teal-dim); color: var(--mgsr-teal); }
+    .sidebar-section { padding: 0.75rem; }
+    .sidebar-section-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--mgsr-muted); padding: 0.5rem 0.75rem; font-weight: 600; }
+    .sidebar-nav a { display: flex; align-items: center; gap: 0.75rem; padding: 0.65rem 0.75rem; border-radius: 8px; color: var(--mgsr-muted); font-size: 0.875rem; text-decoration: none; margin-bottom: 2px; transition: all 0.2s; }
+    .sidebar-nav a:hover { color: var(--mgsr-text); background: rgba(255,255,255,0.04); }
+    .sidebar-nav a.active { background: var(--mgsr-teal-dim); color: var(--mgsr-teal); font-weight: 600; }
+    .sidebar-nav a .nav-icon { font-size: 1.1rem; width: 20px; text-align: center; }
+    .sidebar-footer { margin-top: auto; padding: 1rem; border-top: 1px solid var(--mgsr-border); display: flex; align-items: center; gap: 0.75rem; }
+    .sidebar-footer .avatar { width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, var(--mgsr-teal), var(--mgsr-blue)); display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 700; color: #fff; }
+    .sidebar-footer .agent-name { font-size: 0.85rem; font-weight: 500; }
+    .sidebar-footer .agent-role { font-size: 0.7rem; color: var(--mgsr-muted); }
+
+    .main-content { flex: 1; overflow-y: auto; }
+    .top-bar { padding: 1rem 1.5rem; border-bottom: 1px solid var(--mgsr-border); display: flex; align-items: center; justify-content: space-between; background: var(--mgsr-card); position: sticky; top: 0; z-index: 20; }
+    .top-bar h1 { font-family: 'Syne', sans-serif; font-size: 1.35rem; font-weight: 800; }
+    .top-bar .breadcrumb { font-size: 0.8rem; color: var(--mgsr-muted); }
+    .btn { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.5rem 1rem; border-radius: 8px; font-family: inherit; font-size: 0.85rem; font-weight: 600; cursor: pointer; border: none; transition: all 0.2s; }
+    .btn-primary { background: var(--mgsr-teal); color: var(--mgsr-dark); }
+    .btn-secondary { background: var(--mgsr-card); color: var(--mgsr-text); border: 1px solid var(--mgsr-border); }
+    .btn-sm { padding: 0.35rem 0.75rem; font-size: 0.8rem; }
+
+    /* Period Selector */
+    .period-selector { display: flex; gap: 4px; padding: 4px; background: var(--mgsr-darker); border-radius: 10px; border: 1px solid var(--mgsr-border); }
+    .period-btn { padding: 0.35rem 0.75rem; border-radius: 7px; font-size: 0.8rem; font-weight: 600; background: transparent; border: none; color: var(--mgsr-muted); cursor: pointer; font-family: 'Outfit', sans-serif; }
+    .period-btn.active { background: var(--mgsr-teal-dim); color: var(--mgsr-teal); }
+
+    .content { padding: 1.5rem; max-width: 1320px; margin: 0 auto; }
+
+    /* Hero KPI */
+    .hero-kpis { display: grid; grid-template-columns: repeat(6, 1fr); gap: 0.75rem; margin-bottom: 1.5rem; }
+    .hero-kpi { background: var(--mgsr-card); border: 1px solid var(--mgsr-border); border-radius: 14px; padding: 1rem; position: relative; overflow: hidden; }
+    .hero-kpi::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; }
+    .hero-kpi.kpi-teal::before { background: var(--mgsr-teal); }
+    .hero-kpi.kpi-green::before { background: var(--mgsr-green); }
+    .hero-kpi.kpi-amber::before { background: var(--mgsr-amber); }
+    .hero-kpi.kpi-purple::before { background: var(--mgsr-purple); }
+    .hero-kpi.kpi-blue::before { background: var(--mgsr-blue); }
+    .hero-kpi.kpi-red::before { background: var(--mgsr-red); }
+    .hero-kpi .kpi-icon { font-size: 1.3rem; margin-bottom: 0.3rem; }
+    .hero-kpi .kpi-value { font-family: 'JetBrains Mono', monospace; font-size: 1.55rem; font-weight: 700; }
+    .hero-kpi .kpi-label { font-size: 0.7rem; color: var(--mgsr-muted); }
+    .hero-kpi .kpi-delta { font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; font-weight: 600; margin-top: 0.2rem; }
+
+    /* Section Card */
+    .section-card { background: var(--mgsr-card); border: 1px solid var(--mgsr-border); border-radius: 14px; margin-bottom: 1.25rem; overflow: hidden; }
+    .section-card-header { padding: 1rem 1.25rem; border-bottom: 1px solid var(--mgsr-border); display: flex; align-items: center; justify-content: space-between; }
+    .section-card-header h3 { font-family: 'Syne', sans-serif; font-size: 1rem; font-weight: 700; display: flex; align-items: center; gap: 0.5rem; }
+    .section-card-body { padding: 1.25rem; }
+
+    /* Grid layouts */
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; margin-bottom: 1.25rem; }
+    .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1.25rem; margin-bottom: 1.25rem; }
+
+    /* Chart placeholder with bars */
+    .bar-chart { display: flex; align-items: flex-end; justify-content: space-around; height: 160px; padding: 0 0.5rem; gap: 0.5rem; border-bottom: 1px solid var(--mgsr-border); }
+    .bar-group { display: flex; flex-direction: column; align-items: center; gap: 0.3rem; flex: 1; }
+    .bar { border-radius: 4px 4px 0 0; width: 100%; max-width: 32px; margin: 0 auto; transition: all 0.3s; cursor: pointer; position: relative; }
+    .bar:hover { opacity: 0.8; }
+    .bar-label { font-size: 0.65rem; color: var(--mgsr-muted); }
+    .bar-chart-legend { display: flex; justify-content: center; gap: 1rem; padding: 0.5rem; }
+    .bar-chart-legend span { display: flex; align-items: center; gap: 0.3rem; font-size: 0.7rem; color: var(--mgsr-muted); }
+    .bar-chart-legend .dot { width: 8px; height: 8px; border-radius: 3px; }
+
+    /* Ring chart */
+    .ring-container { display: flex; align-items: center; gap: 1.5rem; }
+    .ring-svg { width: 120px; height: 120px; }
+    .ring-stats { flex: 1; }
+    .ring-stat { display: flex; align-items: center; justify-content: space-between; padding: 0.4rem 0; border-bottom: 1px solid rgba(255,255,255,0.04); }
+    .ring-stat:last-child { border-bottom: none; }
+    .ring-stat .rs-label { display: flex; align-items: center; gap: 0.4rem; font-size: 0.8rem; }
+    .ring-stat .rs-dot { width: 8px; height: 8px; border-radius: 3px; }
+    .ring-stat .rs-value { font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; font-weight: 600; }
+
+    /* Heatmap */
+    .heatmap { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; }
+    .heat-cell { padding: 0.6rem 0.4rem; border-radius: 8px; text-align: center; font-size: 0.75rem; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+    .heat-cell:hover { transform: scale(1.05); }
+    .heat-cell .hc-pos { font-weight: 700; font-size: 0.8rem; }
+    .heat-cell .hc-count { font-family: 'JetBrains Mono', monospace; font-size: 0.65rem; color: rgba(255,255,255,0.8); }
+    .heat-0 { background: rgba(255,255,255,0.03); color: var(--mgsr-muted); }
+    .heat-1 { background: rgba(77,182,172,0.1); color: var(--mgsr-teal); }
+    .heat-2 { background: rgba(77,182,172,0.2); color: var(--mgsr-teal); }
+    .heat-3 { background: rgba(77,182,172,0.35); color: #fff; }
+    .heat-4 { background: rgba(77,182,172,0.55); color: #fff; }
+    .heat-5 { background: rgba(77,182,172,0.75); color: #fff; }
+
+    /* Deal table */
+    .deal-table { width: 100%; border-collapse: collapse; }
+    .deal-table th { text-align: left; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--mgsr-muted); padding: 0.5rem 0.75rem; font-weight: 600; border-bottom: 1px solid var(--mgsr-border); }
+    .deal-table td { padding: 0.65rem 0.75rem; font-size: 0.85rem; border-bottom: 1px solid rgba(255,255,255,0.03); }
+    .deal-table tr:hover td { background: rgba(255,255,255,0.02); }
+    .player-cell { display: flex; align-items: center; gap: 0.5rem; }
+    .mini-avatar { width: 28px; height: 28px; border-radius: 7px; background: var(--mgsr-border); flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 0.65rem; }
+    .status-chip { font-size: 0.65rem; padding: 0.15rem 0.5rem; border-radius: 4px; font-weight: 700; white-space: nowrap; }
+
+    /* AI Insight */
+    .ai-insight { background: linear-gradient(135deg, rgba(168,85,247,0.06), rgba(77,182,172,0.04)); border: 1px solid rgba(168,85,247,0.2); border-radius: 14px; padding: 1.25rem; margin-bottom: 1.25rem; }
+    .ai-badge { font-size: 0.7rem; background: linear-gradient(135deg, var(--mgsr-purple), var(--mgsr-teal)); color: #fff; padding: 0.2rem 0.6rem; border-radius: 6px; font-weight: 700; }
+
+    /* Line chart (CSS-only sparkline) */
+    .sparkline-row { display: flex; align-items: center; gap: 0.75rem; }
+    .sparkline { display: flex; align-items: flex-end; gap: 2px; height: 32px; }
+    .sparkline-bar { width: 6px; border-radius: 2px; background: var(--mgsr-teal); transition: all 0.2s; }
+    .sparkline-bar:hover { background: var(--mgsr-green); }
+
+    /* Funnel */
+    .funnel { display: flex; flex-direction: column; gap: 0.5rem; }
+    .funnel-step { display: flex; align-items: center; gap: 0.75rem; }
+    .funnel-bar-wrap { flex: 1; }
+    .funnel-bar { height: 28px; border-radius: 6px; display: flex; align-items: center; padding-left: 0.75rem; font-size: 0.8rem; font-weight: 600; transition: all 0.2s; }
+    .funnel-label { font-size: 0.75rem; color: var(--mgsr-muted); width: 120px; text-align: right; }
+    .funnel-count { font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; font-weight: 700; width: 50px; text-align: right; }
+
+    /* Tabs */
+    .tabs { display: flex; gap: 4px; padding: 4px; background: var(--mgsr-darker); border-radius: 12px; border: 1px solid var(--mgsr-border); margin-bottom: 1.25rem; }
+    .tab { flex: 1; padding: 0.6rem; border-radius: 9px; font-size: 0.85rem; font-weight: 600; background: transparent; border: none; color: var(--mgsr-muted); cursor: pointer; font-family: 'Outfit', sans-serif; text-align: center; transition: all 0.2s; }
+    .tab:hover { color: var(--mgsr-text); }
+    .tab.active { background: var(--mgsr-teal-dim); color: var(--mgsr-teal); }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--mgsr-border); border-radius: 3px; }
+
+    @media (max-width: 1100px) {
+      .sidebar { display: none; }
+      .hero-kpis { grid-template-columns: repeat(3, 1fr); }
+      .grid-2, .grid-3 { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+<div class="app-shell">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-logo"><div class="logo-icon">MG</div><span>MGSR</span></div>
+    <div class="platform-switcher">
+      <button class="platform-btn active">Men</button>
+      <button class="platform-btn">Women</button>
+      <button class="platform-btn">Youth</button>
+    </div>
+    <nav class="sidebar-nav sidebar-section">
+      <div class="sidebar-section-label">Main</div>
+      <a href="#"><span class="nav-icon">📊</span> Dashboard</a>
+      <a href="#"><span class="nav-icon">👥</span> Players</a>
+      <a href="#"><span class="nav-icon">💰</span> Deal Pipeline</a>
+    </nav>
+    <nav class="sidebar-nav sidebar-section">
+      <div class="sidebar-section-label">Intelligence</div>
+      <a href="#"><span class="nav-icon">🤖</span> AI Scout</a>
+      <a href="#"><span class="nav-icon">📡</span> Market Radar</a>
+      <a href="#"><span class="nav-icon">⚔️</span> Negotiation</a>
+      <a href="#"><span class="nav-icon">🔍</span> Squad Analyzer</a>
+    </nav>
+    <nav class="sidebar-nav sidebar-section">
+      <div class="sidebar-section-label">Business</div>
+      <a href="#" class="active"><span class="nav-icon">📈</span> Performance</a>
+      <a href="#"><span class="nav-icon">📇</span> Contacts</a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="avatar">LD</div>
+      <div><div class="agent-name">Lior Dahan</div><div class="agent-role">FIFA Licensed Agent</div></div>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <div class="main-content">
+    <div class="top-bar">
+      <div>
+        <span class="breadcrumb">MGSR · Business · Performance Analytics</span>
+        <h1>📈 Agent Performance Analytics & Scouting Accuracy</h1>
+      </div>
+      <div style="display: flex; gap: 0.75rem; align-items: center;">
+        <div class="period-selector">
+          <button class="period-btn">30D</button>
+          <button class="period-btn">90D</button>
+          <button class="period-btn active">2025</button>
+          <button class="period-btn">All Time</button>
+        </div>
+        <button class="btn btn-secondary btn-sm">📄 Export PDF</button>
+      </div>
+    </div>
+
+    <div class="content">
+
+      <!-- Hero KPIs -->
+      <div class="hero-kpis">
+        <div class="hero-kpi kpi-teal">
+          <div class="kpi-icon">💰</div>
+          <div class="kpi-value" style="color: var(--mgsr-teal);">€127K</div>
+          <div class="kpi-label">Total Commission Earned</div>
+          <div class="kpi-delta" style="color: var(--mgsr-green);">▲ 34% vs 2024</div>
+        </div>
+        <div class="hero-kpi kpi-green">
+          <div class="kpi-icon">✅</div>
+          <div class="kpi-value" style="color: var(--mgsr-green);">9</div>
+          <div class="kpi-label">Deals Closed</div>
+          <div class="kpi-delta" style="color: var(--mgsr-green);">▲ 3 more than 2024</div>
+        </div>
+        <div class="hero-kpi kpi-amber">
+          <div class="kpi-icon">⏱</div>
+          <div class="kpi-value" style="color: var(--mgsr-amber);">18d</div>
+          <div class="kpi-label">Avg Deal Cycle</div>
+          <div class="kpi-delta" style="color: var(--mgsr-green);">▲ 5d faster</div>
+        </div>
+        <div class="hero-kpi kpi-purple">
+          <div class="kpi-icon">📊</div>
+          <div class="kpi-value" style="color: var(--mgsr-purple);">68%</div>
+          <div class="kpi-label">Placement Rate</div>
+          <div class="kpi-delta" style="color: var(--mgsr-green);">▲ +12%</div>
+        </div>
+        <div class="hero-kpi kpi-blue">
+          <div class="kpi-icon">👥</div>
+          <div class="kpi-value" style="color: var(--mgsr-blue);">43</div>
+          <div class="kpi-label">Active Players</div>
+          <div class="kpi-delta" style="color: var(--mgsr-green);">▲ +8 new</div>
+        </div>
+        <div class="hero-kpi kpi-red">
+          <div class="kpi-icon">🏢</div>
+          <div class="kpi-value" style="color: var(--mgsr-text);">22</div>
+          <div class="kpi-label">Club Relationships</div>
+          <div class="kpi-delta" style="color: var(--mgsr-green);">▲ +5 new</div>
+        </div>
+      </div>
+
+      <!-- Scouting Accuracy Mini-Banner -->
+      <div style="background: linear-gradient(90deg, var(--mgsr-card) 0%, rgba(168,85,247,0.08) 50%, var(--mgsr-card) 100%); border: 1px solid var(--mgsr-border); border-radius: 14px; padding: 0.85rem 1.25rem; margin-bottom: 1.25rem; display: flex; align-items: center; justify-content: space-between;">
+        <div style="display: flex; align-items: center; gap: 1.5rem;">
+          <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <span style="font-size: 1.3rem;">🎯</span>
+            <div>
+              <div style="font-family: 'Syne', sans-serif; font-weight: 700; font-size: 0.95rem;">Scouting Accuracy Score</div>
+              <div style="font-size: 0.75rem; color: var(--mgsr-muted);">Based on 23 tracked placements</div>
+            </div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 2rem;">
+            <div style="text-align: center;">
+              <div class="mono" style="font-size: 1.4rem; font-weight: 700; color: var(--mgsr-green);">78%</div>
+              <div style="font-size: 0.65rem; color: var(--mgsr-muted);">Overall Accuracy</div>
+            </div>
+            <div style="text-align: center;">
+              <div class="mono" style="font-size: 1.4rem; font-weight: 700; color: var(--mgsr-teal);">84%</div>
+              <div style="font-size: 0.65rem; color: var(--mgsr-muted);">AI Scout Accuracy</div>
+            </div>
+            <div style="text-align: center;">
+              <div class="mono" style="font-size: 1.4rem; font-weight: 700; color: var(--mgsr-purple);">91%</div>
+              <div style="font-size: 0.65rem; color: var(--mgsr-muted);">Value Prediction</div>
+            </div>
+            <div style="text-align: center;">
+              <div class="mono" style="font-size: 1.4rem; font-weight: 700; color: var(--mgsr-amber);">72%</div>
+              <div style="font-size: 0.65rem; color: var(--mgsr-muted);">Adaptation Score</div>
+            </div>
+          </div>
+        </div>
+        <button class="btn btn-secondary btn-sm" onclick="document.querySelectorAll('.tab')[4].click()">View Full Report →</button>
+      </div>
+
+      <!-- AI Weekly Brief -->
+      <div class="ai-insight">
+        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.65rem;">
+          <span class="ai-badge">🧠 AI Weekly Brief</span>
+          <span style="font-size: 0.8rem; color: var(--mgsr-muted);">Generated Feb 28, 2025</span>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem;">
+          <div>
+            <h4 style="font-size: 0.85rem; color: var(--mgsr-green); font-weight: 700; margin-bottom: 0.3rem;">🔥 What's Working</h4>
+            <p style="font-size: 0.82rem; color: var(--mgsr-text);">Your CM placement rate is <strong>88%</strong> — best in your portfolio. Israeli league connections are your strongest channel: 6 of 9 deals came through direct sporting director relationships.</p>
+          </div>
+          <div>
+            <h4 style="font-size: 0.85rem; color: var(--mgsr-amber); font-weight: 700; margin-bottom: 0.3rem;">⚡ Improve</h4>
+            <p style="font-size: 0.82rem; color: var(--mgsr-text);">Response time to new club requests averages <strong>2.4 days</strong>. Agents who respond within 24h close 40% more. Your GK portfolio is weak — 0 placements in 12 months.</p>
+          </div>
+          <div>
+            <h4 style="font-size: 0.85rem; color: var(--mgsr-teal); font-weight: 700; margin-bottom: 0.3rem;">🎯 This Week's Focus</h4>
+            <p style="font-size: 0.82rem; color: var(--mgsr-text);">3 requests match your roster perfectly (see Squad Analyzer). Ferencváros window closes in <strong>8 days</strong> — Marcus Johnson's CM offer needs follow-up.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabs -->
+      <div class="tabs">
+        <button class="tab active" onclick="switchTab(this,'overview')">📊 Overview</button>
+        <button class="tab" onclick="switchTab(this,'deals')">💰 Deals</button>
+        <button class="tab" onclick="switchTab(this,'network')">🌐 Network</button>
+        <button class="tab" onclick="switchTab(this,'coverage')">🗺 Market Coverage</button>
+        <button class="tab" onclick="switchTab(this,'scouting')">🎯 Scouting Accuracy</button>
+      </div>
+
+      <!-- TAB: Overview -->
+      <div id="tab-overview">
+        <div class="grid-2">
+          <!-- Revenue Over Time -->
+          <div class="section-card">
+            <div class="section-card-header">
+              <h3>💰 Commission Revenue (Monthly)</h3>
+            </div>
+            <div class="section-card-body">
+              <div class="bar-chart">
+                <div class="bar-group">
+                  <div class="bar" style="height: 20%; background: var(--mgsr-teal); opacity: 0.4;"></div>
+                  <div class="bar-label">Jul</div>
+                </div>
+                <div class="bar-group">
+                  <div class="bar" style="height: 45%; background: var(--mgsr-teal); opacity: 0.5;"></div>
+                  <div class="bar-label">Aug</div>
+                </div>
+                <div class="bar-group">
+                  <div class="bar" style="height: 30%; background: var(--mgsr-teal); opacity: 0.5;"></div>
+                  <div class="bar-label">Sep</div>
+                </div>
+                <div class="bar-group">
+                  <div class="bar" style="height: 10%; background: var(--mgsr-teal); opacity: 0.3;"></div>
+                  <div class="bar-label">Oct</div>
+                </div>
+                <div class="bar-group">
+                  <div class="bar" style="height: 15%; background: var(--mgsr-teal); opacity: 0.35;"></div>
+                  <div class="bar-label">Nov</div>
+                </div>
+                <div class="bar-group">
+                  <div class="bar" style="height: 25%; background: var(--mgsr-teal); opacity: 0.45;"></div>
+                  <div class="bar-label">Dec</div>
+                </div>
+                <div class="bar-group">
+                  <div class="bar" style="height: 85%; background: var(--mgsr-teal);"></div>
+                  <div class="bar-label">Jan</div>
+                </div>
+                <div class="bar-group">
+                  <div class="bar" style="height: 100%; background: linear-gradient(180deg, var(--mgsr-green), var(--mgsr-teal));"></div>
+                  <div class="bar-label">Feb</div>
+                </div>
+              </div>
+              <div style="display: flex; justify-content: space-between; margin-top: 0.75rem; font-size: 0.8rem;">
+                <span style="color: var(--mgsr-muted);">Winter window peak: <strong style="color: var(--mgsr-teal);">€41K in Jan-Feb</strong></span>
+                <span style="color: var(--mgsr-muted);">Target: <strong style="color: var(--mgsr-amber);">€200K</strong></span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Deal Funnel -->
+          <div class="section-card">
+            <div class="section-card-header">
+              <h3>🔄 Deal Funnel (2025)</h3>
+            </div>
+            <div class="section-card-body">
+              <div class="funnel">
+                <div class="funnel-step">
+                  <div class="funnel-label">Players Offered</div>
+                  <div class="funnel-bar-wrap">
+                    <div class="funnel-bar" style="width: 100%; background: var(--mgsr-blue-dim); color: var(--mgsr-blue);">42 players</div>
+                  </div>
+                </div>
+                <div class="funnel-step">
+                  <div class="funnel-label">Club Interest</div>
+                  <div class="funnel-bar-wrap">
+                    <div class="funnel-bar" style="width: 62%; background: var(--mgsr-purple-dim); color: var(--mgsr-purple);">26 interested</div>
+                  </div>
+                </div>
+                <div class="funnel-step">
+                  <div class="funnel-label">Negotiations</div>
+                  <div class="funnel-bar-wrap">
+                    <div class="funnel-bar" style="width: 33%; background: var(--mgsr-amber-dim); color: var(--mgsr-amber);">14 in talks</div>
+                  </div>
+                </div>
+                <div class="funnel-step">
+                  <div class="funnel-label">Deals Closed</div>
+                  <div class="funnel-bar-wrap">
+                    <div class="funnel-bar" style="width: 21%; background: var(--mgsr-green-dim); color: var(--mgsr-green);">9 closed ✓</div>
+                  </div>
+                </div>
+                <div class="funnel-step">
+                  <div class="funnel-label">Lost / Rejected</div>
+                  <div class="funnel-bar-wrap">
+                    <div class="funnel-bar" style="width: 12%; background: var(--mgsr-red-dim); color: var(--mgsr-red);">5 lost</div>
+                  </div>
+                </div>
+              </div>
+              <div style="margin-top: 1rem; font-size: 0.8rem; color: var(--mgsr-muted);">
+                Conversion: Offered → Closed = <span class="mono" style="color: var(--mgsr-green); font-weight: 700;">21.4%</span>
+                · Interest → Closed = <span class="mono" style="color: var(--mgsr-green); font-weight: 700;">34.6%</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <!-- Revenue by Platform -->
+          <div class="section-card">
+            <div class="section-card-header">
+              <h3>🏟 Revenue by Platform</h3>
+            </div>
+            <div class="section-card-body">
+              <div class="ring-container">
+                <svg class="ring-svg" viewBox="0 0 36 36">
+                  <circle cx="18" cy="18" r="14" fill="none" stroke="var(--mgsr-border)" stroke-width="3"/>
+                  <circle cx="18" cy="18" r="14" fill="none" stroke="var(--mgsr-teal)" stroke-width="3"
+                    stroke-dasharray="57 31" stroke-dashoffset="25" stroke-linecap="round"/>
+                  <circle cx="18" cy="18" r="14" fill="none" stroke="var(--mgsr-purple)" stroke-width="3"
+                    stroke-dasharray="22 66" stroke-dashoffset="68" stroke-linecap="round"/>
+                  <circle cx="18" cy="18" r="14" fill="none" stroke="var(--mgsr-amber)" stroke-width="3"
+                    stroke-dasharray="9 79" stroke-dashoffset="46" stroke-linecap="round"/>
+                  <text x="18" y="19" text-anchor="middle" fill="var(--mgsr-text)" font-family="JetBrains Mono" font-size="4" font-weight="700">€127K</text>
+                </svg>
+                <div class="ring-stats">
+                  <div class="ring-stat">
+                    <div class="rs-label"><div class="rs-dot" style="background: var(--mgsr-teal);"></div> Men</div>
+                    <div class="rs-value" style="color: var(--mgsr-teal);">€82K (65%)</div>
+                  </div>
+                  <div class="ring-stat">
+                    <div class="rs-label"><div class="rs-dot" style="background: var(--mgsr-purple);"></div> Women</div>
+                    <div class="rs-value" style="color: var(--mgsr-purple);">€31K (24%)</div>
+                  </div>
+                  <div class="ring-stat">
+                    <div class="rs-label"><div class="rs-dot" style="background: var(--mgsr-amber);"></div> Youth</div>
+                    <div class="rs-value" style="color: var(--mgsr-amber);">€14K (11%)</div>
+                  </div>
+                </div>
+              </div>
+              <div style="margin-top: 0.75rem; padding: 0.6rem; background: var(--mgsr-purple-dim); border-radius: 8px; font-size: 0.8rem;">
+                💡 <strong>Women's football is growing fast</strong> — revenue up <span style="color: var(--mgsr-green); font-weight: 700;">+140%</span> vs 2024. Double down on this market.
+              </div>
+            </div>
+          </div>
+
+          <!-- Response Time -->
+          <div class="section-card">
+            <div class="section-card-header">
+              <h3>⏱ Response & Activity Metrics</h3>
+            </div>
+            <div class="section-card-body">
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                <div style="text-align: center; padding: 0.75rem; background: var(--mgsr-darker); border-radius: 10px;">
+                  <div style="font-family: 'JetBrains Mono', monospace; font-size: 1.8rem; font-weight: 700; color: var(--mgsr-amber);">2.4d</div>
+                  <div style="font-size: 0.75rem; color: var(--mgsr-muted);">Avg Response to Requests</div>
+                  <div style="font-size: 0.7rem; color: var(--mgsr-red); margin-top: 0.2rem;">⚠ Target: &lt;24h</div>
+                </div>
+                <div style="text-align: center; padding: 0.75rem; background: var(--mgsr-darker); border-radius: 10px;">
+                  <div style="font-family: 'JetBrains Mono', monospace; font-size: 1.8rem; font-weight: 700; color: var(--mgsr-green);">4.2h</div>
+                  <div style="font-size: 0.75rem; color: var(--mgsr-muted);">Avg Follow-up Time</div>
+                  <div style="font-size: 0.7rem; color: var(--mgsr-green); margin-top: 0.2rem;">✓ On target</div>
+                </div>
+                <div style="text-align: center; padding: 0.75rem; background: var(--mgsr-darker); border-radius: 10px;">
+                  <div style="font-family: 'JetBrains Mono', monospace; font-size: 1.8rem; font-weight: 700; color: var(--mgsr-teal);">156</div>
+                  <div style="font-size: 0.75rem; color: var(--mgsr-muted);">Player Profile Views (30d)</div>
+                  <div style="font-size: 0.7rem; color: var(--mgsr-green); margin-top: 0.2rem;">▲ +23%</div>
+                </div>
+                <div style="text-align: center; padding: 0.75rem; background: var(--mgsr-darker); border-radius: 10px;">
+                  <div style="font-family: 'JetBrains Mono', monospace; font-size: 1.8rem; font-weight: 700; color: var(--mgsr-purple);">34</div>
+                  <div style="font-size: 0.75rem; color: var(--mgsr-muted);">Players Shared to Clubs</div>
+                  <div style="font-size: 0.7rem; color: var(--mgsr-green); margin-top: 0.2rem;">▲ +8 this month</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB: Deals -->
+      <div id="tab-deals" style="display: none;">
+        <div class="section-card">
+          <div class="section-card-header">
+            <h3>💰 Completed Deals — 2025</h3>
+            <span style="font-size: 0.8rem; color: var(--mgsr-muted);">9 deals · €127K commission</span>
+          </div>
+          <div class="section-card-body" style="overflow-x: auto;">
+            <table class="deal-table">
+              <thead>
+                <tr>
+                  <th>Player</th>
+                  <th>From → To</th>
+                  <th>Type</th>
+                  <th>Transfer Fee</th>
+                  <th>Commission</th>
+                  <th>Days to Close</th>
+                  <th>Platform</th>
+                  <th>Rating</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><div class="player-cell"><div class="mini-avatar" style="background: var(--mgsr-teal-dim); color: var(--mgsr-teal);">MP</div><strong>Marko Petković</strong></div></td>
+                  <td style="font-size: 0.8rem;">FK Partizan → <strong>Maccabi Haifa</strong></td>
+                  <td><span class="status-chip" style="background: var(--mgsr-green-dim); color: var(--mgsr-green);">Transfer</span></td>
+                  <td class="mono" style="color: var(--mgsr-teal);">€400K</td>
+                  <td class="mono" style="color: var(--mgsr-green); font-weight: 700;">€24K</td>
+                  <td class="mono">12d</td>
+                  <td>🇮🇱 Men</td>
+                  <td>⭐⭐⭐⭐⭐</td>
+                </tr>
+                <tr>
+                  <td><div class="player-cell"><div class="mini-avatar">DC</div><strong>David Čerin</strong></div></td>
+                  <td style="font-size: 0.8rem;">NK Olimpija → <strong>Hapoel Tel Aviv</strong></td>
+                  <td><span class="status-chip" style="background: var(--mgsr-green-dim); color: var(--mgsr-green);">Transfer</span></td>
+                  <td class="mono" style="color: var(--mgsr-teal);">€350K</td>
+                  <td class="mono" style="color: var(--mgsr-green); font-weight: 700;">€21K</td>
+                  <td class="mono">22d</td>
+                  <td>🇮🇱 Men</td>
+                  <td>⭐⭐⭐⭐</td>
+                </tr>
+                <tr>
+                  <td><div class="player-cell"><div class="mini-avatar">LS</div><strong>Lucas Silva</strong></div></td>
+                  <td style="font-size: 0.8rem;">Atlético Mineiro B → <strong>Ferencváros</strong></td>
+                  <td><span class="status-chip" style="background: var(--mgsr-blue-dim); color: var(--mgsr-blue);">Loan + Option</span></td>
+                  <td class="mono" style="color: var(--mgsr-teal);">€280K opt</td>
+                  <td class="mono" style="color: var(--mgsr-green); font-weight: 700;">€18K</td>
+                  <td class="mono">8d</td>
+                  <td>🇭🇺 Men</td>
+                  <td>⭐⭐⭐⭐⭐</td>
+                </tr>
+                <tr>
+                  <td><div class="player-cell"><div class="mini-avatar">SA</div><strong>Sara Andersson</strong></div></td>
+                  <td style="font-size: 0.8rem;">Djurgården DFF → <strong>ASR Women</strong></td>
+                  <td><span class="status-chip" style="background: var(--mgsr-green-dim); color: var(--mgsr-green);">Transfer</span></td>
+                  <td class="mono" style="color: var(--mgsr-teal);">€50K</td>
+                  <td class="mono" style="color: var(--mgsr-green); font-weight: 700;">€12K</td>
+                  <td class="mono">15d</td>
+                  <td>🚺 Women</td>
+                  <td>⭐⭐⭐⭐</td>
+                </tr>
+                <tr>
+                  <td><div class="player-cell"><div class="mini-avatar">OM</div><strong>Omar Marshiano</strong></div></td>
+                  <td style="font-size: 0.8rem;">Free Agent → <strong>Beitar Jerusalem</strong></td>
+                  <td><span class="status-chip" style="background: var(--mgsr-amber-dim); color: var(--mgsr-amber);">Free</span></td>
+                  <td class="mono" style="color: var(--mgsr-muted);">—</td>
+                  <td class="mono" style="color: var(--mgsr-green); font-weight: 700;">€15K</td>
+                  <td class="mono">25d</td>
+                  <td>🇮🇱 Men</td>
+                  <td>⭐⭐⭐</td>
+                </tr>
+                <tr>
+                  <td><div class="player-cell"><div class="mini-avatar">EN</div><strong>Elena Nováková</strong></div></td>
+                  <td style="font-size: 0.8rem;">Slavia Praha W → <strong>Levante UD W</strong></td>
+                  <td><span class="status-chip" style="background: var(--mgsr-green-dim); color: var(--mgsr-green);">Transfer</span></td>
+                  <td class="mono" style="color: var(--mgsr-teal);">€35K</td>
+                  <td class="mono" style="color: var(--mgsr-green); font-weight: 700;">€10K</td>
+                  <td class="mono">19d</td>
+                  <td>🚺 Women</td>
+                  <td>⭐⭐⭐⭐</td>
+                </tr>
+                <tr>
+                  <td><div class="player-cell"><div class="mini-avatar">LT</div><strong>Luka Topalović</strong></div></td>
+                  <td style="font-size: 0.8rem;">NK Domžale → <strong>Maccabi Tel Aviv</strong></td>
+                  <td><span class="status-chip" style="background: var(--mgsr-blue-dim); color: var(--mgsr-blue);">Loan</span></td>
+                  <td class="mono" style="color: var(--mgsr-teal);">€550K opt</td>
+                  <td class="mono" style="color: var(--mgsr-green); font-weight: 700;">€11K</td>
+                  <td class="mono">31d</td>
+                  <td>🇮🇱 Men</td>
+                  <td>⭐⭐⭐</td>
+                </tr>
+                <tr>
+                  <td><div class="player-cell"><div class="mini-avatar">NB</div><strong>Noa Ben-Ari</strong></div></td>
+                  <td style="font-size: 0.8rem;">Maccabi Yavne Youth → <strong>Hapoel Be'er Sheva U19</strong></td>
+                  <td><span class="status-chip" style="background: var(--mgsr-purple-dim); color: var(--mgsr-purple);">Youth</span></td>
+                  <td class="mono" style="color: var(--mgsr-teal);">€15K</td>
+                  <td class="mono" style="color: var(--mgsr-green); font-weight: 700;">€8K</td>
+                  <td class="mono">14d</td>
+                  <td>🧒 Youth</td>
+                  <td>⭐⭐⭐⭐</td>
+                </tr>
+                <tr>
+                  <td><div class="player-cell"><div class="mini-avatar">MK</div><strong>Maria Kowalska</strong></div></td>
+                  <td style="font-size: 0.8rem;">Górnik Łęczna W → <strong>SKN St. Pölten W</strong></td>
+                  <td><span class="status-chip" style="background: var(--mgsr-green-dim); color: var(--mgsr-green);">Transfer</span></td>
+                  <td class="mono" style="color: var(--mgsr-teal);">€30K</td>
+                  <td class="mono" style="color: var(--mgsr-green); font-weight: 700;">€8K</td>
+                  <td class="mono">17d</td>
+                  <td>🚺 Women</td>
+                  <td>⭐⭐⭐⭐</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Deal Performance by Type -->
+        <div class="grid-2">
+          <div class="section-card">
+            <div class="section-card-header"><h3>📋 Commission by Deal Type</h3></div>
+            <div class="section-card-body">
+              <div style="display: flex; flex-direction: column; gap: 0.6rem;">
+                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                  <span style="width: 80px; font-size: 0.8rem; color: var(--mgsr-muted); text-align: right;">Transfer</span>
+                  <div style="flex: 1; background: var(--mgsr-darker); border-radius: 6px; height: 24px; overflow: hidden;">
+                    <div style="width: 72%; height: 100%; background: var(--mgsr-green); border-radius: 6px; display: flex; align-items: center; padding-left: 0.5rem; font-size: 0.75rem; font-weight: 600;">€75K (5)</div>
+                  </div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                  <span style="width: 80px; font-size: 0.8rem; color: var(--mgsr-muted); text-align: right;">Loan</span>
+                  <div style="flex: 1; background: var(--mgsr-darker); border-radius: 6px; height: 24px; overflow: hidden;">
+                    <div style="width: 23%; height: 100%; background: var(--mgsr-blue); border-radius: 6px; display: flex; align-items: center; padding-left: 0.5rem; font-size: 0.75rem; font-weight: 600;">€29K (2)</div>
+                  </div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                  <span style="width: 80px; font-size: 0.8rem; color: var(--mgsr-muted); text-align: right;">Free Agent</span>
+                  <div style="flex: 1; background: var(--mgsr-darker); border-radius: 6px; height: 24px; overflow: hidden;">
+                    <div style="width: 12%; height: 100%; background: var(--mgsr-amber); border-radius: 6px; display: flex; align-items: center; padding-left: 0.5rem; font-size: 0.75rem; font-weight: 600;">€15K (1)</div>
+                  </div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                  <span style="width: 80px; font-size: 0.8rem; color: var(--mgsr-muted); text-align: right;">Youth</span>
+                  <div style="flex: 1; background: var(--mgsr-darker); border-radius: 6px; height: 24px; overflow: hidden;">
+                    <div style="width: 6%; height: 100%; background: var(--mgsr-purple); border-radius: 6px; display: flex; align-items: center; padding-left: 0.5rem; font-size: 0.75rem; font-weight: 600;">€8K (1)</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="section-card">
+            <div class="section-card-header"><h3>📈 Year-over-Year Comparison</h3></div>
+            <div class="section-card-body">
+              <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.5rem; text-align: center;">
+                <div></div>
+                <div style="font-size: 0.7rem; color: var(--mgsr-muted); font-weight: 600;">2024</div>
+                <div style="font-size: 0.7rem; color: var(--mgsr-teal); font-weight: 600;">2025 (YTD)</div>
+
+                <div style="font-size: 0.8rem; color: var(--mgsr-muted); text-align: right; padding: 0.3rem;">Deals</div>
+                <div style="font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; padding: 0.3rem;">6</div>
+                <div style="font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; color: var(--mgsr-green); font-weight: 700; padding: 0.3rem;">9 <span style="font-size: 0.65rem;">▲50%</span></div>
+
+                <div style="font-size: 0.8rem; color: var(--mgsr-muted); text-align: right; padding: 0.3rem;">Commission</div>
+                <div style="font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; padding: 0.3rem;">€95K</div>
+                <div style="font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; color: var(--mgsr-green); font-weight: 700; padding: 0.3rem;">€127K <span style="font-size: 0.65rem;">▲34%</span></div>
+
+                <div style="font-size: 0.8rem; color: var(--mgsr-muted); text-align: right; padding: 0.3rem;">Avg Deal</div>
+                <div style="font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; padding: 0.3rem;">€15.8K</div>
+                <div style="font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; color: var(--mgsr-green); font-weight: 700; padding: 0.3rem;">€14.1K <span style="font-size: 0.65rem; color: var(--mgsr-red);">▼11%</span></div>
+
+                <div style="font-size: 0.8rem; color: var(--mgsr-muted); text-align: right; padding: 0.3rem;">Cycle Time</div>
+                <div style="font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; padding: 0.3rem;">23d</div>
+                <div style="font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; color: var(--mgsr-green); font-weight: 700; padding: 0.3rem;">18d <span style="font-size: 0.65rem;">▲22%</span></div>
+
+                <div style="font-size: 0.8rem; color: var(--mgsr-muted); text-align: right; padding: 0.3rem;">Players</div>
+                <div style="font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; padding: 0.3rem;">35</div>
+                <div style="font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; color: var(--mgsr-green); font-weight: 700; padding: 0.3rem;">43 <span style="font-size: 0.65rem;">▲23%</span></div>
+              </div>
+              <div style="margin-top: 0.75rem; padding: 0.5rem; background: var(--mgsr-green-dim); border-radius: 8px; font-size: 0.8rem; text-align: center;">
+                🎯 At current pace, you'll hit <strong style="color: var(--mgsr-green);">€200K</strong> by September — <strong>2 months ahead</strong> of your annual target.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB: Network -->
+      <div id="tab-network" style="display: none;">
+        <div class="grid-2">
+          <!-- Top Club Relationships -->
+          <div class="section-card">
+            <div class="section-card-header"><h3>🏢 Top Club Relationships</h3></div>
+            <div class="section-card-body" style="overflow-x: auto;">
+              <table class="deal-table">
+                <thead>
+                  <tr><th>Club</th><th>Deals</th><th>Revenue</th><th>Open Requests</th><th>Strength</th></tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><strong>🇮🇱 Hapoel Tel Aviv</strong></td>
+                    <td class="mono">3</td>
+                    <td class="mono" style="color: var(--mgsr-teal);">€38K</td>
+                    <td><span style="color: var(--mgsr-amber); font-weight: 600;">4 active</span></td>
+                    <td>
+                      <div style="width: 80px; height: 6px; background: var(--mgsr-darker); border-radius: 3px;">
+                        <div style="width: 92%; height: 100%; background: var(--mgsr-green); border-radius: 3px;"></div>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td><strong>🇮🇱 Maccabi Haifa</strong></td>
+                    <td class="mono">2</td>
+                    <td class="mono" style="color: var(--mgsr-teal);">€32K</td>
+                    <td><span style="color: var(--mgsr-amber); font-weight: 600;">2 active</span></td>
+                    <td>
+                      <div style="width: 80px; height: 6px; background: var(--mgsr-darker); border-radius: 3px;">
+                        <div style="width: 85%; height: 100%; background: var(--mgsr-green); border-radius: 3px;"></div>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td><strong>🇭🇺 Ferencváros</strong></td>
+                    <td class="mono">1</td>
+                    <td class="mono" style="color: var(--mgsr-teal);">€18K</td>
+                    <td><span style="color: var(--mgsr-amber); font-weight: 600;">3 active</span></td>
+                    <td>
+                      <div style="width: 80px; height: 6px; background: var(--mgsr-darker); border-radius: 3px;">
+                        <div style="width: 68%; height: 100%; background: var(--mgsr-amber); border-radius: 3px;"></div>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td><strong>🇮🇱 Maccabi Tel Aviv</strong></td>
+                    <td class="mono">1</td>
+                    <td class="mono" style="color: var(--mgsr-teal);">€11K</td>
+                    <td><span style="color: var(--mgsr-muted);">0</span></td>
+                    <td>
+                      <div style="width: 80px; height: 6px; background: var(--mgsr-darker); border-radius: 3px;">
+                        <div style="width: 55%; height: 100%; background: var(--mgsr-amber); border-radius: 3px;"></div>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td><strong>🇮🇱 Beitar Jerusalem</strong></td>
+                    <td class="mono">1</td>
+                    <td class="mono" style="color: var(--mgsr-teal);">€15K</td>
+                    <td><span style="color: var(--mgsr-amber); font-weight: 600;">5 active</span></td>
+                    <td>
+                      <div style="width: 80px; height: 6px; background: var(--mgsr-darker); border-radius: 3px;">
+                        <div style="width: 50%; height: 100%; background: var(--mgsr-amber); border-radius: 3px;"></div>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td><strong>🇷🇸 FK Partizan</strong></td>
+                    <td class="mono">0</td>
+                    <td class="mono" style="color: var(--mgsr-muted);">—</td>
+                    <td><span style="color: var(--mgsr-amber); font-weight: 600;">2 active</span></td>
+                    <td>
+                      <div style="width: 80px; height: 6px; background: var(--mgsr-darker); border-radius: 3px;">
+                        <div style="width: 30%; height: 100%; background: var(--mgsr-red); border-radius: 3px;"></div>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Contact Activity -->
+          <div class="section-card">
+            <div class="section-card-header"><h3>📇 Contact Network Activity</h3></div>
+            <div class="section-card-body">
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 1rem;">
+                <div style="text-align: center; padding: 0.75rem; background: var(--mgsr-darker); border-radius: 10px;">
+                  <div style="font-family: 'JetBrains Mono', monospace; font-size: 1.6rem; font-weight: 700; color: var(--mgsr-teal);">67</div>
+                  <div style="font-size: 0.75rem; color: var(--mgsr-muted);">Total Contacts</div>
+                </div>
+                <div style="text-align: center; padding: 0.75rem; background: var(--mgsr-darker); border-radius: 10px;">
+                  <div style="font-family: 'JetBrains Mono', monospace; font-size: 1.6rem; font-weight: 700; color: var(--mgsr-green);">22</div>
+                  <div style="font-size: 0.75rem; color: var(--mgsr-muted);">Active (last 30d)</div>
+                </div>
+              </div>
+              <h4 style="font-size: 0.8rem; color: var(--mgsr-muted); margin-bottom: 0.5rem;">Contact Types</h4>
+              <div style="display: flex; flex-direction: column; gap: 0.4rem;">
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                  <span style="font-size: 0.8rem; width: 120px; color: var(--mgsr-muted);">Sporting Directors</span>
+                  <div style="flex: 1; height: 16px; background: var(--mgsr-darker); border-radius: 4px; overflow: hidden;">
+                    <div style="width: 45%; height: 100%; background: var(--mgsr-teal); border-radius: 4px;"></div>
+                  </div>
+                  <span class="mono" style="font-size: 0.75rem; width: 30px;">18</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                  <span style="font-size: 0.8rem; width: 120px; color: var(--mgsr-muted);">Other Agents</span>
+                  <div style="flex: 1; height: 16px; background: var(--mgsr-darker); border-radius: 4px; overflow: hidden;">
+                    <div style="width: 35%; height: 100%; background: var(--mgsr-purple); border-radius: 4px;"></div>
+                  </div>
+                  <span class="mono" style="font-size: 0.75rem; width: 30px;">22</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                  <span style="font-size: 0.8rem; width: 120px; color: var(--mgsr-muted);">Coaches / Staff</span>
+                  <div style="flex: 1; height: 16px; background: var(--mgsr-darker); border-radius: 4px; overflow: hidden;">
+                    <div style="width: 25%; height: 100%; background: var(--mgsr-amber); border-radius: 4px;"></div>
+                  </div>
+                  <span class="mono" style="font-size: 0.75rem; width: 30px;">15</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                  <span style="font-size: 0.8rem; width: 120px; color: var(--mgsr-muted);">Lawyers / Fin.</span>
+                  <div style="flex: 1; height: 16px; background: var(--mgsr-darker); border-radius: 4px; overflow: hidden;">
+                    <div style="width: 18%; height: 100%; background: var(--mgsr-blue); border-radius: 4px;"></div>
+                  </div>
+                  <span class="mono" style="font-size: 0.75rem; width: 30px;">12</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB: Market Coverage -->
+      <div id="tab-coverage" style="display: none;">
+        <div class="grid-2">
+          <!-- Position Coverage Heatmap -->
+          <div class="section-card">
+            <div class="section-card-header"><h3>⚽ Position Coverage (Your Roster)</h3></div>
+            <div class="section-card-body">
+              <div class="heatmap" style="grid-template-columns: repeat(4, 1fr);">
+                <div class="heat-cell heat-1"><div class="hc-pos">GK</div><div class="hc-count">2 players</div></div>
+                <div class="heat-cell heat-3"><div class="hc-pos">CB</div><div class="hc-count">6 players</div></div>
+                <div class="heat-cell heat-2"><div class="hc-pos">LB</div><div class="hc-count">3 players</div></div>
+                <div class="heat-cell heat-2"><div class="hc-pos">RB</div><div class="hc-count">3 players</div></div>
+                <div class="heat-cell heat-4"><div class="hc-pos">DM</div><div class="hc-count">5 players</div></div>
+                <div class="heat-cell heat-5"><div class="hc-pos">CM</div><div class="hc-count">8 players</div></div>
+                <div class="heat-cell heat-3"><div class="hc-pos">AM</div><div class="hc-count">4 players</div></div>
+                <div class="heat-cell heat-2"><div class="hc-pos">LW</div><div class="hc-count">3 players</div></div>
+                <div class="heat-cell heat-2"><div class="hc-pos">RW</div><div class="hc-count">3 players</div></div>
+                <div class="heat-cell heat-3"><div class="hc-pos">CF</div><div class="hc-count">4 players</div></div>
+                <div class="heat-cell heat-1"><div class="hc-pos">SS</div><div class="hc-count">1 player</div></div>
+                <div class="heat-cell heat-0"><div class="hc-pos">WB</div><div class="hc-count">0 players</div></div>
+              </div>
+              <div style="margin-top: 0.75rem; font-size: 0.8rem; color: var(--mgsr-muted);">
+                <strong style="color: var(--mgsr-teal);">Strong:</strong> CM (8), CB (6), DM (5) ·
+                <strong style="color: var(--mgsr-red);">Gaps:</strong> GK (2), WB (0), SS (1)
+              </div>
+            </div>
+          </div>
+
+          <!-- League Coverage -->
+          <div class="section-card">
+            <div class="section-card-header"><h3>🌍 League Coverage</h3></div>
+            <div class="section-card-body">
+              <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                  <span style="font-size: 0.8rem; width: 140px;">🇮🇱 Israeli PL</span>
+                  <div style="flex: 1; height: 20px; background: var(--mgsr-darker); border-radius: 4px; overflow: hidden;">
+                    <div style="width: 85%; height: 100%; background: var(--mgsr-teal); border-radius: 4px;"></div>
+                  </div>
+                  <span class="mono" style="font-size: 0.75rem; width: 60px;">18 players</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                  <span style="font-size: 0.8rem; width: 140px;">🇷🇸 Serbian Super</span>
+                  <div style="flex: 1; height: 20px; background: var(--mgsr-darker); border-radius: 4px; overflow: hidden;">
+                    <div style="width: 30%; height: 100%; background: var(--mgsr-purple); border-radius: 4px;"></div>
+                  </div>
+                  <span class="mono" style="font-size: 0.75rem; width: 60px;">6 players</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                  <span style="font-size: 0.8rem; width: 140px;">🇭🇺 NB I</span>
+                  <div style="flex: 1; height: 20px; background: var(--mgsr-darker); border-radius: 4px; overflow: hidden;">
+                    <div style="width: 25%; height: 100%; background: var(--mgsr-amber); border-radius: 4px;"></div>
+                  </div>
+                  <span class="mono" style="font-size: 0.75rem; width: 60px;">5 players</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                  <span style="font-size: 0.8rem; width: 140px;">🇸🇮 Slovenian PL</span>
+                  <div style="flex: 1; height: 20px; background: var(--mgsr-darker); border-radius: 4px; overflow: hidden;">
+                    <div style="width: 18%; height: 100%; background: var(--mgsr-blue); border-radius: 4px;"></div>
+                  </div>
+                  <span class="mono" style="font-size: 0.75rem; width: 60px;">4 players</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                  <span style="font-size: 0.8rem; width: 140px;">🇸🇪 Damallsvenskan</span>
+                  <div style="flex: 1; height: 20px; background: var(--mgsr-darker); border-radius: 4px; overflow: hidden;">
+                    <div style="width: 15%; height: 100%; background: var(--mgsr-pink); border-radius: 4px;"></div>
+                  </div>
+                  <span class="mono" style="font-size: 0.75rem; width: 60px;">3 players</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                  <span style="font-size: 0.8rem; width: 140px;">🇵🇱 Ekstraliga W</span>
+                  <div style="flex: 1; height: 20px; background: var(--mgsr-darker); border-radius: 4px; overflow: hidden;">
+                    <div style="width: 12%; height: 100%; background: var(--mgsr-pink); border-radius: 4px;"></div>
+                  </div>
+                  <span class="mono" style="font-size: 0.75rem; width: 60px;">3 players</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                  <span style="font-size: 0.8rem; width: 140px;">🇧🇷 Brazilian B</span>
+                  <div style="flex: 1; height: 20px; background: var(--mgsr-darker); border-radius: 4px; overflow: hidden;">
+                    <div style="width: 10%; height: 100%; background: var(--mgsr-green); border-radius: 4px;"></div>
+                  </div>
+                  <span class="mono" style="font-size: 0.75rem; width: 60px;">2 players</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                  <span style="font-size: 0.8rem; width: 140px;">🇮🇱 IFA Youth</span>
+                  <div style="flex: 1; height: 20px; background: var(--mgsr-darker); border-radius: 4px; overflow: hidden;">
+                    <div style="width: 8%; height: 100%; background: var(--mgsr-amber); border-radius: 4px;"></div>
+                  </div>
+                  <span class="mono" style="font-size: 0.75rem; width: 60px;">2 players</span>
+                </div>
+              </div>
+              <div style="margin-top: 0.75rem; padding: 0.6rem; background: var(--mgsr-amber-dim); border-radius: 8px; font-size: 0.8rem;">
+                💡 <strong>Expansion opportunity:</strong> Cyprus, Greece, and Romania leagues have high demand for your player profiles but you have zero coverage. Consider scouting these markets.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Request Demand vs Your Supply -->
+        <div class="section-card">
+          <div class="section-card-header">
+            <h3>📊 Market Demand vs Your Supply (Position Heat)</h3>
+            <span style="font-size: 0.75rem; color: var(--mgsr-muted);">Based on open ClubRequests vs your roster</span>
+          </div>
+          <div class="section-card-body" style="overflow-x: auto;">
+            <table class="deal-table">
+              <thead>
+                <tr><th>Position</th><th>Open Requests</th><th>Your Players</th><th>Supply vs Demand</th><th>Avg Fee Requested</th><th>Avg Your Value</th><th>Opportunity</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>CM</strong></td>
+                  <td class="mono" style="font-weight: 700;">12</td>
+                  <td class="mono" style="color: var(--mgsr-green);">8</td>
+                  <td><span style="background: var(--mgsr-green-dim); color: var(--mgsr-green); padding: 0.15rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 700;">67% covered</span></td>
+                  <td class="mono" style="color: var(--mgsr-teal);">€300K</td>
+                  <td class="mono" style="color: var(--mgsr-teal);">€380K</td>
+                  <td style="color: var(--mgsr-green); font-weight: 600;">🔥 Hot — premium pricing</td>
+                </tr>
+                <tr>
+                  <td><strong>CB</strong></td>
+                  <td class="mono" style="font-weight: 700;">8</td>
+                  <td class="mono" style="color: var(--mgsr-green);">6</td>
+                  <td><span style="background: var(--mgsr-green-dim); color: var(--mgsr-green); padding: 0.15rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 700;">75% covered</span></td>
+                  <td class="mono" style="color: var(--mgsr-teal);">€250K</td>
+                  <td class="mono" style="color: var(--mgsr-teal);">€350K</td>
+                  <td style="color: var(--mgsr-green); font-weight: 600;">Strong match</td>
+                </tr>
+                <tr>
+                  <td><strong>RW</strong></td>
+                  <td class="mono" style="font-weight: 700;">6</td>
+                  <td class="mono" style="color: var(--mgsr-amber);">3</td>
+                  <td><span style="background: var(--mgsr-amber-dim); color: var(--mgsr-amber); padding: 0.15rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 700;">50% covered</span></td>
+                  <td class="mono" style="color: var(--mgsr-teal);">€200K</td>
+                  <td class="mono" style="color: var(--mgsr-teal);">€280K</td>
+                  <td style="color: var(--mgsr-amber); font-weight: 600;">Need more RW players</td>
+                </tr>
+                <tr>
+                  <td><strong>LB</strong></td>
+                  <td class="mono" style="font-weight: 700;">5</td>
+                  <td class="mono" style="color: var(--mgsr-amber);">3</td>
+                  <td><span style="background: var(--mgsr-amber-dim); color: var(--mgsr-amber); padding: 0.15rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 700;">60% covered</span></td>
+                  <td class="mono" style="color: var(--mgsr-teal);">€180K</td>
+                  <td class="mono" style="color: var(--mgsr-teal);">€250K</td>
+                  <td style="color: var(--mgsr-amber);">Moderate</td>
+                </tr>
+                <tr>
+                  <td><strong>GK</strong></td>
+                  <td class="mono" style="font-weight: 700;">4</td>
+                  <td class="mono" style="color: var(--mgsr-red);">2</td>
+                  <td><span style="background: var(--mgsr-red-dim); color: var(--mgsr-red); padding: 0.15rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 700;">50% covered</span></td>
+                  <td class="mono" style="color: var(--mgsr-teal);">€150K</td>
+                  <td class="mono" style="color: var(--mgsr-teal);">€100K</td>
+                  <td style="color: var(--mgsr-red); font-weight: 600;">⚠ Underpriced + weak</td>
+                </tr>
+                <tr>
+                  <td><strong>CF</strong></td>
+                  <td class="mono" style="font-weight: 700;">7</td>
+                  <td class="mono" style="color: var(--mgsr-amber);">4</td>
+                  <td><span style="background: var(--mgsr-amber-dim); color: var(--mgsr-amber); padding: 0.15rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: 700;">57% covered</span></td>
+                  <td class="mono" style="color: var(--mgsr-teal);">€350K</td>
+                  <td class="mono" style="color: var(--mgsr-teal);">€500K</td>
+                  <td style="color: var(--mgsr-green); font-weight: 600;">Premium position</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB: Scouting Accuracy -->
+      <div id="tab-scouting" style="display: none;">
+
+        <!-- AI Scouting Insight -->
+        <div class="ai-insight">
+          <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.65rem;">
+            <span class="ai-badge">🎯 Scouting Calibration Report</span>
+            <span style="font-size: 0.8rem; color: var(--mgsr-muted);">23 placements tracked · 14 with 6+ months data</span>
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+            <div>
+              <h4 style="font-size: 0.85rem; color: var(--mgsr-green); font-weight: 700; margin-bottom: 0.3rem;">✅ Your Scouting Strengths</h4>
+              <ul style="font-size: 0.82rem; line-height: 1.7; padding-left: 1.25rem;">
+                <li><strong>CM assessment accuracy: 92%</strong> — your best position. You correctly predicted performance in 11/12 CM placements.</li>
+                <li><strong>Market value predictions</strong> are within 15% of actual — you're a reliable pricer.</li>
+                <li><strong>Israeli league adaptation:</strong> 85% of your placements in Ligat Ha'Al met or exceeded club expectations.</li>
+              </ul>
+            </div>
+            <div>
+              <h4 style="font-size: 0.85rem; color: var(--mgsr-red); font-weight: 700; margin-bottom: 0.3rem;">⚠ Calibration Needed</h4>
+              <ul style="font-size: 0.82rem; line-height: 1.7; padding-left: 1.25rem;">
+                <li><strong>Wingers underperform:</strong> 3 of 5 winger placements didn't meet targets. You tend to overrate pace over tactical fit.</li>
+                <li><strong>Adaptation scoring is weak (72%):</strong> Players you rate "easy adapters" sometimes struggle — improve cultural fit assessment.</li>
+                <li><strong>Age bias:</strong> Your U-21 predictions are 20% less accurate than 23-27 range. Youth scouting needs more data points.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <!-- Accuracy by Dimension -->
+        <div class="grid-2">
+          <div class="section-card">
+            <div class="section-card-header"><h3>📊 Accuracy by Assessment Dimension</h3></div>
+            <div class="section-card-body">
+              <div style="display: flex; flex-direction: column; gap: 0.65rem;">
+                <div>
+                  <div style="display: flex; justify-content: space-between; margin-bottom: 0.25rem;">
+                    <span style="font-size: 0.8rem;">Technical Ability</span>
+                    <span class="mono" style="font-size: 0.8rem; color: var(--mgsr-green); font-weight: 700;">86%</span>
+                  </div>
+                  <div style="height: 8px; background: var(--mgsr-darker); border-radius: 4px; overflow: hidden;">
+                    <div style="width: 86%; height: 100%; background: var(--mgsr-green); border-radius: 4px;"></div>
+                  </div>
+                </div>
+                <div>
+                  <div style="display: flex; justify-content: space-between; margin-bottom: 0.25rem;">
+                    <span style="font-size: 0.8rem;">Market Value Prediction</span>
+                    <span class="mono" style="font-size: 0.8rem; color: var(--mgsr-green); font-weight: 700;">91%</span>
+                  </div>
+                  <div style="height: 8px; background: var(--mgsr-darker); border-radius: 4px; overflow: hidden;">
+                    <div style="width: 91%; height: 100%; background: var(--mgsr-green); border-radius: 4px;"></div>
+                  </div>
+                </div>
+                <div>
+                  <div style="display: flex; justify-content: space-between; margin-bottom: 0.25rem;">
+                    <span style="font-size: 0.8rem;">Tactical Fit Rating</span>
+                    <span class="mono" style="font-size: 0.8rem; color: var(--mgsr-teal); font-weight: 700;">79%</span>
+                  </div>
+                  <div style="height: 8px; background: var(--mgsr-darker); border-radius: 4px; overflow: hidden;">
+                    <div style="width: 79%; height: 100%; background: var(--mgsr-teal); border-radius: 4px;"></div>
+                  </div>
+                </div>
+                <div>
+                  <div style="display: flex; justify-content: space-between; margin-bottom: 0.25rem;">
+                    <span style="font-size: 0.8rem;">Physical Assessment</span>
+                    <span class="mono" style="font-size: 0.8rem; color: var(--mgsr-teal); font-weight: 700;">76%</span>
+                  </div>
+                  <div style="height: 8px; background: var(--mgsr-darker); border-radius: 4px; overflow: hidden;">
+                    <div style="width: 76%; height: 100%; background: var(--mgsr-teal); border-radius: 4px;"></div>
+                  </div>
+                </div>
+                <div>
+                  <div style="display: flex; justify-content: space-between; margin-bottom: 0.25rem;">
+                    <span style="font-size: 0.8rem;">Cultural Adaptation</span>
+                    <span class="mono" style="font-size: 0.8rem; color: var(--mgsr-amber); font-weight: 700;">72%</span>
+                  </div>
+                  <div style="height: 8px; background: var(--mgsr-darker); border-radius: 4px; overflow: hidden;">
+                    <div style="width: 72%; height: 100%; background: var(--mgsr-amber); border-radius: 4px;"></div>
+                  </div>
+                </div>
+                <div>
+                  <div style="display: flex; justify-content: space-between; margin-bottom: 0.25rem;">
+                    <span style="font-size: 0.8rem;">Injury Risk Prediction</span>
+                    <span class="mono" style="font-size: 0.8rem; color: var(--mgsr-red); font-weight: 700;">58%</span>
+                  </div>
+                  <div style="height: 8px; background: var(--mgsr-darker); border-radius: 4px; overflow: hidden;">
+                    <div style="width: 58%; height: 100%; background: var(--mgsr-red); border-radius: 4px;"></div>
+                  </div>
+                </div>
+                <div>
+                  <div style="display: flex; justify-content: space-between; margin-bottom: 0.25rem;">
+                    <span style="font-size: 0.8rem;">Mental / Character</span>
+                    <span class="mono" style="font-size: 0.8rem; color: var(--mgsr-amber); font-weight: 700;">69%</span>
+                  </div>
+                  <div style="height: 8px; background: var(--mgsr-darker); border-radius: 4px; overflow: hidden;">
+                    <div style="width: 69%; height: 100%; background: var(--mgsr-amber); border-radius: 4px;"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Accuracy by Position -->
+          <div class="section-card">
+            <div class="section-card-header"><h3>⚽ Accuracy by Position</h3></div>
+            <div class="section-card-body">
+              <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem;">
+                <div style="background: var(--mgsr-green-dim); border: 1px solid rgba(34,197,94,0.2); border-radius: 10px; padding: 0.75rem; text-align: center;">
+                  <div style="font-weight: 700; font-size: 0.9rem;">CM</div>
+                  <div class="mono" style="font-size: 1.3rem; font-weight: 700; color: var(--mgsr-green);">92%</div>
+                  <div style="font-size: 0.65rem; color: var(--mgsr-muted);">12 placements</div>
+                </div>
+                <div style="background: var(--mgsr-green-dim); border: 1px solid rgba(34,197,94,0.2); border-radius: 10px; padding: 0.75rem; text-align: center;">
+                  <div style="font-weight: 700; font-size: 0.9rem;">CB</div>
+                  <div class="mono" style="font-size: 1.3rem; font-weight: 700; color: var(--mgsr-green);">85%</div>
+                  <div style="font-size: 0.65rem; color: var(--mgsr-muted);">6 placements</div>
+                </div>
+                <div style="background: var(--mgsr-teal-dim); border: 1px solid rgba(77,182,172,0.2); border-radius: 10px; padding: 0.75rem; text-align: center;">
+                  <div style="font-weight: 700; font-size: 0.9rem;">DM</div>
+                  <div class="mono" style="font-size: 1.3rem; font-weight: 700; color: var(--mgsr-teal);">80%</div>
+                  <div style="font-size: 0.65rem; color: var(--mgsr-muted);">4 placements</div>
+                </div>
+                <div style="background: var(--mgsr-teal-dim); border: 1px solid rgba(77,182,172,0.2); border-radius: 10px; padding: 0.75rem; text-align: center;">
+                  <div style="font-weight: 700; font-size: 0.9rem;">CF</div>
+                  <div class="mono" style="font-size: 1.3rem; font-weight: 700; color: var(--mgsr-teal);">78%</div>
+                  <div style="font-size: 0.65rem; color: var(--mgsr-muted);">3 placements</div>
+                </div>
+                <div style="background: var(--mgsr-amber-dim); border: 1px solid rgba(245,158,11,0.2); border-radius: 10px; padding: 0.75rem; text-align: center;">
+                  <div style="font-weight: 700; font-size: 0.9rem;">LB / RB</div>
+                  <div class="mono" style="font-size: 1.3rem; font-weight: 700; color: var(--mgsr-amber);">73%</div>
+                  <div style="font-size: 0.65rem; color: var(--mgsr-muted);">4 placements</div>
+                </div>
+                <div style="background: var(--mgsr-red-dim); border: 1px solid rgba(239,68,68,0.2); border-radius: 10px; padding: 0.75rem; text-align: center;">
+                  <div style="font-weight: 700; font-size: 0.9rem;">RW / LW</div>
+                  <div class="mono" style="font-size: 1.3rem; font-weight: 700; color: var(--mgsr-red);">60%</div>
+                  <div style="font-size: 0.65rem; color: var(--mgsr-muted);">5 placements</div>
+                </div>
+              </div>
+              <div style="margin-top: 0.75rem; padding: 0.6rem; background: var(--mgsr-red-dim); border-radius: 8px; font-size: 0.8rem;">
+                ⚠ <strong>Winger scouting needs work.</strong> You've overrated pace in 3/5 cases. Consider adding "tactical intelligence" as a heavier weight for wide players.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Player-by-Player Tracking -->
+        <div class="section-card">
+          <div class="section-card-header">
+            <h3>📋 Post-Placement Tracker — Placed Players Performance</h3>
+            <span style="font-size: 0.75rem; color: var(--mgsr-muted);">Your scouting report vs actual outcome</span>
+          </div>
+          <div class="section-card-body" style="overflow-x: auto;">
+            <table class="deal-table">
+              <thead>
+                <tr>
+                  <th>Player</th>
+                  <th>Placed At</th>
+                  <th>Your Rating</th>
+                  <th>Actual Perf.</th>
+                  <th>Δ Accuracy</th>
+                  <th>Market Value</th>
+                  <th>Value Δ</th>
+                  <th>Club Satisfaction</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><div class="player-cell"><div class="mini-avatar" style="background: var(--mgsr-green-dim); color: var(--mgsr-green);">MP</div><strong>Marko Petković</strong></div></td>
+                  <td>Maccabi Haifa</td>
+                  <td><span class="mono" style="color: var(--mgsr-teal);">7.5/10</span></td>
+                  <td><span class="mono" style="color: var(--mgsr-green); font-weight: 700;">8.1/10</span></td>
+                  <td><span style="background: var(--mgsr-green-dim); color: var(--mgsr-green); padding: 0.1rem 0.4rem; border-radius: 4px; font-size: 0.7rem; font-weight: 700;">▲ +0.6 Exceeded</span></td>
+                  <td class="mono" style="color: var(--mgsr-teal);">€400K → €550K</td>
+                  <td><span class="mono" style="color: var(--mgsr-green); font-weight: 700;">+37%</span></td>
+                  <td>⭐⭐⭐⭐⭐</td>
+                  <td><span class="status-chip" style="background: var(--mgsr-green-dim); color: var(--mgsr-green);">Starter</span></td>
+                </tr>
+                <tr>
+                  <td><div class="player-cell"><div class="mini-avatar">DC</div><strong>David Čerin</strong></div></td>
+                  <td>Hapoel Tel Aviv</td>
+                  <td><span class="mono" style="color: var(--mgsr-teal);">7.0/10</span></td>
+                  <td><span class="mono" style="color: var(--mgsr-green); font-weight: 700;">7.3/10</span></td>
+                  <td><span style="background: var(--mgsr-green-dim); color: var(--mgsr-green); padding: 0.1rem 0.4rem; border-radius: 4px; font-size: 0.7rem; font-weight: 700;">▲ +0.3 Met target</span></td>
+                  <td class="mono" style="color: var(--mgsr-teal);">€350K → €420K</td>
+                  <td><span class="mono" style="color: var(--mgsr-green); font-weight: 700;">+20%</span></td>
+                  <td>⭐⭐⭐⭐</td>
+                  <td><span class="status-chip" style="background: var(--mgsr-green-dim); color: var(--mgsr-green);">Starter</span></td>
+                </tr>
+                <tr>
+                  <td><div class="player-cell"><div class="mini-avatar">LS</div><strong>Lucas Silva</strong></div></td>
+                  <td>Ferencváros</td>
+                  <td><span class="mono" style="color: var(--mgsr-teal);">7.8/10</span></td>
+                  <td><span class="mono" style="color: var(--mgsr-teal);">7.4/10</span></td>
+                  <td><span style="background: var(--mgsr-amber-dim); color: var(--mgsr-amber); padding: 0.1rem 0.4rem; border-radius: 4px; font-size: 0.7rem; font-weight: 700;">▼ -0.4 Slight miss</span></td>
+                  <td class="mono" style="color: var(--mgsr-teal);">€280K → €310K</td>
+                  <td><span class="mono" style="color: var(--mgsr-green); font-weight: 700;">+11%</span></td>
+                  <td>⭐⭐⭐⭐</td>
+                  <td><span class="status-chip" style="background: var(--mgsr-green-dim); color: var(--mgsr-green);">Rotation</span></td>
+                </tr>
+                <tr>
+                  <td><div class="player-cell"><div class="mini-avatar" style="background: var(--mgsr-green-dim); color: var(--mgsr-green);">SA</div><strong>Sara Andersson</strong></div></td>
+                  <td>ASR Women</td>
+                  <td><span class="mono" style="color: var(--mgsr-teal);">8.0/10</span></td>
+                  <td><span class="mono" style="color: var(--mgsr-green); font-weight: 700;">8.5/10</span></td>
+                  <td><span style="background: var(--mgsr-green-dim); color: var(--mgsr-green); padding: 0.1rem 0.4rem; border-radius: 4px; font-size: 0.7rem; font-weight: 700;">▲ +0.5 Exceeded</span></td>
+                  <td class="mono" style="color: var(--mgsr-teal);">€50K → €80K</td>
+                  <td><span class="mono" style="color: var(--mgsr-green); font-weight: 700;">+60%</span></td>
+                  <td>⭐⭐⭐⭐⭐</td>
+                  <td><span class="status-chip" style="background: var(--mgsr-green-dim); color: var(--mgsr-green);">Star</span></td>
+                </tr>
+                <tr>
+                  <td><div class="player-cell"><div class="mini-avatar">OM</div><strong>Omar Marshiano</strong></div></td>
+                  <td>Beitar Jerusalem</td>
+                  <td><span class="mono" style="color: var(--mgsr-teal);">6.5/10</span></td>
+                  <td><span class="mono" style="color: var(--mgsr-amber);">5.8/10</span></td>
+                  <td><span style="background: var(--mgsr-red-dim); color: var(--mgsr-red); padding: 0.1rem 0.4rem; border-radius: 4px; font-size: 0.7rem; font-weight: 700;">▼ -0.7 Underperform</span></td>
+                  <td class="mono" style="color: var(--mgsr-teal);">—</td>
+                  <td><span class="mono" style="color: var(--mgsr-red);">-15%</span></td>
+                  <td>⭐⭐</td>
+                  <td><span class="status-chip" style="background: var(--mgsr-amber-dim); color: var(--mgsr-amber);">Bench</span></td>
+                </tr>
+                <tr>
+                  <td><div class="player-cell"><div class="mini-avatar">LT</div><strong>Luka Topalović</strong></div></td>
+                  <td>Maccabi Tel Aviv</td>
+                  <td><span class="mono" style="color: var(--mgsr-teal);">8.2/10</span></td>
+                  <td><span class="mono" style="color: var(--mgsr-amber);">6.9/10</span></td>
+                  <td><span style="background: var(--mgsr-red-dim); color: var(--mgsr-red); padding: 0.1rem 0.4rem; border-radius: 4px; font-size: 0.7rem; font-weight: 700;">▼ -1.3 Miss</span></td>
+                  <td class="mono" style="color: var(--mgsr-teal);">€550K → €480K</td>
+                  <td><span class="mono" style="color: var(--mgsr-red);">-13%</span></td>
+                  <td>⭐⭐⭐</td>
+                  <td><span class="status-chip" style="background: var(--mgsr-amber-dim); color: var(--mgsr-amber);">Rotation</span></td>
+                </tr>
+                <tr>
+                  <td><div class="player-cell"><div class="mini-avatar">EN</div><strong>Elena Nováková</strong></div></td>
+                  <td>Levante UD W</td>
+                  <td><span class="mono" style="color: var(--mgsr-teal);">7.2/10</span></td>
+                  <td><span class="mono" style="color: var(--mgsr-green); font-weight: 700;">7.6/10</span></td>
+                  <td><span style="background: var(--mgsr-green-dim); color: var(--mgsr-green); padding: 0.1rem 0.4rem; border-radius: 4px; font-size: 0.7rem; font-weight: 700;">▲ +0.4 Met target</span></td>
+                  <td class="mono" style="color: var(--mgsr-teal);">€35K → €55K</td>
+                  <td><span class="mono" style="color: var(--mgsr-green); font-weight: 700;">+57%</span></td>
+                  <td>⭐⭐⭐⭐</td>
+                  <td><span class="status-chip" style="background: var(--mgsr-green-dim); color: var(--mgsr-green);">Starter</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- AI Scout vs Manual -->
+        <div class="grid-2">
+          <div class="section-card">
+            <div class="section-card-header"><h3>🤖 AI Scout Recommendations vs Outcome</h3></div>
+            <div class="section-card-body">
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                <div style="text-align: center; padding: 1rem; background: linear-gradient(135deg, rgba(168,85,247,0.08), rgba(77,182,172,0.05)); border: 1px solid rgba(168,85,247,0.15); border-radius: 12px;">
+                  <div style="font-size: 0.75rem; color: var(--mgsr-muted); margin-bottom: 0.25rem;">AI Scout Recommendations</div>
+                  <div class="mono" style="font-size: 2rem; font-weight: 700; color: var(--mgsr-purple);">156</div>
+                  <div style="font-size: 0.7rem; color: var(--mgsr-muted);">players flagged in 2025</div>
+                </div>
+                <div style="text-align: center; padding: 1rem; background: var(--mgsr-green-dim); border: 1px solid rgba(34,197,94,0.15); border-radius: 12px;">
+                  <div style="font-size: 0.75rem; color: var(--mgsr-muted); margin-bottom: 0.25rem;">Acted On & Successful</div>
+                  <div class="mono" style="font-size: 2rem; font-weight: 700; color: var(--mgsr-green);">7</div>
+                  <div style="font-size: 0.7rem; color: var(--mgsr-muted);">led to signed deals</div>
+                </div>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                  <span style="font-size: 0.8rem; width: 100px; color: var(--mgsr-muted); text-align: right;">Acted on</span>
+                  <div style="flex: 1; height: 18px; background: var(--mgsr-darker); border-radius: 4px; overflow: hidden;">
+                    <div style="width: 27%; height: 100%; background: var(--mgsr-teal); border-radius: 4px; display: flex; align-items: center; padding-left: 0.5rem; font-size: 0.7rem; font-weight: 600;">42 (27%)</div>
+                  </div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                  <span style="font-size: 0.8rem; width: 100px; color: var(--mgsr-muted); text-align: right;">In pipeline</span>
+                  <div style="flex: 1; height: 18px; background: var(--mgsr-darker); border-radius: 4px; overflow: hidden;">
+                    <div style="width: 9%; height: 100%; background: var(--mgsr-amber); border-radius: 4px; display: flex; align-items: center; padding-left: 0.5rem; font-size: 0.7rem; font-weight: 600;">14</div>
+                  </div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                  <span style="font-size: 0.8rem; width: 100px; color: var(--mgsr-muted); text-align: right;">Ignored</span>
+                  <div style="flex: 1; height: 18px; background: var(--mgsr-darker); border-radius: 4px; overflow: hidden;">
+                    <div style="width: 64%; height: 100%; background: var(--mgsr-border); border-radius: 4px; display: flex; align-items: center; padding-left: 0.5rem; font-size: 0.7rem; font-weight: 600; color: var(--mgsr-muted);">100 (64%)</div>
+                  </div>
+                </div>
+              </div>
+              <div style="margin-top: 0.75rem; padding: 0.6rem; background: var(--mgsr-purple-dim); border-radius: 8px; font-size: 0.8rem;">
+                💡 <strong>Missed opportunity:</strong> 8 players you ignored were later signed by competitors for clubs on <em>your</em> watchlist. AI Scout had them ranked correctly — you should trust it more for CB and DM positions.
+              </div>
+            </div>
+          </div>
+
+          <!-- Scouting ROI -->
+          <div class="section-card">
+            <div class="section-card-header"><h3>💎 Scouting Report Quality → Deal Correlation</h3></div>
+            <div class="section-card-body">
+              <div style="display: flex; flex-direction: column; gap: 0.65rem;">
+                <div style="padding: 0.75rem; background: var(--mgsr-darker); border-radius: 10px;">
+                  <div style="display: flex; justify-content: space-between; margin-bottom: 0.25rem;">
+                    <span style="font-size: 0.85rem; font-weight: 600;">Detailed Report (5+ pages)</span>
+                    <span class="mono" style="font-size: 0.85rem; color: var(--mgsr-green); font-weight: 700;">41% close rate</span>
+                  </div>
+                  <div style="font-size: 0.75rem; color: var(--mgsr-muted);">12 sent → 5 closed · Avg commission: €18.2K</div>
+                </div>
+                <div style="padding: 0.75rem; background: var(--mgsr-darker); border-radius: 10px;">
+                  <div style="display: flex; justify-content: space-between; margin-bottom: 0.25rem;">
+                    <span style="font-size: 0.85rem; font-weight: 600;">Standard Report (2-3 pages)</span>
+                    <span class="mono" style="font-size: 0.85rem; color: var(--mgsr-amber); font-weight: 700;">19% close rate</span>
+                  </div>
+                  <div style="font-size: 0.75rem; color: var(--mgsr-muted);">21 sent → 4 closed · Avg commission: €12.5K</div>
+                </div>
+                <div style="padding: 0.75rem; background: var(--mgsr-darker); border-radius: 10px;">
+                  <div style="display: flex; justify-content: space-between; margin-bottom: 0.25rem;">
+                    <span style="font-size: 0.85rem; font-weight: 600;">Quick CV Only</span>
+                    <span class="mono" style="font-size: 0.85rem; color: var(--mgsr-red); font-weight: 700;">0% close rate</span>
+                  </div>
+                  <div style="font-size: 0.75rem; color: var(--mgsr-muted);">9 sent → 0 closed · Clubs say "not enough info"</div>
+                </div>
+              </div>
+              <div style="margin-top: 0.75rem; padding: 0.6rem; background: var(--mgsr-green-dim); border-radius: 8px; font-size: 0.8rem; text-align: center;">
+                <strong style="color: var(--mgsr-green);">Insight:</strong> Detailed reports have <strong>2.2x higher close rate</strong> and earn <strong>€5.7K more</strong> per deal. Always invest in the full report.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Value Prediction Accuracy Timeline -->
+        <div class="section-card">
+          <div class="section-card-header">
+            <h3>📈 Value Prediction Accuracy — Your Estimates vs Market Reality</h3>
+          </div>
+          <div class="section-card-body">
+            <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 0.5rem; text-align: center;">
+              <div style="padding: 0.6rem; background: var(--mgsr-darker); border-radius: 8px;">
+                <div style="font-size: 0.7rem; color: var(--mgsr-muted);">Petković</div>
+                <div class="mono" style="font-weight: 700; color: var(--mgsr-green); font-size: 0.85rem;">+37%</div>
+                <div style="font-size: 0.6rem; color: var(--mgsr-green);">Undervalued ✓</div>
+              </div>
+              <div style="padding: 0.6rem; background: var(--mgsr-darker); border-radius: 8px;">
+                <div style="font-size: 0.7rem; color: var(--mgsr-muted);">Čerin</div>
+                <div class="mono" style="font-weight: 700; color: var(--mgsr-green); font-size: 0.85rem;">+20%</div>
+                <div style="font-size: 0.6rem; color: var(--mgsr-green);">Accurate ✓</div>
+              </div>
+              <div style="padding: 0.6rem; background: var(--mgsr-darker); border-radius: 8px;">
+                <div style="font-size: 0.7rem; color: var(--mgsr-muted);">Silva</div>
+                <div class="mono" style="font-weight: 700; color: var(--mgsr-teal); font-size: 0.85rem;">+11%</div>
+                <div style="font-size: 0.6rem; color: var(--mgsr-teal);">On track</div>
+              </div>
+              <div style="padding: 0.6rem; background: var(--mgsr-darker); border-radius: 8px;">
+                <div style="font-size: 0.7rem; color: var(--mgsr-muted);">Andersson</div>
+                <div class="mono" style="font-weight: 700; color: var(--mgsr-green); font-size: 0.85rem;">+60%</div>
+                <div style="font-size: 0.6rem; color: var(--mgsr-green);">Gem found! ✓</div>
+              </div>
+              <div style="padding: 0.6rem; background: var(--mgsr-darker); border-radius: 8px;">
+                <div style="font-size: 0.7rem; color: var(--mgsr-muted);">Marshiano</div>
+                <div class="mono" style="font-weight: 700; color: var(--mgsr-red); font-size: 0.85rem;">-15%</div>
+                <div style="font-size: 0.6rem; color: var(--mgsr-red);">Overvalued</div>
+              </div>
+              <div style="padding: 0.6rem; background: var(--mgsr-darker); border-radius: 8px;">
+                <div style="font-size: 0.7rem; color: var(--mgsr-muted);">Topalović</div>
+                <div class="mono" style="font-weight: 700; color: var(--mgsr-red); font-size: 0.85rem;">-13%</div>
+                <div style="font-size: 0.6rem; color: var(--mgsr-red);">Overvalued</div>
+              </div>
+              <div style="padding: 0.6rem; background: var(--mgsr-darker); border-radius: 8px;">
+                <div style="font-size: 0.7rem; color: var(--mgsr-muted);">Nováková</div>
+                <div class="mono" style="font-weight: 700; color: var(--mgsr-green); font-size: 0.85rem;">+57%</div>
+                <div style="font-size: 0.6rem; color: var(--mgsr-green);">Gem found! ✓</div>
+              </div>
+            </div>
+            <div style="margin-top: 0.75rem; padding: 0.6rem; background: rgba(0,0,0,0.2); border-radius: 8px; font-size: 0.8rem;">
+              <strong style="color: var(--mgsr-teal);">Pattern:</strong> Your <strong>women's football scouting</strong> is significantly more accurate — both Andersson (+60%) and Nováková (+57%) massively outperformed. This is your unfair advantage. 5/7 placements increased in value. Average value change: <span class="mono" style="color: var(--mgsr-green); font-weight: 700;">+22.4%</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </div><!-- content -->
+  </div><!-- main-content -->
+</div><!-- app-shell -->
+
+<script>
+function switchTab(btn, tabId) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('[id^="tab-"]').forEach(p => p.style.display = 'none');
+  document.getElementById('tab-' + tabId).style.display = 'block';
+}
+</script>
+</body>
+</html>

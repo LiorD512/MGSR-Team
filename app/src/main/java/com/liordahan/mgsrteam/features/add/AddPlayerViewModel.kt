@@ -6,9 +6,13 @@ import com.liordahan.mgsrteam.features.home.models.FeedEvent
 import com.liordahan.mgsrteam.features.login.models.Account
 import com.liordahan.mgsrteam.features.players.models.Club
 import com.liordahan.mgsrteam.features.players.models.Player
+import com.liordahan.mgsrteam.features.platform.Platform
+import com.liordahan.mgsrteam.features.platform.PlatformManager
 import com.liordahan.mgsrteam.firebase.FirebaseHandler
 import com.liordahan.mgsrteam.transfermarket.PlayerSearch
 import com.liordahan.mgsrteam.transfermarket.PlayerSearchModel
+import com.liordahan.mgsrteam.transfermarket.SoccerDonnaSearch
+import com.liordahan.mgsrteam.transfermarket.SoccerDonnaSearchResult
 import com.liordahan.mgsrteam.transfermarket.TransfermarktPlayerDetails
 import com.liordahan.mgsrteam.transfermarket.TransfermarktResult
 import kotlinx.coroutines.FlowPreview
@@ -25,9 +29,75 @@ import kotlinx.coroutines.tasks.await
 
 data class AddPlayerUiState(
     val playerSearchResults: List<PlayerSearchModel> = emptyList(),
+    /** SoccerDonna search results for Women platform. */
+    val womenSearchResults: List<SoccerDonnaSearchResult> = emptyList(),
     val showSearchProgress: Boolean = false,
     val showPlayerSelectedSearchProgress: Boolean = false
 )
+
+/** Form state for the Women single-page add-player form (mirrors web AddWomanPlayerForm). */
+data class WomanPlayerFormState(
+    val fullName: String = "",
+    val positions: List<String> = emptyList(),
+    val currentClub: String = "",
+    val age: String = "",
+    val nationality: String = "",
+    val marketValue: String = "",
+    val profileImage: String = "",
+    val soccerDonnaUrl: String = "",
+    val playerPhone: String = "",
+    val agentPhone: String = "",
+    val notes: String = "",
+    val isSaving: Boolean = false
+) {
+    companion object {
+        val WOMEN_POSITIONS = listOf("GK", "CB", "LB", "RB", "DM", "CM", "AM", "LW", "RW", "CF", "SS")
+    }
+}
+
+/** Form state for the Youth single-page add-player form (mirrors web AddYouthPlayerForm). */
+data class YouthPlayerFormState(
+    val fullName: String = "",
+    val fullNameHe: String = "",
+    val positions: List<String> = emptyList(),
+    val currentClub: String = "",
+    val academy: String = "",
+    val dateOfBirth: String = "",
+    val ageGroup: String = "",
+    val nationality: String = "",
+    val profileImage: String = "",
+    val ifaUrl: String = "",
+    val playerPhone: String = "",
+    val playerEmail: String = "",
+    val parentName: String = "",
+    val parentRelationship: String = "",
+    val parentPhone: String = "",
+    val parentEmail: String = "",
+    val notes: String = "",
+    val isSaving: Boolean = false
+) {
+    companion object {
+        val YOUTH_POSITIONS = listOf("GK", "CB", "LB", "RB", "DM", "CM", "AM", "LW", "RW", "CF", "SS")
+        val AGE_GROUPS = listOf("U-13", "U-14", "U-15", "U-17", "U-19", "U-21")
+        val PARENT_RELATIONSHIPS = listOf("Father", "Mother", "Guardian", "Agent")
+
+        /** Auto-compute age group from birth year, matching web logic. */
+        fun computeAgeGroup(dateOfBirth: String): String {
+            val year = dateOfBirth.takeLast(4).toIntOrNull() ?: return ""
+            val currentYear = java.util.Calendar.getInstance().get(java.util.Calendar.YEAR)
+            val age = currentYear - year
+            return when {
+                age <= 13 -> "U-13"
+                age <= 14 -> "U-14"
+                age <= 15 -> "U-15"
+                age <= 17 -> "U-17"
+                age <= 19 -> "U-19"
+                age <= 21 -> "U-21"
+                else -> ""
+            }
+        }
+    }
+}
 
 abstract class IAddPlayerViewModel : ViewModel() {
     abstract val playerSearchStateFlow: StateFlow<AddPlayerUiState>
@@ -42,14 +112,36 @@ abstract class IAddPlayerViewModel : ViewModel() {
     abstract fun updateAgentNumber(number: String)
     abstract fun updateSearchQuery(query: String?)
     abstract fun onSavePlayerClicked()
+    /** Create a Women/Youth player manually from a name (no Transfermarkt lookup). */
+    abstract fun createManualPlayer(fullName: String)
+    /** Select a SoccerDonna search result (Women): fetch profile + create player. */
+    abstract fun onWomanPlayerSelected(result: SoccerDonnaSearchResult)
+    /** Load a Women player by direct SoccerDonna profile URL. */
+    abstract fun loadWomanPlayerByUrl(soccerDonnaUrl: String)
     /** Call when closing the add-player sheet so the next open doesn't use stale state. */
     abstract fun resetAfterAdd()
+
+    // ── Women single-page form (matches web AddWomanPlayerForm) ──
+    abstract val womanFormState: StateFlow<WomanPlayerFormState>
+    abstract fun updateWomanForm(updater: (WomanPlayerFormState) -> WomanPlayerFormState)
+    abstract fun toggleWomanPosition(position: String)
+    abstract fun saveWomanPlayer()
+    abstract fun clearWomanForm()
+
+    // ── Youth single-page form (matches web AddYouthPlayerForm) ──
+    abstract val youthFormState: StateFlow<YouthPlayerFormState>
+    abstract fun updateYouthForm(updater: (YouthPlayerFormState) -> YouthPlayerFormState)
+    abstract fun toggleYouthPosition(position: String)
+    abstract fun saveYouthPlayer()
+    abstract fun clearYouthForm()
 }
 
 @OptIn(FlowPreview::class)
 class AddPlayerViewModel(
     private val playerSearch: PlayerSearch,
-    private val firebaseHandler: FirebaseHandler
+    private val soccerDonnaSearch: SoccerDonnaSearch,
+    private val firebaseHandler: FirebaseHandler,
+    private val platformManager: PlatformManager
 ) : IAddPlayerViewModel() {
 
     private val _playerSearchStateFlow = MutableStateFlow(AddPlayerUiState())
@@ -67,17 +159,32 @@ class AddPlayerViewModel(
     private val _searchQuery = MutableStateFlow("")
     override val searchQuery: StateFlow<String> = _searchQuery
 
+    private val _womanFormState = MutableStateFlow(WomanPlayerFormState())
+    override val womanFormState: StateFlow<WomanPlayerFormState> = _womanFormState
+
+    private val _youthFormState = MutableStateFlow(YouthPlayerFormState())
+    override val youthFormState: StateFlow<YouthPlayerFormState> = _youthFormState
+
+    private val isWomenPlatform: Boolean
+        get() = platformManager.current.value == Platform.WOMEN
+
     init {
         viewModelScope.launch {
             searchQuery
                 .debounce(400)
                 .distinctUntilChanged()
                 .collectLatest { query ->
-                    performSearch(query)
+                    if (isWomenPlatform) {
+                        performWomenSearch(query)
+                    } else {
+                        performSearch(query)
+                    }
                 }
         }
 
     }
+
+    // ── Men: Transfermarkt search ──
 
     private suspend fun performSearch(query: String?) {
         updateProgress(true)
@@ -100,6 +207,356 @@ class AddPlayerViewModel(
         }
     }
 
+    // ── Women: SoccerDonna search ──
+
+    private suspend fun performWomenSearch(query: String?) {
+        updateProgress(true)
+        if (query.isNullOrBlank()) {
+            _playerSearchStateFlow.update { it.copy(womenSearchResults = emptyList()) }
+            updateProgress(false)
+        } else {
+            val results = soccerDonnaSearch.search(query)
+            _playerSearchStateFlow.update { it.copy(womenSearchResults = results) }
+            updateProgress(false)
+        }
+    }
+
+    override fun onWomanPlayerSelected(result: SoccerDonnaSearchResult) {
+        viewModelScope.launch {
+            _playerSearchStateFlow.update { it.copy(showPlayerSelectedSearchProgress = true) }
+            try {
+                // Duplicate check by soccerDonnaUrl
+                if (!result.soccerDonnaUrl.isNullOrBlank()) {
+                    val snapshot = firebaseHandler.firebaseStore
+                        .collection(firebaseHandler.playersTable)
+                        .whereEqualTo("soccerDonnaUrl", result.soccerDonnaUrl)
+                        .get()
+                        .await()
+                    if (snapshot.documents.isNotEmpty()) {
+                        _errorMessageFlow.emit("Player already in roster")
+                        _playerSearchStateFlow.update { it.copy(showPlayerSelectedSearchProgress = false) }
+                        return@launch
+                    }
+                }
+
+                // Fetch full profile from SoccerDonna
+                val profile = result.soccerDonnaUrl?.let { soccerDonnaSearch.fetchProfile(it) }
+
+                // Fill form state (web-style: pre-fill editable form)
+                _womanFormState.update {
+                    WomanPlayerFormState(
+                        fullName = profile?.fullName ?: result.fullName,
+                        positions = profile?.position?.let { mapSoccerDonnaPosition(it) } ?: emptyList(),
+                        currentClub = profile?.currentClub ?: result.currentClub ?: "",
+                        age = profile?.age ?: "",
+                        nationality = profile?.nationality ?: "",
+                        marketValue = profile?.marketValue ?: "",
+                        profileImage = profile?.profileImage ?: "",
+                        soccerDonnaUrl = result.soccerDonnaUrl ?: ""
+                    )
+                }
+                // Clear search so dropdown hides
+                _searchQuery.update { "" }
+                _playerSearchStateFlow.update { it.copy(womenSearchResults = emptyList()) }
+            } catch (e: Exception) {
+                // If profile fetch fails, still fill with basic data from search
+                _womanFormState.update {
+                    WomanPlayerFormState(
+                        fullName = result.fullName,
+                        currentClub = result.currentClub ?: "",
+                        soccerDonnaUrl = result.soccerDonnaUrl ?: ""
+                    )
+                }
+                _searchQuery.update { "" }
+                _playerSearchStateFlow.update { it.copy(womenSearchResults = emptyList()) }
+            }
+            _playerSearchStateFlow.update { it.copy(showPlayerSelectedSearchProgress = false) }
+        }
+    }
+
+    override fun loadWomanPlayerByUrl(soccerDonnaUrl: String) {
+        val url = soccerDonnaUrl.trim()
+        if (url.isBlank() || !url.contains("soccerdonna")) return
+        viewModelScope.launch {
+            _playerSearchStateFlow.update { it.copy(showPlayerSelectedSearchProgress = true) }
+            try {
+                // Duplicate check
+                val snapshot = firebaseHandler.firebaseStore
+                    .collection(firebaseHandler.playersTable)
+                    .whereEqualTo("soccerDonnaUrl", url)
+                    .get()
+                    .await()
+                if (snapshot.documents.isNotEmpty()) {
+                    _errorMessageFlow.emit("Player already in roster")
+                    _playerSearchStateFlow.update { it.copy(showPlayerSelectedSearchProgress = false) }
+                    return@launch
+                }
+
+                val profile = soccerDonnaSearch.fetchProfile(url)
+                if (profile == null) {
+                    _errorMessageFlow.emit("Invalid SoccerDonna profile URL")
+                    _playerSearchStateFlow.update { it.copy(showPlayerSelectedSearchProgress = false) }
+                    return@launch
+                }
+                _womanFormState.update {
+                    WomanPlayerFormState(
+                        fullName = profile.fullName ?: "",
+                        positions = profile.position?.let { mapSoccerDonnaPosition(it) } ?: emptyList(),
+                        currentClub = profile.currentClub ?: "",
+                        age = profile.age ?: "",
+                        nationality = profile.nationality ?: "",
+                        marketValue = profile.marketValue ?: "",
+                        profileImage = profile.profileImage ?: "",
+                        soccerDonnaUrl = profile.soccerDonnaUrl ?: url
+                    )
+                }
+            } catch (e: Exception) {
+                _errorMessageFlow.emit(e.message ?: "Failed to load profile")
+            }
+            _playerSearchStateFlow.update { it.copy(showPlayerSelectedSearchProgress = false) }
+        }
+    }
+
+    /**
+     * Maps SoccerDonna position strings (e.g. "Centre Forward", "Left Winger")
+     * to short position abbreviations used in the app (e.g. "CF", "LW").
+     */
+    private fun mapSoccerDonnaPosition(raw: String): List<String> {
+        val mapping = mapOf(
+            "goalkeeper" to "GK",
+            "centre back" to "CB",
+            "centre-back" to "CB",
+            "left back" to "LB",
+            "left-back" to "LB",
+            "right back" to "RB",
+            "right-back" to "RB",
+            "defensive midfielder" to "DM",
+            "defensive midfield" to "DM",
+            "central midfielder" to "CM",
+            "central midfield" to "CM",
+            "attacking midfielder" to "AM",
+            "attacking midfield" to "AM",
+            "left midfielder" to "LM",
+            "left midfield" to "LM",
+            "right midfielder" to "RM",
+            "right midfield" to "RM",
+            "left winger" to "LW",
+            "right winger" to "RW",
+            "centre forward" to "CF",
+            "centre-forward" to "CF",
+            "striker" to "ST",
+            "forward" to "ST"
+        )
+        val lower = raw.lowercase().trim()
+        val mapped = mapping[lower]
+        return if (mapped != null) listOf(mapped) else listOf(raw)
+    }
+
+    // ── Women form-state helpers ──
+
+    override fun updateWomanForm(updater: (WomanPlayerFormState) -> WomanPlayerFormState) {
+        _womanFormState.update(updater)
+    }
+
+    override fun toggleWomanPosition(position: String) {
+        _womanFormState.update { state ->
+            val current = state.positions.toMutableList()
+            if (current.contains(position)) current.remove(position) else current.add(position)
+            state.copy(positions = current)
+        }
+    }
+
+    override fun clearWomanForm() {
+        _womanFormState.update { WomanPlayerFormState() }
+    }
+
+    // ── Youth form-state helpers ──
+
+    override fun updateYouthForm(updater: (YouthPlayerFormState) -> YouthPlayerFormState) {
+        _youthFormState.update(updater)
+    }
+
+    override fun toggleYouthPosition(position: String) {
+        _youthFormState.update { state ->
+            val current = state.positions.toMutableList()
+            if (current.contains(position)) current.remove(position) else current.add(position)
+            state.copy(positions = current)
+        }
+    }
+
+    override fun clearYouthForm() {
+        _youthFormState.update { YouthPlayerFormState() }
+    }
+
+    override fun saveYouthPlayer() {
+        val form = _youthFormState.value
+        if (form.fullName.isBlank()) return
+        _youthFormState.update { it.copy(isSaving = true) }
+
+        viewModelScope.launch {
+            try {
+                // Duplicate check by fullName
+                val snapshot = firebaseHandler.firebaseStore
+                    .collection(firebaseHandler.playersTable)
+                    .whereEqualTo("fullName", form.fullName.trim())
+                    .get()
+                    .await()
+                if (snapshot.documents.isNotEmpty()) {
+                    _errorMessageFlow.emit("Player already in roster")
+                    _youthFormState.update { it.copy(isSaving = false) }
+                    return@launch
+                }
+
+                // Get agent info
+                val accountsSnapshot = firebaseHandler.firebaseStore
+                    .collection(firebaseHandler.accountsTable)
+                    .get()
+                    .await()
+                val accounts = accountsSnapshot.toObjects(Account::class.java)
+                val agentInChargeName = accounts.firstOrNull {
+                    it.email?.equals(
+                        firebaseHandler.firebaseAuth.currentUser?.email,
+                        ignoreCase = true
+                    ) == true
+                }?.name
+
+                val parentContact = if (form.parentName.isNotBlank() || form.parentPhone.isNotBlank()) {
+                    com.liordahan.mgsrteam.features.players.models.ParentContact(
+                        parentName = form.parentName.takeIf { it.isNotBlank() },
+                        parentRelationship = form.parentRelationship.takeIf { it.isNotBlank() },
+                        parentPhoneNumber = form.parentPhone.takeIf { it.isNotBlank() },
+                        parentEmail = form.parentEmail.takeIf { it.isNotBlank() }
+                    )
+                } else null
+
+                val player = Player(
+                    fullName = form.fullName.trim(),
+                    fullNameHe = form.fullNameHe.takeIf { it.isNotBlank() },
+                    positions = form.positions.ifEmpty { null },
+                    currentClub = form.currentClub.takeIf { it.isNotBlank() }?.let { Club(clubName = it) },
+                    academy = form.academy.takeIf { it.isNotBlank() },
+                    dateOfBirth = form.dateOfBirth.takeIf { it.isNotBlank() },
+                    ageGroup = form.ageGroup.takeIf { it.isNotBlank() },
+                    nationality = form.nationality.takeIf { it.isNotBlank() },
+                    profileImage = form.profileImage.takeIf { it.isNotBlank() },
+                    ifaUrl = form.ifaUrl.takeIf { it.isNotBlank() },
+                    playerPhoneNumber = form.playerPhone.takeIf { it.isNotBlank() },
+                    playerEmail = form.playerEmail.takeIf { it.isNotBlank() },
+                    parentContact = parentContact,
+                    notes = form.notes.takeIf { it.isNotBlank() },
+                    createdAt = System.currentTimeMillis(),
+                    agentInChargeName = agentInChargeName
+                )
+
+                firebaseHandler.firebaseStore
+                    .collection(firebaseHandler.playersTable)
+                    .add(player)
+                    .await()
+
+                com.liordahan.mgsrteam.analytics.AnalyticsHelper.logAddPlayer()
+
+                // Write feed event
+                firebaseHandler.firebaseStore
+                    .collection(firebaseHandler.feedEventsTable)
+                    .add(
+                        FeedEvent(
+                            type = FeedEvent.TYPE_PLAYER_ADDED,
+                            playerName = player.fullName,
+                            playerImage = player.profileImage,
+                            playerTmProfile = null,
+                            timestamp = System.currentTimeMillis(),
+                            agentName = agentInChargeName
+                        )
+                    )
+
+                _isPlayerAddedFlow.update { true }
+            } catch (e: Exception) {
+                _errorMessageFlow.emit(e.message ?: "Failed to save player")
+            }
+            _youthFormState.update { it.copy(isSaving = false) }
+        }
+    }
+
+    override fun saveWomanPlayer() {
+        val form = _womanFormState.value
+        if (form.fullName.isBlank()) return
+        _womanFormState.update { it.copy(isSaving = true) }
+
+        viewModelScope.launch {
+            try {
+                // Duplicate check by soccerDonnaUrl
+                if (form.soccerDonnaUrl.isNotBlank()) {
+                    val snapshot = firebaseHandler.firebaseStore
+                        .collection(firebaseHandler.playersTable)
+                        .whereEqualTo("soccerDonnaUrl", form.soccerDonnaUrl)
+                        .get()
+                        .await()
+                    if (snapshot.documents.isNotEmpty()) {
+                        _errorMessageFlow.emit("Player already in roster")
+                        _womanFormState.update { it.copy(isSaving = false) }
+                        return@launch
+                    }
+                }
+
+                // Get agent info
+                val accountsSnapshot = firebaseHandler.firebaseStore
+                    .collection(firebaseHandler.accountsTable)
+                    .get()
+                    .await()
+                val accounts = accountsSnapshot.toObjects(Account::class.java)
+                val agentInChargeName = accounts.firstOrNull {
+                    it.email?.equals(
+                        firebaseHandler.firebaseAuth.currentUser?.email,
+                        ignoreCase = true
+                    ) == true
+                }?.name
+
+                val player = Player(
+                    fullName = form.fullName.trim(),
+                    positions = form.positions.ifEmpty { null },
+                    currentClub = form.currentClub.takeIf { it.isNotBlank() }?.let { Club(clubName = it) },
+                    age = form.age.takeIf { it.isNotBlank() },
+                    nationality = form.nationality.takeIf { it.isNotBlank() },
+                    marketValue = form.marketValue.takeIf { it.isNotBlank() },
+                    profileImage = form.profileImage.takeIf { it.isNotBlank() },
+                    soccerDonnaUrl = form.soccerDonnaUrl.takeIf { it.isNotBlank() },
+                    playerPhoneNumber = form.playerPhone.takeIf { it.isNotBlank() },
+                    agentPhoneNumber = form.agentPhone.takeIf { it.isNotBlank() },
+                    notes = form.notes.takeIf { it.isNotBlank() },
+                    createdAt = System.currentTimeMillis(),
+                    agentInChargeName = agentInChargeName
+                )
+
+                val docRef = firebaseHandler.firebaseStore
+                    .collection(firebaseHandler.playersTable)
+                    .add(player)
+                    .await()
+
+                com.liordahan.mgsrteam.analytics.AnalyticsHelper.logAddPlayer()
+
+                // Write feed event — for Women/Youth use document ID (no tmProfile)
+                val feedProfileId = player.tmProfile ?: docRef.id
+                firebaseHandler.firebaseStore
+                    .collection(firebaseHandler.feedEventsTable)
+                    .add(
+                        FeedEvent(
+                            type = FeedEvent.TYPE_PLAYER_ADDED,
+                            playerName = player.fullName,
+                            playerImage = player.profileImage,
+                            playerTmProfile = feedProfileId,
+                            timestamp = System.currentTimeMillis(),
+                            agentName = agentInChargeName
+                        )
+                    )
+
+                _isPlayerAddedFlow.update { true }
+            } catch (e: Exception) {
+                _errorMessageFlow.emit(e.message ?: "Failed to save player")
+            }
+            _womanFormState.update { it.copy(isSaving = false) }
+        }
+    }
+
 
     override fun onPlayerSelected(player: PlayerSearchModel) {
         viewModelScope.launch {
@@ -110,6 +567,11 @@ class AddPlayerViewModel(
     override fun loadPlayerByTmProfileUrl(tmProfileUrl: String) {
         val url = tmProfileUrl.trim()
         if (url.isBlank()) return
+        // Route SoccerDonna URLs to the Women-specific loader
+        if (url.contains("soccerdonna")) {
+            loadWomanPlayerByUrl(url)
+            return
+        }
         viewModelScope.launch {
             val searchModel = PlayerSearchModel(tmProfile = url)
             selectPlayerAndLoadIfNew(searchModel)
@@ -226,6 +688,33 @@ class AddPlayerViewModel(
 
     }
 
+    override fun createManualPlayer(fullName: String) {
+        if (fullName.isBlank()) return
+        viewModelScope.launch {
+            _playerSearchStateFlow.update { it.copy(showPlayerSelectedSearchProgress = true) }
+            try {
+                // Check for duplicate by fullName in the current platform's collection
+                val snapshot = firebaseHandler.firebaseStore
+                    .collection(firebaseHandler.playersTable)
+                    .whereEqualTo("fullName", fullName.trim())
+                    .get()
+                    .await()
+                if (snapshot.documents.isNotEmpty()) {
+                    _errorMessageFlow.emit("Player already in roster")
+                    _playerSearchStateFlow.update { it.copy(showPlayerSelectedSearchProgress = false) }
+                    return@launch
+                }
+            } catch (_: Exception) { /* proceed even if dedup check fails */ }
+
+            val player = Player(
+                fullName = fullName.trim(),
+                createdAt = System.currentTimeMillis()
+            )
+            _selectedPlayerFlow.update { player }
+            _playerSearchStateFlow.update { it.copy(showPlayerSelectedSearchProgress = false) }
+        }
+    }
+
     private fun updateProgress(showProgress: Boolean) {
         _playerSearchStateFlow.update { it.copy(showSearchProgress = showProgress) }
     }
@@ -233,6 +722,13 @@ class AddPlayerViewModel(
     override fun resetAfterAdd() {
         _isPlayerAddedFlow.value = false
         _selectedPlayerFlow.value = null
-        _playerSearchStateFlow.update { it.copy(showPlayerSelectedSearchProgress = false) }
+        _womanFormState.update { WomanPlayerFormState() }
+        _youthFormState.update { YouthPlayerFormState() }
+        _playerSearchStateFlow.update {
+            it.copy(
+                showPlayerSelectedSearchProgress = false,
+                womenSearchResults = emptyList()
+            )
+        }
     }
 }

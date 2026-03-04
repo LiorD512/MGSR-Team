@@ -1,0 +1,1497 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Deal Pipeline & Revenue Command Center — MGSR</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Outfit:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --mgsr-dark: #0F1923;
+      --mgsr-darker: #0A1219;
+      --mgsr-card: #1A2736;
+      --mgsr-card-hover: #1F2F40;
+      --mgsr-border: #253545;
+      --mgsr-teal: #4DB6AC;
+      --mgsr-teal-dim: rgba(77, 182, 172, 0.15);
+      --mgsr-text: #E8EAED;
+      --mgsr-muted: #8C999B;
+      --mgsr-purple: #A855F7;
+      --mgsr-purple-dim: rgba(168, 85, 247, 0.15);
+      --mgsr-amber: #F59E0B;
+      --mgsr-amber-dim: rgba(245, 158, 11, 0.15);
+      --mgsr-green: #22c55e;
+      --mgsr-green-dim: rgba(34, 197, 94, 0.15);
+      --mgsr-red: #ef4444;
+      --mgsr-red-dim: rgba(239, 68, 68, 0.15);
+      --mgsr-blue: #3b82f6;
+      --mgsr-blue-dim: rgba(59, 130, 246, 0.15);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Outfit', sans-serif; background: var(--mgsr-dark); color: var(--mgsr-text); min-height: 100vh; line-height: 1.5; }
+    .font-display { font-family: 'Syne', sans-serif; }
+
+    /* ═══ App Shell ═══ */
+    .app-shell { display: flex; min-height: 100vh; }
+    .sidebar {
+      width: 224px; flex-shrink: 0; background: var(--mgsr-card); border-right: 1px solid var(--mgsr-border);
+      display: flex; flex-direction: column;
+    }
+    .sidebar-logo {
+      padding: 1.25rem 1rem; border-bottom: 1px solid var(--mgsr-border);
+      display: flex; align-items: center; gap: 0.75rem;
+    }
+    .sidebar-logo .logo-icon {
+      width: 36px; height: 36px; border-radius: 10px; background: linear-gradient(135deg, var(--mgsr-teal), var(--mgsr-purple));
+      display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.85rem; color: #fff;
+    }
+    .sidebar-logo span { font-family: 'Syne', sans-serif; font-size: 1.15rem; font-weight: 700; color: var(--mgsr-teal); }
+
+    .sidebar-section { padding: 0.75rem; }
+    .sidebar-section-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--mgsr-muted); padding: 0.5rem 0.75rem; font-weight: 600; }
+    .sidebar-nav a {
+      display: flex; align-items: center; gap: 0.75rem;
+      padding: 0.65rem 0.75rem; border-radius: 8px; color: var(--mgsr-muted);
+      font-size: 0.875rem; text-decoration: none; margin-bottom: 2px; transition: all 0.2s;
+    }
+    .sidebar-nav a:hover { color: var(--mgsr-text); background: rgba(255,255,255,0.04); }
+    .sidebar-nav a.active { background: var(--mgsr-purple-dim); color: var(--mgsr-purple); font-weight: 600; }
+    .sidebar-nav a .nav-icon { font-size: 1.1rem; width: 20px; text-align: center; }
+    .sidebar-nav a .badge-count {
+      margin-left: auto; background: var(--mgsr-purple); color: #fff; font-size: 0.7rem;
+      padding: 0.1rem 0.45rem; border-radius: 10px; font-weight: 600;
+    }
+
+    .sidebar-footer {
+      margin-top: auto; padding: 1rem; border-top: 1px solid var(--mgsr-border);
+      display: flex; align-items: center; gap: 0.75rem;
+    }
+    .sidebar-footer .avatar {
+      width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, var(--mgsr-teal), var(--mgsr-blue));
+      display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 700; color: #fff;
+    }
+    .sidebar-footer .agent-name { font-size: 0.85rem; font-weight: 500; }
+    .sidebar-footer .agent-role { font-size: 0.7rem; color: var(--mgsr-muted); }
+
+    /* ═══ Platform Switcher ═══ */
+    .platform-switcher {
+      display: flex; gap: 4px; padding: 4px; background: var(--mgsr-darker);
+      border-radius: 10px; border: 1px solid var(--mgsr-border); margin: 0.75rem;
+    }
+    .platform-btn {
+      flex: 1; padding: 0.4rem; border-radius: 7px; font-size: 0.75rem; font-weight: 600;
+      background: transparent; border: none; color: var(--mgsr-muted); cursor: pointer; transition: all 0.2s;
+      font-family: 'Outfit', sans-serif;
+    }
+    .platform-btn.active { background: var(--mgsr-teal-dim); color: var(--mgsr-teal); }
+    .platform-btn:hover:not(.active) { color: var(--mgsr-text); }
+
+    /* ═══ Main Content ═══ */
+    .main-content { flex: 1; overflow-x: hidden; overflow-y: auto; }
+
+    /* ═══ Top Bar ═══ */
+    .top-bar {
+      padding: 1rem 1.5rem; border-bottom: 1px solid var(--mgsr-border);
+      display: flex; align-items: center; justify-content: space-between;
+      background: var(--mgsr-card); position: sticky; top: 0; z-index: 20;
+    }
+    .top-bar-left { display: flex; align-items: center; gap: 1rem; }
+    .top-bar h1 { font-family: 'Syne', sans-serif; font-size: 1.35rem; font-weight: 800; }
+    .top-bar .breadcrumb { font-size: 0.8rem; color: var(--mgsr-muted); }
+    .top-bar-right { display: flex; align-items: center; gap: 0.75rem; }
+
+    .btn {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      padding: 0.5rem 1rem; border-radius: 8px; font-family: inherit;
+      font-size: 0.85rem; font-weight: 600; cursor: pointer; border: none; transition: all 0.2s;
+    }
+    .btn-primary { background: var(--mgsr-teal); color: var(--mgsr-dark); }
+    .btn-primary:hover { background: #5fc9c0; }
+    .btn-secondary { background: var(--mgsr-card); color: var(--mgsr-text); border: 1px solid var(--mgsr-border); }
+    .btn-secondary:hover { background: var(--mgsr-card-hover); border-color: var(--mgsr-teal); }
+    .btn-ghost { background: transparent; color: var(--mgsr-muted); border: 1px solid transparent; }
+    .btn-ghost:hover { color: var(--mgsr-text); border-color: var(--mgsr-border); }
+    .btn-sm { padding: 0.35rem 0.75rem; font-size: 0.8rem; }
+
+    /* ═══ Revenue KPI Bar ═══ */
+    .kpi-bar {
+      display: grid; grid-template-columns: repeat(5, 1fr); gap: 1rem;
+      padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--mgsr-border);
+    }
+    .kpi-card {
+      background: var(--mgsr-card); border: 1px solid var(--mgsr-border); border-radius: 12px;
+      padding: 1rem 1.25rem; transition: all 0.25s;
+    }
+    .kpi-card:hover { border-color: rgba(77, 182, 172, 0.3); }
+    .kpi-label { font-size: 0.75rem; color: var(--mgsr-muted); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 500; }
+    .kpi-value { font-family: 'Syne', sans-serif; font-size: 1.6rem; font-weight: 800; margin: 0.25rem 0; }
+    .kpi-change { font-size: 0.75rem; font-weight: 600; display: flex; align-items: center; gap: 0.25rem; }
+    .kpi-change.up { color: var(--mgsr-green); }
+    .kpi-change.down { color: var(--mgsr-red); }
+    .kpi-change.neutral { color: var(--mgsr-muted); }
+
+    /* ═══ View Tabs ═══ */
+    .view-tabs {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0.75rem 1.5rem; border-bottom: 1px solid var(--mgsr-border);
+    }
+    .view-tabs-left { display: flex; gap: 0.25rem; }
+    .view-tab {
+      padding: 0.5rem 1rem; border-radius: 8px; font-size: 0.85rem; font-weight: 500;
+      color: var(--mgsr-muted); cursor: pointer; transition: all 0.2s;
+      border: 1px solid transparent; background: none; font-family: 'Outfit', sans-serif;
+    }
+    .view-tab:hover { color: var(--mgsr-text); }
+    .view-tab.active { background: var(--mgsr-purple-dim); color: var(--mgsr-purple); border-color: rgba(168, 85, 247, 0.3); }
+    .view-tabs-right { display: flex; gap: 0.5rem; align-items: center; }
+    .search-input {
+      background: var(--mgsr-darker); border: 1px solid var(--mgsr-border); border-radius: 8px;
+      padding: 0.45rem 0.75rem 0.45rem 2rem; color: var(--mgsr-text); font-family: inherit;
+      font-size: 0.85rem; width: 200px; transition: border-color 0.2s;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%238C999B' viewBox='0 0 16 16'%3E%3Cpath d='M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85zm-5.242.656a5 5 0 1 1 0-10 5 5 0 0 1 0 10z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: 0.65rem center;
+    }
+    .search-input:focus { outline: none; border-color: var(--mgsr-teal); }
+
+    /* ═══ Kanban Board ═══ */
+    .kanban-container { padding: 1.25rem 1.5rem; overflow-x: auto; }
+    .kanban-board {
+      display: flex; gap: 1rem; min-width: max-content;
+    }
+    .kanban-column {
+      width: 300px; flex-shrink: 0; background: var(--mgsr-darker); border: 1px solid var(--mgsr-border);
+      border-radius: 14px; display: flex; flex-direction: column; max-height: calc(100vh - 320px);
+    }
+    .kanban-column-header {
+      padding: 1rem; border-bottom: 1px solid var(--mgsr-border);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .kanban-column-title {
+      display: flex; align-items: center; gap: 0.5rem;
+      font-weight: 700; font-size: 0.85rem;
+    }
+    .kanban-column-title .dot {
+      width: 8px; height: 8px; border-radius: 50%;
+    }
+    .kanban-column-count {
+      font-size: 0.75rem; color: var(--mgsr-muted); background: var(--mgsr-card);
+      padding: 0.15rem 0.5rem; border-radius: 6px; font-weight: 600;
+    }
+    .kanban-column-value {
+      font-size: 0.7rem; color: var(--mgsr-muted); margin-top: 0.25rem;
+    }
+    .kanban-column-body {
+      flex: 1; overflow-y: auto; padding: 0.75rem;
+      display: flex; flex-direction: column; gap: 0.6rem;
+    }
+
+    /* ═══ Deal Card ═══ */
+    .deal-card {
+      background: var(--mgsr-card); border: 1px solid var(--mgsr-border); border-radius: 12px;
+      padding: 0.85rem; cursor: grab; transition: all 0.25s;
+      position: relative;
+    }
+    .deal-card:hover {
+      border-color: rgba(168, 85, 247, 0.35);
+      box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+      transform: translateY(-1px);
+    }
+    .deal-card.dragging {
+      opacity: 0.5; transform: rotate(2deg);
+    }
+    .deal-card-priority {
+      position: absolute; top: 0; left: 12px; width: 3px; height: 20px; border-radius: 0 0 3px 3px;
+    }
+    .deal-card-header { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.6rem; }
+    .deal-card-avatar {
+      width: 40px; height: 40px; border-radius: 10px; object-fit: cover;
+      background: var(--mgsr-border); flex-shrink: 0;
+    }
+    .deal-card-player { font-weight: 700; font-size: 0.85rem; line-height: 1.2; }
+    .deal-card-club { font-size: 0.75rem; color: var(--mgsr-muted); display: flex; align-items: center; gap: 0.3rem; }
+    .deal-card-meta {
+      display: flex; align-items: center; justify-content: space-between;
+      padding-top: 0.5rem; border-top: 1px solid rgba(255,255,255,0.05);
+    }
+    .deal-card-value { font-family: 'Syne', sans-serif; font-size: 0.85rem; font-weight: 700; color: var(--mgsr-teal); }
+    .deal-card-commission { font-size: 0.7rem; color: var(--mgsr-amber); font-weight: 600; }
+    .deal-card-tags { display: flex; gap: 0.3rem; flex-wrap: wrap; margin: 0.45rem 0; }
+    .deal-tag {
+      font-size: 0.65rem; padding: 0.15rem 0.45rem; border-radius: 5px;
+      font-weight: 600; white-space: nowrap;
+    }
+    .deal-tag.position { background: var(--mgsr-teal-dim); color: var(--mgsr-teal); }
+    .deal-tag.mandate { background: var(--mgsr-green-dim); color: var(--mgsr-green); }
+    .deal-tag.no-mandate { background: var(--mgsr-red-dim); color: var(--mgsr-red); }
+    .deal-tag.urgent { background: var(--mgsr-amber-dim); color: var(--mgsr-amber); }
+    .deal-tag.stale { background: var(--mgsr-red-dim); color: var(--mgsr-red); }
+    .deal-tag.women { background: rgba(236, 72, 153, 0.15); color: #ec4899; }
+    .deal-tag.youth { background: rgba(6, 182, 212, 0.15); color: #06b6d4; }
+
+    .deal-card-footer {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-top: 0.45rem;
+    }
+    .deal-card-agent { font-size: 0.7rem; color: var(--mgsr-muted); display: flex; align-items: center; gap: 0.3rem; }
+    .deal-card-days { font-size: 0.65rem; color: var(--mgsr-muted); }
+
+    .deal-card-target-club {
+      display: flex; align-items: center; gap: 0.4rem;
+      background: rgba(255,255,255,0.04); border-radius: 6px;
+      padding: 0.35rem 0.5rem; margin-bottom: 0.45rem;
+    }
+    .deal-card-target-club .target-label { font-size: 0.65rem; color: var(--mgsr-muted); }
+    .deal-card-target-club .target-name { font-size: 0.75rem; font-weight: 600; color: var(--mgsr-text); }
+    .deal-card-target-club .club-logo {
+      width: 18px; height: 18px; border-radius: 4px; object-fit: contain; background: #fff;
+    }
+
+    /* ═══ Add Deal Button ═══ */
+    .add-deal-btn {
+      width: 100%; padding: 0.6rem; border: 1px dashed var(--mgsr-border); border-radius: 10px;
+      background: transparent; color: var(--mgsr-muted); font-family: inherit;
+      font-size: 0.8rem; cursor: pointer; transition: all 0.2s;
+      display: flex; align-items: center; justify-content: center; gap: 0.3rem;
+    }
+    .add-deal-btn:hover { border-color: var(--mgsr-teal); color: var(--mgsr-teal); background: rgba(77,182,172,0.05); }
+
+    /* ═══ Revenue Chart Panel ═══ */
+    .revenue-panel {
+      padding: 1.25rem 1.5rem; display: none;
+    }
+    .revenue-panel.active { display: block; }
+    .revenue-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 1rem; }
+    .revenue-chart-card {
+      background: var(--mgsr-card); border: 1px solid var(--mgsr-border); border-radius: 14px;
+      padding: 1.25rem;
+    }
+    .revenue-chart-card h3 {
+      font-family: 'Syne', sans-serif; font-size: 1rem; font-weight: 700; margin-bottom: 1rem;
+    }
+    .chart-area {
+      height: 220px; position: relative; display: flex; align-items: flex-end;
+      gap: 2px; padding-bottom: 1.5rem;
+    }
+    .chart-bar-group { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 0.25rem; }
+    .chart-bar {
+      width: 70%; border-radius: 4px 4px 0 0; transition: all 0.3s; position: relative;
+      min-height: 4px;
+    }
+    .chart-bar:hover { opacity: 0.8; }
+    .chart-bar.closed { background: var(--mgsr-green); }
+    .chart-bar.pipeline { background: var(--mgsr-purple); opacity: 0.6; }
+    .chart-label { font-size: 0.65rem; color: var(--mgsr-muted); position: absolute; bottom: 0; }
+    .chart-y-axis {
+      position: absolute; left: 0; top: 0; bottom: 1.5rem;
+      display: flex; flex-direction: column; justify-content: space-between;
+    }
+    .chart-y-label { font-size: 0.6rem; color: var(--mgsr-muted); }
+
+    /* Funnel */
+    .funnel-card {
+      background: var(--mgsr-card); border: 1px solid var(--mgsr-border); border-radius: 14px;
+      padding: 1.25rem;
+    }
+    .funnel-card h3 { font-family: 'Syne', sans-serif; font-size: 1rem; font-weight: 700; margin-bottom: 1rem; }
+    .funnel-step {
+      display: flex; align-items: center; gap: 0.75rem;
+      padding: 0.6rem 0; border-bottom: 1px solid rgba(255,255,255,0.04);
+    }
+    .funnel-step:last-child { border-bottom: none; }
+    .funnel-bar-bg {
+      flex: 1; height: 28px; background: var(--mgsr-darker); border-radius: 6px; position: relative; overflow: hidden;
+    }
+    .funnel-bar-fill { height: 100%; border-radius: 6px; transition: width 0.6s ease; }
+    .funnel-step-label { font-size: 0.8rem; font-weight: 600; width: 100px; flex-shrink: 0; }
+    .funnel-step-count {
+      font-size: 0.8rem; font-weight: 700; width: 30px; text-align: right; flex-shrink: 0;
+    }
+    .funnel-step-rate { font-size: 0.7rem; color: var(--mgsr-muted); width: 40px; text-align: right; flex-shrink: 0; }
+
+    /* ═══ Deal Detail Slide-Over ═══ */
+    .deal-detail-overlay {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+      z-index: 100; justify-content: flex-end;
+    }
+    .deal-detail-overlay.open { display: flex; }
+    .deal-detail-panel {
+      width: 480px; background: var(--mgsr-card); border-left: 1px solid var(--mgsr-border);
+      height: 100vh; overflow-y: auto; padding: 1.5rem;
+      animation: slideIn 0.3s ease;
+    }
+    @keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
+    .deal-detail-close {
+      background: none; border: none; color: var(--mgsr-muted); cursor: pointer;
+      font-size: 1.2rem; padding: 0.25rem; border-radius: 6px; transition: all 0.2s;
+    }
+    .deal-detail-close:hover { color: var(--mgsr-text); background: rgba(255,255,255,0.05); }
+    .deal-detail-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 1.25rem; }
+    .deal-detail-player { display: flex; align-items: center; gap: 0.75rem; }
+    .deal-detail-avatar { width: 56px; height: 56px; border-radius: 12px; background: var(--mgsr-border); }
+    .deal-detail-name { font-family: 'Syne', sans-serif; font-size: 1.25rem; font-weight: 800; }
+    .deal-detail-sub { font-size: 0.85rem; color: var(--mgsr-muted); }
+    .deal-detail-section { margin-bottom: 1.25rem; }
+    .deal-detail-section h4 {
+      font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em;
+      color: var(--mgsr-muted); margin-bottom: 0.6rem; font-weight: 600;
+    }
+    .deal-detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; }
+    .deal-detail-item {
+      background: var(--mgsr-darker); border-radius: 8px; padding: 0.65rem;
+    }
+    .deal-detail-item .label { font-size: 0.7rem; color: var(--mgsr-muted); }
+    .deal-detail-item .value { font-size: 0.9rem; font-weight: 700; margin-top: 0.15rem; }
+
+    .deal-timeline { position: relative; padding-left: 1.5rem; }
+    .deal-timeline::before {
+      content: ''; position: absolute; left: 5px; top: 4px; bottom: 4px;
+      width: 2px; background: var(--mgsr-border);
+    }
+    .timeline-item { position: relative; padding-bottom: 0.85rem; }
+    .timeline-item:last-child { padding-bottom: 0; }
+    .timeline-dot {
+      position: absolute; left: -1.5rem; top: 4px; width: 12px; height: 12px;
+      border-radius: 50%; border: 2px solid var(--mgsr-border); background: var(--mgsr-dark);
+    }
+    .timeline-dot.active { border-color: var(--mgsr-teal); background: var(--mgsr-teal); }
+    .timeline-dot.completed { border-color: var(--mgsr-green); background: var(--mgsr-green); }
+    .timeline-item .tl-title { font-size: 0.8rem; font-weight: 600; }
+    .timeline-item .tl-date { font-size: 0.7rem; color: var(--mgsr-muted); }
+
+    /* ═══ New Deal Modal ═══ */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6);
+      z-index: 200; align-items: center; justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal-box {
+      background: var(--mgsr-card); border: 1px solid var(--mgsr-border); border-radius: 16px;
+      width: 520px; max-height: 80vh; overflow-y: auto; padding: 1.5rem;
+      animation: modalIn 0.25s ease;
+    }
+    @keyframes modalIn { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    .modal-title { font-family: 'Syne', sans-serif; font-size: 1.15rem; font-weight: 700; margin-bottom: 1rem; }
+    .form-group { margin-bottom: 1rem; }
+    .form-label { font-size: 0.8rem; color: var(--mgsr-muted); margin-bottom: 0.35rem; display: block; font-weight: 500; }
+    .form-input, .form-select {
+      width: 100%; background: var(--mgsr-darker); border: 1px solid var(--mgsr-border);
+      border-radius: 8px; padding: 0.55rem 0.75rem; color: var(--mgsr-text);
+      font-family: inherit; font-size: 0.85rem; transition: border-color 0.2s;
+    }
+    .form-input:focus, .form-select:focus { outline: none; border-color: var(--mgsr-teal); }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+    .modal-actions { display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 1.25rem; }
+
+    /* ═══ Stale pulse ═══ */
+    @keyframes stalePulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.3); }
+      50% { box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.1); }
+    }
+    .deal-card.stale { animation: stalePulse 2s infinite; }
+
+    /* ═══ Drag preview ═══ */
+    .drag-ghost {
+      position: fixed; pointer-events: none; z-index: 1000;
+      opacity: 0.9; transform: rotate(3deg);
+    }
+
+    /* ═══ Empty state ═══ */
+    .empty-state {
+      text-align: center; padding: 2rem 1rem; color: var(--mgsr-muted);
+    }
+    .empty-state .empty-icon { font-size: 2rem; margin-bottom: 0.5rem; }
+    .empty-state p { font-size: 0.8rem; }
+
+    /* ═══ Responsive ═══ */
+    @media (max-width: 1200px) {
+      .kpi-bar { grid-template-columns: repeat(3, 1fr); }
+    }
+    @media (max-width: 768px) {
+      .sidebar { display: none; }
+      .kpi-bar { grid-template-columns: repeat(2, 1fr); }
+      .kanban-column { width: 260px; }
+    }
+
+    /* ═══ Scrollbar ═══ */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--mgsr-border); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--mgsr-muted); }
+  </style>
+</head>
+<body>
+
+<div class="app-shell">
+  <!-- ═══ Sidebar ═══ -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon">MG</div>
+      <span>MGSR</span>
+    </div>
+
+    <div class="platform-switcher">
+      <button class="platform-btn active" onclick="switchPlatform('men')">Men</button>
+      <button class="platform-btn" onclick="switchPlatform('women')">Women</button>
+      <button class="platform-btn" onclick="switchPlatform('youth')">Youth</button>
+    </div>
+
+    <nav class="sidebar-nav sidebar-section">
+      <div class="sidebar-section-label">Main</div>
+      <a href="#"><span class="nav-icon">📊</span> Dashboard</a>
+      <a href="#"><span class="nav-icon">👥</span> Players <span class="badge-count">47</span></a>
+      <a href="#" class="active"><span class="nav-icon">💰</span> Deal Pipeline <span class="badge-count">14</span></a>
+      <a href="#"><span class="nav-icon">📋</span> Tasks</a>
+      <a href="#"><span class="nav-icon">📌</span> Shortlist</a>
+    </nav>
+
+    <nav class="sidebar-nav sidebar-section">
+      <div class="sidebar-section-label">Intelligence</div>
+      <a href="#"><span class="nav-icon">🤖</span> AI Scout</a>
+      <a href="#"><span class="nav-icon">🎯</span> War Room</a>
+      <a href="#"><span class="nav-icon">📡</span> Market Radar</a>
+      <a href="#"><span class="nav-icon">⚔️</span> Negotiation</a>
+    </nav>
+
+    <nav class="sidebar-nav sidebar-section">
+      <div class="sidebar-section-label">Network</div>
+      <a href="#"><span class="nav-icon">📇</span> Contacts</a>
+      <a href="#"><span class="nav-icon">📩</span> Requests <span class="badge-count">5</span></a>
+      <a href="#"><span class="nav-icon">📁</span> Portfolio</a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="avatar">LD</div>
+      <div>
+        <div class="agent-name">Lior Dahan</div>
+        <div class="agent-role">FIFA Licensed Agent</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ═══ Main ═══ -->
+  <div class="main-content">
+    <!-- Top Bar -->
+    <div class="top-bar">
+      <div class="top-bar-left">
+        <div>
+          <span class="breadcrumb">MGSR · Men's Platform</span>
+          <h1>Deal Pipeline</h1>
+        </div>
+      </div>
+      <div class="top-bar-right">
+        <button class="btn btn-secondary btn-sm" onclick="toggleFilter()">🏷 Filter</button>
+        <button class="btn btn-primary" onclick="openNewDealModal()">+ New Deal</button>
+      </div>
+    </div>
+
+    <!-- KPI Bar -->
+    <div class="kpi-bar">
+      <div class="kpi-card">
+        <div class="kpi-label">Total Pipeline Value</div>
+        <div class="kpi-value" style="color: var(--mgsr-teal);">€4.85M</div>
+        <div class="kpi-change up">▲ 12% vs last quarter</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Projected Commissions</div>
+        <div class="kpi-value" style="color: var(--mgsr-amber);">€287K</div>
+        <div class="kpi-change up">▲ 3 new deals in pipeline</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Active Deals</div>
+        <div class="kpi-value" style="color: var(--mgsr-purple);">14</div>
+        <div class="kpi-change neutral">across 5 stages</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Avg. Days to Close</div>
+        <div class="kpi-value">38</div>
+        <div class="kpi-change down">▼ 5 days faster</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Conversion Rate</div>
+        <div class="kpi-value" style="color: var(--mgsr-green);">23%</div>
+        <div class="kpi-change up">▲ presented → signed</div>
+      </div>
+    </div>
+
+    <!-- View Tabs -->
+    <div class="view-tabs">
+      <div class="view-tabs-left">
+        <button class="view-tab active" onclick="showView('kanban')">🗂 Kanban Board</button>
+        <button class="view-tab" onclick="showView('revenue')">📈 Revenue Analytics</button>
+        <button class="view-tab" onclick="showView('list')">📋 List View</button>
+      </div>
+      <div class="view-tabs-right">
+        <input type="text" class="search-input" placeholder="Search deals...">
+        <button class="btn btn-ghost btn-sm">⬇ Export</button>
+      </div>
+    </div>
+
+    <!-- ═══ KANBAN VIEW ═══ -->
+    <div id="kanban-view" class="kanban-container">
+      <div class="kanban-board">
+
+        <!-- Column: Scouted -->
+        <div class="kanban-column" data-stage="scouted">
+          <div class="kanban-column-header">
+            <div>
+              <div class="kanban-column-title"><span class="dot" style="background: var(--mgsr-muted);"></span> Scouted</div>
+              <div class="kanban-column-value">€1.45M pipeline</div>
+            </div>
+            <span class="kanban-column-count">3</span>
+          </div>
+          <div class="kanban-column-body">
+
+            <!-- Deal: Marko Petković -->
+            <div class="deal-card" draggable="true" onclick="openDealDetail('marko')">
+              <div class="deal-card-priority" style="background: var(--mgsr-amber);"></div>
+              <div class="deal-card-header">
+                <img class="deal-card-avatar" src="https://img.a.transfermarkt.technology/portrait/header/default.jpg?lm=1" alt="">
+                <div>
+                  <div class="deal-card-player">Marko Petković</div>
+                  <div class="deal-card-club">🇷🇸 FK Vojvodina · CF</div>
+                </div>
+              </div>
+              <div class="deal-card-tags">
+                <span class="deal-tag position">CF</span>
+                <span class="deal-tag mandate">✓ Mandate</span>
+              </div>
+              <div class="deal-card-meta">
+                <div class="deal-card-value">€750K</div>
+                <div class="deal-card-commission">~€45K comm.</div>
+              </div>
+              <div class="deal-card-footer">
+                <div class="deal-card-agent">👤 Lior</div>
+                <div class="deal-card-days">3d ago</div>
+              </div>
+            </div>
+
+            <!-- Deal: David Čerin -->
+            <div class="deal-card" draggable="true" onclick="openDealDetail('david')">
+              <div class="deal-card-priority" style="background: var(--mgsr-teal);"></div>
+              <div class="deal-card-header">
+                <img class="deal-card-avatar" src="https://img.a.transfermarkt.technology/portrait/header/default.jpg?lm=1" alt="">
+                <div>
+                  <div class="deal-card-player">David Čerin</div>
+                  <div class="deal-card-club">🇸🇮 NK Domžale · CM</div>
+                </div>
+              </div>
+              <div class="deal-card-tags">
+                <span class="deal-tag position">CM</span>
+                <span class="deal-tag mandate">✓ Mandate</span>
+              </div>
+              <div class="deal-card-meta">
+                <div class="deal-card-value">€400K</div>
+                <div class="deal-card-commission">~€24K comm.</div>
+              </div>
+              <div class="deal-card-footer">
+                <div class="deal-card-agent">👤 Lior</div>
+                <div class="deal-card-days">5d ago</div>
+              </div>
+            </div>
+
+            <!-- Deal: Yusuf Özkan -->
+            <div class="deal-card" draggable="true">
+              <div class="deal-card-priority" style="background: var(--mgsr-green);"></div>
+              <div class="deal-card-header">
+                <img class="deal-card-avatar" src="https://img.a.transfermarkt.technology/portrait/header/default.jpg?lm=1" alt="">
+                <div>
+                  <div class="deal-card-player">Yusuf Özkan</div>
+                  <div class="deal-card-club">🇹🇷 Göztepe SK · RW</div>
+                </div>
+              </div>
+              <div class="deal-card-tags">
+                <span class="deal-tag position">RW</span>
+                <span class="deal-tag no-mandate">No Mandate</span>
+              </div>
+              <div class="deal-card-meta">
+                <div class="deal-card-value">€300K</div>
+                <div class="deal-card-commission">—</div>
+              </div>
+              <div class="deal-card-footer">
+                <div class="deal-card-agent">👤 Lior</div>
+                <div class="deal-card-days">1d ago</div>
+              </div>
+            </div>
+
+            <button class="add-deal-btn" onclick="openNewDealModal()">+ Add Player</button>
+          </div>
+        </div>
+
+        <!-- Column: Presented to Club -->
+        <div class="kanban-column" data-stage="presented">
+          <div class="kanban-column-header">
+            <div>
+              <div class="kanban-column-title"><span class="dot" style="background: var(--mgsr-blue);"></span> Presented</div>
+              <div class="kanban-column-value">€1.75M pipeline</div>
+            </div>
+            <span class="kanban-column-count">4</span>
+          </div>
+          <div class="kanban-column-body">
+
+            <!-- Deal: Luka Topalović -->
+            <div class="deal-card" draggable="true">
+              <div class="deal-card-priority" style="background: var(--mgsr-amber);"></div>
+              <div class="deal-card-header">
+                <img class="deal-card-avatar" src="https://img.a.transfermarkt.technology/portrait/header/default.jpg?lm=1" alt="">
+                <div>
+                  <div class="deal-card-player">Luka Topalović</div>
+                  <div class="deal-card-club">🇭🇷 HNK Gorica · AM</div>
+                </div>
+              </div>
+              <div class="deal-card-target-club">
+                <span class="target-label">→</span>
+                <span class="target-name">Maccabi Tel Aviv</span>
+              </div>
+              <div class="deal-card-tags">
+                <span class="deal-tag position">AM</span>
+                <span class="deal-tag mandate">✓ Mandate</span>
+                <span class="deal-tag urgent">⏰ Window closes in 18d</span>
+              </div>
+              <div class="deal-card-meta">
+                <div class="deal-card-value">€550K</div>
+                <div class="deal-card-commission">~€33K comm.</div>
+              </div>
+              <div class="deal-card-footer">
+                <div class="deal-card-agent">👤 Lior</div>
+                <div class="deal-card-days">7d in stage</div>
+              </div>
+            </div>
+
+            <!-- Deal: Ivan Marković -->
+            <div class="deal-card" draggable="true">
+              <div class="deal-card-priority" style="background: var(--mgsr-teal);"></div>
+              <div class="deal-card-header">
+                <img class="deal-card-avatar" src="https://img.a.transfermarkt.technology/portrait/header/default.jpg?lm=1" alt="">
+                <div>
+                  <div class="deal-card-player">Ivan Marković</div>
+                  <div class="deal-card-club">🇷🇸 FK Radnički Niš · RW</div>
+                </div>
+              </div>
+              <div class="deal-card-target-club">
+                <span class="target-label">→</span>
+                <span class="target-name">Hapoel Be'er Sheva</span>
+              </div>
+              <div class="deal-card-tags">
+                <span class="deal-tag position">RW</span>
+                <span class="deal-tag mandate">✓ Mandate</span>
+              </div>
+              <div class="deal-card-meta">
+                <div class="deal-card-value">€350K</div>
+                <div class="deal-card-commission">~€21K comm.</div>
+              </div>
+              <div class="deal-card-footer">
+                <div class="deal-card-agent">👤 Lior</div>
+                <div class="deal-card-days">4d in stage</div>
+              </div>
+            </div>
+
+            <!-- Deal: Lucas Moreno -->
+            <div class="deal-card" draggable="true">
+              <div class="deal-card-priority" style="background: var(--mgsr-purple);"></div>
+              <div class="deal-card-header">
+                <img class="deal-card-avatar" src="https://img.a.transfermarkt.technology/portrait/header/default.jpg?lm=1" alt="">
+                <div>
+                  <div class="deal-card-player">Lucas Moreno</div>
+                  <div class="deal-card-club">🇪🇸 Valencia CF · LW</div>
+                </div>
+              </div>
+              <div class="deal-card-target-club">
+                <span class="target-label">→</span>
+                <span class="target-name">Maccabi Haifa</span>
+              </div>
+              <div class="deal-card-tags">
+                <span class="deal-tag position">LW</span>
+                <span class="deal-tag no-mandate">No Mandate</span>
+              </div>
+              <div class="deal-card-meta">
+                <div class="deal-card-value">€500K (loan)</div>
+                <div class="deal-card-commission">~€15K comm.</div>
+              </div>
+              <div class="deal-card-footer">
+                <div class="deal-card-agent">👤 Lior</div>
+                <div class="deal-card-days">2d in stage</div>
+              </div>
+            </div>
+
+            <!-- Deal: Lauren James (Women) -->
+            <div class="deal-card" draggable="true">
+              <div class="deal-card-priority" style="background: #ec4899;"></div>
+              <div class="deal-card-header">
+                <img class="deal-card-avatar" src="https://img.a.transfermarkt.technology/portrait/header/default.jpg?lm=1" alt="">
+                <div>
+                  <div class="deal-card-player">Lauren James</div>
+                  <div class="deal-card-club">🏴󠁧󠁢󠁥󠁮󠁧󠁿 Chelsea FCW · RW</div>
+                </div>
+              </div>
+              <div class="deal-card-target-club">
+                <span class="target-label">→</span>
+                <span class="target-name">FC Barcelona Femení</span>
+              </div>
+              <div class="deal-card-tags">
+                <span class="deal-tag position">RW</span>
+                <span class="deal-tag women">Women</span>
+                <span class="deal-tag mandate">✓ Mandate</span>
+              </div>
+              <div class="deal-card-meta">
+                <div class="deal-card-value">€350K</div>
+                <div class="deal-card-commission">~€21K comm.</div>
+              </div>
+              <div class="deal-card-footer">
+                <div class="deal-card-agent">👤 Lior</div>
+                <div class="deal-card-days">6d in stage</div>
+              </div>
+            </div>
+
+            <button class="add-deal-btn">+ Present Player</button>
+          </div>
+        </div>
+
+        <!-- Column: In Negotiation -->
+        <div class="kanban-column" data-stage="negotiation">
+          <div class="kanban-column-header">
+            <div>
+              <div class="kanban-column-title"><span class="dot" style="background: var(--mgsr-amber);"></span> In Negotiation</div>
+              <div class="kanban-column-value">€1.05M pipeline</div>
+            </div>
+            <span class="kanban-column-count">3</span>
+          </div>
+          <div class="kanban-column-body">
+
+            <!-- Deal: Marcus Johnson - Active Negotiation -->
+            <div class="deal-card" draggable="true">
+              <div class="deal-card-priority" style="background: var(--mgsr-amber);"></div>
+              <div class="deal-card-header">
+                <img class="deal-card-avatar" src="https://img.a.transfermarkt.technology/portrait/header/default.jpg?lm=1" alt="">
+                <div>
+                  <div class="deal-card-player">Marcus Johnson</div>
+                  <div class="deal-card-club">🏴󠁧󠁢󠁥󠁮󠁧󠁿 Sheffield Wednesday · CM</div>
+                </div>
+              </div>
+              <div class="deal-card-target-club">
+                <span class="target-label">→</span>
+                <span class="target-name">Hapoel Tel Aviv</span>
+              </div>
+              <div class="deal-card-tags">
+                <span class="deal-tag position">CM</span>
+                <span class="deal-tag mandate">✓ Mandate</span>
+                <span class="deal-tag urgent">⚡ Counter-offer received</span>
+              </div>
+              <div class="deal-card-meta">
+                <div class="deal-card-value">€450K → €380K</div>
+                <div class="deal-card-commission">~€23K comm.</div>
+              </div>
+              <div class="deal-card-footer">
+                <div class="deal-card-agent">👤 Lior</div>
+                <div class="deal-card-days">12d in stage</div>
+              </div>
+            </div>
+
+            <!-- Deal: Lucas Silva -->
+            <div class="deal-card" draggable="true">
+              <div class="deal-card-priority" style="background: var(--mgsr-green);"></div>
+              <div class="deal-card-header">
+                <img class="deal-card-avatar" src="https://img.a.transfermarkt.technology/portrait/header/default.jpg?lm=1" alt="">
+                <div>
+                  <div class="deal-card-player">Lucas Silva</div>
+                  <div class="deal-card-club">🇧🇷 Coritiba FC · DM</div>
+                </div>
+              </div>
+              <div class="deal-card-target-club">
+                <span class="target-label">→</span>
+                <span class="target-name">Maccabi Netanya</span>
+              </div>
+              <div class="deal-card-tags">
+                <span class="deal-tag position">DM</span>
+                <span class="deal-tag mandate">✓ Mandate</span>
+              </div>
+              <div class="deal-card-meta">
+                <div class="deal-card-value">€300K</div>
+                <div class="deal-card-commission">~€18K comm.</div>
+              </div>
+              <div class="deal-card-footer">
+                <div class="deal-card-agent">👤 Lior</div>
+                <div class="deal-card-days">8d in stage</div>
+              </div>
+            </div>
+
+            <!-- Deal: Noam Greenfeld (Youth → Men) -->
+            <div class="deal-card" draggable="true">
+              <div class="deal-card-priority" style="background: #06b6d4;"></div>
+              <div class="deal-card-header">
+                <img class="deal-card-avatar" src="https://img.a.transfermarkt.technology/portrait/header/default.jpg?lm=1" alt="">
+                <div>
+                  <div class="deal-card-player">Noam Greenfeld</div>
+                  <div class="deal-card-club">🇮🇱 Hapoel Tel Aviv · LW</div>
+                </div>
+              </div>
+              <div class="deal-card-target-club">
+                <span class="target-label">→</span>
+                <span class="target-name">NK Domžale (loan)</span>
+              </div>
+              <div class="deal-card-tags">
+                <span class="deal-tag position">LW</span>
+                <span class="deal-tag youth">Youth Graduate</span>
+                <span class="deal-tag mandate">✓ Mandate</span>
+              </div>
+              <div class="deal-card-meta">
+                <div class="deal-card-value">Loan (€300K option)</div>
+                <div class="deal-card-commission">~€9K comm.</div>
+              </div>
+              <div class="deal-card-footer">
+                <div class="deal-card-agent">👤 Lior</div>
+                <div class="deal-card-days">15d in stage</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Column: Deal Agreed -->
+        <div class="kanban-column" data-stage="agreed">
+          <div class="kanban-column-header">
+            <div>
+              <div class="kanban-column-title"><span class="dot" style="background: var(--mgsr-green);"></span> Deal Agreed</div>
+              <div class="kanban-column-value">€600K pipeline</div>
+            </div>
+            <span class="kanban-column-count">2</span>
+          </div>
+          <div class="kanban-column-body">
+
+            <!-- Deal: Omar Marshiano -->
+            <div class="deal-card" draggable="true">
+              <div class="deal-card-priority" style="background: var(--mgsr-green);"></div>
+              <div class="deal-card-header">
+                <img class="deal-card-avatar" src="https://img.a.transfermarkt.technology/portrait/header/default.jpg?lm=1" alt="">
+                <div>
+                  <div class="deal-card-player">Omar Marshiano</div>
+                  <div class="deal-card-club">🇮🇱 Maccabi Petah Tikva · CF</div>
+                </div>
+              </div>
+              <div class="deal-card-target-club">
+                <span class="target-label">→</span>
+                <span class="target-name">Hapoel Haifa</span>
+              </div>
+              <div class="deal-card-tags">
+                <span class="deal-tag position">CF</span>
+                <span class="deal-tag mandate">✓ Mandate</span>
+                <span class="deal-tag" style="background: var(--mgsr-green-dim); color: var(--mgsr-green);">📝 Awaiting medical</span>
+              </div>
+              <div class="deal-card-meta">
+                <div class="deal-card-value">€350K + bonuses</div>
+                <div class="deal-card-commission">~€28K comm.</div>
+              </div>
+              <div class="deal-card-footer">
+                <div class="deal-card-agent">👤 Lior</div>
+                <div class="deal-card-days">2d in stage</div>
+              </div>
+            </div>
+
+            <!-- Deal: Dor Peretz -->
+            <div class="deal-card" draggable="true">
+              <div class="deal-card-priority" style="background: var(--mgsr-green);"></div>
+              <div class="deal-card-header">
+                <img class="deal-card-avatar" src="https://img.a.transfermarkt.technology/portrait/header/default.jpg?lm=1" alt="">
+                <div>
+                  <div class="deal-card-player">Dor Peretz</div>
+                  <div class="deal-card-club">🇮🇱 Maccabi Tel Aviv · CM</div>
+                </div>
+              </div>
+              <div class="deal-card-target-club">
+                <span class="target-label">→</span>
+                <span class="target-name">Ferencváros (Hungary)</span>
+              </div>
+              <div class="deal-card-tags">
+                <span class="deal-tag position">CM</span>
+                <span class="deal-tag mandate">✓ Mandate</span>
+                <span class="deal-tag" style="background: var(--mgsr-green-dim); color: var(--mgsr-green);">✈️ Travel booked</span>
+              </div>
+              <div class="deal-card-meta">
+                <div class="deal-card-value">€250K</div>
+                <div class="deal-card-commission">~€15K comm.</div>
+              </div>
+              <div class="deal-card-footer">
+                <div class="deal-card-agent">👤 Lior</div>
+                <div class="deal-card-days">1d in stage</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Column: Commission Collected -->
+        <div class="kanban-column" data-stage="closed">
+          <div class="kanban-column-header">
+            <div>
+              <div class="kanban-column-title"><span class="dot" style="background: var(--mgsr-teal);"></span> Closed & Collected</div>
+              <div class="kanban-column-value">€98K earned this quarter</div>
+            </div>
+            <span class="kanban-column-count">2</span>
+          </div>
+          <div class="kanban-column-body">
+
+            <!-- Deal: Pierre Dupont (Closed) -->
+            <div class="deal-card" style="opacity: 0.75;" draggable="true">
+              <div class="deal-card-priority" style="background: var(--mgsr-teal);"></div>
+              <div class="deal-card-header">
+                <img class="deal-card-avatar" src="https://img.a.transfermarkt.technology/portrait/header/default.jpg?lm=1" alt="">
+                <div>
+                  <div class="deal-card-player">Pierre Dupont ✅</div>
+                  <div class="deal-card-club">🇫🇷 RC Lens · LW</div>
+                </div>
+              </div>
+              <div class="deal-card-target-club">
+                <span class="target-label">→</span>
+                <span class="target-name">Maccabi Haifa</span>
+              </div>
+              <div class="deal-card-tags">
+                <span class="deal-tag position">LW</span>
+                <span class="deal-tag" style="background: var(--mgsr-teal-dim); color: var(--mgsr-teal);">💰 Paid €52K</span>
+              </div>
+              <div class="deal-card-meta">
+                <div class="deal-card-value" style="text-decoration: line-through; opacity: 0.6;">€850K</div>
+                <div class="deal-card-commission" style="color: var(--mgsr-green); font-weight: 700;">€52K collected</div>
+              </div>
+              <div class="deal-card-footer">
+                <div class="deal-card-agent">👤 Lior</div>
+                <div class="deal-card-days">Closed Jan 15</div>
+              </div>
+            </div>
+
+            <!-- Deal: James O'Brien (Closed) -->
+            <div class="deal-card" style="opacity: 0.75;" draggable="true">
+              <div class="deal-card-priority" style="background: var(--mgsr-teal);"></div>
+              <div class="deal-card-header">
+                <img class="deal-card-avatar" src="https://img.a.transfermarkt.technology/portrait/header/default.jpg?lm=1" alt="">
+                <div>
+                  <div class="deal-card-player">James O'Brien ✅</div>
+                  <div class="deal-card-club">🇮🇪 Shamrock Rovers · CB</div>
+                </div>
+              </div>
+              <div class="deal-card-target-club">
+                <span class="target-label">→</span>
+                <span class="target-name">Beitar Jerusalem</span>
+              </div>
+              <div class="deal-card-tags">
+                <span class="deal-tag position">CB</span>
+                <span class="deal-tag" style="background: var(--mgsr-teal-dim); color: var(--mgsr-teal);">💰 Paid €46K</span>
+              </div>
+              <div class="deal-card-meta">
+                <div class="deal-card-value" style="text-decoration: line-through; opacity: 0.6;">€720K</div>
+                <div class="deal-card-commission" style="color: var(--mgsr-green); font-weight: 700;">€46K collected</div>
+              </div>
+              <div class="deal-card-footer">
+                <div class="deal-card-agent">👤 Lior</div>
+                <div class="deal-card-days">Closed Feb 2</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ═══ REVENUE ANALYTICS VIEW ═══ -->
+    <div id="revenue-view" class="revenue-panel">
+      <div class="revenue-grid">
+        <!-- Quarterly Revenue Chart -->
+        <div class="revenue-chart-card">
+          <h3>📈 Quarterly Revenue (Closed vs Pipeline)</h3>
+          <div class="chart-area" style="align-items: flex-end; padding: 0 2.5rem 2rem;">
+            <!-- Q1 2025 -->
+            <div class="chart-bar-group">
+              <div class="chart-bar closed" style="height: 45px;" title="€32K closed"></div>
+              <div class="chart-bar pipeline" style="height: 70px;" title="€75K pipeline"></div>
+              <span class="chart-label">Q1 '25</span>
+            </div>
+            <!-- Q2 2025 -->
+            <div class="chart-bar-group">
+              <div class="chart-bar closed" style="height: 80px;" title="€67K closed"></div>
+              <div class="chart-bar pipeline" style="height: 95px;" title="€110K pipeline"></div>
+              <span class="chart-label">Q2 '25</span>
+            </div>
+            <!-- Q3 2025 -->
+            <div class="chart-bar-group">
+              <div class="chart-bar closed" style="height: 55px;" title="€41K closed"></div>
+              <div class="chart-bar pipeline" style="height: 60px;" title="€55K pipeline"></div>
+              <span class="chart-label">Q3 '25</span>
+            </div>
+            <!-- Q4 2025 -->
+            <div class="chart-bar-group">
+              <div class="chart-bar closed" style="height: 110px;" title="€89K closed"></div>
+              <div class="chart-bar pipeline" style="height: 130px;" title="€145K pipeline"></div>
+              <span class="chart-label">Q4 '25</span>
+            </div>
+            <!-- Q1 2026 (current) -->
+            <div class="chart-bar-group">
+              <div class="chart-bar closed" style="height: 120px; background: linear-gradient(to top, var(--mgsr-green), var(--mgsr-teal));" title="€98K closed"></div>
+              <div class="chart-bar pipeline" style="height: 180px; background: linear-gradient(to top, var(--mgsr-purple), rgba(168,85,247,0.4));" title="€287K pipeline"></div>
+              <span class="chart-label" style="font-weight: 700; color: var(--mgsr-teal);">Q1 '26</span>
+            </div>
+          </div>
+          <div style="display: flex; justify-content: center; gap: 1.5rem; margin-top: 0.5rem;">
+            <span style="font-size: 0.75rem; color: var(--mgsr-green); display: flex; align-items: center; gap: 0.3rem;"><span style="width:10px;height:10px;background:var(--mgsr-green);border-radius:2px;display:inline-block;"></span> Closed Revenue</span>
+            <span style="font-size: 0.75rem; color: var(--mgsr-purple); display: flex; align-items: center; gap: 0.3rem;"><span style="width:10px;height:10px;background:var(--mgsr-purple);border-radius:2px;display:inline-block;opacity:0.6;"></span> Pipeline (projected)</span>
+          </div>
+        </div>
+
+        <!-- Conversion Funnel -->
+        <div class="funnel-card">
+          <h3>🔄 Conversion Funnel</h3>
+          <div>
+            <div class="funnel-step">
+              <div class="funnel-step-label" style="color: var(--mgsr-muted);">Scouted</div>
+              <div class="funnel-bar-bg"><div class="funnel-bar-fill" style="width: 100%; background: var(--mgsr-muted);"></div></div>
+              <div class="funnel-step-count">47</div>
+              <div class="funnel-step-rate">100%</div>
+            </div>
+            <div class="funnel-step">
+              <div class="funnel-step-label" style="color: var(--mgsr-blue);">Presented</div>
+              <div class="funnel-bar-bg"><div class="funnel-bar-fill" style="width: 60%; background: var(--mgsr-blue);"></div></div>
+              <div class="funnel-step-count">28</div>
+              <div class="funnel-step-rate">60%</div>
+            </div>
+            <div class="funnel-step">
+              <div class="funnel-step-label" style="color: var(--mgsr-amber);">Negotiation</div>
+              <div class="funnel-bar-bg"><div class="funnel-bar-fill" style="width: 32%; background: var(--mgsr-amber);"></div></div>
+              <div class="funnel-step-count">15</div>
+              <div class="funnel-step-rate">32%</div>
+            </div>
+            <div class="funnel-step">
+              <div class="funnel-step-label" style="color: var(--mgsr-green);">Agreed</div>
+              <div class="funnel-bar-bg"><div class="funnel-bar-fill" style="width: 21%; background: var(--mgsr-green);"></div></div>
+              <div class="funnel-step-count">10</div>
+              <div class="funnel-step-rate">21%</div>
+            </div>
+            <div class="funnel-step">
+              <div class="funnel-step-label" style="color: var(--mgsr-teal);">Closed</div>
+              <div class="funnel-bar-bg"><div class="funnel-bar-fill" style="width: 15%; background: linear-gradient(90deg, var(--mgsr-teal), var(--mgsr-green));"></div></div>
+              <div class="funnel-step-count" style="color: var(--mgsr-teal);">7</div>
+              <div class="funnel-step-rate" style="color: var(--mgsr-teal);">15%</div>
+            </div>
+          </div>
+          <div style="margin-top: 1rem; padding: 0.75rem; background: var(--mgsr-darker); border-radius: 8px;">
+            <div style="font-size: 0.75rem; color: var(--mgsr-muted); margin-bottom: 0.25rem;">💡 AI Insight</div>
+            <div style="font-size: 0.8rem; color: var(--mgsr-text);">Your <strong style="color: var(--mgsr-teal);">CM deals convert 2.3× better</strong> than average. Consider focusing Balkan scouting on midfielders — Israeli clubs are buying.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Revenue by segment -->
+      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-top: 1rem;">
+        <div class="revenue-chart-card">
+          <h3>🏟 Revenue by Market</h3>
+          <div style="padding: 0.5rem 0;">
+            <div style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0; border-bottom: 1px solid rgba(255,255,255,0.04);">
+              <span style="font-size: 0.85rem;">🇮🇱</span>
+              <span style="font-size: 0.85rem; flex: 1;">Israel (Ligat Ha'Al)</span>
+              <span style="font-size: 0.85rem; font-weight: 700; color: var(--mgsr-teal);">€68K</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0; border-bottom: 1px solid rgba(255,255,255,0.04);">
+              <span style="font-size: 0.85rem;">🇭🇺</span>
+              <span style="font-size: 0.85rem; flex: 1;">Hungary (NB I)</span>
+              <span style="font-size: 0.85rem; font-weight: 700; color: var(--mgsr-teal);">€15K</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0; border-bottom: 1px solid rgba(255,255,255,0.04);">
+              <span style="font-size: 0.85rem;">🇸🇮</span>
+              <span style="font-size: 0.85rem; flex: 1;">Slovenia (Prva liga)</span>
+              <span style="font-size: 0.85rem; font-weight: 700; color: var(--mgsr-teal);">€9K</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0;">
+              <span style="font-size: 0.85rem;">🇷🇸</span>
+              <span style="font-size: 0.85rem; flex: 1;">Serbia (SuperLiga)</span>
+              <span style="font-size: 0.85rem; font-weight: 700; color: var(--mgsr-teal);">€6K</span>
+            </div>
+          </div>
+        </div>
+        <div class="revenue-chart-card">
+          <h3>⚽ Revenue by Position</h3>
+          <div style="padding: 0.5rem 0;">
+            <div style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0; border-bottom: 1px solid rgba(255,255,255,0.04);">
+              <span class="deal-tag position" style="font-size: 0.75rem;">CM</span>
+              <span style="font-size: 0.85rem; flex: 1;">Central Midfield</span>
+              <span style="font-size: 0.85rem; font-weight: 700; color: var(--mgsr-teal);">€46K</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0; border-bottom: 1px solid rgba(255,255,255,0.04);">
+              <span class="deal-tag position" style="font-size: 0.75rem;">LW</span>
+              <span style="font-size: 0.85rem; flex: 1;">Left Wing</span>
+              <span style="font-size: 0.85rem; font-weight: 700; color: var(--mgsr-teal);">€28K</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0; border-bottom: 1px solid rgba(255,255,255,0.04);">
+              <span class="deal-tag position" style="font-size: 0.75rem;">CB</span>
+              <span style="font-size: 0.85rem; flex: 1;">Centre-Back</span>
+              <span style="font-size: 0.85rem; font-weight: 700; color: var(--mgsr-teal);">€18K</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0;">
+              <span class="deal-tag position" style="font-size: 0.75rem;">CF</span>
+              <span style="font-size: 0.85rem; flex: 1;">Centre-Forward</span>
+              <span style="font-size: 0.85rem; font-weight: 700; color: var(--mgsr-teal);">€6K</span>
+            </div>
+          </div>
+        </div>
+        <div class="revenue-chart-card">
+          <h3>📅 Upcoming Payments</h3>
+          <div style="padding: 0.5rem 0;">
+            <div style="padding: 0.6rem 0; border-bottom: 1px solid rgba(255,255,255,0.04);">
+              <div style="font-size: 0.85rem; font-weight: 600;">Omar Marshiano → Hapoel Haifa</div>
+              <div style="display: flex; justify-content: space-between; margin-top: 0.2rem;">
+                <span style="font-size: 0.75rem; color: var(--mgsr-muted);">Expected Mar 10</span>
+                <span style="font-size: 0.85rem; font-weight: 700; color: var(--mgsr-amber);">€28K</span>
+              </div>
+            </div>
+            <div style="padding: 0.6rem 0; border-bottom: 1px solid rgba(255,255,255,0.04);">
+              <div style="font-size: 0.85rem; font-weight: 600;">Dor Peretz → Ferencváros</div>
+              <div style="display: flex; justify-content: space-between; margin-top: 0.2rem;">
+                <span style="font-size: 0.75rem; color: var(--mgsr-muted);">Expected Mar 18</span>
+                <span style="font-size: 0.85rem; font-weight: 700; color: var(--mgsr-amber);">€15K</span>
+              </div>
+            </div>
+            <div style="padding: 0.6rem 0;">
+              <div style="font-size: 0.85rem; font-weight: 600;">Marcus Johnson → Hapoel TA</div>
+              <div style="display: flex; justify-content: space-between; margin-top: 0.2rem;">
+                <span style="font-size: 0.75rem; color: var(--mgsr-muted);">Pending negotiation</span>
+                <span style="font-size: 0.85rem; font-weight: 700; color: var(--mgsr-muted);">~€23K</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- main-content -->
+</div><!-- app-shell -->
+
+<!-- ═══ Deal Detail Slide-Over ═══ -->
+<div class="deal-detail-overlay" id="dealDetailOverlay" onclick="closeDealDetail(event)">
+  <div class="deal-detail-panel" onclick="event.stopPropagation()">
+    <div class="deal-detail-header">
+      <div class="deal-detail-player">
+        <div class="deal-detail-avatar"></div>
+        <div>
+          <div class="deal-detail-name">Marko Petković</div>
+          <div class="deal-detail-sub">24 · CF · 🇷🇸 FK Vojvodina · €750K</div>
+        </div>
+      </div>
+      <button class="deal-detail-close" onclick="closeDealDetail()">✕</button>
+    </div>
+
+    <!-- Stage Selector -->
+    <div style="display: flex; gap: 4px; margin-bottom: 1.25rem; flex-wrap: wrap;">
+      <button class="btn btn-sm" style="background: var(--mgsr-muted); color: var(--mgsr-dark); opacity: 0.4; font-size: 0.7rem;">Scouted ✓</button>
+      <span style="color: var(--mgsr-border); align-self: center;">→</span>
+      <button class="btn btn-sm" style="background: var(--mgsr-blue); color: #fff; font-size: 0.7rem;">Presented</button>
+      <span style="color: var(--mgsr-border); align-self: center;">→</span>
+      <button class="btn btn-sm" style="background: var(--mgsr-amber-dim); color: var(--mgsr-amber); font-size: 0.7rem;">Negotiation</button>
+      <span style="color: var(--mgsr-border); align-self: center;">→</span>
+      <button class="btn btn-sm" style="background: var(--mgsr-green-dim); color: var(--mgsr-green); font-size: 0.7rem;">Agreed</button>
+      <span style="color: var(--mgsr-border); align-self: center;">→</span>
+      <button class="btn btn-sm" style="background: rgba(255,255,255,0.05); color: var(--mgsr-muted); font-size: 0.7rem;">Closed</button>
+    </div>
+
+    <div class="deal-detail-section">
+      <h4>Deal Economics</h4>
+      <div class="deal-detail-grid">
+        <div class="deal-detail-item">
+          <div class="label">Transfer Fee</div>
+          <div class="value" style="color: var(--mgsr-teal);">€750,000</div>
+        </div>
+        <div class="deal-detail-item">
+          <div class="label">Commission Rate</div>
+          <div class="value">6% (50-50 split)</div>
+        </div>
+        <div class="deal-detail-item">
+          <div class="label">Projected Commission</div>
+          <div class="value" style="color: var(--mgsr-amber);">€45,000</div>
+        </div>
+        <div class="deal-detail-item">
+          <div class="label">Salary Range</div>
+          <div class="value">€16-20K/yr</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="deal-detail-section">
+      <h4>Target Clubs</h4>
+      <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+        <div style="display: flex; align-items: center; justify-content: space-between; background: var(--mgsr-darker); padding: 0.6rem; border-radius: 8px;">
+          <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <span>🇮🇱</span>
+            <span style="font-weight: 600; font-size: 0.85rem;">Maccabi Tel Aviv</span>
+          </div>
+          <span class="deal-tag" style="background: var(--mgsr-amber-dim); color: var(--mgsr-amber);">Interested</span>
+        </div>
+        <div style="display: flex; align-items: center; justify-content: space-between; background: var(--mgsr-darker); padding: 0.6rem; border-radius: 8px;">
+          <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <span>🇮🇱</span>
+            <span style="font-weight: 600; font-size: 0.85rem;">Hapoel Be'er Sheva</span>
+          </div>
+          <span class="deal-tag" style="background: var(--mgsr-blue-dim); color: var(--mgsr-blue);">Sent profile</span>
+        </div>
+        <div style="display: flex; align-items: center; justify-content: space-between; background: var(--mgsr-darker); padding: 0.6rem; border-radius: 8px;">
+          <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <span>🇭🇺</span>
+            <span style="font-weight: 600; font-size: 0.85rem;">Ferencváros</span>
+          </div>
+          <span class="deal-tag" style="background: rgba(255,255,255,0.06); color: var(--mgsr-muted);">No response</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="deal-detail-section">
+      <h4>Mandate</h4>
+      <div style="background: var(--mgsr-darker); padding: 0.75rem; border-radius: 8px; display: flex; align-items: center; justify-content: space-between;">
+        <div>
+          <div style="font-size: 0.85rem; font-weight: 600; color: var(--mgsr-green);">✓ Active Mandate</div>
+          <div style="font-size: 0.75rem; color: var(--mgsr-muted);">Valid until Aug 31, 2026 · FIFA Lic. 22412-9595</div>
+        </div>
+        <button class="btn btn-sm btn-secondary">📄 View PDF</button>
+      </div>
+    </div>
+
+    <div class="deal-detail-section">
+      <h4>Timeline</h4>
+      <div class="deal-timeline">
+        <div class="timeline-item">
+          <div class="timeline-dot completed"></div>
+          <div class="tl-title" style="color: var(--mgsr-green);">Player added to roster</div>
+          <div class="tl-date">Feb 24, 2026 · via War Room discovery</div>
+        </div>
+        <div class="timeline-item">
+          <div class="timeline-dot completed"></div>
+          <div class="tl-title" style="color: var(--mgsr-green);">Mandate signed</div>
+          <div class="tl-date">Feb 25, 2026 · PDF uploaded</div>
+        </div>
+        <div class="timeline-item">
+          <div class="timeline-dot active"></div>
+          <div class="tl-title" style="color: var(--mgsr-teal);">Deal created — Scouted</div>
+          <div class="tl-date">Feb 27, 2026</div>
+        </div>
+        <div class="timeline-item">
+          <div class="timeline-dot"></div>
+          <div class="tl-title">Presented to club</div>
+          <div class="tl-date">—</div>
+        </div>
+        <div class="timeline-item">
+          <div class="timeline-dot"></div>
+          <div class="tl-title">Negotiation started</div>
+          <div class="tl-date">—</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="deal-detail-section">
+      <h4>Quick Actions</h4>
+      <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+        <button class="btn btn-primary btn-sm">📤 Present to Club</button>
+        <button class="btn btn-secondary btn-sm">📝 Add Note</button>
+        <button class="btn btn-secondary btn-sm">📊 Scout Report</button>
+        <button class="btn btn-secondary btn-sm">🎬 Highlights</button>
+        <button class="btn btn-ghost btn-sm" style="color: var(--mgsr-red);">🗑 Archive Deal</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ New Deal Modal ═══ -->
+<div class="modal-overlay" id="newDealModal">
+  <div class="modal-box">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+      <div class="modal-title">+ Create New Deal</div>
+      <button class="deal-detail-close" onclick="closeNewDealModal()">✕</button>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Player (from roster)</label>
+      <select class="form-select">
+        <option>Search or select player...</option>
+        <option>Marko Petković · CF · FK Vojvodina</option>
+        <option>David Čerin · CM · NK Domžale</option>
+        <option>Luka Topalović · AM · HNK Gorica</option>
+        <option>Ivan Marković · RW · FK Radnički Niš</option>
+        <option>Omar Marshiano · CF · Maccabi Petah Tikva</option>
+        <option>Dor Peretz · CM · Maccabi Tel Aviv</option>
+        <option>Lauren James · RW · Chelsea FCW</option>
+        <option>Noam Greenfeld · LW · Hapoel Tel Aviv</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Target Club (optional)</label>
+      <select class="form-select">
+        <option>Select target club...</option>
+        <option>🇮🇱 Maccabi Tel Aviv</option>
+        <option>🇮🇱 Hapoel Tel Aviv</option>
+        <option>🇮🇱 Hapoel Be'er Sheva</option>
+        <option>🇮🇱 Maccabi Haifa</option>
+        <option>🇮🇱 Beitar Jerusalem</option>
+        <option>🇮🇱 Maccabi Netanya</option>
+        <option>🇮🇱 Hapoel Haifa</option>
+        <option>🇭🇺 Ferencváros</option>
+        <option>🇸🇮 NK Domžale</option>
+        <option>🇪🇸 FC Barcelona Femení</option>
+      </select>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Starting Stage</label>
+        <select class="form-select">
+          <option>Scouted</option>
+          <option selected>Presented to Club</option>
+          <option>In Negotiation</option>
+          <option>Deal Agreed</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Deal Type</label>
+        <select class="form-select">
+          <option>Permanent Transfer</option>
+          <option>Loan</option>
+          <option>Loan with Option</option>
+          <option>Free Transfer</option>
+          <option>Pre-contract</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Expected Fee (€)</label>
+        <input type="text" class="form-input" placeholder="e.g. 750000" value="">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Commission Rate (%)</label>
+        <input type="text" class="form-input" placeholder="e.g. 6" value="6">
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Salary Demand (€/year)</label>
+        <select class="form-select">
+          <option>Select range...</option>
+          <option>>€5K</option>
+          <option>€6-10K</option>
+          <option>€11-15K</option>
+          <option selected>€16-20K</option>
+          <option>€20-25K</option>
+          <option>€26-30K</option>
+          <option>€30K+</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Priority</label>
+        <select class="form-select">
+          <option>Low</option>
+          <option selected>Medium</option>
+          <option>High</option>
+          <option>Urgent</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Notes</label>
+      <textarea class="form-input" rows="3" placeholder="Deal context, contact person, special conditions..."></textarea>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Link to Request (auto-match)</label>
+      <select class="form-select">
+        <option>No matching request</option>
+        <option>🇮🇱 Hapoel TA — needs CM, 22-26, €300-600K</option>
+        <option>🇮🇱 Maccabi Haifa — needs LW, 20-25, €500K-1M</option>
+        <option>🇮🇱 Beitar Jerusalem — needs CB, 24-28, Free/Loan</option>
+      </select>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeNewDealModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="closeNewDealModal()">Create Deal</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // View switching
+  function showView(view) {
+    document.querySelectorAll('.view-tab').forEach(t => t.classList.remove('active'));
+    event.target.classList.add('active');
+
+    document.getElementById('kanban-view').style.display = view === 'kanban' ? 'block' : 'none';
+    document.getElementById('revenue-view').style.display = view === 'revenue' ? 'block' : 'none';
+    document.getElementById('revenue-view').classList.toggle('active', view === 'revenue');
+  }
+
+  // Deal detail
+  function openDealDetail(id) {
+    document.getElementById('dealDetailOverlay').classList.add('open');
+  }
+  function closeDealDetail(e) {
+    if (!e || e.target === e.currentTarget) {
+      document.getElementById('dealDetailOverlay').classList.remove('open');
+    }
+  }
+
+  // New deal modal
+  function openNewDealModal() {
+    document.getElementById('newDealModal').classList.add('open');
+  }
+  function closeNewDealModal() {
+    document.getElementById('newDealModal').classList.remove('open');
+  }
+
+  // Platform switcher
+  function switchPlatform(platform) {
+    document.querySelectorAll('.platform-btn').forEach(b => b.classList.remove('active'));
+    event.target.classList.add('active');
+
+    const breadcrumb = document.querySelector('.breadcrumb');
+    const labels = { men: "Men's Platform", women: "Women's Platform", youth: "Youth Platform" };
+    breadcrumb.textContent = `MGSR · ${labels[platform]}`;
+  }
+
+  // Basic drag & drop
+  let draggedCard = null;
+  document.querySelectorAll('.deal-card[draggable]').forEach(card => {
+    card.addEventListener('dragstart', (e) => {
+      draggedCard = card;
+      card.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    card.addEventListener('dragend', () => {
+      card.classList.remove('dragging');
+      draggedCard = null;
+    });
+  });
+
+  document.querySelectorAll('.kanban-column-body').forEach(col => {
+    col.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      col.style.background = 'rgba(168, 85, 247, 0.05)';
+    });
+    col.addEventListener('dragleave', () => {
+      col.style.background = '';
+    });
+    col.addEventListener('drop', (e) => {
+      e.preventDefault();
+      col.style.background = '';
+      if (draggedCard) {
+        const addBtn = col.querySelector('.add-deal-btn');
+        if (addBtn) col.insertBefore(draggedCard, addBtn);
+        else col.appendChild(draggedCard);
+      }
+    });
+  });
+
+  // Escape key
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      closeDealDetail();
+      closeNewDealModal();
+    }
+  });
+</script>
+
+</body>
+</html>

@@ -23,6 +23,7 @@ import com.liordahan.mgsrteam.features.players.playerinfo.documents.PlayerDocume
 import com.liordahan.mgsrteam.features.players.sort.SortOption
 import com.google.firebase.firestore.ListenerRegistration
 import com.liordahan.mgsrteam.firebase.FirebaseHandler
+import com.liordahan.mgsrteam.features.platform.PlatformManager
 import com.liordahan.mgsrteam.helpers.Result
 import com.liordahan.mgsrteam.transfermarket.PlayersUpdate
 import kotlinx.coroutines.Dispatchers
@@ -97,6 +98,7 @@ abstract class IPlayersViewModel : ViewModel() {
 class PlayersViewModel(
     private val firebaseHandler: FirebaseHandler,
     private val playersUpdate: PlayersUpdate,
+    private val platformManager: PlatformManager,
     private val getPositionFilterFlowUseCase: IGetPositionFilterFlowUseCase,
     private val getAgentFilterFlowUseCase: IGetAgentFilterFlowUseCase,
     private val getContractFilterOptionUseCase: IGetContractFilterOptionUseCase,
@@ -137,6 +139,19 @@ class PlayersViewModel(
         viewModelScope.launch(Dispatchers.IO) {
             val name = getCurrentUserName()
             _inputState.update { it.copy(currentUserName = name) }
+        }
+
+        // Re-subscribe to Firestore when the active platform changes
+        viewModelScope.launch {
+            platformManager.current
+                .collect {
+                    // Remove old snapshot listeners and re-register on new collection
+                    listenerRegistrations.forEach { it.remove() }
+                    listenerRegistrations.clear()
+                    getAllPlayers()
+                    loadAllAccounts()
+                    loadMandateDocuments()
+                }
         }
 
         viewModelScope.launch {

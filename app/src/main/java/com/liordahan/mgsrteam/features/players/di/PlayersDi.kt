@@ -70,7 +70,7 @@ val playersModule = module {
 
     single { PlayersUpdate() }
 
-    single { PlayersRepository(get()) } bind IPlayersRepository::class
+    single { PlayersRepository(get(), get()) } bind IPlayersRepository::class
 
     single {
         FilterRepository()
@@ -80,7 +80,7 @@ val playersModule = module {
         SortRepository()
     } bind ISortRepository::class
 
-    viewModel<IPlayersViewModel> { PlayersViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
+    viewModel<IPlayersViewModel> { PlayersViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
     single { PlayerDocumentsRepository(get()) }
     single { ClubSquadValueFetcher() }
     single { ScoutApiClient() }
@@ -92,7 +92,7 @@ val playersModule = module {
     single { GeminiPassportOcrProvider() }
     single { DocumentDetectionService(get<Context>(), get<CloudVisionOcrProvider>(), get<GeminiPassportOcrProvider>()) }
     single { PlayerOffersRepository(get()) } bind IPlayerOffersRepository::class
-    viewModel<IPlayerInfoViewModel> { PlayerInfoViewModel(get<Context>(), get(), get(), get(), get(), get(), get(), get()) }
+    viewModel<IPlayerInfoViewModel> { PlayerInfoViewModel(get<Context>(), get(), get(), get(), get(), get(), get(), get(), get()) }
     viewModel { GenerateMandateViewModel() }
 
     factory<IAddPositionFilterUseCase> {

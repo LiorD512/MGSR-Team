@@ -721,7 +721,10 @@ private fun TaskRowCard(
                             .clip(RoundedCornerShape(8.dp))
                             .background(HomeTealAccent.copy(alpha = 0.2f))
                             .clickable {
-                                navController.navigate("${Screens.PlayerInfoScreen.route}/${android.net.Uri.encode(task.playerTmProfile)}")
+                                val navId = task.playerTmProfile.takeIf { it.isNotBlank() } ?: task.playerId
+                                if (navId.isNotBlank()) {
+                                    navController.navigate("${Screens.PlayerInfoScreen.route}/${android.net.Uri.encode(navId)}")
+                                }
                             }
                             .padding(horizontal = 8.dp, vertical = 4.dp)
                     ) {

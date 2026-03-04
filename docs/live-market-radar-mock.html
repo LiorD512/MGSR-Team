@@ -1,0 +1,1057 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Live Market Radar — MGSR</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --mgsr-dark: #0F1923;
+      --mgsr-darker: #0A1219;
+      --mgsr-card: #1A2736;
+      --mgsr-card-hover: #1F2F40;
+      --mgsr-border: #253545;
+      --mgsr-teal: #4DB6AC;
+      --mgsr-teal-dim: rgba(77, 182, 172, 0.15);
+      --mgsr-text: #E8EAED;
+      --mgsr-muted: #8C999B;
+      --mgsr-purple: #A855F7;
+      --mgsr-purple-dim: rgba(168, 85, 247, 0.15);
+      --mgsr-amber: #F59E0B;
+      --mgsr-amber-dim: rgba(245, 158, 11, 0.15);
+      --mgsr-green: #22c55e;
+      --mgsr-green-dim: rgba(34, 197, 94, 0.15);
+      --mgsr-red: #ef4444;
+      --mgsr-red-dim: rgba(239, 68, 68, 0.15);
+      --mgsr-blue: #3b82f6;
+      --mgsr-blue-dim: rgba(59, 130, 246, 0.15);
+      --mgsr-pink: #ec4899;
+      --mgsr-pink-dim: rgba(236, 72, 153, 0.15);
+      --mgsr-cyan: #06b6d4;
+      --mgsr-cyan-dim: rgba(6, 182, 212, 0.15);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Outfit', sans-serif; background: var(--mgsr-dark); color: var(--mgsr-text); min-height: 100vh; line-height: 1.5; }
+
+    /* ═══ App Shell ═══ */
+    .app-shell { display: flex; min-height: 100vh; }
+    .sidebar {
+      width: 224px; flex-shrink: 0; background: var(--mgsr-card); border-right: 1px solid var(--mgsr-border);
+      display: flex; flex-direction: column;
+    }
+    .sidebar-logo {
+      padding: 1.25rem 1rem; border-bottom: 1px solid var(--mgsr-border);
+      display: flex; align-items: center; gap: 0.75rem;
+    }
+    .sidebar-logo .logo-icon {
+      width: 36px; height: 36px; border-radius: 10px; background: linear-gradient(135deg, var(--mgsr-teal), var(--mgsr-purple));
+      display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.85rem; color: #fff;
+    }
+    .sidebar-logo span { font-family: 'Syne', sans-serif; font-size: 1.15rem; font-weight: 700; color: var(--mgsr-teal); }
+    .platform-switcher {
+      display: flex; gap: 4px; padding: 4px; background: var(--mgsr-darker);
+      border-radius: 10px; border: 1px solid var(--mgsr-border); margin: 0.75rem;
+    }
+    .platform-btn {
+      flex: 1; padding: 0.4rem; border-radius: 7px; font-size: 0.75rem; font-weight: 600;
+      background: transparent; border: none; color: var(--mgsr-muted); cursor: pointer; transition: all 0.2s;
+      font-family: 'Outfit', sans-serif;
+    }
+    .platform-btn.active { background: var(--mgsr-teal-dim); color: var(--mgsr-teal); }
+    .sidebar-section { padding: 0.75rem; }
+    .sidebar-section-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--mgsr-muted); padding: 0.5rem 0.75rem; font-weight: 600; }
+    .sidebar-nav a {
+      display: flex; align-items: center; gap: 0.75rem;
+      padding: 0.65rem 0.75rem; border-radius: 8px; color: var(--mgsr-muted);
+      font-size: 0.875rem; text-decoration: none; margin-bottom: 2px; transition: all 0.2s;
+    }
+    .sidebar-nav a:hover { color: var(--mgsr-text); background: rgba(255,255,255,0.04); }
+    .sidebar-nav a.active { background: var(--mgsr-purple-dim); color: var(--mgsr-purple); font-weight: 600; }
+    .sidebar-nav a .nav-icon { font-size: 1.1rem; width: 20px; text-align: center; }
+    .sidebar-nav a .badge-count {
+      margin-left: auto; background: var(--mgsr-red); color: #fff; font-size: 0.7rem;
+      padding: 0.1rem 0.45rem; border-radius: 10px; font-weight: 600;
+    }
+    .sidebar-footer {
+      margin-top: auto; padding: 1rem; border-top: 1px solid var(--mgsr-border);
+      display: flex; align-items: center; gap: 0.75rem;
+    }
+    .sidebar-footer .avatar {
+      width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, var(--mgsr-teal), var(--mgsr-blue));
+      display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 700; color: #fff;
+    }
+    .sidebar-footer .agent-name { font-size: 0.85rem; font-weight: 500; }
+    .sidebar-footer .agent-role { font-size: 0.7rem; color: var(--mgsr-muted); }
+
+    /* ═══ Main Content ═══ */
+    .main-content { flex: 1; overflow-y: auto; }
+
+    /* ═══ Top Bar ═══ */
+    .top-bar {
+      padding: 1rem 1.5rem; border-bottom: 1px solid var(--mgsr-border);
+      display: flex; align-items: center; justify-content: space-between;
+      background: var(--mgsr-card); position: sticky; top: 0; z-index: 20;
+    }
+    .top-bar h1 { font-family: 'Syne', sans-serif; font-size: 1.35rem; font-weight: 800; }
+    .top-bar .breadcrumb { font-size: 0.8rem; color: var(--mgsr-muted); }
+    .top-bar-right { display: flex; align-items: center; gap: 0.75rem; }
+
+    .btn {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      padding: 0.5rem 1rem; border-radius: 8px; font-family: inherit;
+      font-size: 0.85rem; font-weight: 600; cursor: pointer; border: none; transition: all 0.2s;
+    }
+    .btn-primary { background: var(--mgsr-teal); color: var(--mgsr-dark); }
+    .btn-primary:hover { background: #5fc9c0; }
+    .btn-secondary { background: var(--mgsr-card); color: var(--mgsr-text); border: 1px solid var(--mgsr-border); }
+    .btn-secondary:hover { background: var(--mgsr-card-hover); border-color: var(--mgsr-teal); }
+    .btn-ghost { background: transparent; color: var(--mgsr-muted); }
+    .btn-ghost:hover { color: var(--mgsr-text); }
+    .btn-sm { padding: 0.35rem 0.75rem; font-size: 0.8rem; }
+
+    /* ═══ Live Pulse Banner ═══ */
+    .live-banner {
+      background: linear-gradient(135deg, rgba(168, 85, 247, 0.08), rgba(77, 182, 172, 0.08));
+      border-bottom: 1px solid var(--mgsr-border);
+      padding: 0.75rem 1.5rem; display: flex; align-items: center; gap: 1rem;
+    }
+    .live-dot {
+      width: 10px; height: 10px; border-radius: 50%; background: var(--mgsr-red);
+      animation: livePulse 1.5s infinite;
+    }
+    @keyframes livePulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.5); }
+      50% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+    }
+    .live-text { font-size: 0.85rem; font-weight: 600; color: var(--mgsr-text); }
+    .live-text span { color: var(--mgsr-muted); font-weight: 400; }
+    .live-stats { margin-left: auto; display: flex; gap: 1.5rem; }
+    .live-stat { font-size: 0.8rem; color: var(--mgsr-muted); }
+    .live-stat strong { color: var(--mgsr-text); }
+
+    /* ═══ AI Daily Digest ═══ */
+    .digest-card {
+      margin: 1.25rem 1.5rem; background: linear-gradient(135deg, rgba(168, 85, 247, 0.1), rgba(77, 182, 172, 0.1));
+      border: 1px solid rgba(168, 85, 247, 0.25); border-radius: 14px;
+      padding: 1.25rem; position: relative; overflow: hidden;
+    }
+    .digest-card::before {
+      content: ''; position: absolute; top: -50%; right: -20%; width: 300px; height: 300px;
+      background: radial-gradient(circle, rgba(168, 85, 247, 0.06), transparent 70%);
+      pointer-events: none;
+    }
+    .digest-header {
+      display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.85rem;
+    }
+    .digest-icon {
+      width: 36px; height: 36px; border-radius: 10px;
+      background: linear-gradient(135deg, var(--mgsr-purple), var(--mgsr-teal));
+      display: flex; align-items: center; justify-content: center; font-size: 1.1rem;
+    }
+    .digest-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 1rem; }
+    .digest-time { font-size: 0.75rem; color: var(--mgsr-muted); margin-left: auto; }
+    .digest-items { display: flex; flex-direction: column; gap: 0.6rem; position: relative; }
+    .digest-item {
+      display: flex; gap: 0.75rem; align-items: flex-start;
+      background: rgba(0,0,0,0.2); border-radius: 10px; padding: 0.75rem;
+    }
+    .digest-item-icon { font-size: 1.2rem; flex-shrink: 0; margin-top: 0.1rem; }
+    .digest-item-text { font-size: 0.85rem; line-height: 1.5; }
+    .digest-item-text strong { color: var(--mgsr-teal); }
+    .digest-item-text .highlight { color: var(--mgsr-amber); font-weight: 600; }
+    .digest-item-action {
+      margin-left: auto; flex-shrink: 0; align-self: center;
+    }
+
+    /* ═══ Filters Bar ═══ */
+    .filters-bar {
+      padding: 0.85rem 1.5rem; border-bottom: 1px solid var(--mgsr-border);
+      display: flex; align-items: center; gap: 0.6rem; overflow-x: auto;
+    }
+    .filter-chip {
+      padding: 0.4rem 0.85rem; border-radius: 20px; font-size: 0.8rem; font-weight: 500;
+      background: var(--mgsr-card); border: 1px solid var(--mgsr-border);
+      color: var(--mgsr-muted); cursor: pointer; transition: all 0.2s;
+      white-space: nowrap; font-family: 'Outfit', sans-serif;
+    }
+    .filter-chip:hover { border-color: var(--mgsr-teal); color: var(--mgsr-text); }
+    .filter-chip.active { background: var(--mgsr-teal-dim); border-color: var(--mgsr-teal); color: var(--mgsr-teal); }
+    .filter-divider { width: 1px; height: 24px; background: var(--mgsr-border); flex-shrink: 0; }
+    .search-input {
+      background: var(--mgsr-darker); border: 1px solid var(--mgsr-border); border-radius: 8px;
+      padding: 0.45rem 0.75rem 0.45rem 2rem; color: var(--mgsr-text); font-family: inherit;
+      font-size: 0.85rem; width: 220px; transition: border-color 0.2s; margin-left: auto;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%238C999B' viewBox='0 0 16 16'%3E%3Cpath d='M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85zm-5.242.656a5 5 0 1 1 0-10 5 5 0 0 1 0 10z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: 0.65rem center;
+    }
+    .search-input:focus { outline: none; border-color: var(--mgsr-teal); }
+
+    /* ═══ Signal Feed ═══ */
+    .feed-container {
+      display: grid; grid-template-columns: 1fr 340px; gap: 0;
+      min-height: calc(100vh - 300px);
+    }
+    .feed-main { padding: 1.25rem 1.5rem; border-right: 1px solid var(--mgsr-border); }
+    .feed-sidebar { padding: 1.25rem; overflow-y: auto; }
+
+    /* ═══ Signal Cards ═══ */
+    .signal-card {
+      background: var(--mgsr-card); border: 1px solid var(--mgsr-border); border-radius: 14px;
+      padding: 1rem 1.25rem; margin-bottom: 0.85rem; transition: all 0.25s;
+      cursor: pointer; position: relative;
+    }
+    .signal-card:hover {
+      border-color: rgba(168, 85, 247, 0.3);
+      box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+    }
+    .signal-card.unread { border-left: 3px solid var(--mgsr-purple); }
+    .signal-card.alert { border-left: 3px solid var(--mgsr-red); }
+    .signal-card.opportunity { border-left: 3px solid var(--mgsr-green); }
+
+    .signal-header {
+      display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.6rem;
+    }
+    .signal-type-icon {
+      width: 36px; height: 36px; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center; font-size: 1.1rem;
+      flex-shrink: 0;
+    }
+    .signal-type-icon.transfer { background: var(--mgsr-blue-dim); }
+    .signal-type-icon.rumor { background: var(--mgsr-purple-dim); }
+    .signal-type-icon.coaching { background: var(--mgsr-amber-dim); }
+    .signal-type-icon.contract { background: var(--mgsr-green-dim); }
+    .signal-type-icon.value { background: var(--mgsr-teal-dim); }
+    .signal-type-icon.injury { background: var(--mgsr-red-dim); }
+    .signal-type-icon.women { background: var(--mgsr-pink-dim); }
+
+    .signal-title-row { flex: 1; min-width: 0; }
+    .signal-title { font-weight: 700; font-size: 0.9rem; line-height: 1.3; }
+    .signal-source { font-size: 0.7rem; color: var(--mgsr-muted); margin-top: 0.15rem; }
+    .signal-time { font-size: 0.7rem; color: var(--mgsr-muted); flex-shrink: 0; align-self: flex-start; }
+
+    .signal-body { font-size: 0.85rem; color: var(--mgsr-text); line-height: 1.55; margin-bottom: 0.65rem; }
+    .signal-body strong { color: var(--mgsr-teal); }
+
+    .signal-tags { display: flex; gap: 0.3rem; flex-wrap: wrap; margin-bottom: 0.6rem; }
+    .signal-tag {
+      font-size: 0.65rem; padding: 0.15rem 0.5rem; border-radius: 5px;
+      font-weight: 600;
+    }
+    .signal-tag.league { background: var(--mgsr-blue-dim); color: var(--mgsr-blue); }
+    .signal-tag.position { background: var(--mgsr-teal-dim); color: var(--mgsr-teal); }
+    .signal-tag.relevant { background: var(--mgsr-amber-dim); color: var(--mgsr-amber); }
+    .signal-tag.roster-alert { background: var(--mgsr-red-dim); color: var(--mgsr-red); }
+    .signal-tag.women-tag { background: var(--mgsr-pink-dim); color: var(--mgsr-pink); }
+    .signal-tag.youth-tag { background: var(--mgsr-cyan-dim); color: var(--mgsr-cyan); }
+
+    .signal-footer {
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .signal-actions { display: flex; gap: 0.4rem; }
+    .signal-action-btn {
+      padding: 0.3rem 0.6rem; border-radius: 6px; font-size: 0.75rem;
+      background: rgba(255,255,255,0.04); border: 1px solid var(--mgsr-border);
+      color: var(--mgsr-muted); cursor: pointer; transition: all 0.2s; font-family: inherit;
+    }
+    .signal-action-btn:hover { color: var(--mgsr-text); border-color: var(--mgsr-teal); }
+    .signal-relevance {
+      font-size: 0.7rem; color: var(--mgsr-muted); display: flex; align-items: center; gap: 0.3rem;
+    }
+    .relevance-dots { display: flex; gap: 2px; }
+    .relevance-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--mgsr-border); }
+    .relevance-dot.filled { background: var(--mgsr-teal); }
+
+    /* ═══ Sidebar Panels ═══ */
+    .sidebar-panel {
+      background: var(--mgsr-card); border: 1px solid var(--mgsr-border); border-radius: 14px;
+      padding: 1rem; margin-bottom: 1rem;
+    }
+    .sidebar-panel h3 {
+      font-family: 'Syne', sans-serif; font-size: 0.9rem; font-weight: 700; margin-bottom: 0.75rem;
+      display: flex; align-items: center; gap: 0.4rem;
+    }
+    .hot-league-item {
+      display: flex; align-items: center; gap: 0.5rem;
+      padding: 0.5rem 0; border-bottom: 1px solid rgba(255,255,255,0.04);
+    }
+    .hot-league-item:last-child { border-bottom: none; }
+    .hot-league-flag { font-size: 1rem; }
+    .hot-league-name { font-size: 0.8rem; flex: 1; }
+    .hot-league-count {
+      font-size: 0.7rem; background: var(--mgsr-darker); padding: 0.15rem 0.45rem;
+      border-radius: 6px; color: var(--mgsr-teal); font-weight: 600;
+    }
+    .hot-league-bar {
+      width: 60px; height: 4px; background: var(--mgsr-darker); border-radius: 2px; overflow: hidden;
+    }
+    .hot-league-bar-fill { height: 100%; border-radius: 2px; background: var(--mgsr-teal); }
+
+    /* Trending Players */
+    .trending-player {
+      display: flex; align-items: center; gap: 0.6rem;
+      padding: 0.5rem 0; border-bottom: 1px solid rgba(255,255,255,0.04);
+    }
+    .trending-player:last-child { border-bottom: none; }
+    .trending-rank { font-family: 'Syne', sans-serif; font-size: 0.8rem; font-weight: 800; color: var(--mgsr-muted); width: 20px; }
+    .trending-avatar {
+      width: 30px; height: 30px; border-radius: 8px; background: var(--mgsr-border);
+    }
+    .trending-info { flex: 1; min-width: 0; }
+    .trending-name { font-size: 0.8rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .trending-meta { font-size: 0.7rem; color: var(--mgsr-muted); }
+    .trending-mentions { font-size: 0.7rem; color: var(--mgsr-amber); font-weight: 600; }
+
+    /* Request Matches Sidebar */
+    .request-match {
+      background: var(--mgsr-darker); border-radius: 10px; padding: 0.75rem;
+      margin-bottom: 0.5rem;
+    }
+    .request-match-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.35rem; }
+    .request-match-club { font-size: 0.8rem; font-weight: 600; }
+    .request-match-need { font-size: 0.7rem; color: var(--mgsr-amber); }
+    .request-match-signal { font-size: 0.75rem; color: var(--mgsr-text); line-height: 1.4; }
+    .request-match-action { font-size: 0.7rem; color: var(--mgsr-teal); cursor: pointer; margin-top: 0.3rem; font-weight: 600; }
+
+    /* ═══ Notification Settings ═══ */
+    .notif-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0.45rem 0; border-bottom: 1px solid rgba(255,255,255,0.04);
+    }
+    .notif-row:last-child { border-bottom: none; }
+    .notif-label { font-size: 0.8rem; }
+    .notif-toggle {
+      width: 36px; height: 20px; border-radius: 10px; background: var(--mgsr-border);
+      position: relative; cursor: pointer; transition: all 0.2s;
+    }
+    .notif-toggle.on { background: var(--mgsr-teal); }
+    .notif-toggle::after {
+      content: ''; position: absolute; top: 2px; left: 2px;
+      width: 16px; height: 16px; border-radius: 50%; background: #fff;
+      transition: all 0.2s;
+    }
+    .notif-toggle.on::after { left: 18px; }
+
+    /* ═══ Day Separator ═══ */
+    .day-separator {
+      display: flex; align-items: center; gap: 0.75rem;
+      padding: 0.5rem 0; margin-bottom: 0.5rem;
+    }
+    .day-separator-line { flex: 1; height: 1px; background: var(--mgsr-border); }
+    .day-separator-label {
+      font-size: 0.75rem; font-weight: 600; color: var(--mgsr-muted);
+      text-transform: uppercase; letter-spacing: 0.05em;
+    }
+
+    /* ═══ Scrollbar ═══ */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--mgsr-border); border-radius: 3px; }
+
+    @media (max-width: 1100px) {
+      .feed-container { grid-template-columns: 1fr; }
+      .feed-sidebar { display: none; }
+      .sidebar { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="app-shell">
+  <!-- ═══ Sidebar ═══ -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon">MG</div>
+      <span>MGSR</span>
+    </div>
+    <div class="platform-switcher">
+      <button class="platform-btn active">Men</button>
+      <button class="platform-btn">Women</button>
+      <button class="platform-btn">Youth</button>
+    </div>
+    <nav class="sidebar-nav sidebar-section">
+      <div class="sidebar-section-label">Main</div>
+      <a href="#"><span class="nav-icon">📊</span> Dashboard</a>
+      <a href="#"><span class="nav-icon">👥</span> Players</a>
+      <a href="#"><span class="nav-icon">💰</span> Deal Pipeline</a>
+      <a href="#"><span class="nav-icon">📋</span> Tasks</a>
+    </nav>
+    <nav class="sidebar-nav sidebar-section">
+      <div class="sidebar-section-label">Intelligence</div>
+      <a href="#"><span class="nav-icon">🤖</span> AI Scout</a>
+      <a href="#"><span class="nav-icon">🎯</span> War Room</a>
+      <a href="#" class="active"><span class="nav-icon">📡</span> Market Radar <span class="badge-count">12</span></a>
+      <a href="#"><span class="nav-icon">⚔️</span> Negotiation</a>
+    </nav>
+    <nav class="sidebar-nav sidebar-section">
+      <div class="sidebar-section-label">Network</div>
+      <a href="#"><span class="nav-icon">📇</span> Contacts</a>
+      <a href="#"><span class="nav-icon">📩</span> Requests</a>
+      <a href="#"><span class="nav-icon">📁</span> Portfolio</a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="avatar">LD</div>
+      <div>
+        <div class="agent-name">Lior Dahan</div>
+        <div class="agent-role">FIFA Licensed Agent</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ═══ Main ═══ -->
+  <div class="main-content">
+    <!-- Top Bar -->
+    <div class="top-bar">
+      <div>
+        <span class="breadcrumb">MGSR · Intelligence</span>
+        <h1>📡 Live Market Radar</h1>
+      </div>
+      <div class="top-bar-right">
+        <button class="btn btn-secondary btn-sm" onclick="toggleNotifPanel()">🔔 Alert Settings</button>
+        <button class="btn btn-ghost btn-sm">⬇ Export Daily Digest</button>
+      </div>
+    </div>
+
+    <!-- Live Pulse Banner -->
+    <div class="live-banner">
+      <div class="live-dot"></div>
+      <div class="live-text">Live Radar <span>· Scanning Transfermarkt + 27 leagues</span></div>
+      <div class="live-stats">
+        <div class="live-stat">Today: <strong>18 signals</strong></div>
+        <div class="live-stat">This week: <strong>67 signals</strong></div>
+        <div class="live-stat">Relevant to you: <strong style="color: var(--mgsr-amber);">5 signals</strong></div>
+      </div>
+    </div>
+
+    <!-- ═══ AI Daily Digest ═══ -->
+    <div class="digest-card">
+      <div class="digest-header">
+        <div class="digest-icon">🧠</div>
+        <div class="digest-title">AI Daily Digest — March 2, 2026</div>
+        <div class="digest-time">Updated 08:00 IST</div>
+      </div>
+      <div class="digest-items">
+        <div class="digest-item">
+          <div class="digest-item-icon">🔥</div>
+          <div class="digest-item-text">
+            <strong>Hapoel Tel Aviv fired their coach</strong> — expect squad overhaul. They have a pending request for CM (€300-600K).
+            Your player <span class="highlight">Marcus Johnson (CM, €450K)</span> matches perfectly. Consider presenting today.
+          </div>
+          <div class="digest-item-action">
+            <button class="btn btn-primary btn-sm">Present Now →</button>
+          </div>
+        </div>
+        <div class="digest-item">
+          <div class="digest-item-icon">📉</div>
+          <div class="digest-item-text">
+            <strong>3 roster players had value drops</strong> this week: Marko Petković (€750K → €650K), Ivan Marković (€350K → €300K).
+            Consider accelerating their deals before further decline.
+          </div>
+          <div class="digest-item-action">
+            <button class="btn btn-secondary btn-sm">View Players</button>
+          </div>
+        </div>
+        <div class="digest-item">
+          <div class="digest-item-icon">⚡</div>
+          <div class="digest-item-text">
+            <strong>Summer window</strong> opens in 89 days. <span class="highlight">Israeli clubs are active now</span> — 
+            Maccabi Haifa signed 2 players yesterday. 6 Ligat Ha'Al clubs still have open requests matching your roster.
+          </div>
+          <div class="digest-item-action">
+            <button class="btn btn-secondary btn-sm">View Matches</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Filters Bar -->
+    <div class="filters-bar">
+      <button class="filter-chip active" onclick="toggleChip(this)">All Signals</button>
+      <button class="filter-chip" onclick="toggleChip(this)">🔄 Transfers</button>
+      <button class="filter-chip" onclick="toggleChip(this)">💬 Rumors</button>
+      <button class="filter-chip" onclick="toggleChip(this)">👔 Coaching Changes</button>
+      <button class="filter-chip" onclick="toggleChip(this)">📝 Contract Extensions</button>
+      <button class="filter-chip" onclick="toggleChip(this)">📈 Value Changes</button>
+      <button class="filter-chip" onclick="toggleChip(this)">🤕 Injuries</button>
+      <div class="filter-divider"></div>
+      <button class="filter-chip" onclick="toggleChip(this)">🇮🇱 Israel</button>
+      <button class="filter-chip" onclick="toggleChip(this)">🇷🇸 Serbia</button>
+      <button class="filter-chip" onclick="toggleChip(this)">🇭🇷 Croatia</button>
+      <button class="filter-chip" onclick="toggleChip(this)">🇸🇮 Slovenia</button>
+      <div class="filter-divider"></div>
+      <button class="filter-chip" onclick="toggleChip(this)" style="border-color: var(--mgsr-amber); color: var(--mgsr-amber);">⭐ Relevant to My Roster</button>
+      <input type="text" class="search-input" placeholder="Search signals...">
+    </div>
+
+    <!-- ═══ Feed + Sidebar ═══ -->
+    <div class="feed-container">
+      <div class="feed-main">
+
+        <!-- Today -->
+        <div class="day-separator">
+          <span class="day-separator-label">Today — March 2, 2026</span>
+          <div class="day-separator-line"></div>
+        </div>
+
+        <!-- Signal 1: Coaching Change (ALERT — impacts roster) -->
+        <div class="signal-card alert" onclick="expandSignal(this)">
+          <div class="signal-header">
+            <div class="signal-type-icon coaching">👔</div>
+            <div class="signal-title-row">
+              <div class="signal-title">🚨 Barak Bachar fired as Hapoel Tel Aviv head coach</div>
+              <div class="signal-source">Transfermarkt · Confirmed</div>
+            </div>
+            <div class="signal-time">2h ago</div>
+          </div>
+          <div class="signal-body">
+            After 3 consecutive losses, Hapoel Tel Aviv parted ways with coach Barak Bachar. Interim manager to be announced. 
+            <strong>Impact on your pipeline:</strong> Noam Greenfeld (your youth player, on loan discussions) — new coach may change policy. 
+            Marcus Johnson's presentation to Hapoel is <strong>now high-priority</strong> — new management usually brings urgency to sign.
+          </div>
+          <div class="signal-tags">
+            <span class="signal-tag league">🇮🇱 Ligat Ha'Al</span>
+            <span class="signal-tag roster-alert">🔴 Impacts 2 deals</span>
+            <span class="signal-tag relevant">⭐ Request match: CM</span>
+          </div>
+          <div class="signal-footer">
+            <div class="signal-actions">
+              <button class="signal-action-btn">📤 Present Player</button>
+              <button class="signal-action-btn">📞 Call Contact</button>
+              <button class="signal-action-btn">📌 Save</button>
+            </div>
+            <div class="signal-relevance">
+              Relevance:
+              <div class="relevance-dots">
+                <div class="relevance-dot filled"></div>
+                <div class="relevance-dot filled"></div>
+                <div class="relevance-dot filled"></div>
+                <div class="relevance-dot filled"></div>
+                <div class="relevance-dot filled"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Signal 2: Confirmed Transfer -->
+        <div class="signal-card unread">
+          <div class="signal-header">
+            <div class="signal-type-icon transfer">🔄</div>
+            <div class="signal-title-row">
+              <div class="signal-title">Maccabi Haifa sign Miljan Vukadinović from FK Čukarički</div>
+              <div class="signal-source">Transfermarkt · Confirmed</div>
+            </div>
+            <div class="signal-time">4h ago</div>
+          </div>
+          <div class="signal-body">
+            Serbian winger (22, RW) joins for €280K. This fills one of Haifa's wing positions — but they still need a <strong>LW according to your open request</strong> from their sporting director.
+            Lucas Moreno (LW, loan €500K) is currently presented to Maccabi Haifa.
+          </div>
+          <div class="signal-tags">
+            <span class="signal-tag league">🇮🇱 Ligat Ha'Al</span>
+            <span class="signal-tag position">RW</span>
+            <span class="signal-tag relevant">⭐ Active deal: Lucas Moreno → Haifa</span>
+          </div>
+          <div class="signal-footer">
+            <div class="signal-actions">
+              <button class="signal-action-btn">📊 View Club Squad</button>
+              <button class="signal-action-btn">📌 Save</button>
+            </div>
+            <div class="signal-relevance">
+              Relevance:
+              <div class="relevance-dots">
+                <div class="relevance-dot filled"></div>
+                <div class="relevance-dot filled"></div>
+                <div class="relevance-dot filled"></div>
+                <div class="relevance-dot filled"></div>
+                <div class="relevance-dot"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Signal 3: Rumor -->
+        <div class="signal-card unread">
+          <div class="signal-header">
+            <div class="signal-type-icon rumor">💬</div>
+            <div class="signal-title-row">
+              <div class="signal-title">Ferencváros reportedly interested in additional Israeli midfielder</div>
+              <div class="signal-source">Sport5 · Rumor</div>
+            </div>
+            <div class="signal-time">5h ago</div>
+          </div>
+          <div class="signal-body">
+            After signing Dor Peretz (your client — <strong>deal in "Agreed" stage</strong>), Ferencváros are reportedly scouting more Israeli midfielders for depth.
+            <strong>Opportunity:</strong> David Čerin (CM, €400K) could be an additional presentation to their sporting director.
+          </div>
+          <div class="signal-tags">
+            <span class="signal-tag league">🇭🇺 NB I</span>
+            <span class="signal-tag position">CM</span>
+            <span class="signal-tag relevant">⭐ Client: Dor Peretz</span>
+          </div>
+          <div class="signal-footer">
+            <div class="signal-actions">
+              <button class="signal-action-btn">📤 Present David Čerin</button>
+              <button class="signal-action-btn">📌 Save</button>
+            </div>
+            <div class="signal-relevance">
+              Relevance:
+              <div class="relevance-dots">
+                <div class="relevance-dot filled"></div>
+                <div class="relevance-dot filled"></div>
+                <div class="relevance-dot filled"></div>
+                <div class="relevance-dot filled"></div>
+                <div class="relevance-dot"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Signal 4: Value Change -->
+        <div class="signal-card">
+          <div class="signal-header">
+            <div class="signal-type-icon value">📈</div>
+            <div class="signal-title-row">
+              <div class="signal-title">Oscar Gloukh (RB Salzburg) value up €3M → €4.5M</div>
+              <div class="signal-source">Transfermarkt · Value Update</div>
+            </div>
+            <div class="signal-time">6h ago</div>
+          </div>
+          <div class="signal-body">
+            Israeli AM rises after strong Europa League performances. Now valued at €4.5M (+50%).
+            This sets a new benchmark for Israeli attacking midfielders in European football.
+          </div>
+          <div class="signal-tags">
+            <span class="signal-tag league">🇦🇹 Bundesliga</span>
+            <span class="signal-tag position">AM</span>
+          </div>
+          <div class="signal-footer">
+            <div class="signal-actions">
+              <button class="signal-action-btn">📊 Profile</button>
+              <button class="signal-action-btn">📌 Save</button>
+            </div>
+            <div class="signal-relevance">
+              Relevance:
+              <div class="relevance-dots">
+                <div class="relevance-dot filled"></div>
+                <div class="relevance-dot filled"></div>
+                <div class="relevance-dot"></div>
+                <div class="relevance-dot"></div>
+                <div class="relevance-dot"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Signal 5: Contract Extension -->
+        <div class="signal-card">
+          <div class="signal-header">
+            <div class="signal-type-icon contract">📝</div>
+            <div class="signal-title-row">
+              <div class="signal-title">Eli Dasa extends with Vitesse until 2028</div>
+              <div class="signal-source">Transfermarkt · Confirmed</div>
+            </div>
+            <div class="signal-time">8h ago</div>
+          </div>
+          <div class="signal-body">
+            Israeli RB extends, removing him from the summer free agent list. Current value: €1.4M.
+            Vitesse's RB slot is now locked — clubs scouting Israeli RBs will look elsewhere.
+          </div>
+          <div class="signal-tags">
+            <span class="signal-tag league">🇳🇱 Eredivisie</span>
+            <span class="signal-tag position">RB</span>
+          </div>
+          <div class="signal-footer">
+            <div class="signal-actions">
+              <button class="signal-action-btn">📌 Save</button>
+            </div>
+            <div class="signal-relevance">
+              Relevance:
+              <div class="relevance-dots">
+                <div class="relevance-dot filled"></div>
+                <div class="relevance-dot"></div>
+                <div class="relevance-dot"></div>
+                <div class="relevance-dot"></div>
+                <div class="relevance-dot"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Signal 6: Women's league -->
+        <div class="signal-card opportunity">
+          <div class="signal-header">
+            <div class="signal-type-icon women">⚽</div>
+            <div class="signal-title-row">
+              <div class="signal-title">FC Barcelona Femení looking to strengthen RW depth</div>
+              <div class="signal-source">Marca · Rumor</div>
+            </div>
+            <div class="signal-time">10h ago</div>
+          </div>
+          <div class="signal-body">
+            Barça Femení reportedly targeting English WSL players for their right wing after Caroline Graham Hansen's recurring injury.
+            <strong>Your client Lauren James (RW, Chelsea FCW)</strong> is currently presented to Barcelona — this validates the timing.
+          </div>
+          <div class="signal-tags">
+            <span class="signal-tag women-tag">Women's Football</span>
+            <span class="signal-tag league">🇪🇸 Liga F</span>
+            <span class="signal-tag position">RW</span>
+            <span class="signal-tag relevant">⭐ Active deal: Lauren James</span>
+          </div>
+          <div class="signal-footer">
+            <div class="signal-actions">
+              <button class="signal-action-btn">📤 Follow Up</button>
+              <button class="signal-action-btn">📞 Contact Barça SD</button>
+              <button class="signal-action-btn">📌 Save</button>
+            </div>
+            <div class="signal-relevance">
+              Relevance:
+              <div class="relevance-dots">
+                <div class="relevance-dot filled"></div>
+                <div class="relevance-dot filled"></div>
+                <div class="relevance-dot filled"></div>
+                <div class="relevance-dot filled"></div>
+                <div class="relevance-dot filled"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Yesterday separator -->
+        <div class="day-separator">
+          <span class="day-separator-label">Yesterday — March 1, 2026</span>
+          <div class="day-separator-line"></div>
+        </div>
+
+        <!-- Signal 7: Coaching change abroad -->
+        <div class="signal-card">
+          <div class="signal-header">
+            <div class="signal-type-icon coaching">👔</div>
+            <div class="signal-title-row">
+              <div class="signal-title">FK Vojvodina appoint new sporting director Dragan Stojković Jr.</div>
+              <div class="signal-source">Transfermarkt · Confirmed</div>
+            </div>
+            <div class="signal-time">Yesterday 18:30</div>
+          </div>
+          <div class="signal-body">
+            New sporting director at Vojvodina — Marko Petković (your roster, CF) plays there.
+            <strong>New SD may affect player releases.</strong> Recommend reaching out to new contact.
+          </div>
+          <div class="signal-tags">
+            <span class="signal-tag league">🇷🇸 SuperLiga</span>
+            <span class="signal-tag roster-alert">🔴 Roster player's club</span>
+          </div>
+          <div class="signal-footer">
+            <div class="signal-actions">
+              <button class="signal-action-btn">📇 Add Contact</button>
+              <button class="signal-action-btn">📌 Save</button>
+            </div>
+            <div class="signal-relevance">
+              Relevance:
+              <div class="relevance-dots">
+                <div class="relevance-dot filled"></div>
+                <div class="relevance-dot filled"></div>
+                <div class="relevance-dot filled"></div>
+                <div class="relevance-dot"></div>
+                <div class="relevance-dot"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Signal 8: Injury -->
+        <div class="signal-card">
+          <div class="signal-header">
+            <div class="signal-type-icon injury">🤕</div>
+            <div class="signal-title-row">
+              <div class="signal-title">Beitar Jerusalem starting CB out 3 months (ACL)</div>
+              <div class="signal-source">ONE · Confirmed</div>
+            </div>
+            <div class="signal-time">Yesterday 14:15</div>
+          </div>
+          <div class="signal-body">
+            Beitar Jerusalem lost starting CB Marcel Heister to a knee injury (3 months). They already have an open request for CB (24-28, Free/Loan).
+            <strong>Urgency just increased massively</strong> — they need an immediate replacement.
+          </div>
+          <div class="signal-tags">
+            <span class="signal-tag league">🇮🇱 Ligat Ha'Al</span>
+            <span class="signal-tag position">CB</span>
+            <span class="signal-tag relevant">⭐ Open request: CB 24-28</span>
+          </div>
+          <div class="signal-footer">
+            <div class="signal-actions">
+              <button class="signal-action-btn">🤖 AI Scout: Find CB</button>
+              <button class="signal-action-btn">📤 Present from Roster</button>
+              <button class="signal-action-btn">📌 Save</button>
+            </div>
+            <div class="signal-relevance">
+              Relevance:
+              <div class="relevance-dots">
+                <div class="relevance-dot filled"></div>
+                <div class="relevance-dot filled"></div>
+                <div class="relevance-dot filled"></div>
+                <div class="relevance-dot filled"></div>
+                <div class="relevance-dot filled"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Signal 9: Transfer confirmed (general market) -->
+        <div class="signal-card">
+          <div class="signal-header">
+            <div class="signal-type-icon transfer">🔄</div>
+            <div class="signal-title-row">
+              <div class="signal-title">NK Domžale sell Timi Max Elšnik to Olympiacos for €1.2M</div>
+              <div class="signal-source">Transfermarkt · Confirmed</div>
+            </div>
+            <div class="signal-time">Yesterday 11:00</div>
+          </div>
+          <div class="signal-body">
+            Domžale's key midfielder sold — creates a slot for David Čerin (CM, currently scouted) at the club,
+            or Domžale may use funds to invest elsewhere. Also creates a Noam Greenfeld loan opportunity.
+          </div>
+          <div class="signal-tags">
+            <span class="signal-tag league">🇸🇮 Prva liga</span>
+            <span class="signal-tag position">CM</span>
+            <span class="signal-tag relevant">⭐ David Čerin plays here</span>
+          </div>
+          <div class="signal-footer">
+            <div class="signal-actions">
+              <button class="signal-action-btn">📊 View Squad</button>
+              <button class="signal-action-btn">📌 Save</button>
+            </div>
+            <div class="signal-relevance">
+              Relevance:
+              <div class="relevance-dots">
+                <div class="relevance-dot filled"></div>
+                <div class="relevance-dot filled"></div>
+                <div class="relevance-dot filled"></div>
+                <div class="relevance-dot"></div>
+                <div class="relevance-dot"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- feed-main -->
+
+      <!-- ═══ Right Sidebar ═══ -->
+      <div class="feed-sidebar">
+
+        <!-- Hottest Leagues -->
+        <div class="sidebar-panel">
+          <h3>🔥 Hottest Leagues (7d activity)</h3>
+          <div class="hot-league-item">
+            <span class="hot-league-flag">🇮🇱</span>
+            <span class="hot-league-name">Ligat Ha'Al</span>
+            <div class="hot-league-bar"><div class="hot-league-bar-fill" style="width: 100%;"></div></div>
+            <span class="hot-league-count">24</span>
+          </div>
+          <div class="hot-league-item">
+            <span class="hot-league-flag">🇷🇸</span>
+            <span class="hot-league-name">Serbian SuperLiga</span>
+            <div class="hot-league-bar"><div class="hot-league-bar-fill" style="width: 62%;"></div></div>
+            <span class="hot-league-count">15</span>
+          </div>
+          <div class="hot-league-item">
+            <span class="hot-league-flag">🇭🇷</span>
+            <span class="hot-league-name">HNL Croatia</span>
+            <div class="hot-league-bar"><div class="hot-league-bar-fill" style="width: 50%;"></div></div>
+            <span class="hot-league-count">12</span>
+          </div>
+          <div class="hot-league-item">
+            <span class="hot-league-flag">🇸🇮</span>
+            <span class="hot-league-name">Prva liga</span>
+            <div class="hot-league-bar"><div class="hot-league-bar-fill" style="width: 42%;"></div></div>
+            <span class="hot-league-count">10</span>
+          </div>
+          <div class="hot-league-item">
+            <span class="hot-league-flag">🇭🇺</span>
+            <span class="hot-league-name">NB I Hungary</span>
+            <div class="hot-league-bar"><div class="hot-league-bar-fill" style="width: 33%;"></div></div>
+            <span class="hot-league-count">8</span>
+          </div>
+          <div class="hot-league-item">
+            <span class="hot-league-flag">🇵🇱</span>
+            <span class="hot-league-name">Ekstraklasa</span>
+            <div class="hot-league-bar"><div class="hot-league-bar-fill" style="width: 25%;"></div></div>
+            <span class="hot-league-count">6</span>
+          </div>
+        </div>
+
+        <!-- Trending Players -->
+        <div class="sidebar-panel">
+          <h3>📈 Trending Players (mentions)</h3>
+          <div class="trending-player">
+            <div class="trending-rank">1</div>
+            <div class="trending-avatar"></div>
+            <div class="trending-info">
+              <div class="trending-name">Oscar Gloukh</div>
+              <div class="trending-meta">AM · RB Salzburg · €4.5M</div>
+            </div>
+            <div class="trending-mentions">47 🔥</div>
+          </div>
+          <div class="trending-player">
+            <div class="trending-rank">2</div>
+            <div class="trending-avatar"></div>
+            <div class="trending-info">
+              <div class="trending-name">Luka Topalović</div>
+              <div class="trending-meta">AM · HNK Gorica · €1.1M</div>
+            </div>
+            <div class="trending-mentions">23</div>
+          </div>
+          <div class="trending-player">
+            <div class="trending-rank">3</div>
+            <div class="trending-avatar"></div>
+            <div class="trending-info">
+              <div class="trending-name">Miljan Vukadinović</div>
+              <div class="trending-meta">RW · FK Čukarički · €350K</div>
+            </div>
+            <div class="trending-mentions">18</div>
+          </div>
+          <div class="trending-player">
+            <div class="trending-rank">4</div>
+            <div class="trending-avatar"></div>
+            <div class="trending-info">
+              <div class="trending-name">Dor Peretz</div>
+              <div class="trending-meta">CM · Maccabi TA · €2.2M</div>
+            </div>
+            <div class="trending-mentions">14</div>
+          </div>
+          <div class="trending-player">
+            <div class="trending-rank">5</div>
+            <div class="trending-avatar"></div>
+            <div class="trending-info">
+              <div class="trending-name">Lauren James</div>
+              <div class="trending-meta">RW · Chelsea FCW</div>
+            </div>
+            <div class="trending-mentions">11</div>
+          </div>
+        </div>
+
+        <!-- Request Matches -->
+        <div class="sidebar-panel">
+          <h3>🎯 Signals Match Your Requests</h3>
+          <div class="request-match">
+            <div class="request-match-header">
+              <div class="request-match-club">🇮🇱 Hapoel Tel Aviv</div>
+              <div class="request-match-need">Need: CM, 22-26</div>
+            </div>
+            <div class="request-match-signal">Coach fired → new management urgently needs reinforcements</div>
+            <div class="request-match-action">→ Present Marcus Johnson (CM, 22, €450K)</div>
+          </div>
+          <div class="request-match">
+            <div class="request-match-header">
+              <div class="request-match-club">🇮🇱 Beitar Jerusalem</div>
+              <div class="request-match-need">Need: CB, 24-28</div>
+            </div>
+            <div class="request-match-signal">Starting CB injured 3 months → emergency signing needed</div>
+            <div class="request-match-action">→ Scout CB via AI Scout</div>
+          </div>
+          <div class="request-match">
+            <div class="request-match-header">
+              <div class="request-match-club">🇮🇱 Maccabi Haifa</div>
+              <div class="request-match-need">Need: LW, 20-25</div>
+            </div>
+            <div class="request-match-signal">Signed RW but still need LW per sporting director</div>
+            <div class="request-match-action">→ Accelerate Lucas Moreno presentation</div>
+          </div>
+        </div>
+
+        <!-- Alert Settings (collapsed) -->
+        <div class="sidebar-panel" id="notifPanel" style="display:none;">
+          <h3>🔔 Push Alert Settings</h3>
+          <div class="notif-row">
+            <span class="notif-label">Coaching changes (my markets)</span>
+            <div class="notif-toggle on" onclick="this.classList.toggle('on')"></div>
+          </div>
+          <div class="notif-row">
+            <span class="notif-label">Roster player club changes</span>
+            <div class="notif-toggle on" onclick="this.classList.toggle('on')"></div>
+          </div>
+          <div class="notif-row">
+            <span class="notif-label">Request position matches</span>
+            <div class="notif-toggle on" onclick="this.classList.toggle('on')"></div>
+          </div>
+          <div class="notif-row">
+            <span class="notif-label">Value drops > 20%</span>
+            <div class="notif-toggle on" onclick="this.classList.toggle('on')"></div>
+          </div>
+          <div class="notif-row">
+            <span class="notif-label">Confirmed transfers (all)</span>
+            <div class="notif-toggle" onclick="this.classList.toggle('on')"></div>
+          </div>
+          <div class="notif-row">
+            <span class="notif-label">Rumors (my leagues only)</span>
+            <div class="notif-toggle on" onclick="this.classList.toggle('on')"></div>
+          </div>
+          <div class="notif-row">
+            <span class="notif-label">Women's market signals</span>
+            <div class="notif-toggle on" onclick="this.classList.toggle('on')"></div>
+          </div>
+          <div class="notif-row">
+            <span class="notif-label">Daily AI Digest (08:00)</span>
+            <div class="notif-toggle on" onclick="this.classList.toggle('on')"></div>
+          </div>
+        </div>
+
+        <!-- Transfer Window Countdown -->
+        <div class="sidebar-panel" style="background: linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(77, 182, 172, 0.05)); border-color: rgba(245, 158, 11, 0.25);">
+          <h3>⏰ Window Countdown</h3>
+          <div style="text-align: center; padding: 0.5rem 0;">
+            <div style="font-family: 'Syne', sans-serif; font-size: 2.5rem; font-weight: 800; color: var(--mgsr-amber);">89</div>
+            <div style="font-size: 0.85rem; color: var(--mgsr-muted);">days until Summer Window opens</div>
+            <div style="font-size: 0.75rem; color: var(--mgsr-muted); margin-top: 0.25rem;">June 1, 2026 · Israel Registration</div>
+          </div>
+          <div style="display: flex; gap: 0.5rem; margin-top: 0.75rem;">
+            <div style="flex: 1; background: var(--mgsr-darker); border-radius: 8px; padding: 0.5rem; text-align: center;">
+              <div style="font-size: 1.1rem; font-weight: 700; color: var(--mgsr-text);">4</div>
+              <div style="font-size: 0.65rem; color: var(--mgsr-muted);">Mandate expiring</div>
+            </div>
+            <div style="flex: 1; background: var(--mgsr-darker); border-radius: 8px; padding: 0.5rem; text-align: center;">
+              <div style="font-size: 1.1rem; font-weight: 700; color: var(--mgsr-text);">3</div>
+              <div style="font-size: 0.65rem; color: var(--mgsr-muted);">In negotiation</div>
+            </div>
+            <div style="flex: 1; background: var(--mgsr-darker); border-radius: 8px; padding: 0.5rem; text-align: center;">
+              <div style="font-size: 1.1rem; font-weight: 700; color: var(--mgsr-text);">6</div>
+              <div style="font-size: 0.65rem; color: var(--mgsr-muted);">Open requests</div>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- feed-sidebar -->
+    </div><!-- feed-container -->
+
+  </div><!-- main-content -->
+</div><!-- app-shell -->
+
+<script>
+  function toggleChip(el) {
+    // If clicking "All Signals", deactivate others
+    if (el.textContent.includes('All Signals')) {
+      document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+      el.classList.add('active');
+    } else {
+      document.querySelector('.filter-chip:first-child').classList.remove('active');
+      el.classList.toggle('active');
+      // If none active, reactivate All
+      const anyActive = document.querySelectorAll('.filter-chip.active').length;
+      if (!anyActive) document.querySelector('.filter-chip:first-child').classList.add('active');
+    }
+  }
+
+  function toggleNotifPanel() {
+    const panel = document.getElementById('notifPanel');
+    panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+  }
+
+  function expandSignal(card) {
+    card.classList.remove('unread');
+    card.classList.remove('alert');
+  }
+</script>
+
+</body>
+</html>

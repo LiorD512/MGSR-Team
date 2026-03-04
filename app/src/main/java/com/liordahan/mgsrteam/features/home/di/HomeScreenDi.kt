@@ -9,5 +9,5 @@ import org.koin.dsl.module
 
 val homeScreenModule = module {
     single { TransferWindows() }
-    viewModel<IHomeScreenViewModel> { HomeScreenViewModel(get(), get(), androidContext()) }
+    viewModel<IHomeScreenViewModel> { HomeScreenViewModel(get(), get(), androidContext(), get()) }
 }

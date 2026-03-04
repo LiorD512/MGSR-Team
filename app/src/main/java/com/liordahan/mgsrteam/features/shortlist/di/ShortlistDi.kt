@@ -7,6 +7,6 @@ import org.koin.dsl.module
 
 val shortlistModule = module {
 
-    single { ShortlistRepository(get()) }
+    single { ShortlistRepository(get(), get()) }
     viewModel<ShortlistViewModel> { ShortlistViewModel(get()) }
 }

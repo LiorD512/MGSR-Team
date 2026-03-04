@@ -20,6 +20,8 @@ import com.liordahan.mgsrteam.firebase.FirebaseHandler
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
+import org.koin.core.component.KoinComponent
+import org.koin.core.component.inject
 import java.util.concurrent.TimeUnit
 
 /**
@@ -47,7 +49,7 @@ import java.util.concurrent.TimeUnit
 class MandateExpiryWorker(
     context: Context,
     params: WorkerParameters
-) : CoroutineWorker(context, params) {
+) : CoroutineWorker(context, params), KoinComponent {
 
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
         Log.i(TAG, "=== MandateExpiryWorker triggered ===")
@@ -60,7 +62,7 @@ class MandateExpiryWorker(
         }
         Log.i(TAG, "Authorized device confirmed — starting mandate expiry check")
 
-        val firebaseHandler = FirebaseHandler()
+        val firebaseHandler: FirebaseHandler by inject()
         val store = FirebaseFirestore.getInstance()
         val playersRef = store.collection(firebaseHandler.playersTable)
         val docsRef = store.collection(firebaseHandler.playerDocumentsTable)

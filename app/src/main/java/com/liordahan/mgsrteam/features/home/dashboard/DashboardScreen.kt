@@ -43,6 +43,7 @@ import androidx.compose.material.icons.filled.BookmarkAdd
 import androidx.compose.material.icons.filled.BookmarkRemove
 import androidx.compose.material.icons.filled.Autorenew
 import androidx.compose.material.icons.filled.CalendarToday
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.ContactPhone
@@ -144,7 +145,11 @@ import com.liordahan.mgsrteam.utils.daysBetweenCalendarDays
 import com.liordahan.mgsrteam.ui.utils.boldTextStyle
 import com.liordahan.mgsrteam.ui.utils.clickWithNoRipple
 import com.liordahan.mgsrteam.ui.utils.regularTextStyle
+import com.liordahan.mgsrteam.features.platform.Platform
+import com.liordahan.mgsrteam.features.platform.PlatformManager
+import com.liordahan.mgsrteam.features.platform.PlatformSwitcher
 import org.koin.androidx.compose.koinViewModel
+import org.koin.compose.koinInject
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -157,9 +162,11 @@ import java.util.concurrent.TimeUnit
 @Composable
 fun DashboardScreen(
     navController: NavController,
-    viewModel: IHomeScreenViewModel = koinViewModel()
+    viewModel: IHomeScreenViewModel = koinViewModel(),
+    platformManager: PlatformManager = koinInject()
 ) {
     val state by viewModel.dashboardState.collectAsStateWithLifecycle()
+    val currentPlatform by platformManager.current.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val isHebrew = LocaleManager.isHebrew(context)
     var showLanguageDialog by remember { mutableStateOf(false) }
@@ -189,8 +196,25 @@ fun DashboardScreen(
             isHebrew = isHebrew,
             onLanguageClick = { showLanguageDialog = true }
         )
-        StatsRow(state)
-        QuickActionsRow(navController = navController)
+
+        // ── Platform switcher (Men / Women / Youth) ─────────────────────
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 6.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            PlatformSwitcher(
+                platformManager = platformManager,
+                onSwitch = { platform ->
+                    platformManager.switchTo(platform)
+                    viewModel.reloadForPlatformSwitch()
+                }
+            )
+        }
+
+        StatsRow(state, currentPlatform)
+        QuickActionsRow(navController = navController, platform = currentPlatform)
 
         // ── Pre-compute filtered data (cached across recompositions) ─────
         val filteredEvents = remember(state.feedEvents, state.selectedFeedFilter) {
@@ -268,6 +292,18 @@ fun DashboardScreen(
                                 if (exists) {
                                     val route = "${Screens.PlayerInfoScreen.route}/${android.net.Uri.encode(tmProfile)}" +
                                         if (autoRefresh) "?autoRefresh=true" else ""
+                                    navController.navigate(route)
+                                } else {
+                                    ToastManager.showError(
+                                        context.getString(R.string.feed_player_deleted_error)
+                                    )
+                                }
+                            }
+                        },
+                        onNavigateToPlayerByName = { playerName ->
+                            viewModel.findPlayerDocIdByName(playerName) { docId ->
+                                if (docId != null) {
+                                    val route = "${Screens.PlayerInfoScreen.route}/${android.net.Uri.encode(docId)}"
                                     navController.navigate(route)
                                 } else {
                                     ToastManager.showError(
@@ -552,7 +588,8 @@ private fun GreetingHeader(
 // ═════════════════════════════════════════════════════════════════════════════
 
 @Composable
-private fun StatsRow(state: HomeDashboardState) {
+private fun StatsRow(state: HomeDashboardState, platform: Platform = Platform.MEN) {
+    val accent = platform.accent
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -564,7 +601,7 @@ private fun StatsRow(state: HomeDashboardState) {
             icon = Icons.Default.People,
             value = state.totalPlayers.toString(),
             label = stringResource(R.string.stat_players),
-            accentColor = HomeTealAccent
+            accentColor = accent
         )
         StatCard(
             modifier = Modifier.weight(1f),
@@ -632,131 +669,207 @@ private fun StatCard(
 //  QUICK ACTIONS
 // ═════════════════════════════════════════════════════════════════════════════
 
+/** Quick action keys: only actions relevant to the current platform are shown. */
+private enum class QuickActionKey {
+    PLAYERS,
+    SHORTLIST,
+    RELEASES,
+    CONTRACT_FINISHER,
+    RETURNEES,
+    WAR_ROOM,
+    CONTACTS,
+    REQUESTS,
+    SHADOW_TEAMS,
+    TASKS,
+}
+
+/** Which quick actions to show per platform (aligned with web dashboard). */
+private fun quickActionsFor(platform: Platform): Set<QuickActionKey> = when (platform) {
+    Platform.MEN -> setOf(
+        QuickActionKey.PLAYERS,
+        QuickActionKey.SHORTLIST,
+        QuickActionKey.RELEASES,
+        QuickActionKey.CONTRACT_FINISHER,
+        QuickActionKey.RETURNEES,
+        QuickActionKey.WAR_ROOM,
+        QuickActionKey.CONTACTS,
+        QuickActionKey.REQUESTS,
+        QuickActionKey.SHADOW_TEAMS,
+    )
+    Platform.WOMEN -> setOf(
+        QuickActionKey.PLAYERS,
+        QuickActionKey.SHORTLIST,
+        QuickActionKey.CONTACTS,
+        QuickActionKey.REQUESTS,
+        QuickActionKey.TASKS,
+    )
+    Platform.YOUTH -> setOf(
+        QuickActionKey.PLAYERS,
+        QuickActionKey.SHORTLIST,
+        QuickActionKey.CONTACTS,
+        QuickActionKey.REQUESTS,
+        QuickActionKey.TASKS,
+    )
+}
+
 @Composable
-private fun QuickActionsRow(navController: NavController) {
+private fun QuickActionsRow(navController: NavController, platform: Platform = Platform.MEN) {
+    val actions = quickActionsFor(platform)
     LazyRow(
         contentPadding = PaddingValues(horizontal = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         modifier = Modifier.padding(vertical = 14.dp)
     ) {
-        item {
-            QuickActionChip(
-                icon = Icons.Default.People,
-                label = stringResource(R.string.quick_action_players),
-                color = HomeTealAccent,
-                onClick = {
-                    navController.navigate(Screens.PlayersScreen.route) {
-                        launchSingleTop = true
+        if (QuickActionKey.PLAYERS in actions) {
+            item {
+                QuickActionChip(
+                    icon = Icons.Default.People,
+                    label = stringResource(R.string.quick_action_players),
+                    color = platform.accent,
+                    onClick = {
+                        navController.navigate(Screens.PlayersScreen.route) {
+                            launchSingleTop = true
+                        }
                     }
-                }
-            )
+                )
+            }
         }
-        item {
-            QuickActionChip(
-                icon = Icons.AutoMirrored.Filled.List,
-                label = stringResource(R.string.quick_action_shortlist),
-                color = HomeBlueAccent,
-                onClick = {
-                    navController.navigate(Screens.ShortlistScreen.route) {
-                        launchSingleTop = true
+        if (QuickActionKey.SHORTLIST in actions) {
+            item {
+                QuickActionChip(
+                    icon = Icons.AutoMirrored.Filled.List,
+                    label = stringResource(R.string.quick_action_shortlist),
+                    color = HomeBlueAccent,
+                    onClick = {
+                        navController.navigate(Screens.ShortlistScreen.route) {
+                            launchSingleTop = true
+                        }
                     }
-                }
-            )
+                )
+            }
         }
-        item {
-            QuickActionChip(
-                icon = Icons.Default.Search,
-                label = stringResource(R.string.quick_action_releases),
-                color = HomeOrangeAccent,
-                onClick = {
-                    navController.navigate(Screens.ReleasesScreen.route) {
-                        launchSingleTop = true
+        if (QuickActionKey.RELEASES in actions) {
+            item {
+                QuickActionChip(
+                    icon = Icons.Default.Search,
+                    label = stringResource(R.string.quick_action_releases),
+                    color = HomeOrangeAccent,
+                    onClick = {
+                        navController.navigate(Screens.ReleasesScreen.route) {
+                            launchSingleTop = true
+                        }
                     }
-                }
-            )
+                )
+            }
         }
-        item {
-            QuickActionChip(
-                icon = Icons.Default.CalendarToday,
-                label = stringResource(
-                    if (java.util.Calendar.getInstance().get(java.util.Calendar.MONTH) + 1 in 2..9)
-                        R.string.quick_action_contract_finisher_summer
-                    else
-                        R.string.quick_action_contract_finisher_winter
-                ),
-                color = HomeAmberAccent,
-                onClick = {
-                    navController.navigate(Screens.ContractFinisherScreen.route) {
-                        launchSingleTop = true
+        if (QuickActionKey.CONTRACT_FINISHER in actions) {
+            item {
+                QuickActionChip(
+                    icon = Icons.Default.CalendarToday,
+                    label = stringResource(
+                        if (java.util.Calendar.getInstance().get(java.util.Calendar.MONTH) + 1 in 2..9)
+                            R.string.quick_action_contract_finisher_summer
+                        else
+                            R.string.quick_action_contract_finisher_winter
+                    ),
+                    color = HomeAmberAccent,
+                    onClick = {
+                        navController.navigate(Screens.ContractFinisherScreen.route) {
+                            launchSingleTop = true
+                        }
                     }
-                }
-            )
+                )
+            }
         }
-        item {
-            QuickActionChip(
-                icon = Icons.Default.Autorenew,
-                label = stringResource(R.string.quick_action_returnees),
-                color = HomeRedAccent,
-                onClick = {
-                    navController.navigate(Screens.ReturneeScreen.route) {
-                        launchSingleTop = true
+        if (QuickActionKey.RETURNEES in actions) {
+            item {
+                QuickActionChip(
+                    icon = Icons.Default.Autorenew,
+                    label = stringResource(R.string.quick_action_returnees),
+                    color = HomeRedAccent,
+                    onClick = {
+                        navController.navigate(Screens.ReturneeScreen.route) {
+                            launchSingleTop = true
+                        }
                     }
-                }
-            )
+                )
+            }
         }
-        item {
-            QuickActionChip(
-                icon = Icons.Default.Psychology,
-                label = stringResource(R.string.quick_action_war_room),
-                color = WarRoomAccent,
-                onClick = {
-                    navController.navigate(Screens.WarRoomScreen.route) {
-                        launchSingleTop = true
-                    }
-                },
-                gradientBg = Brush.horizontalGradient(
-                    colors = listOf(
-                        WarRoomAccent.copy(alpha = 0.25f),
-                        WarRoomAccent.copy(alpha = 0.12f)
+        if (QuickActionKey.WAR_ROOM in actions) {
+            item {
+                QuickActionChip(
+                    icon = Icons.Default.Psychology,
+                    label = stringResource(R.string.quick_action_war_room),
+                    color = WarRoomAccent,
+                    onClick = {
+                        navController.navigate(Screens.WarRoomScreen.route) {
+                            launchSingleTop = true
+                        }
+                    },
+                    gradientBg = Brush.horizontalGradient(
+                        colors = listOf(
+                            WarRoomAccent.copy(alpha = 0.25f),
+                            WarRoomAccent.copy(alpha = 0.12f)
+                        )
                     )
                 )
-            )
+            }
         }
-        item {
-            QuickActionChip(
-                icon = Icons.Default.ContactPhone,
-                label = stringResource(R.string.quick_action_contacts),
-                color = HomeTealAccent,
-                onClick = {
-                    navController.navigate(Screens.ContactsScreen.route) {
-                        launchSingleTop = true
+        if (QuickActionKey.CONTACTS in actions) {
+            item {
+                QuickActionChip(
+                    icon = Icons.Default.ContactPhone,
+                    label = stringResource(R.string.quick_action_contacts),
+                    color = HomeTealAccent,
+                    onClick = {
+                        navController.navigate(Screens.ContactsScreen.route) {
+                            launchSingleTop = true
+                        }
                     }
-                }
-            )
+                )
+            }
         }
-        item {
-            QuickActionChip(
-                icon = Icons.Default.RequestQuote,
-                label = stringResource(R.string.quick_action_requests),
-                color = HomePurpleAccent,
-                onClick = {
-                    navController.navigate(Screens.RequestsScreen.route) {
-                        launchSingleTop = true
+        if (QuickActionKey.REQUESTS in actions) {
+            item {
+                QuickActionChip(
+                    icon = Icons.Default.RequestQuote,
+                    label = stringResource(R.string.quick_action_requests),
+                    color = HomePurpleAccent,
+                    onClick = {
+                        navController.navigate(Screens.RequestsScreen.route) {
+                            launchSingleTop = true
+                        }
                     }
-                }
-            )
+                )
+            }
         }
-        item {
-            QuickActionChip(
-                icon = Icons.Default.SportsSoccer,
-                label = stringResource(R.string.quick_action_shadow_teams),
-                color = HomeGreenAccent,
-                onClick = {
-                    navController.navigate(Screens.ShadowTeamsScreen.route) {
-                        launchSingleTop = true
+        if (QuickActionKey.SHADOW_TEAMS in actions) {
+            item {
+                QuickActionChip(
+                    icon = Icons.Default.SportsSoccer,
+                    label = stringResource(R.string.quick_action_shadow_teams),
+                    color = HomeGreenAccent,
+                    onClick = {
+                        navController.navigate(Screens.ShadowTeamsScreen.route) {
+                            launchSingleTop = true
+                        }
                     }
-                }
-            )
+                )
+            }
+        }
+        if (QuickActionKey.TASKS in actions) {
+            item {
+                QuickActionChip(
+                    icon = Icons.Default.CheckCircle,
+                    label = stringResource(R.string.tasks_title),
+                    color = platform.accent,
+                    onClick = {
+                        navController.navigate(Screens.TasksScreen.route) {
+                            launchSingleTop = true
+                        }
+                    }
+                )
+            }
         }
     }
 }
@@ -872,7 +985,8 @@ private fun FeedEventCard(
     event: FeedEvent,
     navController: NavController,
     allAccounts: List<com.liordahan.mgsrteam.features.login.models.Account> = emptyList(),
-    onNavigateToPlayer: (tmProfile: String, autoRefresh: Boolean) -> Unit = { _, _ -> }
+    onNavigateToPlayer: (tmProfile: String, autoRefresh: Boolean) -> Unit = { _, _ -> },
+    onNavigateToPlayerByName: (playerName: String) -> Unit = {}
 ) {
     val (icon, accentColor, title) = when (event.type) {
         FeedEvent.TYPE_MARKET_VALUE_CHANGE -> {
@@ -932,6 +1046,10 @@ private fun FeedEventCard(
                             else ->
                                 onNavigateToPlayer(tm, false)
                         }
+                    }
+                    // Fallback for Women/Youth events with null playerTmProfile — find by name
+                    event.playerName != null -> {
+                        onNavigateToPlayerByName(event.playerName)
                     }
                 }
             },
@@ -1386,8 +1504,9 @@ private fun MyAgentHubSection(
                 style = boldTextStyle(HomeTextPrimary, 18.sp),
                 modifier = Modifier.weight(1f)
             )
+            val isWomen = koinInject<PlatformManager>().current.value == Platform.WOMEN
             Text(
-                text = stringResource(R.string.my_hub_view_my_players),
+                text = stringResource(if (isWomen) R.string.women_my_hub_view_my_players else R.string.my_hub_view_my_players),
                 style = boldTextStyle(HomeTealAccent, 12.sp),
                 modifier = Modifier
                     .clip(RoundedCornerShape(8.dp))
@@ -1728,14 +1847,15 @@ private fun HubTaskRow(
                 overflow = TextOverflow.Ellipsis,
                 textDecoration = if (task.isCompleted) TextDecoration.LineThrough else TextDecoration.None
             )
-            if (task.playerName.isNotBlank() && task.playerTmProfile.isNotBlank()) {
+            if (task.playerName.isNotBlank() && (task.playerTmProfile.isNotBlank() || task.playerId.isNotBlank())) {
                 Spacer(Modifier.height(2.dp))
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(6.dp))
                         .background(HomeTealAccent.copy(alpha = 0.2f))
                         .clickable {
-                            navController.navigate("${Screens.PlayerInfoScreen.route}/${android.net.Uri.encode(task.playerTmProfile)}")
+                            val navId = task.playerTmProfile.takeIf { it.isNotBlank() } ?: task.playerId
+                            navController.navigate("${Screens.PlayerInfoScreen.route}/${android.net.Uri.encode(navId)}")
                         }
                         .padding(horizontal = 6.dp, vertical = 2.dp)
                 ) {
@@ -2294,14 +2414,15 @@ private fun TasksSummaryWidget(
                                         maxLines = 1
                                     )
                                 }
-                                if (task.playerName.isNotBlank() && task.playerTmProfile.isNotBlank()) {
+                                if (task.playerName.isNotBlank() && (task.playerTmProfile.isNotBlank() || task.playerId.isNotBlank())) {
                                     Spacer(Modifier.height(4.dp))
                                     Box(
                                         modifier = Modifier
                                             .clip(RoundedCornerShape(6.dp))
                                             .background(HomeTealAccent.copy(alpha = 0.2f))
                                             .clickable {
-                                                navController.navigate("${Screens.PlayerInfoScreen.route}/${android.net.Uri.encode(task.playerTmProfile)}")
+                                                val navId = task.playerTmProfile.takeIf { it.isNotBlank() } ?: task.playerId
+                                                navController.navigate("${Screens.PlayerInfoScreen.route}/${android.net.Uri.encode(navId)}")
                                             }
                                             .padding(horizontal = 6.dp, vertical = 2.dp)
                                     ) {

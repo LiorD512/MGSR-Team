@@ -106,6 +106,8 @@ abstract class IHomeScreenViewModel : ViewModel() {
     abstract val dashboardState: StateFlow<HomeDashboardState>
     /** Checks if player exists in DB; calls onResult(true) if exists, onResult(false) if deleted. */
     abstract fun checkPlayerExists(tmProfile: String, onResult: (Boolean) -> Unit)
+    /** Finds a Women/Youth player by name and returns its document ID, or null if not found. */
+    abstract fun findPlayerDocIdByName(playerName: String, onResult: (String?) -> Unit)
     /** Updates player's mandate switch (haveMandate) by tmProfile. */
     abstract fun updatePlayerMandate(tmProfile: String, hasMandate: Boolean)
     abstract fun selectFeedFilter(filter: FeedFilter)
@@ -118,12 +120,15 @@ abstract class IHomeScreenViewModel : ViewModel() {
     abstract fun toggleTransferWindowGroup(confederation: Confederation)
     abstract fun toggleTeamOverview()
     abstract fun refreshTransferWindows()
+    /** Called from UI when user switches MGSR platform (Men / Women / Youth). */
+    abstract fun reloadForPlatformSwitch()
 }
 
 class HomeScreenViewModel(
     private val firebaseHandler: FirebaseHandler,
     private val transferWindows: TransferWindows,
-    private val appContext: android.content.Context
+    private val appContext: android.content.Context,
+    private val platformManager: com.liordahan.mgsrteam.features.platform.PlatformManager
 ) : IHomeScreenViewModel() {
 
     private val _state = MutableStateFlow(HomeDashboardState())
@@ -145,6 +150,37 @@ class HomeScreenViewModel(
         ensureLoadingClearedWithinTimeout()
     }
 
+    // ── Platform switch ─────────────────────────────────────────────────────
+
+    /**
+     * Tears down all platform-dependent Firestore listeners and re-subscribes
+     * against the new collections. Called *after* [PlatformManager.switchTo()].
+     */
+    override fun reloadForPlatformSwitch() {
+        // Remove old listeners
+        listenerRegistrations.forEach { it.remove() }
+        listenerRegistrations.clear()
+        _currentPlayers = emptyList()
+        // Reset state (keep greeting & accounts)
+        _state.update {
+            it.copy(
+                totalPlayers = 0, withMandate = 0, expiringSoon = 0,
+                freeAgents = 0, requestsCount = 0,
+                feedEvents = emptyList(), agentSummaries = emptyList(),
+                agentTasks = emptyMap(), documentReminders = emptyList(),
+                mandateDocProfiles = emptySet(), mandateStatusByTmProfile = emptyMap(),
+                myAgentOverview = null, isLoading = true
+            )
+        }
+        // Re-subscribe with new collection names
+        loadAllAccounts()
+        listenToPlayers()
+        listenToRequests()
+        loadFeedEvents()
+        listenToAgentTasks()
+        ensureLoadingClearedWithinTimeout()
+    }
+
     /** Fallback: clear loading if FeedEvents/Players listeners are slow (e.g. offline). */
     private fun ensureLoadingClearedWithinTimeout() {
         viewModelScope.launch(Dispatchers.Main) {
@@ -162,10 +198,28 @@ class HomeScreenViewModel(
     override fun checkPlayerExists(tmProfile: String, onResult: (Boolean) -> Unit) {
         viewModelScope.launch(Dispatchers.IO) {
             val exists = try {
-                firebaseHandler.firebaseStore.collection(firebaseHandler.playersTable)
-                    .whereEqualTo("tmProfile", tmProfile).get().await().documents.isNotEmpty()
+                val isNonMen = platformManager.current.value != com.liordahan.mgsrteam.features.platform.Platform.MEN
+                if (isNonMen) {
+                    // Women / Youth — tmProfile is actually the Firestore document ID
+                    firebaseHandler.firebaseStore.collection(firebaseHandler.playersTable)
+                        .document(tmProfile).get().await().exists()
+                } else {
+                    firebaseHandler.firebaseStore.collection(firebaseHandler.playersTable)
+                        .whereEqualTo("tmProfile", tmProfile).get().await().documents.isNotEmpty()
+                }
             } catch (_: Exception) { false }
             withContext(Dispatchers.Main) { onResult(exists) }
+        }
+    }
+
+    override fun findPlayerDocIdByName(playerName: String, onResult: (String?) -> Unit) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val docId = try {
+                firebaseHandler.firebaseStore.collection(firebaseHandler.playersTable)
+                    .whereEqualTo("fullName", playerName).get().await()
+                    .documents.firstOrNull()?.id
+            } catch (_: Exception) { null }
+            withContext(Dispatchers.Main) { onResult(docId) }
         }
     }
 

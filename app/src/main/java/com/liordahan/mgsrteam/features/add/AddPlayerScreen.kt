@@ -10,15 +10,19 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -62,6 +66,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -99,24 +104,29 @@ import com.liordahan.mgsrteam.ui.components.SkeletonPlayerCardList
 import com.liordahan.mgsrteam.ui.utils.boldTextStyle
 import com.liordahan.mgsrteam.ui.utils.clickWithNoRipple
 import com.liordahan.mgsrteam.ui.utils.regularTextStyle
+import com.liordahan.mgsrteam.transfermarket.SoccerDonnaSearchResult
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.koinInject
+import com.liordahan.mgsrteam.features.platform.Platform
+import com.liordahan.mgsrteam.features.platform.PlatformManager
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun AddPlayerScreen(
     navController: NavController,
     initialTmProfileUrl: String = "",
     forShortlist: Boolean = false,
-    viewModel: IAddPlayerViewModel = koinViewModel()
+    viewModel: IAddPlayerViewModel = koinViewModel(),
+    platformManager: PlatformManager = koinInject()
 ) {
 
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val context = LocalContext.current
     val keyboardController = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current
+    val currentPlatform by platformManager.current.collectAsStateWithLifecycle()
 
     val snackBarHostState = remember { SnackbarHostState() }
 
@@ -138,6 +148,14 @@ fun AddPlayerScreen(
         mutableStateOf(false)
     }
 
+    var womenSearchResults by remember {
+        mutableStateOf(listOf<SoccerDonnaSearchResult>())
+    }
+
+    var soccerDonnaUrlInput by remember { mutableStateOf("") }
+
+    var manualNameInput by remember { mutableStateOf("") }
+
     var errorMessage by remember {
         mutableStateOf<String?>("")
     }
@@ -153,6 +171,7 @@ fun AddPlayerScreen(
             launch {
                 viewModel.playerSearchStateFlow.collect {
                     playerOptionsList = it.playerSearchResults
+                    womenSearchResults = it.womenSearchResults
                     showSearchProgress = it.showSearchProgress
                     showSelectedPlayerProgress = it.showPlayerSelectedSearchProgress
                 }
@@ -214,13 +233,16 @@ fun AddPlayerScreen(
                 searchPlayerInput = searchText,
                 onValueChange = {
                     searchText = it
-                    viewModel.updateSearchQuery(searchText.text)
+                    if (currentPlatform == Platform.MEN || currentPlatform == Platform.WOMEN) {
+                        viewModel.updateSearchQuery(searchText.text)
+                    }
                 },
                 onBackClicked = { navController.popBackStack() },
-                forShortlist = forShortlist
+                forShortlist = forShortlist,
+                platform = currentPlatform
             )
 
-            if (showSearchProgress) {
+            if (showSearchProgress && (currentPlatform == Platform.MEN || currentPlatform == Platform.WOMEN)) {
                 SkeletonPlayerCardList(
                     modifier = Modifier.fillMaxSize(),
                     itemCount = 4
@@ -229,7 +251,948 @@ fun AddPlayerScreen(
             }
 
             Box(modifier = Modifier.fillMaxSize()) {
-                if (playerOptionsList.isNotEmpty()) {
+                if (currentPlatform == Platform.WOMEN) {
+                    // Women — Single-page form (matches web AddWomanPlayerForm)
+                    val womanForm by viewModel.womanFormState.collectAsStateWithLifecycle()
+
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        // Base layer: always-visible scrollable form
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(
+                                start = 16.dp,
+                                end = 16.dp,
+                                top = 8.dp,
+                                bottom = 32.dp
+                            ),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            // "Or add manually" link
+                            item {
+                                Text(
+                                    text = stringResource(R.string.women_or_add_manually),
+                                    style = regularTextStyle(currentPlatform.accent, 13.sp),
+                                    modifier = Modifier
+                                        .clickWithNoRipple {
+                                            viewModel.clearWomanForm()
+                                            searchText = TextFieldValue("")
+                                        }
+                                        .padding(vertical = 4.dp)
+                                )
+                            }
+
+                            // SoccerDonna URL paste section
+                            item {
+                                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Text(
+                                        stringResource(R.string.women_paste_url),
+                                        style = boldTextStyle(HomeTextSecondary, 12.sp)
+                                    )
+                                    AppTextField(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        textInput = TextFieldValue(soccerDonnaUrlInput),
+                                        hint = "https://www.soccerdonna.de/...",
+                                        keyboardOptions = KeyboardOptions(
+                                            imeAction = ImeAction.Done,
+                                            keyboardType = KeyboardType.Uri
+                                        ),
+                                        onValueChange = { soccerDonnaUrlInput = it.text },
+                                        darkTheme = true
+                                    )
+                                    PrimaryButtonNewDesign(
+                                        buttonText = stringResource(R.string.women_load_url),
+                                        isEnabled = soccerDonnaUrlInput.contains("soccerdonna"),
+                                        showProgress = showSelectedPlayerProgress,
+                                        containerColor = currentPlatform.accent,
+                                        onButtonClicked = {
+                                            focusManager.clearFocus()
+                                            keyboardController?.hide()
+                                            viewModel.loadWomanPlayerByUrl(soccerDonnaUrlInput)
+                                        }
+                                    )
+                                }
+                            }
+
+                            // Divider
+                            item {
+                                HorizontalDivider(
+                                    thickness = 1.dp,
+                                    color = HomeDarkCardBorder,
+                                    modifier = Modifier.padding(vertical = 4.dp)
+                                )
+                            }
+
+                            // Full Name *
+                            item {
+                                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    Text(
+                                        stringResource(R.string.women_full_name),
+                                        style = boldTextStyle(HomeTextSecondary, 12.sp)
+                                    )
+                                    AppTextField(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        textInput = TextFieldValue(womanForm.fullName),
+                                        hint = "e.g. Lauren James",
+                                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                                        onValueChange = { tf ->
+                                            viewModel.updateWomanForm { it.copy(fullName = tf.text) }
+                                        },
+                                        darkTheme = true
+                                    )
+                                }
+                            }
+
+                            // Positions chips
+                            item {
+                                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Text(
+                                        stringResource(R.string.women_positions),
+                                        style = boldTextStyle(HomeTextSecondary, 12.sp)
+                                    )
+                                    FlowRow(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                                    ) {
+                                        WomanPlayerFormState.WOMEN_POSITIONS.forEach { pos ->
+                                            val isSelected = pos in womanForm.positions
+                                            Text(
+                                                text = pos,
+                                                style = boldTextStyle(
+                                                    if (isSelected) HomeDarkBackground else HomeTextSecondary,
+                                                    11.sp
+                                                ),
+                                                modifier = Modifier
+                                                    .clip(RoundedCornerShape(20.dp))
+                                                    .background(
+                                                        if (isSelected) currentPlatform.accent
+                                                        else Color.Transparent
+                                                    )
+                                                    .border(
+                                                        1.dp,
+                                                        if (isSelected) currentPlatform.accent
+                                                        else HomeDarkCardBorder,
+                                                        RoundedCornerShape(20.dp)
+                                                    )
+                                                    .clickWithNoRipple {
+                                                        viewModel.toggleWomanPosition(pos)
+                                                    }
+                                                    .padding(
+                                                        horizontal = 14.dp,
+                                                        vertical = 6.dp
+                                                    )
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+
+                            // Club + Age row
+                            item {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    Column(
+                                        modifier = Modifier.weight(1f),
+                                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                                    ) {
+                                        Text(
+                                            stringResource(R.string.women_club),
+                                            style = boldTextStyle(HomeTextSecondary, 12.sp)
+                                        )
+                                        AppTextField(
+                                            textInput = TextFieldValue(womanForm.currentClub),
+                                            hint = "Club name",
+                                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                                            onValueChange = { tf ->
+                                                viewModel.updateWomanForm {
+                                                    it.copy(currentClub = tf.text)
+                                                }
+                                            },
+                                            darkTheme = true
+                                        )
+                                    }
+                                    Column(
+                                        modifier = Modifier.weight(1f),
+                                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                                    ) {
+                                        Text(
+                                            stringResource(R.string.women_age),
+                                            style = boldTextStyle(HomeTextSecondary, 12.sp)
+                                        )
+                                        AppTextField(
+                                            textInput = TextFieldValue(womanForm.age),
+                                            hint = "e.g. 25",
+                                            keyboardOptions = KeyboardOptions(
+                                                imeAction = ImeAction.Next,
+                                                keyboardType = KeyboardType.Number
+                                            ),
+                                            onValueChange = { tf ->
+                                                viewModel.updateWomanForm {
+                                                    it.copy(age = tf.text)
+                                                }
+                                            },
+                                            darkTheme = true
+                                        )
+                                    }
+                                }
+                            }
+
+                            // Nationality + Market Value row
+                            item {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    Column(
+                                        modifier = Modifier.weight(1f),
+                                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                                    ) {
+                                        Text(
+                                            stringResource(R.string.women_nationality),
+                                            style = boldTextStyle(HomeTextSecondary, 12.sp)
+                                        )
+                                        AppTextField(
+                                            textInput = TextFieldValue(womanForm.nationality),
+                                            hint = "e.g. England",
+                                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                                            onValueChange = { tf ->
+                                                viewModel.updateWomanForm {
+                                                    it.copy(nationality = tf.text)
+                                                }
+                                            },
+                                            darkTheme = true
+                                        )
+                                    }
+                                    Column(
+                                        modifier = Modifier.weight(1f),
+                                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                                    ) {
+                                        Text(
+                                            stringResource(R.string.women_market_value),
+                                            style = boldTextStyle(HomeTextSecondary, 12.sp)
+                                        )
+                                        AppTextField(
+                                            textInput = TextFieldValue(womanForm.marketValue),
+                                            hint = "e.g. €500k",
+                                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                                            onValueChange = { tf ->
+                                                viewModel.updateWomanForm {
+                                                    it.copy(marketValue = tf.text)
+                                                }
+                                            },
+                                            darkTheme = true
+                                        )
+                                    }
+                                }
+                            }
+
+                            // SoccerDonna URL (editable, auto-filled from search)
+                            item {
+                                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    Text(
+                                        stringResource(R.string.women_soccerdonna_url),
+                                        style = boldTextStyle(HomeTextSecondary, 12.sp)
+                                    )
+                                    AppTextField(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        textInput = TextFieldValue(womanForm.soccerDonnaUrl),
+                                        hint = "Auto-filled from search",
+                                        keyboardOptions = KeyboardOptions(
+                                            imeAction = ImeAction.Next,
+                                            keyboardType = KeyboardType.Uri
+                                        ),
+                                        onValueChange = { tf ->
+                                            viewModel.updateWomanForm {
+                                                it.copy(soccerDonnaUrl = tf.text)
+                                            }
+                                        },
+                                        darkTheme = true
+                                    )
+                                }
+                            }
+
+                            // Profile Image URL
+                            item {
+                                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    Text(
+                                        stringResource(R.string.women_profile_image_url),
+                                        style = boldTextStyle(HomeTextSecondary, 12.sp)
+                                    )
+                                    AppTextField(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        textInput = TextFieldValue(womanForm.profileImage),
+                                        hint = "Image URL",
+                                        keyboardOptions = KeyboardOptions(
+                                            imeAction = ImeAction.Next,
+                                            keyboardType = KeyboardType.Uri
+                                        ),
+                                        onValueChange = { tf ->
+                                            viewModel.updateWomanForm {
+                                                it.copy(profileImage = tf.text)
+                                            }
+                                        },
+                                        darkTheme = true
+                                    )
+                                }
+                            }
+
+                            // Player Phone + Agent Phone row
+                            item {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    Column(
+                                        modifier = Modifier.weight(1f),
+                                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                                    ) {
+                                        Text(
+                                            stringResource(R.string.women_player_phone),
+                                            style = boldTextStyle(HomeTextSecondary, 12.sp)
+                                        )
+                                        AppTextField(
+                                            textInput = TextFieldValue(womanForm.playerPhone),
+                                            hint = "Phone number",
+                                            keyboardOptions = KeyboardOptions(
+                                                imeAction = ImeAction.Next,
+                                                keyboardType = KeyboardType.Phone
+                                            ),
+                                            onValueChange = { tf ->
+                                                viewModel.updateWomanForm {
+                                                    it.copy(playerPhone = tf.text)
+                                                }
+                                            },
+                                            darkTheme = true
+                                        )
+                                    }
+                                    Column(
+                                        modifier = Modifier.weight(1f),
+                                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                                    ) {
+                                        Text(
+                                            stringResource(R.string.women_agent_phone),
+                                            style = boldTextStyle(HomeTextSecondary, 12.sp)
+                                        )
+                                        AppTextField(
+                                            textInput = TextFieldValue(womanForm.agentPhone),
+                                            hint = "Phone number",
+                                            keyboardOptions = KeyboardOptions(
+                                                imeAction = ImeAction.Next,
+                                                keyboardType = KeyboardType.Phone
+                                            ),
+                                            onValueChange = { tf ->
+                                                viewModel.updateWomanForm {
+                                                    it.copy(agentPhone = tf.text)
+                                                }
+                                            },
+                                            darkTheme = true
+                                        )
+                                    }
+                                }
+                            }
+
+                            // Notes
+                            item {
+                                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    Text(
+                                        stringResource(R.string.women_notes),
+                                        style = boldTextStyle(HomeTextSecondary, 12.sp)
+                                    )
+                                    AppTextField(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        textInput = TextFieldValue(womanForm.notes),
+                                        hint = "Additional notes...",
+                                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                                        onValueChange = { tf ->
+                                            viewModel.updateWomanForm {
+                                                it.copy(notes = tf.text)
+                                            }
+                                        },
+                                        darkTheme = true
+                                    )
+                                }
+                            }
+
+                            // Save button
+                            item {
+                                Spacer(modifier = Modifier.height(8.dp))
+                                PrimaryButtonNewDesign(
+                                    buttonText = stringResource(R.string.women_save_player),
+                                    isEnabled = womanForm.fullName.isNotBlank() && !womanForm.isSaving,
+                                    showProgress = womanForm.isSaving,
+                                    containerColor = currentPlatform.accent,
+                                    onButtonClicked = {
+                                        focusManager.clearFocus()
+                                        keyboardController?.hide()
+                                        viewModel.saveWomanPlayer()
+                                    }
+                                )
+                            }
+                        }
+
+                        // Overlay: search results dropdown
+                        if (womenSearchResults.isNotEmpty()) {
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 12.dp)
+                                    .heightIn(max = 320.dp),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = CardDefaults.cardColors(containerColor = HomeDarkCard),
+                                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+                            ) {
+                                LazyColumn {
+                                    items(
+                                        womenSearchResults,
+                                        key = { it.soccerDonnaUrl ?: it.hashCode() }
+                                    ) { result ->
+                                        WomenSearchListItem(
+                                            result = result,
+                                            accentColor = currentPlatform.accent,
+                                            onCardClicked = {
+                                                focusManager.clearFocus()
+                                                keyboardController?.hide()
+                                                viewModel.onWomanPlayerSelected(it)
+                                                searchText = TextFieldValue("")
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } else if (currentPlatform == Platform.YOUTH) {
+                    // Youth — Single-page form (matches web AddYouthPlayerForm)
+                    val youthForm by viewModel.youthFormState.collectAsStateWithLifecycle()
+                    var showAgeGroupDropdown by remember { mutableStateOf(false) }
+                    var showRelationshipDropdown by remember { mutableStateOf(false) }
+
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(
+                            start = 16.dp,
+                            end = 16.dp,
+                            top = 8.dp,
+                            bottom = 32.dp
+                        ),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        // Full Name (English) *
+                        item {
+                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Text(
+                                    stringResource(R.string.youth_full_name) + " *",
+                                    style = boldTextStyle(HomeTextSecondary, 12.sp)
+                                )
+                                AppTextField(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    textInput = TextFieldValue(youthForm.fullName),
+                                    hint = "e.g. John Doe",
+                                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                                    onValueChange = { tf ->
+                                        viewModel.updateYouthForm { it.copy(fullName = tf.text) }
+                                    },
+                                    darkTheme = true
+                                )
+                            }
+                        }
+
+                        // Full Name (Hebrew)
+                        item {
+                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Text(
+                                    stringResource(R.string.youth_full_name_he),
+                                    style = boldTextStyle(HomeTextSecondary, 12.sp)
+                                )
+                                AppTextField(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    textInput = TextFieldValue(youthForm.fullNameHe),
+                                    hint = "שם מלא בעברית",
+                                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                                    onValueChange = { tf ->
+                                        viewModel.updateYouthForm { it.copy(fullNameHe = tf.text) }
+                                    },
+                                    darkTheme = true
+                                )
+                            }
+                        }
+
+                        // Positions chips
+                        item {
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text(
+                                    stringResource(R.string.youth_positions),
+                                    style = boldTextStyle(HomeTextSecondary, 12.sp)
+                                )
+                                FlowRow(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    YouthPlayerFormState.YOUTH_POSITIONS.forEach { pos ->
+                                        val isSelected = pos in youthForm.positions
+                                        Text(
+                                            text = pos,
+                                            style = boldTextStyle(
+                                                if (isSelected) HomeDarkBackground else HomeTextSecondary,
+                                                11.sp
+                                            ),
+                                            modifier = Modifier
+                                                .clip(RoundedCornerShape(20.dp))
+                                                .background(
+                                                    if (isSelected) currentPlatform.accent
+                                                    else Color.Transparent
+                                                )
+                                                .border(
+                                                    1.dp,
+                                                    if (isSelected) currentPlatform.accent
+                                                    else HomeDarkCardBorder,
+                                                    RoundedCornerShape(20.dp)
+                                                )
+                                                .clickWithNoRipple {
+                                                    viewModel.toggleYouthPosition(pos)
+                                                }
+                                                .padding(
+                                                    horizontal = 14.dp,
+                                                    vertical = 6.dp
+                                                )
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        // Club + Academy row
+                        item {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Column(
+                                    modifier = Modifier.weight(1f),
+                                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Text(
+                                        stringResource(R.string.youth_club),
+                                        style = boldTextStyle(HomeTextSecondary, 12.sp)
+                                    )
+                                    AppTextField(
+                                        textInput = TextFieldValue(youthForm.currentClub),
+                                        hint = "Club name",
+                                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                                        onValueChange = { tf ->
+                                            viewModel.updateYouthForm { it.copy(currentClub = tf.text) }
+                                        },
+                                        darkTheme = true
+                                    )
+                                }
+                                Column(
+                                    modifier = Modifier.weight(1f),
+                                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Text(
+                                        stringResource(R.string.youth_academy),
+                                        style = boldTextStyle(HomeTextSecondary, 12.sp)
+                                    )
+                                    AppTextField(
+                                        textInput = TextFieldValue(youthForm.academy),
+                                        hint = "Academy name",
+                                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                                        onValueChange = { tf ->
+                                            viewModel.updateYouthForm { it.copy(academy = tf.text) }
+                                        },
+                                        darkTheme = true
+                                    )
+                                }
+                            }
+                        }
+
+                        // Date of Birth + Age Group row
+                        item {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Column(
+                                    modifier = Modifier.weight(1f),
+                                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Text(
+                                        stringResource(R.string.youth_date_of_birth),
+                                        style = boldTextStyle(HomeTextSecondary, 12.sp)
+                                    )
+                                    AppTextField(
+                                        textInput = TextFieldValue(youthForm.dateOfBirth),
+                                        hint = "DD/MM/YYYY",
+                                        keyboardOptions = KeyboardOptions(
+                                            imeAction = ImeAction.Next,
+                                            keyboardType = KeyboardType.Number
+                                        ),
+                                        onValueChange = { tf ->
+                                            val computed = YouthPlayerFormState.computeAgeGroup(tf.text)
+                                            viewModel.updateYouthForm {
+                                                it.copy(
+                                                    dateOfBirth = tf.text,
+                                                    ageGroup = computed.ifBlank { it.ageGroup }
+                                                )
+                                            }
+                                        },
+                                        darkTheme = true
+                                    )
+                                }
+                                Column(
+                                    modifier = Modifier.weight(1f),
+                                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Text(
+                                        stringResource(R.string.youth_age_group),
+                                        style = boldTextStyle(HomeTextSecondary, 12.sp)
+                                    )
+                                    Box {
+                                        AppTextField(
+                                            textInput = TextFieldValue(youthForm.ageGroup),
+                                            hint = "Select…",
+                                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                                            onValueChange = { },
+                                            darkTheme = true,
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .clickWithNoRipple {
+                                                    showAgeGroupDropdown = !showAgeGroupDropdown
+                                                }
+                                        )
+                                        androidx.compose.material3.DropdownMenu(
+                                            expanded = showAgeGroupDropdown,
+                                            onDismissRequest = { showAgeGroupDropdown = false },
+                                            containerColor = HomeDarkCard
+                                        ) {
+                                            YouthPlayerFormState.AGE_GROUPS.forEach { group ->
+                                                androidx.compose.material3.DropdownMenuItem(
+                                                    text = {
+                                                        Text(
+                                                            group,
+                                                            style = regularTextStyle(
+                                                                HomeTextPrimary, 14.sp
+                                                            )
+                                                        )
+                                                    },
+                                                    onClick = {
+                                                        viewModel.updateYouthForm { it.copy(ageGroup = group) }
+                                                        showAgeGroupDropdown = false
+                                                    }
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // Nationality
+                        item {
+                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Text(
+                                    stringResource(R.string.youth_nationality),
+                                    style = boldTextStyle(HomeTextSecondary, 12.sp)
+                                )
+                                AppTextField(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    textInput = TextFieldValue(youthForm.nationality),
+                                    hint = "e.g. Israel",
+                                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                                    onValueChange = { tf ->
+                                        viewModel.updateYouthForm { it.copy(nationality = tf.text) }
+                                    },
+                                    darkTheme = true
+                                )
+                            }
+                        }
+
+                        // Profile Image URL + IFA URL
+                        item {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Column(
+                                    modifier = Modifier.weight(1f),
+                                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Text(
+                                        stringResource(R.string.youth_profile_image_url),
+                                        style = boldTextStyle(HomeTextSecondary, 12.sp)
+                                    )
+                                    AppTextField(
+                                        textInput = TextFieldValue(youthForm.profileImage),
+                                        hint = "Image URL",
+                                        keyboardOptions = KeyboardOptions(
+                                            imeAction = ImeAction.Next,
+                                            keyboardType = KeyboardType.Uri
+                                        ),
+                                        onValueChange = { tf ->
+                                            viewModel.updateYouthForm { it.copy(profileImage = tf.text) }
+                                        },
+                                        darkTheme = true
+                                    )
+                                }
+                                Column(
+                                    modifier = Modifier.weight(1f),
+                                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Text(
+                                        stringResource(R.string.youth_ifa_url),
+                                        style = boldTextStyle(HomeTextSecondary, 12.sp)
+                                    )
+                                    AppTextField(
+                                        textInput = TextFieldValue(youthForm.ifaUrl),
+                                        hint = "football.org.il/…",
+                                        keyboardOptions = KeyboardOptions(
+                                            imeAction = ImeAction.Next,
+                                            keyboardType = KeyboardType.Uri
+                                        ),
+                                        onValueChange = { tf ->
+                                            viewModel.updateYouthForm { it.copy(ifaUrl = tf.text) }
+                                        },
+                                        darkTheme = true
+                                    )
+                                }
+                            }
+                        }
+
+                        // Player Phone + Player Email row
+                        item {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Column(
+                                    modifier = Modifier.weight(1f),
+                                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Text(
+                                        stringResource(R.string.youth_player_phone),
+                                        style = boldTextStyle(HomeTextSecondary, 12.sp)
+                                    )
+                                    AppTextField(
+                                        textInput = TextFieldValue(youthForm.playerPhone),
+                                        hint = "Phone number",
+                                        keyboardOptions = KeyboardOptions(
+                                            imeAction = ImeAction.Next,
+                                            keyboardType = KeyboardType.Phone
+                                        ),
+                                        onValueChange = { tf ->
+                                            viewModel.updateYouthForm { it.copy(playerPhone = tf.text) }
+                                        },
+                                        darkTheme = true
+                                    )
+                                }
+                                Column(
+                                    modifier = Modifier.weight(1f),
+                                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Text(
+                                        stringResource(R.string.youth_player_email),
+                                        style = boldTextStyle(HomeTextSecondary, 12.sp)
+                                    )
+                                    AppTextField(
+                                        textInput = TextFieldValue(youthForm.playerEmail),
+                                        hint = "Email address",
+                                        keyboardOptions = KeyboardOptions(
+                                            imeAction = ImeAction.Next,
+                                            keyboardType = KeyboardType.Email
+                                        ),
+                                        onValueChange = { tf ->
+                                            viewModel.updateYouthForm { it.copy(playerEmail = tf.text) }
+                                        },
+                                        darkTheme = true
+                                    )
+                                }
+                            }
+                        }
+
+                        // ── Parent / Guardian Section ──
+                        item {
+                            HorizontalDivider(
+                                thickness = 1.dp,
+                                color = HomeDarkCardBorder,
+                                modifier = Modifier.padding(vertical = 4.dp)
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                stringResource(R.string.youth_parent_section),
+                                style = boldTextStyle(currentPlatform.accent, 14.sp)
+                            )
+                        }
+
+                        // Parent Name + Relationship row
+                        item {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Column(
+                                    modifier = Modifier.weight(1f),
+                                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Text(
+                                        stringResource(R.string.youth_parent_name),
+                                        style = boldTextStyle(HomeTextSecondary, 12.sp)
+                                    )
+                                    AppTextField(
+                                        textInput = TextFieldValue(youthForm.parentName),
+                                        hint = "Parent name",
+                                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                                        onValueChange = { tf ->
+                                            viewModel.updateYouthForm { it.copy(parentName = tf.text) }
+                                        },
+                                        darkTheme = true
+                                    )
+                                }
+                                Column(
+                                    modifier = Modifier.weight(1f),
+                                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Text(
+                                        stringResource(R.string.youth_parent_relationship),
+                                        style = boldTextStyle(HomeTextSecondary, 12.sp)
+                                    )
+                                    Box {
+                                        AppTextField(
+                                            textInput = TextFieldValue(youthForm.parentRelationship),
+                                            hint = "Select…",
+                                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                                            onValueChange = { },
+                                            darkTheme = true,
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .clickWithNoRipple {
+                                                    showRelationshipDropdown = !showRelationshipDropdown
+                                                }
+                                        )
+                                        androidx.compose.material3.DropdownMenu(
+                                            expanded = showRelationshipDropdown,
+                                            onDismissRequest = { showRelationshipDropdown = false },
+                                            containerColor = HomeDarkCard
+                                        ) {
+                                            YouthPlayerFormState.PARENT_RELATIONSHIPS.forEach { rel ->
+                                                androidx.compose.material3.DropdownMenuItem(
+                                                    text = {
+                                                        Text(
+                                                            rel,
+                                                            style = regularTextStyle(
+                                                                HomeTextPrimary, 14.sp
+                                                            )
+                                                        )
+                                                    },
+                                                    onClick = {
+                                                        viewModel.updateYouthForm { it.copy(parentRelationship = rel) }
+                                                        showRelationshipDropdown = false
+                                                    }
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // Parent Phone + Parent Email row
+                        item {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Column(
+                                    modifier = Modifier.weight(1f),
+                                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Text(
+                                        stringResource(R.string.youth_parent_phone),
+                                        style = boldTextStyle(HomeTextSecondary, 12.sp)
+                                    )
+                                    AppTextField(
+                                        textInput = TextFieldValue(youthForm.parentPhone),
+                                        hint = "Phone number",
+                                        keyboardOptions = KeyboardOptions(
+                                            imeAction = ImeAction.Next,
+                                            keyboardType = KeyboardType.Phone
+                                        ),
+                                        onValueChange = { tf ->
+                                            viewModel.updateYouthForm { it.copy(parentPhone = tf.text) }
+                                        },
+                                        darkTheme = true
+                                    )
+                                }
+                                Column(
+                                    modifier = Modifier.weight(1f),
+                                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Text(
+                                        stringResource(R.string.youth_parent_email),
+                                        style = boldTextStyle(HomeTextSecondary, 12.sp)
+                                    )
+                                    AppTextField(
+                                        textInput = TextFieldValue(youthForm.parentEmail),
+                                        hint = "Email address",
+                                        keyboardOptions = KeyboardOptions(
+                                            imeAction = ImeAction.Next,
+                                            keyboardType = KeyboardType.Email
+                                        ),
+                                        onValueChange = { tf ->
+                                            viewModel.updateYouthForm { it.copy(parentEmail = tf.text) }
+                                        },
+                                        darkTheme = true
+                                    )
+                                }
+                            }
+                        }
+
+                        // Notes
+                        item {
+                            HorizontalDivider(
+                                thickness = 1.dp,
+                                color = HomeDarkCardBorder,
+                                modifier = Modifier.padding(vertical = 4.dp)
+                            )
+                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Text(
+                                    stringResource(R.string.youth_notes),
+                                    style = boldTextStyle(HomeTextSecondary, 12.sp)
+                                )
+                                AppTextField(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    textInput = TextFieldValue(youthForm.notes),
+                                    hint = "Additional notes...",
+                                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                                    onValueChange = { tf ->
+                                        viewModel.updateYouthForm { it.copy(notes = tf.text) }
+                                    },
+                                    darkTheme = true
+                                )
+                            }
+                        }
+
+                        // Save button
+                        item {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            PrimaryButtonNewDesign(
+                                buttonText = stringResource(R.string.youth_save_player),
+                                isEnabled = youthForm.fullName.isNotBlank() && !youthForm.isSaving,
+                                showProgress = youthForm.isSaving,
+                                containerColor = currentPlatform.accent,
+                                onButtonClicked = {
+                                    focusManager.clearFocus()
+                                    keyboardController?.hide()
+                                    viewModel.saveYouthPlayer()
+                                }
+                            )
+                        }
+                    }
+                } else {
+                    // Men — Transfermarkt search
+                    if (playerOptionsList.isNotEmpty()) {
                     LazyColumn(
                         modifier = Modifier.fillMaxWidth(),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -258,8 +1221,9 @@ fun AddPlayerScreen(
                             .padding(horizontal = 24.dp)
                     )
                 }
+                } // end Men else branch
 
-                if (showSelectedPlayerProgress) {
+                if (showSelectedPlayerProgress && currentPlatform != Platform.WOMEN) {
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
@@ -274,7 +1238,7 @@ fun AddPlayerScreen(
                     }
                 }
 
-                if (showAddContactBottomSheet) {
+                if (showAddContactBottomSheet && currentPlatform != Platform.WOMEN) {
                     if (forShortlist) {
                         AddToShortlistBottomSheetContent(
                             modifier = Modifier,
@@ -361,6 +1325,80 @@ fun SearchListItem(
                     model = playerSearchModel.currentClubLogo,
                     contentDescription = null,
                     modifier = Modifier.size(36.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun WomenSearchListItem(
+    result: SoccerDonnaSearchResult,
+    accentColor: androidx.compose.ui.graphics.Color,
+    onCardClicked: (SoccerDonnaSearchResult) -> Unit = {}
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickWithNoRipple { onCardClicked(result) },
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = HomeDarkCard)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .drawBehind {
+                    drawRect(
+                        color = accentColor,
+                        topLeft = Offset.Zero,
+                        size = androidx.compose.ui.geometry.Size(
+                            width = 3.dp.toPx(),
+                            height = size.height
+                        )
+                    )
+                }
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 12.dp, end = 12.dp, top = 12.dp, bottom = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Initial avatar (no images in search results)
+                Box(
+                    modifier = Modifier
+                        .size(52.dp)
+                        .clip(CircleShape)
+                        .background(accentColor.copy(alpha = 0.15f))
+                        .border(2.dp, HomeDarkCardBorder, CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = result.fullName.firstOrNull()?.uppercase() ?: "?",
+                        style = boldTextStyle(accentColor, 20.sp)
+                    )
+                }
+                Spacer(modifier = Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        result.fullName,
+                        style = boldTextStyle(HomeTextPrimary, 14.sp)
+                    )
+                    val meta = buildList {
+                        result.currentClub?.let { add(it) }
+                        add("SoccerDonna")
+                    }
+                    Text(
+                        text = meta.joinToString(" • "),
+                        style = regularTextStyle(HomeTextSecondary, 12.sp),
+                        modifier = Modifier.padding(top = 2.dp)
+                    )
+                }
+                Icon(
+                    imageVector = Icons.Default.ChevronRight,
+                    contentDescription = null,
+                    tint = HomeTextSecondary,
+                    modifier = Modifier.size(20.dp)
                 )
             }
         }
@@ -733,7 +1771,8 @@ fun AddPlayerHeader(
     searchPlayerInput: TextFieldValue,
     onValueChange: (TextFieldValue) -> Unit,
     onBackClicked: () -> Unit,
-    forShortlist: Boolean = false
+    forShortlist: Boolean = false,
+    platform: Platform = Platform.MEN
 ) {
     Column(
         modifier = Modifier
@@ -755,11 +1794,16 @@ fun AddPlayerHeader(
             Spacer(modifier = Modifier.width(8.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = stringResource(R.string.add_player_title),
+                    text = if (platform == Platform.WOMEN) stringResource(R.string.women_add_player_title) else stringResource(R.string.add_player_title),
                     style = boldTextStyle(HomeTextPrimary, 26.sp)
                 )
                 Text(
-                    text = if (forShortlist) stringResource(R.string.add_player_search_shortlist) else stringResource(R.string.add_player_search_roster),
+                    text = when {
+                        forShortlist -> stringResource(R.string.add_player_search_shortlist)
+                        platform == Platform.WOMEN -> stringResource(R.string.women_search_subtitle)
+                        platform == Platform.YOUTH -> stringResource(R.string.youth_search_subtitle)
+                        else -> stringResource(R.string.add_player_search_roster)
+                    },
                     style = regularTextStyle(HomeTextSecondary, 12.sp),
                     modifier = Modifier.padding(top = 4.dp)
                 )
@@ -769,7 +1813,11 @@ fun AddPlayerHeader(
         AppTextField(
             modifier = Modifier.fillMaxWidth(),
             textInput = searchPlayerInput,
-            hint = stringResource(R.string.add_player_screen_hint),
+            hint = when (platform) {
+                Platform.WOMEN -> stringResource(R.string.women_search_hint)
+                Platform.YOUTH -> stringResource(R.string.youth_search_hint)
+                else -> stringResource(R.string.add_player_screen_hint)
+            },
             leadingIcon = Icons.Default.Search,
             keyboardOptions = KeyboardOptions(
                 imeAction = ImeAction.Done,

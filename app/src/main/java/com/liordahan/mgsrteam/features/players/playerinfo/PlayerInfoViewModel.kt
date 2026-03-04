@@ -26,6 +26,8 @@ import com.liordahan.mgsrteam.features.home.models.AgentTask
 import com.liordahan.mgsrteam.features.requests.RequestMatcher
 import com.liordahan.mgsrteam.features.requests.repository.IRequestsRepository
 import com.liordahan.mgsrteam.features.home.models.FeedEvent
+import com.liordahan.mgsrteam.features.platform.Platform
+import com.liordahan.mgsrteam.features.platform.PlatformManager
 import com.liordahan.mgsrteam.firebase.FirebaseHandler
 import com.liordahan.mgsrteam.helpers.UiResult
 import com.liordahan.mgsrteam.transfermarket.PlayersUpdate
@@ -105,6 +107,7 @@ class PlayerInfoViewModel(
     private val aiHelperService: AiHelperService,
     private val requestsRepository: IRequestsRepository,
     private val offersRepository: IPlayerOffersRepository,
+    private val platformManager: PlatformManager,
 ) : IPlayerInfoViewModel() {
 
     private val _playerInfoFlow = MutableStateFlow<Player?>(null)
@@ -127,10 +130,23 @@ class PlayerInfoViewModel(
     private val _uploadErrorFlow = MutableSharedFlow<String>()
     override val uploadErrorFlow: SharedFlow<String> = _uploadErrorFlow
 
+    private val _playerDocumentIdFlow = MutableStateFlow<String?>(null)
+    override val playerDocumentIdFlow: StateFlow<String?> = _playerDocumentIdFlow
+
+    /** Returns the Firestore document reference for the current player using the cached doc ID. */
+    private fun getPlayerDocRef() = _playerDocumentIdFlow.value?.let { docId ->
+        firebaseHandler.firebaseStore.collection(firebaseHandler.playersTable).document(docId)
+    }
+
+    /** True when the active platform is Women or Youth. */
+    private val isNonMenPlatform: Boolean
+        get() = platformManager.current.value != Platform.MEN
+
     @OptIn(ExperimentalCoroutinesApi::class)
     override val documentsFlow: Flow<List<PlayerDocument>> =
-        _playerInfoFlow.flatMapLatest { player ->
-            if (player?.tmProfile != null) documentsRepository.getDocumentsFlow(player.tmProfile)
+        _playerDocumentIdFlow.flatMapLatest { docId ->
+            val key = if (platformManager.current.value != Platform.MEN) docId else _playerInfoFlow.value?.tmProfile
+            if (key != null) documentsRepository.getDocumentsFlow(key)
             else flowOf(emptyList())
         }
 
@@ -155,8 +171,11 @@ class PlayerInfoViewModel(
     @OptIn(ExperimentalCoroutinesApi::class)
     override val matchingRequestsFlow: StateFlow<List<MatchingRequestUiState>> = combine(
         requestsRepository.requestsFlow(),
-        _playerInfoFlow.flatMapLatest { player ->
-            player?.tmProfile?.let { offersRepository.offersForPlayerFlow(it) } ?: flowOf(emptyList())
+        combine(_playerInfoFlow, _playerDocumentIdFlow) { player, docId ->
+            val key = if (platformManager.current.value != Platform.MEN) docId else player?.tmProfile
+            key
+        }.flatMapLatest { key ->
+            key?.let { offersRepository.offersForPlayerFlow(it) } ?: flowOf(emptyList())
         },
         _playerInfoFlow
     ) { requests, offers, player ->
@@ -188,7 +207,7 @@ class PlayerInfoViewModel(
             var prevMandateCount: Int? = null
             documentsFlow.collect { docs ->
                 val player = _playerInfoFlow.value ?: return@collect
-                val tmProfile = player.tmProfile ?: return@collect
+                if (player.tmProfile == null && !isNonMenPlatform) return@collect
                 val mandateDocs = docs.filter { it.documentType == DocumentType.MANDATE }
                 val now = System.currentTimeMillis()
                 for (mandate in mandateDocs) {
@@ -231,9 +250,6 @@ class PlayerInfoViewModel(
         super.onCleared()
         playerListenerRegistration?.remove()
     }
-
-    private val _playerDocumentIdFlow = MutableStateFlow<String?>(null)
-    override val playerDocumentIdFlow: StateFlow<String?> = _playerDocumentIdFlow
 
     @OptIn(ExperimentalCoroutinesApi::class)
     override val playerTasksFlow: Flow<List<AgentTask>> = _playerDocumentIdFlow.flatMapLatest { docId ->
@@ -298,28 +314,46 @@ class PlayerInfoViewModel(
         _hiddenGemFlow.update { null }
         _playerDocumentIdFlow.update { null }
         playerListenerRegistration?.remove()
-        playerListenerRegistration = firebaseHandler.firebaseStore.collection(firebaseHandler.playersTable)
-            .whereEqualTo("tmProfile", playerId).addSnapshotListener { value, error ->
-                if (error != null) {
-                    //
-                } else {
+
+        if (isNonMenPlatform) {
+            // Women / Youth — playerId IS the Firestore document ID
+            playerListenerRegistration = firebaseHandler.firebaseStore
+                .collection(firebaseHandler.playersTable)
+                .document(playerId)
+                .addSnapshotListener { snapshot, error ->
+                    if (error != null) return@addSnapshotListener
+                    val player = snapshot?.toObject(Player::class.java) ?: return@addSnapshotListener
+                    _playerInfoFlow.update { player }
+                    _playerDocumentIdFlow.update { snapshot.id }
+                }
+        } else {
+            // Men — playerId is the tmProfile URL
+            playerListenerRegistration = firebaseHandler.firebaseStore
+                .collection(firebaseHandler.playersTable)
+                .whereEqualTo("tmProfile", playerId)
+                .addSnapshotListener { value, error ->
+                    if (error != null) return@addSnapshotListener
                     val doc = value?.documents?.firstOrNull() ?: return@addSnapshotListener
                     val player = doc.toObject(Player::class.java) ?: return@addSnapshotListener
                     _playerInfoFlow.update { player }
                     _playerDocumentIdFlow.update { doc.id }
                 }
-            }
+        }
     }
 
     override fun deletePlayer(playerTmProfile: String, onDeleteSuccessfully: () -> Unit) {
         viewModelScope.launch {
             _showButtonProgress.update { true }
             try {
-                val snapshot = firebaseHandler.firebaseStore.collection(firebaseHandler.playersTable)
-                    .whereEqualTo("tmProfile", playerTmProfile).get().await()
-                val doc = snapshot.documents.firstOrNull() ?: return@launch
-                val player = doc.toObject(Player::class.java)
-                doc.reference.delete().await()
+                val docRef = if (isNonMenPlatform) {
+                    getPlayerDocRef()
+                } else {
+                    val snapshot = firebaseHandler.firebaseStore.collection(firebaseHandler.playersTable)
+                        .whereEqualTo("tmProfile", playerTmProfile).get().await()
+                    snapshot.documents.firstOrNull()?.reference
+                }
+                val player = _playerInfoFlow.value
+                docRef?.delete()?.await()
                 val deletedBy = getCurrentUserName()
                 firebaseHandler.firebaseStore.collection(firebaseHandler.feedEventsTable).add(
                     FeedEvent(
@@ -343,15 +377,9 @@ class PlayerInfoViewModel(
             it?.copy(playerPhoneNumber = number, playerAdditionalInfoModel = null)
         }
 
-
         _playerInfoFlow.value?.let { player ->
             viewModelScope.launch {
-                val doc = firebaseHandler.firebaseStore
-                    .collection(firebaseHandler.playersTable)
-                    .whereEqualTo("tmProfile", player.tmProfile)
-                    .get().await().documents.firstOrNull()
-
-                doc?.reference?.set(player)?.await()
+                getPlayerDocRef()?.set(player)?.await()
             }
         }
     }
@@ -363,12 +391,7 @@ class PlayerInfoViewModel(
 
         _playerInfoFlow.value?.let { player ->
             viewModelScope.launch {
-                val doc = firebaseHandler.firebaseStore
-                    .collection(firebaseHandler.playersTable)
-                    .whereEqualTo("tmProfile", player.tmProfile)
-                    .get().await().documents.firstOrNull()
-
-                doc?.reference?.set(player)?.await()
+                getPlayerDocRef()?.set(player)?.await()
             }
         }
     }
@@ -380,12 +403,7 @@ class PlayerInfoViewModel(
 
         _playerInfoFlow.value?.let { player ->
             viewModelScope.launch {
-                val doc = firebaseHandler.firebaseStore
-                    .collection(firebaseHandler.playersTable)
-                    .whereEqualTo("tmProfile", player.tmProfile)
-                    .get().await().documents.firstOrNull()
-
-                doc?.reference?.set(player)?.await()
+                getPlayerDocRef()?.set(player)?.await()
             }
         }
     }
@@ -396,17 +414,15 @@ class PlayerInfoViewModel(
         }
         viewModelScope.launch {
             val player = _playerInfoFlow.value ?: return@launch
-            val tmProfile = player.tmProfile ?: return@launch
-            val doc = firebaseHandler.firebaseStore
-                .collection(firebaseHandler.playersTable)
-                .whereEqualTo("tmProfile", tmProfile)
-                .get().await().documents.firstOrNull()
-            doc?.reference?.set(player.copy(haveMandate = hasMandate))?.await()
+            getPlayerDocRef()?.set(player.copy(haveMandate = hasMandate))?.await()
 
             if (isManual) {
                 val createdBy = getCurrentUserName()
-                val mandateExpiryAt = if (hasMandate) {
-                    documentsRepository.getDocuments(tmProfile)
+                val tmProfile = player.tmProfile
+                // Women/Youth: use Firestore document ID for feed navigation
+                val feedProfileId = tmProfile ?: _playerDocumentIdFlow.value
+                val mandateExpiryAt = if (hasMandate && feedProfileId != null) {
+                    documentsRepository.getDocuments(feedProfileId)
                         .filter { it.documentType == DocumentType.MANDATE && !it.expired }
                         .maxOfOrNull { it.expiresAt ?: 0L }
                         ?.takeIf { it > 0 }
@@ -416,7 +432,7 @@ class PlayerInfoViewModel(
                     type = if (hasMandate) FeedEvent.TYPE_MANDATE_SWITCHED_ON else FeedEvent.TYPE_MANDATE_SWITCHED_OFF,
                     playerName = player.fullName,
                     playerImage = player.profileImage,
-                    playerTmProfile = tmProfile,
+                    playerTmProfile = feedProfileId,
                     agentName = createdBy,
                     mandateExpiryAt = mandateExpiryAt,
                     timestamp = System.currentTimeMillis()
@@ -432,11 +448,7 @@ class PlayerInfoViewModel(
         }
         viewModelScope.launch {
             _playerInfoFlow.value?.let { player ->
-                val doc = firebaseHandler.firebaseStore
-                    .collection(firebaseHandler.playersTable)
-                    .whereEqualTo("tmProfile", player.tmProfile)
-                    .get().await().documents.firstOrNull()
-                doc?.reference?.set(player)?.await()
+                getPlayerDocRef()?.set(player)?.await()
             }
         }
     }
@@ -447,11 +459,7 @@ class PlayerInfoViewModel(
         }
         viewModelScope.launch {
             _playerInfoFlow.value?.let { player ->
-                val doc = firebaseHandler.firebaseStore
-                    .collection(firebaseHandler.playersTable)
-                    .whereEqualTo("tmProfile", player.tmProfile)
-                    .get().await().documents.firstOrNull()
-                doc?.reference?.set(player)?.await()
+                getPlayerDocRef()?.set(player)?.await()
             }
         }
     }
@@ -477,20 +485,18 @@ class PlayerInfoViewModel(
             }
 
             updatedPlayer?.let { player ->
-                val doc = firebaseHandler.firebaseStore
-                    .collection(firebaseHandler.playersTable)
-                    .whereEqualTo("tmProfile", player.tmProfile)
-                    .get().await().documents.firstOrNull()
-                doc?.reference?.set(player)?.await()
+                getPlayerDocRef()?.set(player)?.await()
 
                 // Write FeedEvent so dashboard updates immediately
                 val feedRef = firebaseHandler.firebaseStore.collection(firebaseHandler.feedEventsTable)
                 val notePreview = notes.notes?.take(120)?.let { if (it.length == 120) "$it…" else it }
+                // Women/Youth players have no tmProfile — use Firestore document ID instead
+                val feedProfileId = player.tmProfile ?: _playerDocumentIdFlow.value
                 val feedEvent = FeedEvent(
                     type = FeedEvent.TYPE_NOTE_ADDED,
                     playerName = player.fullName,
                     playerImage = player.profileImage,
-                    playerTmProfile = player.tmProfile,
+                    playerTmProfile = feedProfileId,
                     agentName = createdBy,
                     extraInfo = notePreview,
                     timestamp = System.currentTimeMillis()
@@ -518,22 +524,19 @@ class PlayerInfoViewModel(
             }
 
             updatedPlayer?.let { player ->
-                val doc = firebaseHandler.firebaseStore
-                    .collection(firebaseHandler.playersTable)
-                    .whereEqualTo("tmProfile", player.tmProfile)
-                    .get().await().documents.firstOrNull()
-
-                doc?.reference?.set(player)?.await()
+                getPlayerDocRef()?.set(player)?.await()
 
                 // Write feed event for note deleted
                 val deletedBy = getCurrentUserName()
                 val notePreview = note.notes?.take(120)?.let { if (it.length == 120) "$it…" else it }
+                // Women/Youth players have no tmProfile — use Firestore document ID instead
+                val feedProfileId = player.tmProfile ?: _playerDocumentIdFlow.value
                 firebaseHandler.firebaseStore.collection(firebaseHandler.feedEventsTable).add(
                     FeedEvent(
                         type = FeedEvent.TYPE_NOTE_DELETED,
                         playerName = player.fullName,
                         playerImage = player.profileImage,
-                        playerTmProfile = player.tmProfile,
+                        playerTmProfile = feedProfileId,
                         agentName = deletedBy,
                         extraInfo = notePreview,
                         timestamp = System.currentTimeMillis()
@@ -548,6 +551,12 @@ class PlayerInfoViewModel(
             _updatePlayerFlow.update { UiResult.Loading }
 
             val player = _playerInfoFlow.value ?: return@launch
+
+            // Women / Youth players have no Transfermarkt profile — nothing to refresh
+            if (isNonMenPlatform) {
+                _updatePlayerFlow.update { UiResult.Success("Player data is up to date") }
+                return@launch
+            }
 
             try {
                 val response = playersUpdate.updatePlayerByTmProfile(player.tmProfile)
@@ -598,12 +607,7 @@ class PlayerInfoViewModel(
                         notes = ""
                     )
 
-                    val doc = firebaseHandler.firebaseStore
-                        .collection(firebaseHandler.playersTable)
-                        .whereEqualTo("tmProfile", player.tmProfile)
-                        .get().await().documents.firstOrNull()
-
-                    doc?.reference?.set(playerToUpdate)?.await()
+                    getPlayerDocRef()?.set(playerToUpdate)?.await()
                     _updatePlayerFlow.update { UiResult.Success("Update succeed") }
                 } else if (response is TransfermarktResult.Failed) {
                     _updatePlayerFlow.update { UiResult.Failed(cause = "Update failed\nTry again later") }
@@ -617,7 +621,12 @@ class PlayerInfoViewModel(
     override fun uploadDocument(uri: android.net.Uri?, bytes: ByteArray, name: String, mimeType: String?, expiresAt: Long?) {
         viewModelScope.launch {
             val player = _playerInfoFlow.value ?: return@launch
-            val tmProfile = player.tmProfile ?: return@launch
+            // For Men, document storage key is tmProfile; for Women/Youth, use Firestore doc ID
+            val storageKey = if (isNonMenPlatform) {
+                _playerDocumentIdFlow.value ?: return@launch
+            } else {
+                player.tmProfile ?: return@launch
+            }
             _isUploadingDocumentFlow.value = true
             try {
                 val detection = documentDetectionService.detectDocumentType(
@@ -644,7 +653,7 @@ class PlayerInfoViewModel(
                             nationality = info.nationality?.takeIf { it.isNotBlank() },
                             lastUpdatedAt = System.currentTimeMillis()
                         )
-                        savePassportDetailsToPlayer(tmProfile, passportDetails)
+                        savePassportDetailsToPlayer(storageKey, passportDetails)
                     }
                     detection.documentType == DocumentType.PASSPORT && detection.passportInfo == null -> {
                         Log.w(TAG, "Passport detected but MRZ parsing failed - could not extract name, DOB, or passport number")
@@ -662,7 +671,7 @@ class PlayerInfoViewModel(
                     withContext(Dispatchers.IO) { PdfFlattener.flatten(bytes) }
                 } else bytes
                 val result = documentsRepository.uploadDocument(
-                    tmProfile,
+                    storageKey,
                     detection.documentType,
                     detection.suggestedName,
                     bytesToUpload,
@@ -675,7 +684,7 @@ class PlayerInfoViewModel(
                         type = FeedEvent.TYPE_MANDATE_UPLOADED,
                         playerName = player.fullName,
                         playerImage = player.profileImage,
-                        playerTmProfile = tmProfile,
+                        playerTmProfile = storageKey,
                         agentName = createdBy,
                         mandateExpiryAt = docExpiresAt,
                         timestamp = System.currentTimeMillis()
@@ -780,14 +789,9 @@ class PlayerInfoViewModel(
     }
 
     private suspend fun clearPassportDetails() {
-        val tmProfile = _playerInfoFlow.value?.tmProfile ?: return
         withContext(Dispatchers.IO) {
             try {
-                val doc = firebaseHandler.firebaseStore
-                    .collection(firebaseHandler.playersTable)
-                    .whereEqualTo("tmProfile", tmProfile)
-                    .get().await().documents.firstOrNull()
-                doc?.reference?.update("passportDetails", FieldValue.delete())?.await()
+                getPlayerDocRef()?.update("passportDetails", FieldValue.delete())?.await()
                 _playerInfoFlow.update { it?.copy(passportDetails = null) }
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to clear passport details", e)
@@ -798,11 +802,7 @@ class PlayerInfoViewModel(
     private suspend fun savePassportDetailsToPlayer(tmProfile: String, passportDetails: PassportDetails) {
         withContext(Dispatchers.IO) {
             try {
-                val doc = firebaseHandler.firebaseStore
-                    .collection(firebaseHandler.playersTable)
-                    .whereEqualTo("tmProfile", tmProfile)
-                    .get().await().documents.firstOrNull()
-                doc?.reference?.update("passportDetails", passportDetails)?.await()
+                getPlayerDocRef()?.update("passportDetails", passportDetails)?.await()
                 _playerInfoFlow.update { it?.copy(passportDetails = passportDetails) }
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to save passport details", e)

@@ -113,6 +113,9 @@ import com.liordahan.mgsrteam.ui.utils.clickWithNoRipple
 import com.liordahan.mgsrteam.ui.utils.regularTextStyle
 import com.liordahan.mgsrteam.utils.extractPlayerIdFromUrl
 import com.liordahan.mgsrteam.localization.LocaleManager
+import com.liordahan.mgsrteam.features.platform.Platform
+import com.liordahan.mgsrteam.features.platform.PlatformManager
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.koinInject
 
@@ -160,9 +163,12 @@ fun ShortlistScreen(
     addPlayerViewModel: IAddPlayerViewModel = koinViewModel(),
     playersRepository: IPlayersRepository = koinInject(),
     teammatesFetcher: TeammatesFetcher = koinInject(),
+    platformManager: PlatformManager = koinInject(),
     mainViewModel: com.liordahan.mgsrteam.IMainViewModel? = null
 ) {
     val state by viewModel.shortlistFlow.collectAsState()
+    val currentPlatform by platformManager.current.collectAsStateWithLifecycle()
+    val isWomen = currentPlatform == Platform.WOMEN
     val context = LocalContext.current
     val oneWeekAgo = System.currentTimeMillis() - (7 * 24 * 60 * 60 * 1000)
     val thisWeekCount = state.entries.count { it.addedAt >= oneWeekAgo }
@@ -269,6 +275,7 @@ fun ShortlistScreen(
                 .padding(bottom = paddingValues.calculateBottomPadding())
         ) {
             ShortlistHeader(
+                isWomen = isWomen,
                 onAddClick = { navController.navigate(Screens.addToShortlistRoute()) },
                 onBackClicked = {
                     if (!navController.popBackStack(Screens.DashboardScreen.route, false)) {
@@ -304,6 +311,7 @@ fun ShortlistScreen(
                             ShortlistCard(
                                 context = context,
                                 entry = entry,
+                                isWomen = isWomen,
                                 rosterTeammates = teammatesCache[playerUrl],
                                 isLoadingTeammates = loadingPlayerUrl == playerUrl,
                                 isTeammatesExpanded = isExpanded,
@@ -335,8 +343,15 @@ fun ShortlistScreen(
                                     viewModel.deleteNote(entry.tmProfileUrl, noteIndex)
                                 },
                                 onAddToAgency = {
-                                    addPlayerTmUrl = entry.tmProfileUrl
-                                    showAddPlayerBottomSheet = true
+                                    if (isWomen) {
+                                        // Women: navigate to full AddPlayerScreen with pre-filled data
+                                        navController.navigate(
+                                            Screens.addPlayerWithTmProfileRoute(Uri.encode(entry.tmProfileUrl))
+                                        )
+                                    } else {
+                                        addPlayerTmUrl = entry.tmProfileUrl
+                                        showAddPlayerBottomSheet = true
+                                    }
                                 },
                                 onOpenTm = {
                                     context.startActivity(
@@ -442,6 +457,7 @@ fun ShortlistScreen(
 
 @Composable
 private fun ShortlistHeader(
+    isWomen: Boolean = false,
     onAddClick: () -> Unit,
     onBackClicked: () -> Unit
 ) {
@@ -466,7 +482,9 @@ private fun ShortlistHeader(
                 style = boldTextStyle(HomeTextPrimary, 26.sp)
             )
             Text(
-                text = stringResource(R.string.shortlist_subtitle),
+                text = stringResource(
+                    if (isWomen) R.string.women_shortlist_subtitle else R.string.shortlist_subtitle
+                ),
                 style = regularTextStyle(HomeTextSecondary, 12.sp),
                 modifier = Modifier.padding(top = 4.dp)
             )
@@ -567,6 +585,7 @@ private fun ShortlistStatsStripDivider() {
 private fun ShortlistCard(
     context: Context,
     entry: ShortlistEntry,
+    isWomen: Boolean = false,
     rosterTeammates: List<RosterTeammateMatch>? = null,
     isLoadingTeammates: Boolean = false,
     isTeammatesExpanded: Boolean = false,
@@ -843,7 +862,8 @@ private fun ShortlistCard(
                 }
             }
 
-            // Roster teammates section (same as Releases)
+            // Roster teammates section (same as Releases) — hidden for Women
+            if (!isWomen) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -922,6 +942,7 @@ private fun ShortlistCard(
                     }
                 }
             }
+            } // end if (!isWomen)
             Row(
                 modifier = Modifier
                     .fillMaxWidth()

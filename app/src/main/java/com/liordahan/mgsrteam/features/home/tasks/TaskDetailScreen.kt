@@ -252,7 +252,10 @@ fun TaskDetailScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clickable {
-                                    navController.navigate("${com.liordahan.mgsrteam.navigation.Screens.PlayerInfoScreen.route}/${android.net.Uri.encode(task.playerTmProfile)}")
+                                    val navId = task.playerTmProfile.takeIf { it.isNotBlank() } ?: task.playerId
+                                    if (navId.isNotBlank()) {
+                                        navController.navigate("${com.liordahan.mgsrteam.navigation.Screens.PlayerInfoScreen.route}/${android.net.Uri.encode(navId)}")
+                                    }
                                 }
                                 .padding(vertical = 4.dp),
                             verticalAlignment = Alignment.CenterVertically

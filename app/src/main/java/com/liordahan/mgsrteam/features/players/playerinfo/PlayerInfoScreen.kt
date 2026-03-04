@@ -178,6 +178,11 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.koinInject
+import com.liordahan.mgsrteam.features.platform.Platform
+import com.liordahan.mgsrteam.features.platform.PlatformManager
+import com.liordahan.mgsrteam.ui.theme.PlatformWomenAccent
+import com.liordahan.mgsrteam.ui.theme.PlatformYouthAccent
+import com.liordahan.mgsrteam.ui.theme.PlatformYouthSecondary
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -193,6 +198,8 @@ fun PlayerInfoScreen(
 ) {
 
     val lifecycle = LocalLifecycleOwner.current.lifecycle
+    val platformManager: PlatformManager = koinInject()
+    val currentPlatform by platformManager.current.collectAsState()
     val context = LocalContext.current
 
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -401,7 +408,7 @@ fun PlayerInfoScreen(
                 onDeletePlayerClicked = {
                     showDeleteDialog = false
                     viewModel.deletePlayer(
-                        playerToPresent?.tmProfile ?: "",
+                        playerToPresent?.tmProfile ?: playerToPresent?.id ?: "",
                         onDeleteSuccessfully = { navController.popBackStack() })
                 }
             )
@@ -530,7 +537,10 @@ fun PlayerInfoScreen(
                 .fillMaxSize()
                 .padding(bottom = paddingValues.calculateBottomPadding())
         ) {
-            PlayerInfoHeader(onBackClicked = { navController.popBackStack() })
+            PlayerInfoHeader(
+                onBackClicked = { navController.popBackStack() },
+                currentPlatform = currentPlatform
+            )
 
             Box(modifier = Modifier.weight(1f)) {
                 PullToRefreshBox(
@@ -558,6 +568,7 @@ fun PlayerInfoScreen(
                 PlayerInfoHeroCard(
                     player = player,
                     mandateExpiryAt = mandateExpiry,
+                    currentPlatform = currentPlatform,
                     onMandateChanged = { viewModel.updateHaveMandate(it) },
                     onSalaryTransferFeeClicked = { showSalaryTransferFeeSheet = true },
                     onClearSalaryAndTransferFee = {
@@ -592,11 +603,13 @@ fun PlayerInfoScreen(
             }
 
             // Section: AI Helper
-            playerToPresent?.let { player ->
-                PlayerInfoAiHelperSection(
-                    player = player,
-                    viewModel = viewModel
-                )
+            if (currentPlatform != Platform.WOMEN) {
+                playerToPresent?.let { player ->
+                    PlayerInfoAiHelperSection(
+                        player = player,
+                        viewModel = viewModel
+                    )
+                }
             }
 
             // Section: Matching Requests
@@ -758,11 +771,14 @@ fun PlayerInfoScreen(
                     InfoRow(
                         stringResource(R.string.player_info_market_value),
                         playerToPresent?.marketValue?.let { value ->
+                            val displayValue = if (currentPlatform == Platform.WOMEN) {
+                                com.liordahan.mgsrteam.transfermarket.SoccerDonnaSearch.normalizeSoccerDonnaMarketValue(value)
+                            } else value
                             val trend = playerToPresent?.let { playerInfoComputeValueTrend(it.marketValueHistory) } ?: 0
                             when {
-                                trend > 0 -> "$value ↑"
-                                trend < 0 -> "$value ↓"
-                                else -> value
+                                trend > 0 -> "$displayValue ↑"
+                                trend < 0 -> "$displayValue ↓"
+                                else -> displayValue
                             }
                         },
                         darkTheme = true,
@@ -790,6 +806,18 @@ fun PlayerInfoScreen(
 
                 }
             // Contact Info section removed - edit/delete moved to Quick Actions long-press
+
+            // ── Platform-specific sections ───────────────────────────────
+            if (currentPlatform == Platform.YOUTH) {
+                playerToPresent?.let { player ->
+                    PlayerInfoYouthSection(player = player)
+                }
+            }
+            if (currentPlatform == Platform.WOMEN) {
+                playerToPresent?.let { player ->
+                    PlayerInfoWomenSection(player = player, context = context)
+                }
+            }
 
             PlayerInfoSectionHeader(stringResource(R.string.player_info_documents))
             DocumentsSection(
@@ -1045,6 +1073,7 @@ private fun SalaryTransferFeeBottomSheet(
 private fun PlayerInfoHeroCard(
     player: Player,
     mandateExpiryAt: Long? = null,
+    currentPlatform: Platform = Platform.MEN,
     onMandateChanged: (Boolean) -> Unit,
     onSalaryTransferFeeClicked: () -> Unit = {},
     onClearSalaryAndTransferFee: () -> Unit = {}
@@ -1120,7 +1149,11 @@ private fun PlayerInfoHeroCard(
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        text = player.marketValue ?: "—",
+                        text = if (currentPlatform == Platform.WOMEN) {
+                            player.marketValue?.let { com.liordahan.mgsrteam.transfermarket.SoccerDonnaSearch.normalizeSoccerDonnaMarketValue(it) } ?: "—"
+                        } else {
+                            player.marketValue ?: "—"
+                        },
                         style = boldTextStyle(
                             when {
                                 valueTrend > 0 -> HomeGreenAccent
@@ -2818,7 +2851,7 @@ fun UpdatePlayerUi(modifier: Modifier, message: String, useDarkTheme: Boolean = 
 }
 
 @Composable
-fun PlayerInfoHeader(onBackClicked: () -> Unit) {
+fun PlayerInfoHeader(onBackClicked: () -> Unit, currentPlatform: Platform = Platform.MEN) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -2839,11 +2872,11 @@ fun PlayerInfoHeader(onBackClicked: () -> Unit) {
             Spacer(modifier = Modifier.width(8.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = stringResource(R.string.player_info_title),
+                    text = if (currentPlatform == Platform.WOMEN) stringResource(R.string.women_player_info_title) else stringResource(R.string.player_info_title),
                     style = boldTextStyle(HomeTextPrimary, 26.sp)
                 )
                 Text(
-                    text = stringResource(R.string.player_info_subtitle),
+                    text = if (currentPlatform == Platform.WOMEN) stringResource(R.string.women_player_info_subtitle) else stringResource(R.string.player_info_subtitle),
                     style = regularTextStyle(HomeTextSecondary, 12.sp),
                     modifier = Modifier.padding(top = 4.dp)
                 )
@@ -3124,6 +3157,249 @@ private fun getContractStatus(resources: android.content.res.Resources, expiryDa
         "--"
     }
 }
+
+// ═════════════════════════════════════════════════════════════════════════════
+// Youth-specific section
+// ═════════════════════════════════════════════════════════════════════════════
+
+@Composable
+private fun PlayerInfoYouthSection(player: Player) {
+    PlayerInfoSectionHeader("⚡ " + stringResource(R.string.youth_section_details))
+    PlayerInfoCard(
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+    ) {
+        // Hebrew Name
+        if (!player.fullNameHe.isNullOrBlank()) {
+            InfoRow(
+                stringResource(R.string.youth_hebrew_name),
+                player.fullNameHe,
+                darkTheme = true,
+                icon = {
+                    Text(
+                        text = "🇮🇱",
+                        fontSize = 18.sp,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+            )
+            HorizontalDivider(
+                color = HomeDarkCardBorder,
+                thickness = 0.5.dp,
+                modifier = Modifier.padding(vertical = 8.dp)
+            )
+        }
+        if (!player.ageGroup.isNullOrBlank()) {
+            InfoRow(
+                stringResource(R.string.youth_age_group),
+                player.ageGroup,
+                darkTheme = true,
+                icon = {
+                    Icon(
+                        modifier = Modifier.size(24.dp),
+                        imageVector = Icons.Default.Star,
+                        contentDescription = null,
+                        tint = PlatformYouthAccent
+                    )
+                }
+            )
+            HorizontalDivider(
+                color = HomeDarkCardBorder,
+                thickness = 0.5.dp,
+                modifier = Modifier.padding(vertical = 8.dp)
+            )
+        }
+        if (!player.academy.isNullOrBlank()) {
+            InfoRow(
+                stringResource(R.string.youth_academy),
+                player.academy,
+                darkTheme = true,
+                icon = {
+                    Text(
+                        text = "🏟",
+                        fontSize = 18.sp,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+            )
+            HorizontalDivider(
+                color = HomeDarkCardBorder,
+                thickness = 0.5.dp,
+                modifier = Modifier.padding(vertical = 8.dp)
+            )
+        }
+        if (!player.dateOfBirth.isNullOrBlank()) {
+            InfoRow(
+                stringResource(R.string.youth_date_of_birth),
+                player.dateOfBirth,
+                darkTheme = true,
+                icon = {
+                    Icon(
+                        modifier = Modifier.size(24.dp),
+                        imageVector = Icons.Default.CalendarMonth,
+                        contentDescription = null,
+                        tint = PlatformYouthAccent
+                    )
+                }
+            )
+            HorizontalDivider(
+                color = HomeDarkCardBorder,
+                thickness = 0.5.dp,
+                modifier = Modifier.padding(vertical = 8.dp)
+            )
+        }
+        if (!player.ifaUrl.isNullOrBlank()) {
+            InfoRow(
+                stringResource(R.string.youth_ifa_profile),
+                player.ifaUrl,
+                darkTheme = true,
+                icon = {
+                    Icon(
+                        modifier = Modifier.size(24.dp),
+                        imageVector = Icons.Default.Link,
+                        contentDescription = null,
+                        tint = PlatformYouthAccent
+                    )
+                }
+            )
+            HorizontalDivider(
+                color = HomeDarkCardBorder,
+                thickness = 0.5.dp,
+                modifier = Modifier.padding(vertical = 8.dp)
+            )
+        }
+
+        // Parent / Guardian contact
+        player.parentContact?.let { parent ->
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = "👨‍👦 " + stringResource(R.string.youth_parent_guardian),
+                style = boldTextStyle(PlatformYouthSecondary, 13.sp),
+                modifier = Modifier.padding(bottom = 6.dp)
+            )
+            if (!parent.parentName.isNullOrBlank()) {
+                InfoRow(stringResource(R.string.youth_detail_name), parent.parentName, darkTheme = true)
+                HorizontalDivider(
+                    color = HomeDarkCardBorder,
+                    thickness = 0.5.dp,
+                    modifier = Modifier.padding(vertical = 6.dp)
+                )
+            }
+            if (!parent.parentRelationship.isNullOrBlank()) {
+                InfoRow(stringResource(R.string.youth_parent_relationship), parent.parentRelationship, darkTheme = true)
+                HorizontalDivider(
+                    color = HomeDarkCardBorder,
+                    thickness = 0.5.dp,
+                    modifier = Modifier.padding(vertical = 6.dp)
+                )
+            }
+            if (!parent.parentPhoneNumber.isNullOrBlank()) {
+                InfoRow(stringResource(R.string.youth_detail_phone), parent.parentPhoneNumber, darkTheme = true)
+                HorizontalDivider(
+                    color = HomeDarkCardBorder,
+                    thickness = 0.5.dp,
+                    modifier = Modifier.padding(vertical = 6.dp)
+                )
+            }
+            if (!parent.parentEmail.isNullOrBlank()) {
+                InfoRow(stringResource(R.string.youth_detail_email), parent.parentEmail, darkTheme = true)
+            }
+        }
+    }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// Women-specific section
+// ═════════════════════════════════════════════════════════════════════════════
+
+@Composable
+private fun PlayerInfoWomenSection(player: Player, context: Context) {
+    val hasAnyLink = !player.soccerDonnaUrl.isNullOrBlank() ||
+            !player.fmInsideUrl.isNullOrBlank()
+    if (!hasAnyLink) return
+
+    PlayerInfoSectionHeader("🌸 " + stringResource(R.string.women_section_links))
+    PlayerInfoCard(
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+    ) {
+        if (!player.soccerDonnaUrl.isNullOrBlank()) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(8.dp))
+                    .clickable {
+                        val intent = Intent(Intent.ACTION_VIEW, player.soccerDonnaUrl.orEmpty().toUri())
+                        context.startActivity(intent)
+                    }
+                    .padding(vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.OpenInNew,
+                    contentDescription = null,
+                    tint = PlatformWomenAccent,
+                    modifier = Modifier.size(20.dp)
+                )
+                Column {
+                    Text(
+                        text = stringResource(R.string.women_soccerdonna_profile),
+                        style = boldTextStyle(PlatformWomenAccent, 13.sp)
+                    )
+                    Text(
+                        text = player.soccerDonnaUrl.orEmpty(),
+                        style = regularTextStyle(HomeTextSecondary, 10.sp),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+        }
+
+        if (!player.soccerDonnaUrl.isNullOrBlank() && !player.fmInsideUrl.isNullOrBlank()) {
+            HorizontalDivider(
+                color = HomeDarkCardBorder,
+                thickness = 0.5.dp,
+                modifier = Modifier.padding(vertical = 6.dp)
+            )
+        }
+
+        if (!player.fmInsideUrl.isNullOrBlank()) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(8.dp))
+                    .clickable {
+                        val intent = Intent(Intent.ACTION_VIEW, player.fmInsideUrl.orEmpty().toUri())
+                        context.startActivity(intent)
+                    }
+                    .padding(vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.OpenInNew,
+                    contentDescription = null,
+                    tint = PlatformWomenAccent,
+                    modifier = Modifier.size(20.dp)
+                )
+                Column {
+                    Text(
+                        text = stringResource(R.string.women_fminside_profile),
+                        style = boldTextStyle(PlatformWomenAccent, 13.sp)
+                    )
+                    Text(
+                        text = player.fmInsideUrl.orEmpty(),
+                        style = regularTextStyle(HomeTextSecondary, 10.sp),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+        }
+    }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
 
 private fun playerInfoFormatLastRefreshed(resources: android.content.res.Resources, timestampMs: Long): String {
     val diff = System.currentTimeMillis() - timestampMs

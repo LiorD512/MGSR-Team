@@ -90,6 +90,20 @@
     <!-- Shortlist Screen -->
     <string name="shortlist_title">Shortlist</string>
     <string name="shortlist_subtitle">Saved profiles from Releases &amp; Returnees — add to agency when ready</string>
+    <string name="women_shortlist_subtitle">Players to follow in the coming weeks</string>
+    <string name="women_player_info_title">Player Info</string>
+    <string name="women_player_info_subtitle">View and manage player details</string>
+    <string name="women_add_player_title">Add Player</string>
+    <string name="women_requests_subtitle">Player requests from clubs by position</string>
+    <string name="women_requests_matching_players_one">%d matching player</string>
+    <string name="women_requests_matching_players">%d matching players</string>
+    <string name="women_requests_find_players_sheet_title">Players for this request</string>
+    <string name="women_requests_find_players_online">Find players online</string>
+    <string name="women_requests_online_players_sheet_title">Players from the market</string>
+    <string name="women_requests_online_players_loading">Searching players…</string>
+    <string name="women_requests_online_players_empty">No matching players found online</string>
+    <string name="women_requests_online_results_count">%d players found</string>
+    <string name="women_requests_no_match">No roster players match this request</string>
     <string name="shortlist_add_player">Add player</string>
     <string name="shortlist_stat_this_week">This Week</string>
     <string name="shortlist_could_not_load">Could not load player. They may already be in your roster.</string>
@@ -168,6 +182,88 @@
     <string name="greeting_good_afternoon">Good Afternoon</string>
     <string name="greeting_good_evening">Good Evening</string>
     <string name="greeting_agent_default">Agent</string>
+
+    <!-- Platform Switcher -->
+    <string name="platform_men">Men</string>
+    <string name="platform_women">Women</string>
+    <string name="platform_youth">Youth</string>
+    <string name="platform_switch_label">Platform</string>
+
+    <!-- Women Platform -->
+    <string name="women_roster_title">Our Squad</string>
+    <string name="women_add_player">Add Player</string>
+    <string name="women_add_title">Add Player</string>
+    <string name="women_search_hint">Search by name (e.g. Lauren James)</string>
+    <string name="women_search_subtitle">Search SoccerDonna or add manually</string>
+    <string name="women_data_sources">SoccerDonna · FMInside</string>
+    <string name="women_or_add_manually">Or add manually</string>
+    <string name="women_paste_url">Paste SoccerDonna URL</string>
+    <string name="women_load_url">Load from URL</string>
+    <string name="women_full_name">Full Name *</string>
+    <string name="women_positions">Positions</string>
+    <string name="women_club">Club</string>
+    <string name="women_age">Age</string>
+    <string name="women_nationality">Nationality</string>
+    <string name="women_market_value">Market Value</string>
+    <string name="women_soccerdonna_url">SoccerDonna URL</string>
+    <string name="women_profile_image_url">Profile Image URL</string>
+    <string name="women_player_phone">Player Phone</string>
+    <string name="women_agent_phone">Agent Phone</string>
+    <string name="women_notes">Notes</string>
+    <string name="women_save_player">Save Player</string>
+    <string name="women_section_links">Women\'s Football Links</string>
+    <string name="women_players_screen_hint">Search player by name</string>
+    <string name="women_players_age_format">%s yrs</string>
+    <string name="women_filter_position_gk">GK</string>
+    <string name="women_filter_position_def">DEF</string>
+    <string name="women_filter_position_mid">MID</string>
+    <string name="women_filter_position_fwd">FWD</string>
+    <string name="women_soccerdonna_profile">SoccerDonna Profile</string>
+    <string name="women_fminside_profile">FMInside Profile</string>
+    <string name="women_free_agent">Free Agent</string>
+    <string name="women_player_added">Player added</string>
+
+    <!-- Youth Platform -->
+    <string name="youth_roster_title">Youth Players</string>
+    <string name="youth_add_player">Add Youth Player</string>
+    <string name="youth_add_title">Add Youth Player</string>
+    <string name="youth_search_hint">Search youth players…</string>
+    <string name="youth_search_subtitle">Enter player name to add</string>
+    <string name="youth_data_sources">IFA · football.org.il</string>
+    <string name="youth_full_name">Full Name (English)</string>
+    <string name="youth_full_name_he">Full Name (Hebrew)</string>
+    <string name="youth_positions">Positions</string>
+    <string name="youth_club">Club</string>
+    <string name="youth_academy">Academy / Division</string>
+    <string name="youth_date_of_birth">Date of Birth</string>
+    <string name="youth_age_group">Age Group</string>
+    <string name="youth_nationality">Nationality</string>
+    <string name="youth_profile_image_url">Profile Image URL</string>
+    <string name="youth_ifa_url">IFA Profile URL</string>
+    <string name="youth_player_phone">Player Phone</string>
+    <string name="youth_player_email">Player Email</string>
+    <string name="youth_parent_section">Parent / Guardian</string>
+    <string name="youth_parent_name">Parent Name</string>
+    <string name="youth_parent_relationship">Relationship</string>
+    <string name="youth_parent_phone">Parent Phone</string>
+    <string name="youth_parent_email">Parent Email</string>
+    <string name="youth_notes">Notes</string>
+    <string name="youth_save_player">Save Player</string>
+    <string name="youth_section_details">Youth Details</string>
+    <string name="youth_ifa_profile">IFA Profile</string>
+    <string name="youth_ifa_stats">IFA Statistics</string>
+    <string name="youth_matches">Matches</string>
+    <string name="youth_goals">Goals</string>
+    <string name="youth_assists">Assists</string>
+    <string name="youth_parent_guardian">Parent / Guardian</string>
+    <string name="youth_relationship_father">Father</string>
+    <string name="youth_relationship_mother">Mother</string>
+    <string name="youth_relationship_guardian">Guardian</string>
+    <string name="youth_relationship_agent">Agent</string>
+    <string name="youth_detail_name">Name</string>
+    <string name="youth_detail_phone">Phone</string>
+    <string name="youth_detail_email">Email</string>
+    <string name="youth_hebrew_name">Hebrew Name</string>
 
     <!-- Dashboard Stats -->
     <string name="stat_players">Roster</string>
@@ -294,6 +390,7 @@
     <string name="my_hub_upcoming_tasks">Upcoming Tasks</string>
     <string name="my_hub_view_all_tasks">View All</string>
     <string name="my_hub_view_my_players">My Players</string>
+    <string name="women_my_hub_view_my_players">My Players</string>
     <string name="widget_agent_dashboard_description">Your dashboard at a glance: players, tasks, alerts</string>
     <string name="widget_tap_to_open">Tap to open</string>
     <string name="widget_updated_just_now">Just now</string>

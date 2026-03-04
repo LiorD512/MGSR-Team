@@ -124,12 +124,20 @@ import com.liordahan.mgsrteam.ui.theme.HomeRedAccent
 import com.liordahan.mgsrteam.ui.theme.HomeTealAccent
 import com.liordahan.mgsrteam.ui.theme.HomeTextPrimary
 import com.liordahan.mgsrteam.ui.theme.HomeTextSecondary
+import com.liordahan.mgsrteam.ui.theme.PlatformWomenAccent
+import com.liordahan.mgsrteam.ui.theme.PlatformWomenSecondary
+import com.liordahan.mgsrteam.ui.theme.PlatformYouthAccent
+import com.liordahan.mgsrteam.ui.theme.PlatformYouthSecondary
 import com.liordahan.mgsrteam.features.players.filters.FootFilterOption
 import com.liordahan.mgsrteam.ui.components.SkeletonPlayerCardList
 import com.liordahan.mgsrteam.ui.utils.boldTextStyle
 import com.liordahan.mgsrteam.ui.utils.clickWithNoRipple
 import com.liordahan.mgsrteam.ui.utils.regularTextStyle
+import com.liordahan.mgsrteam.features.platform.Platform
+import com.liordahan.mgsrteam.features.platform.PlatformManager
+import com.liordahan.mgsrteam.transfermarket.SoccerDonnaSearch
 import org.koin.androidx.compose.koinViewModel
+import org.koin.compose.koinInject
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  PLAYERS SCREEN — Variant A (Enhanced Roster View)
@@ -142,11 +150,13 @@ fun PlayersScreen(
     mainViewModel: IMainViewModel? = null,
     initialMyPlayersOnly: Boolean = false,
     viewModel: IPlayersViewModel = koinViewModel(),
-    addPlayerViewModel: IAddPlayerViewModel = koinViewModel()
+    addPlayerViewModel: IAddPlayerViewModel = koinViewModel(),
+    platformManager: PlatformManager = koinInject()
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val playersState by viewModel.playersFlow.collectAsStateWithLifecycle()
+    val currentPlatform by platformManager.current.collectAsStateWithLifecycle()
 
     LaunchedEffect(initialMyPlayersOnly) {
         viewModel.applyInitialMyPlayersOnlyIfNeeded(initialMyPlayersOnly)
@@ -215,7 +225,9 @@ fun PlayersScreen(
                 onBackClicked = { navController.popBackStack() },
                 sortOption = playersState.sortOption,
                 onSortOptionSelected = { viewModel.setSortOption(it) },
-                onResetSort = { viewModel.resetSortOption() }
+                onResetSort = { viewModel.resetSortOption() },
+                platform = currentPlatform,
+                showSort = currentPlatform != Platform.WOMEN
             )
 
             // ── Stats Strip ──────────────────────────────────────────────
@@ -223,7 +235,8 @@ fun PlayersScreen(
                 total = playersState.totalPlayers,
                 mandate = playersState.mandateCount,
                 expiring = playersState.expiringCount,
-                free = playersState.freeAgentCount
+                free = playersState.freeAgentCount,
+                isWomen = currentPlatform == Platform.WOMEN
             )
 
             // ── Search Bar ───────────────────────────────────────────────
@@ -236,16 +249,19 @@ fun PlayersScreen(
                 onClear = {
                     searchQuery = ""
                     viewModel.updateSearchQuery("")
-                }
+                },
+                isWomen = currentPlatform == Platform.WOMEN
             )
 
             // ── Position Filter Chips ────────────────────────────────────
             PositionFilterChips(
                 selectedPositions = playersState.selectedPositions.mapNotNull { it.name },
-                onChipClick = { positionName -> viewModel.setPositionFilterByChip(positionName) }
+                onChipClick = { positionName -> viewModel.setPositionFilterByChip(positionName) },
+                platform = currentPlatform
             )
 
-            // ── Quick Filter Chips ───────────────────────────────────────
+            // ── Quick Filter Chips (hidden for Women — web parity) ───────
+            if (currentPlatform != Platform.WOMEN) {
             QuickFilterChips(
                 freeAgentsSelected = playersState.quickFilterFreeAgents,
                 contractExpiringSelected = playersState.quickFilterContractExpiring,
@@ -264,6 +280,7 @@ fun PlayersScreen(
                 onWithNotesOnlyClick = { viewModel.toggleQuickFilterWithNotesOnly() },
                 onFootFilterClick = { viewModel.setFootFilterOption(it) }
             )
+            }
 
             // ── Content ──────────────────────────────────────────────────
             when {
@@ -300,7 +317,8 @@ fun PlayersScreen(
                                     count = playersState.expiringSoonPlayers.size,
                                     players = playersState.expiringSoonPlayers,
                                     onPlayerClick = { player ->
-                                        val encodedId = Uri.encode(player.tmProfile)
+                                        val rawId = if (currentPlatform == Platform.MEN) player.tmProfile else player.id
+                                        val encodedId = Uri.encode(rawId) ?: return@ExpiringAlertBanner
                                         navController.navigate("${Screens.PlayerInfoScreen.route}/$encodedId")
                                     }
                                 )
@@ -313,7 +331,8 @@ fun PlayersScreen(
                                 MandateAlertBanner(
                                     playersWithMandate = playersState.playersWithMandate,
                                     onPlayerClick = { pwm ->
-                                        val encodedId = Uri.encode(pwm.player.tmProfile)
+                                        val rawId = if (currentPlatform == Platform.MEN) pwm.player.tmProfile else pwm.player.id
+                                        val encodedId = Uri.encode(rawId) ?: return@MandateAlertBanner
                                         navController.navigate("${Screens.PlayerInfoScreen.route}/$encodedId")
                                     }
                                 )
@@ -324,16 +343,22 @@ fun PlayersScreen(
                         itemsIndexed(
                             items = playersState.visibleList,
                             key = { index: Int, player: Player ->
-                                "${player.tmProfile ?: (player.fullName ?: "p-${player.hashCode()}")}-$index"
+                                "${player.id ?: player.tmProfile ?: (player.fullName ?: "p-${player.hashCode()}")}-$index"
                             }
                         ) { _: Int, player: Player ->
                             PlayerCardVariantA(
                                 player = player,
                                 allAccounts = playersState.allAccounts,
                                 onPlayerClick = {
-                                    val encodedId = Uri.encode(player.tmProfile)
+                                    val rawId = if (currentPlatform == Platform.MEN) {
+                                        player.tmProfile
+                                    } else {
+                                        player.id
+                                    }
+                                    val encodedId = Uri.encode(rawId) ?: return@PlayerCardVariantA
                                     navController.navigate("${Screens.PlayerInfoScreen.route}/$encodedId")
-                                }
+                                },
+                                platform = currentPlatform
                             )
                         }
                     }
@@ -348,7 +373,7 @@ fun PlayersScreen(
                 .align(Alignment.BottomEnd)
                 .padding(end = 20.dp, bottom = 56.dp),
             shape = RoundedCornerShape(18.dp),
-            containerColor = HomeTealAccent,
+            containerColor = currentPlatform.accent,
             contentColor = HomeDarkBackground
         ) {
             Icon(
@@ -427,10 +452,13 @@ private fun PlayersHeader(
     onBackClicked: () -> Unit,
     sortOption: SortOption,
     onSortOptionSelected: (SortOption) -> Unit,
-    onResetSort: () -> Unit
+    onResetSort: () -> Unit,
+    platform: Platform = Platform.MEN,
+    showSort: Boolean = true
 ) {
     var sortMenuExpanded by remember { mutableStateOf(false) }
     val sortContentDesc = stringResource(R.string.players_sort_options)
+    val platformAccent = platform.accent
 
     Row(
         modifier = Modifier
@@ -448,11 +476,33 @@ private fun PlayersHeader(
         )
         Spacer(modifier = Modifier.width(8.dp))
         Text(
-            text = stringResource(R.string.players_roster_title),
-            style = boldTextStyle(HomeTextPrimary, 26.sp),
-            modifier = Modifier.weight(1f)
+            text = when (platform) {
+                Platform.WOMEN -> stringResource(R.string.women_roster_title)
+                Platform.YOUTH -> stringResource(R.string.youth_roster_title)
+                else -> stringResource(R.string.players_roster_title)
+            },
+            style = boldTextStyle(HomeTextPrimary, 26.sp)
         )
+        // ── Platform badge (only show for Women/Youth) ──
+        if (platform != Platform.MEN) {
+            Spacer(modifier = Modifier.width(8.dp))
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(
+                        brush = platform.gradient
+                    )
+                    .padding(horizontal = 10.dp, vertical = 4.dp)
+            ) {
+                Text(
+                    text = "${platform.emoji} ${stringResource(platform.labelRes)}",
+                    style = boldTextStyle(Color.White, 11.sp)
+                )
+            }
+        }
+        Spacer(modifier = Modifier.weight(1f))
 
+        if (showSort) {
         Box(
             modifier = Modifier
                 .clip(RoundedCornerShape(8.dp))
@@ -463,7 +513,7 @@ private fun PlayersHeader(
             Icon(
                 imageVector = Icons.Filled.SwapVert,
                 contentDescription = sortContentDesc,
-                tint = HomeTealAccent,
+                tint = platformAccent,
                 modifier = Modifier.size(24.dp)
             )
             DropdownMenu(
@@ -531,6 +581,7 @@ private fun PlayersHeader(
                 )
             }
         }
+        } // end if (showSort)
     }
 }
 
@@ -539,7 +590,7 @@ private fun PlayersHeader(
 // ═════════════════════════════════════════════════════════════════════════════
 
 @Composable
-private fun StatsStrip(total: Int, mandate: Int, expiring: Int, free: Int) {
+private fun StatsStrip(total: Int, mandate: Int, expiring: Int, free: Int, isWomen: Boolean = false) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -555,27 +606,29 @@ private fun StatsStrip(total: Int, mandate: Int, expiring: Int, free: Int) {
             accentColor = HomeTealAccent,
             modifier = Modifier.weight(1f)
         )
-        StatsStripDivider()
-        StatsStripItem(
-            value = mandate.toString(),
-            label = stringResource(R.string.stat_mandate),
-            accentColor = HomeBlueAccent,
-            modifier = Modifier.weight(1f)
-        )
-        StatsStripDivider()
-        StatsStripItem(
-            value = expiring.toString(),
-            label = stringResource(R.string.agent_stat_expiring),
-            accentColor = HomeOrangeAccent,
-            modifier = Modifier.weight(1f)
-        )
-        StatsStripDivider()
-        StatsStripItem(
-            value = free.toString(),
-            label = stringResource(R.string.stat_free),
-            accentColor = HomeRedAccent,
-            modifier = Modifier.weight(1f)
-        )
+        if (!isWomen) {
+            StatsStripDivider()
+            StatsStripItem(
+                value = mandate.toString(),
+                label = stringResource(R.string.stat_mandate),
+                accentColor = HomeBlueAccent,
+                modifier = Modifier.weight(1f)
+            )
+            StatsStripDivider()
+            StatsStripItem(
+                value = expiring.toString(),
+                label = stringResource(R.string.agent_stat_expiring),
+                accentColor = HomeOrangeAccent,
+                modifier = Modifier.weight(1f)
+            )
+            StatsStripDivider()
+            StatsStripItem(
+                value = free.toString(),
+                label = stringResource(R.string.stat_free),
+                accentColor = HomeRedAccent,
+                modifier = Modifier.weight(1f)
+            )
+        }
     }
 }
 
@@ -627,7 +680,8 @@ private fun StatsStripDivider() {
 private fun PlayersSearchBar(
     query: String,
     onQueryChange: (String) -> Unit,
-    onClear: () -> Unit
+    onClear: () -> Unit,
+    isWomen: Boolean = false
 ) {
     val keyboardController = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current
@@ -642,7 +696,9 @@ private fun PlayersSearchBar(
             .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(14.dp)),
         placeholder = {
             Text(
-                text = stringResource(R.string.players_screen_hint),
+                text = stringResource(
+                    if (isWomen) R.string.women_players_screen_hint else R.string.players_screen_hint
+                ),
                 style = regularTextStyle(HomeTextSecondary.copy(alpha = 0.5f), 13.sp)
             )
         },
@@ -700,7 +756,8 @@ private fun PlayersSearchBar(
 @Composable
 private fun PositionFilterChips(
     selectedPositions: List<String>,
-    onChipClick: (String) -> Unit
+    onChipClick: (String) -> Unit,
+    platform: Platform = Platform.MEN
 ) {
     val positions = listOf("All", "GK", "DEF", "MID", "FWD")
     val isAllSelected = selectedPositions.isEmpty()
@@ -728,10 +785,22 @@ private fun PositionFilterChips(
             Text(
                 text = when (position) {
                     "All" -> stringResource(R.string.players_filter_all)
-                    "GK" -> stringResource(R.string.players_filter_position_gk)
-                    "DEF" -> stringResource(R.string.players_filter_position_def)
-                    "MID" -> stringResource(R.string.players_filter_position_mid)
-                    "FWD" -> stringResource(R.string.players_filter_position_fwd)
+                    "GK" -> stringResource(
+                        if (platform == Platform.WOMEN) R.string.women_filter_position_gk
+                        else R.string.players_filter_position_gk
+                    )
+                    "DEF" -> stringResource(
+                        if (platform == Platform.WOMEN) R.string.women_filter_position_def
+                        else R.string.players_filter_position_def
+                    )
+                    "MID" -> stringResource(
+                        if (platform == Platform.WOMEN) R.string.women_filter_position_mid
+                        else R.string.players_filter_position_mid
+                    )
+                    "FWD" -> stringResource(
+                        if (platform == Platform.WOMEN) R.string.women_filter_position_fwd
+                        else R.string.players_filter_position_fwd
+                    )
                     else -> position
                 },
                 style = boldTextStyle(textColor, 11.sp),
@@ -1203,7 +1272,8 @@ private fun ExpiringPlayerRow(player: Player, onClick: () -> Unit) {
 private fun PlayerCardVariantA(
     player: Player,
     allAccounts: List<com.liordahan.mgsrteam.features.login.models.Account>,
-    onPlayerClick: () -> Unit
+    onPlayerClick: () -> Unit,
+    platform: Platform = Platform.MEN
 ) {
     val context = LocalContext.current
     val isFreeAgent = player.currentClub?.clubName.equals("Without Club", ignoreCase = true) ||
@@ -1215,12 +1285,12 @@ private fun PlayerCardVariantA(
     val hasNotes = !player.notes.isNullOrEmpty() || !player.noteList.isNullOrEmpty()
     val noteCount = player.noteList?.size ?: if (!player.notes.isNullOrEmpty()) 1 else 0
 
-    // Color-coded left border
+    // Color-coded left border — platform-aware default
     val borderColor = when {
         isFreeAgent -> HomeRedAccent
         isExpiring -> HomeOrangeAccent
         hasMandate -> HomeBlueAccent
-        else -> HomeTealAccent
+        else -> platform.accent
     }
 
     // Market value trend
@@ -1260,15 +1330,55 @@ private fun PlayerCardVariantA(
             ) {
                 // Avatar with status dot
                 Box(contentAlignment = Alignment.BottomEnd) {
-                    AsyncImage(
-                        model = player.profileImage,
-                        contentDescription = null,
-                        modifier = Modifier
-                            .size(52.dp)
-                            .clip(CircleShape)
-                            .border(2.dp, HomeDarkCardBorder, CircleShape),
-                        contentScale = ContentScale.Crop
-                    )
+                    if (platform == Platform.WOMEN) {
+                        // Women: show image with beautiful initials fallback
+                        var showFallback by remember { mutableStateOf(player.profileImage.isNullOrBlank()) }
+                        if (showFallback) {
+                            // Gradient initials placeholder
+                            Box(
+                                modifier = Modifier
+                                    .size(52.dp)
+                                    .clip(CircleShape)
+                                    .background(
+                                        Brush.linearGradient(
+                                            colors = listOf(PlatformWomenAccent, PlatformWomenSecondary)
+                                        )
+                                    )
+                                    .border(2.dp, PlatformWomenAccent.copy(alpha = 0.4f), CircleShape),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = player.fullName
+                                        ?.split(" ")
+                                        ?.mapNotNull { it.firstOrNull()?.uppercase() }
+                                        ?.take(2)
+                                        ?.joinToString("") ?: "?",
+                                    style = boldTextStyle(Color.White, 18.sp)
+                                )
+                            }
+                        } else {
+                            AsyncImage(
+                                model = player.profileImage,
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .size(52.dp)
+                                    .clip(CircleShape)
+                                    .border(2.dp, PlatformWomenAccent.copy(alpha = 0.4f), CircleShape),
+                                contentScale = ContentScale.Crop,
+                                onError = { showFallback = true }
+                            )
+                        }
+                    } else {
+                        AsyncImage(
+                            model = player.profileImage,
+                            contentDescription = null,
+                            modifier = Modifier
+                                .size(52.dp)
+                                .clip(CircleShape)
+                                .border(2.dp, HomeDarkCardBorder, CircleShape),
+                            contentScale = ContentScale.Crop
+                        )
+                    }
                     // Status indicator dot
                     Box(
                         modifier = Modifier
@@ -1302,6 +1412,17 @@ private fun PlayerCardVariantA(
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.weight(1f, fill = false)
+                        )
+                    }
+
+                    // Hebrew name for Youth players
+                    if (platform == Platform.YOUTH && !player.fullNameHe.isNullOrBlank()) {
+                        Text(
+                            text = player.fullNameHe,
+                            style = regularTextStyle(HomeTextSecondary, 12.sp),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.padding(top = 2.dp)
                         )
                     }
 
@@ -1361,7 +1482,10 @@ private fun PlayerCardVariantA(
                         modifier = Modifier.padding(top = 8.dp)
                     ) {
                         if (!player.age.isNullOrBlank()) {
-                            PlayerTag(text = stringResource(R.string.players_age_format, player.age))
+                            PlayerTag(text = stringResource(
+                                if (platform == Platform.WOMEN) R.string.women_players_age_format else R.string.players_age_format,
+                                player.age
+                            ))
                         }
                         player.positions?.filterNotNull()?.take(2)?.forEach { pos ->
                             PlayerTag(
@@ -1371,6 +1495,33 @@ private fun PlayerCardVariantA(
                         }
                         if (!player.height.isNullOrBlank() && !player.height.equals("Unknown", ignoreCase = true)) {
                             PlayerTag(text = player.height)
+                        }
+
+                        // Youth-specific tags
+                        if (platform == Platform.YOUTH) {
+                            if (!player.ageGroup.isNullOrBlank()) {
+                                PlayerTag(
+                                    text = player.ageGroup.orEmpty(),
+                                    tagColor = PlatformYouthAccent.copy(alpha = 0.15f),
+                                    textColor = PlatformYouthAccent
+                                )
+                            }
+                            if (!player.academy.isNullOrBlank()) {
+                                PlayerTag(
+                                    text = "🏟 ${player.academy}",
+                                    tagColor = PlatformYouthSecondary.copy(alpha = 0.12f),
+                                    textColor = PlatformYouthSecondary
+                                )
+                            }
+                        }
+
+                        // Women-specific indicator
+                        if (platform == Platform.WOMEN && !player.soccerDonnaUrl.isNullOrBlank()) {
+                            PlayerTag(
+                                text = "SD",
+                                tagColor = PlatformWomenAccent.copy(alpha = 0.15f),
+                                textColor = PlatformWomenAccent
+                            )
                         }
                     }
                 }
@@ -1385,8 +1536,11 @@ private fun PlayerCardVariantA(
                         valueTrend < 0 -> HomeRedAccent
                         else -> HomeTextPrimary
                     }
+                    val displayValue = player.marketValue.takeIf { !it.isNullOrBlank() }?.let {
+                        if (platform == Platform.WOMEN) SoccerDonnaSearch.normalizeSoccerDonnaMarketValue(it) else it
+                    } ?: "--"
                     Text(
-                        text = player.marketValue.takeIf { !it.isNullOrBlank() } ?: "--",
+                        text = displayValue,
                         style = boldTextStyle(valueColor, 14.sp)
                     )
                     if (valueTrend != 0) {
@@ -1621,19 +1775,23 @@ private fun MarketValueSparkline(
 // ═════════════════════════════════════════════════════════════════════════════
 
 @Composable
-private fun PlayerTag(text: String, isPosition: Boolean = false) {
+private fun PlayerTag(
+    text: String,
+    isPosition: Boolean = false,
+    tagColor: Color? = null,
+    textColor: Color? = null
+) {
+    val resolvedTextColor = textColor ?: if (isPosition) HomeTealAccent else HomeTextSecondary
+    val resolvedBgColor = tagColor ?: if (isPosition) HomeTealAccent.copy(alpha = 0.15f) else Color.White.copy(alpha = 0.05f)
     Text(
         text = text,
         style = boldTextStyle(
-            color = if (isPosition) HomeTealAccent else HomeTextSecondary,
+            color = resolvedTextColor,
             fontSize = 10.sp
         ),
         modifier = Modifier
             .clip(RoundedCornerShape(6.dp))
-            .background(
-                if (isPosition) HomeTealAccent.copy(alpha = 0.15f)
-                else Color.White.copy(alpha = 0.05f)
-            )
+            .background(resolvedBgColor)
             .padding(horizontal = 8.dp, vertical = 2.dp)
     )
 }

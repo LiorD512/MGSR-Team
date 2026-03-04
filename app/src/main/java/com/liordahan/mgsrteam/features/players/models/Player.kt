@@ -9,6 +9,8 @@ import kotlinx.parcelize.Parcelize
 @Keep
 @Parcelize
 data class Player(
+    @DocumentId
+    val id: String? = null,
     val fullName: String? = null,
     val fullNameHe: String? = null,
     val height: String? = null,
@@ -34,15 +36,28 @@ data class Player(
     val marketValueHistory: List<MarketValueEntry>? = null,
     val linkedContactId: String? = null,
     val lastRefreshedAt: Long? = null,
-    val salaryRange: String? = null, // Same as Request: ">5", "6-10", "11-15", "16-20", "20-25", "26-30", "30+"
-    val transferFee: String? = null, // Same as Request: "Free/Free loan", "<200", "300-600", "700-900", "1m+"
+    val salaryRange: String? = null,
+    val transferFee: String? = null,
     @PropertyName("onLoan") val isOnLoan: Boolean = false,
     @PropertyName("onLoanFromClub") val onLoanFromClub: String? = null,
     val passportDetails: PassportDetails? = null,
     val foot: String? = null,
     val agency: String? = null,
     val agencyUrl: String? = null,
-    val pinnedHighlights: List<PinnedHighlight>? = null
+    val pinnedHighlights: List<PinnedHighlight>? = null,
+    // ── Women-specific fields ──
+    val soccerDonnaUrl: String? = null,
+    val wosostatId: String? = null,
+    val fmInsideId: String? = null,
+    val fmInsideUrl: String? = null,
+    // ── Youth-specific fields ──
+    val academy: String? = null,
+    val dateOfBirth: String? = null,
+    val ageGroup: String? = null,
+    val ifaUrl: String? = null,
+    val ifaPlayerId: String? = null,
+    val playerEmail: String? = null,
+    val parentContact: ParentContact? = null
 ) : Parcelable
 
 @Keep
@@ -110,4 +125,13 @@ data class NotesModel(
     val notes: String? = null,
     val createBy: String? = null,
     val createdAt: Long? = 0,
+) : Parcelable
+
+@Keep
+@Parcelize
+data class ParentContact(
+    val parentName: String? = null,
+    val parentRelationship: String? = null,  // "father", "mother", "guardian"
+    val parentPhoneNumber: String? = null,
+    val parentEmail: String? = null
 ) : Parcelable
