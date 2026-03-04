@@ -166,6 +166,9 @@ fun AddPlayerScreen(
         mutableStateOf<String?>("")
     }
 
+    // Women/Youth shortlist: show a simple bottom sheet like Men
+    var showShortlistConfirmSheet by remember { mutableStateOf(false) }
+
     LaunchedEffect(initialTmProfileUrl) {
         if (initialTmProfileUrl.isNotBlank()) {
             val decoded = Uri.decode(initialTmProfileUrl)
@@ -212,13 +215,8 @@ fun AddPlayerScreen(
                 }
             }
 
-            launch {
-                Log.d("MGSR_SHORTLIST", "shortlistAddedEvent collector started")
-                viewModel.shortlistAddedEvent.collect {
-                    Log.d("MGSR_SHORTLIST", "shortlistAddedEvent received! Calling popBackStack")
-                    navController.popBackStack()
-                }
-            }
+            // shortlistAddedEvent collector no longer needed — Women/Youth now use
+            // the direct-repository bottom sheet (same as Men).
 
             launch {
                 viewModel.errorMessageFlow.collect { message ->
@@ -653,7 +651,7 @@ fun AddPlayerScreen(
                                         focusManager.clearFocus()
                                         keyboardController?.hide()
                                         if (forShortlist) {
-                                            viewModel.saveWomanPlayerToShortlist()
+                                            showShortlistConfirmSheet = true
                                         } else {
                                             viewModel.saveWomanPlayer()
                                         }
@@ -686,6 +684,7 @@ fun AddPlayerScreen(
                                                 keyboardController?.hide()
                                                 viewModel.onWomanPlayerSelected(it)
                                                 searchText = TextFieldValue("")
+                                                if (forShortlist) showShortlistConfirmSheet = true
                                             }
                                         )
                                     }
@@ -1193,7 +1192,7 @@ fun AddPlayerScreen(
                                     focusManager.clearFocus()
                                     keyboardController?.hide()
                                     if (forShortlist) {
-                                        viewModel.saveYouthPlayerToShortlist()
+                                        showShortlistConfirmSheet = true
                                     } else {
                                         viewModel.saveYouthPlayer()
                                     }
@@ -1225,6 +1224,7 @@ fun AddPlayerScreen(
                                             keyboardController?.hide()
                                             viewModel.onYouthPlayerSelected(result)
                                             searchText = TextFieldValue("")
+                                            if (forShortlist) showShortlistConfirmSheet = true
                                         }
                                     )
                                 }
@@ -1280,7 +1280,8 @@ fun AddPlayerScreen(
                     }
                 }
 
-                if (showAddContactBottomSheet && currentPlatform != Platform.WOMEN && currentPlatform != Platform.YOUTH) {
+                // Men: bottom sheet for shortlist or contact form
+                if (showAddContactBottomSheet && currentPlatform == Platform.MEN) {
                     if (forShortlist) {
                         AddToShortlistBottomSheetContent(
                             modifier = Modifier,
@@ -1297,6 +1298,19 @@ fun AddPlayerScreen(
                             viewModel = viewModel
                         )
                     }
+                }
+
+                // Women / Youth: simple shortlist confirm bottom sheet
+                if (showShortlistConfirmSheet && forShortlist && (currentPlatform == Platform.WOMEN || currentPlatform == Platform.YOUTH)) {
+                    WomenYouthShortlistConfirmSheet(
+                        platform = currentPlatform,
+                        womanForm = if (currentPlatform == Platform.WOMEN)
+                            viewModel.womanFormState.collectAsStateWithLifecycle().value else null,
+                        youthForm = if (currentPlatform == Platform.YOUTH)
+                            viewModel.youthFormState.collectAsStateWithLifecycle().value else null,
+                        onDismiss = { showShortlistConfirmSheet = false },
+                        onAdded = { navController.popBackStack() }
+                    )
                 }
             }
         }
@@ -1976,6 +1990,143 @@ private fun AddPlayerEmptyState(modifier: Modifier = Modifier) {
             text = stringResource(R.string.add_player_search_desc),
             style = regularTextStyle(HomeTextSecondary, 13.sp)
         )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun WomenYouthShortlistConfirmSheet(
+    platform: Platform,
+    womanForm: WomanPlayerFormState?,
+    youthForm: YouthPlayerFormState?,
+    onDismiss: () -> Unit,
+    onAdded: () -> Unit,
+    shortlistRepository: ShortlistRepository = koinInject()
+) {
+    val scope = rememberCoroutineScope()
+    var isSaving by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    // Build display info from form
+    val playerName = womanForm?.fullName ?: youthForm?.fullName ?: ""
+    val position = womanForm?.positions?.firstOrNull() ?: youthForm?.positions?.firstOrNull()
+    val club = womanForm?.currentClub ?: youthForm?.currentClub
+    val nationality = womanForm?.nationality ?: youthForm?.nationality
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        containerColor = HomeDarkCard,
+        shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
+        tonalElevation = 8.dp,
+        properties = ModalBottomSheetProperties(
+            isAppearanceLightStatusBars = true,
+            isAppearanceLightNavigationBars = true
+        )
+    ) {
+        DarkSystemBarsForBottomSheet()
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp, vertical = 16.dp)
+                .navigationBarsPadding(),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = stringResource(R.string.add_player_to_shortlist),
+                style = boldTextStyle(HomeTextPrimary, 20.sp)
+            )
+            val subtitle = buildString {
+                append(playerName)
+                position?.let { append(" • $it") }
+                club?.takeIf { it.isNotBlank() }?.let { append(" • $it") }
+            }
+            if (subtitle.isNotEmpty()) {
+                Text(
+                    text = subtitle,
+                    style = regularTextStyle(HomeTextSecondary, 13.sp),
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+            }
+            nationality?.takeIf { it.isNotBlank() }?.let {
+                Text(
+                    text = it,
+                    style = regularTextStyle(HomeTextSecondary, 12.sp),
+                    modifier = Modifier.padding(top = 2.dp)
+                )
+            }
+            errorMessage?.let { msg ->
+                Text(
+                    text = msg,
+                    style = regularTextStyle(HomeRedAccent, 13.sp),
+                    modifier = Modifier.padding(top = 8.dp),
+                    textAlign = TextAlign.Center
+                )
+            }
+            HorizontalDivider(
+                thickness = 1.dp,
+                color = HomeDarkCardBorder,
+                modifier = Modifier.padding(vertical = 16.dp)
+            )
+            PrimaryButtonNewDesign(
+                buttonText = stringResource(R.string.add_player_to_shortlist),
+                isEnabled = playerName.isNotBlank() && !isSaving,
+                showProgress = isSaving,
+                containerColor = platform.accent,
+                onButtonClicked = {
+                    if (playerName.isBlank()) return@PrimaryButtonNewDesign
+                    isSaving = true
+                    errorMessage = null
+                    // Build LatestTransferModel directly from form state
+                    val release = if (womanForm != null) {
+                        val url = womanForm.soccerDonnaUrl.takeIf { it.isNotBlank() }
+                            ?: "women-${womanForm.fullName.trim().lowercase().replace(" ", "-")}-${System.currentTimeMillis()}"
+                        LatestTransferModel(
+                            playerImage = womanForm.profileImage.takeIf { it.isNotBlank() },
+                            playerName = womanForm.fullName.trim(),
+                            playerUrl = url,
+                            playerPosition = womanForm.positions.firstOrNull(),
+                            playerAge = womanForm.age.takeIf { it.isNotBlank() },
+                            playerNationality = womanForm.nationality.takeIf { it.isNotBlank() },
+                            clubJoinedName = womanForm.currentClub.takeIf { it.isNotBlank() },
+                            marketValue = womanForm.marketValue.takeIf { it.isNotBlank() }
+                        )
+                    } else {
+                        val form = youthForm!!
+                        val url = form.ifaUrl.takeIf { it.isNotBlank() }
+                            ?: "youth-${form.fullName.trim().lowercase().replace(" ", "-")}-${System.currentTimeMillis()}"
+                        LatestTransferModel(
+                            playerImage = form.profileImage.takeIf { it.isNotBlank() },
+                            playerName = form.fullName.trim(),
+                            playerUrl = url,
+                            playerPosition = form.positions.firstOrNull(),
+                            playerNationality = form.nationality.takeIf { it.isNotBlank() },
+                            clubJoinedName = form.currentClub.takeIf { it.isNotBlank() }
+                        )
+                    }
+                    scope.launch {
+                        try {
+                            when (shortlistRepository.addToShortlist(release)) {
+                                is ShortlistRepository.AddToShortlistResult.Added -> {
+                                    onAdded()
+                                }
+                                is ShortlistRepository.AddToShortlistResult.AlreadyInShortlist -> {
+                                    errorMessage = "Player already in shortlist"
+                                }
+                                is ShortlistRepository.AddToShortlistResult.AlreadyInRoster -> {
+                                    errorMessage = "Player already in roster"
+                                }
+                            }
+                        } catch (e: Exception) {
+                            errorMessage = e.message ?: "Failed to add to shortlist"
+                        } finally {
+                            isSaving = false
+                        }
+                    }
+                }
+            )
+        }
     }
 }
 
