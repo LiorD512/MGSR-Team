@@ -212,6 +212,12 @@ fun AddPlayerScreen(
             }
 
             launch {
+                viewModel.shortlistAddedEvent.collect {
+                    navController.popBackStack()
+                }
+            }
+
+            launch {
                 viewModel.errorMessageFlow.collect { message ->
                     if (!message.isNullOrEmpty()) {
                         errorMessage = message

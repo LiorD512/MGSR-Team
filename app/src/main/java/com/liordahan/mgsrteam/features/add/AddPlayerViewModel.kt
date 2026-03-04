@@ -146,6 +146,8 @@ abstract class IAddPlayerViewModel : ViewModel() {
     // ── Shortlist save (Women/Youth) ──
     abstract fun saveWomanPlayerToShortlist()
     abstract fun saveYouthPlayerToShortlist()
+    /** One-shot event: emitted when a shortlist add succeeds. */
+    abstract val shortlistAddedEvent: SharedFlow<Unit>
     /** Pre-fill Youth form from shortlist entry data. */
     abstract fun prefillYouthFromShortlist(url: String)
     /** Pre-fill Women form from shortlist entry data. */
@@ -173,6 +175,9 @@ class AddPlayerViewModel(
 
     private val _errorMessageFlow = MutableSharedFlow<String?>()
     override val errorMessageFlow: SharedFlow<String?> = _errorMessageFlow
+
+    private val _shortlistAddedEvent = MutableSharedFlow<Unit>()
+    override val shortlistAddedEvent: SharedFlow<Unit> = _shortlistAddedEvent
 
     private val _searchQuery = MutableStateFlow("")
     override val searchQuery: StateFlow<String> = _searchQuery
@@ -795,7 +800,7 @@ class AddPlayerViewModel(
                 )
                 when (shortlistRepository.addToShortlist(release)) {
                     is ShortlistRepository.AddToShortlistResult.Added -> {
-                        _isPlayerAddedFlow.update { true }
+                        _shortlistAddedEvent.emit(Unit)
                     }
                     is ShortlistRepository.AddToShortlistResult.AlreadyInShortlist -> {
                         _errorMessageFlow.emit("Player already in shortlist")
@@ -829,7 +834,7 @@ class AddPlayerViewModel(
                 )
                 when (shortlistRepository.addToShortlist(release)) {
                     is ShortlistRepository.AddToShortlistResult.Added -> {
-                        _isPlayerAddedFlow.update { true }
+                        _shortlistAddedEvent.emit(Unit)
                     }
                     is ShortlistRepository.AddToShortlistResult.AlreadyInShortlist -> {
                         _errorMessageFlow.emit("Player already in shortlist")
