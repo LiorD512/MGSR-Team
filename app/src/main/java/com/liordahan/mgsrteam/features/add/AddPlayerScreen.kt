@@ -130,9 +130,6 @@ fun AddPlayerScreen(
     val currentPlatform by platformManager.current.collectAsStateWithLifecycle()
 
     val snackBarHostState = remember { SnackbarHostState() }
-    val shortlistRepository: ShortlistRepository = koinInject()
-    val scope = rememberCoroutineScope()
-    var isSavingToShortlist by remember { mutableStateOf(false) }
 
     var showAddContactBottomSheet by remember {
         mutableStateOf(false)
@@ -172,46 +169,12 @@ fun AddPlayerScreen(
         if (initialTmProfileUrl.isNotBlank()) {
             val decoded = Uri.decode(initialTmProfileUrl)
             when (currentPlatform) {
-                Platform.YOUTH -> {
-                    // Prefill youth form from shortlist entry data
-                    try {
-                        val entry = shortlistRepository.getEntryByUrl(decoded)
-                        if (entry != null) {
-                            viewModel.updateYouthForm {
-                                YouthPlayerFormState(
-                                    fullName = entry.playerName ?: "",
-                                    positions = listOfNotNull(entry.playerPosition),
-                                    nationality = entry.playerNationality ?: "",
-                                    currentClub = entry.clubJoinedName ?: "",
-                                    profileImage = entry.playerImage ?: "",
-                                    ifaUrl = if (decoded.contains("ifa.co.il")) decoded else ""
-                                )
-                            }
-                        }
-                    } catch (_: Exception) { }
-                }
+                Platform.YOUTH -> viewModel.prefillYouthFromShortlist(decoded)
                 Platform.WOMEN -> {
                     if (decoded.contains("soccerdonna")) {
                         viewModel.loadPlayerByTmProfileUrl(decoded)
                     } else {
-                        // Prefill women form from shortlist entry data
-                        try {
-                            val entry = shortlistRepository.getEntryByUrl(decoded)
-                            if (entry != null) {
-                                viewModel.updateWomanForm {
-                                    WomanPlayerFormState(
-                                        fullName = entry.playerName ?: "",
-                                        positions = listOfNotNull(entry.playerPosition),
-                                        nationality = entry.playerNationality ?: "",
-                                        currentClub = entry.clubJoinedName ?: "",
-                                        age = entry.playerAge ?: "",
-                                        marketValue = entry.marketValue ?: "",
-                                        profileImage = entry.playerImage ?: "",
-                                        soccerDonnaUrl = if (decoded.contains("soccerdonna")) decoded else ""
-                                    )
-                                }
-                            }
-                        } catch (_: Exception) { }
+                        viewModel.prefillWomanFromShortlist(decoded)
                     }
                 }
                 else -> viewModel.loadPlayerByTmProfileUrl(decoded)
@@ -241,11 +204,8 @@ fun AddPlayerScreen(
 
             launch {
                 viewModel.isPlayerAddedFlow.collect {
-                    if (it && !forShortlist) {
+                    if (it) {
                         showAddContactBottomSheet = false
-                        navController.popBackStack()
-                    } else if (it && forShortlist && (currentPlatform == Platform.WOMEN || currentPlatform == Platform.YOUTH)) {
-                        // Women/Youth shortlist save succeeded
                         navController.popBackStack()
                     }
                 }
@@ -677,44 +637,14 @@ fun AddPlayerScreen(
                                 Spacer(modifier = Modifier.height(8.dp))
                                 PrimaryButtonNewDesign(
                                     buttonText = if (forShortlist) stringResource(R.string.add_player_to_shortlist) else stringResource(R.string.women_save_player),
-                                    isEnabled = womanForm.fullName.isNotBlank() && !womanForm.isSaving && !isSavingToShortlist,
-                                    showProgress = womanForm.isSaving || isSavingToShortlist,
+                                    isEnabled = womanForm.fullName.isNotBlank() && !womanForm.isSaving,
+                                    showProgress = womanForm.isSaving,
                                     containerColor = currentPlatform.accent,
                                     onButtonClicked = {
                                         focusManager.clearFocus()
                                         keyboardController?.hide()
                                         if (forShortlist) {
-                                            val url = womanForm.soccerDonnaUrl.takeIf { it.isNotBlank() } ?: "women-${womanForm.fullName.trim().lowercase().replace(" ", "-")}-${System.currentTimeMillis()}"
-                                            val release = LatestTransferModel(
-                                                playerImage = womanForm.profileImage.takeIf { it.isNotBlank() },
-                                                playerName = womanForm.fullName.trim(),
-                                                playerUrl = url,
-                                                playerPosition = womanForm.positions.firstOrNull(),
-                                                playerAge = womanForm.age.takeIf { it.isNotBlank() },
-                                                playerNationality = womanForm.nationality.takeIf { it.isNotBlank() },
-                                                clubJoinedName = womanForm.currentClub.takeIf { it.isNotBlank() },
-                                                marketValue = womanForm.marketValue.takeIf { it.isNotBlank() }
-                                            )
-                                            isSavingToShortlist = true
-                                            scope.launch {
-                                                try {
-                                                    when (shortlistRepository.addToShortlist(release)) {
-                                                        is ShortlistRepository.AddToShortlistResult.Added -> {
-                                                            navController.popBackStack()
-                                                        }
-                                                        is ShortlistRepository.AddToShortlistResult.AlreadyInShortlist -> {
-                                                            snackBarHostState.showSnackbar("Player already in shortlist")
-                                                        }
-                                                        is ShortlistRepository.AddToShortlistResult.AlreadyInRoster -> {
-                                                            snackBarHostState.showSnackbar("Player already in roster")
-                                                        }
-                                                    }
-                                                } catch (e: Exception) {
-                                                    snackBarHostState.showSnackbar(e.message ?: "Failed to add to shortlist")
-                                                } finally {
-                                                    isSavingToShortlist = false
-                                                }
-                                            }
+                                            viewModel.saveWomanPlayerToShortlist()
                                         } else {
                                             viewModel.saveWomanPlayer()
                                         }
@@ -1247,42 +1177,14 @@ fun AddPlayerScreen(
                             Spacer(modifier = Modifier.height(8.dp))
                             PrimaryButtonNewDesign(
                                 buttonText = if (forShortlist) stringResource(R.string.add_player_to_shortlist) else stringResource(R.string.youth_save_player),
-                                isEnabled = youthForm.fullName.isNotBlank() && !youthForm.isSaving && !isSavingToShortlist,
-                                showProgress = youthForm.isSaving || isSavingToShortlist,
+                                isEnabled = youthForm.fullName.isNotBlank() && !youthForm.isSaving,
+                                showProgress = youthForm.isSaving,
                                 containerColor = currentPlatform.accent,
                                 onButtonClicked = {
                                     focusManager.clearFocus()
                                     keyboardController?.hide()
                                     if (forShortlist) {
-                                        val url = youthForm.ifaUrl.takeIf { it.isNotBlank() } ?: "youth-${youthForm.fullName.trim().lowercase().replace(" ", "-")}-${System.currentTimeMillis()}"
-                                        val release = LatestTransferModel(
-                                            playerImage = youthForm.profileImage.takeIf { it.isNotBlank() },
-                                            playerName = youthForm.fullName.trim(),
-                                            playerUrl = url,
-                                            playerPosition = youthForm.positions.firstOrNull(),
-                                            playerNationality = youthForm.nationality.takeIf { it.isNotBlank() },
-                                            clubJoinedName = youthForm.currentClub.takeIf { it.isNotBlank() }
-                                        )
-                                        isSavingToShortlist = true
-                                        scope.launch {
-                                            try {
-                                                when (shortlistRepository.addToShortlist(release)) {
-                                                    is ShortlistRepository.AddToShortlistResult.Added -> {
-                                                        navController.popBackStack()
-                                                    }
-                                                    is ShortlistRepository.AddToShortlistResult.AlreadyInShortlist -> {
-                                                        snackBarHostState.showSnackbar("Player already in shortlist")
-                                                    }
-                                                    is ShortlistRepository.AddToShortlistResult.AlreadyInRoster -> {
-                                                        snackBarHostState.showSnackbar("Player already in roster")
-                                                    }
-                                                }
-                                            } catch (e: Exception) {
-                                                snackBarHostState.showSnackbar(e.message ?: "Failed to add to shortlist")
-                                            } finally {
-                                                isSavingToShortlist = false
-                                            }
-                                        }
+                                        viewModel.saveYouthPlayerToShortlist()
                                     } else {
                                         viewModel.saveYouthPlayer()
                                     }
