@@ -330,6 +330,7 @@ fun DashboardScreen(
                         event = event,
                         navController = navController,
                         allAccounts = state.allAccounts,
+                        isWomenPlatform = isWomenPlatform,
                         onNavigateToPlayer = { tmProfile, autoRefresh ->
                             viewModel.checkPlayerExists(tmProfile) { exists ->
                                 if (exists) {
@@ -338,7 +339,7 @@ fun DashboardScreen(
                                     navController.navigate(route)
                                 } else {
                                     ToastManager.showError(
-                                        context.getString(R.string.feed_player_deleted_error)
+                                        context.getString(if (isWomenPlatform) R.string.feed_women_player_deleted_error else R.string.feed_player_deleted_error)
                                     )
                                 }
                             }
@@ -350,7 +351,7 @@ fun DashboardScreen(
                                     navController.navigate(route)
                                 } else {
                                     ToastManager.showError(
-                                        context.getString(R.string.feed_player_deleted_error)
+                                        context.getString(if (isWomenPlatform) R.string.feed_women_player_deleted_error else R.string.feed_player_deleted_error)
                                     )
                                 }
                             }
@@ -394,59 +395,61 @@ fun DashboardScreen(
                 )
             }
 
-            // ── Transfer Windows (Grouped & Collapsible) ────────────────────
-            item {
-                TransferWindowsSectionHeader(totalCount = state.transferWindows.size)
-            }
-            when {
-                state.transferWindowsLoading -> {
-                    item {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 24.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(28.dp),
-                                color = HomeTealAccent,
-                                strokeWidth = 2.dp
-                            )
-                        }
-                    }
+            // ── Transfer Windows (Grouped & Collapsible) — hidden for women ──
+            if (!isWomenPlatform) {
+                item {
+                    TransferWindowsSectionHeader(totalCount = state.transferWindows.size)
                 }
-                state.transferWindowGroups.isEmpty() -> {
-                    item {
-                        Text(
-                            text = stringResource(R.string.transfer_windows_empty),
-                            style = regularTextStyle(HomeTextSecondary, 13.sp),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 20.dp, vertical = 16.dp)
-                        )
-                    }
-                }
-                else -> {
-                    state.transferWindowGroups.forEach { (confederation, windows) ->
-                        val isExpanded = confederation in state.expandedConfederations
-                        item(key = "tw_header_${confederation.name}") {
-                            TransferWindowGroupHeader(
-                                confederation = confederation,
-                                count = windows.size,
-                                isExpanded = isExpanded,
-                                closingSoonCount = windows.count { (it.daysLeft ?: Int.MAX_VALUE) <= 7 },
-                                onToggle = { viewModel.toggleTransferWindowGroup(confederation) }
-                            )
-                        }
-                        if (isExpanded) {
-                            items(
-                                items = windows,
-                                key = { "tw_${confederation.name}_${it.countryName}" }
-                            ) { window ->
-                                TransferWindowRow(
-                                    window = window,
-                                    modifier = Modifier.padding(horizontal = 20.dp)
+                when {
+                    state.transferWindowsLoading -> {
+                        item {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 24.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(28.dp),
+                                    color = HomeTealAccent,
+                                    strokeWidth = 2.dp
                                 )
+                            }
+                        }
+                    }
+                    state.transferWindowGroups.isEmpty() -> {
+                        item {
+                            Text(
+                                text = stringResource(R.string.transfer_windows_empty),
+                                style = regularTextStyle(HomeTextSecondary, 13.sp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 20.dp, vertical = 16.dp)
+                            )
+                        }
+                    }
+                    else -> {
+                        state.transferWindowGroups.forEach { (confederation, windows) ->
+                            val isExpanded = confederation in state.expandedConfederations
+                            item(key = "tw_header_${confederation.name}") {
+                                TransferWindowGroupHeader(
+                                    confederation = confederation,
+                                    count = windows.size,
+                                    isExpanded = isExpanded,
+                                    closingSoonCount = windows.count { (it.daysLeft ?: Int.MAX_VALUE) <= 7 },
+                                    onToggle = { viewModel.toggleTransferWindowGroup(confederation) }
+                                )
+                            }
+                            if (isExpanded) {
+                                items(
+                                    items = windows,
+                                    key = { "tw_${confederation.name}_${it.countryName}" }
+                                ) { window ->
+                                    TransferWindowRow(
+                                        window = window,
+                                        modifier = Modifier.padding(horizontal = 20.dp)
+                                    )
+                                }
                             }
                         }
                     }
@@ -1028,6 +1031,7 @@ private fun FeedEventCard(
     event: FeedEvent,
     navController: NavController,
     allAccounts: List<com.liordahan.mgsrteam.features.login.models.Account> = emptyList(),
+    isWomenPlatform: Boolean = false,
     onNavigateToPlayer: (tmProfile: String, autoRefresh: Boolean) -> Unit = { _, _ -> },
     onNavigateToPlayerByName: (playerName: String) -> Unit = {}
 ) {
@@ -1041,8 +1045,8 @@ private fun FeedEventCard(
             }
         }
         FeedEvent.TYPE_CLUB_CHANGE -> Triple(Icons.Default.SwapHoriz, HomeBlueAccent, stringResource(R.string.feed_club_change))
-        FeedEvent.TYPE_BECAME_FREE_AGENT -> Triple(Icons.Default.PersonOff, HomeRedAccent, stringResource(R.string.feed_became_free_agent))
-        FeedEvent.TYPE_NEW_RELEASE_FROM_CLUB -> Triple(Icons.Default.PersonOff, HomeOrangeAccent, stringResource(R.string.feed_new_release))
+        FeedEvent.TYPE_BECAME_FREE_AGENT -> Triple(Icons.Default.PersonOff, HomeRedAccent, stringResource(if (isWomenPlatform) R.string.feed_women_became_free_agent else R.string.feed_became_free_agent))
+        FeedEvent.TYPE_NEW_RELEASE_FROM_CLUB -> Triple(Icons.Default.PersonOff, HomeOrangeAccent, stringResource(if (isWomenPlatform) R.string.feed_women_new_release else R.string.feed_new_release))
         FeedEvent.TYPE_MANDATE_EXPIRED -> Triple(Icons.Default.Warning, HomeRedAccent, stringResource(R.string.feed_mandate_expired))
         FeedEvent.TYPE_MANDATE_UPLOADED -> Triple(Icons.Default.Description, HomeTealAccent, stringResource(R.string.feed_mandate_uploaded))
         FeedEvent.TYPE_MANDATE_SWITCHED_ON -> Triple(Icons.Default.Description, HomeTealAccent, stringResource(R.string.feed_mandate_switched_on))
@@ -1050,13 +1054,13 @@ private fun FeedEventCard(
         FeedEvent.TYPE_CONTRACT_EXPIRING -> Triple(Icons.Default.Warning, HomeOrangeAccent, stringResource(R.string.feed_contract_expiring))
         FeedEvent.TYPE_NOTE_ADDED -> Triple(Icons.AutoMirrored.Filled.NoteAdd, HomeRoseAccent, stringResource(R.string.feed_new_note))
         FeedEvent.TYPE_NOTE_DELETED -> Triple(Icons.Default.Delete, HomeRedAccent, stringResource(R.string.feed_note_deleted))
-        FeedEvent.TYPE_PLAYER_ADDED -> Triple(Icons.Default.Add, HomeTealAccent, stringResource(R.string.feed_player_added))
-        FeedEvent.TYPE_PLAYER_DELETED -> Triple(Icons.Default.Delete, HomeRedAccent, stringResource(R.string.feed_player_deleted))
-        FeedEvent.TYPE_SHORTLIST_ADDED -> Triple(Icons.Default.BookmarkAdd, HomeBlueAccent, stringResource(R.string.feed_shortlist_added))
-        FeedEvent.TYPE_SHORTLIST_REMOVED -> Triple(Icons.Default.BookmarkRemove, HomeRedAccent, stringResource(R.string.feed_shortlist_removed))
+        FeedEvent.TYPE_PLAYER_ADDED -> Triple(Icons.Default.Add, HomeTealAccent, stringResource(if (isWomenPlatform) R.string.feed_women_player_added else R.string.feed_player_added))
+        FeedEvent.TYPE_PLAYER_DELETED -> Triple(Icons.Default.Delete, HomeRedAccent, stringResource(if (isWomenPlatform) R.string.feed_women_player_deleted else R.string.feed_player_deleted))
+        FeedEvent.TYPE_SHORTLIST_ADDED -> Triple(Icons.Default.BookmarkAdd, HomeBlueAccent, stringResource(if (isWomenPlatform) R.string.feed_women_shortlist_added else R.string.feed_shortlist_added))
+        FeedEvent.TYPE_SHORTLIST_REMOVED -> Triple(Icons.Default.BookmarkRemove, HomeRedAccent, stringResource(if (isWomenPlatform) R.string.feed_women_shortlist_removed else R.string.feed_shortlist_removed))
         FeedEvent.TYPE_REQUEST_ADDED -> Triple(Icons.Default.RequestQuote, HomePurpleAccent, stringResource(R.string.feed_request_added))
         FeedEvent.TYPE_REQUEST_DELETED -> Triple(Icons.Default.Delete, HomeRedAccent, stringResource(R.string.feed_request_deleted))
-        FeedEvent.TYPE_PLAYER_OFFERED_TO_CLUB -> Triple(Icons.Default.Handshake, HomeTealAccent, stringResource(R.string.feed_player_offered_to_club))
+        FeedEvent.TYPE_PLAYER_OFFERED_TO_CLUB -> Triple(Icons.Default.Handshake, HomeTealAccent, stringResource(if (isWomenPlatform) R.string.feed_women_player_offered_to_club else R.string.feed_player_offered_to_club))
         else -> Triple(Icons.Default.Notifications, HomeTextSecondary, stringResource(R.string.feed_update))
     }
 
@@ -1160,7 +1164,7 @@ private fun FeedEventCard(
                         )
                         Text(
                             text = stringResource(
-                                R.string.feed_released_from,
+                                if (isWomenPlatform) R.string.feed_women_released_from else R.string.feed_released_from,
                                 event.oldValue ?: "?"
                             ),
                             style = regularTextStyle(HomeTextSecondary, 12.sp)
@@ -1173,7 +1177,7 @@ private fun FeedEventCard(
                         )
                         Text(
                             text = stringResource(
-                                R.string.feed_moved_from_to,
+                                if (isWomenPlatform) R.string.feed_women_moved_from_to else R.string.feed_moved_from_to,
                                 event.oldValue ?: "?",
                                 event.newValue ?: "?"
                             ),
@@ -1318,7 +1322,7 @@ private fun FeedEventCard(
                         )
                         agentDisplayName?.let {
                             Text(
-                                text = stringResource(R.string.feed_added_by, it),
+                                text = stringResource(if (isWomenPlatform) R.string.feed_women_added_by else R.string.feed_added_by, it),
                                 style = regularTextStyle(HomeTextSecondary, 12.sp)
                             )
                         }
@@ -1335,7 +1339,7 @@ private fun FeedEventCard(
                         )
                         agentDisplayName?.let {
                             Text(
-                                text = stringResource(R.string.feed_removed_by, it),
+                                text = stringResource(if (isWomenPlatform) R.string.feed_women_removed_by else R.string.feed_removed_by, it),
                                 style = regularTextStyle(HomeTextSecondary, 12.sp)
                             )
                         }
@@ -1353,7 +1357,7 @@ private fun FeedEventCard(
                         val parts = buildList {
                             event.newValue?.takeIf { it.isNotBlank() }?.let { add(it) }
                             agentDisplayName?.takeIf { it.isNotBlank() }?.let {
-                                add(stringResource(R.string.feed_added_by, it))
+                                add(stringResource(if (isWomenPlatform) R.string.feed_women_added_by else R.string.feed_added_by, it))
                             }
                         }
                         if (parts.isNotEmpty()) {
@@ -1376,7 +1380,7 @@ private fun FeedEventCard(
                         val parts = buildList {
                             event.newValue?.takeIf { it.isNotBlank() }?.let { add(it) }
                             agentDisplayName?.takeIf { it.isNotBlank() }?.let {
-                                add(stringResource(R.string.feed_deleted_by, it))
+                                add(stringResource(if (isWomenPlatform) R.string.feed_women_deleted_by else R.string.feed_deleted_by, it))
                             }
                         }
                         if (parts.isNotEmpty()) {
@@ -1397,9 +1401,9 @@ private fun FeedEventCard(
                             style = boldTextStyle(HomeTextPrimary, 14.sp)
                         )
                         val parts = buildList {
-                            event.newValue?.takeIf { it.isNotBlank() }?.let { add(stringResource(R.string.feed_offered_to, it)) }
+                            event.newValue?.takeIf { it.isNotBlank() }?.let { add(stringResource(if (isWomenPlatform) R.string.feed_women_offered_to else R.string.feed_offered_to, it)) }
                             agentDisplayName?.takeIf { it.isNotBlank() }?.let {
-                                add(stringResource(R.string.feed_offered_by, it))
+                                add(stringResource(if (isWomenPlatform) R.string.feed_women_offered_by else R.string.feed_offered_by, it))
                             }
                         }
                         if (parts.isNotEmpty()) {
@@ -1428,7 +1432,7 @@ private fun FeedEventCard(
                         )
                         agentDisplayName?.let {
                             Text(
-                                text = stringResource(R.string.feed_added_by, it),
+                                text = stringResource(if (isWomenPlatform) R.string.feed_women_added_by else R.string.feed_added_by, it),
                                 style = regularTextStyle(HomeTextSecondary, 12.sp)
                             )
                         }
@@ -1445,7 +1449,7 @@ private fun FeedEventCard(
                         )
                         agentDisplayName?.let {
                             Text(
-                                text = stringResource(R.string.feed_deleted_by, it),
+                                text = stringResource(if (isWomenPlatform) R.string.feed_women_deleted_by else R.string.feed_deleted_by, it),
                                 style = regularTextStyle(HomeTextSecondary, 12.sp)
                             )
                         }

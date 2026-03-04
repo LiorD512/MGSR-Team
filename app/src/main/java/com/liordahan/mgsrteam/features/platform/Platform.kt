@@ -44,7 +44,7 @@ enum class Platform(
     ),
     WOMEN(
         labelRes = R.string.platform_women,
-        emoji = "�",
+        emoji = "🏅",
         accent = Color(0xFFB24BF3),           // ATHENA deep orchid — power & creativity
         accentSecondary = Color(0xFFF5A623),   // ATHENA warm gold — excellence & achievement
         playersCollection = "PlayersWomen",

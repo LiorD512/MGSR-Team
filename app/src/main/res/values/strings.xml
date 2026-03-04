@@ -413,6 +413,23 @@
     <string name="women_hub_view_all">View All</string>
     <string name="women_feed_title">Activity Feed</string>
     <string name="women_feed_empty">No recent activity — time to make moves! 💪</string>
+
+    <!-- Women Feed — feminine Hebrew overrides (English identical to default) -->
+    <string name="feed_women_became_free_agent">Became Free Agent</string>
+    <string name="feed_women_new_release">New Free Agent (Releases)</string>
+    <string name="feed_women_player_added">Player Added</string>
+    <string name="feed_women_player_deleted">Player Deleted</string>
+    <string name="feed_women_player_offered_to_club">Player Offered</string>
+    <string name="feed_women_shortlist_added">Added to Shortlist</string>
+    <string name="feed_women_shortlist_removed">Removed from Shortlist</string>
+    <string name="feed_women_released_from">Released from %1$s</string>
+    <string name="feed_women_moved_from_to">Moved from %1$s to %2$s</string>
+    <string name="feed_women_added_by">Added by %1$s</string>
+    <string name="feed_women_deleted_by">Deleted by %1$s</string>
+    <string name="feed_women_removed_by">Removed by %1$s</string>
+    <string name="feed_women_offered_to">Offered to %1$s</string>
+    <string name="feed_women_offered_by">Offered by %1$s</string>
+    <string name="feed_women_player_deleted_error">This player was deleted from the database</string>
     <string name="women_empty_state_title">Your roster awaits</string>
     <string name="women_empty_state_subtitle">Add your first athlete to start building your women\'s football empire</string>
     <string name="women_inspire_quote_1">Breaking barriers, building legacies</string>

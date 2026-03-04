@@ -1106,15 +1106,44 @@ private fun PlayerInfoHeroCard(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             if (currentPlatform == Platform.WOMEN) {
+                var showFallback by remember { mutableStateOf(player.profileImage.isNullOrBlank()) }
                 WomenGlowPhotoRing(modifier = Modifier.size(100.dp)) {
-                    AsyncImage(
-                        model = player.profileImage ?: "",
-                        contentDescription = null,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier
-                            .size(92.dp)
-                            .clip(CircleShape)
-                    )
+                    if (showFallback) {
+                        // Gradient initials placeholder
+                        Box(
+                            modifier = Modifier
+                                .size(92.dp)
+                                .clip(CircleShape)
+                                .background(
+                                    Brush.linearGradient(
+                                        colors = listOf(
+                                            com.liordahan.mgsrteam.ui.theme.WomenColors.Orchid,
+                                            com.liordahan.mgsrteam.ui.theme.WomenColors.Gold
+                                        )
+                                    )
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = player.fullName
+                                    ?.split(" ")
+                                    ?.mapNotNull { it.firstOrNull()?.uppercase() }
+                                    ?.take(2)
+                                    ?.joinToString("") ?: "?",
+                                style = boldTextStyle(Color.White, 28.sp)
+                            )
+                        }
+                    } else {
+                        AsyncImage(
+                            model = player.profileImage,
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .size(92.dp)
+                                .clip(CircleShape),
+                            onError = { showFallback = true }
+                        )
+                    }
                 }
             } else {
                 AsyncImage(

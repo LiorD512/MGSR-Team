@@ -318,24 +318,41 @@
     <!-- ATHENA Women Dashboard — שפה מעצימה -->
     <string name="women_dashboard_greeting_tagline">מובילות את המשחק</string>
     <string name="women_stat_athletes">ספורטאיות</string>
-    <string name="women_stat_represented">מיוצגות</string>
-    <string name="women_stat_available">זמינות</string>
-    <string name="women_stat_inquiries">פניות</string>
+    <string name="women_stat_represented">מנדט</string>
+    <string name="women_stat_available">חופשיות</string>
+    <string name="women_stat_inquiries">בקשות</string>
     <string name="women_quick_athletes">הספורטאיות שלנו</string>
     <string name="women_quick_watchlist">רשימת מעקב</string>
-    <string name="women_quick_connections">קשרים</string>
+    <string name="women_quick_connections">אנשי קשר</string>
     <string name="women_quick_inquiries">פניות מועדונים</string>
     <string name="women_quick_goals">יעדים ומשימות</string>
     <string name="women_hub_title">מרכז הפיקוד שלי</string>
     <string name="women_hub_athletes">ספורטאיות</string>
-    <string name="women_hub_represented">מיוצגות</string>
-    <string name="women_hub_available">זמינות</string>
+    <string name="women_hub_represented">מנדט</string>
+    <string name="women_hub_available">חופשיות</string>
     <string name="women_hub_expiring">מסיימות חוזה</string>
     <string name="women_hub_tasks_completed">הושלמו</string>
     <string name="women_hub_upcoming_goals">יעדים קרובים</string>
     <string name="women_hub_view_all">הצג הכל</string>
     <string name="women_feed_title">פיד פעילות</string>
     <string name="women_feed_empty">אין פעילות אחרונה — זמן לעשות מהלכים! 💪</string>
+
+    <!-- Women Feed — נוסח נשי -->
+    <string name="feed_women_became_free_agent">הפכה לשחקנית חופשייה</string>
+    <string name="feed_women_new_release">שחקנית חופשייה חדשה (שחרורים)</string>
+    <string name="feed_women_player_added">שחקנית נוספה</string>
+    <string name="feed_women_player_deleted">שחקנית נמחקה</string>
+    <string name="feed_women_player_offered_to_club">שחקנית הוצעה</string>
+    <string name="feed_women_shortlist_added">נוספה לרשימת מעקב</string>
+    <string name="feed_women_shortlist_removed">הוסרה מרשימת מעקב</string>
+    <string name="feed_women_released_from">שוחררה מ-%1$s</string>
+    <string name="feed_women_moved_from_to">עברה מ-%1$s ל-%2$s</string>
+    <string name="feed_women_added_by">נוספה על ידי %1$s</string>
+    <string name="feed_women_deleted_by">נמחקה על ידי %1$s</string>
+    <string name="feed_women_removed_by">הוסרה על ידי %1$s</string>
+    <string name="feed_women_offered_to">הוצעה ל-%1$s</string>
+    <string name="feed_women_offered_by">הוצעה על ידי %1$s</string>
+    <string name="feed_women_player_deleted_error">שחקנית זו נמחקה ממאגר הנתונים</string>
     <string name="women_empty_state_title">הרשימה שלך מחכה</string>
     <string name="women_empty_state_subtitle">הוסיפי את הספורטאית הראשונה שלך והתחילי לבנות את האימפריה</string>
     <string name="women_inspire_quote_1">שוברות מחסומים, בונות מורשת</string>

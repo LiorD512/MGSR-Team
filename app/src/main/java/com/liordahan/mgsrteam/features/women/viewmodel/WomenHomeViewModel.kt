@@ -1,25 +1,28 @@
-package com.liordahan.mgsrteam.features.home
+package com.liordahan.mgsrteam.features.women.viewmodel
 
 import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.liordahan.mgsrteam.R
-import com.liordahan.mgsrteam.features.home.models.AgentAlert
-import com.liordahan.mgsrteam.features.home.models.AgentSummary
-import com.liordahan.mgsrteam.features.home.models.AgentTask
-import com.liordahan.mgsrteam.features.home.models.AlertSeverity
-import com.liordahan.mgsrteam.features.home.models.FeedEvent
-import com.liordahan.mgsrteam.features.home.models.MyAgentOverview
+import com.liordahan.mgsrteam.features.home.DocumentReminder
+import com.liordahan.mgsrteam.features.home.FeedFilter
 import com.liordahan.mgsrteam.features.login.models.Account
-import com.liordahan.mgsrteam.features.players.models.Player
-import com.google.firebase.firestore.ListenerRegistration
-import com.liordahan.mgsrteam.features.players.playerinfo.documents.DocumentType
+import com.liordahan.mgsrteam.features.women.data.WomenFirebaseHandler
+import com.liordahan.mgsrteam.features.women.models.WomenAgentAlert
+import com.liordahan.mgsrteam.features.women.models.WomenAgentOverview
+import com.liordahan.mgsrteam.features.women.models.WomenAgentSummary
+import com.liordahan.mgsrteam.features.women.models.WomenAgentTask
+import com.liordahan.mgsrteam.features.women.models.toSharedAgentTask
+import com.liordahan.mgsrteam.features.women.models.WomenAlertSeverity
+import com.liordahan.mgsrteam.features.women.models.WomenFeedEvent
+import com.liordahan.mgsrteam.features.women.models.WomenPlayer
 import com.liordahan.mgsrteam.features.players.playerinfo.documents.PlayerDocument
-import com.liordahan.mgsrteam.firebase.FirebaseHandler
+import com.liordahan.mgsrteam.features.players.playerinfo.documents.DocumentType
 import com.liordahan.mgsrteam.transfermarket.Confederation
 import com.liordahan.mgsrteam.transfermarket.PRIORITY_COUNTRY_CODES
 import com.liordahan.mgsrteam.transfermarket.TransferWindow
 import com.liordahan.mgsrteam.transfermarket.TransferWindows
+import com.google.firebase.firestore.ListenerRegistration
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -31,113 +34,83 @@ import kotlinx.coroutines.withContext
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeParseException
+import java.time.temporal.ChronoUnit
 import java.util.Calendar
 import java.util.Locale
 
-// ─── UI State ────────────────────────────────────────────────────────────────
 
-data class HomeDashboardState(
+/**
+ * Women-dedicated home dashboard UI state.
+ */
+data class WomenHomeDashboardState(
     val currentUserAccount: Account? = null,
     @param:StringRes val greetingRes: Int = R.string.greeting_good_morning,
 
-    // stats row
     val totalPlayers: Int = 0,
     val withMandate: Int = 0,
     val expiringSoon: Int = 0,
     val freeAgents: Int = 0,
     val requestsCount: Int = 0,
 
-    // activity feed
-    val feedEvents: List<FeedEvent> = emptyList(),
+    val feedEvents: List<WomenFeedEvent> = emptyList(),
     val selectedFeedFilter: FeedFilter = FeedFilter.ALL,
     val isFeedExpanded: Boolean = false,
 
-    // my personal overview (current logged-in agent)
-    val myAgentOverview: MyAgentOverview? = null,
-
-    // agent summaries
-    val agentSummaries: List<AgentSummary> = emptyList(),
-
-    // all agent accounts (from Accounts table)
+    val myAgentOverview: WomenAgentOverview? = null,
+    val agentSummaries: List<WomenAgentSummary> = emptyList(),
     val allAccounts: List<Account> = emptyList(),
 
-    // agent tasks
-    val agentTasks: Map<String, List<AgentTask>> = emptyMap(),   // agentId -> tasks
+    val agentTasks: Map<String, List<WomenAgentTask>> = emptyMap(),
     val expandedAgentId: String? = null,
 
-    // mandate document profiles (tmProfiles that have a mandate doc uploaded)
     val mandateDocProfiles: Set<String> = emptySet(),
-
-    // mandate switch state by tmProfile (for feed event cards)
     val mandateStatusByTmProfile: Map<String, Boolean> = emptyMap(),
 
-    // document reminders
     val documentReminders: List<DocumentReminder> = emptyList(),
-
-    // team overview
     val isTeamOverviewExpanded: Boolean = false,
 
-    // transfer windows (open worldwide)
     val transferWindows: List<TransferWindow> = emptyList(),
     val transferWindowGroups: Map<Confederation, List<TransferWindow>> = emptyMap(),
     val expandedConfederations: Set<Confederation> = setOf(Confederation.PRIORITY),
     val transferWindowsLoading: Boolean = false,
 
-    // loading
     val isLoading: Boolean = true
 )
 
-data class DocumentReminder(
-    val playerName: String,
-    val documentType: String,
-    val daysUntilExpiry: Int?,       // null = missing
-    val isMissing: Boolean = false
-)
-
-enum class FeedFilter(@param:StringRes val labelRes: Int) {
-    ALL(R.string.feed_filter_all),
-    VALUE_CHANGES(R.string.feed_filter_value),
-    TRANSFERS(R.string.feed_filter_transfers),
-    NOTES(R.string.feed_filter_notes)
-}
-
-// ─── ViewModel ───────────────────────────────────────────────────────────────
-
-abstract class IHomeScreenViewModel : ViewModel() {
-    abstract val dashboardState: StateFlow<HomeDashboardState>
-    /** Checks if player exists in DB; calls onResult(true) if exists, onResult(false) if deleted. */
-    abstract fun checkPlayerExists(tmProfile: String, onResult: (Boolean) -> Unit)
-    /** Finds a Women/Youth player by name and returns its document ID, or null if not found. */
+/**
+ * Women-dedicated home screen abstract ViewModel.
+ */
+abstract class IWomenHomeViewModel : ViewModel() {
+    abstract val dashboardState: StateFlow<WomenHomeDashboardState>
+    abstract fun checkPlayerExists(docId: String, onResult: (Boolean) -> Unit)
     abstract fun findPlayerDocIdByName(playerName: String, onResult: (String?) -> Unit)
-    /** Updates player's mandate switch (haveMandate) by tmProfile. */
-    abstract fun updatePlayerMandate(tmProfile: String, hasMandate: Boolean)
+    abstract fun updatePlayerMandate(docId: String, hasMandate: Boolean)
     abstract fun selectFeedFilter(filter: FeedFilter)
     abstract fun toggleFeedExpanded()
     abstract fun toggleAgentExpanded(agentId: String)
-    abstract fun toggleTaskCompleted(task: AgentTask)
+    abstract fun toggleTaskCompleted(task: WomenAgentTask)
     abstract fun addTask(agentId: String, agentName: String, title: String, dueDate: Long, priority: Int = 0, notes: String = "", playerId: String = "", playerName: String = "", playerTmProfile: String = "", templateId: String = "")
-    abstract fun updateTask(task: AgentTask)
-    abstract fun deleteTask(task: AgentTask)
+    abstract fun updateTask(task: WomenAgentTask)
+    abstract fun deleteTask(task: WomenAgentTask)
     abstract fun toggleTransferWindowGroup(confederation: Confederation)
     abstract fun toggleTeamOverview()
     abstract fun refreshTransferWindows()
-    /** Called from UI when user switches MGSR platform (Men / Women / Youth). */
-    abstract fun reloadForPlatformSwitch()
 }
 
-class HomeScreenViewModel(
-    private val firebaseHandler: FirebaseHandler,
+/**
+ * Women-dedicated home screen ViewModel implementation.
+ * Uses WomenFirebaseHandler (hardcoded to women collections) — no PlatformManager.
+ */
+class WomenHomeViewModel(
+    private val firebaseHandler: WomenFirebaseHandler,
     private val transferWindows: TransferWindows,
-    private val appContext: android.content.Context,
-    private val platformManager: com.liordahan.mgsrteam.features.platform.PlatformManager
-) : IHomeScreenViewModel() {
+    private val appContext: android.content.Context
+) : IWomenHomeViewModel() {
 
-    private val _state = MutableStateFlow(HomeDashboardState())
-    override val dashboardState: StateFlow<HomeDashboardState> = _state
+    private val _state = MutableStateFlow(WomenHomeDashboardState())
+    override val dashboardState: StateFlow<WomenHomeDashboardState> = _state
 
-    /** Must be declared before init{} so the JVM field is initialised before any coroutine reads it. */
-    private var _currentPlayers: List<Player> = emptyList()
-
+    private var _currentPlayers: List<WomenPlayer> = emptyList()
     private val listenerRegistrations = mutableListOf<ListenerRegistration>()
 
     init {
@@ -151,38 +124,6 @@ class HomeScreenViewModel(
         ensureLoadingClearedWithinTimeout()
     }
 
-    // ── Platform switch ─────────────────────────────────────────────────────
-
-    /**
-     * Tears down all platform-dependent Firestore listeners and re-subscribes
-     * against the new collections. Called *after* [PlatformManager.switchTo()].
-     */
-    override fun reloadForPlatformSwitch() {
-        // Remove old listeners
-        listenerRegistrations.forEach { it.remove() }
-        listenerRegistrations.clear()
-        _currentPlayers = emptyList()
-        // Reset state (keep greeting & accounts)
-        _state.update {
-            it.copy(
-                totalPlayers = 0, withMandate = 0, expiringSoon = 0,
-                freeAgents = 0, requestsCount = 0,
-                feedEvents = emptyList(), agentSummaries = emptyList(),
-                agentTasks = emptyMap(), documentReminders = emptyList(),
-                mandateDocProfiles = emptySet(), mandateStatusByTmProfile = emptyMap(),
-                myAgentOverview = null, isLoading = true
-            )
-        }
-        // Re-subscribe with new collection names
-        loadAllAccounts()
-        listenToPlayers()
-        listenToRequests()
-        loadFeedEvents()
-        listenToAgentTasks()
-        ensureLoadingClearedWithinTimeout()
-    }
-
-    /** Fallback: clear loading if FeedEvents/Players listeners are slow (e.g. offline). */
     private fun ensureLoadingClearedWithinTimeout() {
         viewModelScope.launch(Dispatchers.Main) {
             delay(4000)
@@ -196,18 +137,13 @@ class HomeScreenViewModel(
         listenerRegistrations.clear()
     }
 
-    override fun checkPlayerExists(tmProfile: String, onResult: (Boolean) -> Unit) {
+    // ── Player exists (Women: docId is Firestore document ID) ────────────
+
+    override fun checkPlayerExists(docId: String, onResult: (Boolean) -> Unit) {
         viewModelScope.launch(Dispatchers.IO) {
             val exists = try {
-                val isNonMen = platformManager.current.value != com.liordahan.mgsrteam.features.platform.Platform.MEN
-                if (isNonMen) {
-                    // Women / Youth — tmProfile is actually the Firestore document ID
-                    firebaseHandler.firebaseStore.collection(firebaseHandler.playersTable)
-                        .document(tmProfile).get().await().exists()
-                } else {
-                    firebaseHandler.firebaseStore.collection(firebaseHandler.playersTable)
-                        .whereEqualTo("tmProfile", tmProfile).get().await().documents.isNotEmpty()
-                }
+                firebaseHandler.firebaseStore.collection(firebaseHandler.playersTable)
+                    .document(docId).get().await().exists()
             } catch (_: Exception) { false }
             withContext(Dispatchers.Main) { onResult(exists) }
         }
@@ -224,22 +160,18 @@ class HomeScreenViewModel(
         }
     }
 
-    override fun updatePlayerMandate(tmProfile: String, hasMandate: Boolean) {
+    override fun updatePlayerMandate(docId: String, hasMandate: Boolean) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                val snap = firebaseHandler.firebaseStore
-                    .collection(firebaseHandler.playersTable)
-                    .whereEqualTo("tmProfile", tmProfile)
-                    .get()
-                    .await()
-                val doc = snap.documents.firstOrNull() ?: return@launch
-                val player = doc.toObject(Player::class.java) ?: return@launch
+                val doc = firebaseHandler.firebaseStore.collection(firebaseHandler.playersTable)
+                    .document(docId).get().await()
+                val player = doc.toObject(WomenPlayer::class.java) ?: return@launch
                 doc.reference.set(player.copy(haveMandate = hasMandate)).await()
             } catch (_: Exception) { }
         }
     }
 
-    // ── Greeting ─────────────────────────────────────────────────────────────
+    // ── Greeting ─────────────────────────────────────────────────────
 
     private fun loadGreeting() {
         viewModelScope.launch(Dispatchers.IO) {
@@ -254,21 +186,16 @@ class HomeScreenViewModel(
                 else {
                     val snap = firebaseHandler.firebaseStore
                         .collection(firebaseHandler.accountsTable)
-                        .whereEqualTo("email", currentEmail)
-                        .limit(1)
-                        .get()
-                        .await()
-                    val doc = snap.documents.firstOrNull()
-                    doc?.toObject(Account::class.java)?.copy(id = doc.id)
+                        .whereEqualTo("email", currentEmail).limit(1).get().await()
+                    snap.documents.firstOrNull()?.toObject(Account::class.java)?.copy(id = snap.documents.first().id)
                 }
             } catch (_: Exception) { null }
-
             _state.update { it.copy(greetingRes = greetingRes, currentUserAccount = currentAccount) }
             recomputeMyOverview()
         }
     }
 
-    // ── All Accounts ─────────────────────────────────────────────────────────
+    // ── Accounts ─────────────────────────────────────────────────────
 
     private fun loadAllAccounts() {
         val reg = firebaseHandler.firebaseStore.collection(firebaseHandler.accountsTable)
@@ -280,13 +207,13 @@ class HomeScreenViewModel(
         listenerRegistrations.add(reg)
     }
 
-    // ── Players snapshot listener ────────────────────────────────────────────
+    // ── Players ──────────────────────────────────────────────────────
 
     private fun listenToPlayers() {
         val reg = firebaseHandler.firebaseStore.collection(firebaseHandler.playersTable)
             .addSnapshotListener { snapshot, error ->
                 if (error != null || snapshot == null) return@addSnapshotListener
-                val players = snapshot.toObjects(Player::class.java)
+                val players = snapshot.toObjects(WomenPlayer::class.java)
                 viewModelScope.launch(Dispatchers.Default) {
                     val total = players.size
                     val freeAgents = players.count {
@@ -299,7 +226,7 @@ class HomeScreenViewModel(
                     val summaries = agentGroups
                         .filter { it.key != "Unassigned" }
                         .map { (name, list) ->
-                            AgentSummary(
+                            WomenAgentSummary(
                                 agentId = list.firstOrNull()?.agentInChargeId,
                                 agentName = name,
                                 totalPlayers = list.size,
@@ -324,7 +251,6 @@ class HomeScreenViewModel(
                         )
                     }
                     recomputeMyOverview()
-
                     loadDocumentReminders()
                     countMandates(players)
                 }
@@ -332,30 +258,28 @@ class HomeScreenViewModel(
         listenerRegistrations.add(reg)
     }
 
-    private fun countMandates(players: List<Player>) {
+    private fun countMandates(players: List<WomenPlayer>) {
         viewModelScope.launch(Dispatchers.IO) {
             // Query mandate documents; fall back to empty set so haveMandate still counts
             val profilesWithMandateDoc: Set<String> = try {
                 val docsSnap = firebaseHandler.firebaseStore
                     .collection(firebaseHandler.playerDocumentsTable)
-                    .whereEqualTo("type", DocumentType.MANDATE.name)
-                    .get().await()
+                    .whereEqualTo("type", DocumentType.MANDATE.name).get().await()
                 val docs = docsSnap.toObjects(PlayerDocument::class.java)
                 docs.mapNotNull { it.playerTmProfile }.toSet()
             } catch (_: Exception) { emptySet() }
 
-            // For Women/Youth, mandate docs store Firestore doc ID as playerTmProfile,
-            // so also match by player.id (Firestore doc ID).
+            // Women docs store Firestore doc ID as playerTmProfile (not a TM URL),
+            // so match by player.id (doc ID) as well as player.tmProfile.
             val mandateCount = players.count { it.haveMandate || it.tmProfile in profilesWithMandateDoc || it.id in profilesWithMandateDoc }
 
             _state.update { it.copy(withMandate = mandateCount, mandateDocProfiles = profilesWithMandateDoc) }
 
-            // Update agent summaries with mandate info
             val agentGroups = players.groupBy { it.agentInChargeName ?: "Unassigned" }
             val updatedSummaries = agentGroups
                 .filter { it.key != "Unassigned" }
                 .map { (name, list) ->
-                    AgentSummary(
+                    WomenAgentSummary(
                         agentId = list.firstOrNull()?.agentInChargeId,
                         agentName = name,
                         totalPlayers = list.size,
@@ -369,19 +293,18 @@ class HomeScreenViewModel(
         }
     }
 
-    // ── Requests count ───────────────────────────────────────────────────────
+    // ── Requests count ───────────────────────────────────────────────
 
     private fun listenToRequests() {
         val reg = firebaseHandler.firebaseStore.collection(firebaseHandler.clubRequestsTable)
             .addSnapshotListener { snapshot, _ ->
                 if (snapshot == null) return@addSnapshotListener
-                val count = snapshot.size()
-                _state.update { it.copy(requestsCount = count) }
+                _state.update { it.copy(requestsCount = snapshot.size()) }
             }
         listenerRegistrations.add(reg)
     }
 
-    // ── Feed events ──────────────────────────────────────────────────────────
+    // ── Feed events ──────────────────────────────────────────────────
 
     private fun loadFeedEvents() {
         val reg = firebaseHandler.firebaseStore.collection(firebaseHandler.feedEventsTable)
@@ -389,16 +312,9 @@ class HomeScreenViewModel(
             .limit(50)
             .addSnapshotListener { snapshot, _ ->
                 if (snapshot == null) return@addSnapshotListener
-                val events = snapshot.toObjects(FeedEvent::class.java)
-                val deduped = events.distinctBy {
-                    "${it.type}_${it.playerTmProfile}_${it.oldValue}_${it.newValue}"
-                }
-                _state.update {
-                    it.copy(
-                        feedEvents = deduped,
-                        isLoading = false
-                    )
-                }
+                val events = snapshot.toObjects(WomenFeedEvent::class.java)
+                val deduped = events.distinctBy { "${it.type}_${it.playerTmProfile}_${it.oldValue}_${it.newValue}" }
+                _state.update { it.copy(feedEvents = deduped, isLoading = false) }
             }
         listenerRegistrations.add(reg)
     }
@@ -411,46 +327,36 @@ class HomeScreenViewModel(
         _state.update { it.copy(isFeedExpanded = !it.isFeedExpanded) }
     }
 
-    // ── Document reminders ───────────────────────────────────────────────────
+    // ── Document reminders ───────────────────────────────────────────
 
     private fun loadDocumentReminders() {
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 val snap = firebaseHandler.firebaseStore
-                    .collection(firebaseHandler.playerDocumentsTable)
-                    .get().await()
+                    .collection(firebaseHandler.playerDocumentsTable).get().await()
                 val docs = snap.toObjects(PlayerDocument::class.java)
                 val now = System.currentTimeMillis()
                 val thirtyDaysMs = 30L * 24 * 60 * 60 * 1000
-
                 val reminders = docs
                     .filter { doc ->
                         val expires = doc.expiresAt ?: return@filter false
                         expires - now in 0..thirtyDaysMs
                     }
                     .mapNotNull { doc ->
-                        val playerName = findPlayerName(doc.playerTmProfile) ?: return@mapNotNull null
+                        val playerName = _currentPlayers.firstOrNull { it.tmProfile == doc.playerTmProfile }?.fullName
+                            ?: return@mapNotNull null
                         val daysLeft = ((doc.expiresAt!! - now) / (24 * 60 * 60 * 1000)).toInt()
-                        DocumentReminder(
-                            playerName = playerName,
-                            documentType = doc.documentType.displayName,
-                            daysUntilExpiry = daysLeft
-                        )
+                        DocumentReminder(playerName, doc.documentType.displayName, daysLeft)
                     }
                     .sortedBy { it.daysUntilExpiry }
                     .take(5)
-
                 _state.update { it.copy(documentReminders = reminders) }
                 recomputeMyOverview()
             } catch (_: Exception) { }
         }
     }
 
-    private fun findPlayerName(tmProfile: String?): String? {
-        return _currentPlayers.firstOrNull { it.tmProfile == tmProfile }?.fullName
-    }
-
-    // ── Agent Tasks ──────────────────────────────────────────────────────────
+    // ── Agent Tasks ──────────────────────────────────────────────────
 
     private fun listenToAgentTasks() {
         val reg = firebaseHandler.firebaseStore.collection(firebaseHandler.agentTasksTable)
@@ -459,25 +365,21 @@ class HomeScreenViewModel(
             .addSnapshotListener { snapshot, _ ->
                 if (snapshot == null) return@addSnapshotListener
                 val tasks = snapshot.documents.mapNotNull { doc ->
-                    doc.toObject(AgentTask::class.java)?.copy(id = doc.id)
+                    doc.toObject(WomenAgentTask::class.java)?.copy(id = doc.id)
                 }
-                val grouped = tasks.groupBy { it.agentId }
-                _state.update { it.copy(agentTasks = grouped) }
+                _state.update { it.copy(agentTasks = tasks.groupBy { it.agentId }) }
                 recomputeMyOverview()
             }
         listenerRegistrations.add(reg)
     }
 
     override fun toggleAgentExpanded(agentId: String) {
-        _state.update {
-            it.copy(expandedAgentId = if (it.expandedAgentId == agentId) null else agentId)
-        }
+        _state.update { it.copy(expandedAgentId = if (it.expandedAgentId == agentId) null else agentId) }
     }
 
-    override fun toggleTaskCompleted(task: AgentTask) {
+    override fun toggleTaskCompleted(task: WomenAgentTask) {
         if (task.id.isBlank()) return
         val nowCompleted = !task.isCompleted
-        // Optimistic update: flip state and sync widget immediately
         _state.update { state ->
             val list = state.agentTasks[task.agentId].orEmpty()
             val updated = list.map { if (it.id == task.id) it.copy(isCompleted = nowCompleted) else it }
@@ -486,18 +388,11 @@ class HomeScreenViewModel(
         recomputeMyOverview()
         viewModelScope.launch {
             try {
-                val data = mapOf(
-                    "isCompleted" to nowCompleted,
-                    "completedAt" to if (nowCompleted) System.currentTimeMillis() else 0L
-                )
-                firebaseHandler.firebaseStore
-                    .collection(firebaseHandler.agentTasksTable)
+                firebaseHandler.firebaseStore.collection(firebaseHandler.agentTasksTable)
                     .document(task.id)
-                    .update(data)
+                    .update(mapOf("isCompleted" to nowCompleted, "completedAt" to if (nowCompleted) System.currentTimeMillis() else 0L))
                     .await()
-            } catch (e: Exception) {
-                android.util.Log.e("HomeVM", "toggleTaskCompleted failed for id=${task.id}", e)
-            }
+            } catch (_: Exception) { }
         }
     }
 
@@ -506,40 +401,27 @@ class HomeScreenViewModel(
             val currentAccount = _state.value.currentUserAccount
             val createdByAgentId = currentAccount?.id ?: ""
             val createdByAgentName = currentAccount?.let { it.getDisplayName(appContext) } ?: ""
-            val newTask = AgentTask(
-                agentId = agentId,
-                agentName = agentName,
-                title = title,
-                isCompleted = false,
-                dueDate = dueDate,
-                createdAt = System.currentTimeMillis(),
-                priority = priority,
-                notes = notes,
-                createdByAgentId = createdByAgentId,
-                createdByAgentName = createdByAgentName,
-                playerId = playerId,
-                playerName = playerName,
-                playerTmProfile = playerTmProfile,
+            val newTask = WomenAgentTask(
+                agentId = agentId, agentName = agentName, title = title,
+                isCompleted = false, dueDate = dueDate, createdAt = System.currentTimeMillis(),
+                priority = priority, notes = notes,
+                createdByAgentId = createdByAgentId, createdByAgentName = createdByAgentName,
+                playerId = playerId, playerName = playerName, playerTmProfile = playerTmProfile,
                 templateId = templateId
             )
-            // Optimistic update: add to state and sync widget immediately (before Firestore)
             _state.update { state ->
                 val existing = state.agentTasks[agentId].orEmpty()
                 state.copy(agentTasks = state.agentTasks + (agentId to (existing + newTask)))
             }
             recomputeMyOverview()
             try {
-                firebaseHandler.firebaseStore
-                    .collection(firebaseHandler.agentTasksTable)
-                    .add(newTask)
-                    .await()
+                firebaseHandler.firebaseStore.collection(firebaseHandler.agentTasksTable).add(newTask).await()
             } catch (_: Exception) { }
         }
     }
 
-    override fun updateTask(task: AgentTask) {
+    override fun updateTask(task: WomenAgentTask) {
         if (task.id.isBlank()) return
-        // Optimistic update: apply changes and sync widget immediately
         _state.update { state ->
             val list = state.agentTasks[task.agentId].orEmpty()
             val updated = list.map { if (it.id == task.id) task else it }
@@ -548,27 +430,18 @@ class HomeScreenViewModel(
         recomputeMyOverview()
         viewModelScope.launch {
             try {
-                val data = mapOf(
-                    "title" to task.title,
-                    "agentId" to task.agentId,
-                    "agentName" to task.agentName,
-                    "dueDate" to task.dueDate,
-                    "priority" to task.priority,
-                    "notes" to task.notes,
-                    "isCompleted" to task.isCompleted,
-                    "completedAt" to task.completedAt
-                )
-                firebaseHandler.firebaseStore
-                    .collection(firebaseHandler.agentTasksTable)
+                firebaseHandler.firebaseStore.collection(firebaseHandler.agentTasksTable)
                     .document(task.id)
-                    .update(data)
-                    .await()
+                    .update(mapOf(
+                        "title" to task.title, "agentId" to task.agentId, "agentName" to task.agentName,
+                        "dueDate" to task.dueDate, "priority" to task.priority, "notes" to task.notes,
+                        "isCompleted" to task.isCompleted, "completedAt" to task.completedAt
+                    )).await()
             } catch (_: Exception) { }
         }
     }
 
-    override fun deleteTask(task: AgentTask) {
-        // Optimistic update: remove from state and sync widget immediately
+    override fun deleteTask(task: WomenAgentTask) {
         _state.update { state ->
             val list = state.agentTasks[task.agentId].orEmpty().filter { it.id != task.id }
             state.copy(agentTasks = state.agentTasks + (task.agentId to list))
@@ -576,16 +449,13 @@ class HomeScreenViewModel(
         recomputeMyOverview()
         viewModelScope.launch {
             try {
-                firebaseHandler.firebaseStore
-                    .collection(firebaseHandler.agentTasksTable)
-                    .document(task.id)
-                    .delete()
-                    .await()
+                firebaseHandler.firebaseStore.collection(firebaseHandler.agentTasksTable)
+                    .document(task.id).delete().await()
             } catch (_: Exception) { }
         }
     }
 
-    // ── Transfer Windows ───────────────────────────────────────────────────────
+    // ── Transfer Windows ─────────────────────────────────────────────
 
     override fun toggleTeamOverview() {
         _state.update { it.copy(isTeamOverviewExpanded = !it.isTeamOverviewExpanded) }
@@ -599,11 +469,8 @@ class HomeScreenViewModel(
         }
     }
 
-    override fun refreshTransferWindows() {
-        loadTransferWindows()
-    }
+    override fun refreshTransferWindows() { loadTransferWindows() }
 
-    /** Defer transfer windows load so initial Firestore fetches complete first. */
     private fun loadTransferWindowsDeferred() {
         viewModelScope.launch(Dispatchers.IO) {
             delay(1500)
@@ -618,70 +485,40 @@ class HomeScreenViewModel(
                 is com.liordahan.mgsrteam.transfermarket.TransfermarktResult.Success -> {
                     val allWindows = result.data
                     val groups = buildTransferWindowGroups(allWindows)
-                    _state.update {
-                        it.copy(
-                            transferWindows = allWindows,
-                            transferWindowGroups = groups,
-                            transferWindowsLoading = false
-                        )
-                    }
+                    _state.update { it.copy(transferWindows = allWindows, transferWindowGroups = groups, transferWindowsLoading = false) }
                 }
                 is com.liordahan.mgsrteam.transfermarket.TransfermarktResult.Failed ->
-                    _state.update {
-                        it.copy(
-                            transferWindows = emptyList(),
-                            transferWindowGroups = emptyMap(),
-                            transferWindowsLoading = false
-                        )
-                    }
+                    _state.update { it.copy(transferWindows = emptyList(), transferWindowGroups = emptyMap(), transferWindowsLoading = false) }
             }
         }
     }
 
-    private fun buildTransferWindowGroups(
-        windows: List<TransferWindow>
-    ): Map<Confederation, List<TransferWindow>> {
-        val priority = windows
-            .filter { it.countryCode in PRIORITY_COUNTRY_CODES }
-            .sortedBy { it.daysLeft }
-
-        val remaining = windows
-            .filter { it.countryCode !in PRIORITY_COUNTRY_CODES }
-            .groupBy { it.confederation }
-            .toSortedMap(compareBy { it.order })
-
+    private fun buildTransferWindowGroups(windows: List<TransferWindow>): Map<Confederation, List<TransferWindow>> {
+        val priority = windows.filter { it.countryCode in PRIORITY_COUNTRY_CODES }.sortedBy { it.daysLeft }
+        val remaining = windows.filter { it.countryCode !in PRIORITY_COUNTRY_CODES }
+            .groupBy { it.confederation }.toSortedMap(compareBy { it.order })
         return buildMap {
             if (priority.isNotEmpty()) put(Confederation.PRIORITY, priority)
-            remaining.forEach { (conf, list) ->
-                put(conf, list.sortedBy { it.daysLeft })
-            }
+            remaining.forEach { (conf, list) -> put(conf, list.sortedBy { it.daysLeft }) }
         }
     }
 
-    // ── My Agent Overview (recomputed whenever underlying data changes) ─────
+    // ── My Agent Overview ────────────────────────────────────────────
 
     private fun recomputeMyOverview() {
         val current = _state.value
         val me = current.currentUserAccount ?: return
         val myEnglishName = me.name?.takeIf { it.isNotBlank() } ?: return
 
-        // Players are matched by English name stored in agentInChargeName
-        val myPlayers = _currentPlayers.filter { p ->
-            p.agentInChargeName.equals(myEnglishName, ignoreCase = true)
-        }
-
+        val myPlayers = _currentPlayers.filter { p -> p.agentInChargeName.equals(myEnglishName, ignoreCase = true) }
         val totalPlayers = myPlayers.size
         val mandateDocProfiles = current.mandateDocProfiles
-        val withMandate = myPlayers.count { p ->
-            p.haveMandate || p.tmProfile in mandateDocProfiles || p.id in mandateDocProfiles
-        }
+        val withMandate = myPlayers.count { p -> p.haveMandate || p.tmProfile in mandateDocProfiles || p.id in mandateDocProfiles }
         val freeAgents = myPlayers.count { p ->
-            p.currentClub?.clubName.equals("Without Club", true) ||
-                p.currentClub?.clubName.equals("Without club", true)
+            p.currentClub?.clubName.equals("Without Club", true) || p.currentClub?.clubName.equals("Without club", true)
         }
         val expiringContracts = myPlayers.count { isContractExpiringWithinMonths(it.contractExpired, 5) }
 
-        // Tasks are stored with Account.id OR agentInChargeId from Player
         val myAccountId = me.id
         val myPlayerAgentId = myPlayers.firstOrNull()?.agentInChargeId
         val possibleTaskIds = listOfNotNull(myAccountId, myPlayerAgentId).distinct()
@@ -696,35 +533,33 @@ class HomeScreenViewModel(
             set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
         }.timeInMillis
         val overdue = pending.count { it.dueDate in 1..<startOfToday }
-        val upcoming = pending
-            .sortedBy { if (it.dueDate > 0) it.dueDate else Long.MAX_VALUE }
-            .take(5)
+        val upcoming = pending.sortedBy { if (it.dueDate > 0) it.dueDate else Long.MAX_VALUE }.take(5)
 
         val contractAlerts = myPlayers
             .filter { isContractExpiringWithinMonths(it.contractExpired, 3) }
             .mapNotNull { player ->
                 val expiry = parseDateFlexible(player.contractExpired ?: return@mapNotNull null) ?: return@mapNotNull null
-                val daysLeft = java.time.temporal.ChronoUnit.DAYS.between(LocalDate.now(), expiry).toInt()
-                AgentAlert(
+                val daysLeft = ChronoUnit.DAYS.between(LocalDate.now(), expiry).toInt()
+                WomenAgentAlert(
                     playerName = player.fullName ?: "Unknown",
                     detail = "Contract in $daysLeft days",
                     daysLeft = daysLeft,
-                    severity = if (daysLeft < 30) AlertSeverity.URGENT else AlertSeverity.WARNING
+                    severity = if (daysLeft < 30) WomenAlertSeverity.URGENT else WomenAlertSeverity.WARNING
                 )
             }
 
         val docAlerts = current.documentReminders
             .filter { reminder -> myPlayers.any { it.fullName == reminder.playerName } }
             .map { reminder ->
-                AgentAlert(
+                WomenAgentAlert(
                     playerName = reminder.playerName,
                     detail = "${reminder.documentType} in ${reminder.daysUntilExpiry ?: 0}d",
                     daysLeft = reminder.daysUntilExpiry ?: 0,
-                    severity = if ((reminder.daysUntilExpiry ?: 0) < 7) AlertSeverity.URGENT else AlertSeverity.WARNING
+                    severity = if ((reminder.daysUntilExpiry ?: 0) < 7) WomenAlertSeverity.URGENT else WomenAlertSeverity.WARNING
                 )
             }
 
-        val overview = MyAgentOverview(
+        val overview = WomenAgentOverview(
             totalPlayers = totalPlayers,
             withMandate = withMandate,
             freeAgents = freeAgents,
@@ -737,21 +572,47 @@ class HomeScreenViewModel(
             overdueTaskCount = overdue,
             alerts = (contractAlerts + docAlerts).sortedBy { it.daysLeft }.take(5)
         )
-
         _state.update { it.copy(myAgentOverview = overview) }
 
-        // Sync to home screen widget whenever overview changes (tasks, players, etc.)
         viewModelScope.launch(Dispatchers.IO) {
             try {
+                // Sync widget with women overview
                 com.liordahan.mgsrteam.widget.WidgetUpdateHelper.syncToWidget(
                     appContext.applicationContext,
-                    overview
+                    // Convert to shared MyAgentOverview for widget compatibility
+                    com.liordahan.mgsrteam.features.home.models.MyAgentOverview(
+                        totalPlayers = overview.totalPlayers,
+                        withMandate = overview.withMandate,
+                        freeAgents = overview.freeAgents,
+                        expiringContracts = overview.expiringContracts,
+                        taskCompletionPercent = overview.taskCompletionPercent,
+                        completedTaskCount = overview.completedTaskCount,
+                        totalTaskCount = overview.totalTaskCount,
+                        upcomingTasks = upcoming.map { task -> task.toSharedAgentTask() },
+                        pendingTaskCount = overview.pendingTaskCount,
+                        overdueTaskCount = overview.overdueTaskCount,
+                        alerts = (contractAlerts + docAlerts)
+                            .sortedBy { it.daysLeft }
+                            .take(5)
+                            .map { alert ->
+                                com.liordahan.mgsrteam.features.home.models.AgentAlert(
+                                    playerName = alert.playerName,
+                                    detail = alert.detail,
+                                    daysLeft = alert.daysLeft,
+                                    severity = when (alert.severity) {
+                                        WomenAlertSeverity.URGENT -> com.liordahan.mgsrteam.features.home.models.AlertSeverity.URGENT
+                                        WomenAlertSeverity.WARNING -> com.liordahan.mgsrteam.features.home.models.AlertSeverity.WARNING
+                                        WomenAlertSeverity.INFO -> com.liordahan.mgsrteam.features.home.models.AlertSeverity.WARNING
+                                    }
+                                )
+                            }
+                    )
                 )
             } catch (_: Exception) { }
         }
     }
 
-    // ── Helpers ───────────────────────────────────────────────────────────────
+    // ── Helpers ───────────────────────────────────────────────────────
 
     private fun isContractExpiringWithinMonths(contractExpired: String?, months: Int): Boolean {
         if (contractExpired.isNullOrEmpty() || contractExpired == "-") return false
