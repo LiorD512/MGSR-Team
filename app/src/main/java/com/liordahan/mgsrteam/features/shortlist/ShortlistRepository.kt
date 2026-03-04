@@ -8,6 +8,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.liordahan.mgsrteam.features.platform.PlatformManager
 import com.liordahan.mgsrteam.firebase.FirebaseHandler
 import com.liordahan.mgsrteam.transfermarket.LatestTransferModel
+import android.util.Log
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -147,18 +148,33 @@ class ShortlistRepository(
      * Adds a player to shortlist.
      */
     suspend fun addToShortlist(release: LatestTransferModel): AddToShortlistResult {
-        val url = release.playerUrl ?: return AddToShortlistResult.AlreadyInShortlist
+        val url = release.playerUrl ?: run {
+            Log.d("MGSR_SHORTLIST", "addToShortlist: playerUrl is null, returning AlreadyInShortlist")
+            return AddToShortlistResult.AlreadyInShortlist
+        }
+        Log.d("MGSR_SHORTLIST", "addToShortlist START url='$url' playerName='${release.playerName}'")
+        Log.d("MGSR_SHORTLIST", "playersTable='${firebaseHandler.playersTable}' shortlistsTable='${firebaseHandler.shortlistsTable}'")
         _shortlistPendingUrls.value = _shortlistPendingUrls.value + url
         return try {
+            Log.d("MGSR_SHORTLIST", "Step 1: Roster check on '${firebaseHandler.playersTable}' where tmProfile='$url'")
             val rosterSnapshot = firebaseHandler.firebaseStore.collection(firebaseHandler.playersTable)
                 .whereEqualTo("tmProfile", url)
                 .get()
                 .await()
+            Log.d("MGSR_SHORTLIST", "Step 1 done: rosterSnapshot.isEmpty=${rosterSnapshot.isEmpty}")
             if (!rosterSnapshot.isEmpty) return AddToShortlistResult.AlreadyInRoster
+
+            Log.d("MGSR_SHORTLIST", "Step 2: Get shortlist doc")
             val docRef = shortlistDocRef()
             val snapshot = docRef.get().await()
             val current = snapshot.getEntriesList().toMutableList()
-            if (current.any { (it["tmProfileUrl"] as? String) == url }) return AddToShortlistResult.AlreadyInShortlist
+            Log.d("MGSR_SHORTLIST", "Step 2 done: existing entries=${current.size}")
+            if (current.any { (it["tmProfileUrl"] as? String) == url }) {
+                Log.d("MGSR_SHORTLIST", "Duplicate found, returning AlreadyInShortlist")
+                return AddToShortlistResult.AlreadyInShortlist
+            }
+
+            Log.d("MGSR_SHORTLIST", "Step 3: Building entry map")
             val entryMap = mutableMapOf<String, Any>(
                 "tmProfileUrl" to url,
                 "addedAt" to System.currentTimeMillis()
@@ -173,20 +189,32 @@ class ShortlistRepository(
             release.clubJoinedName?.takeIf { it.isNotBlank() }?.let { entryMap["clubJoinedName"] = it }
             release.transferDate?.takeIf { it.isNotBlank() }?.let { entryMap["transferDate"] = it }
             release.marketValue?.takeIf { it.isNotBlank() }?.let { entryMap["marketValue"] = it }
+
+            Log.d("MGSR_SHORTLIST", "Step 4: Getting current user account")
             getCurrentUserAccount()?.let { acc ->
                 acc.id?.let { entryMap["addedByAgentId"] = it }
                 acc.name?.takeIf { it.isNotBlank() }?.let { entryMap["addedByAgentName"] = it }
                 acc.hebrewName?.takeIf { it.isNotBlank() }?.let { entryMap["addedByAgentHebrewName"] = it }
             }
+            Log.d("MGSR_SHORTLIST", "Step 4 done. Entry map keys: ${entryMap.keys}")
+
             current.add(entryMap)
+            Log.d("MGSR_SHORTLIST", "Step 5: Writing ${current.size} entries to Firestore")
             docRef.set(mapOf("entries" to current)).await()
+            Log.d("MGSR_SHORTLIST", "Step 5 done: Firestore write succeeded")
+
+            Log.d("MGSR_SHORTLIST", "Step 6: Writing feed event")
             writeFeedEventShortlist(
                 playerName = release.playerName,
                 playerImage = release.playerImage,
                 playerTmProfile = url,
                 agentName = getCurrentUserAccountName()
             )
+            Log.d("MGSR_SHORTLIST", "Step 6 done. Returning Added")
             AddToShortlistResult.Added
+        } catch (e: Exception) {
+            Log.e("MGSR_SHORTLIST", "addToShortlist EXCEPTION", e)
+            throw e
         } finally {
             _shortlistPendingUrls.value = _shortlistPendingUrls.value - url
         }

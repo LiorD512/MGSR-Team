@@ -29,6 +29,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
+import android.util.Log
 
 data class AddPlayerUiState(
     val playerSearchResults: List<PlayerSearchModel> = emptyList(),
@@ -176,7 +177,7 @@ class AddPlayerViewModel(
     private val _errorMessageFlow = MutableSharedFlow<String?>()
     override val errorMessageFlow: SharedFlow<String?> = _errorMessageFlow
 
-    private val _shortlistAddedEvent = MutableSharedFlow<Unit>()
+    private val _shortlistAddedEvent = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     override val shortlistAddedEvent: SharedFlow<Unit> = _shortlistAddedEvent
 
     private val _searchQuery = MutableStateFlow("")
@@ -782,12 +783,17 @@ class AddPlayerViewModel(
 
     override fun saveWomanPlayerToShortlist() {
         val form = _womanFormState.value
-        if (form.fullName.isBlank()) return
+        Log.d("MGSR_SHORTLIST", "saveWomanPlayerToShortlist called, fullName='${form.fullName}'")
+        if (form.fullName.isBlank()) {
+            Log.d("MGSR_SHORTLIST", "Aborting: fullName is blank")
+            return
+        }
         _womanFormState.update { it.copy(isSaving = true) }
         viewModelScope.launch {
             try {
                 val url = form.soccerDonnaUrl.takeIf { it.isNotBlank() }
                     ?: "women-${form.fullName.trim().lowercase().replace(" ", "-")}-${System.currentTimeMillis()}"
+                Log.d("MGSR_SHORTLIST", "Woman URL='$url'")
                 val release = LatestTransferModel(
                     playerImage = form.profileImage.takeIf { it.isNotBlank() },
                     playerName = form.fullName.trim(),
@@ -798,32 +804,46 @@ class AddPlayerViewModel(
                     clubJoinedName = form.currentClub.takeIf { it.isNotBlank() },
                     marketValue = form.marketValue.takeIf { it.isNotBlank() }
                 )
-                when (shortlistRepository.addToShortlist(release)) {
+                Log.d("MGSR_SHORTLIST", "Calling repository.addToShortlist for woman...")
+                val result = shortlistRepository.addToShortlist(release)
+                Log.d("MGSR_SHORTLIST", "Repository returned: $result")
+                when (result) {
                     is ShortlistRepository.AddToShortlistResult.Added -> {
+                        Log.d("MGSR_SHORTLIST", "Emitting shortlistAddedEvent")
                         _shortlistAddedEvent.emit(Unit)
+                        Log.d("MGSR_SHORTLIST", "shortlistAddedEvent emitted")
                     }
                     is ShortlistRepository.AddToShortlistResult.AlreadyInShortlist -> {
+                        Log.d("MGSR_SHORTLIST", "Already in shortlist")
                         _errorMessageFlow.emit("Player already in shortlist")
                     }
                     is ShortlistRepository.AddToShortlistResult.AlreadyInRoster -> {
+                        Log.d("MGSR_SHORTLIST", "Already in roster")
                         _errorMessageFlow.emit("Player already in roster")
                     }
                 }
             } catch (e: Exception) {
+                Log.e("MGSR_SHORTLIST", "Error saving woman to shortlist", e)
                 _errorMessageFlow.emit(e.message ?: "Failed to add to shortlist")
+            } finally {
+                _womanFormState.update { it.copy(isSaving = false) }
             }
-            _womanFormState.update { it.copy(isSaving = false) }
         }
     }
 
     override fun saveYouthPlayerToShortlist() {
         val form = _youthFormState.value
-        if (form.fullName.isBlank()) return
+        Log.d("MGSR_SHORTLIST", "saveYouthPlayerToShortlist called, fullName='${form.fullName}'")
+        if (form.fullName.isBlank()) {
+            Log.d("MGSR_SHORTLIST", "Aborting: fullName is blank")
+            return
+        }
         _youthFormState.update { it.copy(isSaving = true) }
         viewModelScope.launch {
             try {
                 val url = form.ifaUrl.takeIf { it.isNotBlank() }
                     ?: "youth-${form.fullName.trim().lowercase().replace(" ", "-")}-${System.currentTimeMillis()}"
+                Log.d("MGSR_SHORTLIST", "Youth URL='$url'")
                 val release = LatestTransferModel(
                     playerImage = form.profileImage.takeIf { it.isNotBlank() },
                     playerName = form.fullName.trim(),
@@ -832,21 +852,30 @@ class AddPlayerViewModel(
                     playerNationality = form.nationality.takeIf { it.isNotBlank() },
                     clubJoinedName = form.currentClub.takeIf { it.isNotBlank() }
                 )
-                when (shortlistRepository.addToShortlist(release)) {
+                Log.d("MGSR_SHORTLIST", "Calling repository.addToShortlist for youth...")
+                val result = shortlistRepository.addToShortlist(release)
+                Log.d("MGSR_SHORTLIST", "Repository returned: $result")
+                when (result) {
                     is ShortlistRepository.AddToShortlistResult.Added -> {
+                        Log.d("MGSR_SHORTLIST", "Emitting shortlistAddedEvent")
                         _shortlistAddedEvent.emit(Unit)
+                        Log.d("MGSR_SHORTLIST", "shortlistAddedEvent emitted")
                     }
                     is ShortlistRepository.AddToShortlistResult.AlreadyInShortlist -> {
+                        Log.d("MGSR_SHORTLIST", "Already in shortlist")
                         _errorMessageFlow.emit("Player already in shortlist")
                     }
                     is ShortlistRepository.AddToShortlistResult.AlreadyInRoster -> {
+                        Log.d("MGSR_SHORTLIST", "Already in roster")
                         _errorMessageFlow.emit("Player already in roster")
                     }
                 }
             } catch (e: Exception) {
+                Log.e("MGSR_SHORTLIST", "Error saving youth to shortlist", e)
                 _errorMessageFlow.emit(e.message ?: "Failed to add to shortlist")
+            } finally {
+                _youthFormState.update { it.copy(isSaving = false) }
             }
-            _youthFormState.update { it.copy(isSaving = false) }
         }
     }
 

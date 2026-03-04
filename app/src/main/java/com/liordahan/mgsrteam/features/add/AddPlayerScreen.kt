@@ -108,6 +108,7 @@ import com.liordahan.mgsrteam.ui.utils.regularTextStyle
 import com.liordahan.mgsrteam.transfermarket.SoccerDonnaSearchResult
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import android.util.Log
 import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.koinInject
 import com.liordahan.mgsrteam.features.platform.Platform
@@ -212,7 +213,9 @@ fun AddPlayerScreen(
             }
 
             launch {
+                Log.d("MGSR_SHORTLIST", "shortlistAddedEvent collector started")
                 viewModel.shortlistAddedEvent.collect {
+                    Log.d("MGSR_SHORTLIST", "shortlistAddedEvent received! Calling popBackStack")
                     navController.popBackStack()
                 }
             }
