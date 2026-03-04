@@ -169,8 +169,53 @@ fun AddPlayerScreen(
     }
 
     LaunchedEffect(initialTmProfileUrl) {
-        if (initialTmProfileUrl.isNotBlank() && currentPlatform != Platform.YOUTH) {
-            viewModel.loadPlayerByTmProfileUrl(Uri.decode(initialTmProfileUrl))
+        if (initialTmProfileUrl.isNotBlank()) {
+            val decoded = Uri.decode(initialTmProfileUrl)
+            when (currentPlatform) {
+                Platform.YOUTH -> {
+                    // Prefill youth form from shortlist entry data
+                    try {
+                        val entry = shortlistRepository.getEntryByUrl(decoded)
+                        if (entry != null) {
+                            viewModel.updateYouthForm {
+                                YouthPlayerFormState(
+                                    fullName = entry.playerName ?: "",
+                                    positions = listOfNotNull(entry.playerPosition),
+                                    nationality = entry.playerNationality ?: "",
+                                    currentClub = entry.clubJoinedName ?: "",
+                                    profileImage = entry.playerImage ?: "",
+                                    ifaUrl = if (decoded.contains("ifa.co.il")) decoded else ""
+                                )
+                            }
+                        }
+                    } catch (_: Exception) { }
+                }
+                Platform.WOMEN -> {
+                    if (decoded.contains("soccerdonna")) {
+                        viewModel.loadPlayerByTmProfileUrl(decoded)
+                    } else {
+                        // Prefill women form from shortlist entry data
+                        try {
+                            val entry = shortlistRepository.getEntryByUrl(decoded)
+                            if (entry != null) {
+                                viewModel.updateWomanForm {
+                                    WomanPlayerFormState(
+                                        fullName = entry.playerName ?: "",
+                                        positions = listOfNotNull(entry.playerPosition),
+                                        nationality = entry.playerNationality ?: "",
+                                        currentClub = entry.clubJoinedName ?: "",
+                                        age = entry.playerAge ?: "",
+                                        marketValue = entry.marketValue ?: "",
+                                        profileImage = entry.playerImage ?: "",
+                                        soccerDonnaUrl = if (decoded.contains("soccerdonna")) decoded else ""
+                                    )
+                                }
+                            }
+                        } catch (_: Exception) { }
+                    }
+                }
+                else -> viewModel.loadPlayerByTmProfileUrl(decoded)
+            }
         }
     }
 
@@ -652,18 +697,22 @@ fun AddPlayerScreen(
                                             )
                                             isSavingToShortlist = true
                                             scope.launch {
-                                                when (shortlistRepository.addToShortlist(release)) {
-                                                    is ShortlistRepository.AddToShortlistResult.Added -> {
-                                                        navController.popBackStack()
+                                                try {
+                                                    when (shortlistRepository.addToShortlist(release)) {
+                                                        is ShortlistRepository.AddToShortlistResult.Added -> {
+                                                            navController.popBackStack()
+                                                        }
+                                                        is ShortlistRepository.AddToShortlistResult.AlreadyInShortlist -> {
+                                                            snackBarHostState.showSnackbar("Player already in shortlist")
+                                                        }
+                                                        is ShortlistRepository.AddToShortlistResult.AlreadyInRoster -> {
+                                                            snackBarHostState.showSnackbar("Player already in roster")
+                                                        }
                                                     }
-                                                    is ShortlistRepository.AddToShortlistResult.AlreadyInShortlist -> {
-                                                        isSavingToShortlist = false
-                                                        snackBarHostState.showSnackbar("Player already in shortlist")
-                                                    }
-                                                    is ShortlistRepository.AddToShortlistResult.AlreadyInRoster -> {
-                                                        isSavingToShortlist = false
-                                                        snackBarHostState.showSnackbar("Player already in roster")
-                                                    }
+                                                } catch (e: Exception) {
+                                                    snackBarHostState.showSnackbar(e.message ?: "Failed to add to shortlist")
+                                                } finally {
+                                                    isSavingToShortlist = false
                                                 }
                                             }
                                         } else {
@@ -1216,18 +1265,22 @@ fun AddPlayerScreen(
                                         )
                                         isSavingToShortlist = true
                                         scope.launch {
-                                            when (shortlistRepository.addToShortlist(release)) {
-                                                is ShortlistRepository.AddToShortlistResult.Added -> {
-                                                    navController.popBackStack()
+                                            try {
+                                                when (shortlistRepository.addToShortlist(release)) {
+                                                    is ShortlistRepository.AddToShortlistResult.Added -> {
+                                                        navController.popBackStack()
+                                                    }
+                                                    is ShortlistRepository.AddToShortlistResult.AlreadyInShortlist -> {
+                                                        snackBarHostState.showSnackbar("Player already in shortlist")
+                                                    }
+                                                    is ShortlistRepository.AddToShortlistResult.AlreadyInRoster -> {
+                                                        snackBarHostState.showSnackbar("Player already in roster")
+                                                    }
                                                 }
-                                                is ShortlistRepository.AddToShortlistResult.AlreadyInShortlist -> {
-                                                    isSavingToShortlist = false
-                                                    snackBarHostState.showSnackbar("Player already in shortlist")
-                                                }
-                                                is ShortlistRepository.AddToShortlistResult.AlreadyInRoster -> {
-                                                    isSavingToShortlist = false
-                                                    snackBarHostState.showSnackbar("Player already in roster")
-                                                }
+                                            } catch (e: Exception) {
+                                                snackBarHostState.showSnackbar(e.message ?: "Failed to add to shortlist")
+                                            } finally {
+                                                isSavingToShortlist = false
                                             }
                                         }
                                     } else {

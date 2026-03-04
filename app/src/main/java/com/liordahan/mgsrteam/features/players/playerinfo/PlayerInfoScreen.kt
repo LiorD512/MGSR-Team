@@ -128,6 +128,8 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
+import coil.compose.SubcomposeAsyncImage
+import coil.compose.SubcomposeAsyncImageContent
 import com.liordahan.mgsrteam.R
 import com.liordahan.mgsrteam.features.add.getPhoneNumberFromContactUri
 import com.liordahan.mgsrteam.features.players.models.NotesModel
@@ -1104,8 +1106,8 @@ private fun PlayerInfoHeroCard(
                 .padding(20.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            if ((currentPlatform == Platform.YOUTH || currentPlatform == Platform.WOMEN) && player.profileImage.isNullOrBlank()) {
-                // Initials placeholder on gradient for Youth/Women
+            // Initials fallback composable for Youth/Women
+            val initialsPlaceholder: @Composable () -> Unit = {
                 val initials = (player.fullName ?: "?").split(" ")
                     .filter { it.isNotBlank() }
                     .take(2)
@@ -1117,7 +1119,6 @@ private fun PlayerInfoHeroCard(
                 Box(
                     modifier = Modifier
                         .size(96.dp)
-                        .align(Alignment.CenterHorizontally)
                         .clip(CircleShape)
                         .background(gradientBrush),
                     contentAlignment = Alignment.Center
@@ -1127,17 +1128,39 @@ private fun PlayerInfoHeroCard(
                         style = boldTextStyle(Color.White, 32.sp)
                     )
                 }
+            }
+
+            if (currentPlatform == Platform.YOUTH || currentPlatform == Platform.WOMEN) {
+                if (player.profileImage.isNullOrBlank()) {
+                    Box(modifier = Modifier.align(Alignment.CenterHorizontally)) {
+                        initialsPlaceholder()
+                    }
+                } else {
+                    SubcomposeAsyncImage(
+                        model = player.profileImage,
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .size(96.dp)
+                            .align(Alignment.CenterHorizontally)
+                            .clip(CircleShape)
+                            .border(2.dp, HomeDarkCardBorder, CircleShape),
+                        loading = { initialsPlaceholder() },
+                        error = { initialsPlaceholder() },
+                        success = { SubcomposeAsyncImageContent() }
+                    )
+                }
             } else {
-            AsyncImage(
-                model = player.profileImage ?: "",
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .size(96.dp)
-                    .align(Alignment.CenterHorizontally)
-                    .clip(CircleShape)
-                    .border(2.dp, HomeDarkCardBorder, CircleShape)
-            )
+                AsyncImage(
+                    model = player.profileImage ?: "",
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .size(96.dp)
+                        .align(Alignment.CenterHorizontally)
+                        .clip(CircleShape)
+                        .border(2.dp, HomeDarkCardBorder, CircleShape)
+                )
             }
             Spacer(Modifier.height(12.dp))
             Text(

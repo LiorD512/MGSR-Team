@@ -316,6 +316,14 @@ class ShortlistRepository(
         return snapshot.getEntriesList().any { (it["tmProfileUrl"] as? String) == tmProfileUrl }
     }
 
+    /** Look up a single shortlist entry by its URL. */
+    suspend fun getEntryByUrl(tmProfileUrl: String): ShortlistEntry? {
+        val snapshot = shortlistDocRef().get().await()
+        return snapshot.getEntriesList()
+            .mapNotNull { parseEntryFromMap(it) }
+            .find { it.tmProfileUrl == tmProfileUrl }
+    }
+
     // ── Notes CRUD ──────────────────────────────────────────────────────────
 
     @Suppress("UNCHECKED_CAST")

@@ -39,14 +39,30 @@ class ShortlistViewModel(
     }
 
     override fun remove(entry: ShortlistEntry) {
+        // Optimistically remove from UI immediately
+        _shortlistFlow.update { state ->
+            state.copy(entries = state.entries.filter { it.tmProfileUrl != entry.tmProfileUrl })
+        }
         viewModelScope.launch {
-            repository.removeFromShortlist(entry.tmProfileUrl)
+            try {
+                repository.removeFromShortlist(entry.tmProfileUrl)
+            } catch (e: Exception) {
+                // Revert: re-add entry on failure (snapshot listener will fix order)
+                _shortlistFlow.update { state ->
+                    state.copy(entries = (state.entries + entry).sortedByDescending { it.addedAt })
+                }
+            }
         }
     }
 
     override fun removeByUrl(tmProfileUrl: String) {
+        _shortlistFlow.update { state ->
+            state.copy(entries = state.entries.filter { it.tmProfileUrl != tmProfileUrl })
+        }
         viewModelScope.launch {
-            repository.removeFromShortlist(tmProfileUrl)
+            try {
+                repository.removeFromShortlist(tmProfileUrl)
+            } catch (_: Exception) { }
         }
     }
 
