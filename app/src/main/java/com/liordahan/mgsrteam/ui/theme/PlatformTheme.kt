@@ -62,6 +62,7 @@ data class PlatformPalette(
 
     // ── Platform identity ──────────────────────────────────────
     val isWomen: Boolean = false,
+    val isYouth: Boolean = false,
 )
 
 // ── Default (Men) palette ──────────────────────────────────────────
@@ -121,8 +122,35 @@ private val WomenPalette = PlatformPalette(
 
 val LocalPlatformPalette = compositionLocalOf { MenPalette }
 
+// ── NOVA Youth palette ────────────────────────────────────────────
+
+private val YouthPalette = PlatformPalette(
+    background = YouthColors.Background,
+    card = YouthColors.CardSurface,
+    cardAlt = YouthColors.CardSurfaceAlt,
+    cardBorder = YouthColors.CardBorder,
+    textPrimary = YouthColors.TextPrimary,
+    textSecondary = YouthColors.TextSecondary,
+    accent = YouthColors.Cyan,
+    accentSecondary = YouthColors.Violet,
+    green = YouthColors.Success,
+    orange = YouthColors.Warning,
+    red = YouthColors.Error,
+    blue = YouthColors.Info,
+    purple = YouthColors.VioletLight,
+    rose = YouthColors.Lime,
+    amber = YouthColors.LimeDark,
+    accentGradient = YouthDesignSystem.NovaHorizontalGradient,
+    surfaceGradient = YouthDesignSystem.StatShimmerGradient,
+    cardGradient = YouthDesignSystem.CardGradient,
+    filterSelectedBg = YouthColors.Cyan,
+    filterSelectedText = YouthColors.Background,
+    isYouth = true,
+)
+
 fun paletteFor(platform: Platform): PlatformPalette = when (platform) {
     Platform.WOMEN -> WomenPalette
+    Platform.YOUTH -> YouthPalette
     else -> MenPalette
 }
 

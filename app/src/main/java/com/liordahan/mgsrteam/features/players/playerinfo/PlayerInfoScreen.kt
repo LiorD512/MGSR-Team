@@ -590,12 +590,13 @@ fun PlayerInfoScreen(
                             agentNumberPermissionLauncher
                         )
                     },
-                    onRemoveAgentNumber = { viewModel.updateAgentNumber("") }
+                    onRemoveAgentNumber = { viewModel.updateAgentNumber("") },
+                    platform = currentPlatform
                 )
             }
 
-            // Section: AI Helper
-            if (currentPlatform != Platform.WOMEN) {
+            // Section: AI Helper (men only)
+            if (currentPlatform == Platform.MEN) {
                 playerToPresent?.let { player ->
                     PlayerInfoAiHelperSection(
                         player = player,
@@ -617,7 +618,8 @@ fun PlayerInfoScreen(
                 )
             }
 
-            // Section: General Info
+            // Section: General Info (hidden for Youth — integrated into Youth section)
+            if (currentPlatform != Platform.YOUTH) {
             PlayerInfoSectionHeader(stringResource(R.string.player_info_general_info))
             PlayerInfoCard(
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
@@ -797,6 +799,7 @@ fun PlayerInfoScreen(
                     }
 
                 }
+            } // end General Info
             // Contact Info section removed - edit/delete moved to Quick Actions long-press
 
             // ── Platform-specific sections ───────────────────────────────
@@ -1145,6 +1148,43 @@ private fun PlayerInfoHeroCard(
                         )
                     }
                 }
+            } else if (currentPlatform == Platform.YOUTH) {
+                // Youth: initials fallback on cyan→violet gradient
+                var showFallback by remember { mutableStateOf(player.profileImage.isNullOrBlank()) }
+                if (showFallback) {
+                    Box(
+                        modifier = Modifier
+                            .size(96.dp)
+                            .clip(CircleShape)
+                            .background(
+                                Brush.linearGradient(
+                                    colors = listOf(PlatformYouthAccent, PlatformYouthSecondary)
+                                )
+                            )
+                            .border(2.dp, PlatformYouthAccent.copy(alpha = 0.4f), CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = player.fullName
+                                ?.split(" ")
+                                ?.mapNotNull { it.firstOrNull()?.uppercase() }
+                                ?.take(2)
+                                ?.joinToString("") ?: "?",
+                            style = boldTextStyle(Color.White, 28.sp)
+                        )
+                    }
+                } else {
+                    AsyncImage(
+                        model = player.profileImage,
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .size(96.dp)
+                            .clip(CircleShape)
+                            .border(2.dp, PlatformYouthAccent.copy(alpha = 0.4f), CircleShape),
+                        onError = { showFallback = true }
+                    )
+                }
             } else {
                 AsyncImage(
                     model = player.profileImage ?: "",
@@ -1257,6 +1297,7 @@ private fun PlayerInfoHeroCard(
                     )
                 }
             }
+            if (currentPlatform != Platform.YOUTH) {
             Spacer(Modifier.height(12.dp))
             Row(
                 modifier = Modifier
@@ -1384,6 +1425,7 @@ private fun PlayerInfoHeroCard(
                     )
                 }
             }
+            } // end if != YOUTH (mandate + salary)
         }
     }
 }
@@ -1415,10 +1457,11 @@ private fun PlayerInfoQuickActions(
     onEditPlayerNumber: () -> Unit,
     onRemovePlayerNumber: () -> Unit,
     onEditAgentNumber: () -> Unit,
-    onRemoveAgentNumber: () -> Unit
+    onRemoveAgentNumber: () -> Unit,
+    platform: Platform = Platform.MEN
 ) {
     val playerPhone = player.getPlayerPhoneNumber()
-    val agentPhone = player.getAgentPhoneNumber()
+    val agentPhone = if (platform == Platform.YOUTH) player.parentContact?.parentPhoneNumber else player.getAgentPhoneNumber()
     val hasTmProfile = player.tmProfile != null
 
     Card(
@@ -1453,10 +1496,10 @@ private fun PlayerInfoQuickActions(
                     .background(PlatformColors.palette.cardBorder)
             )
 
-            // Agent phone action
+            // Agent / Parent phone action
             PlayerInfoPhoneAction(
                 modifier = Modifier.weight(1f),
-                label = stringResource(R.string.player_info_agent_label),
+                label = if (platform == Platform.YOUTH) stringResource(R.string.youth_parent_phone) else stringResource(R.string.player_info_agent_label),
                 phone = agentPhone,
                 context = context,
                 onEditNumber = onEditAgentNumber,
@@ -3220,6 +3263,64 @@ private fun PlayerInfoYouthSection(player: Player) {
     PlayerInfoCard(
         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
     ) {
+        // Positions (from General Info)
+        InfoRow(
+            stringResource(R.string.player_info_positions),
+            player.positions?.filterNotNull()?.joinToString(", "),
+            darkTheme = true,
+            icon = {
+                Icon(
+                    modifier = Modifier.size(24.dp),
+                    painter = painterResource(R.drawable.ic_soccer),
+                    contentDescription = null,
+                    tint = PlatformYouthAccent
+                )
+            }
+        )
+        HorizontalDivider(
+            color = PlatformColors.palette.cardBorder,
+            thickness = 0.5.dp,
+            modifier = Modifier.padding(vertical = 8.dp)
+        )
+
+        // Nationality (text only — no flag for youth)
+        InfoRow(
+            stringResource(R.string.player_info_nationality),
+            player.nationality,
+            darkTheme = true,
+            icon = {
+                Text(
+                    text = "🌍",
+                    fontSize = 18.sp,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+        )
+        HorizontalDivider(
+            color = PlatformColors.palette.cardBorder,
+            thickness = 0.5.dp,
+            modifier = Modifier.padding(vertical = 8.dp)
+        )
+
+        // Current Club (text only — no logo for youth)
+        InfoRow(
+            stringResource(R.string.player_info_current_club),
+            player.currentClub?.clubName,
+            darkTheme = true,
+            icon = {
+                Text(
+                    text = "🏟",
+                    fontSize = 18.sp,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+        )
+        HorizontalDivider(
+            color = PlatformColors.palette.cardBorder,
+            thickness = 0.5.dp,
+            modifier = Modifier.padding(vertical = 8.dp)
+        )
+
         // Hebrew Name
         if (!player.fullNameHe.isNullOrBlank()) {
             InfoRow(
@@ -3337,7 +3438,13 @@ private fun PlayerInfoYouthSection(player: Player) {
                 )
             }
             if (!parent.parentRelationship.isNullOrBlank()) {
-                InfoRow(stringResource(R.string.youth_parent_relationship), parent.parentRelationship, darkTheme = true)
+                val localizedRelationship = when (parent.parentRelationship.lowercase()) {
+                    "father" -> stringResource(R.string.youth_relationship_father)
+                    "mother" -> stringResource(R.string.youth_relationship_mother)
+                    "guardian" -> stringResource(R.string.youth_relationship_guardian)
+                    else -> parent.parentRelationship
+                }
+                InfoRow(stringResource(R.string.youth_parent_relationship), localizedRelationship, darkTheme = true)
                 HorizontalDivider(
                     color = PlatformColors.palette.cardBorder,
                     thickness = 0.5.dp,

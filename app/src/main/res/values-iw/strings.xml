@@ -359,6 +359,52 @@
     <string name="women_inspire_quote_2">כל אלופה הייתה פעם מתחרה שסירבה לוותר</string>
     <string name="women_inspire_quote_3">העתיד של הכדורגל כאן</string>
 
+    <!-- ═══ נובא — פלטפורמת נוער / Youth Platform ═══ -->
+    <string name="youth_dashboard_greeting_tagline">כוכבים עולים מתחילים כאן ⚡</string>
+    <string name="youth_stat_prospects">שחקנים</string>
+    <string name="youth_stat_represented">מנדט</string>
+    <string name="youth_stat_available">חופשיים</string>
+    <string name="youth_stat_inquiries">בקשות</string>
+    <string name="youth_stat_expiring">מסיימים חוזה</string>
+    <string name="youth_quick_prospects">השחקנים שלנו</string>
+    <string name="youth_quick_watchlist">רשימת מעקב</string>
+    <string name="youth_quick_connections">אנשי קשר</string>
+    <string name="youth_quick_inquiries">פניות אקדמיות</string>
+    <string name="youth_quick_goals">יעדים ומשימות</string>
+    <string name="youth_hub_title">מפקדת הכוכבים העולים</string>
+    <string name="youth_my_hub_view_my_players">השחקנים שלי</string>
+    <string name="youth_hub_prospects">שחקנים</string>
+    <string name="youth_hub_represented">מנדט</string>
+    <string name="youth_hub_available">חופשיים</string>
+    <string name="youth_hub_expiring">מסיימים חוזה</string>
+    <string name="youth_hub_tasks_completed">הושלמו</string>
+    <string name="youth_hub_upcoming_goals">יעדים קרובים</string>
+    <string name="youth_hub_view_all">הצג הכל</string>
+    <string name="youth_feed_title">פיד פעילות</string>
+    <string name="youth_feed_empty">אין פעילות אחרונה — צאו לסקאוט כוכבי מחר! ⚡</string>
+
+    <!-- Youth Feed — נוסח נוער -->
+    <string name="feed_youth_became_free_agent">הפך לשחקן חופשי</string>
+    <string name="feed_youth_new_release">שחקן חופשי חדש (שחרורים)</string>
+    <string name="feed_youth_player_added">שחקן נוסף</string>
+    <string name="feed_youth_player_deleted">שחקן הוסר</string>
+    <string name="feed_youth_player_offered_to_club">שחקן הוצע</string>
+    <string name="feed_youth_shortlist_added">נוסף לרשימת מעקב</string>
+    <string name="feed_youth_shortlist_removed">הוסר מרשימת מעקב</string>
+    <string name="feed_youth_released_from">שוחרר מ-%1$s</string>
+    <string name="feed_youth_moved_from_to">עבר מ-%1$s ל-%2$s</string>
+    <string name="feed_youth_added_by">נוסף על ידי %1$s</string>
+    <string name="feed_youth_deleted_by">הוסר על ידי %1$s</string>
+    <string name="feed_youth_removed_by">הוסר על ידי %1$s</string>
+    <string name="feed_youth_offered_to">הוצע ל-%1$s</string>
+    <string name="feed_youth_offered_by">הוצע על ידי %1$s</string>
+    <string name="feed_youth_player_deleted_error">שחקן זה הוסר ממאגר הנתונים</string>
+    <string name="youth_empty_state_title">רשימת האקדמיה שלך מחכה</string>
+    <string name="youth_empty_state_subtitle">הוסף את השחקן הצעיר הראשון שלך והתחל לבנות את הדור הבא</string>
+    <string name="youth_inspire_quote_1">כל אגדה הייתה פעם ילד עם חלום</string>
+    <string name="youth_inspire_quote_2">העתיד שייך למי שנערך אליו היום</string>
+    <string name="youth_inspire_quote_3">כוכבי העל של מחר נמצאים היום על הדשא</string>
+
     <string name="widget_agent_dashboard_description">הלוח שלך במבט אחד: שחקנים, משימות, התראות</string>
     <string name="widget_tap_to_open">לחץ לפתיחה</string>
     <string name="widget_updated_just_now">עכשיו</string>
@@ -1132,7 +1178,7 @@
     <string name="youth_goals">שערים</string>
     <string name="youth_assists">בישולים</string>
     <string name="youth_parent_guardian">הורה / אפוטרופוס</string>
-    <string name="youth_relationship_father">אב</string>
+    <string name="youth_relationship_father">אבא</string>
     <string name="youth_relationship_mother">אם</string>
     <string name="youth_relationship_guardian">אפוטרופוס</string>
     <string name="youth_relationship_agent">סוכן</string>

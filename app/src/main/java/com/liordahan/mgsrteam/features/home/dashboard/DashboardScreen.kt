@@ -139,6 +139,7 @@ import com.liordahan.mgsrteam.ui.theme.HomeTealAccent
 import com.liordahan.mgsrteam.ui.theme.HomeTextPrimary
 import com.liordahan.mgsrteam.ui.theme.HomeTextSecondary
 import com.liordahan.mgsrteam.ui.theme.WomenColors
+import com.liordahan.mgsrteam.ui.theme.YouthColors
 import com.liordahan.mgsrteam.ui.components.SkeletonDashboardLayout
 import com.liordahan.mgsrteam.ui.components.ToastManager
 import com.liordahan.mgsrteam.utils.datePickerMillisToLocalMidnight
@@ -178,7 +179,12 @@ fun DashboardScreen(
     }
 
     val isWomenPlatform = currentPlatform == Platform.WOMEN
-    val dashboardBg = if (isWomenPlatform) WomenColors.Background else HomeDarkBackground
+    val isYouthPlatform = currentPlatform == Platform.YOUTH
+    val dashboardBg = when {
+        isWomenPlatform -> WomenColors.Background
+        isYouthPlatform -> YouthColors.Background
+        else -> HomeDarkBackground
+    }
 
     if (state.isLoading) {
         SkeletonDashboardLayout(
@@ -207,6 +213,12 @@ fun DashboardScreen(
             Spacer(Modifier.height(4.dp))
         }
 
+        // ── Youth tagline (rising stars) ─────────────────────────────────
+        if (isYouthPlatform) {
+            YouthGreetingTagline()
+            Spacer(Modifier.height(4.dp))
+        }
+
         // ── Platform switcher (Men / Women / Youth) ─────────────────────
         Box(
             modifier = Modifier
@@ -223,18 +235,37 @@ fun DashboardScreen(
             )
         }
 
-        // ── Stats & Quick Actions (women vs default) ─────────────────────
-        if (isWomenPlatform) {
-            WomenStatsRow(state)
-            WomenQuickActionsRow(navController = navController)
-        } else {
-            StatsRow(state, currentPlatform)
-            QuickActionsRow(navController = navController, platform = currentPlatform)
+        // ── Stats & Quick Actions (women / youth / default) ─────────────
+        when {
+            isWomenPlatform -> {
+                WomenStatsRow(state)
+                WomenQuickActionsRow(navController = navController)
+            }
+            isYouthPlatform -> {
+                YouthStatsRow(state)
+                YouthQuickActionsRow(navController = navController)
+            }
+            else -> {
+                StatsRow(state, currentPlatform)
+                QuickActionsRow(navController = navController, platform = currentPlatform)
+            }
         }
 
         // ── Pre-compute filtered data (cached across recompositions) ─────
-        val filteredEvents = remember(state.feedEvents, state.selectedFeedFilter) {
-            state.feedEvents.filterByType(state.selectedFeedFilter)
+        val filteredEvents = remember(state.feedEvents, state.selectedFeedFilter, isYouthPlatform) {
+            val base = if (isYouthPlatform) {
+                state.feedEvents.filter { event ->
+                    event.type != FeedEvent.TYPE_NEW_RELEASE_FROM_CLUB &&
+                    event.type != FeedEvent.TYPE_BECAME_FREE_AGENT &&
+                    event.type != FeedEvent.TYPE_MANDATE_EXPIRED &&
+                    event.type != FeedEvent.TYPE_MANDATE_UPLOADED &&
+                    event.type != FeedEvent.TYPE_MANDATE_SWITCHED_ON &&
+                    event.type != FeedEvent.TYPE_MANDATE_SWITCHED_OFF &&
+                    event.type != FeedEvent.TYPE_MARKET_VALUE_CHANGE &&
+                    event.type != FeedEvent.TYPE_CONTRACT_EXPIRING
+                }
+            } else state.feedEvents
+            base.filterByType(state.selectedFeedFilter)
         }
 
         val lazyListState = rememberLazyListState()
@@ -263,8 +294,8 @@ fun DashboardScreen(
             // ── My Agent Hub (personal dashboard) ─────────────────────
             item {
                 val overview = state.myAgentOverview
-                if (isWomenPlatform) {
-                    when {
+                when {
+                    isWomenPlatform -> when {
                         overview != null && overview.totalPlayers > 0 -> {
                             WomenAgentHubSection(
                                 overview = overview,
@@ -275,8 +306,18 @@ fun DashboardScreen(
                         overview != null -> WomenAgentEmptyState()
                         else -> MyBoardLoadingPlaceholder()
                     }
-                } else {
-                    when {
+                    isYouthPlatform -> when {
+                        overview != null && overview.totalPlayers > 0 -> {
+                            YouthAgentHubSection(
+                                overview = overview,
+                                navController = navController,
+                                onTaskToggle = { viewModel.toggleTaskCompleted(it) }
+                            )
+                        }
+                        overview != null -> YouthAgentEmptyState()
+                        else -> MyBoardLoadingPlaceholder()
+                    }
+                    else -> when {
                         overview != null && overview.totalPlayers > 0 -> {
                             MyAgentHubSection(
                                 overview = overview,
@@ -292,13 +333,16 @@ fun DashboardScreen(
 
             // ── Activity Feed ────────────────────────────────────────────
             item {
-                if (isWomenPlatform) {
-                    WomenFeedSectionHeader(
+                when {
+                    isWomenPlatform -> WomenFeedSectionHeader(
                         selectedFilter = state.selectedFeedFilter,
                         onFilterSelected = { viewModel.selectFeedFilter(it) }
                     )
-                } else {
-                    FeedSectionHeader(
+                    isYouthPlatform -> YouthFeedSectionHeader(
+                        selectedFilter = state.selectedFeedFilter,
+                        onFilterSelected = { viewModel.selectFeedFilter(it) }
+                    )
+                    else -> FeedSectionHeader(
                         selectedFilter = state.selectedFeedFilter,
                         onFilterSelected = { viewModel.selectFeedFilter(it) }
                     )
@@ -309,10 +353,18 @@ fun DashboardScreen(
                 item {
                     Text(
                         text = stringResource(
-                            if (isWomenPlatform) R.string.women_feed_empty else R.string.feed_empty
+                            when {
+                                isWomenPlatform -> R.string.women_feed_empty
+                                isYouthPlatform -> R.string.youth_feed_empty
+                                else -> R.string.feed_empty
+                            }
                         ),
                         style = regularTextStyle(
-                            if (isWomenPlatform) WomenColors.TextSecondary else HomeTextSecondary,
+                            when {
+                                isWomenPlatform -> WomenColors.TextSecondary
+                                isYouthPlatform -> YouthColors.TextSecondary
+                                else -> HomeTextSecondary
+                            },
                             13.sp,
                             textAlign = TextAlign.Center
                         ),
@@ -331,6 +383,7 @@ fun DashboardScreen(
                         navController = navController,
                         allAccounts = state.allAccounts,
                         isWomenPlatform = isWomenPlatform,
+                        isYouthPlatform = isYouthPlatform,
                         onNavigateToPlayer = { tmProfile, autoRefresh ->
                             viewModel.checkPlayerExists(tmProfile) { exists ->
                                 if (exists) {
@@ -339,7 +392,13 @@ fun DashboardScreen(
                                     navController.navigate(route)
                                 } else {
                                     ToastManager.showError(
-                                        context.getString(if (isWomenPlatform) R.string.feed_women_player_deleted_error else R.string.feed_player_deleted_error)
+                                        context.getString(
+                                            when {
+                                                isWomenPlatform -> R.string.feed_women_player_deleted_error
+                                                isYouthPlatform -> R.string.feed_youth_player_deleted_error
+                                                else -> R.string.feed_player_deleted_error
+                                            }
+                                        )
                                     )
                                 }
                             }
@@ -351,7 +410,13 @@ fun DashboardScreen(
                                     navController.navigate(route)
                                 } else {
                                     ToastManager.showError(
-                                        context.getString(if (isWomenPlatform) R.string.feed_women_player_deleted_error else R.string.feed_player_deleted_error)
+                                        context.getString(
+                                            when {
+                                                isWomenPlatform -> R.string.feed_women_player_deleted_error
+                                                isYouthPlatform -> R.string.feed_youth_player_deleted_error
+                                                else -> R.string.feed_player_deleted_error
+                                            }
+                                        )
                                     )
                                 }
                             }
@@ -395,8 +460,8 @@ fun DashboardScreen(
                 )
             }
 
-            // ── Transfer Windows (Grouped & Collapsible) — hidden for women ──
-            if (!isWomenPlatform) {
+            // ── Transfer Windows (Grouped & Collapsible) — hidden for women & youth ──
+            if (!isWomenPlatform && !isYouthPlatform) {
                 item {
                     TransferWindowsSectionHeader(totalCount = state.transferWindows.size)
                 }
@@ -1032,6 +1097,7 @@ private fun FeedEventCard(
     navController: NavController,
     allAccounts: List<com.liordahan.mgsrteam.features.login.models.Account> = emptyList(),
     isWomenPlatform: Boolean = false,
+    isYouthPlatform: Boolean = false,
     onNavigateToPlayer: (tmProfile: String, autoRefresh: Boolean) -> Unit = { _, _ -> },
     onNavigateToPlayerByName: (playerName: String) -> Unit = {}
 ) {
@@ -1045,8 +1111,12 @@ private fun FeedEventCard(
             }
         }
         FeedEvent.TYPE_CLUB_CHANGE -> Triple(Icons.Default.SwapHoriz, HomeBlueAccent, stringResource(R.string.feed_club_change))
-        FeedEvent.TYPE_BECAME_FREE_AGENT -> Triple(Icons.Default.PersonOff, HomeRedAccent, stringResource(if (isWomenPlatform) R.string.feed_women_became_free_agent else R.string.feed_became_free_agent))
-        FeedEvent.TYPE_NEW_RELEASE_FROM_CLUB -> Triple(Icons.Default.PersonOff, HomeOrangeAccent, stringResource(if (isWomenPlatform) R.string.feed_women_new_release else R.string.feed_new_release))
+        FeedEvent.TYPE_BECAME_FREE_AGENT -> Triple(Icons.Default.PersonOff, HomeRedAccent, stringResource(
+            when { isWomenPlatform -> R.string.feed_women_became_free_agent; isYouthPlatform -> R.string.feed_youth_became_free_agent; else -> R.string.feed_became_free_agent }
+        ))
+        FeedEvent.TYPE_NEW_RELEASE_FROM_CLUB -> Triple(Icons.Default.PersonOff, HomeOrangeAccent, stringResource(
+            when { isWomenPlatform -> R.string.feed_women_new_release; isYouthPlatform -> R.string.feed_youth_new_release; else -> R.string.feed_new_release }
+        ))
         FeedEvent.TYPE_MANDATE_EXPIRED -> Triple(Icons.Default.Warning, HomeRedAccent, stringResource(R.string.feed_mandate_expired))
         FeedEvent.TYPE_MANDATE_UPLOADED -> Triple(Icons.Default.Description, HomeTealAccent, stringResource(R.string.feed_mandate_uploaded))
         FeedEvent.TYPE_MANDATE_SWITCHED_ON -> Triple(Icons.Default.Description, HomeTealAccent, stringResource(R.string.feed_mandate_switched_on))
@@ -1054,13 +1124,23 @@ private fun FeedEventCard(
         FeedEvent.TYPE_CONTRACT_EXPIRING -> Triple(Icons.Default.Warning, HomeOrangeAccent, stringResource(R.string.feed_contract_expiring))
         FeedEvent.TYPE_NOTE_ADDED -> Triple(Icons.AutoMirrored.Filled.NoteAdd, HomeRoseAccent, stringResource(R.string.feed_new_note))
         FeedEvent.TYPE_NOTE_DELETED -> Triple(Icons.Default.Delete, HomeRedAccent, stringResource(R.string.feed_note_deleted))
-        FeedEvent.TYPE_PLAYER_ADDED -> Triple(Icons.Default.Add, HomeTealAccent, stringResource(if (isWomenPlatform) R.string.feed_women_player_added else R.string.feed_player_added))
-        FeedEvent.TYPE_PLAYER_DELETED -> Triple(Icons.Default.Delete, HomeRedAccent, stringResource(if (isWomenPlatform) R.string.feed_women_player_deleted else R.string.feed_player_deleted))
-        FeedEvent.TYPE_SHORTLIST_ADDED -> Triple(Icons.Default.BookmarkAdd, HomeBlueAccent, stringResource(if (isWomenPlatform) R.string.feed_women_shortlist_added else R.string.feed_shortlist_added))
-        FeedEvent.TYPE_SHORTLIST_REMOVED -> Triple(Icons.Default.BookmarkRemove, HomeRedAccent, stringResource(if (isWomenPlatform) R.string.feed_women_shortlist_removed else R.string.feed_shortlist_removed))
+        FeedEvent.TYPE_PLAYER_ADDED -> Triple(Icons.Default.Add, HomeTealAccent, stringResource(
+            when { isWomenPlatform -> R.string.feed_women_player_added; isYouthPlatform -> R.string.feed_youth_player_added; else -> R.string.feed_player_added }
+        ))
+        FeedEvent.TYPE_PLAYER_DELETED -> Triple(Icons.Default.Delete, HomeRedAccent, stringResource(
+            when { isWomenPlatform -> R.string.feed_women_player_deleted; isYouthPlatform -> R.string.feed_youth_player_deleted; else -> R.string.feed_player_deleted }
+        ))
+        FeedEvent.TYPE_SHORTLIST_ADDED -> Triple(Icons.Default.BookmarkAdd, HomeBlueAccent, stringResource(
+            when { isWomenPlatform -> R.string.feed_women_shortlist_added; isYouthPlatform -> R.string.feed_youth_shortlist_added; else -> R.string.feed_shortlist_added }
+        ))
+        FeedEvent.TYPE_SHORTLIST_REMOVED -> Triple(Icons.Default.BookmarkRemove, HomeRedAccent, stringResource(
+            when { isWomenPlatform -> R.string.feed_women_shortlist_removed; isYouthPlatform -> R.string.feed_youth_shortlist_removed; else -> R.string.feed_shortlist_removed }
+        ))
         FeedEvent.TYPE_REQUEST_ADDED -> Triple(Icons.Default.RequestQuote, HomePurpleAccent, stringResource(R.string.feed_request_added))
         FeedEvent.TYPE_REQUEST_DELETED -> Triple(Icons.Default.Delete, HomeRedAccent, stringResource(R.string.feed_request_deleted))
-        FeedEvent.TYPE_PLAYER_OFFERED_TO_CLUB -> Triple(Icons.Default.Handshake, HomeTealAccent, stringResource(if (isWomenPlatform) R.string.feed_women_player_offered_to_club else R.string.feed_player_offered_to_club))
+        FeedEvent.TYPE_PLAYER_OFFERED_TO_CLUB -> Triple(Icons.Default.Handshake, HomeTealAccent, stringResource(
+            when { isWomenPlatform -> R.string.feed_women_player_offered_to_club; isYouthPlatform -> R.string.feed_youth_player_offered_to_club; else -> R.string.feed_player_offered_to_club }
+        ))
         else -> Triple(Icons.Default.Notifications, HomeTextSecondary, stringResource(R.string.feed_update))
     }
 

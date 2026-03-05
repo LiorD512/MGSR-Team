@@ -72,7 +72,7 @@ enum class Platform(
     );
 
     /** Horizontal gradient from [accent] → [accentSecondary].
-     *  Women uses a diagonal gradient for visual distinction. */
+     *  Women uses a diagonal gradient, Youth uses a vertical gradient. */
     val gradient: Brush
         get() = when (this) {
             WOMEN -> Brush.linearGradient(
@@ -80,17 +80,23 @@ enum class Platform(
                 start = Offset(0f, 0f),
                 end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
             )
+            YOUTH -> Brush.verticalGradient(
+                colors = listOf(accentSecondary, accent)
+            )
             else -> Brush.horizontalGradient(listOf(accent, accentSecondary))
         }
 
     /** Soft background-tinted gradient for card surfaces.
-     *  Women uses a diagonal shimmer. */
+     *  Women uses a diagonal shimmer, Youth uses a vertical sweep. */
     val surfaceGradient: Brush
         get() = when (this) {
             WOMEN -> Brush.linearGradient(
                 listOf(accent.copy(alpha = 0.15f), accentSecondary.copy(alpha = 0.08f)),
                 start = Offset(0f, 0f),
                 end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
+            )
+            YOUTH -> Brush.verticalGradient(
+                listOf(accentSecondary.copy(alpha = 0.12f), accent.copy(alpha = 0.08f))
             )
             else -> Brush.horizontalGradient(
                 listOf(accent.copy(alpha = 0.15f), accentSecondary.copy(alpha = 0.08f))

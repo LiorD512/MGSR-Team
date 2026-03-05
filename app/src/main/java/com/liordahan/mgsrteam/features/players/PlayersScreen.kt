@@ -219,7 +219,7 @@ fun PlayersScreen(
                 onSortOptionSelected = { viewModel.setSortOption(it) },
                 onResetSort = { viewModel.resetSortOption() },
                 platform = currentPlatform,
-                showSort = currentPlatform != Platform.WOMEN
+                showSort = currentPlatform == Platform.MEN
             )
 
             // ── Stats Strip ──────────────────────────────────────────────
@@ -228,7 +228,8 @@ fun PlayersScreen(
                 mandate = playersState.mandateCount,
                 expiring = playersState.expiringCount,
                 free = playersState.freeAgentCount,
-                isWomen = currentPlatform == Platform.WOMEN
+                isWomen = currentPlatform == Platform.WOMEN,
+                isYouth = currentPlatform == Platform.YOUTH
             )
 
             // ── Search Bar ───────────────────────────────────────────────
@@ -252,8 +253,8 @@ fun PlayersScreen(
                 platform = currentPlatform
             )
 
-            // ── Quick Filter Chips (hidden for Women — web parity) ───────
-            if (currentPlatform != Platform.WOMEN) {
+            // ── Quick Filter Chips (hidden for Women & Youth) ─────────────
+            if (currentPlatform == Platform.MEN) {
             QuickFilterChips(
                 freeAgentsSelected = playersState.quickFilterFreeAgents,
                 contractExpiringSelected = playersState.quickFilterContractExpiring,
@@ -312,8 +313,8 @@ fun PlayersScreen(
                         ),
                         modifier = Modifier.fillMaxSize()
                     ) {
-                        // Expiring Alert Banner
-                        if (playersState.expiringSoonPlayers.isNotEmpty()) {
+                        // Expiring Alert Banner (men only)
+                        if (currentPlatform == Platform.MEN && playersState.expiringSoonPlayers.isNotEmpty()) {
                             item(key = "expiring_alert") {
                                 ExpiringAlertBanner(
                                     count = playersState.expiringSoonPlayers.size,
@@ -327,8 +328,8 @@ fun PlayersScreen(
                             }
                         }
 
-                        // Mandate Section
-                        if (playersState.playersWithMandate.isNotEmpty()) {
+                        // Mandate Section (men only)
+                        if (currentPlatform == Platform.MEN && playersState.playersWithMandate.isNotEmpty()) {
                             item(key = "mandate_section") {
                                 MandateAlertBanner(
                                     playersWithMandate = playersState.playersWithMandate,
@@ -601,7 +602,7 @@ private fun PlayersHeader(
 // ═════════════════════════════════════════════════════════════════════════════
 
 @Composable
-private fun StatsStrip(total: Int, mandate: Int, expiring: Int, free: Int, isWomen: Boolean = false) {
+private fun StatsStrip(total: Int, mandate: Int, expiring: Int, free: Int, isWomen: Boolean = false, isYouth: Boolean = false) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -617,7 +618,7 @@ private fun StatsStrip(total: Int, mandate: Int, expiring: Int, free: Int, isWom
             accentColor = PlatformColors.palette.accent,
             modifier = Modifier.weight(1f)
         )
-        if (!isWomen) {
+        if (!isWomen && !isYouth) {
             StatsStripDivider()
             StatsStripItem(
                 value = mandate.toString(),
@@ -1379,6 +1380,43 @@ private fun PlayerCardVariantA(
                                 onError = { showFallback = true }
                             )
                         }
+                    } else if (platform == Platform.YOUTH) {
+                        // Youth: initials fallback on cyan→violet gradient
+                        var showFallback by remember { mutableStateOf(player.profileImage.isNullOrBlank()) }
+                        if (showFallback) {
+                            Box(
+                                modifier = Modifier
+                                    .size(52.dp)
+                                    .clip(CircleShape)
+                                    .background(
+                                        Brush.linearGradient(
+                                            colors = listOf(PlatformYouthAccent, PlatformYouthSecondary)
+                                        )
+                                    )
+                                    .border(2.dp, PlatformYouthAccent.copy(alpha = 0.4f), CircleShape),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = player.fullName
+                                        ?.split(" ")
+                                        ?.mapNotNull { it.firstOrNull()?.uppercase() }
+                                        ?.take(2)
+                                        ?.joinToString("") ?: "?",
+                                    style = boldTextStyle(Color.White, 18.sp)
+                                )
+                            }
+                        } else {
+                            AsyncImage(
+                                model = player.profileImage,
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .size(52.dp)
+                                    .clip(CircleShape)
+                                    .border(2.dp, PlatformYouthAccent.copy(alpha = 0.4f), CircleShape),
+                                contentScale = ContentScale.Crop,
+                                onError = { showFallback = true }
+                            )
+                        }
                     } else {
                         AsyncImage(
                             model = player.profileImage,
@@ -1515,13 +1553,6 @@ private fun PlayerCardVariantA(
                                     text = player.ageGroup.orEmpty(),
                                     tagColor = PlatformYouthAccent.copy(alpha = 0.15f),
                                     textColor = PlatformYouthAccent
-                                )
-                            }
-                            if (!player.academy.isNullOrBlank()) {
-                                PlayerTag(
-                                    text = "🏟 ${player.academy}",
-                                    tagColor = PlatformYouthSecondary.copy(alpha = 0.12f),
-                                    textColor = PlatformYouthSecondary
                                 )
                             }
                         }
