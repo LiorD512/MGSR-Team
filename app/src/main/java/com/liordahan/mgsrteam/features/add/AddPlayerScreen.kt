@@ -113,8 +113,7 @@ fun AddPlayerScreen(
     initialTmProfileUrl: String = "",
     forShortlist: Boolean = false,
     viewModel: IAddPlayerViewModel = koinViewModel(),
-    platformManager: PlatformManager = koinInject(),
-    shortlistRepository: ShortlistRepository = koinInject()
+    platformManager: PlatformManager = koinInject()
 ) {
 
     val lifecycle = LocalLifecycleOwner.current.lifecycle
@@ -122,7 +121,6 @@ fun AddPlayerScreen(
     val keyboardController = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current
     val currentPlatform by platformManager.current.collectAsStateWithLifecycle()
-    val scope = rememberCoroutineScope()
 
     val snackBarHostState = remember { SnackbarHostState() }
 
@@ -1218,62 +1216,14 @@ fun AddPlayerScreen(
                         item {
                             Spacer(modifier = Modifier.height(8.dp))
                             PrimaryButtonNewDesign(
-                                buttonText = if (forShortlist) stringResource(R.string.add_player_to_shortlist)
-                                    else stringResource(R.string.youth_save_player),
+                                buttonText = stringResource(R.string.youth_save_player),
                                 isEnabled = (youthForm.fullName.isNotBlank() || youthForm.fullNameHe.isNotBlank()) && !youthForm.isSaving,
                                 showProgress = youthForm.isSaving,
                                 containerColor = currentPlatform.accent,
                                 onButtonClicked = {
                                     focusManager.clearFocus()
                                     keyboardController?.hide()
-                                    if (forShortlist) {
-                                        val form = youthForm
-                                        viewModel.updateYouthForm { it.copy(isSaving = true) }
-                                        scope.launch {
-                                            try {
-                                                when (shortlistRepository.addYouthToShortlist(
-                                                    playerName = form.fullName.ifBlank { form.fullNameHe },
-                                                    playerNameHe = form.fullNameHe.takeIf { it.isNotBlank() },
-                                                    ifaUrl = form.ifaUrl.takeIf { it.isNotBlank() },
-                                                    playerImage = form.profileImage.takeIf { it.isNotBlank() },
-                                                    currentClub = form.currentClub.takeIf { it.isNotBlank() },
-                                                    position = form.positions.firstOrNull(),
-                                                    dateOfBirth = form.dateOfBirth.takeIf { it.isNotBlank() },
-                                                    ageGroup = form.ageGroup.takeIf { it.isNotBlank() },
-                                                    nationality = form.nationality.takeIf { it.isNotBlank() }
-                                                )) {
-                                                    is ShortlistRepository.AddToShortlistResult.Added -> {
-                                                        viewModel.clearYouthForm()
-                                                        navController.popBackStack()
-                                                    }
-                                                    is ShortlistRepository.AddToShortlistResult.AlreadyInShortlist -> {
-                                                        showSnakeBarMessage(
-                                                            scope,
-                                                            snackBarHostState,
-                                                            context.getString(R.string.add_player_already_in_shortlist)
-                                                        )
-                                                    }
-                                                    is ShortlistRepository.AddToShortlistResult.AlreadyInRoster -> {
-                                                        showSnakeBarMessage(
-                                                            scope,
-                                                            snackBarHostState,
-                                                            context.getString(R.string.add_player_already_in_roster)
-                                                        )
-                                                    }
-                                                }
-                                            } catch (e: Exception) {
-                                                showSnakeBarMessage(
-                                                    scope,
-                                                    snackBarHostState,
-                                                    e.message ?: "Failed to add to shortlist"
-                                                )
-                                            } finally {
-                                                viewModel.updateYouthForm { it.copy(isSaving = false) }
-                                            }
-                                        }
-                                    } else {
-                                        viewModel.saveYouthPlayer()
-                                    }
+                                    viewModel.saveYouthPlayer()
                                 }
                             )
                         }
