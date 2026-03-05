@@ -11,14 +11,14 @@
  * We use Google (via SerpAPI) to find player pages, then scrape profiles for details.
  *
  * Player URL format:
- *   https://www.football.org.il/players/player/?player_id={INT}&season_id={INT}
- *   season_id 27 = 2024/25 season (increment for newer seasons)
+ *   https://www.football.org.il/players/player/?player_id={INT}&season_id=
+ *   Leave season_id empty so IFA defaults to the latest season.
  */
 
 import * as cheerio from 'cheerio';
 
 const IFA_BASE = 'https://www.football.org.il';
-const CURRENT_SEASON_ID = '27';
+const CURRENT_SEASON_ID = '';
 
 const USER_AGENTS = [
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -785,9 +785,12 @@ export function isValidIfaUrl(url: string): boolean {
   return /^https?:\/\/(www\.)?football\.org\.il\/(en\/)?players\/player\/\?player_id=\d+/.test(url);
 }
 
-/** Normalize an IFA URL to the Hebrew version (strip /en/) for reliable scraping */
+/** Normalize an IFA URL to the Hebrew version (strip /en/) and ensure season_id is empty for latest season */
 export function normalizeIfaUrl(url: string): string {
-  return url.replace(/football\.org\.il\/en\/players\//, 'football.org.il/players/');
+  let normalized = url.replace(/football\.org\.il\/en\/players\//, 'football.org.il/players/');
+  // Strip any hardcoded season_id value so IFA defaults to the latest season
+  normalized = normalized.replace(/([?&]season_id=)\d+/, '$1');
+  return normalized;
 }
 
 /** Build an IFA player URL from player_id */
