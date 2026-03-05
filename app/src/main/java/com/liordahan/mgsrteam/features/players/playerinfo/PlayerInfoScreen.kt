@@ -3361,25 +3361,7 @@ private fun PlayerInfoYouthSection(player: Player) {
                 modifier = Modifier.padding(vertical = 8.dp)
             )
         }
-        if (!player.academy.isNullOrBlank()) {
-            InfoRow(
-                stringResource(R.string.youth_academy),
-                player.academy,
-                darkTheme = true,
-                icon = {
-                    Text(
-                        text = "🏟",
-                        fontSize = 18.sp,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-            )
-            HorizontalDivider(
-                color = PlatformColors.palette.cardBorder,
-                thickness = 0.5.dp,
-                modifier = Modifier.padding(vertical = 8.dp)
-            )
-        }
+
         if (!player.dateOfBirth.isNullOrBlank()) {
             InfoRow(
                 stringResource(R.string.youth_date_of_birth),
@@ -3401,19 +3383,47 @@ private fun PlayerInfoYouthSection(player: Player) {
             )
         }
         if (!player.ifaUrl.isNullOrBlank()) {
-            InfoRow(
-                stringResource(R.string.youth_ifa_profile),
-                player.ifaUrl,
-                darkTheme = true,
-                icon = {
-                    Icon(
-                        modifier = Modifier.size(24.dp),
-                        imageVector = Icons.Default.Link,
-                        contentDescription = null,
-                        tint = PlatformYouthAccent
+            val context = LocalContext.current
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(
+                        Brush.horizontalGradient(
+                            listOf(
+                                PlatformYouthAccent.copy(alpha = 0.15f),
+                                PlatformYouthSecondary.copy(alpha = 0.10f)
+                            )
+                        )
                     )
-                }
-            )
+                    .clickable {
+                        context.startActivity(
+                            Intent(Intent.ACTION_VIEW, Uri.parse(player.ifaUrl))
+                        )
+                    }
+                    .padding(horizontal = 14.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Icon(
+                    modifier = Modifier.size(20.dp),
+                    imageVector = Icons.Default.Link,
+                    contentDescription = null,
+                    tint = PlatformYouthAccent
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    text = stringResource(R.string.youth_ifa_profile),
+                    style = boldTextStyle(PlatformYouthAccent, 13.sp)
+                )
+                Spacer(Modifier.width(6.dp))
+                Icon(
+                    modifier = Modifier.size(16.dp),
+                    imageVector = Icons.Default.OpenInNew,
+                    contentDescription = null,
+                    tint = PlatformYouthAccent.copy(alpha = 0.7f)
+                )
+            }
             HorizontalDivider(
                 color = PlatformColors.palette.cardBorder,
                 thickness = 0.5.dp,
