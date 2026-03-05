@@ -327,10 +327,9 @@ class AddPlayerViewModel(
         _playerSearchStateFlow.update { it.copy(youthSearchResults = emptyList()) }
         _searchQuery.update { "" }
 
-        // If we have an IFA URL, fetch the full profile for more data
+        // If we have an IFA URL, fetch the full profile for more data (silently in background)
         result.ifaUrl?.takeIf { it.isNotBlank() }?.let { url ->
             viewModelScope.launch {
-                _playerSearchStateFlow.update { it.copy(showPlayerSelectedSearchProgress = true) }
                 try {
                     val requestBody = org.json.JSONObject().apply {
                         put("url", url)
@@ -374,8 +373,6 @@ class AddPlayerViewModel(
                     }
                 } catch (e: Exception) {
                     android.util.Log.e("AddPlayerVM", "Youth IFA profile fetch error", e)
-                } finally {
-                    _playerSearchStateFlow.update { it.copy(showPlayerSelectedSearchProgress = false) }
                 }
             }
         }
