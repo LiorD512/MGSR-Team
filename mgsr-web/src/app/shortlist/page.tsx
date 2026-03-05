@@ -937,7 +937,7 @@ export default function ShortlistPage() {
                   /* Youth: glassmorphism card — cyan/violet accent */
                   <div className="p-4 space-y-4">
                     <Link
-                      href={`/players/add?url=${encodeURIComponent(entry.tmProfileUrl)}&from=shortlist`}
+                      href={`/players/add?url=${encodeURIComponent(entry.tmProfileUrl)}&from=shortlist${entry.playerName ? `&name=${encodeURIComponent(entry.playerName)}` : ''}${entry.playerPosition ? `&position=${encodeURIComponent(entry.playerPosition)}` : ''}${entry.playerNationality ? `&nationality=${encodeURIComponent(entry.playerNationality)}` : ''}${entry.clubJoinedName ? `&club=${encodeURIComponent(entry.clubJoinedName)}` : ''}${entry.playerImage ? `&image=${encodeURIComponent(entry.playerImage)}` : ''}${entry.playerAge ? `&age=${encodeURIComponent(entry.playerAge)}` : ''}${entry.marketValue ? `&value=${encodeURIComponent(entry.marketValue)}` : ''}`}
                       className="block group/link"
                     >
                       <div className="flex gap-4">

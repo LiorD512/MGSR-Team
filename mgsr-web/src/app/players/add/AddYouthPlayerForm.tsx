@@ -47,6 +47,14 @@ export default function AddYouthPlayerForm() {
   const forShortlist = searchParams.get('shortlist') === '1';
   const fromShortlist = searchParams.get('from') === 'shortlist';
   const preloadUrl = searchParams.get('url') ?? '';
+  // Shortlist entry data passed as query params (fallback when IFA fetch fails)
+  const preloadName = searchParams.get('name') ?? '';
+  const preloadPosition = searchParams.get('position') ?? '';
+  const preloadNationality = searchParams.get('nationality') ?? '';
+  const preloadClub = searchParams.get('club') ?? '';
+  const preloadImage = searchParams.get('image') ?? '';
+  const preloadAge = searchParams.get('age') ?? '';
+  const preloadValue = searchParams.get('value') ?? '';
 
   // Search state
   const [searchQuery, setSearchQuery] = useState('');
@@ -117,7 +125,22 @@ export default function AddYouthPlayerForm() {
     runSearch(debouncedSearch);
   }, [debouncedSearch, runSearch]);
 
-  // Preload URL
+  // Pre-fill from shortlist query params (instant, no network needed)
+  useEffect(() => {
+    if (!fromShortlist) return;
+    if (preloadName) setFullName(preloadName);
+    if (preloadPosition) setPositions(preloadPosition.split(',').map((p) => p.trim()).filter(Boolean));
+    if (preloadNationality) setNationality(preloadNationality);
+    if (preloadClub) setCurrentClub(preloadClub);
+    if (preloadImage) setProfileImage(preloadImage);
+    if (preloadUrl) {
+      setIfaUrl(preloadUrl);
+      const pidMatch = preloadUrl.match(/player_id=(\d+)/);
+      if (pidMatch) setIfaPlayerId(pidMatch[1]);
+    }
+  }, [fromShortlist]);
+
+  // Preload IFA profile (enhances with DOB, height, foot, academy, etc.)
   useEffect(() => {
     if (!preloadUrl || !preloadUrl.includes('football.org.il')) return;
     setUrlInput(preloadUrl);
@@ -135,7 +158,10 @@ export default function AddYouthPlayerForm() {
       .then((data: Record<string, string | string[] | Record<string, unknown>>) => {
         applyProfileData(data, preloadUrl);
       })
-      .catch(() => setError('Failed to load IFA profile'))
+      .catch(() => {
+        // Only show error if we have no shortlist fallback data
+        if (!preloadName) setError('Failed to load IFA profile');
+      })
       .finally(() => setLoadingProfile(false));
   }, [preloadUrl]);
 
