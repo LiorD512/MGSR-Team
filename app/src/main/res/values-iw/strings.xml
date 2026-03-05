@@ -97,6 +97,7 @@
     <string name="shortlist_title">רשימת מעקב</string>
     <string name="shortlist_subtitle">פרופילים שמורים משחרורים וחזרו מהשאלה — הוסף לסוכנות כשמוכן</string>
     <string name="women_shortlist_subtitle">שחקניות למעקב בשבועות הקרובים</string>
+    <string name="youth_shortlist_subtitle">פרופילים למעקב לעתיד הקרוב</string>
     <string name="women_player_info_title">פרטי שחקנית</string>
     <string name="women_player_info_subtitle">צפה ונהל פרטי שחקנית</string>
     <string name="women_add_player_title">הוסף שחקנית</string>

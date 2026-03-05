@@ -73,6 +73,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
@@ -100,6 +101,8 @@ import com.liordahan.mgsrteam.transfermarket.TeammatesFetcher
 import com.liordahan.mgsrteam.transfermarket.TransfermarktResult
 import com.liordahan.mgsrteam.ui.components.DarkSystemBarsForBottomSheet
 import com.liordahan.mgsrteam.ui.theme.PlatformColors
+import com.liordahan.mgsrteam.ui.theme.PlatformYouthAccent
+import com.liordahan.mgsrteam.ui.theme.PlatformYouthSecondary
 import com.liordahan.mgsrteam.ui.components.SkeletonPlayerCardList
 import com.liordahan.mgsrteam.ui.utils.boldTextStyle
 import com.liordahan.mgsrteam.ui.utils.clickWithNoRipple
@@ -269,6 +272,7 @@ fun ShortlistScreen(
         ) {
             ShortlistHeader(
                 isWomen = isWomen,
+                isYouth = currentPlatform == Platform.YOUTH,
                 onAddClick = { navController.navigate(Screens.addToShortlistRoute()) },
                 onBackClicked = {
                     if (!navController.popBackStack(Screens.DashboardScreen.route, false)) {
@@ -305,6 +309,7 @@ fun ShortlistScreen(
                                 context = context,
                                 entry = entry,
                                 isWomen = isWomen,
+                                isYouth = currentPlatform == Platform.YOUTH,
                                 rosterTeammates = teammatesCache[playerUrl],
                                 isLoadingTeammates = loadingPlayerUrl == playerUrl,
                                 isTeammatesExpanded = isExpanded,
@@ -451,6 +456,7 @@ fun ShortlistScreen(
 @Composable
 private fun ShortlistHeader(
     isWomen: Boolean = false,
+    isYouth: Boolean = false,
     onAddClick: () -> Unit,
     onBackClicked: () -> Unit
 ) {
@@ -476,7 +482,11 @@ private fun ShortlistHeader(
             )
             Text(
                 text = stringResource(
-                    if (isWomen) R.string.women_shortlist_subtitle else R.string.shortlist_subtitle
+                    when {
+                        isYouth -> R.string.youth_shortlist_subtitle
+                        isWomen -> R.string.women_shortlist_subtitle
+                        else -> R.string.shortlist_subtitle
+                    }
                 ),
                 style = regularTextStyle(PlatformColors.palette.textSecondary, 12.sp),
                 modifier = Modifier.padding(top = 4.dp)
@@ -579,6 +589,7 @@ private fun ShortlistCard(
     context: Context,
     entry: ShortlistEntry,
     isWomen: Boolean = false,
+    isYouth: Boolean = false,
     rosterTeammates: List<RosterTeammateMatch>? = null,
     isLoadingTeammates: Boolean = false,
     isTeammatesExpanded: Boolean = false,
@@ -628,29 +639,70 @@ private fun ShortlistCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 if (!release.playerImage.isNullOrBlank()) {
-                    AsyncImage(
-                        model = release.playerImage,
-                        contentDescription = null,
-                        modifier = Modifier
-                            .size(52.dp)
-                            .clip(CircleShape)
-                            .border(2.dp, PlatformColors.palette.cardBorder, CircleShape),
-                        contentScale = ContentScale.Crop
-                    )
+                    var showFallback by remember { mutableStateOf(false) }
+                    if (showFallback) {
+                        // Initials fallback
+                        val initials = release.playerName
+                            ?.split(" ")
+                            ?.mapNotNull { it.firstOrNull()?.uppercase() }
+                            ?.take(2)
+                            ?.joinToString("") ?: "?"
+                        val gradientColors = if (isYouth) listOf(PlatformYouthAccent, PlatformYouthSecondary)
+                            else listOf(PlatformColors.palette.accent, PlatformColors.palette.cardBorder)
+                        Box(
+                            modifier = Modifier
+                                .size(52.dp)
+                                .clip(CircleShape)
+                                .background(Brush.linearGradient(gradientColors))
+                                .border(2.dp, PlatformColors.palette.cardBorder, CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = initials,
+                                style = boldTextStyle(Color.White, 18.sp)
+                            )
+                        }
+                    } else {
+                        AsyncImage(
+                            model = release.playerImage,
+                            contentDescription = null,
+                            modifier = Modifier
+                                .size(52.dp)
+                                .clip(CircleShape)
+                                .border(2.dp, PlatformColors.palette.cardBorder, CircleShape),
+                            contentScale = ContentScale.Crop,
+                            onError = { showFallback = true }
+                        )
+                    }
                 } else {
+                    // No image at all — initials placeholder
+                    val initials = release.playerName
+                        ?.split(" ")
+                        ?.mapNotNull { it.firstOrNull()?.uppercase() }
+                        ?.take(2)
+                        ?.joinToString("") ?: "?"
+                    val gradientColors = if (isYouth) listOf(PlatformYouthAccent, PlatformYouthSecondary)
+                        else listOf(PlatformColors.palette.cardBorder, PlatformColors.palette.cardBorder)
                     Box(
                         modifier = Modifier
                             .size(52.dp)
                             .clip(CircleShape)
-                            .background(PlatformColors.palette.cardBorder),
+                            .background(Brush.linearGradient(gradientColors)),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Person,
-                            contentDescription = null,
-                            tint = PlatformColors.palette.textSecondary,
-                            modifier = Modifier.size(24.dp)
-                        )
+                        if (isYouth) {
+                            Text(
+                                text = initials,
+                                style = boldTextStyle(Color.White, 18.sp)
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Default.Person,
+                                contentDescription = null,
+                                tint = PlatformColors.palette.textSecondary,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
                     }
                 }
                 Spacer(Modifier.width(10.dp))
@@ -855,8 +907,8 @@ private fun ShortlistCard(
                 }
             }
 
-            // Roster teammates section (same as Releases) — hidden for Women
-            if (!isWomen) {
+            // Roster teammates section (same as Releases) — men only
+            if (!isWomen && !isYouth) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()

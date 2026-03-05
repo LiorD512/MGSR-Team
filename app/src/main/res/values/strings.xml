@@ -91,6 +91,7 @@
     <string name="shortlist_title">Shortlist</string>
     <string name="shortlist_subtitle">Saved profiles from Releases &amp; Returnees — add to agency when ready</string>
     <string name="women_shortlist_subtitle">Players to follow in the coming weeks</string>
+    <string name="youth_shortlist_subtitle">Profiles to follow in the near future</string>
     <string name="women_player_info_title">Player Info</string>
     <string name="women_player_info_subtitle">View and manage player details</string>
     <string name="women_add_player_title">Add Player</string>
