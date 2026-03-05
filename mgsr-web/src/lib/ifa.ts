@@ -146,13 +146,13 @@ function cleanClubSnippet(club: string | undefined): string | undefined {
   if (!club?.trim()) return undefined;
   let c = club.trim();
   // Strip "עונה שינוי יביא לרענון" and everything after it (IFA season-change banner text)
-  c = c.replace(/\.?\s*עונה?\s*שינוי.*$/s, '').trim();
+  c = c.replace(/\.?\s*עונה?\s*שינוי.*$/, '').trim();
   // Strip season page listings like "עמוד: 2024/2025, ..."
-  c = c.replace(/\.?\s*עמוד\s*:.*$/s, '').trim();
+  c = c.replace(/\.?\s*עמוד\s*:.*$/, '').trim();
   // Strip trailing season years like "2024/2025, 2023/2024 ..."
-  c = c.replace(/\.?\s*\d{4}\/\d{4}[\d\s,/]*\.{0,3}\s*$/s, '').trim();
+  c = c.replace(/\.?\s*\d{4}\/\d{4}[\d\s,/]*\.{0,3}\s*$/, '').trim();
   // Strip trailing "שערים. מסגרת." and similar stat noise
-  c = c.replace(/\.?\s*(?:שערים|מסגרת|כרטיסים)[\s.]*$/s, '').trim();
+  c = c.replace(/\.?\s*(?:שערים|מסגרת|כרטיסים)[\s.]*$/, '').trim();
   // Take only the first club (before comma-separated second club)
   const commaIdx = c.indexOf('),');
   if (commaIdx > 0) c = c.substring(0, commaIdx + 1).trim();
