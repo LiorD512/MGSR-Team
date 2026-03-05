@@ -250,7 +250,7 @@ class MgsrFirebaseMessagingService : FirebaseMessagingService() {
                 val user = FirebaseAuth.getInstance().currentUser ?: return@launch
                 val email = user.email ?: return@launch
                 val snapshot = FirebaseFirestore.getInstance()
-                    .collection(FirebaseHandler().accountsTable)
+                    .collection("Accounts")
                     .whereEqualTo("email", email)
                     .get()
                     .await()

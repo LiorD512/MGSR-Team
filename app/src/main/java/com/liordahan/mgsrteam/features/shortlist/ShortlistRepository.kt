@@ -5,6 +5,7 @@ import com.google.firebase.firestore.DocumentSnapshot
 import com.liordahan.mgsrteam.features.home.models.FeedEvent
 import com.liordahan.mgsrteam.features.login.models.Account
 import com.google.firebase.firestore.FirebaseFirestore
+import com.liordahan.mgsrteam.features.platform.PlatformManager
 import com.liordahan.mgsrteam.firebase.FirebaseHandler
 import com.liordahan.mgsrteam.transfermarket.LatestTransferModel
 import kotlinx.coroutines.channels.awaitClose
@@ -12,6 +13,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.tasks.await
 
 data class ShortlistNote(
@@ -59,8 +61,10 @@ data class ShortlistEntry(
         get() = !playerName.isNullOrBlank()
 }
 
+@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class ShortlistRepository(
-    private val firebaseHandler: FirebaseHandler
+    private val firebaseHandler: FirebaseHandler,
+    private val platformManager: PlatformManager
 ) {
 
     private val store = FirebaseFirestore.getInstance()
@@ -79,17 +83,24 @@ class ShortlistRepository(
     private fun DocumentSnapshot?.getEntriesList(): List<Map<String, Any>> =
         (this?.get("entries") as? List<Map<String, Any>>) ?: emptyList()
 
-    fun getShortlistFlow(): Flow<List<ShortlistEntry>> = callbackFlow {
-        val docRef = shortlistDocRef()
-        val listener = docRef.addSnapshotListener { snapshot, _ ->
-            val list = snapshot.getEntriesList()
-            val entries = list.mapNotNull { map ->
-                parseEntryFromMap(map)
-            }.sortedByDescending { it.addedAt }
-            trySend(entries)
+    /**
+     * Auto-reconnects on platform switch so the listener always targets
+     * the correct Shortlists collection.
+     */
+    fun getShortlistFlow(): Flow<List<ShortlistEntry>> =
+        platformManager.current.flatMapLatest {
+            callbackFlow {
+                val docRef = shortlistDocRef()
+                val listener = docRef.addSnapshotListener { snapshot, _ ->
+                    val list = snapshot.getEntriesList()
+                    val entries = list.mapNotNull { map ->
+                        parseEntryFromMap(map)
+                    }.sortedByDescending { it.addedAt }
+                    trySend(entries)
+                }
+                awaitClose { listener.remove() }
+            }
         }
-        awaitClose { listener.remove() }
-    }
 
     @Suppress("UNCHECKED_CAST")
     private fun parseEntryFromMap(map: Map<String, Any>): ShortlistEntry? {

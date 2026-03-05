@@ -3,10 +3,12 @@ package com.liordahan.mgsrteam.features.contacts.repository
 import com.google.firebase.firestore.ListenerRegistration
 import com.liordahan.mgsrteam.features.contacts.models.Contact
 import com.liordahan.mgsrteam.features.contacts.models.ContactType
+import com.liordahan.mgsrteam.features.platform.PlatformManager
 import com.liordahan.mgsrteam.firebase.FirebaseHandler
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.tasks.await
 
 interface IContactsRepository {
@@ -16,23 +18,32 @@ interface IContactsRepository {
     suspend fun deleteContact(contactId: String): Result<Unit>
 }
 
+@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class ContactsRepository(
-    private val firebaseHandler: FirebaseHandler
+    private val firebaseHandler: FirebaseHandler,
+    private val platformManager: PlatformManager
 ) : IContactsRepository {
 
-    override fun contactsFlow(): Flow<List<Contact>> = callbackFlow {
-        val listener: ListenerRegistration = firebaseHandler.firebaseStore
-            .collection(firebaseHandler.contactsTable)
-            .addSnapshotListener { value, error ->
-                if (error != null) {
-                    trySend(emptyList())
-                    return@addSnapshotListener
-                }
-                val list = value?.toObjects(Contact::class.java) ?: emptyList()
-                trySend(list.sortedBy { it.name?.lowercase() })
+    /**
+     * Auto-reconnects when platform switches so the snapshot listener
+     * always targets the correct Contacts collection.
+     */
+    override fun contactsFlow(): Flow<List<Contact>> =
+        platformManager.current.flatMapLatest {
+            callbackFlow {
+                val listener: ListenerRegistration = firebaseHandler.firebaseStore
+                    .collection(firebaseHandler.contactsTable)
+                    .addSnapshotListener { value, error ->
+                        if (error != null) {
+                            trySend(emptyList())
+                            return@addSnapshotListener
+                        }
+                        val list = value?.toObjects(Contact::class.java) ?: emptyList()
+                        trySend(list.sortedBy { it.name?.lowercase() })
+                    }
+                awaitClose { listener.remove() }
             }
-        awaitClose { listener.remove() }
-    }
+        }
 
     override suspend fun addContact(contact: Contact): Result<Unit> = runCatching {
         val data = mapOf(

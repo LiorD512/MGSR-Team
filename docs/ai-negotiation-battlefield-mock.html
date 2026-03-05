@@ -1,0 +1,1008 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AI Negotiation Battlefield — MGSR</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Outfit:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --mgsr-dark: #0F1923;
+      --mgsr-darker: #0A1219;
+      --mgsr-card: #1A2736;
+      --mgsr-card-hover: #1F2F40;
+      --mgsr-border: #253545;
+      --mgsr-teal: #4DB6AC;
+      --mgsr-teal-dim: rgba(77, 182, 172, 0.15);
+      --mgsr-text: #E8EAED;
+      --mgsr-muted: #8C999B;
+      --mgsr-purple: #A855F7;
+      --mgsr-purple-dim: rgba(168, 85, 247, 0.15);
+      --mgsr-amber: #F59E0B;
+      --mgsr-amber-dim: rgba(245, 158, 11, 0.15);
+      --mgsr-green: #22c55e;
+      --mgsr-green-dim: rgba(34, 197, 94, 0.15);
+      --mgsr-red: #ef4444;
+      --mgsr-red-dim: rgba(239, 68, 68, 0.15);
+      --mgsr-blue: #3b82f6;
+      --mgsr-blue-dim: rgba(59, 130, 246, 0.15);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Outfit', sans-serif; background: var(--mgsr-dark); color: var(--mgsr-text); min-height: 100vh; line-height: 1.5; }
+    .mono { font-family: 'JetBrains Mono', monospace; }
+
+    /* ═══ App Shell ═══ */
+    .app-shell { display: flex; min-height: 100vh; }
+    .sidebar {
+      width: 224px; flex-shrink: 0; background: var(--mgsr-card); border-right: 1px solid var(--mgsr-border);
+      display: flex; flex-direction: column;
+    }
+    .sidebar-logo {
+      padding: 1.25rem 1rem; border-bottom: 1px solid var(--mgsr-border);
+      display: flex; align-items: center; gap: 0.75rem;
+    }
+    .sidebar-logo .logo-icon {
+      width: 36px; height: 36px; border-radius: 10px; background: linear-gradient(135deg, var(--mgsr-teal), var(--mgsr-purple));
+      display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.85rem; color: #fff;
+    }
+    .sidebar-logo span { font-family: 'Syne', sans-serif; font-size: 1.15rem; font-weight: 700; color: var(--mgsr-teal); }
+    .platform-switcher {
+      display: flex; gap: 4px; padding: 4px; background: var(--mgsr-darker);
+      border-radius: 10px; border: 1px solid var(--mgsr-border); margin: 0.75rem;
+    }
+    .platform-btn {
+      flex: 1; padding: 0.4rem; border-radius: 7px; font-size: 0.75rem; font-weight: 600;
+      background: transparent; border: none; color: var(--mgsr-muted); cursor: pointer; transition: all 0.2s;
+      font-family: 'Outfit', sans-serif;
+    }
+    .platform-btn.active { background: var(--mgsr-teal-dim); color: var(--mgsr-teal); }
+    .sidebar-section { padding: 0.75rem; }
+    .sidebar-section-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--mgsr-muted); padding: 0.5rem 0.75rem; font-weight: 600; }
+    .sidebar-nav a {
+      display: flex; align-items: center; gap: 0.75rem;
+      padding: 0.65rem 0.75rem; border-radius: 8px; color: var(--mgsr-muted);
+      font-size: 0.875rem; text-decoration: none; margin-bottom: 2px; transition: all 0.2s;
+    }
+    .sidebar-nav a:hover { color: var(--mgsr-text); background: rgba(255,255,255,0.04); }
+    .sidebar-nav a.active { background: var(--mgsr-purple-dim); color: var(--mgsr-purple); font-weight: 600; }
+    .sidebar-nav a .nav-icon { font-size: 1.1rem; width: 20px; text-align: center; }
+    .sidebar-footer {
+      margin-top: auto; padding: 1rem; border-top: 1px solid var(--mgsr-border);
+      display: flex; align-items: center; gap: 0.75rem;
+    }
+    .sidebar-footer .avatar {
+      width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, var(--mgsr-teal), var(--mgsr-blue));
+      display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 700; color: #fff;
+    }
+    .sidebar-footer .agent-name { font-size: 0.85rem; font-weight: 500; }
+    .sidebar-footer .agent-role { font-size: 0.7rem; color: var(--mgsr-muted); }
+
+    /* ═══ Main ═══ */
+    .main-content { flex: 1; overflow-y: auto; }
+    .top-bar {
+      padding: 1rem 1.5rem; border-bottom: 1px solid var(--mgsr-border);
+      display: flex; align-items: center; justify-content: space-between;
+      background: var(--mgsr-card); position: sticky; top: 0; z-index: 20;
+    }
+    .top-bar h1 { font-family: 'Syne', sans-serif; font-size: 1.35rem; font-weight: 800; }
+    .top-bar .breadcrumb { font-size: 0.8rem; color: var(--mgsr-muted); }
+    .top-bar-right { display: flex; gap: 0.75rem; }
+
+    .btn {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      padding: 0.5rem 1rem; border-radius: 8px; font-family: inherit;
+      font-size: 0.85rem; font-weight: 600; cursor: pointer; border: none; transition: all 0.2s;
+    }
+    .btn-primary { background: var(--mgsr-teal); color: var(--mgsr-dark); }
+    .btn-primary:hover { background: #5fc9c0; }
+    .btn-secondary { background: var(--mgsr-card); color: var(--mgsr-text); border: 1px solid var(--mgsr-border); }
+    .btn-secondary:hover { border-color: var(--mgsr-teal); }
+    .btn-ghost { background: transparent; color: var(--mgsr-muted); }
+    .btn-sm { padding: 0.35rem 0.75rem; font-size: 0.8rem; }
+    .btn-danger { background: var(--mgsr-red-dim); color: var(--mgsr-red); border: 1px solid rgba(239,68,68,0.3); }
+
+    /* ═══ Negotiation Layout ═══ */
+    .neg-content { padding: 1.5rem; max-width: 1200px; margin: 0 auto; }
+
+    /* ═══ Deal Setup Header ═══ */
+    .deal-setup {
+      background: linear-gradient(135deg, rgba(168, 85, 247, 0.08), rgba(77, 182, 172, 0.06));
+      border: 1px solid rgba(168, 85, 247, 0.2); border-radius: 16px;
+      padding: 1.5rem; margin-bottom: 1.5rem; position: relative; overflow: hidden;
+    }
+    .deal-setup::before {
+      content: ''; position: absolute; top: -50%; right: -10%; width: 350px; height: 350px;
+      background: radial-gradient(circle, rgba(168, 85, 247, 0.05), transparent 70%);
+      pointer-events: none;
+    }
+    .deal-setup-grid {
+      display: grid; grid-template-columns: 1fr auto 1fr auto 1fr; gap: 1rem;
+      align-items: center; position: relative;
+    }
+    .deal-party {
+      background: var(--mgsr-card); border: 1px solid var(--mgsr-border); border-radius: 14px;
+      padding: 1rem; text-align: center;
+    }
+    .deal-party.you { border-color: var(--mgsr-teal); box-shadow: 0 0 20px rgba(77, 182, 172, 0.1); }
+    .deal-party-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--mgsr-muted); font-weight: 600; margin-bottom: 0.5rem; }
+    .deal-party-avatar {
+      width: 52px; height: 52px; border-radius: 12px; margin: 0 auto 0.5rem;
+      background: var(--mgsr-border); display: flex; align-items: center; justify-content: center;
+      font-size: 1.5rem;
+    }
+    .deal-party-name { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 1rem; }
+    .deal-party-sub { font-size: 0.8rem; color: var(--mgsr-muted); }
+    .deal-arrow { font-size: 1.5rem; color: var(--mgsr-border); }
+
+    /* ═══ Strategy Tabs ═══ */
+    .strategy-tabs {
+      display: flex; gap: 4px; padding: 4px; background: var(--mgsr-card);
+      border-radius: 12px; border: 1px solid var(--mgsr-border); margin-bottom: 1.5rem;
+    }
+    .strategy-tab {
+      flex: 1; padding: 0.6rem 1rem; border-radius: 9px; font-size: 0.85rem; font-weight: 600;
+      background: transparent; border: none; color: var(--mgsr-muted); cursor: pointer; transition: all 0.2s;
+      font-family: 'Outfit', sans-serif; text-align: center;
+    }
+    .strategy-tab:hover { color: var(--mgsr-text); }
+    .strategy-tab.active { background: var(--mgsr-purple-dim); color: var(--mgsr-purple); }
+
+    /* ═══ Section Card ═══ */
+    .section-card {
+      background: var(--mgsr-card); border: 1px solid var(--mgsr-border); border-radius: 14px;
+      margin-bottom: 1.25rem; overflow: hidden;
+    }
+    .section-card-header {
+      padding: 1rem 1.25rem; border-bottom: 1px solid var(--mgsr-border);
+      display: flex; align-items: center; gap: 0.6rem;
+    }
+    .section-card-header h3 { font-family: 'Syne', sans-serif; font-size: 1rem; font-weight: 700; }
+    .section-card-body { padding: 1.25rem; }
+
+    /* ═══ Comparable Deals Table ═══ */
+    .comp-table { width: 100%; border-collapse: collapse; }
+    .comp-table th {
+      text-align: left; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em;
+      color: var(--mgsr-muted); padding: 0.5rem 0.75rem; font-weight: 600;
+      border-bottom: 1px solid var(--mgsr-border);
+    }
+    .comp-table td {
+      padding: 0.65rem 0.75rem; font-size: 0.85rem; border-bottom: 1px solid rgba(255,255,255,0.03);
+    }
+    .comp-table tr:hover td { background: rgba(255,255,255,0.02); }
+    .comp-table .player-cell { display: flex; align-items: center; gap: 0.5rem; }
+    .comp-table .player-cell .mini-avatar {
+      width: 28px; height: 28px; border-radius: 7px; background: var(--mgsr-border); flex-shrink: 0;
+    }
+    .comp-table .fee { font-family: 'JetBrains Mono', monospace; font-weight: 600; color: var(--mgsr-teal); }
+    .comp-table .salary { font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; color: var(--mgsr-amber); }
+    .comp-badge {
+      font-size: 0.65rem; padding: 0.15rem 0.4rem; border-radius: 4px; font-weight: 600;
+    }
+    .comp-badge.similar { background: var(--mgsr-green-dim); color: var(--mgsr-green); }
+    .comp-badge.higher { background: var(--mgsr-amber-dim); color: var(--mgsr-amber); }
+    .comp-badge.lower { background: var(--mgsr-blue-dim); color: var(--mgsr-blue); }
+
+    /* ═══ Negotiation Zone (Slider) ═══ */
+    .neg-zone { position: relative; margin: 1.5rem 0; }
+    .neg-zone-bar {
+      height: 48px; background: var(--mgsr-darker); border-radius: 12px;
+      position: relative; overflow: hidden; border: 1px solid var(--mgsr-border);
+    }
+    .neg-zone-fill {
+      position: absolute; top: 0; bottom: 0; border-radius: 12px;
+    }
+    .neg-zone-walk { background: var(--mgsr-red-dim); left: 0; right: 60%; }
+    .neg-zone-target { background: var(--mgsr-green-dim); left: 40%; right: 20%; }
+    .neg-zone-open { background: var(--mgsr-amber-dim); left: 80%; right: 0; }
+
+    .neg-zone-markers {
+      display: flex; justify-content: space-between; margin-top: 0.5rem;
+    }
+    .neg-zone-marker { text-align: center; }
+    .neg-zone-marker .marker-value {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; font-weight: 700;
+    }
+    .neg-zone-marker .marker-label { font-size: 0.7rem; color: var(--mgsr-muted); }
+
+    .neg-zone-pointer {
+      position: absolute; top: -8px; width: 4px; height: 64px;
+      background: var(--mgsr-text); border-radius: 2px; z-index: 5;
+    }
+    .neg-zone-pointer .pointer-label {
+      position: absolute; top: -28px; left: 50%; transform: translateX(-50%);
+      font-size: 0.7rem; font-weight: 600; background: var(--mgsr-card);
+      padding: 0.2rem 0.5rem; border-radius: 4px; border: 1px solid var(--mgsr-border);
+      white-space: nowrap;
+    }
+
+    /* ═══ Fee Slider Interactive ═══ */
+    .slider-group { margin-bottom: 1.5rem; }
+    .slider-label { display: flex; justify-content: space-between; margin-bottom: 0.35rem; }
+    .slider-label span { font-size: 0.85rem; font-weight: 500; }
+    .slider-label .slider-value { font-family: 'JetBrains Mono', monospace; font-weight: 700; color: var(--mgsr-teal); }
+    input[type="range"] {
+      -webkit-appearance: none; width: 100%; height: 6px; border-radius: 3px;
+      background: var(--mgsr-darker); outline: none; transition: all 0.2s;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 20px; height: 20px; border-radius: 50%;
+      background: var(--mgsr-teal); cursor: pointer; border: 3px solid var(--mgsr-dark);
+      box-shadow: 0 0 10px rgba(77, 182, 172, 0.3);
+    }
+    input[type="range"]::-webkit-slider-thumb:hover {
+      box-shadow: 0 0 15px rgba(77, 182, 172, 0.5);
+    }
+
+    /* ═══ BATNA Analysis ═══ */
+    .batna-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    .batna-card {
+      background: var(--mgsr-darker); border: 1px solid var(--mgsr-border); border-radius: 12px;
+      padding: 1rem;
+    }
+    .batna-card h4 {
+      font-size: 0.8rem; font-weight: 700; margin-bottom: 0.5rem;
+      display: flex; align-items: center; gap: 0.4rem;
+    }
+    .batna-card p { font-size: 0.8rem; color: var(--mgsr-muted); line-height: 1.5; }
+    .batna-card .batna-value {
+      font-family: 'JetBrains Mono', monospace; font-size: 1.1rem; font-weight: 700;
+      margin: 0.35rem 0;
+    }
+
+    /* ═══ Contract Structure Builder ═══ */
+    .contract-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; }
+    .contract-item {
+      background: var(--mgsr-darker); border: 1px solid var(--mgsr-border); border-radius: 10px;
+      padding: 0.85rem; cursor: pointer; transition: all 0.2s;
+    }
+    .contract-item:hover { border-color: var(--mgsr-teal); }
+    .contract-item.selected { border-color: var(--mgsr-teal); background: var(--mgsr-teal-dim); }
+    .contract-item-label { font-size: 0.75rem; color: var(--mgsr-muted); }
+    .contract-item-value { font-family: 'JetBrains Mono', monospace; font-size: 1rem; font-weight: 700; margin: 0.2rem 0; }
+    .contract-item-desc { font-size: 0.7rem; color: var(--mgsr-muted); }
+
+    /* ═══ AI Strategy Output ═══ */
+    .strategy-output {
+      background: linear-gradient(135deg, rgba(168, 85, 247, 0.06), rgba(77, 182, 172, 0.04));
+      border: 1px solid rgba(168, 85, 247, 0.2); border-radius: 14px;
+      padding: 1.25rem;
+    }
+    .strategy-output-header {
+      display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem;
+    }
+    .strategy-output-header .ai-badge {
+      font-size: 0.7rem; background: linear-gradient(135deg, var(--mgsr-purple), var(--mgsr-teal));
+      color: #fff; padding: 0.2rem 0.6rem; border-radius: 6px; font-weight: 700;
+    }
+    .strategy-output-header h3 { font-family: 'Syne', sans-serif; font-size: 1.05rem; font-weight: 700; }
+    .strategy-section { margin-bottom: 1rem; }
+    .strategy-section h4 {
+      font-size: 0.8rem; font-weight: 700; color: var(--mgsr-teal); margin-bottom: 0.4rem;
+      display: flex; align-items: center; gap: 0.3rem;
+    }
+    .strategy-section p, .strategy-section li {
+      font-size: 0.85rem; line-height: 1.6; color: var(--mgsr-text);
+    }
+    .strategy-section ul { padding-left: 1.25rem; }
+    .strategy-section li { margin-bottom: 0.3rem; }
+    .strategy-section .key-number {
+      font-family: 'JetBrains Mono', monospace; color: var(--mgsr-amber); font-weight: 700;
+    }
+    .strategy-section .strength { color: var(--mgsr-green); font-weight: 600; }
+    .strategy-section .weakness { color: var(--mgsr-red); font-weight: 600; }
+
+    /* ═══ Commission Calculator ═══ */
+    .commission-calc {
+      background: var(--mgsr-darker); border: 1px solid var(--mgsr-border); border-radius: 12px;
+      padding: 1rem; display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.75rem;
+    }
+    .commission-item { text-align: center; }
+    .commission-item .label { font-size: 0.7rem; color: var(--mgsr-muted); }
+    .commission-item .value {
+      font-family: 'JetBrains Mono', monospace; font-size: 1.1rem; font-weight: 700; margin-top: 0.2rem;
+    }
+
+    /* ═══ Scrollbar ═══ */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--mgsr-border); border-radius: 3px; }
+
+    @media (max-width: 1100px) {
+      .sidebar { display: none; }
+      .deal-setup-grid { grid-template-columns: 1fr; }
+      .deal-arrow { transform: rotate(90deg); text-align: center; }
+      .batna-grid { grid-template-columns: 1fr; }
+      .contract-grid { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="app-shell">
+  <!-- ═══ Sidebar ═══ -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon">MG</div>
+      <span>MGSR</span>
+    </div>
+    <div class="platform-switcher">
+      <button class="platform-btn active">Men</button>
+      <button class="platform-btn">Women</button>
+      <button class="platform-btn">Youth</button>
+    </div>
+    <nav class="sidebar-nav sidebar-section">
+      <div class="sidebar-section-label">Main</div>
+      <a href="#"><span class="nav-icon">📊</span> Dashboard</a>
+      <a href="#"><span class="nav-icon">👥</span> Players</a>
+      <a href="#"><span class="nav-icon">💰</span> Deal Pipeline</a>
+      <a href="#"><span class="nav-icon">📋</span> Tasks</a>
+    </nav>
+    <nav class="sidebar-nav sidebar-section">
+      <div class="sidebar-section-label">Intelligence</div>
+      <a href="#"><span class="nav-icon">🤖</span> AI Scout</a>
+      <a href="#"><span class="nav-icon">🎯</span> War Room</a>
+      <a href="#"><span class="nav-icon">📡</span> Market Radar</a>
+      <a href="#" class="active"><span class="nav-icon">⚔️</span> Negotiation</a>
+    </nav>
+    <nav class="sidebar-nav sidebar-section">
+      <div class="sidebar-section-label">Network</div>
+      <a href="#"><span class="nav-icon">📇</span> Contacts</a>
+      <a href="#"><span class="nav-icon">📩</span> Requests</a>
+      <a href="#"><span class="nav-icon">📁</span> Portfolio</a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="avatar">LD</div>
+      <div>
+        <div class="agent-name">Lior Dahan</div>
+        <div class="agent-role">FIFA Licensed Agent</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ═══ Main ═══ -->
+  <div class="main-content">
+    <div class="top-bar">
+      <div>
+        <span class="breadcrumb">MGSR · Intelligence · Deal: Marcus Johnson → Hapoel Tel Aviv</span>
+        <h1>⚔️ AI Negotiation Battlefield</h1>
+      </div>
+      <div class="top-bar-right">
+        <button class="btn btn-secondary btn-sm">📄 Export PDF Brief</button>
+        <button class="btn btn-primary btn-sm">💾 Save Prep</button>
+      </div>
+    </div>
+
+    <div class="neg-content">
+
+      <!-- ═══ Deal Setup (3 Parties) ═══ -->
+      <div class="deal-setup">
+        <div class="deal-setup-grid">
+          <!-- Selling Club -->
+          <div class="deal-party">
+            <div class="deal-party-label">Selling Club</div>
+            <div class="deal-party-avatar">🏴󠁧󠁢󠁥󠁮󠁧󠁿</div>
+            <div class="deal-party-name">Sheffield Wednesday</div>
+            <div class="deal-party-sub">EFL Championship · England</div>
+            <div style="font-size: 0.75rem; color: var(--mgsr-muted); margin-top: 0.35rem;">Squad value: £42M</div>
+          </div>
+
+          <div class="deal-arrow">→</div>
+
+          <!-- Player -->
+          <div class="deal-party you">
+            <div class="deal-party-label" style="color: var(--mgsr-teal);">Your Client</div>
+            <div class="deal-party-avatar" style="background: var(--mgsr-teal-dim);">⚽</div>
+            <div class="deal-party-name">Marcus Johnson</div>
+            <div class="deal-party-sub">CM · 22 yrs · TM Value: €450K</div>
+            <div style="font-size: 0.75rem; color: var(--mgsr-green); margin-top: 0.35rem;">✓ Active Mandate (MGSR Group)</div>
+          </div>
+
+          <div class="deal-arrow">→</div>
+
+          <!-- Buying Club -->
+          <div class="deal-party">
+            <div class="deal-party-label">Buying Club</div>
+            <div class="deal-party-avatar">🇮🇱</div>
+            <div class="deal-party-name">Hapoel Tel Aviv</div>
+            <div class="deal-party-sub">Ligat Ha'Al · Israel</div>
+            <div style="font-size: 0.75rem; color: var(--mgsr-amber); margin-top: 0.35rem;">Open request: CM 22-26 · €300-600K</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ Strategy Tabs ═══ -->
+      <div class="strategy-tabs">
+        <button class="strategy-tab active" onclick="switchTab(this, 'overview')">📊 Deal Overview</button>
+        <button class="strategy-tab" onclick="switchTab(this, 'comps')">📋 Comparable Deals</button>
+        <button class="strategy-tab" onclick="switchTab(this, 'salary')">💰 Salary Benchmarks</button>
+        <button class="strategy-tab" onclick="switchTab(this, 'structure')">📝 Contract Structure</button>
+        <button class="strategy-tab" onclick="switchTab(this, 'strategy')">🧠 AI Strategy</button>
+      </div>
+
+      <!-- ═══ TAB 1: Deal Overview ═══ -->
+      <div id="tab-overview">
+
+        <!-- Negotiation Zone Visualization -->
+        <div class="section-card">
+          <div class="section-card-header">
+            <span>🎯</span>
+            <h3>Negotiation Zone</h3>
+          </div>
+          <div class="section-card-body">
+            <div style="display: flex; gap: 1rem; margin-bottom: 1rem;">
+              <div style="display: flex; align-items: center; gap: 0.3rem; font-size: 0.75rem;">
+                <span style="width: 12px; height: 12px; border-radius: 3px; background: var(--mgsr-red-dim); display: inline-block;"></span>
+                <span style="color: var(--mgsr-muted);">Walk Away</span>
+              </div>
+              <div style="display: flex; align-items: center; gap: 0.3rem; font-size: 0.75rem;">
+                <span style="width: 12px; height: 12px; border-radius: 3px; background: var(--mgsr-green-dim); display: inline-block;"></span>
+                <span style="color: var(--mgsr-muted);">Target Zone</span>
+              </div>
+              <div style="display: flex; align-items: center; gap: 0.3rem; font-size: 0.75rem;">
+                <span style="width: 12px; height: 12px; border-radius: 3px; background: var(--mgsr-amber-dim); display: inline-block;"></span>
+                <span style="color: var(--mgsr-muted);">Opening Demand</span>
+              </div>
+            </div>
+
+            <div class="neg-zone">
+              <div class="neg-zone-bar">
+                <div class="neg-zone-fill neg-zone-walk" style="left: 0; width: 35%;"></div>
+                <div class="neg-zone-fill neg-zone-target" style="left: 35%; width: 35%;"></div>
+                <div class="neg-zone-fill neg-zone-open" style="left: 70%; width: 30%;"></div>
+
+                <!-- Their last offer pointer -->
+                <div class="neg-zone-pointer" style="left: 30%;">
+                  <div class="pointer-label" style="color: var(--mgsr-red);">Their offer: €380K</div>
+                </div>
+                <!-- Your ask -->
+                <div class="neg-zone-pointer" style="left: 75%; background: var(--mgsr-teal);">
+                  <div class="pointer-label" style="color: var(--mgsr-teal);">Your ask: €480K</div>
+                </div>
+                <!-- TM Value -->
+                <div class="neg-zone-pointer" style="left: 52%; background: var(--mgsr-amber); width: 2px; opacity: 0.6;">
+                  <div class="pointer-label" style="color: var(--mgsr-amber); font-size: 0.65rem;">TM: €450K</div>
+                </div>
+              </div>
+              <div class="neg-zone-markers">
+                <div class="neg-zone-marker">
+                  <div class="marker-value" style="color: var(--mgsr-red);">€300K</div>
+                  <div class="marker-label">Walk Away</div>
+                </div>
+                <div class="neg-zone-marker">
+                  <div class="marker-value" style="color: var(--mgsr-green);">€420K</div>
+                  <div class="marker-label">Target</div>
+                </div>
+                <div class="neg-zone-marker">
+                  <div class="marker-value" style="color: var(--mgsr-amber);">€520K</div>
+                  <div class="marker-label">Opening</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Interactive Sliders -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-top: 1.5rem;">
+              <div class="slider-group">
+                <div class="slider-label">
+                  <span>Transfer Fee</span>
+                  <span class="slider-value" id="feeValue">€450,000</span>
+                </div>
+                <input type="range" min="200000" max="600000" value="450000" step="10000" oninput="updateFee(this)">
+                <div style="display: flex; justify-content: space-between; font-size: 0.65rem; color: var(--mgsr-muted); margin-top: 0.2rem;">
+                  <span>€200K</span><span>€600K</span>
+                </div>
+              </div>
+              <div class="slider-group">
+                <div class="slider-label">
+                  <span>Commission (%)</span>
+                  <span class="slider-value" id="commValue">6.0%</span>
+                </div>
+                <input type="range" min="3" max="10" value="6" step="0.5" oninput="updateComm(this)">
+                <div style="display: flex; justify-content: space-between; font-size: 0.65rem; color: var(--mgsr-muted); margin-top: 0.2rem;">
+                  <span>3%</span><span>10%</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Commission Calculator -->
+            <div class="commission-calc" style="margin-top: 1rem;">
+              <div class="commission-item">
+                <div class="label">Transfer Fee</div>
+                <div class="value" id="calcFee" style="color: var(--mgsr-teal);">€450K</div>
+              </div>
+              <div class="commission-item">
+                <div class="label">Commission (6%)</div>
+                <div class="value" id="calcComm" style="color: var(--mgsr-amber);">€27,000</div>
+              </div>
+              <div class="commission-item">
+                <div class="label">Your Share (50-50)</div>
+                <div class="value" id="calcShare" style="color: var(--mgsr-green);">€13,500</div>
+              </div>
+              <div class="commission-item">
+                <div class="label">If closed at target</div>
+                <div class="value" id="calcTarget" style="color: var(--mgsr-purple);">€12,600</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- BATNA Analysis -->
+        <div class="section-card">
+          <div class="section-card-header">
+            <span>🛡️</span>
+            <h3>BATNA Analysis (Best Alternative to Negotiated Agreement)</h3>
+          </div>
+          <div class="section-card-body">
+            <div class="batna-grid">
+              <div class="batna-card">
+                <h4 style="color: var(--mgsr-teal);">💪 Your BATNA</h4>
+                <p>If Hapoel rejects, you have <strong style="color: var(--mgsr-teal);">2 other interested clubs</strong>:</p>
+                <ul style="font-size: 0.8rem; color: var(--mgsr-muted); padding-left: 1.25rem; margin-top: 0.35rem;">
+                  <li>Maccabi Netanya — expressed interest, budget €300-400K</li>
+                  <li>Ferencváros — scouting Israeli midfielders (new intel from Market Radar)</li>
+                </ul>
+                <div class="batna-value" style="color: var(--mgsr-teal);">Leverage: Strong</div>
+                <p>Multiple alternatives give you negotiating power. Mention interest from European club without naming them.</p>
+              </div>
+              <div class="batna-card">
+                <h4 style="color: var(--mgsr-red);">👀 Their BATNA</h4>
+                <p>Hapoel Tel Aviv's alternatives are <strong style="color: var(--mgsr-amber);">moderate</strong>:</p>
+                <ul style="font-size: 0.8rem; color: var(--mgsr-muted); padding-left: 1.25rem; margin-top: 0.35rem;">
+                  <li>New coach → urgency to sign (weak position)</li>
+                  <li>3 losses straight → fans demanding action</li>
+                  <li>They could scout elsewhere but window pressure is building</li>
+                </ul>
+                <div class="batna-value" style="color: var(--mgsr-amber);">Leverage: Moderate</div>
+                <p>Their coaching change creates urgency. Use time pressure without being aggressive.</p>
+              </div>
+              <div class="batna-card">
+                <h4 style="color: var(--mgsr-green);">✅ Your Strengths</h4>
+                <ul style="font-size: 0.8rem; color: var(--mgsr-muted); padding-left: 1.25rem;">
+                  <li><span style="color: var(--mgsr-green);">✓</span> Active mandate — exclusive representation</li>
+                  <li><span style="color: var(--mgsr-green);">✓</span> Player matches their exact request (CM, 22, €300-600K)</li>
+                  <li><span style="color: var(--mgsr-green);">✓</span> Multiple club interest (leverage)</li>
+                  <li><span style="color: var(--mgsr-green);">✓</span> Sheffield Wednesday willing to sell</li>
+                  <li><span style="color: var(--mgsr-green);">✓</span> Strong FM rating (CA 130 / PA 148)</li>
+                </ul>
+              </div>
+              <div class="batna-card">
+                <h4 style="color: var(--mgsr-red);">⚠️ Risk Factors</h4>
+                <ul style="font-size: 0.8rem; color: var(--mgsr-muted); padding-left: 1.25rem;">
+                  <li><span style="color: var(--mgsr-red);">!</span> Player hasn't started last 3 matches (benched)</li>
+                  <li><span style="color: var(--mgsr-red);">!</span> TM value dropped €50K last update</li>
+                  <li><span style="color: var(--mgsr-red);">!</span> New Hapoel coach might prefer different profile</li>
+                  <li><span style="color: var(--mgsr-red);">!</span> Counter-offer at €380K is 15% below your ask</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ TAB 2: Comparable Deals ═══ -->
+      <div id="tab-comps" style="display: none;">
+        <div class="section-card">
+          <div class="section-card-header">
+            <span>📋</span>
+            <h3>15 Comparable Transfers (CM, 20-25 yrs, Championship → Israel/Balkans/Hungary)</h3>
+          </div>
+          <div class="section-card-body" style="overflow-x: auto;">
+            <table class="comp-table">
+              <thead>
+                <tr>
+                  <th>Player</th>
+                  <th>From → To</th>
+                  <th>Age</th>
+                  <th>Fee</th>
+                  <th>Salary</th>
+                  <th>Date</th>
+                  <th>vs. This Deal</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><div class="player-cell"><div class="mini-avatar"></div><div><strong>Aron Dønnum</strong><br><span style="font-size:0.7rem;color:var(--mgsr-muted);">CM/LW · Norwegian</span></div></div></td>
+                  <td style="font-size:0.8rem;">Heerenveen → Maccabi TA</td>
+                  <td>24</td>
+                  <td class="fee">€520K</td>
+                  <td class="salary">€22K/yr</td>
+                  <td style="font-size:0.8rem;color:var(--mgsr-muted);">Jan 2026</td>
+                  <td><span class="comp-badge higher">+15%</span></td>
+                </tr>
+                <tr>
+                  <td><div class="player-cell"><div class="mini-avatar"></div><div><strong>Filip Dagerstål</strong><br><span style="font-size:0.7rem;color:var(--mgsr-muted);">CM · Swedish</span></div></div></td>
+                  <td style="font-size:0.8rem;">Malmö → Hapoel BS</td>
+                  <td>23</td>
+                  <td class="fee">€400K</td>
+                  <td class="salary">€18K/yr</td>
+                  <td style="font-size:0.8rem;color:var(--mgsr-muted);">Aug 2025</td>
+                  <td><span class="comp-badge similar">Similar</span></td>
+                </tr>
+                <tr>
+                  <td><div class="player-cell"><div class="mini-avatar"></div><div><strong>Bruno Gaspar</strong><br><span style="font-size:0.7rem;color:var(--mgsr-muted);">CM · Portuguese</span></div></div></td>
+                  <td style="font-size:0.8rem;">Paços → Ferencváros</td>
+                  <td>22</td>
+                  <td class="fee">€480K</td>
+                  <td class="salary">€20K/yr</td>
+                  <td style="font-size:0.8rem;color:var(--mgsr-muted);">Jul 2025</td>
+                  <td><span class="comp-badge similar">Similar</span></td>
+                </tr>
+                <tr>
+                  <td><div class="player-cell"><div class="mini-avatar"></div><div><strong>Nikola Čumić</strong><br><span style="font-size:0.7rem;color:var(--mgsr-muted);">CM · Serbian</span></div></div></td>
+                  <td style="font-size:0.8rem;">FK Partizan → Maccabi Haifa</td>
+                  <td>24</td>
+                  <td class="fee">€350K</td>
+                  <td class="salary">€16K/yr</td>
+                  <td style="font-size:0.8rem;color:var(--mgsr-muted);">Jan 2025</td>
+                  <td><span class="comp-badge lower">−22%</span></td>
+                </tr>
+                <tr>
+                  <td><div class="player-cell"><div class="mini-avatar"></div><div><strong>José Kanté</strong><br><span style="font-size:0.7rem;color:var(--mgsr-muted);">DM · Ivorian</span></div></div></td>
+                  <td style="font-size:0.8rem;">Auxerre → Beitar Jerusalem</td>
+                  <td>21</td>
+                  <td class="fee">€300K</td>
+                  <td class="salary">€14K/yr</td>
+                  <td style="font-size:0.8rem;color:var(--mgsr-muted);">Aug 2025</td>
+                  <td><span class="comp-badge lower">−33%</span></td>
+                </tr>
+                <tr>
+                  <td><div class="player-cell"><div class="mini-avatar"></div><div><strong>Matías Iglesias</strong><br><span style="font-size:0.7rem;color:var(--mgsr-muted);">CM · Argentine</span></div></div></td>
+                  <td style="font-size:0.8rem;">Rosario Central → H. Tel Aviv</td>
+                  <td>25</td>
+                  <td class="fee">€550K</td>
+                  <td class="salary">€24K/yr</td>
+                  <td style="font-size:0.8rem;color:var(--mgsr-muted);">Jul 2025</td>
+                  <td><span class="comp-badge higher">+22%</span></td>
+                </tr>
+                <tr>
+                  <td><div class="player-cell"><div class="mini-avatar"></div><div><strong>Daniel Maldini</strong><br><span style="font-size:0.7rem;color:var(--mgsr-muted);">AM/CM · Italian</span></div></div></td>
+                  <td style="font-size:0.8rem;">Monza → Maccabi Netanya</td>
+                  <td>23</td>
+                  <td class="fee">€420K</td>
+                  <td class="salary">€19K/yr</td>
+                  <td style="font-size:0.8rem;color:var(--mgsr-muted);">Jan 2026</td>
+                  <td><span class="comp-badge similar">Similar</span></td>
+                </tr>
+              </tbody>
+            </table>
+            <div style="margin-top: 1rem; padding: 0.85rem; background: var(--mgsr-darker); border-radius: 10px;">
+              <div style="display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.4rem;">
+                <span style="font-size: 0.7rem; background: linear-gradient(135deg, var(--mgsr-purple), var(--mgsr-teal)); color: #fff; padding: 0.15rem 0.5rem; border-radius: 4px; font-weight: 700;">AI</span>
+                <span style="font-size: 0.85rem; font-weight: 700;">Comp Analysis Summary</span>
+              </div>
+              <p style="font-size: 0.85rem; color: var(--mgsr-text); line-height: 1.6;">
+                Median fee for comparable CM transfers (20-25, Tier 2→Israel): <span class="mono" style="color: var(--mgsr-teal); font-weight: 700;">€430K</span>.
+                Hapoel's own last CM signing (Iglesias, Jul '25) was at <span class="mono" style="color: var(--mgsr-amber); font-weight: 700;">€550K</span> — 
+                establishes they're willing to pay above market for the right player. 
+                Their €380K counter-offer is <span style="color: var(--mgsr-red); font-weight: 600;">below market precedent</span>. 
+                Strong case to hold at €420-450K.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ TAB 3: Salary Benchmarks ═══ -->
+      <div id="tab-salary" style="display: none;">
+        <div class="section-card">
+          <div class="section-card-header">
+            <span>💰</span>
+            <h3>Salary Benchmarks — CM, 22 yrs, Ligat Ha'Al</h3>
+          </div>
+          <div class="section-card-body">
+            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.75rem; margin-bottom: 1.5rem;">
+              <div style="background: var(--mgsr-darker); border-radius: 10px; padding: 1rem; text-align: center;">
+                <div style="font-size: 0.7rem; color: var(--mgsr-muted);">League Minimum (CM)</div>
+                <div class="mono" style="font-size: 1.3rem; font-weight: 700; color: var(--mgsr-muted); margin: 0.25rem 0;">€8K</div>
+                <div style="font-size: 0.7rem; color: var(--mgsr-muted);">per year</div>
+              </div>
+              <div style="background: var(--mgsr-darker); border-radius: 10px; padding: 1rem; text-align: center;">
+                <div style="font-size: 0.7rem; color: var(--mgsr-muted);">League Median (CM)</div>
+                <div class="mono" style="font-size: 1.3rem; font-weight: 700; color: var(--mgsr-amber); margin: 0.25rem 0;">€16K</div>
+                <div style="font-size: 0.7rem; color: var(--mgsr-muted);">per year</div>
+              </div>
+              <div style="background: var(--mgsr-teal-dim); border: 1px solid rgba(77,182,172,0.3); border-radius: 10px; padding: 1rem; text-align: center;">
+                <div style="font-size: 0.7rem; color: var(--mgsr-teal);">Recommended Ask</div>
+                <div class="mono" style="font-size: 1.3rem; font-weight: 700; color: var(--mgsr-teal); margin: 0.25rem 0;">€18-20K</div>
+                <div style="font-size: 0.7rem; color: var(--mgsr-teal);">per year</div>
+              </div>
+              <div style="background: var(--mgsr-darker); border-radius: 10px; padding: 1rem; text-align: center;">
+                <div style="font-size: 0.7rem; color: var(--mgsr-muted);">Top 10% (CM)</div>
+                <div class="mono" style="font-size: 1.3rem; font-weight: 700; color: var(--mgsr-green); margin: 0.25rem 0;">€28K+</div>
+                <div style="font-size: 0.7rem; color: var(--mgsr-muted);">per year</div>
+              </div>
+            </div>
+
+            <div style="padding: 0.85rem; background: var(--mgsr-darker); border-radius: 10px;">
+              <div style="font-size: 0.85rem; font-weight: 700; margin-bottom: 0.5rem;">Based on FM Intelligence Data (CA 130)</div>
+              <p style="font-size: 0.8rem; color: var(--mgsr-muted); line-height: 1.5;">
+                Players with CA 125-135 in Israeli Ligat Ha'Al typically earn <span class="mono" style="color: var(--mgsr-teal);">€15-22K/year</span>.
+                Marcus Johnson's CA of 130 with PA of 148 suggests strong development upside — argue for higher-end salary 
+                with <strong style="color: var(--mgsr-amber);">performance bonuses tied to appearances and goals/assists</strong>.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ TAB 4: Contract Structure ═══ -->
+      <div id="tab-structure" style="display: none;">
+        <div class="section-card">
+          <div class="section-card-header">
+            <span>📝</span>
+            <h3>Contract Structure Builder</h3>
+          </div>
+          <div class="section-card-body">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+              <!-- Option A: Standard -->
+              <div style="background: var(--mgsr-darker); border: 2px solid var(--mgsr-teal); border-radius: 14px; padding: 1.25rem; position: relative;">
+                <div style="position: absolute; top: -10px; right: 12px; background: var(--mgsr-teal); color: var(--mgsr-dark); font-size: 0.7rem; font-weight: 700; padding: 0.15rem 0.6rem; border-radius: 4px;">AI RECOMMENDED</div>
+                <h4 style="font-family: 'Syne', sans-serif; font-weight: 700; margin-bottom: 0.75rem;">Option A: Standard Deal</h4>
+                <div class="contract-grid">
+                  <div class="contract-item selected">
+                    <div class="contract-item-label">Transfer Fee</div>
+                    <div class="contract-item-value" style="color: var(--mgsr-teal);">€420K</div>
+                    <div class="contract-item-desc">Fixed, paid in 2 installments</div>
+                  </div>
+                  <div class="contract-item selected">
+                    <div class="contract-item-label">Salary</div>
+                    <div class="contract-item-value" style="color: var(--mgsr-amber);">€18K/yr</div>
+                    <div class="contract-item-desc">3-year contract</div>
+                  </div>
+                  <div class="contract-item selected">
+                    <div class="contract-item-label">Agent Commission</div>
+                    <div class="contract-item-value" style="color: var(--mgsr-green);">€25.2K</div>
+                    <div class="contract-item-desc">6% of fee (50-50)</div>
+                  </div>
+                  <div class="contract-item">
+                    <div class="contract-item-label">Signing Bonus</div>
+                    <div class="contract-item-value">€15K</div>
+                    <div class="contract-item-desc">To player, on signing</div>
+                  </div>
+                  <div class="contract-item">
+                    <div class="contract-item-label">Sell-on Clause</div>
+                    <div class="contract-item-value">15%</div>
+                    <div class="contract-item-desc">Of future profit to Sheffield</div>
+                  </div>
+                  <div class="contract-item">
+                    <div class="contract-item-label">Performance Bonus</div>
+                    <div class="contract-item-value">€30K</div>
+                    <div class="contract-item-desc">20 apps + 5 G/A = €30K</div>
+                  </div>
+                </div>
+                <div style="margin-top: 1rem; padding: 0.6rem; background: var(--mgsr-green-dim); border-radius: 8px; font-size: 0.8rem; color: var(--mgsr-green); text-align: center; font-weight: 600;">
+                  Total deal value: €420K + €30K bonuses = €450K max · Your commission: €12,600
+                </div>
+              </div>
+
+              <!-- Option B: Creative -->
+              <div style="background: var(--mgsr-darker); border: 1px solid var(--mgsr-border); border-radius: 14px; padding: 1.25rem;">
+                <h4 style="font-family: 'Syne', sans-serif; font-weight: 700; margin-bottom: 0.75rem;">Option B: Creative Structure</h4>
+                <div class="contract-grid">
+                  <div class="contract-item">
+                    <div class="contract-item-label">Base Fee</div>
+                    <div class="contract-item-value" style="color: var(--mgsr-teal);">€350K</div>
+                    <div class="contract-item-desc">Lower upfront (easier for Hapoel)</div>
+                  </div>
+                  <div class="contract-item">
+                    <div class="contract-item-label">Salary</div>
+                    <div class="contract-item-value" style="color: var(--mgsr-amber);">€20K/yr</div>
+                    <div class="contract-item-desc">Higher salary compensates</div>
+                  </div>
+                  <div class="contract-item">
+                    <div class="contract-item-label">Agent Commission</div>
+                    <div class="contract-item-value" style="color: var(--mgsr-green);">€21K</div>
+                    <div class="contract-item-desc">6% of fee (50-50)</div>
+                  </div>
+                  <div class="contract-item">
+                    <div class="contract-item-label">Performance Add-ons</div>
+                    <div class="contract-item-value">€100K</div>
+                    <div class="contract-item-desc">20G/A=€50K, Europe=€50K</div>
+                  </div>
+                  <div class="contract-item">
+                    <div class="contract-item-label">Sell-on Clause</div>
+                    <div class="contract-item-value">20%</div>
+                    <div class="contract-item-desc">Higher % (bet on upside)</div>
+                  </div>
+                  <div class="contract-item">
+                    <div class="contract-item-label">Loyalty Bonus</div>
+                    <div class="contract-item-value">€25K</div>
+                    <div class="contract-item-desc">If stays 2+ years</div>
+                  </div>
+                </div>
+                <div style="margin-top: 1rem; padding: 0.6rem; background: var(--mgsr-purple-dim); border-radius: 8px; font-size: 0.8rem; color: var(--mgsr-purple); text-align: center; font-weight: 600;">
+                  Total deal value: €350K + €125K bonuses = €475K max · Your commission: €10,500 base
+                </div>
+              </div>
+            </div>
+
+            <div style="margin-top: 1rem; padding: 0.85rem; background: var(--mgsr-darker); border-radius: 10px;">
+              <div style="display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.4rem;">
+                <span style="font-size: 0.7rem; background: linear-gradient(135deg, var(--mgsr-purple), var(--mgsr-teal)); color: #fff; padding: 0.15rem 0.5rem; border-radius: 4px; font-weight: 700;">AI</span>
+                <span style="font-size: 0.85rem; font-weight: 700;">Structure Recommendation</span>
+              </div>
+              <p style="font-size: 0.85rem; line-height: 1.6;">
+                <strong>Go with Option A.</strong> Hapoel's new management wants quick, clean deals — the standard structure is easier to approve internally. 
+                The €420K fee is supported by comparable transfers. Add the sell-on clause at 15% as a sweetener for Sheffield Wednesday — 
+                it costs Hapoel nothing upfront. The performance bonus protects both sides and <strong style="color: var(--mgsr-green);">maximizes your commission certainty</strong>.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ TAB 5: AI Strategy ═══ -->
+      <div id="tab-strategy" style="display: none;">
+        <div class="strategy-output">
+          <div class="strategy-output-header">
+            <span class="ai-badge">🧠 Gemini AI</span>
+            <h3>Negotiation Battle Plan — Marcus Johnson → Hapoel Tel Aviv</h3>
+          </div>
+
+          <div class="strategy-section">
+            <h4>📍 Executive Summary</h4>
+            <p>
+              You're in a <span class="strength">strong position</span>. The player matches Hapoel's exact request, you have exclusive mandate, 
+              and their coaching change creates urgency on their side. Their counter-offer of <span class="key-number">€380K</span> is a standard 
+              opening gambit — sit tight, don't panic. The market supports <span class="key-number">€420-450K</span>.
+            </p>
+          </div>
+
+          <div class="strategy-section">
+            <h4>🎯 Recommended Numbers</h4>
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; margin: 0.5rem 0;">
+              <div style="background: var(--mgsr-amber-dim); border-radius: 10px; padding: 0.85rem; text-align: center;">
+                <div style="font-size: 0.7rem; color: var(--mgsr-amber);">OPENING</div>
+                <div class="mono" style="font-size: 1.3rem; font-weight: 700; color: var(--mgsr-amber);">€480K</div>
+                <div style="font-size: 0.7rem; color: var(--mgsr-muted);">Leave room to "go down"</div>
+              </div>
+              <div style="background: var(--mgsr-green-dim); border-radius: 10px; padding: 0.85rem; text-align: center;">
+                <div style="font-size: 0.7rem; color: var(--mgsr-green);">TARGET</div>
+                <div class="mono" style="font-size: 1.3rem; font-weight: 700; color: var(--mgsr-green);">€420K</div>
+                <div style="font-size: 0.7rem; color: var(--mgsr-muted);">Sweet spot — market fair</div>
+              </div>
+              <div style="background: var(--mgsr-red-dim); border-radius: 10px; padding: 0.85rem; text-align: center;">
+                <div style="font-size: 0.7rem; color: var(--mgsr-red);">WALK AWAY</div>
+                <div class="mono" style="font-size: 1.3rem; font-weight: 700; color: var(--mgsr-red);">€320K</div>
+                <div style="font-size: 0.7rem; color: var(--mgsr-muted);">Below this, try other clubs</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="strategy-section">
+            <h4>🗣️ Negotiation Moves (Step by Step)</h4>
+            <div style="display: flex; flex-direction: column; gap: 0.6rem;">
+              <div style="background: rgba(0,0,0,0.2); border-radius: 10px; padding: 0.85rem; display: flex; gap: 0.75rem;">
+                <div style="font-family: 'Syne', sans-serif; font-size: 1.1rem; font-weight: 800; color: var(--mgsr-purple); width: 28px; flex-shrink: 0;">1</div>
+                <div>
+                  <div style="font-weight: 700; margin-bottom: 0.2rem;">Acknowledge their offer, don't reject</div>
+                  <p style="font-size: 0.85rem; color: var(--mgsr-muted);">
+                    "Thank you for the €380K offer. We appreciate Hapoel's interest and the player is excited about the project. 
+                    However, we have comparable deals in this market at €400-520K and interest from a European club. Let me check with all parties."
+                  </p>
+                </div>
+              </div>
+              <div style="background: rgba(0,0,0,0.2); border-radius: 10px; padding: 0.85rem; display: flex; gap: 0.75rem;">
+                <div style="font-family: 'Syne', sans-serif; font-size: 1.1rem; font-weight: 800; color: var(--mgsr-purple); width: 28px; flex-shrink: 0;">2</div>
+                <div>
+                  <div style="font-weight: 700; margin-bottom: 0.2rem;">Create urgency without pressure</div>
+                  <p style="font-size: 0.85rem; color: var(--mgsr-muted);">
+                    Wait 48 hours before responding with your counter. During this time, <span style="color: var(--mgsr-teal);">mention to your Ferencváros contact</span> 
+                    that you have a CM available. The European interest becomes a real fallback, not a bluff.
+                  </p>
+                </div>
+              </div>
+              <div style="background: rgba(0,0,0,0.2); border-radius: 10px; padding: 0.85rem; display: flex; gap: 0.75rem;">
+                <div style="font-family: 'Syne', sans-serif; font-size: 1.1rem; font-weight: 800; color: var(--mgsr-purple); width: 28px; flex-shrink: 0;">3</div>
+                <div>
+                  <div style="font-weight: 700; margin-bottom: 0.2rem;">Counter with data</div>
+                  <p style="font-size: 0.85rem; color: var(--mgsr-muted);">
+                    Counter at <span class="key-number">€460K</span> (not €480K — shows you moved): "Based on comparable transfers (Dønnum at €520K, 
+                    Iglesias at €550K to Hapoel themselves), we feel €460K is fair. We can structure with performance bonuses — 
+                    the player believes in himself."
+                  </p>
+                </div>
+              </div>
+              <div style="background: rgba(0,0,0,0.2); border-radius: 10px; padding: 0.85rem; display: flex; gap: 0.75rem;">
+                <div style="font-family: 'Syne', sans-serif; font-size: 1.1rem; font-weight: 800; color: var(--mgsr-purple); width: 28px; flex-shrink: 0;">4</div>
+                <div>
+                  <div style="font-weight: 700; margin-bottom: 0.2rem;">The "bridging concession"</div>
+                  <p style="font-size: 0.85rem; color: var(--mgsr-muted);">
+                    If they counter at ~€400K, close the gap by offering a structured deal: <span style="color: var(--mgsr-teal);">€400K base + €50K in 
+                    achievable bonuses (20 appearances)</span>. This lets Hapoel report a "€400K signing" internally while the true deal is €420-450K.
+                    Both sides save face.
+                  </p>
+                </div>
+              </div>
+              <div style="background: rgba(0,0,0,0.2); border-radius: 10px; padding: 0.85rem; display: flex; gap: 0.75rem;">
+                <div style="font-family: 'Syne', sans-serif; font-size: 1.1rem; font-weight: 800; color: var(--mgsr-purple); width: 28px; flex-shrink: 0;">5</div>
+                <div>
+                  <div style="font-weight: 700; margin-bottom: 0.2rem;">Lock salary independently</div>
+                  <p style="font-size: 0.85rem; color: var(--mgsr-muted);">
+                    Push for <span class="key-number">€18K/year salary</span> regardless of fee outcome. Salary negotiation is with the buying club — 
+                    separate it from the transfer fee discussion. Add a €15K signing bonus as a "welcome gift" from the club.
+                    This increases your player's total package without affecting reported transfer fee.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="strategy-section">
+            <h4>⚠️ Things to Avoid</h4>
+            <ul>
+              <li><span class="weakness">Don't mention</span> that Marcus has been benched lately — let them discover it if they haven't</li>
+              <li><span class="weakness">Don't accept</span> the first counter without at least one round of negotiation — establishes a dangerous precedent</li>
+              <li><span class="weakness">Don't name</span> the "European club" unless pressed — vagueness is power</li>
+              <li><span class="weakness">Don't split</span> the fee and salary discussion — keep them separate tracks to maximize total package</li>
+            </ul>
+          </div>
+
+          <div class="strategy-section">
+            <h4>📊 Predicted Outcome</h4>
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; margin-top: 0.5rem;">
+              <div style="background: rgba(0,0,0,0.2); border-radius: 10px; padding: 0.75rem; text-align: center;">
+                <div style="font-size: 0.7rem; color: var(--mgsr-muted);">Most Likely Fee</div>
+                <div class="mono" style="font-size: 1.1rem; font-weight: 700; color: var(--mgsr-teal);">€410-430K</div>
+                <div style="font-size: 0.7rem; color: var(--mgsr-green);">73% probability</div>
+              </div>
+              <div style="background: rgba(0,0,0,0.2); border-radius: 10px; padding: 0.75rem; text-align: center;">
+                <div style="font-size: 0.7rem; color: var(--mgsr-muted);">Expected Commission</div>
+                <div class="mono" style="font-size: 1.1rem; font-weight: 700; color: var(--mgsr-amber);">€12-13K</div>
+                <div style="font-size: 0.7rem; color: var(--mgsr-muted);">Your 50% share</div>
+              </div>
+              <div style="background: rgba(0,0,0,0.2); border-radius: 10px; padding: 0.75rem; text-align: center;">
+                <div style="font-size: 0.7rem; color: var(--mgsr-muted);">Estimated Close</div>
+                <div class="mono" style="font-size: 1.1rem; font-weight: 700; color: var(--mgsr-purple);">7-12 days</div>
+                <div style="font-size: 0.7rem; color: var(--mgsr-muted);">If you execute well</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 0.75rem; margin-top: 1.25rem; justify-content: center;">
+          <button class="btn btn-primary">📄 Export as PDF Brief</button>
+          <button class="btn btn-secondary">📤 Send to WhatsApp (Summary)</button>
+          <button class="btn btn-secondary">📞 Call Hapoel Contact</button>
+          <button class="btn btn-ghost btn-sm" style="color: var(--mgsr-amber);">🔄 Regenerate Strategy</button>
+        </div>
+      </div>
+
+    </div><!-- neg-content -->
+  </div><!-- main-content -->
+</div><!-- app-shell -->
+
+<script>
+  function switchTab(btn, tabId) {
+    document.querySelectorAll('.strategy-tab').forEach(t => t.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('[id^="tab-"]').forEach(p => p.style.display = 'none');
+    document.getElementById('tab-' + tabId).style.display = 'block';
+  }
+
+  function updateFee(slider) {
+    const v = parseInt(slider.value);
+    document.getElementById('feeValue').textContent = '€' + v.toLocaleString();
+    document.getElementById('calcFee').textContent = '€' + (v / 1000).toFixed(0) + 'K';
+    const comm = parseFloat(document.getElementById('commValue').textContent) / 100;
+    const c = Math.round(v * comm);
+    document.getElementById('calcComm').textContent = '€' + c.toLocaleString();
+    document.getElementById('calcShare').textContent = '€' + Math.round(c / 2).toLocaleString();
+    document.getElementById('calcTarget').textContent = '€' + Math.round(420000 * comm / 2).toLocaleString();
+  }
+
+  function updateComm(slider) {
+    const c = parseFloat(slider.value);
+    document.getElementById('commValue').textContent = c.toFixed(1) + '%';
+    const fee = parseInt(document.querySelector('input[type="range"]').value);
+    const comm = Math.round(fee * c / 100);
+    document.getElementById('calcComm').textContent = '€' + comm.toLocaleString();
+    document.getElementById('calcShare').textContent = '€' + Math.round(comm / 2).toLocaleString();
+    document.getElementById('calcTarget').textContent = '€' + Math.round(420000 * c / 100 / 2).toLocaleString();
+  }
+</script>
+
+</body>
+</html>

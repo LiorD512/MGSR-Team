@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Squad Gap Analyzer & Opportunity Matcher — MGSR</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Outfit:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --mgsr-dark: #0F1923; --mgsr-darker: #0A1219; --mgsr-card: #1A2736;
+      --mgsr-card-hover: #1F2F40; --mgsr-border: #253545;
+      --mgsr-teal: #4DB6AC; --mgsr-teal-dim: rgba(77,182,172,0.15);
+      --mgsr-text: #E8EAED; --mgsr-muted: #8C999B;
+      --mgsr-purple: #A855F7; --mgsr-purple-dim: rgba(168,85,247,0.15);
+      --mgsr-amber: #F59E0B; --mgsr-amber-dim: rgba(245,158,11,0.15);
+      --mgsr-green: #22c55e; --mgsr-green-dim: rgba(34,197,94,0.15);
+      --mgsr-red: #ef4444; --mgsr-red-dim: rgba(239,68,68,0.15);
+      --mgsr-blue: #3b82f6; --mgsr-blue-dim: rgba(59,130,246,0.15);
+      --mgsr-pink: #ec4899; --mgsr-pink-dim: rgba(236,72,153,0.15);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Outfit', sans-serif; background: var(--mgsr-dark); color: var(--mgsr-text); min-height: 100vh; line-height: 1.5; }
+    .mono { font-family: 'JetBrains Mono', monospace; }
+
+    .app-shell { display: flex; min-height: 100vh; }
+    .sidebar { width: 224px; flex-shrink: 0; background: var(--mgsr-card); border-right: 1px solid var(--mgsr-border); display: flex; flex-direction: column; }
+    .sidebar-logo { padding: 1.25rem 1rem; border-bottom: 1px solid var(--mgsr-border); display: flex; align-items: center; gap: 0.75rem; }
+    .sidebar-logo .logo-icon { width: 36px; height: 36px; border-radius: 10px; background: linear-gradient(135deg, var(--mgsr-teal), var(--mgsr-purple)); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.85rem; color: #fff; }
+    .sidebar-logo span { font-family: 'Syne', sans-serif; font-size: 1.15rem; font-weight: 700; color: var(--mgsr-teal); }
+    .platform-switcher { display: flex; gap: 4px; padding: 4px; background: var(--mgsr-darker); border-radius: 10px; border: 1px solid var(--mgsr-border); margin: 0.75rem; }
+    .platform-btn { flex: 1; padding: 0.4rem; border-radius: 7px; font-size: 0.75rem; font-weight: 600; background: transparent; border: none; color: var(--mgsr-muted); cursor: pointer; font-family: 'Outfit', sans-serif; }
+    .platform-btn.active { background: var(--mgsr-teal-dim); color: var(--mgsr-teal); }
+    .sidebar-section { padding: 0.75rem; }
+    .sidebar-section-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--mgsr-muted); padding: 0.5rem 0.75rem; font-weight: 600; }
+    .sidebar-nav a { display: flex; align-items: center; gap: 0.75rem; padding: 0.65rem 0.75rem; border-radius: 8px; color: var(--mgsr-muted); font-size: 0.875rem; text-decoration: none; margin-bottom: 2px; transition: all 0.2s; }
+    .sidebar-nav a:hover { color: var(--mgsr-text); background: rgba(255,255,255,0.04); }
+    .sidebar-nav a.active { background: var(--mgsr-teal-dim); color: var(--mgsr-teal); font-weight: 600; }
+    .sidebar-nav a .nav-icon { font-size: 1.1rem; width: 20px; text-align: center; }
+    .sidebar-footer { margin-top: auto; padding: 1rem; border-top: 1px solid var(--mgsr-border); display: flex; align-items: center; gap: 0.75rem; }
+    .sidebar-footer .avatar { width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, var(--mgsr-teal), var(--mgsr-blue)); display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 700; color: #fff; }
+    .sidebar-footer .agent-name { font-size: 0.85rem; font-weight: 500; }
+    .sidebar-footer .agent-role { font-size: 0.7rem; color: var(--mgsr-muted); }
+
+    .main-content { flex: 1; overflow-y: auto; }
+    .top-bar { padding: 1rem 1.5rem; border-bottom: 1px solid var(--mgsr-border); display: flex; align-items: center; justify-content: space-between; background: var(--mgsr-card); position: sticky; top: 0; z-index: 20; }
+    .top-bar h1 { font-family: 'Syne', sans-serif; font-size: 1.35rem; font-weight: 800; }
+    .top-bar .breadcrumb { font-size: 0.8rem; color: var(--mgsr-muted); }
+    .btn { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.5rem 1rem; border-radius: 8px; font-family: inherit; font-size: 0.85rem; font-weight: 600; cursor: pointer; border: none; transition: all 0.2s; }
+    .btn-primary { background: var(--mgsr-teal); color: var(--mgsr-dark); }
+    .btn-primary:hover { background: #5fc9c0; }
+    .btn-secondary { background: var(--mgsr-card); color: var(--mgsr-text); border: 1px solid var(--mgsr-border); }
+    .btn-sm { padding: 0.35rem 0.75rem; font-size: 0.8rem; }
+
+    .content { padding: 1.5rem; max-width: 1300px; margin: 0 auto; }
+
+    /* Club Selector */
+    .club-selector { display: flex; gap: 0.75rem; margin-bottom: 1.5rem; overflow-x: auto; padding-bottom: 0.5rem; }
+    .club-card { background: var(--mgsr-card); border: 2px solid var(--mgsr-border); border-radius: 14px; padding: 0.85rem 1.25rem; cursor: pointer; transition: all 0.2s; min-width: 180px; flex-shrink: 0; }
+    .club-card:hover { border-color: var(--mgsr-teal); }
+    .club-card.active { border-color: var(--mgsr-teal); background: var(--mgsr-teal-dim); }
+    .club-card .club-name { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 0.9rem; }
+    .club-card .club-meta { font-size: 0.75rem; color: var(--mgsr-muted); }
+    .club-card .club-gaps { font-family: 'JetBrains Mono', monospace; font-size: 0.95rem; font-weight: 700; color: var(--mgsr-red); margin-top: 0.25rem; }
+
+    /* KPI Bar */
+    .kpi-bar { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.75rem; margin-bottom: 1.5rem; }
+    .kpi { background: var(--mgsr-card); border: 1px solid var(--mgsr-border); border-radius: 12px; padding: 0.85rem; text-align: center; }
+    .kpi .kpi-value { font-family: 'JetBrains Mono', monospace; font-size: 1.4rem; font-weight: 700; }
+    .kpi .kpi-label { font-size: 0.7rem; color: var(--mgsr-muted); margin-top: 0.15rem; }
+
+    /* Pitch Visualization */
+    .pitch-section { display: grid; grid-template-columns: 400px 1fr; gap: 1.25rem; margin-bottom: 1.5rem; }
+    .pitch-container { background: var(--mgsr-card); border: 1px solid var(--mgsr-border); border-radius: 14px; padding: 1rem; }
+    .pitch {
+      width: 100%; aspect-ratio: 0.7; background: linear-gradient(180deg, #1a4d2e 0%, #1a5c35 30%, #1a4d2e 60%, #1a5c35 100%);
+      border-radius: 10px; position: relative; border: 2px solid rgba(255,255,255,0.15);
+      overflow: hidden;
+    }
+    .pitch::before { content: ''; position: absolute; top: 50%; left: 5%; right: 5%; height: 1px; background: rgba(255,255,255,0.2); }
+    .pitch::after { content: ''; position: absolute; top: 35%; left: 25%; right: 25%; bottom: 50%; border: 1px solid rgba(255,255,255,0.15); border-bottom: none; border-radius: 0 0 0 0; }
+    .pitch-center { position: absolute; top: 50%; left: 50%; width: 60px; height: 60px; border: 1px solid rgba(255,255,255,0.15); border-radius: 50%; transform: translate(-50%, -50%); }
+    .pitch-player { position: absolute; width: 44px; height: 54px; transform: translate(-50%, -50%); text-align: center; cursor: pointer; z-index: 2; }
+    .pitch-player .pp-dot { width: 32px; height: 32px; border-radius: 50%; margin: 0 auto; display: flex; align-items: center; justify-content: center; font-size: 0.65rem; font-weight: 700; border: 2px solid; }
+    .pitch-player .pp-name { font-size: 0.55rem; margin-top: 2px; white-space: nowrap; text-shadow: 0 1px 3px rgba(0,0,0,0.8); }
+    .pp-green .pp-dot { background: var(--mgsr-green-dim); border-color: var(--mgsr-green); color: var(--mgsr-green); }
+    .pp-amber .pp-dot { background: var(--mgsr-amber-dim); border-color: var(--mgsr-amber); color: var(--mgsr-amber); }
+    .pp-red .pp-dot { background: var(--mgsr-red-dim); border-color: var(--mgsr-red); color: var(--mgsr-red); }
+    .pp-empty .pp-dot { background: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.3); color: rgba(255,255,255,0.4); border-style: dashed; }
+
+    .pitch-legend { display: flex; gap: 1rem; margin-top: 0.75rem; justify-content: center; }
+    .pitch-legend span { display: flex; align-items: center; gap: 0.3rem; font-size: 0.7rem; color: var(--mgsr-muted); }
+    .pitch-legend .dot { width: 10px; height: 10px; border-radius: 50%; }
+
+    /* Gaps List */
+    .gaps-panel { display: flex; flex-direction: column; gap: 0.75rem; }
+    .gap-card { background: var(--mgsr-card); border: 1px solid var(--mgsr-border); border-radius: 12px; padding: 1rem; transition: all 0.2s; }
+    .gap-card:hover { border-color: var(--mgsr-teal); }
+    .gap-card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem; }
+    .gap-card-header h4 { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 0.95rem; }
+    .gap-severity { font-size: 0.65rem; padding: 0.15rem 0.5rem; border-radius: 4px; font-weight: 700; }
+    .sev-critical { background: var(--mgsr-red-dim); color: var(--mgsr-red); }
+    .sev-high { background: var(--mgsr-amber-dim); color: var(--mgsr-amber); }
+    .sev-medium { background: var(--mgsr-blue-dim); color: var(--mgsr-blue); }
+    .gap-reason { font-size: 0.8rem; color: var(--mgsr-muted); margin-bottom: 0.5rem; }
+    .gap-matches { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+    .gap-match { background: var(--mgsr-darker); border: 1px solid var(--mgsr-border); border-radius: 8px; padding: 0.4rem 0.6rem; display: flex; align-items: center; gap: 0.4rem; font-size: 0.8rem; cursor: pointer; transition: all 0.2s; }
+    .gap-match:hover { border-color: var(--mgsr-teal); background: var(--mgsr-teal-dim); }
+    .gap-match .match-score { font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; font-weight: 700; padding: 0.1rem 0.3rem; border-radius: 3px; }
+
+    /* Opportunity Table */
+    .section-card { background: var(--mgsr-card); border: 1px solid var(--mgsr-border); border-radius: 14px; margin-bottom: 1.25rem; overflow: hidden; }
+    .section-card-header { padding: 1rem 1.25rem; border-bottom: 1px solid var(--mgsr-border); display: flex; align-items: center; gap: 0.6rem; }
+    .section-card-header h3 { font-family: 'Syne', sans-serif; font-size: 1rem; font-weight: 700; }
+    .section-card-body { padding: 1.25rem; }
+    .opp-table { width: 100%; border-collapse: collapse; }
+    .opp-table th { text-align: left; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--mgsr-muted); padding: 0.5rem 0.75rem; font-weight: 600; border-bottom: 1px solid var(--mgsr-border); }
+    .opp-table td { padding: 0.65rem 0.75rem; font-size: 0.85rem; border-bottom: 1px solid rgba(255,255,255,0.03); }
+    .opp-table tr:hover td { background: rgba(255,255,255,0.02); }
+    .opp-table .player-cell { display: flex; align-items: center; gap: 0.5rem; }
+    .opp-table .mini-avatar { width: 28px; height: 28px; border-radius: 7px; background: var(--mgsr-border); flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 0.65rem; }
+    .match-pct { font-family: 'JetBrains Mono', monospace; font-weight: 700; }
+
+    /* AI Insight */
+    .ai-insight { background: linear-gradient(135deg, rgba(168,85,247,0.06), rgba(77,182,172,0.04)); border: 1px solid rgba(168,85,247,0.2); border-radius: 14px; padding: 1.25rem; margin-bottom: 1.25rem; }
+    .ai-badge { font-size: 0.7rem; background: linear-gradient(135deg, var(--mgsr-purple), var(--mgsr-teal)); color: #fff; padding: 0.2rem 0.6rem; border-radius: 6px; font-weight: 700; }
+
+    /* Tabs */
+    .tabs { display: flex; gap: 4px; padding: 4px; background: var(--mgsr-card); border-radius: 12px; border: 1px solid var(--mgsr-border); margin-bottom: 1.25rem; }
+    .tab { flex: 1; padding: 0.6rem; border-radius: 9px; font-size: 0.85rem; font-weight: 600; background: transparent; border: none; color: var(--mgsr-muted); cursor: pointer; font-family: 'Outfit', sans-serif; text-align: center; transition: all 0.2s; }
+    .tab:hover { color: var(--mgsr-text); }
+    .tab.active { background: var(--mgsr-teal-dim); color: var(--mgsr-teal); }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--mgsr-border); border-radius: 3px; }
+
+    @media (max-width: 1100px) {
+      .sidebar { display: none; }
+      .pitch-section { grid-template-columns: 1fr; }
+      .kpi-bar { grid-template-columns: repeat(3, 1fr); }
+    }
+  </style>
+</head>
+<body>
+<div class="app-shell">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-logo"><div class="logo-icon">MG</div><span>MGSR</span></div>
+    <div class="platform-switcher">
+      <button class="platform-btn active">Men</button>
+      <button class="platform-btn">Women</button>
+      <button class="platform-btn">Youth</button>
+    </div>
+    <nav class="sidebar-nav sidebar-section">
+      <div class="sidebar-section-label">Main</div>
+      <a href="#"><span class="nav-icon">📊</span> Dashboard</a>
+      <a href="#"><span class="nav-icon">👥</span> Players</a>
+      <a href="#"><span class="nav-icon">💰</span> Deal Pipeline</a>
+    </nav>
+    <nav class="sidebar-nav sidebar-section">
+      <div class="sidebar-section-label">Intelligence</div>
+      <a href="#"><span class="nav-icon">🤖</span> AI Scout</a>
+      <a href="#"><span class="nav-icon">📡</span> Market Radar</a>
+      <a href="#"><span class="nav-icon">⚔️</span> Negotiation</a>
+      <a href="#" class="active"><span class="nav-icon">🔍</span> Squad Analyzer</a>
+    </nav>
+    <nav class="sidebar-nav sidebar-section">
+      <div class="sidebar-section-label">Network</div>
+      <a href="#"><span class="nav-icon">📇</span> Contacts</a>
+      <a href="#"><span class="nav-icon">📩</span> Requests</a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="avatar">LD</div>
+      <div><div class="agent-name">Lior Dahan</div><div class="agent-role">FIFA Licensed Agent</div></div>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <div class="main-content">
+    <div class="top-bar">
+      <div>
+        <span class="breadcrumb">MGSR · Intelligence · Squad Analyzer</span>
+        <h1>🔍 Squad Gap Analyzer & Opportunity Matcher</h1>
+      </div>
+      <div style="display: flex; gap: 0.75rem;">
+        <button class="btn btn-secondary btn-sm">📄 Export Report</button>
+        <button class="btn btn-primary btn-sm">+ Analyze New Club</button>
+      </div>
+    </div>
+
+    <div class="content">
+
+      <!-- Club Selector (from your Requests collection clubs) -->
+      <div class="club-selector">
+        <div class="club-card active">
+          <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <span style="font-size: 1.2rem;">🇮🇱</span>
+            <div>
+              <div class="club-name">Hapoel Tel Aviv</div>
+              <div class="club-meta">Ligat Ha'Al · Avg value: €380K</div>
+            </div>
+          </div>
+          <div class="club-gaps">4 gaps found</div>
+        </div>
+        <div class="club-card">
+          <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <span style="font-size: 1.2rem;">🇮🇱</span>
+            <div>
+              <div class="club-name">Maccabi Tel Aviv</div>
+              <div class="club-meta">Ligat Ha'Al · Avg value: €620K</div>
+            </div>
+          </div>
+          <div class="club-gaps">2 gaps found</div>
+        </div>
+        <div class="club-card">
+          <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <span style="font-size: 1.2rem;">🇭🇺</span>
+            <div>
+              <div class="club-name">Ferencváros</div>
+              <div class="club-meta">NB I · Avg value: €1.2M</div>
+            </div>
+          </div>
+          <div class="club-gaps">3 gaps found</div>
+        </div>
+        <div class="club-card">
+          <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <span style="font-size: 1.2rem;">🇮🇱</span>
+            <div>
+              <div class="club-name">Maccabi Haifa</div>
+              <div class="club-meta">Ligat Ha'Al · Avg value: €450K</div>
+            </div>
+          </div>
+          <div class="club-gaps">3 gaps found</div>
+        </div>
+        <div class="club-card">
+          <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <span style="font-size: 1.2rem;">🇮🇱</span>
+            <div>
+              <div class="club-name">Beitar Jerusalem</div>
+              <div class="club-meta">Ligat Ha'Al · Avg value: €310K</div>
+            </div>
+          </div>
+          <div class="club-gaps">5 gaps found</div>
+        </div>
+        <div class="club-card">
+          <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <span style="font-size: 1.2rem;">🇷🇸</span>
+            <div>
+              <div class="club-name">FK Partizan</div>
+              <div class="club-meta">Super Liga · Avg value: €520K</div>
+            </div>
+          </div>
+          <div class="club-gaps">2 gaps found</div>
+        </div>
+      </div>
+
+      <!-- KPI Bar for selected club -->
+      <div class="kpi-bar">
+        <div class="kpi">
+          <div class="kpi-value" style="color: var(--mgsr-text);">27</div>
+          <div class="kpi-label">Squad Size</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-value" style="color: var(--mgsr-amber);">30.2</div>
+          <div class="kpi-label">Avg Age</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-value" style="color: var(--mgsr-red);">6</div>
+          <div class="kpi-label">Contracts Expiring</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-value" style="color: var(--mgsr-teal);">€10.3M</div>
+          <div class="kpi-label">Total Squad Value</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-value" style="color: var(--mgsr-green);">8</div>
+          <div class="kpi-label">Your Matches In Roster</div>
+        </div>
+      </div>
+
+      <!-- Tabs -->
+      <div class="tabs">
+        <button class="tab active" onclick="switchTab(this,'pitch')">⚽ Pitch View</button>
+        <button class="tab" onclick="switchTab(this,'gaps')">🚨 Gap Analysis</button>
+        <button class="tab" onclick="switchTab(this,'opportunities')">💎 Opportunities</button>
+        <button class="tab" onclick="switchTab(this,'expiring')">⏳ Expiring Contracts</button>
+      </div>
+
+      <!-- TAB: Pitch View -->
+      <div id="tab-pitch">
+        <div class="pitch-section">
+          <!-- Pitch -->
+          <div class="pitch-container">
+            <h3 style="font-family: 'Syne', sans-serif; font-weight: 700; margin-bottom: 0.75rem; font-size: 0.95rem;">
+              🇮🇱 Hapoel Tel Aviv — Current Formation (4-2-3-1)
+            </h3>
+            <div class="pitch">
+              <div class="pitch-center"></div>
+              <!-- GK -->
+              <div class="pitch-player pp-green" style="top: 90%; left: 50%;">
+                <div class="pp-dot">GK</div><div class="pp-name">D. Greif</div>
+              </div>
+              <!-- DEF -->
+              <div class="pitch-player pp-amber" style="top: 73%; left: 15%;">
+                <div class="pp-dot">LB</div><div class="pp-name">S. Aourir</div>
+              </div>
+              <div class="pitch-player pp-red" style="top: 73%; left: 38%;">
+                <div class="pp-dot">CB</div><div class="pp-name">G. Tzadka</div>
+              </div>
+              <div class="pitch-player pp-green" style="top: 73%; left: 62%;">
+                <div class="pp-dot">CB</div><div class="pp-name">L. Pinto</div>
+              </div>
+              <div class="pitch-player pp-green" style="top: 73%; left: 85%;">
+                <div class="pp-dot">RB</div><div class="pp-name">O. Dgani</div>
+              </div>
+              <!-- DM -->
+              <div class="pitch-player pp-amber" style="top: 55%; left: 35%;">
+                <div class="pp-dot">DM</div><div class="pp-name">D. Peretz</div>
+              </div>
+              <div class="pitch-player pp-empty" style="top: 55%; left: 65%;">
+                <div class="pp-dot">CM</div><div class="pp-name">GAP</div>
+              </div>
+              <!-- AM -->
+              <div class="pitch-player pp-green" style="top: 38%; left: 15%;">
+                <div class="pp-dot">LW</div><div class="pp-name">E. Elmkies</div>
+              </div>
+              <div class="pitch-player pp-amber" style="top: 38%; left: 50%;">
+                <div class="pp-dot">AM</div><div class="pp-name">I. Glazer</div>
+              </div>
+              <div class="pitch-player pp-red" style="top: 38%; left: 85%;">
+                <div class="pp-dot">RW</div><div class="pp-name">GAP</div>
+              </div>
+              <!-- ST -->
+              <div class="pitch-player pp-green" style="top: 18%; left: 50%;">
+                <div class="pp-dot">CF</div><div class="pp-name">T. Baribo</div>
+              </div>
+            </div>
+            <div class="pitch-legend">
+              <span><div class="dot" style="background: var(--mgsr-green);"></div> Strong</span>
+              <span><div class="dot" style="background: var(--mgsr-amber);"></div> Aging/Expiring</span>
+              <span><div class="dot" style="background: var(--mgsr-red);"></div> Weak</span>
+              <span><div class="dot" style="background: rgba(255,255,255,0.3); border: 1px dashed rgba(255,255,255,0.5);"></div> Gap (no depth)</span>
+            </div>
+          </div>
+
+          <!-- Gap Cards -->
+          <div class="gaps-panel">
+            <div style="display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.25rem;">
+              <span class="ai-badge">🧠 AI</span>
+              <span style="font-size: 0.85rem; font-weight: 600;">4 squad gaps identified · 8 players from your roster match</span>
+            </div>
+
+            <div class="gap-card">
+              <div class="gap-card-header">
+                <h4>🔴 CM — Central Midfield</h4>
+                <span class="gap-severity sev-critical">CRITICAL</span>
+              </div>
+              <div class="gap-reason">Only 1 natural CM (Peretz, 30, contract Jun 2026). No backup. They have an open request for CM 22-26.</div>
+              <div class="gap-matches">
+                <div class="gap-match">
+                  <div class="mini-avatar">MJ</div>
+                  <div><strong>Marcus Johnson</strong><br><span style="font-size:0.7rem;color:var(--mgsr-muted);">22 · CM · €450K</span></div>
+                  <span class="match-score" style="background: var(--mgsr-green-dim); color: var(--mgsr-green);">96%</span>
+                </div>
+                <div class="gap-match">
+                  <div class="mini-avatar">DC</div>
+                  <div><strong>David Čerin</strong><br><span style="font-size:0.7rem;color:var(--mgsr-muted);">24 · CM · €350K</span></div>
+                  <span class="match-score" style="background: var(--mgsr-green-dim); color: var(--mgsr-green);">89%</span>
+                </div>
+                <div class="gap-match">
+                  <div class="mini-avatar">LT</div>
+                  <div><strong>Luka Topalović</strong><br><span style="font-size:0.7rem;color:var(--mgsr-muted);">21 · CM/AM · €550K</span></div>
+                  <span class="match-score" style="background: var(--mgsr-amber-dim); color: var(--mgsr-amber);">78%</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="gap-card">
+              <div class="gap-card-header">
+                <h4>🟠 RW — Right Winger</h4>
+                <span class="gap-severity sev-high">HIGH</span>
+              </div>
+              <div class="gap-reason">Current RW (A. Biton) is 32, contract expiring Dec 2026. No U-25 backup on the wing.</div>
+              <div class="gap-matches">
+                <div class="gap-match">
+                  <div class="mini-avatar">LS</div>
+                  <div><strong>Lucas Silva</strong><br><span style="font-size:0.7rem;color:var(--mgsr-muted);">23 · RW · €280K</span></div>
+                  <span class="match-score" style="background: var(--mgsr-green-dim); color: var(--mgsr-green);">91%</span>
+                </div>
+                <div class="gap-match">
+                  <div class="mini-avatar">IM</div>
+                  <div><strong>Ivan Marković</strong><br><span style="font-size:0.7rem;color:var(--mgsr-muted);">22 · RW/LW · €320K</span></div>
+                  <span class="match-score" style="background: var(--mgsr-green-dim); color: var(--mgsr-green);">85%</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="gap-card">
+              <div class="gap-card-header">
+                <h4>🟡 CB — Centre Back</h4>
+                <span class="gap-severity sev-high">HIGH</span>
+              </div>
+              <div class="gap-reason">Tzadka (33) is CB1 with declining value. Pinto is solid but no 3rd CB. Recent injury to reserve CB creates urgency.</div>
+              <div class="gap-matches">
+                <div class="gap-match">
+                  <div class="mini-avatar">MP</div>
+                  <div><strong>Marko Petković</strong><br><span style="font-size:0.7rem;color:var(--mgsr-muted);">25 · CB · €400K</span></div>
+                  <span class="match-score" style="background: var(--mgsr-green-dim); color: var(--mgsr-green);">92%</span>
+                </div>
+                <div class="gap-match">
+                  <div class="mini-avatar">PD</div>
+                  <div><strong>Pierre Dupont</strong><br><span style="font-size:0.7rem;color:var(--mgsr-muted);">26 · CB · €370K</span></div>
+                  <span class="match-score" style="background: var(--mgsr-amber-dim); color: var(--mgsr-amber);">74%</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="gap-card">
+              <div class="gap-card-header">
+                <h4>🔵 LB — Left Back Depth</h4>
+                <span class="gap-severity sev-medium">MEDIUM</span>
+              </div>
+              <div class="gap-reason">Aourir (29) is the only LB. Contract expires Jun 2026. No natural backup — utility players covering.</div>
+              <div class="gap-matches">
+                <div class="gap-match">
+                  <div class="mini-avatar">JO</div>
+                  <div><strong>James O'Brien</strong><br><span style="font-size:0.7rem;color:var(--mgsr-muted);">24 · LB · €250K</span></div>
+                  <span class="match-score" style="background: var(--mgsr-green-dim); color: var(--mgsr-green);">88%</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB: Gap Analysis -->
+      <div id="tab-gaps" style="display: none;">
+        <div class="ai-insight">
+          <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem;">
+            <span class="ai-badge">🧠 Gemini AI</span>
+            <h3 style="font-family: 'Syne', sans-serif; font-size: 1.05rem; font-weight: 700;">
+              Hapoel Tel Aviv — Strategic Gap Report
+            </h3>
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+            <div>
+              <h4 style="font-size: 0.8rem; font-weight: 700; color: var(--mgsr-red); margin-bottom: 0.35rem;">🚨 Critical Findings</h4>
+              <ul style="font-size: 0.85rem; line-height: 1.6; padding-left: 1.25rem;">
+                <li><strong>Midfield crisis:</strong> Only 1 natural CM (Dor Peretz, 30). If he's injured, no replacement. Club's request proves they know this.</li>
+                <li><strong>Aging defense:</strong> Average CB age is 31.5. Tzadka (33) declining. Value dropped 40% in 12 months.</li>
+                <li><strong>6 contracts expire by Jun 2026</strong> — 22% of the squad. They'll be active buyers this summer.</li>
+              </ul>
+            </div>
+            <div>
+              <h4 style="font-size: 0.8rem; font-weight: 700; color: var(--mgsr-green); margin-bottom: 0.35rem;">💡 Your Opportunity</h4>
+              <ul style="font-size: 0.85rem; line-height: 1.6; padding-left: 1.25rem;">
+                <li><strong>Marcus Johnson</strong> is a perfect CM fit (96% match). They already have an open request matching his exact profile.</li>
+                <li><strong>Marko Petković</strong> fills their CB gap at the right price point. Proactively offer him — they haven't posted a CB request yet.</li>
+                <li><strong>2 deals possible</strong> from one club = €50-80K combined commission potential.</li>
+              </ul>
+            </div>
+          </div>
+          <div style="margin-top: 0.75rem; padding: 0.6rem; background: rgba(0,0,0,0.2); border-radius: 8px;">
+            <span style="font-size: 0.8rem; color: var(--mgsr-teal); font-weight: 600;">📞 Recommended Action:</span>
+            <span style="font-size: 0.8rem;"> Call Hapoel's sporting director. Lead with Marcus Johnson (matches their request) and casually mention Petković as "someone we also have who could help your CB situation."</span>
+          </div>
+        </div>
+
+        <!-- Position-by-position breakdown -->
+        <div class="section-card">
+          <div class="section-card-header"><span>📊</span><h3>Position Depth Chart</h3></div>
+          <div class="section-card-body" style="overflow-x: auto;">
+            <table class="opp-table">
+              <thead>
+                <tr>
+                  <th>Position</th>
+                  <th>Players</th>
+                  <th>Avg Age</th>
+                  <th>Avg Value</th>
+                  <th>Expiring</th>
+                  <th>Depth</th>
+                  <th>Gap Score</th>
+                  <th>Your Roster Matches</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr style="background: var(--mgsr-red-dim);">
+                  <td><strong>CM</strong></td>
+                  <td>1</td>
+                  <td>30</td>
+                  <td class="mono" style="color: var(--mgsr-teal);">€250K</td>
+                  <td><span style="color: var(--mgsr-amber);">1 (Jun '26)</span></td>
+                  <td><span style="color: var(--mgsr-red); font-weight: 700;">⚠ No backup</span></td>
+                  <td><span class="match-pct" style="color: var(--mgsr-red);">9.2/10</span></td>
+                  <td><span style="color: var(--mgsr-green); font-weight: 600;">3 matches</span></td>
+                </tr>
+                <tr style="background: var(--mgsr-amber-dim);">
+                  <td><strong>RW</strong></td>
+                  <td>2</td>
+                  <td>29</td>
+                  <td class="mono" style="color: var(--mgsr-teal);">€180K</td>
+                  <td><span style="color: var(--mgsr-amber);">1 (Dec '26)</span></td>
+                  <td><span style="color: var(--mgsr-amber); font-weight: 600;">Thin</span></td>
+                  <td><span class="match-pct" style="color: var(--mgsr-amber);">7.5/10</span></td>
+                  <td><span style="color: var(--mgsr-green); font-weight: 600;">2 matches</span></td>
+                </tr>
+                <tr style="background: var(--mgsr-amber-dim);">
+                  <td><strong>CB</strong></td>
+                  <td>3</td>
+                  <td>31.5</td>
+                  <td class="mono" style="color: var(--mgsr-teal);">€340K</td>
+                  <td><span style="color: var(--mgsr-red);">2 (Jun '26)</span></td>
+                  <td><span style="color: var(--mgsr-amber); font-weight: 600;">Aging</span></td>
+                  <td><span class="match-pct" style="color: var(--mgsr-amber);">7.1/10</span></td>
+                  <td><span style="color: var(--mgsr-green); font-weight: 600;">2 matches</span></td>
+                </tr>
+                <tr style="background: rgba(59,130,246,0.05);">
+                  <td><strong>LB</strong></td>
+                  <td>1</td>
+                  <td>29</td>
+                  <td class="mono" style="color: var(--mgsr-teal);">€300K</td>
+                  <td><span style="color: var(--mgsr-amber);">1 (Jun '26)</span></td>
+                  <td><span style="color: var(--mgsr-blue); font-weight: 600;">Sole option</span></td>
+                  <td><span class="match-pct" style="color: var(--mgsr-blue);">6.0/10</span></td>
+                  <td><span style="color: var(--mgsr-green); font-weight: 600;">1 match</span></td>
+                </tr>
+                <tr>
+                  <td>GK</td><td>2</td><td>27</td><td class="mono" style="color: var(--mgsr-teal);">€400K</td>
+                  <td>0</td><td style="color: var(--mgsr-green);">Good</td>
+                  <td><span class="match-pct" style="color: var(--mgsr-green);">2.0/10</span></td><td style="color: var(--mgsr-muted);">0</td>
+                </tr>
+                <tr>
+                  <td>RB</td><td>2</td><td>25</td><td class="mono" style="color: var(--mgsr-teal);">€350K</td>
+                  <td>0</td><td style="color: var(--mgsr-green);">Good</td>
+                  <td><span class="match-pct" style="color: var(--mgsr-green);">1.5/10</span></td><td style="color: var(--mgsr-muted);">0</td>
+                </tr>
+                <tr>
+                  <td>LW</td><td>2</td><td>24</td><td class="mono" style="color: var(--mgsr-teal);">€520K</td>
+                  <td>0</td><td style="color: var(--mgsr-green);">Strong</td>
+                  <td><span class="match-pct" style="color: var(--mgsr-green);">1.0/10</span></td><td style="color: var(--mgsr-muted);">0</td>
+                </tr>
+                <tr>
+                  <td>CF</td><td>2</td><td>25</td><td class="mono" style="color: var(--mgsr-teal);">€600K</td>
+                  <td>0</td><td style="color: var(--mgsr-green);">Strong</td>
+                  <td><span class="match-pct" style="color: var(--mgsr-green);">0.5/10</span></td><td style="color: var(--mgsr-muted);">0</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB: Opportunities -->
+      <div id="tab-opportunities" style="display: none;">
+        <div class="section-card">
+          <div class="section-card-header"><span>💎</span><h3>Proactive Opportunities — Players You Can Offer Hapoel Tel Aviv</h3></div>
+          <div class="section-card-body" style="overflow-x: auto;">
+            <table class="opp-table">
+              <thead>
+                <tr>
+                  <th>Player</th>
+                  <th>Position</th>
+                  <th>Age</th>
+                  <th>Value</th>
+                  <th>Fills Gap</th>
+                  <th>Match %</th>
+                  <th>Has Request?</th>
+                  <th>Commission Est.</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><div class="player-cell"><div class="mini-avatar" style="background: var(--mgsr-teal-dim); color: var(--mgsr-teal);">MJ</div><strong>Marcus Johnson</strong></div></td>
+                  <td>CM</td><td>22</td>
+                  <td class="mono" style="color: var(--mgsr-teal);">€450K</td>
+                  <td><span style="color: var(--mgsr-red); font-weight: 700;">CM (Critical)</span></td>
+                  <td><span class="match-pct" style="color: var(--mgsr-green);">96%</span></td>
+                  <td><span style="background: var(--mgsr-green-dim); color: var(--mgsr-green); font-size: 0.7rem; padding: 0.1rem 0.4rem; border-radius: 4px; font-weight: 600;">✓ Yes</span></td>
+                  <td class="mono" style="color: var(--mgsr-amber);">€13.5K</td>
+                  <td><button class="btn btn-primary btn-sm">📞 Offer</button></td>
+                </tr>
+                <tr>
+                  <td><div class="player-cell"><div class="mini-avatar">MP</div><strong>Marko Petković</strong></div></td>
+                  <td>CB</td><td>25</td>
+                  <td class="mono" style="color: var(--mgsr-teal);">€400K</td>
+                  <td><span style="color: var(--mgsr-amber); font-weight: 600;">CB (High)</span></td>
+                  <td><span class="match-pct" style="color: var(--mgsr-green);">92%</span></td>
+                  <td><span style="color: var(--mgsr-muted); font-size: 0.7rem;">No request</span></td>
+                  <td class="mono" style="color: var(--mgsr-amber);">€12K</td>
+                  <td><button class="btn btn-primary btn-sm">📞 Offer</button></td>
+                </tr>
+                <tr>
+                  <td><div class="player-cell"><div class="mini-avatar">LS</div><strong>Lucas Silva</strong></div></td>
+                  <td>RW</td><td>23</td>
+                  <td class="mono" style="color: var(--mgsr-teal);">€280K</td>
+                  <td><span style="color: var(--mgsr-amber); font-weight: 600;">RW (High)</span></td>
+                  <td><span class="match-pct" style="color: var(--mgsr-green);">91%</span></td>
+                  <td><span style="color: var(--mgsr-muted); font-size: 0.7rem;">No request</span></td>
+                  <td class="mono" style="color: var(--mgsr-amber);">€8.4K</td>
+                  <td><button class="btn btn-primary btn-sm">📞 Offer</button></td>
+                </tr>
+                <tr>
+                  <td><div class="player-cell"><div class="mini-avatar">DC</div><strong>David Čerin</strong></div></td>
+                  <td>CM</td><td>24</td>
+                  <td class="mono" style="color: var(--mgsr-teal);">€350K</td>
+                  <td><span style="color: var(--mgsr-red); font-weight: 700;">CM (Critical)</span></td>
+                  <td><span class="match-pct" style="color: var(--mgsr-green);">89%</span></td>
+                  <td><span style="background: var(--mgsr-green-dim); color: var(--mgsr-green); font-size: 0.7rem; padding: 0.1rem 0.4rem; border-radius: 4px; font-weight: 600;">✓ Yes</span></td>
+                  <td class="mono" style="color: var(--mgsr-amber);">€10.5K</td>
+                  <td><button class="btn btn-secondary btn-sm">📤 Send CV</button></td>
+                </tr>
+                <tr>
+                  <td><div class="player-cell"><div class="mini-avatar">JO</div><strong>James O'Brien</strong></div></td>
+                  <td>LB</td><td>24</td>
+                  <td class="mono" style="color: var(--mgsr-teal);">€250K</td>
+                  <td><span style="color: var(--mgsr-blue);">LB (Medium)</span></td>
+                  <td><span class="match-pct" style="color: var(--mgsr-green);">88%</span></td>
+                  <td><span style="color: var(--mgsr-muted); font-size: 0.7rem;">No request</span></td>
+                  <td class="mono" style="color: var(--mgsr-amber);">€7.5K</td>
+                  <td><button class="btn btn-secondary btn-sm">📤 Send CV</button></td>
+                </tr>
+                <tr>
+                  <td><div class="player-cell"><div class="mini-avatar">IM</div><strong>Ivan Marković</strong></div></td>
+                  <td>RW/LW</td><td>22</td>
+                  <td class="mono" style="color: var(--mgsr-teal);">€320K</td>
+                  <td><span style="color: var(--mgsr-amber); font-weight: 600;">RW (High)</span></td>
+                  <td><span class="match-pct" style="color: var(--mgsr-green);">85%</span></td>
+                  <td><span style="color: var(--mgsr-muted); font-size: 0.7rem;">No request</span></td>
+                  <td class="mono" style="color: var(--mgsr-amber);">€9.6K</td>
+                  <td><button class="btn btn-secondary btn-sm">📤 Send CV</button></td>
+                </tr>
+              </tbody>
+            </table>
+            <div style="margin-top: 1rem; padding: 0.85rem; background: var(--mgsr-green-dim); border: 1px solid rgba(34,197,94,0.2); border-radius: 10px; text-align: center;">
+              <span style="font-family: 'JetBrains Mono', monospace; font-size: 1.1rem; font-weight: 700; color: var(--mgsr-green);">
+                Total commission potential from this club: €61.5K
+              </span>
+              <span style="font-size: 0.8rem; color: var(--mgsr-muted); display: block;">
+                If all 6 deals close (best case). Realistic (top 2): €25.5K
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB: Expiring Contracts -->
+      <div id="tab-expiring" style="display: none;">
+        <div class="section-card">
+          <div class="section-card-header"><span>⏳</span><h3>Expiring Contracts — Hapoel Tel Aviv (within 18 months)</h3></div>
+          <div class="section-card-body" style="overflow-x: auto;">
+            <table class="opp-table">
+              <thead>
+                <tr>
+                  <th>Player</th>
+                  <th>Position</th>
+                  <th>Age</th>
+                  <th>Value</th>
+                  <th>Contract Ends</th>
+                  <th>Days Left</th>
+                  <th>Replacement Needed?</th>
+                  <th>Your Match</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>Dor Peretz</strong></td>
+                  <td>CM</td><td>30</td>
+                  <td class="mono" style="color: var(--mgsr-teal);">€250K</td>
+                  <td>Jun 30, 2026</td>
+                  <td><span class="mono" style="color: var(--mgsr-red); font-weight: 700;">120d</span></td>
+                  <td><span style="color: var(--mgsr-red); font-weight: 700;">Critical — sole CM</span></td>
+                  <td><span style="color: var(--mgsr-green); font-weight: 600;">Marcus Johnson (96%)</span></td>
+                </tr>
+                <tr>
+                  <td><strong>G. Tzadka</strong></td>
+                  <td>CB</td><td>33</td>
+                  <td class="mono" style="color: var(--mgsr-teal);">€150K</td>
+                  <td>Jun 30, 2026</td>
+                  <td><span class="mono" style="color: var(--mgsr-red); font-weight: 700;">120d</span></td>
+                  <td><span style="color: var(--mgsr-amber); font-weight: 600;">Yes — aging CB1</span></td>
+                  <td><span style="color: var(--mgsr-green); font-weight: 600;">Marko Petković (92%)</span></td>
+                </tr>
+                <tr>
+                  <td><strong>S. Aourir</strong></td>
+                  <td>LB</td><td>29</td>
+                  <td class="mono" style="color: var(--mgsr-teal);">€300K</td>
+                  <td>Jun 30, 2026</td>
+                  <td><span class="mono" style="color: var(--mgsr-red); font-weight: 700;">120d</span></td>
+                  <td><span style="color: var(--mgsr-amber); font-weight: 600;">Yes — only LB</span></td>
+                  <td><span style="color: var(--mgsr-green); font-weight: 600;">James O'Brien (88%)</span></td>
+                </tr>
+                <tr>
+                  <td><strong>Y. Shviro</strong></td>
+                  <td>DM</td><td>31</td>
+                  <td class="mono" style="color: var(--mgsr-teal);">€200K</td>
+                  <td>Jun 30, 2026</td>
+                  <td><span class="mono" style="color: var(--mgsr-red); font-weight: 700;">120d</span></td>
+                  <td><span style="color: var(--mgsr-muted);">Low priority — backup</span></td>
+                  <td style="color: var(--mgsr-muted);">—</td>
+                </tr>
+                <tr>
+                  <td><strong>A. Biton</strong></td>
+                  <td>RW</td><td>32</td>
+                  <td class="mono" style="color: var(--mgsr-teal);">€120K</td>
+                  <td>Dec 31, 2026</td>
+                  <td><span class="mono" style="color: var(--mgsr-amber); font-weight: 600;">304d</span></td>
+                  <td><span style="color: var(--mgsr-amber); font-weight: 600;">Yes — aging starter</span></td>
+                  <td><span style="color: var(--mgsr-green); font-weight: 600;">Lucas Silva (91%)</span></td>
+                </tr>
+                <tr>
+                  <td><strong>R. Yefet</strong></td>
+                  <td>CB</td><td>28</td>
+                  <td class="mono" style="color: var(--mgsr-teal);">€280K</td>
+                  <td>Dec 31, 2026</td>
+                  <td><span class="mono" style="color: var(--mgsr-amber); font-weight: 600;">304d</span></td>
+                  <td><span style="color: var(--mgsr-amber); font-weight: 600;">Possible — depends on Tzadka</span></td>
+                  <td><span style="color: var(--mgsr-green); font-weight: 600;">Pierre Dupont (74%)</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- content -->
+  </div><!-- main-content -->
+</div><!-- app-shell -->
+
+<script>
+function switchTab(btn, tabId) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('[id^="tab-"]').forEach(p => p.style.display = 'none');
+  document.getElementById('tab-' + tabId).style.display = 'block';
+}
+</script>
+</body>
+</html>

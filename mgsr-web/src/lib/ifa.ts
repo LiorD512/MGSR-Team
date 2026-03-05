@@ -11,14 +11,14 @@
  * We use Google (via SerpAPI) to find player pages, then scrape profiles for details.
  *
  * Player URL format:
- *   https://www.football.org.il/players/player/?player_id={INT}&season_id={INT}
- *   season_id 27 = 2024/25 season (increment for newer seasons)
+ *   https://www.football.org.il/players/player/?player_id={INT}&season_id=
+ *   Leave season_id empty so IFA defaults to the latest season.
  */
 
 import * as cheerio from 'cheerio';
 
 const IFA_BASE = 'https://www.football.org.il';
-const CURRENT_SEASON_ID = '27';
+const CURRENT_SEASON_ID = '';
 
 const USER_AGENTS = [
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -135,9 +135,34 @@ function extractClubFromSnippet(snippet: string | undefined): string | undefined
   const s = snippet.trim();
   const clubMatch =
     s.match(/קבוצה[:\s]*([^\n·|]+)/) ||
-    s.match(/(?:מכבי|הפועל|בני|ביתר|עירוני|הכח)\s+[^\n·|]{2,30}/) ||
+    s.match(/(?:מכבי|הפועל|בני|ביתר|עירוני|הכח|מ\.ס\.|הפ')\s+[^\n·|]{2,30}/) ||
     s.match(/(?:Maccabi|Hapoel|Beitar|Bnei)\s+[A-Za-z\s]{2,40}/);
-  return clubMatch ? clubMatch[1]?.trim() || clubMatch[0]?.trim() : undefined;
+  const raw = clubMatch ? clubMatch[1]?.trim() || clubMatch[0]?.trim() : undefined;
+  return cleanClubSnippet(raw);
+}
+
+/** Remove IFA site noise from club snippet text */
+function cleanClubSnippet(club: string | undefined): string | undefined {
+  if (!club?.trim()) return undefined;
+  let c = club.trim();
+  // Strip "עונה שינוי יביא לרענון" and everything after it (IFA season-change banner text)
+  c = c.replace(/\.?\s*עונה?\s*שינוי.*$/, '').trim();
+  // Strip season page listings like "עמוד: 2024/2025, ..."
+  c = c.replace(/\.?\s*עמוד\s*:.*$/, '').trim();
+  // Strip trailing season years like "2024/2025, 2023/2024 ..."
+  c = c.replace(/\.?\s*\d{4}\/\d{4}[\d\s,/]*\.{0,3}\s*$/, '').trim();
+  // Strip trailing "שערים. מסגרת." and similar stat noise
+  c = c.replace(/\.?\s*(?:שערים|מסגרת|כרטיסים)[\s.]*$/, '').trim();
+  // Take only the first club (before comma-separated second club)
+  const commaIdx = c.indexOf('),');
+  if (commaIdx > 0) c = c.substring(0, commaIdx + 1).trim();
+  // Remove trailing periods
+  c = c.replace(/\.\s*$/, '').trim();
+  // If nothing meaningful remains, return undefined
+  if (!c || c.length < 2) return undefined;
+  // If it starts with noise text, return undefined
+  if (/^עונה/.test(c)) return undefined;
+  return c;
 }
 
 /** Extract player_id from link if it's a valid IFA player page */
@@ -760,9 +785,12 @@ export function isValidIfaUrl(url: string): boolean {
   return /^https?:\/\/(www\.)?football\.org\.il\/(en\/)?players\/player\/\?player_id=\d+/.test(url);
 }
 
-/** Normalize an IFA URL to the Hebrew version (strip /en/) for reliable scraping */
+/** Normalize an IFA URL to the Hebrew version (strip /en/) and ensure season_id is empty for latest season */
 export function normalizeIfaUrl(url: string): string {
-  return url.replace(/football\.org\.il\/en\/players\//, 'football.org.il/players/');
+  let normalized = url.replace(/football\.org\.il\/en\/players\//, 'football.org.il/players/');
+  // Strip any hardcoded season_id value so IFA defaults to the latest season
+  normalized = normalized.replace(/([?&]season_id=)\d+/, '$1');
+  return normalized;
 }
 
 /** Build an IFA player URL from player_id */

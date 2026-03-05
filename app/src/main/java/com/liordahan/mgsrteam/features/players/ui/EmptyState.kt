@@ -22,10 +22,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.liordahan.mgsrteam.R
-import com.liordahan.mgsrteam.ui.theme.HomeDarkBackground
-import com.liordahan.mgsrteam.ui.theme.HomeTealAccent
-import com.liordahan.mgsrteam.ui.theme.HomeTextPrimary
-import com.liordahan.mgsrteam.ui.theme.HomeTextSecondary
+import com.liordahan.mgsrteam.ui.theme.PlatformColors
 import com.liordahan.mgsrteam.ui.utils.boldTextStyle
 import com.liordahan.mgsrteam.ui.utils.clickWithNoRipple
 import com.liordahan.mgsrteam.ui.utils.regularTextStyle
@@ -41,7 +38,7 @@ fun EmptyState(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(HomeDarkBackground)
+            .background(PlatformColors.palette.background)
     ) {
         Column(
             modifier = Modifier
@@ -60,7 +57,7 @@ fun EmptyState(
 
             Text(
                 text = text,
-                style = boldTextStyle(HomeTextPrimary, 18.sp),
+                style = boldTextStyle(PlatformColors.palette.textPrimary, 18.sp),
                 textAlign = TextAlign.Center
             )
 
@@ -68,7 +65,7 @@ fun EmptyState(
 
             Text(
                 text = stringResource(R.string.empty_try_filters),
-                style = regularTextStyle(HomeTextSecondary, 13.sp),
+                style = regularTextStyle(PlatformColors.palette.textSecondary, 13.sp),
                 textAlign = TextAlign.Center
             )
 
@@ -78,14 +75,14 @@ fun EmptyState(
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(14.dp))
-                        .background(HomeTealAccent)
+                        .background(PlatformColors.palette.accent)
                         .clickWithNoRipple { onResetFiltersClicked() }
                         .padding(horizontal = 28.dp, vertical = 12.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = optionalButtonText ?: stringResource(R.string.players_reset_filters),
-                        style = boldTextStyle(HomeDarkBackground, 14.sp)
+                        style = boldTextStyle(PlatformColors.palette.background, 14.sp)
                     )
                 }
             }

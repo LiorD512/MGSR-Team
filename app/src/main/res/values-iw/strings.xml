@@ -38,6 +38,12 @@
     <string name="players_filter_position_def">שחקני הגנה</string>
     <string name="players_filter_position_mid">שחקני קישור</string>
     <string name="players_filter_position_fwd">שחקני התקפה</string>
+    <string name="women_players_screen_hint">חפש שחקנית לפי שם</string>
+    <string name="women_players_age_format">בת %s</string>
+    <string name="women_filter_position_gk">שוערות</string>
+    <string name="women_filter_position_def">שחקניות הגנה</string>
+    <string name="women_filter_position_mid">שחקניות קישור</string>
+    <string name="women_filter_position_fwd">שחקניות התקפה</string>
     <string name="players_sort_options">אפשרויות מיון</string>
     <string name="players_sort_chip_newest">החדשים</string>
     <string name="players_sort_chip_value">שווי</string>
@@ -90,6 +96,21 @@
     <!-- Shortlist Screen -->
     <string name="shortlist_title">רשימת מעקב</string>
     <string name="shortlist_subtitle">פרופילים שמורים משחרורים וחזרו מהשאלה — הוסף לסוכנות כשמוכן</string>
+    <string name="women_shortlist_subtitle">שחקניות למעקב בשבועות הקרובים</string>
+    <string name="youth_shortlist_subtitle">פרופילים למעקב לעתיד הקרוב</string>
+    <string name="women_player_info_title">פרטי שחקנית</string>
+    <string name="women_player_info_subtitle">צפה ונהל פרטי שחקנית</string>
+    <string name="women_add_player_title">הוסף שחקנית</string>
+    <string name="women_requests_subtitle">בקשות שחקניות ממועדונים לפי עמדה</string>
+    <string name="women_requests_matching_players_one">%d שחקנית תואמת</string>
+    <string name="women_requests_matching_players">%d שחקניות תואמות במאגר</string>
+    <string name="women_requests_find_players_sheet_title">שחקניות לבקשה זו</string>
+    <string name="women_requests_find_players_online">מצא שחקניות ברשת</string>
+    <string name="women_requests_online_players_sheet_title">שחקניות מהשוק</string>
+    <string name="women_requests_online_players_loading">מחפש שחקניות…</string>
+    <string name="women_requests_online_players_empty">לא נמצאו שחקניות תואמות באינטרנט</string>
+    <string name="women_requests_online_results_count">נמצאו %d שחקניות</string>
+    <string name="women_requests_no_match">אין שחקניות במאגר התואמות לבקשה זו</string>
     <string name="shortlist_add_player">הוסף שחקן</string>
     <string name="shortlist_stat_this_week">השבוע</string>
     <string name="shortlist_could_not_load">לא ניתן לטעון את השחקן. ייתכן שהוא כבר במאגר שלך.</string>
@@ -293,6 +314,98 @@
     <string name="my_hub_upcoming_tasks">משימות קרובות</string>
     <string name="my_hub_view_all_tasks">הצג הכל</string>
     <string name="my_hub_view_my_players">השחקנים שלי</string>
+    <string name="women_my_hub_view_my_players">הספורטאיות שלי</string>
+
+    <!-- ATHENA Women Dashboard — שפה מעצימה -->
+    <string name="women_dashboard_greeting_tagline">מובילות את המשחק</string>
+    <string name="women_stat_athletes">ספורטאיות</string>
+    <string name="women_stat_represented">מנדט</string>
+    <string name="women_stat_available">חופשיות</string>
+    <string name="women_stat_inquiries">בקשות</string>
+    <string name="women_quick_athletes">הספורטאיות שלנו</string>
+    <string name="women_quick_watchlist">רשימת מעקב</string>
+    <string name="women_quick_connections">אנשי קשר</string>
+    <string name="women_quick_inquiries">פניות מועדונים</string>
+    <string name="women_quick_goals">יעדים ומשימות</string>
+    <string name="women_hub_title">מרכז הפיקוד שלי</string>
+    <string name="women_hub_athletes">ספורטאיות</string>
+    <string name="women_hub_represented">מנדט</string>
+    <string name="women_hub_available">חופשיות</string>
+    <string name="women_hub_expiring">מסיימות חוזה</string>
+    <string name="women_hub_tasks_completed">הושלמו</string>
+    <string name="women_hub_upcoming_goals">יעדים קרובים</string>
+    <string name="women_hub_view_all">הצג הכל</string>
+    <string name="women_feed_title">פיד פעילות</string>
+    <string name="women_feed_empty">אין פעילות אחרונה — זמן לעשות מהלכים! 💪</string>
+
+    <!-- Women Feed — נוסח נשי -->
+    <string name="feed_women_became_free_agent">הפכה לשחקנית חופשייה</string>
+    <string name="feed_women_new_release">שחקנית חופשייה חדשה (שחרורים)</string>
+    <string name="feed_women_player_added">שחקנית נוספה</string>
+    <string name="feed_women_player_deleted">שחקנית נמחקה</string>
+    <string name="feed_women_player_offered_to_club">שחקנית הוצעה</string>
+    <string name="feed_women_shortlist_added">נוספה לרשימת מעקב</string>
+    <string name="feed_women_shortlist_removed">הוסרה מרשימת מעקב</string>
+    <string name="feed_women_released_from">שוחררה מ-%1$s</string>
+    <string name="feed_women_moved_from_to">עברה מ-%1$s ל-%2$s</string>
+    <string name="feed_women_added_by">נוספה על ידי %1$s</string>
+    <string name="feed_women_deleted_by">נמחקה על ידי %1$s</string>
+    <string name="feed_women_removed_by">הוסרה על ידי %1$s</string>
+    <string name="feed_women_offered_to">הוצעה ל-%1$s</string>
+    <string name="feed_women_offered_by">הוצעה על ידי %1$s</string>
+    <string name="feed_women_player_deleted_error">שחקנית זו נמחקה ממאגר הנתונים</string>
+    <string name="women_empty_state_title">הרשימה שלך מחכה</string>
+    <string name="women_empty_state_subtitle">הוסיפי את הספורטאית הראשונה שלך והתחילי לבנות את האימפריה</string>
+    <string name="women_inspire_quote_1">שוברות מחסומים, בונות מורשת</string>
+    <string name="women_inspire_quote_2">כל אלופה הייתה פעם מתחרה שסירבה לוותר</string>
+    <string name="women_inspire_quote_3">העתיד של הכדורגל כאן</string>
+
+    <!-- ═══ נובא — פלטפורמת נוער / Youth Platform ═══ -->
+    <string name="youth_dashboard_greeting_tagline">כוכבים עולים מתחילים כאן ⚡</string>
+    <string name="youth_stat_prospects">שחקנים</string>
+    <string name="youth_stat_represented">מנדט</string>
+    <string name="youth_stat_available">חופשיים</string>
+    <string name="youth_stat_inquiries">בקשות</string>
+    <string name="youth_stat_expiring">מסיימים חוזה</string>
+    <string name="youth_quick_prospects">השחקנים שלנו</string>
+    <string name="youth_quick_watchlist">רשימת מעקב</string>
+    <string name="youth_quick_connections">אנשי קשר</string>
+    <string name="youth_quick_inquiries">פניות אקדמיות</string>
+    <string name="youth_quick_goals">יעדים ומשימות</string>
+    <string name="youth_hub_title">מפקדת הכוכבים העולים</string>
+    <string name="youth_my_hub_view_my_players">השחקנים שלי</string>
+    <string name="youth_hub_prospects">שחקנים</string>
+    <string name="youth_hub_represented">מנדט</string>
+    <string name="youth_hub_available">חופשיים</string>
+    <string name="youth_hub_expiring">מסיימים חוזה</string>
+    <string name="youth_hub_tasks_completed">הושלמו</string>
+    <string name="youth_hub_upcoming_goals">יעדים קרובים</string>
+    <string name="youth_hub_view_all">הצג הכל</string>
+    <string name="youth_feed_title">פיד פעילות</string>
+    <string name="youth_feed_empty">אין פעילות אחרונה — צאו לסקאוט כוכבי מחר! ⚡</string>
+
+    <!-- Youth Feed — נוסח נוער -->
+    <string name="feed_youth_became_free_agent">הפך לשחקן חופשי</string>
+    <string name="feed_youth_new_release">שחקן חופשי חדש (שחרורים)</string>
+    <string name="feed_youth_player_added">שחקן נוסף</string>
+    <string name="feed_youth_player_deleted">שחקן הוסר</string>
+    <string name="feed_youth_player_offered_to_club">שחקן הוצע</string>
+    <string name="feed_youth_shortlist_added">נוסף לרשימת מעקב</string>
+    <string name="feed_youth_shortlist_removed">הוסר מרשימת מעקב</string>
+    <string name="feed_youth_released_from">שוחרר מ-%1$s</string>
+    <string name="feed_youth_moved_from_to">עבר מ-%1$s ל-%2$s</string>
+    <string name="feed_youth_added_by">נוסף על ידי %1$s</string>
+    <string name="feed_youth_deleted_by">הוסר על ידי %1$s</string>
+    <string name="feed_youth_removed_by">הוסר על ידי %1$s</string>
+    <string name="feed_youth_offered_to">הוצע ל-%1$s</string>
+    <string name="feed_youth_offered_by">הוצע על ידי %1$s</string>
+    <string name="feed_youth_player_deleted_error">שחקן זה הוסר ממאגר הנתונים</string>
+    <string name="youth_empty_state_title">רשימת האקדמיה שלך מחכה</string>
+    <string name="youth_empty_state_subtitle">הוסף את השחקן הצעיר הראשון שלך והתחל לבנות את הדור הבא</string>
+    <string name="youth_inspire_quote_1">כל אגדה הייתה פעם ילד עם חלום</string>
+    <string name="youth_inspire_quote_2">העתיד שייך למי שנערך אליו היום</string>
+    <string name="youth_inspire_quote_3">כוכבי העל של מחר נמצאים היום על הדשא</string>
+
     <string name="widget_agent_dashboard_description">הלוח שלך במבט אחד: שחקנים, משימות, התראות</string>
     <string name="widget_tap_to_open">לחץ לפתיחה</string>
     <string name="widget_updated_just_now">עכשיו</string>
@@ -998,4 +1111,81 @@
     <string name="war_room_agent_uruguay">אורוגוואי</string>
     <string name="war_room_agent_ecuador">אקוואדור</string>
     <string name="war_room_agent_peru">פרו</string>
+
+    <!-- Platform Switcher -->
+    <string name="platform_men">גברים</string>
+    <string name="platform_women">נשים</string>
+    <string name="platform_youth">נוער</string>
+    <string name="platform_switch_label">פלטפורמה</string>
+
+    <!-- Women Platform -->
+    <string name="women_roster_title">הסגל שלנו</string>
+    <string name="women_add_player">הוסף שחקנית</string>
+    <string name="women_add_title">הוסף שחקנית</string>
+    <string name="women_search_hint">חפש לפי שם (למשל לורן ג\'יימס)</string>
+    <string name="women_search_subtitle">חפש ב-SoccerDonna או הוסף ידנית</string>
+    <string name="women_data_sources">SoccerDonna · FMInside</string>
+    <string name="women_or_add_manually">או הוסף ידנית</string>
+    <string name="women_paste_url">הדבק כתובת SoccerDonna</string>
+    <string name="women_load_url">טען מכתובת</string>
+    <string name="women_full_name">שם מלא *</string>
+    <string name="women_positions">עמדות</string>
+    <string name="women_club">מועדון</string>
+    <string name="women_age">גיל</string>
+    <string name="women_nationality">לאום</string>
+    <string name="women_market_value">שווי שוק</string>
+    <string name="women_soccerdonna_url">כתובת SoccerDonna</string>
+    <string name="women_profile_image_url">כתובת תמונת פרופיל</string>
+    <string name="women_player_phone">טלפון שחקנית</string>
+    <string name="women_agent_phone">טלפון סוכן</string>
+    <string name="women_notes">הערות</string>
+    <string name="women_save_player">שמור שחקנית</string>
+    <string name="women_section_links">קישורים לכדורגל נשים</string>
+    <string name="women_soccerdonna_profile">פרופיל SoccerDonna</string>
+    <string name="women_fminside_profile">פרופיל FMInside</string>
+    <string name="women_free_agent">שחקנית חופשית</string>
+    <string name="women_player_added">שחקנית נוספה</string>
+
+    <!-- Youth Platform -->
+    <string name="youth_roster_title">שחקני נוער</string>
+    <string name="youth_add_player">הוסף שחקן נוער</string>
+    <string name="youth_add_title">הוסף שחקן נוער</string>
+    <string name="youth_search_hint">חפש שחקן נוער…</string>
+    <string name="youth_search_subtitle">הזן שם שחקן להוספה</string>
+    <string name="youth_data_sources">IFA · football.org.il</string>
+    <string name="youth_full_name">שם מלא (אנגלית)</string>
+    <string name="youth_full_name_he">שם מלא (עברית)</string>
+    <string name="youth_positions">עמדות</string>
+    <string name="youth_club">מועדון</string>
+    <string name="youth_academy">אקדמיה / מחלקה</string>
+    <string name="youth_date_of_birth">תאריך לידה</string>
+    <string name="youth_age_group">קבוצת גיל</string>
+    <string name="youth_nationality">לאום</string>
+    <string name="youth_profile_image_url">כתובת תמונת פרופיל</string>
+    <string name="youth_ifa_url">כתובת פרופיל IFA</string>
+    <string name="youth_player_phone">טלפון שחקן</string>
+    <string name="youth_player_email">אימייל שחקן</string>
+    <string name="youth_parent_section">הורה / אפוטרופוס</string>
+    <string name="youth_parent_name">שם הורה</string>
+    <string name="youth_parent_relationship">קשר</string>
+    <string name="youth_parent_phone">טלפון הורה</string>
+    <string name="youth_parent_email">אימייל הורה</string>
+    <string name="youth_notes">הערות</string>
+    <string name="youth_save_player">שמור שחקן</string>
+    <string name="youth_import_contact">יבוא מאנשי קשר</string>
+    <string name="youth_section_details">פרטי נוער</string>
+    <string name="youth_ifa_profile">פרופיל IFA</string>
+    <string name="youth_ifa_stats">סטטיסטיקות IFA</string>
+    <string name="youth_matches">משחקים</string>
+    <string name="youth_goals">שערים</string>
+    <string name="youth_assists">בישולים</string>
+    <string name="youth_parent_guardian">הורה / אפוטרופוס</string>
+    <string name="youth_relationship_father">אבא</string>
+    <string name="youth_relationship_mother">אם</string>
+    <string name="youth_relationship_guardian">אפוטרופוס</string>
+    <string name="youth_relationship_agent">סוכן</string>
+    <string name="youth_detail_name">שם</string>
+    <string name="youth_detail_phone">טלפון</string>
+    <string name="youth_detail_email">אימייל</string>
+    <string name="youth_hebrew_name">שם בעברית</string>
 </resources>

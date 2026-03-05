@@ -34,6 +34,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
+import org.koin.core.component.KoinComponent
+import org.koin.core.component.inject
 import kotlin.math.min
 import kotlin.random.Random
 
@@ -72,7 +74,7 @@ import kotlin.random.Random
 class PlayerRefreshWorker(
     context: Context,
     params: WorkerParameters
-) : CoroutineWorker(context, params) {
+) : CoroutineWorker(context, params), KoinComponent {
 
     /**
      * `true` while [setForeground] is available. Flipped to `false` on Android 12+
@@ -100,7 +102,7 @@ class PlayerRefreshWorker(
         // On Android 12+ this can fail when launched from background (periodic / expedited).
         updateProgress("Starting player refresh…")
 
-        val firebaseHandler = FirebaseHandler()
+        val firebaseHandler: FirebaseHandler by inject()
         val playersUpdate = PlayersUpdate()
         val store = FirebaseFirestore.getInstance()
         val playersRef = store.collection(firebaseHandler.playersTable)

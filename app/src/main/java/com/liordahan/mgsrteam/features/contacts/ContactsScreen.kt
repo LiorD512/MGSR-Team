@@ -147,14 +147,7 @@ import com.liordahan.mgsrteam.transfermarket.TransfermarktResult
 import com.liordahan.mgsrteam.localization.CountryNameTranslator
 import com.liordahan.mgsrteam.ui.components.DarkSystemBarsForBottomSheet
 import com.liordahan.mgsrteam.ui.components.ToastManager
-import com.liordahan.mgsrteam.ui.theme.HomeBlueAccent
-import com.liordahan.mgsrteam.ui.theme.HomeDarkBackground
-import com.liordahan.mgsrteam.ui.theme.HomeDarkCard
-import com.liordahan.mgsrteam.ui.theme.HomeDarkCardBorder
-import com.liordahan.mgsrteam.ui.theme.HomeRedAccent
-import com.liordahan.mgsrteam.ui.theme.HomeTealAccent
-import com.liordahan.mgsrteam.ui.theme.HomeTextPrimary
-import com.liordahan.mgsrteam.ui.theme.HomeTextSecondary
+import com.liordahan.mgsrteam.ui.theme.PlatformColors
 import com.liordahan.mgsrteam.ui.components.SkeletonContactList
 import com.liordahan.mgsrteam.ui.utils.boldTextStyle
 import com.liordahan.mgsrteam.ui.utils.clickWithNoRipple
@@ -184,8 +177,8 @@ private fun ClubSearchResultRow(
             .fillMaxWidth()
             .clickWithNoRipple(onClick),
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = HomeDarkCard),
-        border = BorderStroke(1.dp, HomeDarkCardBorder)
+        colors = CardDefaults.cardColors(containerColor = PlatformColors.palette.card),
+        border = BorderStroke(1.dp, PlatformColors.palette.cardBorder)
     ) {
         Row(
             modifier = Modifier
@@ -205,12 +198,12 @@ private fun ClubSearchResultRow(
             Column(Modifier.weight(1f)) {
                 Text(
                     text = club.clubName ?: "",
-                    style = boldTextStyle(HomeTextPrimary, 14.sp)
+                    style = boldTextStyle(PlatformColors.palette.textPrimary, 14.sp)
                 )
                 club.clubCountry?.let { country ->
                     Text(
                         text = CountryNameTranslator.getDisplayName(context, country),
-                        style = regularTextStyle(HomeTextSecondary, 12.sp)
+                        style = regularTextStyle(PlatformColors.palette.textSecondary, 12.sp)
                     )
                 }
             }
@@ -402,7 +395,7 @@ fun ContactsScreen(
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
-        containerColor = HomeDarkBackground,
+        containerColor = PlatformColors.palette.background,
         floatingActionButton = {
             FloatingActionButton(
                 onClick = {
@@ -410,8 +403,8 @@ fun ContactsScreen(
                     showAddEditSheet = true
                 },
                 shape = RoundedCornerShape(18.dp),
-                containerColor = HomeTealAccent,
-                contentColor = HomeDarkBackground
+                containerColor = PlatformColors.palette.accent,
+                contentColor = PlatformColors.palette.background
             ) {
                 Icon(
                     Icons.Default.Add,
@@ -430,7 +423,7 @@ fun ContactsScreen(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(HomeDarkBackground)
+                    .background(PlatformColors.palette.background)
             ) {
                 ContactsHeader(
                     onAddClick = {
@@ -705,13 +698,13 @@ fun ContactsScreen(
                     title = {
                         Text(
                             stringResource(R.string.contacts_delete_title),
-                            style = boldTextStyle(HomeTextPrimary, 18.sp)
+                            style = boldTextStyle(PlatformColors.palette.textPrimary, 18.sp)
                         )
                     },
                     text = {
                         Text(
                             stringResource(R.string.contacts_delete_confirm, contact.name?.takeIf { it.isNotBlank() } ?: stringResource(R.string.contacts_this_contact)),
-                            style = regularTextStyle(HomeTextSecondary, 14.sp)
+                            style = regularTextStyle(PlatformColors.palette.textSecondary, 14.sp)
                         )
                     },
                     confirmButton = {
@@ -720,17 +713,17 @@ fun ContactsScreen(
                                 viewModel.deleteContact(contact.id!!)
                                 contactToDelete = null
                             },
-                            colors = ButtonDefaults.buttonColors(containerColor = HomeRedAccent)
+                            colors = ButtonDefaults.buttonColors(containerColor = PlatformColors.palette.red)
                         ) {
                             Text(stringResource(R.string.contacts_delete), style = boldTextStyle(Color.White, 14.sp))
                         }
                     },
                     dismissButton = {
                         TextButton(onClick = { contactToDelete = null }) {
-                            Text(stringResource(R.string.cancel), style = regularTextStyle(HomeTextSecondary, 14.sp))
+                            Text(stringResource(R.string.cancel), style = regularTextStyle(PlatformColors.palette.textSecondary, 14.sp))
                         }
                     },
-                    containerColor = HomeDarkCard
+                    containerColor = PlatformColors.palette.card
                 )
             }
         }
@@ -783,10 +776,10 @@ private fun TabChip(
         onClick = onClick,
         modifier = modifier.height(48.dp),
         shape = RoundedCornerShape(12.dp),
-        color = if (selected) HomeTealAccent.copy(alpha = 0.2f) else HomeDarkCard,
+        color = if (selected) PlatformColors.palette.accent.copy(alpha = 0.2f) else PlatformColors.palette.card,
         border = BorderStroke(
             width = 1.dp,
-            color = if (selected) HomeTealAccent else HomeDarkCardBorder
+            color = if (selected) PlatformColors.palette.accent else PlatformColors.palette.cardBorder
         )
     ) {
         Row(
@@ -799,7 +792,7 @@ private fun TabChip(
             Text(
                 text = "$label ($count)",
                 style = regularTextStyle(
-                    color = if (selected) HomeTealAccent else HomeTextSecondary,
+                    color = if (selected) PlatformColors.palette.accent else PlatformColors.palette.textSecondary,
                     fontSize = 14.sp
                 )
             )
@@ -822,7 +815,7 @@ private fun ContactsHeader(onAddClick: () -> Unit, onBackClicked: () -> Unit) {
         Icon(
             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
             contentDescription = null,
-            tint = HomeTextSecondary,
+            tint = PlatformColors.palette.textSecondary,
             modifier = Modifier
                 .size(24.dp)
                 .clickWithNoRipple { onBackClicked() }
@@ -832,11 +825,11 @@ private fun ContactsHeader(onAddClick: () -> Unit, onBackClicked: () -> Unit) {
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = stringResource(R.string.contacts_title),
-                style = boldTextStyle(HomeTextPrimary, 26.sp)
+                style = boldTextStyle(PlatformColors.palette.textPrimary, 26.sp)
             )
             Text(
                 text = stringResource(R.string.contacts_subtitle),
-                style = regularTextStyle(HomeTextSecondary, 12.sp),
+                style = regularTextStyle(PlatformColors.palette.textSecondary, 12.sp),
                 modifier = Modifier.padding(top = 4.dp)
             )
         }
@@ -847,7 +840,7 @@ private fun ContactsHeader(onAddClick: () -> Unit, onBackClicked: () -> Unit) {
             Icon(
                 Icons.Default.Add,
                 contentDescription = stringResource(R.string.contacts_add),
-                tint = HomeTealAccent
+                tint = PlatformColors.palette.accent
             )
         }
     }
@@ -868,14 +861,14 @@ private fun ContactsStatsStrip(
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp)
             .clip(RoundedCornerShape(16.dp))
-            .background(HomeDarkCard)
-            .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(16.dp)),
+            .background(PlatformColors.palette.card)
+            .border(1.dp, PlatformColors.palette.cardBorder, RoundedCornerShape(16.dp)),
         horizontalArrangement = Arrangement.SpaceEvenly
     ) {
         ContactsStatItem(
             value = total.toString(),
             label = stringResource(R.string.players_stat_total),
-            accentColor = HomeTealAccent,
+            accentColor = PlatformColors.palette.accent,
             modifier = Modifier.weight(1f)
         )
         if (showCountries) {
@@ -883,7 +876,7 @@ private fun ContactsStatsStrip(
             ContactsStatItem(
                 value = countries.toString(),
                 label = stringResource(R.string.contacts_stat_countries),
-                accentColor = HomeBlueAccent,
+                accentColor = PlatformColors.palette.blue,
                 modifier = Modifier.weight(1f)
             )
         }
@@ -910,11 +903,11 @@ private fun ContactsStatItem(
         Spacer(Modifier.height(4.dp))
         Text(
             text = value,
-            style = boldTextStyle(HomeTextPrimary, 18.sp)
+            style = boldTextStyle(PlatformColors.palette.textPrimary, 18.sp)
         )
         Text(
             text = label,
-            style = regularTextStyle(HomeTextSecondary, 9.sp)
+            style = regularTextStyle(PlatformColors.palette.textSecondary, 9.sp)
         )
     }
 }
@@ -926,7 +919,7 @@ private fun ContactsStatsStripDivider() {
             .width(1.dp)
             .height(40.dp)
             .padding(vertical = 4.dp)
-            .background(HomeDarkCardBorder)
+            .background(PlatformColors.palette.cardBorder)
     )
 }
 
@@ -974,16 +967,16 @@ private fun FilterChip(
     Surface(
         onClick = onClick,
         shape = RoundedCornerShape(20.dp),
-        color = if (selected) HomeTealAccent.copy(alpha = 0.2f) else Color.Transparent,
+        color = if (selected) PlatformColors.palette.accent.copy(alpha = 0.2f) else Color.Transparent,
         border = BorderStroke(
             width = 1.dp,
-            color = if (selected) HomeTealAccent else HomeDarkCardBorder
+            color = if (selected) PlatformColors.palette.accent else PlatformColors.palette.cardBorder
         )
     ) {
         Text(
             text = label,
             style = regularTextStyle(
-                color = if (selected) HomeTealAccent else HomeTextSecondary,
+                color = if (selected) PlatformColors.palette.accent else PlatformColors.palette.textSecondary,
                 fontSize = 12.sp
             ),
             modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
@@ -1012,18 +1005,18 @@ private fun ContactsSearchBar(
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 4.dp)
             .clip(RoundedCornerShape(14.dp))
-            .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(14.dp)),
+            .border(1.dp, PlatformColors.palette.cardBorder, RoundedCornerShape(14.dp)),
         placeholder = {
             Text(
                 text = stringResource(searchHint),
-                style = regularTextStyle(HomeTextSecondary.copy(alpha = 0.5f), 13.sp)
+                style = regularTextStyle(PlatformColors.palette.textSecondary.copy(alpha = 0.5f), 13.sp)
             )
         },
         leadingIcon = {
             Icon(
                 imageVector = Icons.Filled.Search,
                 contentDescription = null,
-                tint = HomeTextSecondary,
+                tint = PlatformColors.palette.textSecondary,
                 modifier = Modifier.size(20.dp)
             )
         },
@@ -1032,7 +1025,7 @@ private fun ContactsSearchBar(
                 Icon(
                     imageVector = Icons.Filled.Close,
                     contentDescription = stringResource(R.string.contacts_clear),
-                    tint = HomeTextSecondary,
+                    tint = PlatformColors.palette.textSecondary,
                     modifier = Modifier
                         .size(18.dp)
                         .clickWithNoRipple {
@@ -1043,7 +1036,7 @@ private fun ContactsSearchBar(
                 )
             }
         },
-        textStyle = regularTextStyle(HomeTextPrimary, 13.sp),
+        textStyle = regularTextStyle(PlatformColors.palette.textPrimary, 13.sp),
         singleLine = true,
         keyboardOptions = KeyboardOptions(
             imeAction = ImeAction.Done,
@@ -1056,13 +1049,13 @@ private fun ContactsSearchBar(
             }
         ),
         colors = TextFieldDefaults.colors(
-            focusedTextColor = HomeTextPrimary,
-            unfocusedTextColor = HomeTextPrimary,
-            disabledTextColor = HomeTextSecondary,
+            focusedTextColor = PlatformColors.palette.textPrimary,
+            unfocusedTextColor = PlatformColors.palette.textPrimary,
+            disabledTextColor = PlatformColors.palette.textSecondary,
             focusedContainerColor = Color.Transparent,
             unfocusedContainerColor = Color.Transparent,
             disabledContainerColor = Color.Transparent,
-            cursorColor = HomeTealAccent,
+            cursorColor = PlatformColors.palette.accent,
             focusedIndicatorColor = Color.Transparent,
             unfocusedIndicatorColor = Color.Transparent
         )
@@ -1084,7 +1077,7 @@ private fun ContactsEmptyState(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(HomeDarkBackground)
+            .background(PlatformColors.palette.background)
     ) {
         Column(
             modifier = Modifier
@@ -1096,32 +1089,32 @@ private fun ContactsEmptyState(
                 imageVector = Icons.Default.Person,
                 contentDescription = null,
                 modifier = Modifier.size(72.dp),
-                tint = HomeTextSecondary.copy(alpha = 0.5f)
+                tint = PlatformColors.palette.textSecondary.copy(alpha = 0.5f)
             )
             Spacer(Modifier.height(20.dp))
             Text(
                 text = title,
-                style = boldTextStyle(HomeTextPrimary, 18.sp),
+                style = boldTextStyle(PlatformColors.palette.textPrimary, 18.sp),
                 textAlign = TextAlign.Center
             )
             Spacer(Modifier.height(10.dp))
             Text(
                 text = subtitle,
-                style = regularTextStyle(HomeTextSecondary, 13.sp),
+                style = regularTextStyle(PlatformColors.palette.textSecondary, 13.sp),
                 textAlign = TextAlign.Center
             )
             Spacer(Modifier.height(28.dp))
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(14.dp))
-                    .background(HomeTealAccent)
+                    .background(PlatformColors.palette.accent)
                     .clickWithNoRipple { (onButtonClick ?: onAddContact)() }
                     .padding(horizontal = 28.dp, vertical = 12.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = buttonText,
-                    style = boldTextStyle(HomeDarkBackground, 14.sp)
+                    style = boldTextStyle(PlatformColors.palette.background, 14.sp)
                 )
             }
         }
@@ -1143,7 +1136,7 @@ private fun CountrySectionHeader(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(HomeDarkBackground)
+            .background(PlatformColors.palette.background)
             .drawBehind {
                 val barWidth = 4.dp.toPx()
                 val x = when (layoutDirection) {
@@ -1151,7 +1144,7 @@ private fun CountrySectionHeader(
                     LayoutDirection.Ltr -> 0f
                 }
                 drawRect(
-                    color = HomeTealAccent,
+                    color = PlatformColors.palette.accent,
                     topLeft = Offset(x, 0f),
                     size = Size(barWidth, size.height)
                 )
@@ -1178,7 +1171,7 @@ private fun CountrySectionHeader(
         }
         Text(
             text = displayCountry,
-            style = boldTextStyle(HomeTextPrimary, 14.sp)
+            style = boldTextStyle(PlatformColors.palette.textPrimary, 14.sp)
         )
     }
 }
@@ -1199,8 +1192,8 @@ private fun ContactCard(
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = HomeDarkCard),
-        border = BorderStroke(1.dp, HomeDarkCardBorder)
+        colors = CardDefaults.cardColors(containerColor = PlatformColors.palette.card),
+        border = BorderStroke(1.dp, PlatformColors.palette.cardBorder)
     ) {
         val layoutDirection = LocalLayoutDirection.current
         Box(modifier = Modifier.fillMaxWidth()) {
@@ -1222,8 +1215,8 @@ private fun ContactCard(
                         LayoutDirection.Ltr -> 0f
                     }
                     val accentColor = when (contact.contactTypeEnum) {
-                        ContactType.AGENCY -> HomeBlueAccent
-                        ContactType.CLUB -> HomeTealAccent
+                        ContactType.AGENCY -> PlatformColors.palette.blue
+                        ContactType.CLUB -> PlatformColors.palette.accent
                     }
                     drawRect(
                         color = accentColor,
@@ -1240,8 +1233,8 @@ private fun ContactCard(
                 modifier = Modifier
                     .size(36.dp)
                     .clip(CircleShape)
-                    .background(HomeDarkCardBorder)
-                    .border(2.dp, HomeDarkCardBorder, CircleShape),
+                    .background(PlatformColors.palette.cardBorder)
+                    .border(2.dp, PlatformColors.palette.cardBorder, CircleShape),
                 contentAlignment = Alignment.Center
             ) {
                 contact.clubLogo?.let { logo ->
@@ -1256,7 +1249,7 @@ private fun ContactCard(
                 } ?: run {
                     Text(
                         text = getInitialsFromName(contact.name),
-                        style = boldTextStyle(HomeTextSecondary, 12.sp)
+                        style = boldTextStyle(PlatformColors.palette.textSecondary, 12.sp)
                     )
                 }
             }
@@ -1275,12 +1268,12 @@ private fun ContactCard(
                 ) {
                     Text(
                         text = contact.name ?: "",
-                        style = boldTextStyle(HomeTextPrimary, 13.sp)
+                        style = boldTextStyle(PlatformColors.palette.textPrimary, 13.sp)
                     )
                     contact.roleEnum?.let { role ->
                         val roleAccent = when (contact.contactTypeEnum) {
-                            ContactType.AGENCY -> HomeBlueAccent
-                            ContactType.CLUB -> HomeTealAccent
+                            ContactType.AGENCY -> PlatformColors.palette.blue
+                            ContactType.CLUB -> PlatformColors.palette.accent
                         }
                         Box(
                             modifier = Modifier
@@ -1307,7 +1300,7 @@ private fun ContactCard(
                         contact.contactTypeEnum == ContactType.AGENCY -> stringResource(R.string.contacts_without_agency)
                         else -> stringResource(R.string.contacts_without_club)
                     },
-                    style = regularTextStyle(HomeTextSecondary, 11.sp),
+                    style = regularTextStyle(PlatformColors.palette.textSecondary, 11.sp),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -1324,7 +1317,7 @@ private fun ContactCard(
             DropdownMenu(
                 expanded = showMenu,
                 onDismissRequest = { showMenu = false },
-                containerColor = HomeDarkCard
+                containerColor = PlatformColors.palette.card
             ) {
                 DropdownMenuItem(
                     text = {
@@ -1333,12 +1326,12 @@ private fun ContactCard(
                                 Icons.Default.Edit,
                                 contentDescription = null,
                                 modifier = Modifier.size(18.dp),
-                                tint = HomeTextPrimary
+                                tint = PlatformColors.palette.textPrimary
                             )
                             Spacer(Modifier.width(12.dp))
                             Text(
                                 stringResource(R.string.contacts_edit),
-                                style = regularTextStyle(HomeTextPrimary, 14.sp)
+                                style = regularTextStyle(PlatformColors.palette.textPrimary, 14.sp)
                             )
                         }
                     },
@@ -1354,12 +1347,12 @@ private fun ContactCard(
                                 Icons.Default.Delete,
                                 contentDescription = null,
                                 modifier = Modifier.size(18.dp),
-                                tint = HomeRedAccent
+                                tint = PlatformColors.palette.red
                             )
                             Spacer(Modifier.width(12.dp))
                             Text(
                                 stringResource(R.string.contacts_delete),
-                                style = regularTextStyle(HomeRedAccent, 14.sp)
+                                style = regularTextStyle(PlatformColors.palette.red, 14.sp)
                             )
                         }
                     },
@@ -1391,8 +1384,8 @@ private fun AgencyContactCard(
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = HomeDarkCard),
-        border = BorderStroke(1.dp, HomeDarkCardBorder)
+        colors = CardDefaults.cardColors(containerColor = PlatformColors.palette.card),
+        border = BorderStroke(1.dp, PlatformColors.palette.cardBorder)
     ) {
         Column(
             modifier = Modifier
@@ -1404,7 +1397,7 @@ private fun AgencyContactCard(
                         LayoutDirection.Ltr -> 0f
                     }
                     drawRect(
-                        color = HomeBlueAccent,
+                        color = PlatformColors.palette.blue,
                         topLeft = Offset(x, 0f),
                         size = Size(barWidth, size.height)
                     )
@@ -1432,26 +1425,26 @@ private fun AgencyContactCard(
                     modifier = Modifier
                         .size(36.dp)
                         .clip(CircleShape)
-                        .background(HomeBlueAccent.copy(alpha = 0.2f))
-                        .border(2.dp, HomeBlueAccent.copy(alpha = 0.5f), CircleShape),
+                        .background(PlatformColors.palette.blue.copy(alpha = 0.2f))
+                        .border(2.dp, PlatformColors.palette.blue.copy(alpha = 0.5f), CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = getInitialsFromName(contact.name),
-                        style = boldTextStyle(HomeBlueAccent, 12.sp)
+                        style = boldTextStyle(PlatformColors.palette.blue, 12.sp)
                     )
                 }
                 Spacer(Modifier.width(10.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = contact.name ?: "",
-                        style = boldTextStyle(HomeTextPrimary, 13.sp)
+                        style = boldTextStyle(PlatformColors.palette.textPrimary, 13.sp)
                     )
                     Spacer(Modifier.height(2.dp))
                     Text(
                         text = contact.displayOrganization?.takeIf { it.isNotBlank() }
                             ?: stringResource(R.string.contacts_without_agency),
-                        style = regularTextStyle(HomeTextSecondary, 11.sp),
+                        style = regularTextStyle(PlatformColors.palette.textSecondary, 11.sp),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -1459,7 +1452,7 @@ private fun AgencyContactCard(
                         Spacer(Modifier.height(2.dp))
                         Text(
                             text = stringResource(R.string.contacts_agency_players_count, players.size),
-                            style = regularTextStyle(HomeBlueAccent, 11.sp)
+                            style = regularTextStyle(PlatformColors.palette.blue, 11.sp)
                         )
                     }
                 }
@@ -1471,7 +1464,7 @@ private fun AgencyContactCard(
                     Icon(
                         imageVector = if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
                         contentDescription = null,
-                        tint = HomeTextSecondary,
+                        tint = PlatformColors.palette.textSecondary,
                         modifier = Modifier
                             .size(24.dp)
                             .clickWithNoRipple { expanded = !expanded }
@@ -1485,12 +1478,12 @@ private fun AgencyContactCard(
                         .padding(horizontal = 12.dp, vertical = 0.dp)
                         .padding(bottom = 12.dp)
                 ) {
-                    HorizontalDivider(color = HomeDarkCardBorder, thickness = 1.dp)
+                    HorizontalDivider(color = PlatformColors.palette.cardBorder, thickness = 1.dp)
                     Spacer(Modifier.height(8.dp))
                     if (players.isEmpty()) {
                         Text(
                             text = stringResource(R.string.contacts_agency_no_players),
-                            style = regularTextStyle(HomeTextSecondary, 12.sp),
+                            style = regularTextStyle(PlatformColors.palette.textSecondary, 12.sp),
                             modifier = Modifier.padding(vertical = 8.dp)
                         )
                     } else {
@@ -1501,7 +1494,7 @@ private fun AgencyContactCard(
                                     .clickWithNoRipple { onPlayerClick(player) }
                                     .padding(vertical = 6.dp, horizontal = 8.dp)
                                     .clip(RoundedCornerShape(8.dp))
-                                    .background(HomeDarkBackground)
+                                    .background(PlatformColors.palette.background)
                                     .padding(10.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
@@ -1520,12 +1513,12 @@ private fun AgencyContactCard(
                                         modifier = Modifier
                                             .size(28.dp)
                                             .clip(CircleShape)
-                                            .background(HomeDarkCardBorder),
+                                            .background(PlatformColors.palette.cardBorder),
                                         contentAlignment = Alignment.Center
                                     ) {
                                         Text(
                                             text = getInitialsFromName(player.fullName),
-                                            style = boldTextStyle(HomeTextSecondary, 10.sp)
+                                            style = boldTextStyle(PlatformColors.palette.textSecondary, 10.sp)
                                         )
                                     }
                                     Spacer(Modifier.width(10.dp))
@@ -1533,19 +1526,19 @@ private fun AgencyContactCard(
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(
                                         text = player.fullName ?: "",
-                                        style = boldTextStyle(HomeTextPrimary, 13.sp)
+                                        style = boldTextStyle(PlatformColors.palette.textPrimary, 13.sp)
                                     )
                                     player.positions?.filterNotNull()?.take(2)?.joinToString(", ")?.let { pos ->
                                         Text(
                                             text = pos,
-                                            style = regularTextStyle(HomeTextSecondary, 11.sp)
+                                            style = regularTextStyle(PlatformColors.palette.textSecondary, 11.sp)
                                         )
                                     }
                                 }
                                 player.marketValue?.takeIf { it.isNotBlank() }?.let { value ->
                                     Text(
                                         text = value,
-                                        style = boldTextStyle(HomeTealAccent, 11.sp)
+                                        style = boldTextStyle(PlatformColors.palette.accent, 11.sp)
                                     )
                                 }
                             }
@@ -1558,14 +1551,14 @@ private fun AgencyContactCard(
     DropdownMenu(
             expanded = showMenu,
             onDismissRequest = { showMenu = false },
-            containerColor = HomeDarkCard
+            containerColor = PlatformColors.palette.card
         ) {
             DropdownMenuItem(
                 text = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(18.dp), tint = HomeTextPrimary)
+                        Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(18.dp), tint = PlatformColors.palette.textPrimary)
                         Spacer(Modifier.width(12.dp))
-                        Text(stringResource(R.string.contacts_edit), style = regularTextStyle(HomeTextPrimary, 14.sp))
+                        Text(stringResource(R.string.contacts_edit), style = regularTextStyle(PlatformColors.palette.textPrimary, 14.sp))
                     }
                 },
                 onClick = { showMenu = false; onEdit() }
@@ -1573,9 +1566,9 @@ private fun AgencyContactCard(
             DropdownMenuItem(
                 text = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(18.dp), tint = HomeRedAccent)
+                        Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(18.dp), tint = PlatformColors.palette.red)
                         Spacer(Modifier.width(12.dp))
-                        Text(stringResource(R.string.contacts_delete), style = regularTextStyle(HomeRedAccent, 14.sp))
+                        Text(stringResource(R.string.contacts_delete), style = regularTextStyle(PlatformColors.palette.red, 14.sp))
                     }
                 },
                 onClick = { showMenu = false; onDelete() }
@@ -1858,7 +1851,7 @@ private fun AddEditContactBottomSheet(
         modifier = modifier.height(screenHeight * 0.65f),
         onDismissRequest = onDismiss,
         shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
-        containerColor = HomeDarkCard,
+        containerColor = PlatformColors.palette.card,
         tonalElevation = 8.dp,
         dragHandle = {
             Box(
@@ -1871,7 +1864,7 @@ private fun AddEditContactBottomSheet(
                     modifier = Modifier
                         .size(36.dp, 4.dp)
                         .clip(RoundedCornerShape(2.dp))
-                        .background(HomeDarkCardBorder)
+                        .background(PlatformColors.palette.cardBorder)
                 )
             }
         },
@@ -1908,17 +1901,17 @@ private fun AddEditContactBottomSheet(
                             Icon(
                                 Icons.AutoMirrored.Filled.ArrowBack,
                                 contentDescription = stringResource(R.string.contacts_close),
-                                tint = HomeTextSecondary
+                                tint = PlatformColors.palette.textSecondary
                             )
                         }
                     }
                     Text(
                         text = if (initialContact != null) stringResource(R.string.contacts_edit_contact) else stringResource(R.string.contacts_add_contact),
-                        style = boldTextStyle(HomeTextPrimary, 20.sp)
+                        style = boldTextStyle(PlatformColors.palette.textPrimary, 20.sp)
                     )
                 }
                 IconButton(onClick = onDismiss) {
-                    Icon(Icons.Default.Close, contentDescription = stringResource(R.string.contacts_close), tint = HomeTextSecondary)
+                    Icon(Icons.Default.Close, contentDescription = stringResource(R.string.contacts_close), tint = PlatformColors.palette.textSecondary)
                 }
             }
 
@@ -2135,7 +2128,7 @@ private fun AddEditContactBottomSheet(
                 Spacer(Modifier.height(8.dp))
                 Text(
                     text = err,
-                    style = regularTextStyle(HomeRedAccent, 12.sp),
+                    style = regularTextStyle(PlatformColors.palette.red, 12.sp),
                     modifier = Modifier.padding(horizontal = 4.dp)
                 )
             }
@@ -2149,7 +2142,7 @@ private fun AddEditContactBottomSheet(
                         onClick = onDismiss,
                         modifier = Modifier.weight(1f)
                     ) {
-                        Text(stringResource(R.string.cancel), style = regularTextStyle(HomeTextSecondary, 14.sp))
+                        Text(stringResource(R.string.cancel), style = regularTextStyle(PlatformColors.palette.textSecondary, 14.sp))
                     }
                     Button(
                         onClick = {
@@ -2175,8 +2168,8 @@ private fun AddEditContactBottomSheet(
                         modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(12.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = HomeTealAccent,
-                            disabledContainerColor = HomeTealAccent.copy(alpha = 0.4f)
+                            containerColor = PlatformColors.palette.accent,
+                            disabledContainerColor = PlatformColors.palette.accent.copy(alpha = 0.4f)
                         )
                     ) {
                         Text(
@@ -2194,7 +2187,7 @@ private fun AddEditContactBottomSheet(
                         onClick = onDismiss,
                         modifier = Modifier.weight(1f)
                     ) {
-                        Text(stringResource(R.string.cancel), style = regularTextStyle(HomeTextSecondary, 14.sp))
+                        Text(stringResource(R.string.cancel), style = regularTextStyle(PlatformColors.palette.textSecondary, 14.sp))
                     }
                     Button(
                         onClick = {
@@ -2220,8 +2213,8 @@ private fun AddEditContactBottomSheet(
                         modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(12.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = HomeTealAccent,
-                            disabledContainerColor = HomeTealAccent.copy(alpha = 0.4f)
+                            containerColor = PlatformColors.palette.accent,
+                            disabledContainerColor = PlatformColors.palette.accent.copy(alpha = 0.4f)
                         )
                     ) {
                         Text(
@@ -2242,8 +2235,8 @@ private fun AddEditContactBottomSheet(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = HomeTealAccent,
-                        disabledContainerColor = HomeTealAccent.copy(alpha = 0.4f)
+                        containerColor = PlatformColors.palette.accent,
+                        disabledContainerColor = PlatformColors.palette.accent.copy(alpha = 0.4f)
                     )
                 ) {
                     Text(stringResource(R.string.contacts_next), style = boldTextStyle(Color.White, 14.sp))
@@ -2290,14 +2283,14 @@ private fun StepIndicator(
                     .size(8.dp)
                     .clip(CircleShape)
                     .background(
-                        if (index <= currentStep) HomeTealAccent else HomeDarkCardBorder
+                        if (index <= currentStep) PlatformColors.palette.accent else PlatformColors.palette.cardBorder
                     )
             )
         }
         Spacer(Modifier.width(8.dp))
         Text(
             text = stringResource(R.string.contacts_step_of, currentStep + 1, totalSteps) + " — " + currentStepLabel,
-            style = regularTextStyle(HomeTextSecondary, 12.sp)
+            style = regularTextStyle(PlatformColors.palette.textSecondary, 12.sp)
         )
     }
 }
@@ -2315,7 +2308,7 @@ private fun Step0TypeContent(
     ) {
         Text(
             text = stringResource(R.string.contacts_add_type_title),
-            style = regularTextStyle(HomeTextSecondary, 11.sp),
+            style = regularTextStyle(PlatformColors.palette.textSecondary, 11.sp),
             modifier = Modifier.padding(bottom = 8.dp)
         )
         OutlinedCard(
@@ -2323,11 +2316,11 @@ private fun Step0TypeContent(
             shape = RoundedCornerShape(12.dp),
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.outlinedCardColors(
-                containerColor = if (selectedType == ContactType.CLUB) HomeTealAccent.copy(alpha = 0.15f) else HomeDarkBackground
+                containerColor = if (selectedType == ContactType.CLUB) PlatformColors.palette.accent.copy(alpha = 0.15f) else PlatformColors.palette.background
             ),
             border = BorderStroke(
                 width = 1.dp,
-                color = if (selectedType == ContactType.CLUB) HomeTealAccent else HomeDarkCardBorder
+                color = if (selectedType == ContactType.CLUB) PlatformColors.palette.accent else PlatformColors.palette.cardBorder
             )
         ) {
             Row(
@@ -2337,18 +2330,18 @@ private fun Step0TypeContent(
                 Icon(
                     imageVector = Icons.Default.SportsSoccer,
                     contentDescription = null,
-                    tint = if (selectedType == ContactType.CLUB) HomeTealAccent else HomeTextSecondary,
+                    tint = if (selectedType == ContactType.CLUB) PlatformColors.palette.accent else PlatformColors.palette.textSecondary,
                     modifier = Modifier.size(28.dp)
                 )
                 Spacer(Modifier.width(14.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = stringResource(R.string.contacts_add_type_club),
-                        style = boldTextStyle(HomeTextPrimary, 14.sp)
+                        style = boldTextStyle(PlatformColors.palette.textPrimary, 14.sp)
                     )
                     Text(
                         text = stringResource(R.string.contacts_add_type_club_hint),
-                        style = regularTextStyle(HomeTextSecondary, 11.sp)
+                        style = regularTextStyle(PlatformColors.palette.textSecondary, 11.sp)
                     )
                 }
             }
@@ -2358,11 +2351,11 @@ private fun Step0TypeContent(
             shape = RoundedCornerShape(12.dp),
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.outlinedCardColors(
-                containerColor = if (selectedType == ContactType.AGENCY) HomeBlueAccent.copy(alpha = 0.15f) else HomeDarkBackground
+                containerColor = if (selectedType == ContactType.AGENCY) PlatformColors.palette.blue.copy(alpha = 0.15f) else PlatformColors.palette.background
             ),
             border = BorderStroke(
                 width = 1.dp,
-                color = if (selectedType == ContactType.AGENCY) HomeBlueAccent else HomeDarkCardBorder
+                color = if (selectedType == ContactType.AGENCY) PlatformColors.palette.blue else PlatformColors.palette.cardBorder
             )
         ) {
             Row(
@@ -2372,18 +2365,18 @@ private fun Step0TypeContent(
                 Icon(
                     imageVector = Icons.Default.Business,
                     contentDescription = null,
-                    tint = if (selectedType == ContactType.AGENCY) HomeBlueAccent else HomeTextSecondary,
+                    tint = if (selectedType == ContactType.AGENCY) PlatformColors.palette.blue else PlatformColors.palette.textSecondary,
                     modifier = Modifier.size(28.dp)
                 )
                 Spacer(Modifier.width(14.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = stringResource(R.string.contacts_add_type_agency),
-                        style = boldTextStyle(HomeTextPrimary, 14.sp)
+                        style = boldTextStyle(PlatformColors.palette.textPrimary, 14.sp)
                     )
                     Text(
                         text = stringResource(R.string.contacts_add_type_agency_hint),
-                        style = regularTextStyle(HomeTextSecondary, 11.sp)
+                        style = regularTextStyle(PlatformColors.palette.textSecondary, 11.sp)
                     )
                 }
             }
@@ -2420,7 +2413,7 @@ private fun Step1ClubContentAdd(
     ) {
         Text(
             text = stringResource(R.string.contacts_club_import_only_hint),
-            style = regularTextStyle(HomeTextSecondary, 11.sp),
+            style = regularTextStyle(PlatformColors.palette.textSecondary, 11.sp),
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(bottom = 12.dp),
@@ -2431,8 +2424,8 @@ private fun Step1ClubContentAdd(
             onClick = onPickContact,
             shape = RoundedCornerShape(12.dp),
             modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.outlinedCardColors(containerColor = HomeTealAccent.copy(alpha = 0.15f)),
-            border = BorderStroke(1.dp, HomeTealAccent)
+            colors = CardDefaults.outlinedCardColors(containerColor = PlatformColors.palette.accent.copy(alpha = 0.15f)),
+            border = BorderStroke(1.dp, PlatformColors.palette.accent)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth().padding(14.dp),
@@ -2441,13 +2434,13 @@ private fun Step1ClubContentAdd(
                 Icon(
                     imageVector = Icons.Default.Person,
                     contentDescription = null,
-                    tint = HomeTealAccent,
+                    tint = PlatformColors.palette.accent,
                     modifier = Modifier.size(22.dp)
                 )
                 Spacer(Modifier.width(12.dp))
                 Text(
                     text = stringResource(R.string.contacts_import),
-                    style = boldTextStyle(HomeTealAccent, 14.sp)
+                    style = boldTextStyle(PlatformColors.palette.accent, 14.sp)
                 )
             }
         }
@@ -2455,7 +2448,7 @@ private fun Step1ClubContentAdd(
             Spacer(Modifier.height(12.dp))
             Text(
                 text = stringResource(R.string.contacts_club_discovery_section),
-                style = regularTextStyle(HomeTextSecondary, 12.sp),
+                style = regularTextStyle(PlatformColors.palette.textSecondary, 12.sp),
                 modifier = Modifier.padding(bottom = 8.dp)
             )
             if (isDiscovering) {
@@ -2464,14 +2457,14 @@ private fun Step1ClubContentAdd(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     CircularProgressIndicator(
-                        color = HomeTealAccent,
+                        color = PlatformColors.palette.accent,
                         strokeWidth = 2.dp,
                         modifier = Modifier.size(24.dp)
                     )
                     Spacer(Modifier.width(12.dp))
                     Text(
                         text = stringResource(R.string.contacts_club_searching_web),
-                        style = regularTextStyle(HomeTextSecondary, 13.sp)
+                        style = regularTextStyle(PlatformColors.palette.textSecondary, 13.sp)
                     )
                 }
             } else if (selectedClub != null) {
@@ -2479,8 +2472,8 @@ private fun Step1ClubContentAdd(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(10.dp))
-                        .background(HomeDarkBackground)
-                        .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(10.dp))
+                        .background(PlatformColors.palette.background)
+                        .border(1.dp, PlatformColors.palette.cardBorder, RoundedCornerShape(10.dp))
                         .padding(12.dp)
                 ) {
                     Row(
@@ -2499,19 +2492,19 @@ private fun Step1ClubContentAdd(
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = selectedClub.clubName ?: "",
-                                style = boldTextStyle(HomeTextPrimary, 14.sp),
+                                style = boldTextStyle(PlatformColors.palette.textPrimary, 14.sp),
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
                             Text(
                                 text = getRoleDisplayLabel(selectedRole),
-                                style = regularTextStyle(HomeTextSecondary, 11.sp)
+                                style = regularTextStyle(PlatformColors.palette.textSecondary, 11.sp)
                             )
                             Text(
                                 text = selectedClub.clubCountry?.let { c ->
                                     stringResource(R.string.contacts_club_found_on_tm) + " • ${CountryNameTranslator.getDisplayName(LocalContext.current, c)}"
                                 } ?: stringResource(R.string.contacts_club_found_on_tm),
-                                style = regularTextStyle(HomeTealAccent, 11.sp)
+                                style = regularTextStyle(PlatformColors.palette.accent, 11.sp)
                             )
                         }
                     }
@@ -2525,13 +2518,13 @@ private fun Step1ClubContentAdd(
                             onClick = onChangeClub,
                             modifier = Modifier.height(48.dp)
                         ) {
-                            Text(stringResource(R.string.contacts_club_not_correct), style = regularTextStyle(HomeTealAccent, 12.sp))
+                            Text(stringResource(R.string.contacts_club_not_correct), style = regularTextStyle(PlatformColors.palette.accent, 12.sp))
                         }
                         TextButton(
                             onClick = onTryAgain,
                             modifier = Modifier.height(48.dp)
                         ) {
-                            Text(stringResource(R.string.contacts_try_again), style = regularTextStyle(HomeTealAccent, 12.sp))
+                            Text(stringResource(R.string.contacts_try_again), style = regularTextStyle(PlatformColors.palette.accent, 12.sp))
                         }
                     }
                 }
@@ -2539,7 +2532,7 @@ private fun Step1ClubContentAdd(
                 Spacer(Modifier.height(12.dp))
                 Text(
                     text = stringResource(R.string.contacts_search_for_club),
-                    style = regularTextStyle(HomeTextSecondary, 11.sp),
+                    style = regularTextStyle(PlatformColors.palette.textSecondary, 11.sp),
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
                 OutlinedTextField(
@@ -2548,23 +2541,23 @@ private fun Step1ClubContentAdd(
                     placeholder = {
                         Text(
                             stringResource(R.string.requests_search_club),
-                            style = regularTextStyle(HomeTextSecondary, 14.sp)
+                            style = regularTextStyle(PlatformColors.palette.textSecondary, 14.sp)
                         )
                     },
                     modifier = Modifier.fillMaxWidth().focusRequester(clubSearchFocusRequester),
                     singleLine = true,
                     colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(
-                        focusedTextColor = HomeTextPrimary,
-                        unfocusedTextColor = HomeTextPrimary,
-                        focusedBorderColor = HomeTealAccent,
-                        unfocusedBorderColor = HomeDarkCardBorder,
-                        cursorColor = HomeTealAccent
+                        focusedTextColor = PlatformColors.palette.textPrimary,
+                        unfocusedTextColor = PlatformColors.palette.textPrimary,
+                        focusedBorderColor = PlatformColors.palette.accent,
+                        unfocusedBorderColor = PlatformColors.palette.cardBorder,
+                        cursorColor = PlatformColors.palette.accent
                     ),
                     trailingIcon = {
                         if (isSearchingClubs) {
                             Box(Modifier.size(32.dp), contentAlignment = Alignment.Center) {
                                 CircularProgressIndicator(
-                                    color = HomeTealAccent,
+                                    color = PlatformColors.palette.accent,
                                     strokeWidth = 2.dp,
                                     modifier = Modifier.size(24.dp)
                                 )
@@ -2597,13 +2590,13 @@ private fun Step1ClubContentAdd(
                     TextButton(onClick = onTryAgain) {
                         Text(
                             text = stringResource(R.string.contacts_try_again),
-                            style = regularTextStyle(HomeTealAccent, 13.sp)
+                            style = regularTextStyle(PlatformColors.palette.accent, 13.sp)
                         )
                     }
                     TextButton(onClick = onSearchManually) {
                         Text(
                             text = stringResource(R.string.contacts_club_search_manually),
-                            style = regularTextStyle(HomeTealAccent, 13.sp)
+                            style = regularTextStyle(PlatformColors.palette.accent, 13.sp)
                         )
                     }
                 }
@@ -2613,12 +2606,12 @@ private fun Step1ClubContentAdd(
             Spacer(Modifier.height(8.dp))
             Text(
                 text = err,
-                style = regularTextStyle(HomeRedAccent, 11.sp)
+                style = regularTextStyle(PlatformColors.palette.red, 11.sp)
             )
             TextButton(onClick = onTryAgain) {
                 Text(
                     text = stringResource(R.string.contacts_try_again),
-                    style = regularTextStyle(HomeTealAccent, 13.sp)
+                    style = regularTextStyle(PlatformColors.palette.accent, 13.sp)
                 )
             }
         }
@@ -2646,7 +2639,7 @@ private fun Step1ClubContent(
     ) {
         Text(
             text = stringResource(R.string.contacts_search_for_club),
-            style = regularTextStyle(HomeTextSecondary, 11.sp),
+            style = regularTextStyle(PlatformColors.palette.textSecondary, 11.sp),
             modifier = Modifier.padding(bottom = 8.dp)
         )
         OutlinedTextField(
@@ -2655,23 +2648,23 @@ private fun Step1ClubContent(
             placeholder = {
                 Text(
                     stringResource(R.string.requests_search_club),
-                    style = regularTextStyle(HomeTextSecondary, 14.sp)
+                    style = regularTextStyle(PlatformColors.palette.textSecondary, 14.sp)
                 )
             },
             modifier = Modifier.fillMaxWidth().focusRequester(clubSearchFocusRequester),
             singleLine = true,
             colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(
-                focusedTextColor = HomeTextPrimary,
-                unfocusedTextColor = HomeTextPrimary,
-                focusedBorderColor = HomeTealAccent,
-                unfocusedBorderColor = HomeDarkCardBorder,
-                cursorColor = HomeTealAccent
+                focusedTextColor = PlatformColors.palette.textPrimary,
+                unfocusedTextColor = PlatformColors.palette.textPrimary,
+                focusedBorderColor = PlatformColors.palette.accent,
+                unfocusedBorderColor = PlatformColors.palette.cardBorder,
+                cursorColor = PlatformColors.palette.accent
             ),
             trailingIcon = {
                 if (isSearchingClubs) {
                     Box(Modifier.size(32.dp), contentAlignment = Alignment.Center) {
                         CircularProgressIndicator(
-                            color = HomeTealAccent,
+                            color = PlatformColors.palette.accent,
                             strokeWidth = 2.dp,
                             modifier = Modifier.size(24.dp)
                         )
@@ -2701,8 +2694,8 @@ private fun Step1ClubContent(
                     .fillMaxWidth()
                     .padding(vertical = 8.dp)
                     .clip(RoundedCornerShape(10.dp))
-                    .background(HomeDarkBackground)
-                    .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(10.dp))
+                    .background(PlatformColors.palette.background)
+                    .border(1.dp, PlatformColors.palette.cardBorder, RoundedCornerShape(10.dp))
                     .padding(12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -2716,13 +2709,13 @@ private fun Step1ClubContent(
                     Spacer(Modifier.width(10.dp))
                 }
                 Column(Modifier.weight(1f)) {
-                    Text(club.clubName ?: "", style = boldTextStyle(HomeTextPrimary, 12.sp))
+                    Text(club.clubName ?: "", style = boldTextStyle(PlatformColors.palette.textPrimary, 12.sp))
                     club.clubCountry?.let { c ->
-                        Text(CountryNameTranslator.getDisplayName(context, c), style = regularTextStyle(HomeTextSecondary, 11.sp))
+                        Text(CountryNameTranslator.getDisplayName(context, c), style = regularTextStyle(PlatformColors.palette.textSecondary, 11.sp))
                     }
                 }
                 TextButton(onClick = onChangeClub) {
-                    Text(stringResource(R.string.contacts_change), style = regularTextStyle(HomeTealAccent, 12.sp))
+                    Text(stringResource(R.string.contacts_change), style = regularTextStyle(PlatformColors.palette.accent, 12.sp))
                 }
             }
         }
@@ -2783,7 +2776,7 @@ private fun Step1AgencyContent(
             Column(modifier = Modifier.fillMaxWidth()) {
                 Text(
                     text = stringResource(R.string.contacts_agency_import_only_hint),
-                    style = regularTextStyle(HomeTextSecondary, 11.sp),
+                    style = regularTextStyle(PlatformColors.palette.textSecondary, 11.sp),
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(bottom = 12.dp),
@@ -2794,8 +2787,8 @@ private fun Step1AgencyContent(
                     onClick = onPickContact,
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.outlinedCardColors(containerColor = HomeBlueAccent.copy(alpha = 0.15f)),
-                    border = BorderStroke(1.dp, HomeBlueAccent)
+                    colors = CardDefaults.outlinedCardColors(containerColor = PlatformColors.palette.blue.copy(alpha = 0.15f)),
+                    border = BorderStroke(1.dp, PlatformColors.palette.blue)
                 ) {
                     Row(
                         modifier = Modifier.fillMaxWidth().padding(14.dp),
@@ -2804,13 +2797,13 @@ private fun Step1AgencyContent(
                         Icon(
                             imageVector = Icons.Default.Person,
                             contentDescription = null,
-                            tint = HomeBlueAccent,
+                            tint = PlatformColors.palette.blue,
                             modifier = Modifier.size(22.dp)
                         )
                         Spacer(Modifier.width(12.dp))
                         Text(
                             text = stringResource(R.string.contacts_import),
-                            style = boldTextStyle(HomeBlueAccent, 14.sp)
+                            style = boldTextStyle(PlatformColors.palette.blue, 14.sp)
                         )
                     }
                 }
@@ -2841,7 +2834,7 @@ private fun Step1AgencyContent(
                     Spacer(Modifier.height(12.dp))
                     Text(
                         text = stringResource(R.string.contacts_agency_discovery_section),
-                        style = regularTextStyle(HomeTextSecondary, 12.sp),
+                        style = regularTextStyle(PlatformColors.palette.textSecondary, 12.sp),
                         modifier = Modifier.padding(bottom = 8.dp)
                     )
                 }
@@ -2852,14 +2845,14 @@ private fun Step1AgencyContent(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             CircularProgressIndicator(
-                                color = HomeBlueAccent,
+                                color = PlatformColors.palette.blue,
                                 strokeWidth = 2.dp,
                                 modifier = Modifier.size(24.dp)
                             )
                             Spacer(Modifier.width(12.dp))
                             Text(
                                 text = stringResource(R.string.contacts_agency_searching_web),
-                                style = regularTextStyle(HomeTextSecondary, 13.sp)
+                                style = regularTextStyle(PlatformColors.palette.textSecondary, 13.sp)
                             )
                         }
                     } else if (agencyName.isNotBlank()) {
@@ -2867,8 +2860,8 @@ private fun Step1AgencyContent(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(10.dp))
-                                .background(HomeDarkBackground)
-                                .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(10.dp))
+                                .background(PlatformColors.palette.background)
+                                .border(1.dp, PlatformColors.palette.cardBorder, RoundedCornerShape(10.dp))
                                 .clickWithNoRipple {
                                     if (agencyUrl.isNotBlank()) {
                                         try {
@@ -2886,21 +2879,21 @@ private fun Step1AgencyContent(
                                 Icon(
                                     imageVector = Icons.Default.Business,
                                     contentDescription = null,
-                                    tint = HomeBlueAccent,
+                                    tint = PlatformColors.palette.blue,
                                     modifier = Modifier.size(28.dp)
                                 )
                                 Spacer(Modifier.width(10.dp))
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(
                                         text = agencyName,
-                                        style = boldTextStyle(HomeTextPrimary, 14.sp),
+                                        style = boldTextStyle(PlatformColors.palette.textPrimary, 14.sp),
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis
                                     )
                                     if (agencyUrl.isNotBlank()) {
                                         Text(
                                             text = stringResource(R.string.contacts_agency_found_on_tm),
-                                            style = regularTextStyle(HomeTextSecondary, 11.sp)
+                                            style = regularTextStyle(PlatformColors.palette.textSecondary, 11.sp)
                                         )
                                     }
                                 }
@@ -2915,13 +2908,13 @@ private fun Step1AgencyContent(
                                     onClick = onNotCorrectAgency,
                                     modifier = Modifier.height(48.dp)
                                 ) {
-                                    Text(stringResource(R.string.contacts_agency_not_correct), style = regularTextStyle(HomeTealAccent, 12.sp))
+                                    Text(stringResource(R.string.contacts_agency_not_correct), style = regularTextStyle(PlatformColors.palette.accent, 12.sp))
                                 }
                                 TextButton(
                                     onClick = onTryAgain,
                                     modifier = Modifier.height(48.dp)
                                 ) {
-                                    Text(stringResource(R.string.contacts_try_again), style = regularTextStyle(HomeTealAccent, 12.sp))
+                                    Text(stringResource(R.string.contacts_try_again), style = regularTextStyle(PlatformColors.palette.accent, 12.sp))
                                 }
                             }
                         }
@@ -2932,13 +2925,13 @@ private fun Step1AgencyContent(
                         Spacer(Modifier.height(8.dp))
                         Text(
                             text = err,
-                            style = regularTextStyle(HomeRedAccent, 11.sp)
+                            style = regularTextStyle(PlatformColors.palette.red, 11.sp)
                         )
                         TextButton(
                             onClick = onTryAgain,
                             modifier = Modifier.height(48.dp)
                         ) {
-                            Text(stringResource(R.string.contacts_try_again), style = regularTextStyle(HomeTealAccent, 13.sp))
+                            Text(stringResource(R.string.contacts_try_again), style = regularTextStyle(PlatformColors.palette.accent, 13.sp))
                         }
                     }
                     if (!isDiscovering && agencyName.isBlank() && selectedAgency == null && !showManualAgencySearch) {
@@ -2951,13 +2944,13 @@ private fun Step1AgencyContent(
                                 onClick = onTryAgain,
                                 modifier = Modifier.height(48.dp)
                             ) {
-                                Text(stringResource(R.string.contacts_try_again), style = regularTextStyle(HomeTealAccent, 14.sp))
+                                Text(stringResource(R.string.contacts_try_again), style = regularTextStyle(PlatformColors.palette.accent, 14.sp))
                             }
                             TextButton(
                                 onClick = onNotCorrectAgency,
                                 modifier = Modifier.height(48.dp)
                             ) {
-                                Text(stringResource(R.string.contacts_agency_search_manually), style = regularTextStyle(HomeTealAccent, 14.sp))
+                                Text(stringResource(R.string.contacts_agency_search_manually), style = regularTextStyle(PlatformColors.palette.accent, 14.sp))
                             }
                         }
                     }
@@ -2980,7 +2973,7 @@ private fun Step1AgencyContent(
             ) {
                 Text(
                     text = stringResource(R.string.contacts_agency_manual_fallback),
-                    style = regularTextStyle(HomeTextSecondary, 11.sp),
+                    style = regularTextStyle(PlatformColors.palette.textSecondary, 11.sp),
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
             }
@@ -2996,22 +2989,22 @@ private fun Step1AgencyContent(
                 placeholder = {
                     Text(
                         stringResource(R.string.contacts_agency_search_hint),
-                        style = regularTextStyle(HomeTextSecondary, 14.sp)
+                        style = regularTextStyle(PlatformColors.palette.textSecondary, 14.sp)
                     )
                 },
                 singleLine = true,
                 colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(
-                    focusedTextColor = HomeTextPrimary,
-                    unfocusedTextColor = HomeTextPrimary,
-                    focusedBorderColor = HomeBlueAccent,
-                    unfocusedBorderColor = HomeDarkCardBorder,
-                    cursorColor = HomeBlueAccent
+                    focusedTextColor = PlatformColors.palette.textPrimary,
+                    unfocusedTextColor = PlatformColors.palette.textPrimary,
+                    focusedBorderColor = PlatformColors.palette.blue,
+                    unfocusedBorderColor = PlatformColors.palette.cardBorder,
+                    cursorColor = PlatformColors.palette.blue
                 ),
                 trailingIcon = {
                     if (isSearchingAgencies) {
                         Box(Modifier.size(32.dp), contentAlignment = Alignment.Center) {
                             CircularProgressIndicator(
-                                color = HomeBlueAccent,
+                                color = PlatformColors.palette.blue,
                                 strokeWidth = 2.dp,
                                 modifier = Modifier.size(24.dp)
                             )
@@ -3055,8 +3048,8 @@ private fun AgencySearchResultRow(
             .fillMaxWidth()
             .clickWithNoRipple(onClick),
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = HomeDarkCard),
-        border = BorderStroke(1.dp, HomeDarkCardBorder)
+        colors = CardDefaults.cardColors(containerColor = PlatformColors.palette.card),
+        border = BorderStroke(1.dp, PlatformColors.palette.cardBorder)
     ) {
         Row(
             modifier = Modifier
@@ -3067,14 +3060,14 @@ private fun AgencySearchResultRow(
             Icon(
                 imageVector = Icons.Default.Business,
                 contentDescription = null,
-                tint = HomeBlueAccent,
+                tint = PlatformColors.palette.blue,
                 modifier = Modifier.size(36.dp)
             )
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Text(
                     text = agency.agencyName ?: "",
-                    style = boldTextStyle(HomeTextPrimary, 14.sp)
+                    style = boldTextStyle(PlatformColors.palette.textPrimary, 14.sp)
                 )
             }
         }
@@ -3097,15 +3090,15 @@ private fun Step2ContactContent(
     ) {
         Text(
             text = stringResource(R.string.contacts_how_add_contact),
-            style = regularTextStyle(HomeTextSecondary, 11.sp),
+            style = regularTextStyle(PlatformColors.palette.textSecondary, 11.sp),
             modifier = Modifier.padding(bottom = 12.dp)
         )
         OutlinedCard(
             onClick = onPickContact,
             shape = RoundedCornerShape(12.dp),
             modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.outlinedCardColors(containerColor = HomeTealAccent.copy(alpha = 0.15f)),
-            border = BorderStroke(1.dp, HomeTealAccent)
+            colors = CardDefaults.outlinedCardColors(containerColor = PlatformColors.palette.accent.copy(alpha = 0.15f)),
+            border = BorderStroke(1.dp, PlatformColors.palette.accent)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth().padding(14.dp),
@@ -3114,20 +3107,20 @@ private fun Step2ContactContent(
                 Icon(
                     imageVector = Icons.Default.Person,
                     contentDescription = null,
-                    tint = HomeTealAccent,
+                    tint = PlatformColors.palette.accent,
                     modifier = Modifier.size(22.dp)
                 )
                 Spacer(Modifier.width(12.dp))
                 Text(
                     text = stringResource(R.string.contacts_import),
-                    style = boldTextStyle(HomeTealAccent, 14.sp)
+                    style = boldTextStyle(PlatformColors.palette.accent, 14.sp)
                 )
             }
         }
         Spacer(Modifier.height(16.dp))
         Text(
             text = stringResource(R.string.contacts_or_enter_manually),
-            style = regularTextStyle(HomeTextSecondary, 12.sp),
+            style = regularTextStyle(PlatformColors.palette.textSecondary, 12.sp),
             modifier = Modifier.padding(bottom = 12.dp)
         )
         AddContactTextField(
@@ -3168,7 +3161,7 @@ private fun Step3RoleContent(
     ) {
         Text(
             text = stringResource(R.string.contacts_role_optional),
-            style = regularTextStyle(HomeTextSecondary, 11.sp),
+            style = regularTextStyle(PlatformColors.palette.textSecondary, 11.sp),
             modifier = Modifier.padding(bottom = 12.dp)
         )
         Row(
@@ -3194,13 +3187,13 @@ private fun Step3RoleContent(
                 onClick = onDismiss,
                 modifier = Modifier.weight(1f)
             ) {
-                Text(stringResource(R.string.cancel), style = regularTextStyle(HomeTextSecondary, 14.sp))
+                Text(stringResource(R.string.cancel), style = regularTextStyle(PlatformColors.palette.textSecondary, 14.sp))
             }
             Button(
                 onClick = onSave,
                 modifier = Modifier.weight(1f),
                 shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = HomeTealAccent)
+                colors = ButtonDefaults.buttonColors(containerColor = PlatformColors.palette.accent)
             ) {
                 Text(
                     if (initialContact != null) stringResource(R.string.contacts_button_save) else stringResource(R.string.contacts_button_add),
@@ -3217,9 +3210,9 @@ private fun RoleChip(
     isSelected: Boolean,
     onClick: () -> Unit
 ) {
-    val bgColor = if (isSelected) HomeTealAccent.copy(alpha = 0.2f) else Color.Transparent
-    val textColor = if (isSelected) HomeTealAccent else HomeTextSecondary
-    val borderColor = if (isSelected) HomeTealAccent else HomeDarkCardBorder
+    val bgColor = if (isSelected) PlatformColors.palette.accent.copy(alpha = 0.2f) else Color.Transparent
+    val textColor = if (isSelected) PlatformColors.palette.accent else PlatformColors.palette.textSecondary
+    val borderColor = if (isSelected) PlatformColors.palette.accent else PlatformColors.palette.cardBorder
 
     Text(
         text = label,
@@ -3246,17 +3239,17 @@ private fun AddContactTextField(
     modifier: Modifier = Modifier
 ) {
     val textStyle = if (contentTextDirection != null) {
-        regularTextStyle(HomeTextPrimary, 14.sp, direction = contentTextDirection)
+        regularTextStyle(PlatformColors.palette.textPrimary, 14.sp, direction = contentTextDirection)
     } else null
     val placeholderStyle = if (contentTextDirection != null) {
-        regularTextStyle(HomeTextSecondary.copy(alpha = 0.6f), 14.sp, direction = contentTextDirection)
+        regularTextStyle(PlatformColors.palette.textSecondary.copy(alpha = 0.6f), 14.sp, direction = contentTextDirection)
     } else {
-        regularTextStyle(HomeTextSecondary.copy(alpha = 0.6f), 14.sp)
+        regularTextStyle(PlatformColors.palette.textSecondary.copy(alpha = 0.6f), 14.sp)
     }
     Column(modifier = modifier) {
         Text(
             text = label,
-            style = regularTextStyle(HomeTextSecondary, 12.sp),
+            style = regularTextStyle(PlatformColors.palette.textSecondary, 12.sp),
             modifier = Modifier.padding(bottom = 4.dp)
         )
         OutlinedTextField(
@@ -3274,11 +3267,11 @@ private fun AddContactTextField(
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
             colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(
-                focusedTextColor = HomeTextPrimary,
-                unfocusedTextColor = HomeTextPrimary,
-                focusedBorderColor = HomeTealAccent,
-                unfocusedBorderColor = HomeDarkCardBorder,
-                cursorColor = HomeTealAccent
+                focusedTextColor = PlatformColors.palette.textPrimary,
+                unfocusedTextColor = PlatformColors.palette.textPrimary,
+                focusedBorderColor = PlatformColors.palette.accent,
+                unfocusedBorderColor = PlatformColors.palette.cardBorder,
+                cursorColor = PlatformColors.palette.accent
             )
         )
     }

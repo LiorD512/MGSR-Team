@@ -29,6 +29,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
+import org.koin.core.component.KoinComponent
+import org.koin.core.component.inject
 import org.json.JSONArray
 import java.util.concurrent.TimeUnit
 
@@ -62,7 +64,7 @@ import java.util.concurrent.TimeUnit
 class ReleasesRefreshWorker(
     context: Context,
     params: WorkerParameters
-) : CoroutineWorker(context, params) {
+) : CoroutineWorker(context, params), KoinComponent {
 
     private var canUseForeground = true
 
@@ -82,7 +84,7 @@ class ReleasesRefreshWorker(
 
         updateProgress("Fetching releases…")
 
-        val firebaseHandler = FirebaseHandler()
+        val firebaseHandler: FirebaseHandler by inject()
         val store = FirebaseFirestore.getInstance()
         val playersRef = store.collection(firebaseHandler.playersTable)
         val feedRef = store.collection(firebaseHandler.feedEventsTable)

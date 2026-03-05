@@ -43,6 +43,7 @@ import androidx.compose.material.icons.filled.BookmarkAdd
 import androidx.compose.material.icons.filled.BookmarkRemove
 import androidx.compose.material.icons.filled.Autorenew
 import androidx.compose.material.icons.filled.CalendarToday
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.ContactPhone
@@ -137,6 +138,8 @@ import com.liordahan.mgsrteam.ui.theme.HomeRedAccent
 import com.liordahan.mgsrteam.ui.theme.HomeTealAccent
 import com.liordahan.mgsrteam.ui.theme.HomeTextPrimary
 import com.liordahan.mgsrteam.ui.theme.HomeTextSecondary
+import com.liordahan.mgsrteam.ui.theme.WomenColors
+import com.liordahan.mgsrteam.ui.theme.YouthColors
 import com.liordahan.mgsrteam.ui.components.SkeletonDashboardLayout
 import com.liordahan.mgsrteam.ui.components.ToastManager
 import com.liordahan.mgsrteam.utils.datePickerMillisToLocalMidnight
@@ -144,7 +147,11 @@ import com.liordahan.mgsrteam.utils.daysBetweenCalendarDays
 import com.liordahan.mgsrteam.ui.utils.boldTextStyle
 import com.liordahan.mgsrteam.ui.utils.clickWithNoRipple
 import com.liordahan.mgsrteam.ui.utils.regularTextStyle
+import com.liordahan.mgsrteam.features.platform.Platform
+import com.liordahan.mgsrteam.features.platform.PlatformManager
+import com.liordahan.mgsrteam.features.platform.PlatformSwitcher
 import org.koin.androidx.compose.koinViewModel
+import org.koin.compose.koinInject
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -157,9 +164,11 @@ import java.util.concurrent.TimeUnit
 @Composable
 fun DashboardScreen(
     navController: NavController,
-    viewModel: IHomeScreenViewModel = koinViewModel()
+    viewModel: IHomeScreenViewModel = koinViewModel(),
+    platformManager: PlatformManager = koinInject()
 ) {
     val state by viewModel.dashboardState.collectAsStateWithLifecycle()
+    val currentPlatform by platformManager.current.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val isHebrew = LocaleManager.isHebrew(context)
     var showLanguageDialog by remember { mutableStateOf(false) }
@@ -169,11 +178,19 @@ fun DashboardScreen(
         viewModel.refreshTransferWindows()
     }
 
+    val isWomenPlatform = currentPlatform == Platform.WOMEN
+    val isYouthPlatform = currentPlatform == Platform.YOUTH
+    val dashboardBg = when {
+        isWomenPlatform -> WomenColors.Background
+        isYouthPlatform -> YouthColors.Background
+        else -> HomeDarkBackground
+    }
+
     if (state.isLoading) {
         SkeletonDashboardLayout(
             modifier = Modifier
                 .fillMaxSize()
-                .background(HomeDarkBackground)
+                .background(dashboardBg)
         )
         return
     }
@@ -181,7 +198,7 @@ fun DashboardScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(HomeDarkBackground)
+            .background(dashboardBg)
     ) {
         // ── Sticky top section (does NOT scroll) ─────────────────────────
         GreetingHeader(
@@ -189,12 +206,66 @@ fun DashboardScreen(
             isHebrew = isHebrew,
             onLanguageClick = { showLanguageDialog = true }
         )
-        StatsRow(state)
-        QuickActionsRow(navController = navController)
+
+        // ── Women tagline (empowering subtitle) ─────────────────────────
+        if (isWomenPlatform) {
+            WomenGreetingTagline()
+            Spacer(Modifier.height(4.dp))
+        }
+
+        // ── Youth tagline (rising stars) ─────────────────────────────────
+        if (isYouthPlatform) {
+            YouthGreetingTagline()
+            Spacer(Modifier.height(4.dp))
+        }
+
+        // ── Platform switcher (Men / Women / Youth) ─────────────────────
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 6.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            PlatformSwitcher(
+                platformManager = platformManager,
+                onSwitch = { platform ->
+                    platformManager.switchTo(platform)
+                    viewModel.reloadForPlatformSwitch()
+                }
+            )
+        }
+
+        // ── Stats & Quick Actions (women / youth / default) ─────────────
+        when {
+            isWomenPlatform -> {
+                WomenStatsRow(state)
+                WomenQuickActionsRow(navController = navController)
+            }
+            isYouthPlatform -> {
+                YouthStatsRow(state)
+                YouthQuickActionsRow(navController = navController)
+            }
+            else -> {
+                StatsRow(state, currentPlatform)
+                QuickActionsRow(navController = navController, platform = currentPlatform)
+            }
+        }
 
         // ── Pre-compute filtered data (cached across recompositions) ─────
-        val filteredEvents = remember(state.feedEvents, state.selectedFeedFilter) {
-            state.feedEvents.filterByType(state.selectedFeedFilter)
+        val filteredEvents = remember(state.feedEvents, state.selectedFeedFilter, isYouthPlatform) {
+            val base = if (isYouthPlatform) {
+                state.feedEvents.filter { event ->
+                    event.type != FeedEvent.TYPE_NEW_RELEASE_FROM_CLUB &&
+                    event.type != FeedEvent.TYPE_BECAME_FREE_AGENT &&
+                    event.type != FeedEvent.TYPE_MANDATE_EXPIRED &&
+                    event.type != FeedEvent.TYPE_MANDATE_UPLOADED &&
+                    event.type != FeedEvent.TYPE_MANDATE_SWITCHED_ON &&
+                    event.type != FeedEvent.TYPE_MANDATE_SWITCHED_OFF &&
+                    event.type != FeedEvent.TYPE_MARKET_VALUE_CHANGE &&
+                    event.type != FeedEvent.TYPE_CONTRACT_EXPIRING
+                }
+            } else state.feedEvents
+            base.filterByType(state.selectedFeedFilter)
         }
 
         val lazyListState = rememberLazyListState()
@@ -224,31 +295,79 @@ fun DashboardScreen(
             item {
                 val overview = state.myAgentOverview
                 when {
-                    overview != null && overview.totalPlayers > 0 -> {
-                        MyAgentHubSection(
-                            overview = overview,
-                            navController = navController,
-                            onTaskToggle = { viewModel.toggleTaskCompleted(it) }
-                        )
+                    isWomenPlatform -> when {
+                        overview != null && overview.totalPlayers > 0 -> {
+                            WomenAgentHubSection(
+                                overview = overview,
+                                navController = navController,
+                                onTaskToggle = { viewModel.toggleTaskCompleted(it) }
+                            )
+                        }
+                        overview != null -> WomenAgentEmptyState()
+                        else -> MyBoardLoadingPlaceholder()
                     }
-                    overview != null -> MyAgentEmptyState()
-                    else -> MyBoardLoadingPlaceholder()
+                    isYouthPlatform -> when {
+                        overview != null && overview.totalPlayers > 0 -> {
+                            YouthAgentHubSection(
+                                overview = overview,
+                                navController = navController,
+                                onTaskToggle = { viewModel.toggleTaskCompleted(it) }
+                            )
+                        }
+                        overview != null -> YouthAgentEmptyState()
+                        else -> MyBoardLoadingPlaceholder()
+                    }
+                    else -> when {
+                        overview != null && overview.totalPlayers > 0 -> {
+                            MyAgentHubSection(
+                                overview = overview,
+                                navController = navController,
+                                onTaskToggle = { viewModel.toggleTaskCompleted(it) }
+                            )
+                        }
+                        overview != null -> MyAgentEmptyState()
+                        else -> MyBoardLoadingPlaceholder()
+                    }
                 }
             }
 
             // ── Activity Feed ────────────────────────────────────────────
             item {
-                FeedSectionHeader(
-                    selectedFilter = state.selectedFeedFilter,
-                    onFilterSelected = { viewModel.selectFeedFilter(it) }
-                )
+                when {
+                    isWomenPlatform -> WomenFeedSectionHeader(
+                        selectedFilter = state.selectedFeedFilter,
+                        onFilterSelected = { viewModel.selectFeedFilter(it) }
+                    )
+                    isYouthPlatform -> YouthFeedSectionHeader(
+                        selectedFilter = state.selectedFeedFilter,
+                        onFilterSelected = { viewModel.selectFeedFilter(it) }
+                    )
+                    else -> FeedSectionHeader(
+                        selectedFilter = state.selectedFeedFilter,
+                        onFilterSelected = { viewModel.selectFeedFilter(it) }
+                    )
+                }
             }
 
             if (filteredEvents.isEmpty()) {
                 item {
                     Text(
-                        text = stringResource(R.string.feed_empty),
-                        style = regularTextStyle(HomeTextSecondary, 13.sp, textAlign = TextAlign.Center),
+                        text = stringResource(
+                            when {
+                                isWomenPlatform -> R.string.women_feed_empty
+                                isYouthPlatform -> R.string.youth_feed_empty
+                                else -> R.string.feed_empty
+                            }
+                        ),
+                        style = regularTextStyle(
+                            when {
+                                isWomenPlatform -> WomenColors.TextSecondary
+                                isYouthPlatform -> YouthColors.TextSecondary
+                                else -> HomeTextSecondary
+                            },
+                            13.sp,
+                            textAlign = TextAlign.Center
+                        ),
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(vertical = 32.dp, horizontal = 16.dp)
@@ -263,6 +382,8 @@ fun DashboardScreen(
                         event = event,
                         navController = navController,
                         allAccounts = state.allAccounts,
+                        isWomenPlatform = isWomenPlatform,
+                        isYouthPlatform = isYouthPlatform,
                         onNavigateToPlayer = { tmProfile, autoRefresh ->
                             viewModel.checkPlayerExists(tmProfile) { exists ->
                                 if (exists) {
@@ -271,7 +392,31 @@ fun DashboardScreen(
                                     navController.navigate(route)
                                 } else {
                                     ToastManager.showError(
-                                        context.getString(R.string.feed_player_deleted_error)
+                                        context.getString(
+                                            when {
+                                                isWomenPlatform -> R.string.feed_women_player_deleted_error
+                                                isYouthPlatform -> R.string.feed_youth_player_deleted_error
+                                                else -> R.string.feed_player_deleted_error
+                                            }
+                                        )
+                                    )
+                                }
+                            }
+                        },
+                        onNavigateToPlayerByName = { playerName ->
+                            viewModel.findPlayerDocIdByName(playerName) { docId ->
+                                if (docId != null) {
+                                    val route = "${Screens.PlayerInfoScreen.route}/${android.net.Uri.encode(docId)}"
+                                    navController.navigate(route)
+                                } else {
+                                    ToastManager.showError(
+                                        context.getString(
+                                            when {
+                                                isWomenPlatform -> R.string.feed_women_player_deleted_error
+                                                isYouthPlatform -> R.string.feed_youth_player_deleted_error
+                                                else -> R.string.feed_player_deleted_error
+                                            }
+                                        )
                                     )
                                 }
                             }
@@ -315,59 +460,61 @@ fun DashboardScreen(
                 )
             }
 
-            // ── Transfer Windows (Grouped & Collapsible) ────────────────────
-            item {
-                TransferWindowsSectionHeader(totalCount = state.transferWindows.size)
-            }
-            when {
-                state.transferWindowsLoading -> {
-                    item {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 24.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(28.dp),
-                                color = HomeTealAccent,
-                                strokeWidth = 2.dp
-                            )
-                        }
-                    }
+            // ── Transfer Windows (Grouped & Collapsible) — hidden for women & youth ──
+            if (!isWomenPlatform && !isYouthPlatform) {
+                item {
+                    TransferWindowsSectionHeader(totalCount = state.transferWindows.size)
                 }
-                state.transferWindowGroups.isEmpty() -> {
-                    item {
-                        Text(
-                            text = stringResource(R.string.transfer_windows_empty),
-                            style = regularTextStyle(HomeTextSecondary, 13.sp),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 20.dp, vertical = 16.dp)
-                        )
-                    }
-                }
-                else -> {
-                    state.transferWindowGroups.forEach { (confederation, windows) ->
-                        val isExpanded = confederation in state.expandedConfederations
-                        item(key = "tw_header_${confederation.name}") {
-                            TransferWindowGroupHeader(
-                                confederation = confederation,
-                                count = windows.size,
-                                isExpanded = isExpanded,
-                                closingSoonCount = windows.count { (it.daysLeft ?: Int.MAX_VALUE) <= 7 },
-                                onToggle = { viewModel.toggleTransferWindowGroup(confederation) }
-                            )
-                        }
-                        if (isExpanded) {
-                            items(
-                                items = windows,
-                                key = { "tw_${confederation.name}_${it.countryName}" }
-                            ) { window ->
-                                TransferWindowRow(
-                                    window = window,
-                                    modifier = Modifier.padding(horizontal = 20.dp)
+                when {
+                    state.transferWindowsLoading -> {
+                        item {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 24.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(28.dp),
+                                    color = HomeTealAccent,
+                                    strokeWidth = 2.dp
                                 )
+                            }
+                        }
+                    }
+                    state.transferWindowGroups.isEmpty() -> {
+                        item {
+                            Text(
+                                text = stringResource(R.string.transfer_windows_empty),
+                                style = regularTextStyle(HomeTextSecondary, 13.sp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 20.dp, vertical = 16.dp)
+                            )
+                        }
+                    }
+                    else -> {
+                        state.transferWindowGroups.forEach { (confederation, windows) ->
+                            val isExpanded = confederation in state.expandedConfederations
+                            item(key = "tw_header_${confederation.name}") {
+                                TransferWindowGroupHeader(
+                                    confederation = confederation,
+                                    count = windows.size,
+                                    isExpanded = isExpanded,
+                                    closingSoonCount = windows.count { (it.daysLeft ?: Int.MAX_VALUE) <= 7 },
+                                    onToggle = { viewModel.toggleTransferWindowGroup(confederation) }
+                                )
+                            }
+                            if (isExpanded) {
+                                items(
+                                    items = windows,
+                                    key = { "tw_${confederation.name}_${it.countryName}" }
+                                ) { window ->
+                                    TransferWindowRow(
+                                        window = window,
+                                        modifier = Modifier.padding(horizontal = 20.dp)
+                                    )
+                                }
                             }
                         }
                     }
@@ -552,7 +699,8 @@ private fun GreetingHeader(
 // ═════════════════════════════════════════════════════════════════════════════
 
 @Composable
-private fun StatsRow(state: HomeDashboardState) {
+private fun StatsRow(state: HomeDashboardState, platform: Platform = Platform.MEN) {
+    val accent = platform.accent
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -564,7 +712,7 @@ private fun StatsRow(state: HomeDashboardState) {
             icon = Icons.Default.People,
             value = state.totalPlayers.toString(),
             label = stringResource(R.string.stat_players),
-            accentColor = HomeTealAccent
+            accentColor = accent
         )
         StatCard(
             modifier = Modifier.weight(1f),
@@ -632,131 +780,207 @@ private fun StatCard(
 //  QUICK ACTIONS
 // ═════════════════════════════════════════════════════════════════════════════
 
+/** Quick action keys: only actions relevant to the current platform are shown. */
+private enum class QuickActionKey {
+    PLAYERS,
+    SHORTLIST,
+    RELEASES,
+    CONTRACT_FINISHER,
+    RETURNEES,
+    WAR_ROOM,
+    CONTACTS,
+    REQUESTS,
+    SHADOW_TEAMS,
+    TASKS,
+}
+
+/** Which quick actions to show per platform (aligned with web dashboard). */
+private fun quickActionsFor(platform: Platform): Set<QuickActionKey> = when (platform) {
+    Platform.MEN -> setOf(
+        QuickActionKey.PLAYERS,
+        QuickActionKey.SHORTLIST,
+        QuickActionKey.RELEASES,
+        QuickActionKey.CONTRACT_FINISHER,
+        QuickActionKey.RETURNEES,
+        QuickActionKey.WAR_ROOM,
+        QuickActionKey.CONTACTS,
+        QuickActionKey.REQUESTS,
+        QuickActionKey.SHADOW_TEAMS,
+    )
+    Platform.WOMEN -> setOf(
+        QuickActionKey.PLAYERS,
+        QuickActionKey.SHORTLIST,
+        QuickActionKey.CONTACTS,
+        QuickActionKey.REQUESTS,
+        QuickActionKey.TASKS,
+    )
+    Platform.YOUTH -> setOf(
+        QuickActionKey.PLAYERS,
+        QuickActionKey.SHORTLIST,
+        QuickActionKey.CONTACTS,
+        QuickActionKey.REQUESTS,
+        QuickActionKey.TASKS,
+    )
+}
+
 @Composable
-private fun QuickActionsRow(navController: NavController) {
+private fun QuickActionsRow(navController: NavController, platform: Platform = Platform.MEN) {
+    val actions = quickActionsFor(platform)
     LazyRow(
         contentPadding = PaddingValues(horizontal = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         modifier = Modifier.padding(vertical = 14.dp)
     ) {
-        item {
-            QuickActionChip(
-                icon = Icons.Default.People,
-                label = stringResource(R.string.quick_action_players),
-                color = HomeTealAccent,
-                onClick = {
-                    navController.navigate(Screens.PlayersScreen.route) {
-                        launchSingleTop = true
+        if (QuickActionKey.PLAYERS in actions) {
+            item {
+                QuickActionChip(
+                    icon = Icons.Default.People,
+                    label = stringResource(R.string.quick_action_players),
+                    color = platform.accent,
+                    onClick = {
+                        navController.navigate(Screens.PlayersScreen.route) {
+                            launchSingleTop = true
+                        }
                     }
-                }
-            )
+                )
+            }
         }
-        item {
-            QuickActionChip(
-                icon = Icons.AutoMirrored.Filled.List,
-                label = stringResource(R.string.quick_action_shortlist),
-                color = HomeBlueAccent,
-                onClick = {
-                    navController.navigate(Screens.ShortlistScreen.route) {
-                        launchSingleTop = true
+        if (QuickActionKey.SHORTLIST in actions) {
+            item {
+                QuickActionChip(
+                    icon = Icons.AutoMirrored.Filled.List,
+                    label = stringResource(R.string.quick_action_shortlist),
+                    color = HomeBlueAccent,
+                    onClick = {
+                        navController.navigate(Screens.ShortlistScreen.route) {
+                            launchSingleTop = true
+                        }
                     }
-                }
-            )
+                )
+            }
         }
-        item {
-            QuickActionChip(
-                icon = Icons.Default.Search,
-                label = stringResource(R.string.quick_action_releases),
-                color = HomeOrangeAccent,
-                onClick = {
-                    navController.navigate(Screens.ReleasesScreen.route) {
-                        launchSingleTop = true
+        if (QuickActionKey.RELEASES in actions) {
+            item {
+                QuickActionChip(
+                    icon = Icons.Default.Search,
+                    label = stringResource(R.string.quick_action_releases),
+                    color = HomeOrangeAccent,
+                    onClick = {
+                        navController.navigate(Screens.ReleasesScreen.route) {
+                            launchSingleTop = true
+                        }
                     }
-                }
-            )
+                )
+            }
         }
-        item {
-            QuickActionChip(
-                icon = Icons.Default.CalendarToday,
-                label = stringResource(
-                    if (java.util.Calendar.getInstance().get(java.util.Calendar.MONTH) + 1 in 2..9)
-                        R.string.quick_action_contract_finisher_summer
-                    else
-                        R.string.quick_action_contract_finisher_winter
-                ),
-                color = HomeAmberAccent,
-                onClick = {
-                    navController.navigate(Screens.ContractFinisherScreen.route) {
-                        launchSingleTop = true
+        if (QuickActionKey.CONTRACT_FINISHER in actions) {
+            item {
+                QuickActionChip(
+                    icon = Icons.Default.CalendarToday,
+                    label = stringResource(
+                        if (java.util.Calendar.getInstance().get(java.util.Calendar.MONTH) + 1 in 2..9)
+                            R.string.quick_action_contract_finisher_summer
+                        else
+                            R.string.quick_action_contract_finisher_winter
+                    ),
+                    color = HomeAmberAccent,
+                    onClick = {
+                        navController.navigate(Screens.ContractFinisherScreen.route) {
+                            launchSingleTop = true
+                        }
                     }
-                }
-            )
+                )
+            }
         }
-        item {
-            QuickActionChip(
-                icon = Icons.Default.Autorenew,
-                label = stringResource(R.string.quick_action_returnees),
-                color = HomeRedAccent,
-                onClick = {
-                    navController.navigate(Screens.ReturneeScreen.route) {
-                        launchSingleTop = true
+        if (QuickActionKey.RETURNEES in actions) {
+            item {
+                QuickActionChip(
+                    icon = Icons.Default.Autorenew,
+                    label = stringResource(R.string.quick_action_returnees),
+                    color = HomeRedAccent,
+                    onClick = {
+                        navController.navigate(Screens.ReturneeScreen.route) {
+                            launchSingleTop = true
+                        }
                     }
-                }
-            )
+                )
+            }
         }
-        item {
-            QuickActionChip(
-                icon = Icons.Default.Psychology,
-                label = stringResource(R.string.quick_action_war_room),
-                color = WarRoomAccent,
-                onClick = {
-                    navController.navigate(Screens.WarRoomScreen.route) {
-                        launchSingleTop = true
-                    }
-                },
-                gradientBg = Brush.horizontalGradient(
-                    colors = listOf(
-                        WarRoomAccent.copy(alpha = 0.25f),
-                        WarRoomAccent.copy(alpha = 0.12f)
+        if (QuickActionKey.WAR_ROOM in actions) {
+            item {
+                QuickActionChip(
+                    icon = Icons.Default.Psychology,
+                    label = stringResource(R.string.quick_action_war_room),
+                    color = WarRoomAccent,
+                    onClick = {
+                        navController.navigate(Screens.WarRoomScreen.route) {
+                            launchSingleTop = true
+                        }
+                    },
+                    gradientBg = Brush.horizontalGradient(
+                        colors = listOf(
+                            WarRoomAccent.copy(alpha = 0.25f),
+                            WarRoomAccent.copy(alpha = 0.12f)
+                        )
                     )
                 )
-            )
+            }
         }
-        item {
-            QuickActionChip(
-                icon = Icons.Default.ContactPhone,
-                label = stringResource(R.string.quick_action_contacts),
-                color = HomeTealAccent,
-                onClick = {
-                    navController.navigate(Screens.ContactsScreen.route) {
-                        launchSingleTop = true
+        if (QuickActionKey.CONTACTS in actions) {
+            item {
+                QuickActionChip(
+                    icon = Icons.Default.ContactPhone,
+                    label = stringResource(R.string.quick_action_contacts),
+                    color = HomeTealAccent,
+                    onClick = {
+                        navController.navigate(Screens.ContactsScreen.route) {
+                            launchSingleTop = true
+                        }
                     }
-                }
-            )
+                )
+            }
         }
-        item {
-            QuickActionChip(
-                icon = Icons.Default.RequestQuote,
-                label = stringResource(R.string.quick_action_requests),
-                color = HomePurpleAccent,
-                onClick = {
-                    navController.navigate(Screens.RequestsScreen.route) {
-                        launchSingleTop = true
+        if (QuickActionKey.REQUESTS in actions) {
+            item {
+                QuickActionChip(
+                    icon = Icons.Default.RequestQuote,
+                    label = stringResource(R.string.quick_action_requests),
+                    color = HomePurpleAccent,
+                    onClick = {
+                        navController.navigate(Screens.RequestsScreen.route) {
+                            launchSingleTop = true
+                        }
                     }
-                }
-            )
+                )
+            }
         }
-        item {
-            QuickActionChip(
-                icon = Icons.Default.SportsSoccer,
-                label = stringResource(R.string.quick_action_shadow_teams),
-                color = HomeGreenAccent,
-                onClick = {
-                    navController.navigate(Screens.ShadowTeamsScreen.route) {
-                        launchSingleTop = true
+        if (QuickActionKey.SHADOW_TEAMS in actions) {
+            item {
+                QuickActionChip(
+                    icon = Icons.Default.SportsSoccer,
+                    label = stringResource(R.string.quick_action_shadow_teams),
+                    color = HomeGreenAccent,
+                    onClick = {
+                        navController.navigate(Screens.ShadowTeamsScreen.route) {
+                            launchSingleTop = true
+                        }
                     }
-                }
-            )
+                )
+            }
+        }
+        if (QuickActionKey.TASKS in actions) {
+            item {
+                QuickActionChip(
+                    icon = Icons.Default.CheckCircle,
+                    label = stringResource(R.string.tasks_title),
+                    color = platform.accent,
+                    onClick = {
+                        navController.navigate(Screens.TasksScreen.route) {
+                            launchSingleTop = true
+                        }
+                    }
+                )
+            }
         }
     }
 }
@@ -872,7 +1096,10 @@ private fun FeedEventCard(
     event: FeedEvent,
     navController: NavController,
     allAccounts: List<com.liordahan.mgsrteam.features.login.models.Account> = emptyList(),
-    onNavigateToPlayer: (tmProfile: String, autoRefresh: Boolean) -> Unit = { _, _ -> }
+    isWomenPlatform: Boolean = false,
+    isYouthPlatform: Boolean = false,
+    onNavigateToPlayer: (tmProfile: String, autoRefresh: Boolean) -> Unit = { _, _ -> },
+    onNavigateToPlayerByName: (playerName: String) -> Unit = {}
 ) {
     val (icon, accentColor, title) = when (event.type) {
         FeedEvent.TYPE_MARKET_VALUE_CHANGE -> {
@@ -884,8 +1111,12 @@ private fun FeedEventCard(
             }
         }
         FeedEvent.TYPE_CLUB_CHANGE -> Triple(Icons.Default.SwapHoriz, HomeBlueAccent, stringResource(R.string.feed_club_change))
-        FeedEvent.TYPE_BECAME_FREE_AGENT -> Triple(Icons.Default.PersonOff, HomeRedAccent, stringResource(R.string.feed_became_free_agent))
-        FeedEvent.TYPE_NEW_RELEASE_FROM_CLUB -> Triple(Icons.Default.PersonOff, HomeOrangeAccent, stringResource(R.string.feed_new_release))
+        FeedEvent.TYPE_BECAME_FREE_AGENT -> Triple(Icons.Default.PersonOff, HomeRedAccent, stringResource(
+            when { isWomenPlatform -> R.string.feed_women_became_free_agent; isYouthPlatform -> R.string.feed_youth_became_free_agent; else -> R.string.feed_became_free_agent }
+        ))
+        FeedEvent.TYPE_NEW_RELEASE_FROM_CLUB -> Triple(Icons.Default.PersonOff, HomeOrangeAccent, stringResource(
+            when { isWomenPlatform -> R.string.feed_women_new_release; isYouthPlatform -> R.string.feed_youth_new_release; else -> R.string.feed_new_release }
+        ))
         FeedEvent.TYPE_MANDATE_EXPIRED -> Triple(Icons.Default.Warning, HomeRedAccent, stringResource(R.string.feed_mandate_expired))
         FeedEvent.TYPE_MANDATE_UPLOADED -> Triple(Icons.Default.Description, HomeTealAccent, stringResource(R.string.feed_mandate_uploaded))
         FeedEvent.TYPE_MANDATE_SWITCHED_ON -> Triple(Icons.Default.Description, HomeTealAccent, stringResource(R.string.feed_mandate_switched_on))
@@ -893,13 +1124,23 @@ private fun FeedEventCard(
         FeedEvent.TYPE_CONTRACT_EXPIRING -> Triple(Icons.Default.Warning, HomeOrangeAccent, stringResource(R.string.feed_contract_expiring))
         FeedEvent.TYPE_NOTE_ADDED -> Triple(Icons.AutoMirrored.Filled.NoteAdd, HomeRoseAccent, stringResource(R.string.feed_new_note))
         FeedEvent.TYPE_NOTE_DELETED -> Triple(Icons.Default.Delete, HomeRedAccent, stringResource(R.string.feed_note_deleted))
-        FeedEvent.TYPE_PLAYER_ADDED -> Triple(Icons.Default.Add, HomeTealAccent, stringResource(R.string.feed_player_added))
-        FeedEvent.TYPE_PLAYER_DELETED -> Triple(Icons.Default.Delete, HomeRedAccent, stringResource(R.string.feed_player_deleted))
-        FeedEvent.TYPE_SHORTLIST_ADDED -> Triple(Icons.Default.BookmarkAdd, HomeBlueAccent, stringResource(R.string.feed_shortlist_added))
-        FeedEvent.TYPE_SHORTLIST_REMOVED -> Triple(Icons.Default.BookmarkRemove, HomeRedAccent, stringResource(R.string.feed_shortlist_removed))
+        FeedEvent.TYPE_PLAYER_ADDED -> Triple(Icons.Default.Add, HomeTealAccent, stringResource(
+            when { isWomenPlatform -> R.string.feed_women_player_added; isYouthPlatform -> R.string.feed_youth_player_added; else -> R.string.feed_player_added }
+        ))
+        FeedEvent.TYPE_PLAYER_DELETED -> Triple(Icons.Default.Delete, HomeRedAccent, stringResource(
+            when { isWomenPlatform -> R.string.feed_women_player_deleted; isYouthPlatform -> R.string.feed_youth_player_deleted; else -> R.string.feed_player_deleted }
+        ))
+        FeedEvent.TYPE_SHORTLIST_ADDED -> Triple(Icons.Default.BookmarkAdd, HomeBlueAccent, stringResource(
+            when { isWomenPlatform -> R.string.feed_women_shortlist_added; isYouthPlatform -> R.string.feed_youth_shortlist_added; else -> R.string.feed_shortlist_added }
+        ))
+        FeedEvent.TYPE_SHORTLIST_REMOVED -> Triple(Icons.Default.BookmarkRemove, HomeRedAccent, stringResource(
+            when { isWomenPlatform -> R.string.feed_women_shortlist_removed; isYouthPlatform -> R.string.feed_youth_shortlist_removed; else -> R.string.feed_shortlist_removed }
+        ))
         FeedEvent.TYPE_REQUEST_ADDED -> Triple(Icons.Default.RequestQuote, HomePurpleAccent, stringResource(R.string.feed_request_added))
         FeedEvent.TYPE_REQUEST_DELETED -> Triple(Icons.Default.Delete, HomeRedAccent, stringResource(R.string.feed_request_deleted))
-        FeedEvent.TYPE_PLAYER_OFFERED_TO_CLUB -> Triple(Icons.Default.Handshake, HomeTealAccent, stringResource(R.string.feed_player_offered_to_club))
+        FeedEvent.TYPE_PLAYER_OFFERED_TO_CLUB -> Triple(Icons.Default.Handshake, HomeTealAccent, stringResource(
+            when { isWomenPlatform -> R.string.feed_women_player_offered_to_club; isYouthPlatform -> R.string.feed_youth_player_offered_to_club; else -> R.string.feed_player_offered_to_club }
+        ))
         else -> Triple(Icons.Default.Notifications, HomeTextSecondary, stringResource(R.string.feed_update))
     }
 
@@ -932,6 +1173,10 @@ private fun FeedEventCard(
                             else ->
                                 onNavigateToPlayer(tm, false)
                         }
+                    }
+                    // Fallback for Women/Youth events with null playerTmProfile — find by name
+                    event.playerName != null -> {
+                        onNavigateToPlayerByName(event.playerName)
                     }
                 }
             },
@@ -999,7 +1244,7 @@ private fun FeedEventCard(
                         )
                         Text(
                             text = stringResource(
-                                R.string.feed_released_from,
+                                if (isWomenPlatform) R.string.feed_women_released_from else R.string.feed_released_from,
                                 event.oldValue ?: "?"
                             ),
                             style = regularTextStyle(HomeTextSecondary, 12.sp)
@@ -1012,7 +1257,7 @@ private fun FeedEventCard(
                         )
                         Text(
                             text = stringResource(
-                                R.string.feed_moved_from_to,
+                                if (isWomenPlatform) R.string.feed_women_moved_from_to else R.string.feed_moved_from_to,
                                 event.oldValue ?: "?",
                                 event.newValue ?: "?"
                             ),
@@ -1157,7 +1402,7 @@ private fun FeedEventCard(
                         )
                         agentDisplayName?.let {
                             Text(
-                                text = stringResource(R.string.feed_added_by, it),
+                                text = stringResource(if (isWomenPlatform) R.string.feed_women_added_by else R.string.feed_added_by, it),
                                 style = regularTextStyle(HomeTextSecondary, 12.sp)
                             )
                         }
@@ -1174,7 +1419,7 @@ private fun FeedEventCard(
                         )
                         agentDisplayName?.let {
                             Text(
-                                text = stringResource(R.string.feed_removed_by, it),
+                                text = stringResource(if (isWomenPlatform) R.string.feed_women_removed_by else R.string.feed_removed_by, it),
                                 style = regularTextStyle(HomeTextSecondary, 12.sp)
                             )
                         }
@@ -1192,7 +1437,7 @@ private fun FeedEventCard(
                         val parts = buildList {
                             event.newValue?.takeIf { it.isNotBlank() }?.let { add(it) }
                             agentDisplayName?.takeIf { it.isNotBlank() }?.let {
-                                add(stringResource(R.string.feed_added_by, it))
+                                add(stringResource(if (isWomenPlatform) R.string.feed_women_added_by else R.string.feed_added_by, it))
                             }
                         }
                         if (parts.isNotEmpty()) {
@@ -1215,7 +1460,7 @@ private fun FeedEventCard(
                         val parts = buildList {
                             event.newValue?.takeIf { it.isNotBlank() }?.let { add(it) }
                             agentDisplayName?.takeIf { it.isNotBlank() }?.let {
-                                add(stringResource(R.string.feed_deleted_by, it))
+                                add(stringResource(if (isWomenPlatform) R.string.feed_women_deleted_by else R.string.feed_deleted_by, it))
                             }
                         }
                         if (parts.isNotEmpty()) {
@@ -1236,9 +1481,9 @@ private fun FeedEventCard(
                             style = boldTextStyle(HomeTextPrimary, 14.sp)
                         )
                         val parts = buildList {
-                            event.newValue?.takeIf { it.isNotBlank() }?.let { add(stringResource(R.string.feed_offered_to, it)) }
+                            event.newValue?.takeIf { it.isNotBlank() }?.let { add(stringResource(if (isWomenPlatform) R.string.feed_women_offered_to else R.string.feed_offered_to, it)) }
                             agentDisplayName?.takeIf { it.isNotBlank() }?.let {
-                                add(stringResource(R.string.feed_offered_by, it))
+                                add(stringResource(if (isWomenPlatform) R.string.feed_women_offered_by else R.string.feed_offered_by, it))
                             }
                         }
                         if (parts.isNotEmpty()) {
@@ -1267,7 +1512,7 @@ private fun FeedEventCard(
                         )
                         agentDisplayName?.let {
                             Text(
-                                text = stringResource(R.string.feed_added_by, it),
+                                text = stringResource(if (isWomenPlatform) R.string.feed_women_added_by else R.string.feed_added_by, it),
                                 style = regularTextStyle(HomeTextSecondary, 12.sp)
                             )
                         }
@@ -1284,7 +1529,7 @@ private fun FeedEventCard(
                         )
                         agentDisplayName?.let {
                             Text(
-                                text = stringResource(R.string.feed_deleted_by, it),
+                                text = stringResource(if (isWomenPlatform) R.string.feed_women_deleted_by else R.string.feed_deleted_by, it),
                                 style = regularTextStyle(HomeTextSecondary, 12.sp)
                             )
                         }
@@ -1386,8 +1631,9 @@ private fun MyAgentHubSection(
                 style = boldTextStyle(HomeTextPrimary, 18.sp),
                 modifier = Modifier.weight(1f)
             )
+            val isWomen = koinInject<PlatformManager>().current.value == Platform.WOMEN
             Text(
-                text = stringResource(R.string.my_hub_view_my_players),
+                text = stringResource(if (isWomen) R.string.women_my_hub_view_my_players else R.string.my_hub_view_my_players),
                 style = boldTextStyle(HomeTealAccent, 12.sp),
                 modifier = Modifier
                     .clip(RoundedCornerShape(8.dp))
@@ -1728,14 +1974,15 @@ private fun HubTaskRow(
                 overflow = TextOverflow.Ellipsis,
                 textDecoration = if (task.isCompleted) TextDecoration.LineThrough else TextDecoration.None
             )
-            if (task.playerName.isNotBlank() && task.playerTmProfile.isNotBlank()) {
+            if (task.playerName.isNotBlank() && (task.playerTmProfile.isNotBlank() || task.playerId.isNotBlank())) {
                 Spacer(Modifier.height(2.dp))
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(6.dp))
                         .background(HomeTealAccent.copy(alpha = 0.2f))
                         .clickable {
-                            navController.navigate("${Screens.PlayerInfoScreen.route}/${android.net.Uri.encode(task.playerTmProfile)}")
+                            val navId = task.playerTmProfile.takeIf { it.isNotBlank() } ?: task.playerId
+                            navController.navigate("${Screens.PlayerInfoScreen.route}/${android.net.Uri.encode(navId)}")
                         }
                         .padding(horizontal = 6.dp, vertical = 2.dp)
                 ) {
@@ -2294,14 +2541,15 @@ private fun TasksSummaryWidget(
                                         maxLines = 1
                                     )
                                 }
-                                if (task.playerName.isNotBlank() && task.playerTmProfile.isNotBlank()) {
+                                if (task.playerName.isNotBlank() && (task.playerTmProfile.isNotBlank() || task.playerId.isNotBlank())) {
                                     Spacer(Modifier.height(4.dp))
                                     Box(
                                         modifier = Modifier
                                             .clip(RoundedCornerShape(6.dp))
                                             .background(HomeTealAccent.copy(alpha = 0.2f))
                                             .clickable {
-                                                navController.navigate("${Screens.PlayerInfoScreen.route}/${android.net.Uri.encode(task.playerTmProfile)}")
+                                                val navId = task.playerTmProfile.takeIf { it.isNotBlank() } ?: task.playerId
+                                                navController.navigate("${Screens.PlayerInfoScreen.route}/${android.net.Uri.encode(navId)}")
                                             }
                                             .padding(horizontal = 6.dp, vertical = 2.dp)
                                     ) {

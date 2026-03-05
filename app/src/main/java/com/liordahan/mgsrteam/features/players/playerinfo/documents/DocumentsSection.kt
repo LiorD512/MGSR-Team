@@ -44,13 +44,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.liordahan.mgsrteam.R
-import com.liordahan.mgsrteam.ui.theme.HomeDarkCard
-import com.liordahan.mgsrteam.ui.theme.HomeDarkCardBorder
-import com.liordahan.mgsrteam.ui.theme.HomeGreenAccent
-import com.liordahan.mgsrteam.ui.theme.HomeRedAccent
-import com.liordahan.mgsrteam.ui.theme.HomeTealAccent
-import com.liordahan.mgsrteam.ui.theme.HomeTextPrimary
-import com.liordahan.mgsrteam.ui.theme.HomeTextSecondary
+import com.liordahan.mgsrteam.ui.theme.PlatformColors
 import com.liordahan.mgsrteam.ui.utils.boldTextStyle
 import com.liordahan.mgsrteam.ui.utils.regularTextStyle
 import java.text.SimpleDateFormat
@@ -73,8 +67,8 @@ fun DocumentsSection(
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = HomeDarkCard),
-        border = BorderStroke(1.dp, HomeDarkCardBorder)
+        colors = CardDefaults.cardColors(containerColor = PlatformColors.palette.card),
+        border = BorderStroke(1.dp, PlatformColors.palette.cardBorder)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             if (isUploading) {
@@ -84,13 +78,13 @@ fun DocumentsSection(
                 ) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(20.dp),
-                        color = HomeTealAccent,
+                        color = PlatformColors.palette.accent,
                         strokeWidth = 2.dp
                     )
                     Spacer(Modifier.width(12.dp))
                     Text(
                         text = stringResource(R.string.player_info_uploading),
-                        style = regularTextStyle(HomeTextSecondary, 14.sp)
+                        style = regularTextStyle(PlatformColors.palette.textSecondary, 14.sp)
                     )
                 }
                 Spacer(Modifier.height(16.dp))
@@ -103,7 +97,7 @@ fun DocumentsSection(
                     if (index > 0) {
                         HorizontalDivider(
                             modifier = Modifier.padding(vertical = 8.dp),
-                            color = HomeDarkCardBorder,
+                            color = PlatformColors.palette.cardBorder,
                             thickness = 1.dp
                         )
                     }
@@ -139,17 +133,17 @@ private fun DocumentsEmptyState(onAddDocument: () -> Unit) {
             imageVector = Icons.Default.PictureAsPdf,
             contentDescription = null,
             modifier = Modifier.size(48.dp),
-            tint = HomeTextSecondary
+            tint = PlatformColors.palette.textSecondary
         )
         Spacer(Modifier.height(16.dp))
         Text(
             text = stringResource(R.string.player_info_no_documents),
-            style = boldTextStyle(HomeTextPrimary, 16.sp)
+            style = boldTextStyle(PlatformColors.palette.textPrimary, 16.sp)
         )
         Spacer(Modifier.height(4.dp))
         Text(
             text = stringResource(R.string.player_info_documents_empty_subtitle),
-            style = regularTextStyle(HomeTextSecondary, 14.sp)
+            style = regularTextStyle(PlatformColors.palette.textSecondary, 14.sp)
         )
         Spacer(Modifier.height(24.dp))
         AddDocumentButton(onClick = onAddDocument)
@@ -165,7 +159,7 @@ private fun AddDocumentButton(onClick: () -> Unit) {
             .height(48.dp),
         shape = RoundedCornerShape(12.dp),
         colors = ButtonDefaults.buttonColors(
-            containerColor = HomeTealAccent,
+            containerColor = PlatformColors.palette.accent,
             contentColor = Color.White
         )
     ) {
@@ -207,7 +201,7 @@ private fun DocumentCard(
                 imageVector = typeIcon,
                 contentDescription = null,
                 modifier = Modifier.size(24.dp),
-                tint = HomeTealAccent
+                tint = PlatformColors.palette.accent
             )
         }
         Spacer(Modifier.width(12.dp))
@@ -217,7 +211,7 @@ private fun DocumentCard(
         ) {
             Text(
                 text = document.name ?: document.documentType.displayName,
-                style = regularTextStyle(HomeTextPrimary, 14.sp),
+                style = regularTextStyle(PlatformColors.palette.textPrimary, 14.sp),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -227,11 +221,11 @@ private fun DocumentCard(
             ) {
                 Text(
                     text = document.documentType.displayName,
-                    style = regularTextStyle(HomeTextSecondary, 12.sp)
+                    style = regularTextStyle(PlatformColors.palette.textSecondary, 12.sp)
                 )
                 Text(
                     text = "·",
-                    style = regularTextStyle(HomeTextSecondary, 12.sp)
+                    style = regularTextStyle(PlatformColors.palette.textSecondary, 12.sp)
                 )
                 Text(
                     text = status.text,
@@ -240,11 +234,11 @@ private fun DocumentCard(
                 if (dateText.isNotEmpty()) {
                     Text(
                         text = "·",
-                        style = regularTextStyle(HomeTextSecondary, 12.sp)
+                        style = regularTextStyle(PlatformColors.palette.textSecondary, 12.sp)
                     )
                     Text(
                         text = dateText,
-                        style = regularTextStyle(HomeTextSecondary, 12.sp),
+                        style = regularTextStyle(PlatformColors.palette.textSecondary, 12.sp),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -260,7 +254,7 @@ private fun DocumentCard(
             Icon(
                 imageVector = Icons.Default.Link,
                 contentDescription = stringResource(R.string.player_info_cd_open_link),
-                tint = HomeTealAccent
+                tint = PlatformColors.palette.accent
             )
         }
         IconButton(
@@ -270,7 +264,7 @@ private fun DocumentCard(
             Icon(
                 imageVector = Icons.Default.Delete,
                 contentDescription = stringResource(R.string.player_info_cd_delete_document),
-                tint = HomeTextSecondary
+                tint = PlatformColors.palette.textSecondary
             )
         }
     }
@@ -289,14 +283,14 @@ private data class DocumentStatus(val text: String, val color: Color)
 
 private fun documentStatus(doc: PlayerDocument): DocumentStatus {
     if (doc.expired) {
-        return DocumentStatus("Expired", HomeRedAccent)
+        return DocumentStatus("Expired", PlatformColors.palette.red)
     }
-    val expiresAt = doc.expiresAt ?: return DocumentStatus("No expiry", HomeTextSecondary)
+    val expiresAt = doc.expiresAt ?: return DocumentStatus("No expiry", PlatformColors.palette.textSecondary)
     val now = System.currentTimeMillis()
     return if (expiresAt >= now) {
-        DocumentStatus("Valid", HomeGreenAccent)
+        DocumentStatus("Valid", PlatformColors.palette.green)
     } else {
-        DocumentStatus("Expired", HomeRedAccent)
+        DocumentStatus("Expired", PlatformColors.palette.red)
     }
 }
 

@@ -98,13 +98,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.liordahan.mgsrteam.R
 import com.liordahan.mgsrteam.features.players.models.NotesModel
-import com.liordahan.mgsrteam.ui.theme.HomeDarkBackground
-import com.liordahan.mgsrteam.ui.theme.HomeDarkCard
-import com.liordahan.mgsrteam.ui.theme.HomeDarkCardBorder
-import com.liordahan.mgsrteam.ui.theme.HomeRedAccent
-import com.liordahan.mgsrteam.ui.theme.HomeTealAccent
-import com.liordahan.mgsrteam.ui.theme.HomeTextPrimary
-import com.liordahan.mgsrteam.ui.theme.HomeTextSecondary
+import com.liordahan.mgsrteam.ui.theme.PlatformColors
 import com.liordahan.mgsrteam.ui.components.RecordingWaveform
 import com.liordahan.mgsrteam.ui.components.ToastManager
 import com.liordahan.mgsrteam.ui.utils.clickWithNoRipple
@@ -169,8 +163,8 @@ fun NotesSection(
     Card(
         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = HomeDarkCard),
-        border = BorderStroke(1.dp, HomeDarkCardBorder)
+        colors = CardDefaults.cardColors(containerColor = PlatformColors.palette.card),
+        border = BorderStroke(1.dp, PlatformColors.palette.cardBorder)
     ) {
         Column(modifier = Modifier.padding(16.dp, 16.dp, 16.dp, 20.dp)) {
             Row(
@@ -183,7 +177,7 @@ fun NotesSection(
                     } else {
                         stringResource(R.string.player_info_notes)
                     },
-                    style = boldTextStyle(HomeTextPrimary, 16.sp),
+                    style = boldTextStyle(PlatformColors.palette.textPrimary, 16.sp),
                     modifier = Modifier.weight(1f)
                 )
             }
@@ -205,7 +199,7 @@ fun NotesSection(
                     Spacer(Modifier.height(4.dp))
                     Text(
                         text = stringResource(R.string.player_info_view_all_notes, noteCount),
-                        style = boldTextStyle(HomeTealAccent, 14.sp),
+                        style = boldTextStyle(PlatformColors.palette.accent, 14.sp),
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(8.dp))
@@ -224,7 +218,7 @@ fun NotesSection(
                         .height(48.dp),
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = HomeTealAccent,
+                        containerColor = PlatformColors.palette.accent,
                         contentColor = Color.White
                     )
                 ) {
@@ -258,17 +252,17 @@ private fun NotesEmptyState(onAddNoteClicked: () -> Unit) {
             imageVector = Icons.Default.NoteAdd,
             contentDescription = null,
             modifier = Modifier.size(48.dp),
-            tint = HomeTextSecondary.copy(alpha = 0.5f)
+            tint = PlatformColors.palette.textSecondary.copy(alpha = 0.5f)
         )
         Spacer(Modifier.height(12.dp))
         Text(
             text = stringResource(R.string.player_info_no_notes_title),
-            style = boldTextStyle(HomeTextPrimary, 14.sp)
+            style = boldTextStyle(PlatformColors.palette.textPrimary, 14.sp)
         )
         Spacer(Modifier.height(4.dp))
         Text(
             text = stringResource(R.string.player_info_no_notes_subtitle),
-            style = regularTextStyle(HomeTextSecondary, 13.sp),
+            style = regularTextStyle(PlatformColors.palette.textSecondary, 13.sp),
             textAlign = TextAlign.Center
         )
         Spacer(Modifier.height(20.dp))
@@ -279,7 +273,7 @@ private fun NotesEmptyState(onAddNoteClicked: () -> Unit) {
                 .height(48.dp),
             shape = RoundedCornerShape(12.dp),
             colors = ButtonDefaults.buttonColors(
-                containerColor = HomeTealAccent,
+                containerColor = PlatformColors.palette.accent,
                 contentColor = Color.White
             )
         ) {
@@ -320,7 +314,7 @@ fun NoteCard(
             ),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
-            containerColor = HomeDarkCardBorder.copy(alpha = 0.5f)
+            containerColor = PlatformColors.palette.cardBorder.copy(alpha = 0.5f)
         )
     ) {
         Box {
@@ -332,7 +326,7 @@ fun NoteCard(
                 Text(
                     text = notesModel.notes ?: "",
                     style = regularTextStyle(
-                        HomeTextPrimary,
+                        PlatformColors.palette.textPrimary,
                         14.sp,
                         direction = TextDirection.ContentOrRtl
                     ),
@@ -347,7 +341,7 @@ fun NoteCard(
                     Text(
                         text = notesModel.createBy ?: "",
                         style = regularTextStyle(
-                            HomeTextSecondary,
+                            PlatformColors.palette.textSecondary,
                             12.sp,
                             direction = TextDirection.ContentOrRtl
                         ),
@@ -356,7 +350,7 @@ fun NoteCard(
                     Text(
                         text = notesModel.createdAt?.let { sdf.format(it) } ?: "",
                         style = regularTextStyle(
-                            HomeTextSecondary,
+                            PlatformColors.palette.textSecondary,
                             12.sp,
                             direction = TextDirection.Ltr
                         )
@@ -367,7 +361,7 @@ fun NoteCard(
             DropdownMenu(
                 expanded = showMenu,
                 onDismissRequest = { showMenu = false },
-                containerColor = HomeDarkCard
+                containerColor = PlatformColors.palette.card
             ) {
                 DropdownMenuItem(
                     text = {
@@ -376,12 +370,12 @@ fun NoteCard(
                                 Icons.Default.ContentCopy,
                                 contentDescription = null,
                                 modifier = Modifier.size(18.dp),
-                                tint = HomeTextPrimary
+                                tint = PlatformColors.palette.textPrimary
                             )
                             Spacer(Modifier.width(12.dp))
                             Text(
                                 stringResource(R.string.player_info_note_copy),
-                                style = regularTextStyle(HomeTextPrimary, 14.sp)
+                                style = regularTextStyle(PlatformColors.palette.textPrimary, 14.sp)
                             )
                         }
                     },
@@ -397,12 +391,12 @@ fun NoteCard(
                                 Icons.Default.Delete,
                                 contentDescription = null,
                                 modifier = Modifier.size(18.dp),
-                                tint = HomeRedAccent
+                                tint = PlatformColors.palette.red
                             )
                             Spacer(Modifier.width(12.dp))
                             Text(
                                 stringResource(R.string.player_info_delete),
-                                style = regularTextStyle(HomeRedAccent, 14.sp)
+                                style = regularTextStyle(PlatformColors.palette.red, 14.sp)
                             )
                         }
                     },
@@ -443,26 +437,26 @@ private fun NoteRecordingContent(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
-            .background(HomeTealAccent.copy(alpha = 0.08f))
-            .border(1.dp, HomeTealAccent.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
+            .background(PlatformColors.palette.accent.copy(alpha = 0.08f))
+            .border(1.dp, PlatformColors.palette.accent.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
             text = stringResource(R.string.player_info_recording),
-            style = regularTextStyle(HomeTealAccent, 16.sp),
+            style = regularTextStyle(PlatformColors.palette.accent, 16.sp),
             modifier = Modifier.padding(bottom = 16.dp)
         )
         RecordingWaveform(
             barCount = 10,
-            color = HomeTealAccent,
+            color = PlatformColors.palette.accent,
             barWidth = 6.dp,
             barHeight = 12.dp,
             modifier = Modifier.padding(vertical = 16.dp)
         )
         Text(
             text = formatDuration(durationSeconds),
-            style = boldTextStyle(HomeTextPrimary, 24.sp),
+            style = boldTextStyle(PlatformColors.palette.textPrimary, 24.sp),
             modifier = Modifier.padding(vertical = 8.dp)
         )
         Box(
@@ -470,7 +464,7 @@ private fun NoteRecordingContent(
                 .size(80.dp)
                 .graphicsLayer { scaleX = pulseScale; scaleY = pulseScale }
                 .clip(CircleShape)
-                .background(HomeRedAccent.copy(alpha = 0.2f))
+                .background(PlatformColors.palette.red.copy(alpha = 0.2f))
                 .clickWithNoRipple(onClick = onStopClick),
             contentAlignment = Alignment.Center
         ) {
@@ -478,13 +472,13 @@ private fun NoteRecordingContent(
                 Icons.Default.Stop,
                 contentDescription = stringResource(R.string.player_info_stop_recording),
                 modifier = Modifier.size(40.dp),
-                tint = HomeRedAccent
+                tint = PlatformColors.palette.red
             )
         }
         Spacer(Modifier.height(8.dp))
         Text(
             text = stringResource(R.string.requests_tap_to_stop),
-            style = regularTextStyle(HomeTextSecondary, 14.sp)
+            style = regularTextStyle(PlatformColors.palette.textSecondary, 14.sp)
         )
     }
 }
@@ -570,7 +564,7 @@ fun AddNoteBottomSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
-        containerColor = HomeDarkCard,
+        containerColor = PlatformColors.palette.card,
         dragHandle = {
             Box(
                 modifier = Modifier
@@ -578,7 +572,7 @@ fun AddNoteBottomSheet(
                     .width(32.dp)
                     .height(4.dp)
                     .clip(RoundedCornerShape(2.dp))
-                    .background(HomeTextSecondary.copy(alpha = 0.4f))
+                    .background(PlatformColors.palette.textSecondary.copy(alpha = 0.4f))
             )
         }
     ) {
@@ -592,7 +586,7 @@ fun AddNoteBottomSheet(
         ) {
             Text(
                 text = stringResource(R.string.player_info_add_note),
-                style = boldTextStyle(HomeTextPrimary, 18.sp)
+                style = boldTextStyle(PlatformColors.palette.textPrimary, 18.sp)
             )
 
             Spacer(Modifier.height(16.dp))
@@ -604,7 +598,7 @@ fun AddNoteBottomSheet(
                     .fillMaxWidth()
                     .heightIn(min = 100.dp, max = 200.dp),
                 textStyle = regularTextStyle(
-                    HomeTextPrimary,
+                    PlatformColors.palette.textPrimary,
                     14.sp,
                     direction = TextDirection.ContentOrRtl
                 ),
@@ -612,7 +606,7 @@ fun AddNoteBottomSheet(
                     Text(
                         stringResource(R.string.player_info_note_placeholder),
                         style = regularTextStyle(
-                            HomeTextSecondary.copy(alpha = 0.5f),
+                            PlatformColors.palette.textSecondary.copy(alpha = 0.5f),
                             14.sp
                         )
                     )
@@ -626,17 +620,17 @@ fun AddNoteBottomSheet(
                             Icon(
                                 imageVector = Icons.Default.Mic,
                                 contentDescription = stringResource(R.string.player_info_record_note),
-                                tint = HomeTextSecondary
+                                tint = PlatformColors.palette.textSecondary
                             )
                         }
                     }
                 },
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = HomeTealAccent,
-                    unfocusedBorderColor = HomeDarkCardBorder,
-                    cursorColor = HomeTealAccent,
-                    focusedContainerColor = HomeDarkBackground.copy(alpha = 0.5f),
-                    unfocusedContainerColor = HomeDarkBackground.copy(alpha = 0.5f)
+                    focusedBorderColor = PlatformColors.palette.accent,
+                    unfocusedBorderColor = PlatformColors.palette.cardBorder,
+                    cursorColor = PlatformColors.palette.accent,
+                    focusedContainerColor = PlatformColors.palette.background.copy(alpha = 0.5f),
+                    unfocusedContainerColor = PlatformColors.palette.background.copy(alpha = 0.5f)
                 ),
                 shape = RoundedCornerShape(12.dp),
                 keyboardOptions = KeyboardOptions(
@@ -658,8 +652,8 @@ fun AddNoteBottomSheet(
             Text(
                 text = "${noteText.length}/$MAX_NOTE_LENGTH",
                 style = regularTextStyle(
-                    if (noteText.length >= MAX_NOTE_LENGTH) HomeRedAccent
-                    else HomeTextSecondary,
+                    if (noteText.length >= MAX_NOTE_LENGTH) PlatformColors.palette.red
+                    else PlatformColors.palette.textSecondary,
                     12.sp
                 ),
                 modifier = Modifier.align(Alignment.End)
@@ -679,9 +673,9 @@ fun AddNoteBottomSheet(
                 enabled = isValid,
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = HomeTealAccent,
+                    containerColor = PlatformColors.palette.accent,
                     contentColor = Color.White,
-                    disabledContainerColor = HomeTealAccent.copy(alpha = 0.3f),
+                    disabledContainerColor = PlatformColors.palette.accent.copy(alpha = 0.3f),
                     disabledContentColor = Color.White.copy(alpha = 0.5f)
                 )
             ) {
@@ -724,13 +718,13 @@ fun AllNotesScreen(
     }
 
     Scaffold(
-        containerColor = HomeDarkBackground,
+        containerColor = PlatformColors.palette.background,
         topBar = {
             TopAppBar(
                 title = {
                     Text(
                         text = "${stringResource(R.string.player_info_all_notes)} (${sortedNotes.size})",
-                        style = boldTextStyle(HomeTextPrimary, 18.sp)
+                        style = boldTextStyle(PlatformColors.palette.textPrimary, 18.sp)
                     )
                 },
                 navigationIcon = {
@@ -738,19 +732,19 @@ fun AllNotesScreen(
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = stringResource(R.string.back),
-                            tint = HomeTextPrimary
+                            tint = PlatformColors.palette.textPrimary
                         )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = HomeDarkBackground
+                    containerColor = PlatformColors.palette.background
                 )
             )
         },
         floatingActionButton = {
             FloatingActionButton(
                 onClick = { showAddSheet = true },
-                containerColor = HomeTealAccent,
+                containerColor = PlatformColors.palette.accent,
                 contentColor = Color.White,
                 shape = RoundedCornerShape(16.dp)
             ) {
@@ -771,17 +765,17 @@ fun AllNotesScreen(
                         imageVector = Icons.Default.NoteAdd,
                         contentDescription = null,
                         modifier = Modifier.size(64.dp),
-                        tint = HomeTextSecondary.copy(alpha = 0.4f)
+                        tint = PlatformColors.palette.textSecondary.copy(alpha = 0.4f)
                     )
                     Spacer(Modifier.height(16.dp))
                     Text(
                         text = stringResource(R.string.player_info_no_notes_title),
-                        style = boldTextStyle(HomeTextPrimary, 16.sp)
+                        style = boldTextStyle(PlatformColors.palette.textPrimary, 16.sp)
                     )
                     Spacer(Modifier.height(4.dp))
                     Text(
                         text = stringResource(R.string.player_info_no_notes_subtitle),
-                        style = regularTextStyle(HomeTextSecondary, 14.sp)
+                        style = regularTextStyle(PlatformColors.palette.textSecondary, 14.sp)
                     )
                 }
             }
@@ -849,7 +843,7 @@ private fun SwipeToDeleteNoteCard(
         backgroundContent = {
             val color by animateColorAsState(
                 targetValue = when (dismissState.targetValue) {
-                    SwipeToDismissBoxValue.EndToStart -> HomeRedAccent
+                    SwipeToDismissBoxValue.EndToStart -> PlatformColors.palette.red
                     else -> Color.Transparent
                 },
                 animationSpec = tween(200),

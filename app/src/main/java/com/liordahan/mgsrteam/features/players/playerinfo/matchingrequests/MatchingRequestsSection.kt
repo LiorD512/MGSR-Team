@@ -60,12 +60,7 @@ import com.liordahan.mgsrteam.R
 import com.liordahan.mgsrteam.features.players.models.Player
 import com.liordahan.mgsrteam.features.requests.models.PositionDisplayNames
 import com.liordahan.mgsrteam.features.requests.models.Request
-import com.liordahan.mgsrteam.ui.theme.HomeDarkCard
-import com.liordahan.mgsrteam.ui.theme.HomeDarkCardBorder
-import com.liordahan.mgsrteam.ui.theme.HomeGreenAccent
-import com.liordahan.mgsrteam.ui.theme.HomeTealAccent
-import com.liordahan.mgsrteam.ui.theme.HomeTextPrimary
-import com.liordahan.mgsrteam.ui.theme.HomeTextSecondary
+import com.liordahan.mgsrteam.ui.theme.PlatformColors
 import com.liordahan.mgsrteam.ui.components.DarkSystemBarsForBottomSheet
 import com.liordahan.mgsrteam.ui.utils.boldTextStyle
 import com.liordahan.mgsrteam.ui.utils.clickWithNoRipple
@@ -133,8 +128,8 @@ private fun MatchingRequestsEmptyState() {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = HomeDarkCard),
-        border = BorderStroke(1.dp, HomeDarkCardBorder)
+        colors = CardDefaults.cardColors(containerColor = PlatformColors.palette.card),
+        border = BorderStroke(1.dp, PlatformColors.palette.cardBorder)
     ) {
         Column(
             modifier = Modifier
@@ -147,25 +142,25 @@ private fun MatchingRequestsEmptyState() {
                 modifier = Modifier
                     .size(64.dp)
                     .clip(CircleShape)
-                    .background(HomeDarkCardBorder),
+                    .background(PlatformColors.palette.cardBorder),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     Icons.Default.Handshake,
                     contentDescription = null,
                     modifier = Modifier.size(32.dp),
-                    tint = HomeTextSecondary.copy(alpha = 0.6f)
+                    tint = PlatformColors.palette.textSecondary.copy(alpha = 0.6f)
                 )
             }
             Spacer(Modifier.height(20.dp))
             Text(
                 stringResource(R.string.player_info_matching_requests_empty),
-                style = boldTextStyle(HomeTextPrimary, 16.sp)
+                style = boldTextStyle(PlatformColors.palette.textPrimary, 16.sp)
             )
             Spacer(Modifier.height(8.dp))
             Text(
                 stringResource(R.string.player_info_matching_requests_empty_subtitle),
-                style = regularTextStyle(HomeTextSecondary, 13.sp),
+                style = regularTextStyle(PlatformColors.palette.textSecondary, 13.sp),
                 textAlign = TextAlign.Center
             )
         }
@@ -190,8 +185,8 @@ private fun MatchingRequestCard(
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = HomeDarkCard),
-        border = BorderStroke(1.dp, HomeDarkCardBorder)
+        colors = CardDefaults.cardColors(containerColor = PlatformColors.palette.card),
+        border = BorderStroke(1.dp, PlatformColors.palette.cardBorder)
     ) {
         Column(
             modifier = Modifier
@@ -219,12 +214,12 @@ private fun MatchingRequestCard(
                         modifier = Modifier
                             .size(36.dp)
                             .clip(RoundedCornerShape(8.dp))
-                            .background(HomeDarkCardBorder),
+                            .background(PlatformColors.palette.cardBorder),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
                             (request.clubName?.take(2) ?: "?").uppercase(),
-                            style = boldTextStyle(HomeTextSecondary, 11.sp)
+                            style = boldTextStyle(PlatformColors.palette.textSecondary, 11.sp)
                         )
                     }
                     Spacer(Modifier.width(10.dp))
@@ -236,13 +231,13 @@ private fun MatchingRequestCard(
                     ) {
                         Text(
                             request.clubName ?: "",
-                            style = boldTextStyle(HomeTextPrimary, 14.sp)
+                            style = boldTextStyle(PlatformColors.palette.textPrimary, 14.sp)
                         )
                         if (offer != null) {
                             Row(
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(16.dp))
-                                    .background(HomeGreenAccent.copy(alpha = 0.2f))
+                                    .background(PlatformColors.palette.green.copy(alpha = 0.2f))
                                     .padding(horizontal = 8.dp, vertical = 2.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(4.dp)
@@ -251,24 +246,24 @@ private fun MatchingRequestCard(
                                     Icons.Default.Check,
                                     contentDescription = null,
                                     modifier = Modifier.size(12.dp),
-                                    tint = HomeGreenAccent
+                                    tint = PlatformColors.palette.green
                                 )
                                 Text(
                                     stringResource(R.string.player_info_matching_requests_offered),
-                                    style = boldTextStyle(HomeGreenAccent, 10.sp)
+                                    style = boldTextStyle(PlatformColors.palette.green, 10.sp)
                                 )
                             }
                         }
                     }
                     Text(
                         "${request.clubCountry ?: ""} • $positionName".trimStart(' ', '•', ' '),
-                        style = regularTextStyle(HomeTextSecondary, 11.sp),
+                        style = regularTextStyle(PlatformColors.palette.textSecondary, 11.sp),
                         modifier = Modifier.padding(top = 2.dp)
                     )
                     if (detailsText.isNotBlank()) {
                         Text(
                             detailsText,
-                            style = regularTextStyle(HomeTextSecondary, 10.sp),
+                            style = regularTextStyle(PlatformColors.palette.textSecondary, 10.sp),
                             modifier = Modifier.padding(top = 2.dp)
                         )
                     }
@@ -287,7 +282,7 @@ private fun MatchingRequestCard(
                         if (dateAndAgent.isNotBlank()) {
                             Text(
                                 dateAndAgent,
-                                style = regularTextStyle(HomeTealAccent, 10.sp),
+                                style = regularTextStyle(PlatformColors.palette.accent, 10.sp),
                                 modifier = Modifier.padding(top = 2.dp)
                             )
                         }
@@ -298,7 +293,7 @@ private fun MatchingRequestCard(
                     imageVector = if (isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
                     contentDescription = null,
                     modifier = Modifier.size(20.dp),
-                    tint = HomeTextSecondary
+                    tint = PlatformColors.palette.textSecondary
                 )
             }
 
@@ -309,7 +304,7 @@ private fun MatchingRequestCard(
                 exit = shrinkVertically()
             ) {
                 Column(modifier = Modifier.padding(top = 12.dp)) {
-                    HorizontalDivider(color = HomeDarkCardBorder, thickness = 0.5.dp)
+                    HorizontalDivider(color = PlatformColors.palette.cardBorder, thickness = 0.5.dp)
                     Spacer(Modifier.height(12.dp))
 
                     if (offer != null) {
@@ -317,13 +312,13 @@ private fun MatchingRequestCard(
                         Column {
                             Text(
                                 stringResource(R.string.player_info_matching_requests_club_feedback),
-                                style = regularTextStyle(HomeTextSecondary, 10.sp)
+                                style = regularTextStyle(PlatformColors.palette.textSecondary, 10.sp)
                             )
                             Spacer(Modifier.height(4.dp))
                             if (!offer.clubFeedback.isNullOrBlank()) {
                                 Text(
                                     "\"${offer.clubFeedback}\"",
-                                    style = regularTextStyle(HomeTextPrimary, 12.sp)
+                                    style = regularTextStyle(PlatformColors.palette.textPrimary, 12.sp)
                                 )
                                 Spacer(Modifier.height(8.dp))
                             }
@@ -334,7 +329,7 @@ private fun MatchingRequestCard(
                                     else
                                         R.string.player_info_matching_requests_edit_feedback
                                 ),
-                                style = regularTextStyle(HomeTealAccent, 12.sp),
+                                style = regularTextStyle(PlatformColors.palette.accent, 12.sp),
                                 modifier = Modifier.clickWithNoRipple { onEditFeedback() }
                             )
                         }
@@ -348,13 +343,13 @@ private fun MatchingRequestCard(
                         ) {
                             Button(
                                 onClick = onMarkAsOffered,
-                                colors = ButtonDefaults.buttonColors(containerColor = HomeTealAccent.copy(alpha = 0.2f)),
+                                colors = ButtonDefaults.buttonColors(containerColor = PlatformColors.palette.accent.copy(alpha = 0.2f)),
                                 shape = RoundedCornerShape(12.dp),
                                 contentPadding = ButtonDefaults.ContentPadding
                             ) {
                                 Text(
                                     stringResource(R.string.player_info_matching_requests_mark_offered),
-                                    style = boldTextStyle(HomeTealAccent, 13.sp)
+                                    style = boldTextStyle(PlatformColors.palette.accent, 13.sp)
                                 )
                             }
                             if (hasValidContact) {
@@ -373,7 +368,7 @@ private fun MatchingRequestCard(
                                                 }
                                             }
                                         },
-                                    tint = HomeTealAccent
+                                    tint = PlatformColors.palette.accent
                                 )
                             }
                         }
@@ -422,7 +417,7 @@ private fun MarkAsOfferedBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
         shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
-        containerColor = HomeDarkCard,
+        containerColor = PlatformColors.palette.card,
         dragHandle = {
             Box(
                 modifier = Modifier
@@ -434,7 +429,7 @@ private fun MarkAsOfferedBottomSheet(
                     modifier = Modifier
                         .size(36.dp, 4.dp)
                         .clip(RoundedCornerShape(2.dp))
-                        .background(HomeDarkCardBorder)
+                        .background(PlatformColors.palette.cardBorder)
                 )
             }
         },
@@ -457,29 +452,29 @@ private fun MarkAsOfferedBottomSheet(
                     state.offer.clubFeedback.isNullOrBlank() -> stringResource(R.string.player_info_matching_requests_add_feedback_title)
                     else -> stringResource(R.string.player_info_matching_requests_edit_feedback_title)
                 },
-                style = boldTextStyle(HomeTextPrimary, 18.sp)
+                style = boldTextStyle(PlatformColors.palette.textPrimary, 18.sp)
             )
             Spacer(Modifier.height(8.dp))
             Text(
                 "${state.request.clubName ?: ""} • ${PositionDisplayNames.toLongName(state.request.position ?: "")}",
-                style = regularTextStyle(HomeTextSecondary, 13.sp)
+                style = regularTextStyle(PlatformColors.palette.textSecondary, 13.sp)
             )
             Spacer(Modifier.height(20.dp))
 
             Text(
                 stringResource(R.string.player_info_matching_requests_offer_date),
-                style = regularTextStyle(HomeTextSecondary, 11.sp)
+                style = regularTextStyle(PlatformColors.palette.textSecondary, 11.sp)
             )
             Spacer(Modifier.height(4.dp))
             Text(
                 formatOfferDate(state.offer?.offeredAt ?: System.currentTimeMillis()),
-                style = regularTextStyle(HomeTextPrimary, 14.sp)
+                style = regularTextStyle(PlatformColors.palette.textPrimary, 14.sp)
             )
             Spacer(Modifier.height(16.dp))
 
             Text(
                 stringResource(R.string.player_info_matching_requests_feedback_hint),
-                style = regularTextStyle(HomeTextSecondary, 11.sp)
+                style = regularTextStyle(PlatformColors.palette.textSecondary, 11.sp)
             )
             Spacer(Modifier.height(8.dp))
             OutlinedTextField(
@@ -491,17 +486,17 @@ private fun MarkAsOfferedBottomSheet(
                 placeholder = {
                     Text(
                         stringResource(R.string.player_info_matching_requests_feedback_placeholder),
-                        style = regularTextStyle(HomeTextSecondary, 14.sp)
+                        style = regularTextStyle(PlatformColors.palette.textSecondary, 14.sp)
                     )
                 },
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = HomeTealAccent,
-                    unfocusedBorderColor = HomeDarkCardBorder,
-                    focusedTextColor = HomeTextPrimary,
-                    unfocusedTextColor = HomeTextPrimary,
-                    cursorColor = HomeTealAccent,
-                    focusedLabelColor = HomeTextSecondary,
-                    unfocusedLabelColor = HomeTextSecondary
+                    focusedBorderColor = PlatformColors.palette.accent,
+                    unfocusedBorderColor = PlatformColors.palette.cardBorder,
+                    focusedTextColor = PlatformColors.palette.textPrimary,
+                    unfocusedTextColor = PlatformColors.palette.textPrimary,
+                    cursorColor = PlatformColors.palette.accent,
+                    focusedLabelColor = PlatformColors.palette.textSecondary,
+                    unfocusedLabelColor = PlatformColors.palette.textSecondary
                 ),
                 minLines = 3,
                 maxLines = 5
@@ -515,18 +510,18 @@ private fun MarkAsOfferedBottomSheet(
                 Button(
                     onClick = onDismiss,
                     modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.buttonColors(containerColor = HomeDarkCardBorder),
+                    colors = ButtonDefaults.buttonColors(containerColor = PlatformColors.palette.cardBorder),
                     shape = RoundedCornerShape(12.dp)
                 ) {
                     Text(
                         stringResource(R.string.player_info_matching_requests_cancel),
-                        style = boldTextStyle(HomeTextPrimary, 14.sp)
+                        style = boldTextStyle(PlatformColors.palette.textPrimary, 14.sp)
                     )
                 }
                 Button(
                     onClick = { onSave(feedbackText.takeIf { it.isNotBlank() }) },
                     modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.buttonColors(containerColor = HomeTealAccent, contentColor = Color.White),
+                    colors = ButtonDefaults.buttonColors(containerColor = PlatformColors.palette.accent, contentColor = Color.White),
                     shape = RoundedCornerShape(12.dp)
                 ) {
                     Text(

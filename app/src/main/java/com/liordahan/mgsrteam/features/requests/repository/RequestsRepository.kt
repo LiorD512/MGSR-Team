@@ -4,11 +4,13 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.ListenerRegistration
 import com.liordahan.mgsrteam.features.home.models.FeedEvent
 import com.liordahan.mgsrteam.features.login.models.Account
+import com.liordahan.mgsrteam.features.platform.PlatformManager
 import com.liordahan.mgsrteam.features.requests.models.Request
 import com.liordahan.mgsrteam.firebase.FirebaseHandler
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.tasks.await
 
 interface IRequestsRepository {
@@ -18,29 +20,34 @@ interface IRequestsRepository {
     suspend fun deleteRequest(request: Request): Result<Unit>
 }
 
+@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class RequestsRepository(
-    private val firebaseHandler: FirebaseHandler
+    private val firebaseHandler: FirebaseHandler,
+    private val platformManager: PlatformManager
 ) : IRequestsRepository {
 
     /**
      * All ClubRequests are shared — no filtering by user/agent.
-     * Any authenticated user can see all requests.
+     * Auto-reconnects on platform switch.
      */
-    override fun requestsFlow(): Flow<List<Request>> = callbackFlow {
-        val listener: ListenerRegistration = firebaseHandler.firebaseStore
-            .collection(firebaseHandler.clubRequestsTable)
-            .addSnapshotListener { value, error ->
-                if (error != null) {
-                    trySend(emptyList())
-                    return@addSnapshotListener
-                }
-                val list = value?.documents?.mapNotNull { doc ->
-                    doc.toObject(Request::class.java)?.copy(id = doc.id)
-                } ?: emptyList()
-                trySend(list.sortedByDescending { it.createdAt ?: 0L })
+    override fun requestsFlow(): Flow<List<Request>> =
+        platformManager.current.flatMapLatest {
+            callbackFlow {
+                val listener: ListenerRegistration = firebaseHandler.firebaseStore
+                    .collection(firebaseHandler.clubRequestsTable)
+                    .addSnapshotListener { value, error ->
+                        if (error != null) {
+                            trySend(emptyList())
+                            return@addSnapshotListener
+                        }
+                        val list = value?.documents?.mapNotNull { doc ->
+                            doc.toObject(Request::class.java)?.copy(id = doc.id)
+                        } ?: emptyList()
+                        trySend(list.sortedByDescending { it.createdAt ?: 0L })
+                    }
+                awaitClose { listener.remove() }
             }
-        awaitClose { listener.remove() }
-    }
+        }
 
     private suspend fun getCurrentUserAccountName(): String? {
         val email = FirebaseAuth.getInstance().currentUser?.email ?: return null

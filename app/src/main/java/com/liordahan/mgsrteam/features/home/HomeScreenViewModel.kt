@@ -13,6 +13,7 @@ import com.liordahan.mgsrteam.features.home.models.MyAgentOverview
 import com.liordahan.mgsrteam.features.login.models.Account
 import com.liordahan.mgsrteam.features.players.models.Player
 import com.google.firebase.firestore.ListenerRegistration
+import com.liordahan.mgsrteam.features.players.playerinfo.documents.DocumentType
 import com.liordahan.mgsrteam.features.players.playerinfo.documents.PlayerDocument
 import com.liordahan.mgsrteam.firebase.FirebaseHandler
 import com.liordahan.mgsrteam.transfermarket.Confederation
@@ -106,6 +107,8 @@ abstract class IHomeScreenViewModel : ViewModel() {
     abstract val dashboardState: StateFlow<HomeDashboardState>
     /** Checks if player exists in DB; calls onResult(true) if exists, onResult(false) if deleted. */
     abstract fun checkPlayerExists(tmProfile: String, onResult: (Boolean) -> Unit)
+    /** Finds a Women/Youth player by name and returns its document ID, or null if not found. */
+    abstract fun findPlayerDocIdByName(playerName: String, onResult: (String?) -> Unit)
     /** Updates player's mandate switch (haveMandate) by tmProfile. */
     abstract fun updatePlayerMandate(tmProfile: String, hasMandate: Boolean)
     abstract fun selectFeedFilter(filter: FeedFilter)
@@ -118,12 +121,15 @@ abstract class IHomeScreenViewModel : ViewModel() {
     abstract fun toggleTransferWindowGroup(confederation: Confederation)
     abstract fun toggleTeamOverview()
     abstract fun refreshTransferWindows()
+    /** Called from UI when user switches MGSR platform (Men / Women / Youth). */
+    abstract fun reloadForPlatformSwitch()
 }
 
 class HomeScreenViewModel(
     private val firebaseHandler: FirebaseHandler,
     private val transferWindows: TransferWindows,
-    private val appContext: android.content.Context
+    private val appContext: android.content.Context,
+    private val platformManager: com.liordahan.mgsrteam.features.platform.PlatformManager
 ) : IHomeScreenViewModel() {
 
     private val _state = MutableStateFlow(HomeDashboardState())
@@ -145,6 +151,37 @@ class HomeScreenViewModel(
         ensureLoadingClearedWithinTimeout()
     }
 
+    // ── Platform switch ─────────────────────────────────────────────────────
+
+    /**
+     * Tears down all platform-dependent Firestore listeners and re-subscribes
+     * against the new collections. Called *after* [PlatformManager.switchTo()].
+     */
+    override fun reloadForPlatformSwitch() {
+        // Remove old listeners
+        listenerRegistrations.forEach { it.remove() }
+        listenerRegistrations.clear()
+        _currentPlayers = emptyList()
+        // Reset state (keep greeting & accounts)
+        _state.update {
+            it.copy(
+                totalPlayers = 0, withMandate = 0, expiringSoon = 0,
+                freeAgents = 0, requestsCount = 0,
+                feedEvents = emptyList(), agentSummaries = emptyList(),
+                agentTasks = emptyMap(), documentReminders = emptyList(),
+                mandateDocProfiles = emptySet(), mandateStatusByTmProfile = emptyMap(),
+                myAgentOverview = null, isLoading = true
+            )
+        }
+        // Re-subscribe with new collection names
+        loadAllAccounts()
+        listenToPlayers()
+        listenToRequests()
+        loadFeedEvents()
+        listenToAgentTasks()
+        ensureLoadingClearedWithinTimeout()
+    }
+
     /** Fallback: clear loading if FeedEvents/Players listeners are slow (e.g. offline). */
     private fun ensureLoadingClearedWithinTimeout() {
         viewModelScope.launch(Dispatchers.Main) {
@@ -162,10 +199,28 @@ class HomeScreenViewModel(
     override fun checkPlayerExists(tmProfile: String, onResult: (Boolean) -> Unit) {
         viewModelScope.launch(Dispatchers.IO) {
             val exists = try {
-                firebaseHandler.firebaseStore.collection(firebaseHandler.playersTable)
-                    .whereEqualTo("tmProfile", tmProfile).get().await().documents.isNotEmpty()
+                val isNonMen = platformManager.current.value != com.liordahan.mgsrteam.features.platform.Platform.MEN
+                if (isNonMen) {
+                    // Women / Youth — tmProfile is actually the Firestore document ID
+                    firebaseHandler.firebaseStore.collection(firebaseHandler.playersTable)
+                        .document(tmProfile).get().await().exists()
+                } else {
+                    firebaseHandler.firebaseStore.collection(firebaseHandler.playersTable)
+                        .whereEqualTo("tmProfile", tmProfile).get().await().documents.isNotEmpty()
+                }
             } catch (_: Exception) { false }
             withContext(Dispatchers.Main) { onResult(exists) }
+        }
+    }
+
+    override fun findPlayerDocIdByName(playerName: String, onResult: (String?) -> Unit) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val docId = try {
+                firebaseHandler.firebaseStore.collection(firebaseHandler.playersTable)
+                    .whereEqualTo("fullName", playerName).get().await()
+                    .documents.firstOrNull()?.id
+            } catch (_: Exception) { null }
+            withContext(Dispatchers.Main) { onResult(docId) }
         }
     }
 
@@ -279,35 +334,38 @@ class HomeScreenViewModel(
 
     private fun countMandates(players: List<Player>) {
         viewModelScope.launch(Dispatchers.IO) {
-            try {
+            // Query mandate documents; fall back to empty set so haveMandate still counts
+            val profilesWithMandateDoc: Set<String> = try {
                 val docsSnap = firebaseHandler.firebaseStore
                     .collection(firebaseHandler.playerDocumentsTable)
-                    .whereEqualTo("type", "mandate")
+                    .whereEqualTo("type", DocumentType.MANDATE.name)
                     .get().await()
                 val docs = docsSnap.toObjects(PlayerDocument::class.java)
-                val profilesWithMandateDoc = docs.mapNotNull { it.playerTmProfile }.toSet()
-                // Count: player.haveMandate (from switch) OR has mandate document
-                val mandateCount = players.count { it.haveMandate || it.tmProfile in profilesWithMandateDoc }
+                docs.mapNotNull { it.playerTmProfile }.toSet()
+            } catch (_: Exception) { emptySet() }
 
-                _state.update { it.copy(withMandate = mandateCount, mandateDocProfiles = profilesWithMandateDoc) }
+            // For Women/Youth, mandate docs store Firestore doc ID as playerTmProfile,
+            // so also match by player.id (Firestore doc ID).
+            val mandateCount = players.count { it.haveMandate || it.tmProfile in profilesWithMandateDoc || it.id in profilesWithMandateDoc }
 
-                // Update agent summaries with mandate info
-                val agentGroups = players.groupBy { it.agentInChargeName ?: "Unassigned" }
-                val updatedSummaries = agentGroups
-                    .filter { it.key != "Unassigned" }
-                    .map { (name, list) ->
-                        AgentSummary(
-                            agentId = list.firstOrNull()?.agentInChargeId,
-                            agentName = name,
-                            totalPlayers = list.size,
-                            withMandate = list.count { it.haveMandate || it.tmProfile in profilesWithMandateDoc },
-                            expiringContracts = list.count { isContractExpiringWithinMonths(it.contractExpired, 5) },
-                            withNotes = list.count { !it.noteList.isNullOrEmpty() }
-                        )
-                    }
-                _state.update { it.copy(agentSummaries = updatedSummaries) }
-                recomputeMyOverview()
-            } catch (_: Exception) { }
+            _state.update { it.copy(withMandate = mandateCount, mandateDocProfiles = profilesWithMandateDoc) }
+
+            // Update agent summaries with mandate info
+            val agentGroups = players.groupBy { it.agentInChargeName ?: "Unassigned" }
+            val updatedSummaries = agentGroups
+                .filter { it.key != "Unassigned" }
+                .map { (name, list) ->
+                    AgentSummary(
+                        agentId = list.firstOrNull()?.agentInChargeId,
+                        agentName = name,
+                        totalPlayers = list.size,
+                        withMandate = list.count { it.haveMandate || it.tmProfile in profilesWithMandateDoc || it.id in profilesWithMandateDoc },
+                        expiringContracts = list.count { isContractExpiringWithinMonths(it.contractExpired, 5) },
+                        withNotes = list.count { !it.noteList.isNullOrEmpty() }
+                    )
+                }
+            _state.update { it.copy(agentSummaries = updatedSummaries) }
+            recomputeMyOverview()
         }
     }
 
@@ -615,7 +673,7 @@ class HomeScreenViewModel(
         val totalPlayers = myPlayers.size
         val mandateDocProfiles = current.mandateDocProfiles
         val withMandate = myPlayers.count { p ->
-            p.haveMandate || p.tmProfile in mandateDocProfiles
+            p.haveMandate || p.tmProfile in mandateDocProfiles || p.id in mandateDocProfiles
         }
         val freeAgents = myPlayers.count { p ->
             p.currentClub?.clubName.equals("Without Club", true) ||
