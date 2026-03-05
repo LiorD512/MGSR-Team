@@ -327,52 +327,55 @@ class AddPlayerViewModel(
         _playerSearchStateFlow.update { it.copy(youthSearchResults = emptyList()) }
         _searchQuery.update { "" }
 
-        // If we have an IFA URL, fetch the full profile for more data (silently in background)
+        // If we have an IFA URL, fetch the full profile for more data
         result.ifaUrl?.takeIf { it.isNotBlank() }?.let { url ->
             viewModelScope.launch {
+                _playerSearchStateFlow.update { it.copy(showPlayerSelectedSearchProgress = true) }
                 try {
-                    val requestBody = org.json.JSONObject().apply {
-                        put("url", url)
-                    }.toString().toRequestBody("application/json".toMediaType())
+                    kotlinx.coroutines.withTimeout(15_000) {
+                        val requestBody = org.json.JSONObject().apply {
+                            put("url", url)
+                        }.toString().toRequestBody("application/json".toMediaType())
 
-                    val request = okhttp3.Request.Builder()
-                        .url("${com.liordahan.mgsrteam.features.aiscout.MgsrWebApiClient.DEFAULT_BASE_URL}/api/youth-players/fetch-profile")
-                        .post(requestBody)
-                        .build()
+                        val request = okhttp3.Request.Builder()
+                            .url("${com.liordahan.mgsrteam.features.aiscout.MgsrWebApiClient.DEFAULT_BASE_URL}/api/youth-players/fetch-profile")
+                            .post(requestBody)
+                            .build()
 
-                    val response = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                        httpClient.newCall(request).execute()
-                    }
-                    val body = response.body?.string()
-                    if (response.isSuccessful && body != null) {
-                        val data = org.json.JSONObject(body)
-                        _youthFormState.update { state ->
-                            state.copy(
-                                // English name stays manual — don't overwrite from profile
-                                fullNameHe = data.optString("fullNameHe", "").takeIf { it.isNotBlank() }
-                                    ?: data.optString("fullName", "").takeIf { it.isNotBlank() }
-                                    ?: state.fullNameHe,
-                                currentClub = data.optString("currentClub", "").takeIf { it.isNotBlank() } ?: state.currentClub,
-                                nationality = data.optString("nationality", "").takeIf { it.isNotBlank() } ?: state.nationality,
-                                profileImage = data.optString("profileImage", "").takeIf { it.isNotBlank() } ?: state.profileImage,
-                                ifaUrl = data.optString("ifaUrl", "").takeIf { it.isNotBlank() } ?: state.ifaUrl,
-                                dateOfBirth = data.optString("dateOfBirth", "").takeIf { it.isNotBlank() } ?: state.dateOfBirth,
-                                ageGroup = data.optString("dateOfBirth", "").takeIf { it.isNotBlank() }?.let { YouthPlayerFormState.computeAgeGroup(it) }?.ifBlank { state.ageGroup } ?: state.ageGroup
-                            )
+                        val response = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                            httpClient.newCall(request).execute()
                         }
-                        // Extract positions array if present
-                        data.optJSONArray("positions")?.let { posArr ->
-                            val positions = mutableListOf<String>()
-                            for (i in 0 until posArr.length()) {
-                                posArr.optString(i)?.takeIf { it.isNotBlank() }?.let { positions.add(it) }
+                        val body = response.body?.string()
+                        if (response.isSuccessful && body != null) {
+                            val data = org.json.JSONObject(body)
+                            _youthFormState.update { state ->
+                                state.copy(
+                                    fullNameHe = data.optString("fullNameHe", "").takeIf { it.isNotBlank() }
+                                        ?: data.optString("fullName", "").takeIf { it.isNotBlank() }
+                                        ?: state.fullNameHe,
+                                    currentClub = data.optString("currentClub", "").takeIf { it.isNotBlank() } ?: state.currentClub,
+                                    nationality = data.optString("nationality", "").takeIf { it.isNotBlank() } ?: state.nationality,
+                                    profileImage = data.optString("profileImage", "").takeIf { it.isNotBlank() } ?: state.profileImage,
+                                    ifaUrl = data.optString("ifaUrl", "").takeIf { it.isNotBlank() } ?: state.ifaUrl,
+                                    dateOfBirth = data.optString("dateOfBirth", "").takeIf { it.isNotBlank() } ?: state.dateOfBirth,
+                                    ageGroup = data.optString("dateOfBirth", "").takeIf { it.isNotBlank() }?.let { YouthPlayerFormState.computeAgeGroup(it) }?.ifBlank { state.ageGroup } ?: state.ageGroup
+                                )
                             }
-                            if (positions.isNotEmpty()) {
-                                _youthFormState.update { it.copy(positions = positions) }
+                            data.optJSONArray("positions")?.let { posArr ->
+                                val positions = mutableListOf<String>()
+                                for (i in 0 until posArr.length()) {
+                                    posArr.optString(i)?.takeIf { it.isNotBlank() }?.let { positions.add(it) }
+                                }
+                                if (positions.isNotEmpty()) {
+                                    _youthFormState.update { it.copy(positions = positions) }
+                                }
                             }
                         }
                     }
                 } catch (e: Exception) {
                     android.util.Log.e("AddPlayerVM", "Youth IFA profile fetch error", e)
+                } finally {
+                    _playerSearchStateFlow.update { it.copy(showPlayerSelectedSearchProgress = false) }
                 }
             }
         }
