@@ -22,6 +22,7 @@ import SimilarPlayersPanel from '@/components/SimilarPlayersPanel';
 import PlayerHighlightsPanel from '@/components/PlayerHighlightsPanel';
 import MatchingRequestsSection from '@/components/MatchingRequestsSection';
 import { matchingRequestsForPlayer, type RosterPlayer, type ClubRequest } from '@/lib/requestMatcher';
+import { useEuCountries, isEuNational } from '@/hooks/useEuCountries';
 import {
   LineChart,
   Line,
@@ -123,6 +124,7 @@ export default function PlayerInfoPage() {
   const params = useParams();
   const searchParams = useSearchParams();
   const id = params.id as string;
+  const euCountries = useEuCountries();
   const fromPath = searchParams.get('from') || '/players';
   const scrollTo = searchParams.get('scrollTo');
   const isFromDashboard = fromPath === '/dashboard';
@@ -167,6 +169,10 @@ export default function PlayerInfoPage() {
   const [pendingShareUrl, setPendingShareUrl] = useState<string | null>(null);
   const [addingToPortfolio, setAddingToPortfolio] = useState(false);
   const [portfolioError, setPortfolioError] = useState<string | null>(null);
+  const [editingPhoneType, setEditingPhoneType] = useState<'agent' | 'player' | null>(null);
+  const [editingPhoneValue, setEditingPhoneValue] = useState('');
+  const [savingPhone, setSavingPhone] = useState(false);
+  const [confirmDeletePhone, setConfirmDeletePhone] = useState<'agent' | 'player' | null>(null);
   const [showPortfolioLanguageModal, setShowPortfolioLanguageModal] = useState(false);
   const [clubRequests, setClubRequests] = useState<(ClubRequest & { status?: string; clubName?: string; clubLogo?: string; clubCountry?: string; contactPhoneNumber?: string })[]>([]);
   const [playerOffers, setPlayerOffers] = useState<{ id: string; requestId?: string; clubFeedback?: string; offeredAt?: number; markedByAgentName?: string; [key: string]: unknown }[]>([]);
@@ -568,12 +574,66 @@ export default function PlayerInfoPage() {
     foot: player?.foot ?? liveData?.foot,
   };
 
+  const isEuPlayer = isEuNational(merged.nationality, euCountries);
+
   const getPhone = () =>
     player?.playerAdditionalInfoModel?.playerNumber ||
     player?.playerPhoneNumber;
   const getAgentPhone = () =>
     player?.playerAdditionalInfoModel?.agentNumber ||
     player?.agentPhoneNumber;
+
+  const savePhone = useCallback(async (type: 'agent' | 'player', value: string) => {
+    if (!id) return;
+    setSavingPhone(true);
+    try {
+      const trimmed = value.trim();
+      if (type === 'agent') {
+        const updates: Record<string, unknown> = { agentPhoneNumber: trimmed || null };
+        if (player?.playerAdditionalInfoModel) {
+          updates['playerAdditionalInfoModel.agentNumber'] = trimmed || null;
+        }
+        await updateDoc(doc(db, 'Players', id), updates);
+      } else {
+        const updates: Record<string, unknown> = { playerPhoneNumber: trimmed || null };
+        if (player?.playerAdditionalInfoModel) {
+          updates['playerAdditionalInfoModel.playerNumber'] = trimmed || null;
+        }
+        await updateDoc(doc(db, 'Players', id), updates);
+      }
+      setEditingPhoneType(null);
+      setEditingPhoneValue('');
+    } catch (err) {
+      console.error('Failed to save phone:', err);
+    } finally {
+      setSavingPhone(false);
+    }
+  }, [id, player]);
+
+  const deletePhone = useCallback(async (type: 'agent' | 'player') => {
+    if (!id) return;
+    setSavingPhone(true);
+    try {
+      if (type === 'agent') {
+        const updates: Record<string, unknown> = { agentPhoneNumber: deleteField() };
+        if (player?.playerAdditionalInfoModel) {
+          updates['playerAdditionalInfoModel.agentNumber'] = deleteField();
+        }
+        await updateDoc(doc(db, 'Players', id), updates);
+      } else {
+        const updates: Record<string, unknown> = { playerPhoneNumber: deleteField() };
+        if (player?.playerAdditionalInfoModel) {
+          updates['playerAdditionalInfoModel.playerNumber'] = deleteField();
+        }
+        await updateDoc(doc(db, 'Players', id), updates);
+      }
+      setConfirmDeletePhone(null);
+    } catch (err) {
+      console.error('Failed to delete phone:', err);
+    } finally {
+      setSavingPhone(false);
+    }
+  }, [id, player]);
 
   const translateFoot = (foot: string | undefined): string | undefined => {
     if (!foot) return undefined;
@@ -1141,6 +1201,11 @@ export default function PlayerInfoPage() {
                     {t('player_info_on_loan')}: {merged.onLoanFromClub}
                   </span>
                 )}
+                {isEuPlayer && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-blue-500/15 text-blue-400 border border-blue-500/30">
+                    🇪🇺 {t('eu_nat_tag')}
+                  </span>
+                )}
               </div>
             </div>
             <div className="shrink-0">
@@ -1210,44 +1275,218 @@ export default function PlayerInfoPage() {
               </div>
             )}
 
-            {/* Contact - agent phone + player phone only */}
-            {(getPhone() || getAgentPhone()) && (
-              <div className="p-5 rounded-xl bg-mgsr-card border border-mgsr-border">
-                <h3 className="text-sm font-semibold text-mgsr-muted uppercase tracking-wider mb-3">
+            {/* Contact - agent phone + player phone — editable */}
+            <div className="p-5 rounded-xl bg-mgsr-card border border-mgsr-border">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-semibold text-mgsr-muted uppercase tracking-wider">
                   {t('player_info_contact')}
                 </h3>
-                <div className="space-y-2">
-                  {getAgentPhone() && (
-                    <div>
-                      <p className="text-xs text-mgsr-muted">{t('player_info_agent_phone')}</p>
+                {!getAgentPhone() && !getPhone() && !editingPhoneType && (
+                  <button
+                    type="button"
+                    onClick={() => { setEditingPhoneType('agent'); setEditingPhoneValue(''); }}
+                    className="text-xs text-mgsr-teal hover:underline"
+                  >
+                    + {t('contact_add_phone')}
+                  </button>
+                )}
+              </div>
+              <div className="space-y-3">
+                {/* Agent phone */}
+                {editingPhoneType === 'agent' ? (
+                  <div>
+                    <p className="text-xs text-mgsr-muted mb-1">{t('player_info_agent_phone')}</p>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="tel"
+                        dir="ltr"
+                        value={editingPhoneValue}
+                        onChange={(e) => setEditingPhoneValue(e.target.value)}
+                        placeholder="+972..."
+                        className="flex-1 px-3 py-2 rounded-lg bg-mgsr-dark border border-mgsr-border text-mgsr-text text-sm focus:outline-none focus:ring-2 focus:ring-mgsr-teal/50"
+                        autoFocus
+                        onKeyDown={(e) => { if (e.key === 'Enter') savePhone('agent', editingPhoneValue); if (e.key === 'Escape') { setEditingPhoneType(null); setEditingPhoneValue(''); } }}
+                      />
+                      <button
+                        type="button"
+                        disabled={savingPhone}
+                        onClick={() => savePhone('agent', editingPhoneValue)}
+                        className="px-3 py-2 rounded-lg bg-mgsr-teal text-mgsr-dark text-sm font-semibold hover:bg-mgsr-teal/90 disabled:opacity-50 transition"
+                      >
+                        {t('save')}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setEditingPhoneType(null); setEditingPhoneValue(''); }}
+                        className="px-3 py-2 rounded-lg border border-mgsr-border text-mgsr-muted text-sm hover:text-mgsr-text transition"
+                      >
+                        {t('cancel')}
+                      </button>
+                    </div>
+                  </div>
+                ) : getAgentPhone() ? (
+                  <div>
+                    <p className="text-xs text-mgsr-muted mb-1">{t('player_info_agent_phone')}</p>
+                    <div className="flex items-center gap-2">
                       <a
                         href={toWhatsAppUrl(getAgentPhone()) ?? `tel:${getAgentPhone()}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-mgsr-teal hover:underline inline-block"
+                        className="inline-flex items-center h-8 text-mgsr-teal hover:underline text-base"
                         dir="ltr"
                       >
                         {getAgentPhone()}
                       </a>
+                      <button
+                        type="button"
+                        onClick={() => { setEditingPhoneType('agent'); setEditingPhoneValue(getAgentPhone() || ''); }}
+                        className="inline-flex items-center justify-center w-8 h-8 rounded-lg hover:bg-mgsr-border/40 text-mgsr-muted hover:text-mgsr-teal transition"
+                        title={t('contact_edit_phone')}
+                      >
+                        <svg style={{width: '18px', height: '18px'}} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                      </button>
+                      {confirmDeletePhone === 'agent' ? (
+                        <span className="flex items-center gap-1 text-xs">
+                          <button
+                            type="button"
+                            disabled={savingPhone}
+                            onClick={() => deletePhone('agent')}
+                            className="px-2 py-1 rounded bg-red-500/20 text-red-400 hover:bg-red-500/30 disabled:opacity-50 transition font-medium"
+                          >
+                            {t('contact_confirm_delete')}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setConfirmDeletePhone(null)}
+                            className="px-2 py-1 rounded text-mgsr-muted hover:text-mgsr-text transition"
+                          >
+                            {t('cancel')}
+                          </button>
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setConfirmDeletePhone('agent')}
+                          className="inline-flex items-center justify-center w-8 h-8 rounded-lg hover:bg-red-500/15 text-mgsr-muted hover:text-red-400 transition"
+                          title={t('contact_delete_phone')}
+                        >
+                          <svg style={{width: '18px', height: '18px'}} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                        </button>
+                      )}
                     </div>
-                  )}
-                  {getPhone() && (
-                    <div>
-                      <p className="text-xs text-mgsr-muted">{t('player_info_player_phone')}</p>
+                  </div>
+                ) : null}
+
+                {/* Player phone */}
+                {editingPhoneType === 'player' ? (
+                  <div>
+                    <p className="text-xs text-mgsr-muted mb-1">{t('player_info_player_phone')}</p>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="tel"
+                        dir="ltr"
+                        value={editingPhoneValue}
+                        onChange={(e) => setEditingPhoneValue(e.target.value)}
+                        placeholder="+972..."
+                        className="flex-1 px-3 py-2 rounded-lg bg-mgsr-dark border border-mgsr-border text-mgsr-text text-sm focus:outline-none focus:ring-2 focus:ring-mgsr-teal/50"
+                        autoFocus
+                        onKeyDown={(e) => { if (e.key === 'Enter') savePhone('player', editingPhoneValue); if (e.key === 'Escape') { setEditingPhoneType(null); setEditingPhoneValue(''); } }}
+                      />
+                      <button
+                        type="button"
+                        disabled={savingPhone}
+                        onClick={() => savePhone('player', editingPhoneValue)}
+                        className="px-3 py-2 rounded-lg bg-mgsr-teal text-mgsr-dark text-sm font-semibold hover:bg-mgsr-teal/90 disabled:opacity-50 transition"
+                      >
+                        {t('save')}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setEditingPhoneType(null); setEditingPhoneValue(''); }}
+                        className="px-3 py-2 rounded-lg border border-mgsr-border text-mgsr-muted text-sm hover:text-mgsr-text transition"
+                      >
+                        {t('cancel')}
+                      </button>
+                    </div>
+                  </div>
+                ) : getPhone() ? (
+                  <div>
+                    <p className="text-xs text-mgsr-muted mb-1">{t('player_info_player_phone')}</p>
+                    <div className="flex items-center gap-2">
                       <a
                         href={toWhatsAppUrl(getPhone()) ?? `tel:${getPhone()}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-mgsr-teal hover:underline inline-block"
+                        className="inline-flex items-center h-8 text-mgsr-teal hover:underline text-base"
                         dir="ltr"
                       >
                         {getPhone()}
                       </a>
+                      <button
+                        type="button"
+                        onClick={() => { setEditingPhoneType('player'); setEditingPhoneValue(getPhone() || ''); }}
+                        className="inline-flex items-center justify-center w-8 h-8 rounded-lg hover:bg-mgsr-border/40 text-mgsr-muted hover:text-mgsr-teal transition"
+                        title={t('contact_edit_phone')}
+                      >
+                        <svg style={{width: '18px', height: '18px'}} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                      </button>
+                      {confirmDeletePhone === 'player' ? (
+                        <span className="flex items-center gap-1 text-xs">
+                          <button
+                            type="button"
+                            disabled={savingPhone}
+                            onClick={() => deletePhone('player')}
+                            className="px-2 py-1 rounded bg-red-500/20 text-red-400 hover:bg-red-500/30 disabled:opacity-50 transition font-medium"
+                          >
+                            {t('contact_confirm_delete')}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setConfirmDeletePhone(null)}
+                            className="px-2 py-1 rounded text-mgsr-muted hover:text-mgsr-text transition"
+                          >
+                            {t('cancel')}
+                          </button>
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setConfirmDeletePhone('player')}
+                          className="inline-flex items-center justify-center w-8 h-8 rounded-lg hover:bg-red-500/15 text-mgsr-muted hover:text-red-400 transition"
+                          title={t('contact_delete_phone')}
+                        >
+                          <svg style={{width: '18px', height: '18px'}} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                        </button>
+                      )}
                     </div>
-                  )}
-                </div>
+                  </div>
+                ) : null}
+
+                {/* Add phone buttons — show for each missing phone when not editing */}
+                {!editingPhoneType && (!getAgentPhone() || !getPhone()) && (
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    {!getAgentPhone() && (
+                      <button
+                        type="button"
+                        onClick={() => { setEditingPhoneType('agent'); setEditingPhoneValue(''); }}
+                        className="text-xs text-mgsr-teal/70 hover:text-mgsr-teal transition"
+                      >
+                        + {t('contact_add_agent_phone')}
+                      </button>
+                    )}
+                    {!getPhone() && (
+                      <button
+                        type="button"
+                        onClick={() => { setEditingPhoneType('player'); setEditingPhoneValue(''); }}
+                        className="text-xs text-mgsr-teal/70 hover:text-mgsr-teal transition"
+                      >
+                        + {t('contact_add_player_phone')}
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
-            )}
+            </div>
 
             {/* Matching Requests */}
             {player?.tmProfile && (

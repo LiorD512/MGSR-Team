@@ -24,6 +24,7 @@ import {
 } from '@/lib/shortlistIntelligence';
 import AppLayout from '@/components/AppLayout';
 import Link from 'next/link';
+import { useEuCountries, isEuNational } from '@/hooks/useEuCountries';
 
 interface ShortlistNote {
   text: string;
@@ -110,6 +111,7 @@ export default function ShortlistPage() {
   const shortlistsCollection = SHORTLISTS_COLLECTIONS[platform];
   const isWomen = platform === 'women';
   const isYouth = platform === 'youth';
+  const euCountries = useEuCountries();
   const shortlistCacheKey = user ? `shortlist_${platform}_${user.uid}` : undefined;
   const cached = shortlistCacheKey ? getScreenCache<ShortlistEntry[]>(shortlistCacheKey) : undefined;
   const [entries, setEntries] = useState<ShortlistEntry[]>(cached ?? []);
@@ -180,7 +182,8 @@ export default function ShortlistPage() {
   const [loadingPerformanceUrl, setLoadingPerformanceUrl] = useState<string | null>(null);
   const [refreshingUrl, setRefreshingUrl] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<'contact_score' | 'added' | 'market_value' | 'matches'>('contact_score');
-  const [filterBy, setFilterBy] = useState<'all' | 'action_today' | 'has_matches' | 'contract_expiring' | 'free_agent'>('all');
+  const [filterBy, setFilterBy] = useState<'all' | 'action_today' | 'has_matches' | 'contract_expiring' | 'free_agent' | 'my_players'>('all');
+  const [currentAccountId, setCurrentAccountId] = useState<string | null>(null);
 
   // ── Notes state ──
   const [noteModalEntry, setNoteModalEntry] = useState<ShortlistEntry | null>(null);
@@ -193,6 +196,14 @@ export default function ShortlistPage() {
   useEffect(() => {
     if (!loading && !user) router.replace('/login');
   }, [user, loading, router]);
+
+  // Fetch current account ID for "my players" filter
+  useEffect(() => {
+    if (!user) return;
+    getCurrentAccountForShortlist(user).then((acc) => {
+      setCurrentAccountId(acc.id);
+    });
+  }, [user]);
 
   // Handle ?highlight=url — scroll to and animate the matching shortlist entry
   const highlightParam = searchParams.get('highlight');
@@ -660,6 +671,7 @@ export default function ShortlistPage() {
         return m != null && m <= 6 && m > 0;
       });
     if (filterBy === 'free_agent') list = list.filter((e) => isFreeAgent(e.currentClub?.clubName ?? e.clubJoinedName));
+    if (filterBy === 'my_players' && currentAccountId) list = list.filter((e) => e.addedByAgentId === currentAccountId);
     if (sortBy === 'contact_score') list.sort((a, b) => (entryIntelligence.get(b.tmProfileUrl)?.contactScore ?? 0) - (entryIntelligence.get(a.tmProfileUrl)?.contactScore ?? 0));
     else if (sortBy === 'added') list.sort((a, b) => (b.addedAt || 0) - (a.addedAt || 0));
     else if (sortBy === 'matches') list.sort((a, b) => (entryIntelligence.get(b.tmProfileUrl)?.matchCount ?? 0) - (entryIntelligence.get(a.tmProfileUrl)?.matchCount ?? 0));
@@ -668,7 +680,7 @@ export default function ShortlistPage() {
       list.sort((a, b) => toNum(b.marketValue) - toNum(a.marketValue));
     } else list.sort((a, b) => (b.addedAt || 0) - (a.addedAt || 0));
     return list;
-  }, [entries, filterBy, sortBy, entryIntelligence]);
+  }, [entries, filterBy, sortBy, entryIntelligence, currentAccountId]);
 
   const formatAddedDate = (addedAt?: number) => {
     if (!addedAt) return '';
@@ -806,7 +818,7 @@ export default function ShortlistPage() {
                   <span className="text-xs font-semibold uppercase tracking-wider text-mgsr-muted shrink-0 w-full sm:w-auto">
                     {isRtl ? 'סינון' : 'Filter'}
                   </span>
-                  {(['all', 'action_today', 'has_matches', 'contract_expiring', 'free_agent'] as const).map((f) => (
+                  {(['all', 'my_players', 'action_today', 'has_matches', 'contract_expiring', 'free_agent'] as const).map((f) => (
                     <button
                       key={f}
                       type="button"
@@ -907,6 +919,7 @@ export default function ShortlistPage() {
               const isSoccerDonnaUrl = playerUrl?.includes('soccerdonna');
               const isFmInsideUrl = playerUrl?.includes('fminside');
 
+              const isEu = platform === 'men' && isEuNational(entry.playerNationality, euCountries);
               const isHighlighted = highlightedUrl === entry.tmProfileUrl;
               const isNotesExpanded = expandedNotesUrl === entry.tmProfileUrl;
               const notes = entry.notes ?? [];
@@ -1171,8 +1184,13 @@ export default function ShortlistPage() {
                   </div>
 
                   {/* Badges — compact */}
-                  {(matchCount > 0 || freeAgent || contractMonths != null || valueChangePct != null || (daysStale != null && daysStale > 14)) && (
+                  {(isEu || matchCount > 0 || freeAgent || contractMonths != null || valueChangePct != null || (daysStale != null && daysStale > 14)) && (
                     <div className="px-5 pb-4 flex flex-wrap gap-2">
+                      {isEu && (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-blue-500/15 text-blue-400 border border-blue-500/30">
+                          🇪🇺 {t('eu_nat_tag')}
+                        </span>
+                      )}
                       {matchCount > 0 && (
                         <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium bg-purple-500/15 text-purple-400 border border-purple-500/30">
                           <span className="w-1.5 h-1.5 rounded-full bg-purple-400" />

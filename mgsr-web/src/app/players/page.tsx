@@ -14,6 +14,7 @@ import { subscribePlayersYouth, type YouthPlayer } from '@/lib/playersYouth';
 import AppLayout from '@/components/AppLayout';
 import FilterBottomSheet from '@/components/mobile/FilterBottomSheet';
 import { useIsMobileOrTablet } from '@/hooks/useMediaQuery';
+import { useEuCountries, isEuNational } from '@/hooks/useEuCountries';
 import Link from 'next/link';
 
 interface Player {
@@ -33,6 +34,7 @@ interface Player {
   isOnLoan?: boolean;
   onLoanFromClub?: string;
   foot?: string;
+  nationality?: string;
   notes?: string;
   noteList?: { notes?: string; createBy?: string; createdAt?: number }[];
   agency?: string;
@@ -50,6 +52,7 @@ interface PlayersCache {
   withoutRegisteredAgent: boolean;
   withNotes: boolean;
   footFilter: 'left' | 'right' | null;
+  euNationalOnly: boolean;
 }
 
 const POSITION_GROUPS = ['GK', 'DEF', 'MID', 'FWD'] as const;
@@ -94,6 +97,7 @@ export default function PlayersPage() {
   const { platform } = usePlatform();
   const router = useRouter();
   const isMobileOrTablet = useIsMobileOrTablet();
+  const euCountries = useEuCountries();
   const cached = getScreenCache<PlayersCache>('players');
   const [players, setPlayers] = useState<Player[]>(cached?.players ?? []);
   const [womenPlayers, setWomenPlayers] = useState<WomanPlayer[]>([]);
@@ -111,6 +115,7 @@ export default function PlayersPage() {
   const [withoutRegisteredAgent, setWithoutRegisteredAgent] = useState(cached?.withoutRegisteredAgent ?? false);
   const [withNotes, setWithNotes] = useState(cached?.withNotes ?? false);
   const [footFilter, setFootFilter] = useState<'left' | 'right' | null>(cached?.footFilter ?? null);
+  const [euNationalOnly, setEuNationalOnly] = useState(cached?.euNationalOnly ?? false);
   const [currentAccountName, setCurrentAccountName] = useState<string | null>(null);
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
 
@@ -174,8 +179,9 @@ export default function PlayersPage() {
       withoutRegisteredAgent,
       withNotes,
       footFilter,
+      euNationalOnly,
     });
-  }, [players, search, positionFilter, freeAgents, contractExpiring, withMandate, myPlayersOnly, loanPlayersOnly, withoutRegisteredAgent, withNotes, footFilter]);
+  }, [players, search, positionFilter, freeAgents, contractExpiring, withMandate, myPlayersOnly, loanPlayersOnly, withoutRegisteredAgent, withNotes, footFilter, euNationalOnly]);
 
   const filtered = useMemo(() => {
     if (platform === 'youth') {
@@ -293,6 +299,11 @@ export default function PlayersPage() {
       result = result.filter((p) => p.foot?.toLowerCase() === footLower);
     }
 
+    // EU National
+    if (euNationalOnly && euCountries.size > 0) {
+      result = result.filter((p) => p.nationality ? isEuNational(p.nationality, euCountries) : false);
+    }
+
     return result;
   }, [
     players,
@@ -309,6 +320,8 @@ export default function PlayersPage() {
     withoutRegisteredAgent,
     withNotes,
     footFilter,
+    euNationalOnly,
+    euCountries,
     currentAccountName,
   ]);
 
@@ -322,6 +335,7 @@ export default function PlayersPage() {
         loanPlayersOnly ||
         withoutRegisteredAgent ||
         withNotes ||
+        euNationalOnly ||
         !!footFilter));
 
   const clearFilters = useCallback(() => {
@@ -334,6 +348,7 @@ export default function PlayersPage() {
     setWithoutRegisteredAgent(false);
     setWithNotes(false);
     setFootFilter(null);
+    setEuNationalOnly(false);
   }, []);
 
   const displayList = filtered;
@@ -589,6 +604,16 @@ export default function PlayersPage() {
             >
               {t('players_filter_foot_right')}
             </button>
+            <button
+              onClick={() => setEuNationalOnly((v) => !v)}
+              className={`shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 ${
+                euNationalOnly
+                  ? 'bg-mgsr-teal text-mgsr-dark shadow-sm shadow-mgsr-teal/25'
+                  : 'bg-mgsr-card border border-mgsr-border text-mgsr-muted hover:text-mgsr-text hover:border-mgsr-teal/40'
+              }`}
+            >
+              🇪🇺 {t('players_filter_eu_national')}
+            </button>
           </div>
         </div>
         )}
@@ -607,6 +632,7 @@ export default function PlayersPage() {
               { key: 'withNotes', active: withNotes, toggle: () => setWithNotes(v => !v), label: t('players_filter_with_notes') },
               { key: 'footLeft', active: footFilter === 'left', toggle: () => setFootFilter(v => v === 'left' ? null : 'left'), label: t('players_filter_foot_left') },
               { key: 'footRight', active: footFilter === 'right', toggle: () => setFootFilter(v => v === 'right' ? null : 'right'), label: t('players_filter_foot_right') },
+              { key: 'euNational', active: euNationalOnly, toggle: () => setEuNationalOnly(v => !v), label: `🇪🇺 ${t('players_filter_eu_national')}` },
             ].map(f => (
               <button
                 key={f.key}
@@ -766,7 +792,14 @@ export default function PlayersPage() {
                       {(p as YouthPlayer).ageGroup}
                     </span>
                   ) : (
-                    <p className={`font-semibold ${isWomen ? 'text-[var(--women-rose)]' : 'text-[var(--mgsr-accent)]'}`}>{p.marketValue || '—'}</p>
+                    <div className="flex flex-col items-end gap-1">
+                      <p className={`font-semibold ${isWomen ? 'text-[var(--women-rose)]' : 'text-[var(--mgsr-accent)]'}`}>{p.marketValue || '—'}</p>
+                      {platform === 'men' && isEuNational(p.nationality, euCountries) && (
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-500/15 text-blue-400 border border-blue-500/30 leading-tight">
+                          🇪🇺 {t('eu_nat_tag')}
+                        </span>
+                      )}
+                    </div>
                   )}
                 </div>
               </Link>

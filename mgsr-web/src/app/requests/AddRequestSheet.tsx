@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { addDoc, collection } from 'firebase/firestore';
+import { addDoc, collection, doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { searchClubs, type ClubSearchResult } from '@/lib/api';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -18,6 +18,26 @@ const FOOT_OPTIONS = [
   { value: 'any', labelKey: 'requests_foot_any' },
 ];
 
+interface EditRequest {
+  id: string;
+  clubTmProfile?: string;
+  clubName?: string;
+  clubLogo?: string;
+  clubCountry?: string;
+  clubCountryFlag?: string;
+  contactName?: string;
+  contactPhoneNumber?: string;
+  position?: string;
+  notes?: string;
+  minAge?: number;
+  maxAge?: number;
+  ageDoesntMatter?: boolean;
+  salaryRange?: string;
+  transferFee?: string;
+  dominateFoot?: string;
+  euOnly?: boolean;
+}
+
 interface AddRequestSheetProps {
   open: boolean;
   onClose: () => void;
@@ -26,12 +46,14 @@ interface AddRequestSheetProps {
   feedEventsCollection?: string;
   isWomen?: boolean;
   isYouth?: boolean;
+  editRequest?: EditRequest | null;
 }
 
-export default function AddRequestSheet({ open, onClose, onSaved, clubRequestsCollection = 'ClubRequests', feedEventsCollection = 'FeedEvents', isWomen = false, isYouth = false }: AddRequestSheetProps) {
+export default function AddRequestSheet({ open, onClose, onSaved, clubRequestsCollection = 'ClubRequests', feedEventsCollection = 'FeedEvents', isWomen = false, isYouth = false, editRequest = null }: AddRequestSheetProps) {
   const { t, isRtl, lang } = useLanguage();
   const { user } = useAuth();
   const isHebrew = lang === 'he';
+  const isEditing = !!editRequest;
 
   const [step, setStep] = useState(0);
   const [clubQuery, setClubQuery] = useState('');
@@ -46,10 +68,39 @@ export default function AddRequestSheet({ open, onClose, onSaved, clubRequestsCo
   const [selectedSalary, setSelectedSalary] = useState<string | null>(null);
   const [selectedFee, setSelectedFee] = useState<string | null>(null);
   const [notes, setNotes] = useState('');
+  const [euOnly, setEuOnly] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [manualClubName, setManualClubName] = useState('');
   const [manualClubCountry, setManualClubCountry] = useState('');
+
+  // Populate fields when editing
+  useEffect(() => {
+    if (editRequest && open) {
+      if (isWomen || isYouth) {
+        setManualClubName(editRequest.clubName || '');
+        setManualClubCountry(editRequest.clubCountry || '');
+      } else {
+        setSelectedClub(editRequest.clubName ? {
+          clubName: editRequest.clubName,
+          clubLogo: editRequest.clubLogo || '',
+          clubCountry: editRequest.clubCountry || '',
+          clubCountryFlag: editRequest.clubCountryFlag || '',
+          clubTmProfile: editRequest.clubTmProfile || '',
+        } : null);
+      }
+      setSelectedPosition(editRequest.position || null);
+      setAgeDoesntMatter(editRequest.ageDoesntMatter !== false);
+      setMinAge(editRequest.minAge ? String(editRequest.minAge) : '');
+      setMaxAge(editRequest.maxAge ? String(editRequest.maxAge) : '');
+      setSelectedFoot(editRequest.dominateFoot || 'any');
+      setSelectedSalary(editRequest.salaryRange || null);
+      setSelectedFee(editRequest.transferFee || null);
+      setNotes(editRequest.notes || '');
+      setEuOnly(editRequest.euOnly === true);
+      setStep(0);
+    }
+  }, [editRequest, open, isWomen, isYouth]);
 
   const stepLabels = [t('requests_step_club'), t('requests_step_position'), t('requests_step_requirements'), t('requests_step_notes')];
 
@@ -87,7 +138,31 @@ export default function AddRequestSheet({ open, onClose, onSaved, clubRequestsCo
     setSaving(true);
     setError(null);
     try {
+      if (isEditing && editRequest) {
+        // Update existing request
+        const updateData: Record<string, unknown> = {
+          clubTmProfile: (isWomen || isYouth) ? '' : (selectedClub?.clubTmProfile || ''),
+          clubName,
+          clubLogo: (isWomen || isYouth) ? '' : (selectedClub?.clubLogo || ''),
+          clubCountry,
+          clubCountryFlag: (isWomen || isYouth) ? '' : (selectedClub?.clubCountryFlag || ''),
+          position: selectedPosition,
+          notes: notes.trim() || '',
+          minAge: isYouth ? 0 : (minAge ? parseInt(minAge, 10) : 0),
+          maxAge: isYouth ? 0 : (maxAge ? parseInt(maxAge, 10) : 0),
+          ageDoesntMatter: isYouth ? true : ageDoesntMatter,
+          salaryRange: isYouth ? 'N/A' : selectedSalary,
+          transferFee: isYouth ? 'N/A' : selectedFee,
+          dominateFoot: selectedFoot === 'any' ? '' : selectedFoot,
+          euOnly: euOnly || false,
+        };
+        await updateDoc(doc(db, clubRequestsCollection, editRequest.id), updateData);
+        onSaved();
+        onClose();
+        return;
+      }
       const createdAt = Date.now();
+      const agentName = user ? (await getCurrentAccountForShortlist(user)).name ?? null : null;
       await addDoc(collection(db, clubRequestsCollection), {
         clubTmProfile: (isWomen || isYouth) ? '' : (selectedClub?.clubTmProfile || ''),
         clubName,
@@ -108,8 +183,9 @@ export default function AddRequestSheet({ open, onClose, onSaved, clubRequestsCo
         dominateFoot: selectedFoot === 'any' ? '' : selectedFoot,
         createdAt,
         status: 'pending',
+        euOnly: euOnly || false,
+        createdByAgent: agentName || '',
       });
-      const agentName = user ? (await getCurrentAccountForShortlist(user)).name ?? null : null;
       const feedEvent: Record<string, unknown> = {
         type: 'REQUEST_ADDED',
         playerName: clubName ?? null,
@@ -144,6 +220,7 @@ export default function AddRequestSheet({ open, onClose, onSaved, clubRequestsCo
     setSelectedSalary(null);
     setSelectedFee(null);
     setNotes('');
+    setEuOnly(false);
     setError(null);
   };
 
@@ -173,7 +250,7 @@ export default function AddRequestSheet({ open, onClose, onSaved, clubRequestsCo
                 ←
               </button>
             )}
-            <h2 className="text-lg font-display font-bold text-mgsr-text">{t('requests_add_title')}</h2>
+            <h2 className="text-lg font-display font-bold text-mgsr-text">{isEditing ? t('requests_edit_title') : t('requests_add_title')}</h2>
           </div>
           <button type="button" onClick={handleClose} className="p-2 -m-2 text-mgsr-muted hover:text-mgsr-text">
             ✕
@@ -373,6 +450,18 @@ export default function AddRequestSheet({ open, onClose, onSaved, clubRequestsCo
                   </div>
                 )}
               </div>
+              )}
+
+              {!isWomen && !isYouth && (
+                <label className="flex items-center gap-3 cursor-pointer p-3 rounded-xl border border-mgsr-border hover:border-mgsr-teal/40 transition">
+                  <input
+                    type="checkbox"
+                    checked={euOnly}
+                    onChange={(e) => setEuOnly(e.target.checked)}
+                    className="w-5 h-5 rounded border-mgsr-border text-mgsr-teal focus:ring-mgsr-teal/50 accent-[var(--mgsr-accent)]"
+                  />
+                  <span className="text-mgsr-text text-sm font-medium">🇪🇺 {t('requests_eu_only')}</span>
+                </label>
               )}
 
               <div>

@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { usePlatform } from '@/contexts/PlatformContext';
-import { collection, onSnapshot, doc, deleteDoc, getDoc, setDoc, query, orderBy, addDoc } from 'firebase/firestore';
+import { collection, onSnapshot, doc, deleteDoc, updateDoc, getDoc, setDoc, query, orderBy, addDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import AppLayout from '@/components/AppLayout';
 import { getCountryDisplayName } from '@/lib/countryTranslations';
@@ -41,6 +41,8 @@ interface Request {
   dominateFoot?: string;
   createdAt?: number;
   status?: string;
+  euOnly?: boolean;
+  createdByAgent?: string;
 }
 
 
@@ -163,6 +165,7 @@ export default function RequestsPage() {
   const [deleteConfirm, setDeleteConfirm] = useState<Request | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [showAddSheet, setShowAddSheet] = useState(false);
+  const [editingRequest, setEditingRequest] = useState<Request | null>(null);
   const [players, setPlayers] = useState<RosterPlayer[]>(cached?.players ?? []);
   const [expandedMatchingPlayers, setExpandedMatchingPlayers] = useState<Set<string>>(new Set());
   const [scoutLoadingRequestId, setScoutLoadingRequestId] = useState<string | null>(null);
@@ -597,6 +600,17 @@ export default function RequestsPage() {
                                         )}
                                         <div className="flex-1 min-w-0">
                                           <p className="font-medium text-mgsr-text">{r.clubName || '—'}</p>
+                                          {(r.createdByAgent || r.createdAt) && (
+                                            <p className="text-xs text-mgsr-muted mt-0.5">
+                                              {r.createdByAgent && (
+                                                <span className="font-medium">{r.createdByAgent}</span>
+                                              )}
+                                              {r.createdByAgent && r.createdAt && <span> · </span>}
+                                              {r.createdAt && (
+                                                <span>{new Date(r.createdAt).toLocaleDateString(isHebrew ? 'he-IL' : 'en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}{' '}{new Date(r.createdAt).toLocaleTimeString(isHebrew ? 'he-IL' : 'en-GB', { hour: '2-digit', minute: '2-digit' })}</span>
+                                              )}
+                                            </p>
+                                          )}
                                           {r.contactName && (
                                             <p className="text-sm text-mgsr-teal">{r.contactName}</p>
                                           )}
@@ -632,6 +646,11 @@ export default function RequestsPage() {
                                                 {t('requests_foot')}: {footStr}
                                               </span>
                                             )}
+                                            {r.euOnly && (
+                                              <span className="text-xs px-2 py-0.5 rounded bg-blue-500/20 text-blue-400 font-medium">
+                                                🇪🇺 EU Only
+                                              </span>
+                                            )}
                                             {r.notes && (
                                               <span className="text-xs px-2 py-0.5 rounded bg-mgsr-teal/20 text-mgsr-teal line-clamp-1" dir={lang === 'he' ? 'rtl' : 'ltr'}>
                                                 {t('requests_notes_label')}: {r.notes.slice(0, 60)}{r.notes.length > 60 ? '…' : ''}
@@ -639,13 +658,22 @@ export default function RequestsPage() {
                                             )}
                                           </div>
                                         </div>
-                                        <button
-                                          type="button"
-                                          onClick={() => setDeleteConfirm(r)}
-                                          className="text-mgsr-muted hover:text-red-400 text-sm shrink-0"
-                                        >
-                                          {t('requests_delete')}
-                                        </button>
+                                        <div className="flex items-center gap-2 shrink-0">
+                                          <button
+                                            type="button"
+                                            onClick={() => { setEditingRequest(r); setShowAddSheet(true); }}
+                                            className="text-mgsr-muted hover:text-mgsr-teal text-sm shrink-0"
+                                          >
+                                            {t('requests_edit')}
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={() => setDeleteConfirm(r)}
+                                            className="text-mgsr-muted hover:text-red-400 text-sm shrink-0"
+                                          >
+                                            {t('requests_delete')}
+                                          </button>
+                                        </div>
                                       </div>
 
                                       {/* Matching players section */}
@@ -876,12 +904,13 @@ export default function RequestsPage() {
         {/* Delete confirmation dialog */}
         <AddRequestSheet
           open={showAddSheet}
-          onClose={() => setShowAddSheet(false)}
-          onSaved={() => {}}
+          onClose={() => { setShowAddSheet(false); setEditingRequest(null); }}
+          onSaved={() => { setEditingRequest(null); }}
           clubRequestsCollection={clubRequestsCollection}
           feedEventsCollection={feedEventsCollection}
           isWomen={isWomen}
           isYouth={isYouth}
+          editRequest={editingRequest}
         />
 
         {deleteConfirm && (
