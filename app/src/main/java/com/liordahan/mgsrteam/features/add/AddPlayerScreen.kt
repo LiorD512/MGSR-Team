@@ -146,6 +146,10 @@ fun AddPlayerScreen(
         mutableStateOf(listOf<SoccerDonnaSearchResult>())
     }
 
+    var youthSearchResults by remember {
+        mutableStateOf(listOf<YouthIFASearchResult>())
+    }
+
     var soccerDonnaUrlInput by remember { mutableStateOf("") }
 
     var manualNameInput by remember { mutableStateOf("") }
@@ -166,6 +170,7 @@ fun AddPlayerScreen(
                 viewModel.playerSearchStateFlow.collect {
                     playerOptionsList = it.playerSearchResults
                     womenSearchResults = it.womenSearchResults
+                    youthSearchResults = it.youthSearchResults
                     showSearchProgress = it.showSearchProgress
                     showSelectedPlayerProgress = it.showPlayerSelectedSearchProgress
                 }
@@ -227,7 +232,7 @@ fun AddPlayerScreen(
                 searchPlayerInput = searchText,
                 onValueChange = {
                     searchText = it
-                    if (currentPlatform == Platform.MEN || currentPlatform == Platform.WOMEN) {
+                    if (currentPlatform == Platform.MEN || currentPlatform == Platform.WOMEN || currentPlatform == Platform.YOUTH) {
                         viewModel.updateSearchQuery(searchText.text)
                     }
                 },
@@ -236,7 +241,7 @@ fun AddPlayerScreen(
                 platform = currentPlatform
             )
 
-            if (showSearchProgress && (currentPlatform == Platform.MEN || currentPlatform == Platform.WOMEN)) {
+            if (showSearchProgress && (currentPlatform == Platform.MEN || currentPlatform == Platform.WOMEN || currentPlatform == Platform.YOUTH)) {
                 SkeletonPlayerCardList(
                     modifier = Modifier.fillMaxSize(),
                     itemCount = 4
@@ -663,6 +668,43 @@ fun AddPlayerScreen(
                     var showAgeGroupDropdown by remember { mutableStateOf(false) }
                     var showRelationshipDropdown by remember { mutableStateOf(false) }
 
+                    // Contact picker launchers for player phone
+                    var youthPlayerPhone by remember { mutableStateOf(youthForm.playerPhone) }
+                    val youthPlayerPhoneLauncher = rememberLauncherForActivityResult(
+                        contract = ActivityResultContracts.PickContact()
+                    ) { uri ->
+                        uri?.let {
+                            getPhoneNumberFromContactUri(context, it)?.let { phone ->
+                                youthPlayerPhone = phone
+                                viewModel.updateYouthForm { f -> f.copy(playerPhone = phone) }
+                            }
+                        }
+                    }
+                    val youthPlayerPhonePermLauncher = rememberLauncherForActivityResult(
+                        contract = ActivityResultContracts.RequestPermission()
+                    ) { granted ->
+                        if (granted) youthPlayerPhoneLauncher.launch(null)
+                    }
+
+                    // Contact picker launchers for parent phone
+                    var youthParentPhone by remember { mutableStateOf(youthForm.parentPhone) }
+                    val youthParentPhoneLauncher = rememberLauncherForActivityResult(
+                        contract = ActivityResultContracts.PickContact()
+                    ) { uri ->
+                        uri?.let {
+                            getPhoneNumberFromContactUri(context, it)?.let { phone ->
+                                youthParentPhone = phone
+                                viewModel.updateYouthForm { f -> f.copy(parentPhone = phone) }
+                            }
+                        }
+                    }
+                    val youthParentPhonePermLauncher = rememberLauncherForActivityResult(
+                        contract = ActivityResultContracts.RequestPermission()
+                    ) { granted ->
+                        if (granted) youthParentPhoneLauncher.launch(null)
+                    }
+
+                    Box(modifier = Modifier.fillMaxSize()) {
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(
@@ -673,11 +715,11 @@ fun AddPlayerScreen(
                         ),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        // Full Name (English) *
+                        // Full Name (English) — optional
                         item {
                             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                 Text(
-                                    stringResource(R.string.youth_full_name) + " *",
+                                    stringResource(R.string.youth_full_name),
                                     style = boldTextStyle(PlatformColors.palette.textSecondary, 12.sp)
                                 )
                                 AppTextField(
@@ -758,48 +800,23 @@ fun AddPlayerScreen(
                             }
                         }
 
-                        // Club + Academy row
+                        // Club (full width — academy removed)
                         item {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
-                                Column(
-                                    modifier = Modifier.weight(1f),
-                                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                                ) {
-                                    Text(
-                                        stringResource(R.string.youth_club),
-                                        style = boldTextStyle(PlatformColors.palette.textSecondary, 12.sp)
-                                    )
-                                    AppTextField(
-                                        textInput = TextFieldValue(youthForm.currentClub),
-                                        hint = "Club name",
-                                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-                                        onValueChange = { tf ->
-                                            viewModel.updateYouthForm { it.copy(currentClub = tf.text) }
-                                        },
-                                        darkTheme = true
-                                    )
-                                }
-                                Column(
-                                    modifier = Modifier.weight(1f),
-                                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                                ) {
-                                    Text(
-                                        stringResource(R.string.youth_academy),
-                                        style = boldTextStyle(PlatformColors.palette.textSecondary, 12.sp)
-                                    )
-                                    AppTextField(
-                                        textInput = TextFieldValue(youthForm.academy),
-                                        hint = "Academy name",
-                                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-                                        onValueChange = { tf ->
-                                            viewModel.updateYouthForm { it.copy(academy = tf.text) }
-                                        },
-                                        darkTheme = true
-                                    )
-                                }
+                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Text(
+                                    stringResource(R.string.youth_club),
+                                    style = boldTextStyle(PlatformColors.palette.textSecondary, 12.sp)
+                                )
+                                AppTextField(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    textInput = TextFieldValue(youthForm.currentClub),
+                                    hint = "Club name",
+                                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                                    onValueChange = { tf ->
+                                        viewModel.updateYouthForm { it.copy(currentClub = tf.text) }
+                                    },
+                                    darkTheme = true
+                                )
                             }
                         }
 
@@ -904,72 +921,83 @@ fun AddPlayerScreen(
                             }
                         }
 
-                        // Profile Image URL + IFA URL
+                        // Profile Image URL (full width)
                         item {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
-                                Column(
-                                    modifier = Modifier.weight(1f),
-                                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                                ) {
-                                    Text(
-                                        stringResource(R.string.youth_profile_image_url),
-                                        style = boldTextStyle(PlatformColors.palette.textSecondary, 12.sp)
-                                    )
-                                    AppTextField(
-                                        textInput = TextFieldValue(youthForm.profileImage),
-                                        hint = "Image URL",
-                                        keyboardOptions = KeyboardOptions(
-                                            imeAction = ImeAction.Next,
-                                            keyboardType = KeyboardType.Uri
-                                        ),
-                                        onValueChange = { tf ->
-                                            viewModel.updateYouthForm { it.copy(profileImage = tf.text) }
-                                        },
-                                        darkTheme = true
-                                    )
-                                }
-                                Column(
-                                    modifier = Modifier.weight(1f),
-                                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                                ) {
-                                    Text(
-                                        stringResource(R.string.youth_ifa_url),
-                                        style = boldTextStyle(PlatformColors.palette.textSecondary, 12.sp)
-                                    )
-                                    AppTextField(
-                                        textInput = TextFieldValue(youthForm.ifaUrl),
-                                        hint = "football.org.il/…",
-                                        keyboardOptions = KeyboardOptions(
-                                            imeAction = ImeAction.Next,
-                                            keyboardType = KeyboardType.Uri
-                                        ),
-                                        onValueChange = { tf ->
-                                            viewModel.updateYouthForm { it.copy(ifaUrl = tf.text) }
-                                        },
-                                        darkTheme = true
-                                    )
-                                }
+                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Text(
+                                    stringResource(R.string.youth_profile_image_url),
+                                    style = boldTextStyle(PlatformColors.palette.textSecondary, 12.sp)
+                                )
+                                AppTextField(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    textInput = TextFieldValue(youthForm.profileImage),
+                                    hint = "https://example.com/image.jpg",
+                                    keyboardOptions = KeyboardOptions(
+                                        imeAction = ImeAction.Next,
+                                        keyboardType = KeyboardType.Uri
+                                    ),
+                                    onValueChange = { tf ->
+                                        viewModel.updateYouthForm { it.copy(profileImage = tf.text) }
+                                    },
+                                    darkTheme = true
+                                )
                             }
                         }
 
-                        // Player Phone + Player Email row
+                        // IFA Profile URL (full width)
                         item {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
-                                Column(
-                                    modifier = Modifier.weight(1f),
-                                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                                ) {
-                                    Text(
-                                        stringResource(R.string.youth_player_phone),
-                                        style = boldTextStyle(PlatformColors.palette.textSecondary, 12.sp)
-                                    )
+                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Text(
+                                    stringResource(R.string.youth_ifa_url),
+                                    style = boldTextStyle(PlatformColors.palette.textSecondary, 12.sp)
+                                )
+                                AppTextField(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    textInput = TextFieldValue(youthForm.ifaUrl),
+                                    hint = "https://www.football.org.il/players/player/?player_id=…",
+                                    keyboardOptions = KeyboardOptions(
+                                        imeAction = ImeAction.Next,
+                                        keyboardType = KeyboardType.Uri
+                                    ),
+                                    onValueChange = { tf ->
+                                        viewModel.updateYouthForm { it.copy(ifaUrl = tf.text) }
+                                    },
+                                    darkTheme = true
+                                )
+                            }
+                        }
+
+                        // Player Phone (with contact import) + Player Email row
+                        item {
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                // Player Phone with import button
+                                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Text(
+                                            stringResource(R.string.youth_player_phone),
+                                            style = boldTextStyle(PlatformColors.palette.textSecondary, 12.sp)
+                                        )
+                                        Text(
+                                            text = "📇 " + stringResource(R.string.youth_import_contact),
+                                            style = boldTextStyle(currentPlatform.accent, 11.sp),
+                                            modifier = Modifier
+                                                .clip(RoundedCornerShape(12.dp))
+                                                .clickWithNoRipple {
+                                                    launchPlayerContactPicker(
+                                                        context,
+                                                        youthPlayerPhoneLauncher,
+                                                        youthPlayerPhonePermLauncher
+                                                    )
+                                                }
+                                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                                        )
+                                    }
                                     AppTextField(
+                                        modifier = Modifier.fillMaxWidth(),
                                         textInput = TextFieldValue(youthForm.playerPhone),
                                         hint = "Phone number",
                                         keyboardOptions = KeyboardOptions(
@@ -982,15 +1010,15 @@ fun AddPlayerScreen(
                                         darkTheme = true
                                     )
                                 }
-                                Column(
-                                    modifier = Modifier.weight(1f),
-                                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                                ) {
+
+                                // Player Email
+                                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                     Text(
                                         stringResource(R.string.youth_player_email),
                                         style = boldTextStyle(PlatformColors.palette.textSecondary, 12.sp)
                                     )
                                     AppTextField(
+                                        modifier = Modifier.fillMaxWidth(),
                                         textInput = TextFieldValue(youthForm.playerEmail),
                                         hint = "Email address",
                                         keyboardOptions = KeyboardOptions(
@@ -1092,21 +1120,37 @@ fun AddPlayerScreen(
                             }
                         }
 
-                        // Parent Phone + Parent Email row
+                        // Parent Phone (with contact import) + Parent Email
                         item {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
-                                Column(
-                                    modifier = Modifier.weight(1f),
-                                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                                ) {
-                                    Text(
-                                        stringResource(R.string.youth_parent_phone),
-                                        style = boldTextStyle(PlatformColors.palette.textSecondary, 12.sp)
-                                    )
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                // Parent Phone with import button
+                                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Text(
+                                            stringResource(R.string.youth_parent_phone),
+                                            style = boldTextStyle(PlatformColors.palette.textSecondary, 12.sp)
+                                        )
+                                        Text(
+                                            text = "📇 " + stringResource(R.string.youth_import_contact),
+                                            style = boldTextStyle(currentPlatform.accent, 11.sp),
+                                            modifier = Modifier
+                                                .clip(RoundedCornerShape(12.dp))
+                                                .clickWithNoRipple {
+                                                    launchPlayerContactPicker(
+                                                        context,
+                                                        youthParentPhoneLauncher,
+                                                        youthParentPhonePermLauncher
+                                                    )
+                                                }
+                                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                                        )
+                                    }
                                     AppTextField(
+                                        modifier = Modifier.fillMaxWidth(),
                                         textInput = TextFieldValue(youthForm.parentPhone),
                                         hint = "Phone number",
                                         keyboardOptions = KeyboardOptions(
@@ -1119,15 +1163,15 @@ fun AddPlayerScreen(
                                         darkTheme = true
                                     )
                                 }
-                                Column(
-                                    modifier = Modifier.weight(1f),
-                                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                                ) {
+
+                                // Parent Email
+                                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                     Text(
                                         stringResource(R.string.youth_parent_email),
                                         style = boldTextStyle(PlatformColors.palette.textSecondary, 12.sp)
                                     )
                                     AppTextField(
+                                        modifier = Modifier.fillMaxWidth(),
                                         textInput = TextFieldValue(youthForm.parentEmail),
                                         hint = "Email address",
                                         keyboardOptions = KeyboardOptions(
@@ -1173,7 +1217,7 @@ fun AddPlayerScreen(
                             Spacer(modifier = Modifier.height(8.dp))
                             PrimaryButtonNewDesign(
                                 buttonText = stringResource(R.string.youth_save_player),
-                                isEnabled = youthForm.fullName.isNotBlank() && !youthForm.isSaving,
+                                isEnabled = (youthForm.fullName.isNotBlank() || youthForm.fullNameHe.isNotBlank()) && !youthForm.isSaving,
                                 showProgress = youthForm.isSaving,
                                 containerColor = currentPlatform.accent,
                                 onButtonClicked = {
@@ -1184,6 +1228,102 @@ fun AddPlayerScreen(
                             )
                         }
                     }
+
+                    // IFA Search results overlay
+                    if (youthSearchResults.isNotEmpty()) {
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 12.dp)
+                                .heightIn(max = 320.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = CardDefaults.cardColors(containerColor = PlatformColors.palette.card),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+                        ) {
+                            LazyColumn {
+                                items(
+                                    youthSearchResults,
+                                    key = { it.ifaPlayerId ?: it.fullName.hashCode() }
+                                ) { result ->
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clickWithNoRipple {
+                                                focusManager.clearFocus()
+                                                keyboardController?.hide()
+                                                viewModel.onYouthIFAResultSelected(result)
+                                                searchText = TextFieldValue("")
+                                            }
+                                            .padding(
+                                                horizontal = 16.dp,
+                                                vertical = 12.dp
+                                            ),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                    ) {
+                                        // IFA icon
+                                        Box(
+                                            modifier = Modifier
+                                                .size(36.dp)
+                                                .clip(CircleShape)
+                                                .background(currentPlatform.accent.copy(alpha = 0.15f)),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Text(
+                                                text = result.fullName.take(2).uppercase(),
+                                                style = boldTextStyle(currentPlatform.accent, 12.sp)
+                                            )
+                                        }
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(
+                                                text = result.fullName,
+                                                style = boldTextStyle(PlatformColors.palette.textPrimary, 14.sp),
+                                                maxLines = 1,
+                                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                            )
+                                            if (!result.currentClub.isNullOrBlank()) {
+                                                Text(
+                                                    text = result.currentClub,
+                                                    style = regularTextStyle(PlatformColors.palette.textSecondary, 12.sp),
+                                                    maxLines = 1,
+                                                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                                )
+                                            }
+                                        }
+                                        Text(
+                                            text = "IFA",
+                                            style = boldTextStyle(currentPlatform.accent.copy(alpha = 0.7f), 10.sp),
+                                            modifier = Modifier
+                                                .clip(RoundedCornerShape(6.dp))
+                                                .background(currentPlatform.accent.copy(alpha = 0.1f))
+                                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                                        )
+                                    }
+                                    HorizontalDivider(
+                                        color = PlatformColors.palette.cardBorder.copy(alpha = 0.5f),
+                                        thickness = 0.5.dp
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    // Loading overlay for profile fetch
+                    if (showSelectedPlayerProgress) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(PlatformColors.palette.background.copy(alpha = 0.7f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(
+                                color = currentPlatform.accent,
+                                strokeWidth = 3.dp,
+                                modifier = Modifier.size(44.dp)
+                            )
+                        }
+                    }
+                    } // end Box
                 } else {
                     // Men — Transfermarkt search
                     if (playerOptionsList.isNotEmpty()) {

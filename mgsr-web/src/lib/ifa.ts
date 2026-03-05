@@ -135,9 +135,34 @@ function extractClubFromSnippet(snippet: string | undefined): string | undefined
   const s = snippet.trim();
   const clubMatch =
     s.match(/קבוצה[:\s]*([^\n·|]+)/) ||
-    s.match(/(?:מכבי|הפועל|בני|ביתר|עירוני|הכח)\s+[^\n·|]{2,30}/) ||
+    s.match(/(?:מכבי|הפועל|בני|ביתר|עירוני|הכח|מ\.ס\.|הפ')\s+[^\n·|]{2,30}/) ||
     s.match(/(?:Maccabi|Hapoel|Beitar|Bnei)\s+[A-Za-z\s]{2,40}/);
-  return clubMatch ? clubMatch[1]?.trim() || clubMatch[0]?.trim() : undefined;
+  const raw = clubMatch ? clubMatch[1]?.trim() || clubMatch[0]?.trim() : undefined;
+  return cleanClubSnippet(raw);
+}
+
+/** Remove IFA site noise from club snippet text */
+function cleanClubSnippet(club: string | undefined): string | undefined {
+  if (!club?.trim()) return undefined;
+  let c = club.trim();
+  // Strip "עונה שינוי יביא לרענון" and everything after it (IFA season-change banner text)
+  c = c.replace(/\.?\s*עונה?\s*שינוי.*$/s, '').trim();
+  // Strip season page listings like "עמוד: 2024/2025, ..."
+  c = c.replace(/\.?\s*עמוד\s*:.*$/s, '').trim();
+  // Strip trailing season years like "2024/2025, 2023/2024 ..."
+  c = c.replace(/\.?\s*\d{4}\/\d{4}[\d\s,/]*\.{0,3}\s*$/s, '').trim();
+  // Strip trailing "שערים. מסגרת." and similar stat noise
+  c = c.replace(/\.?\s*(?:שערים|מסגרת|כרטיסים)[\s.]*$/s, '').trim();
+  // Take only the first club (before comma-separated second club)
+  const commaIdx = c.indexOf('),');
+  if (commaIdx > 0) c = c.substring(0, commaIdx + 1).trim();
+  // Remove trailing periods
+  c = c.replace(/\.\s*$/, '').trim();
+  // If nothing meaningful remains, return undefined
+  if (!c || c.length < 2) return undefined;
+  // If it starts with noise text, return undefined
+  if (/^עונה/.test(c)) return undefined;
+  return c;
 }
 
 /** Extract player_id from link if it's a valid IFA player page */

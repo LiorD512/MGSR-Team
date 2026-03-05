@@ -250,6 +250,7 @@
     <string name="youth_parent_email">Parent Email</string>
     <string name="youth_notes">Notes</string>
     <string name="youth_save_player">Save Player</string>
+    <string name="youth_import_contact">Import from contacts</string>
     <string name="youth_section_details">Youth Details</string>
     <string name="youth_ifa_profile">IFA Profile</string>
     <string name="youth_ifa_stats">IFA Statistics</string>

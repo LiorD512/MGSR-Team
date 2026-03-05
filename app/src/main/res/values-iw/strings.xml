@@ -1172,6 +1172,7 @@
     <string name="youth_parent_email">אימייל הורה</string>
     <string name="youth_notes">הערות</string>
     <string name="youth_save_player">שמור שחקן</string>
+    <string name="youth_import_contact">יבוא מאנשי קשר</string>
     <string name="youth_section_details">פרטי נוער</string>
     <string name="youth_ifa_profile">פרופיל IFA</string>
     <string name="youth_ifa_stats">סטטיסטיקות IFA</string>
