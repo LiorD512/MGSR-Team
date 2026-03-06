@@ -286,6 +286,73 @@ class ShortlistRepository(
         addToShortlistByUrl(tmProfileUrl)
     }
 
+    /**
+     * Add a player to the shortlist from form data (Women / Youth).
+     * Uses the provided URL as the tmProfileUrl identifier.
+     * Checks for duplicates in shortlist and optionally in roster.
+     */
+    suspend fun addToShortlistFromForm(
+        tmProfileUrl: String,
+        playerName: String?,
+        playerPosition: String?,
+        playerAge: String?,
+        playerNationality: String?,
+        clubJoinedName: String?,
+        marketValue: String?,
+        playerImage: String?
+    ): AddToShortlistResult {
+        val url = tmProfileUrl.trim().takeIf { it.isNotBlank() } ?: return AddToShortlistResult.AlreadyInShortlist
+        _shortlistPendingUrls.value = _shortlistPendingUrls.value + url
+        return try {
+            // Check roster by soccerDonnaUrl (women) or ifaUrl (youth)
+            if (url.contains("soccerdonna", ignoreCase = true)) {
+                val rosterSnapshot = firebaseHandler.firebaseStore
+                    .collection(firebaseHandler.playersTable)
+                    .whereEqualTo("soccerDonnaUrl", url)
+                    .get().await()
+                if (!rosterSnapshot.isEmpty) return AddToShortlistResult.AlreadyInRoster
+            } else if (url.contains("football.org.il", ignoreCase = true)) {
+                val rosterSnapshot = firebaseHandler.firebaseStore
+                    .collection(firebaseHandler.playersTable)
+                    .whereEqualTo("ifaUrl", url)
+                    .get().await()
+                if (!rosterSnapshot.isEmpty) return AddToShortlistResult.AlreadyInRoster
+            }
+
+            // Check shortlist duplicates
+            val existing = shortlistCollection()
+                .whereEqualTo("tmProfileUrl", url).get().await()
+            if (!existing.isEmpty) return AddToShortlistResult.AlreadyInShortlist
+
+            val entryMap = mutableMapOf<String, Any>(
+                "tmProfileUrl" to url,
+                "addedAt" to System.currentTimeMillis()
+            )
+            playerImage?.let { entryMap["playerImage"] = it }
+            playerName?.let { entryMap["playerName"] = it }
+            playerPosition?.let { entryMap["playerPosition"] = it }
+            playerAge?.let { entryMap["playerAge"] = it }
+            playerNationality?.let { entryMap["playerNationality"] = it }
+            clubJoinedName?.let { entryMap["clubJoinedName"] = it }
+            marketValue?.let { entryMap["marketValue"] = it }
+            getCurrentUserAccount()?.let { acc ->
+                acc.id?.let { entryMap["addedByAgentId"] = it }
+                acc.name?.takeIf { it.isNotBlank() }?.let { entryMap["addedByAgentName"] = it }
+                acc.hebrewName?.takeIf { it.isNotBlank() }?.let { entryMap["addedByAgentHebrewName"] = it }
+            }
+            shortlistCollection().add(entryMap).await()
+            writeFeedEventShortlist(
+                playerName = playerName,
+                playerImage = playerImage,
+                playerTmProfile = url,
+                agentName = getCurrentUserAccountName()
+            )
+            AddToShortlistResult.Added
+        } finally {
+            _shortlistPendingUrls.value = _shortlistPendingUrls.value - url
+        }
+    }
+
     private suspend fun getCurrentUserAccount(): Account? {
         val email = FirebaseAuth.getInstance().currentUser?.email ?: return null
         val snapshot = firebaseHandler.firebaseStore.collection(firebaseHandler.accountsTable).get().await()

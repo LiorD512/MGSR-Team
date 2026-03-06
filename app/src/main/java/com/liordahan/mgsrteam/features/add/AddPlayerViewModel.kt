@@ -8,6 +8,7 @@ import com.liordahan.mgsrteam.features.players.models.Club
 import com.liordahan.mgsrteam.features.players.models.Player
 import com.liordahan.mgsrteam.features.platform.Platform
 import com.liordahan.mgsrteam.features.platform.PlatformManager
+import com.liordahan.mgsrteam.features.shortlist.ShortlistRepository
 import com.liordahan.mgsrteam.firebase.FirebaseHandler
 import com.liordahan.mgsrteam.transfermarket.PlayerSearch
 import com.liordahan.mgsrteam.transfermarket.PlayerSearchModel
@@ -162,6 +163,8 @@ abstract class IAddPlayerViewModel : ViewModel() {
     abstract fun updateWomanForm(updater: (WomanPlayerFormState) -> WomanPlayerFormState)
     abstract fun toggleWomanPosition(position: String)
     abstract fun saveWomanPlayer()
+    /** Save the current Women form data to the shortlist (not roster). */
+    abstract fun saveWomanToShortlist()
     abstract fun clearWomanForm()
 
     // ── Youth single-page form (matches web AddYouthPlayerForm) ──
@@ -169,6 +172,8 @@ abstract class IAddPlayerViewModel : ViewModel() {
     abstract fun updateYouthForm(updater: (YouthPlayerFormState) -> YouthPlayerFormState)
     abstract fun toggleYouthPosition(position: String)
     abstract fun saveYouthPlayer()
+    /** Save the current Youth form data to the shortlist (not roster). */
+    abstract fun saveYouthToShortlist()
     abstract fun clearYouthForm()
     /** Select an IFA search result (Youth): pre-fill form and optionally fetch profile. */
     abstract fun onYouthIFAResultSelected(result: YouthIFASearchResult)
@@ -179,7 +184,8 @@ class AddPlayerViewModel(
     private val playerSearch: PlayerSearch,
     private val soccerDonnaSearch: SoccerDonnaSearch,
     private val firebaseHandler: FirebaseHandler,
-    private val platformManager: PlatformManager
+    private val platformManager: PlatformManager,
+    private val shortlistRepository: ShortlistRepository
 ) : IAddPlayerViewModel() {
 
     private val _playerSearchStateFlow = MutableStateFlow(AddPlayerUiState())
@@ -639,6 +645,45 @@ class AddPlayerViewModel(
         }
     }
 
+    override fun saveYouthToShortlist() {
+        val form = _youthFormState.value
+        val effectiveName = form.fullNameHe.ifBlank { form.fullName }
+        if (effectiveName.isBlank()) return
+        _youthFormState.update { it.copy(isSaving = true) }
+
+        viewModelScope.launch {
+            try {
+                // Use ifaUrl as the tmProfileUrl for youth shortlist entries, fallback to generated ID
+                val url = form.ifaUrl.takeIf { it.isNotBlank() }
+                    ?: "youth-manual-${System.currentTimeMillis()}"
+
+                when (shortlistRepository.addToShortlistFromForm(
+                    tmProfileUrl = url,
+                    playerName = effectiveName.trim(),
+                    playerPosition = form.positions.firstOrNull(),
+                    playerAge = form.dateOfBirth.takeIf { it.isNotBlank() },
+                    playerNationality = form.nationality.takeIf { it.isNotBlank() },
+                    clubJoinedName = form.currentClub.takeIf { it.isNotBlank() },
+                    marketValue = null,
+                    playerImage = form.profileImage.takeIf { it.isNotBlank() }
+                )) {
+                    is ShortlistRepository.AddToShortlistResult.Added -> {
+                        _isPlayerAddedFlow.update { true }
+                    }
+                    is ShortlistRepository.AddToShortlistResult.AlreadyInShortlist -> {
+                        _errorMessageFlow.emit("Player already in shortlist")
+                    }
+                    is ShortlistRepository.AddToShortlistResult.AlreadyInRoster -> {
+                        _errorMessageFlow.emit("Player already in roster")
+                    }
+                }
+            } catch (e: Exception) {
+                _errorMessageFlow.emit(e.message ?: "Failed to add to shortlist")
+            }
+            _youthFormState.update { it.copy(isSaving = false) }
+        }
+    }
+
     override fun saveWomanPlayer() {
         val form = _womanFormState.value
         if (form.fullName.isBlank()) return
@@ -714,6 +759,44 @@ class AddPlayerViewModel(
                 _isPlayerAddedFlow.update { true }
             } catch (e: Exception) {
                 _errorMessageFlow.emit(e.message ?: "Failed to save player")
+            }
+            _womanFormState.update { it.copy(isSaving = false) }
+        }
+    }
+
+    override fun saveWomanToShortlist() {
+        val form = _womanFormState.value
+        if (form.fullName.isBlank() && form.soccerDonnaUrl.isBlank()) return
+        _womanFormState.update { it.copy(isSaving = true) }
+
+        viewModelScope.launch {
+            try {
+                // Use soccerDonnaUrl as the tmProfileUrl for women shortlist entries
+                val url = form.soccerDonnaUrl.takeIf { it.isNotBlank() }
+                    ?: "women-manual-${System.currentTimeMillis()}"
+
+                when (shortlistRepository.addToShortlistFromForm(
+                    tmProfileUrl = url,
+                    playerName = form.fullName.trim().takeIf { it.isNotBlank() },
+                    playerPosition = form.positions.firstOrNull(),
+                    playerAge = form.age.takeIf { it.isNotBlank() },
+                    playerNationality = form.nationality.takeIf { it.isNotBlank() },
+                    clubJoinedName = form.currentClub.takeIf { it.isNotBlank() },
+                    marketValue = form.marketValue.takeIf { it.isNotBlank() },
+                    playerImage = form.profileImage.takeIf { it.isNotBlank() }
+                )) {
+                    is ShortlistRepository.AddToShortlistResult.Added -> {
+                        _isPlayerAddedFlow.update { true }
+                    }
+                    is ShortlistRepository.AddToShortlistResult.AlreadyInShortlist -> {
+                        _errorMessageFlow.emit("Player already in shortlist")
+                    }
+                    is ShortlistRepository.AddToShortlistResult.AlreadyInRoster -> {
+                        _errorMessageFlow.emit("Player already in roster")
+                    }
+                }
+            } catch (e: Exception) {
+                _errorMessageFlow.emit(e.message ?: "Failed to add to shortlist")
             }
             _womanFormState.update { it.copy(isSaving = false) }
         }

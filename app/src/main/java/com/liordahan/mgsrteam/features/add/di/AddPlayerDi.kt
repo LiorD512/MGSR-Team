@@ -10,5 +10,5 @@ import org.koin.dsl.module
 val addPlayerModule = module {
     single { PlayerSearch() }
     single { SoccerDonnaSearch() }
-    viewModel<IAddPlayerViewModel> { AddPlayerViewModel(get(), get(), get(), get()) }
+    viewModel<IAddPlayerViewModel> { AddPlayerViewModel(get(), get(), get(), get(), get()) }
 }

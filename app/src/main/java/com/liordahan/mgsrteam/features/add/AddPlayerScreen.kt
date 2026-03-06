@@ -186,7 +186,7 @@ fun AddPlayerScreen(
 
             launch {
                 viewModel.isPlayerAddedFlow.collect {
-                    if (it && !forShortlist) {
+                    if (it && (!forShortlist || currentPlatform == Platform.WOMEN || currentPlatform == Platform.YOUTH)) {
                         showAddContactBottomSheet = false
                         navController.popBackStack()
                     }
@@ -537,7 +537,8 @@ fun AddPlayerScreen(
                                 }
                             }
 
-                            // Player Phone + Agent Phone row
+                            // Player Phone + Agent Phone row (roster only)
+                            if (!forShortlist) {
                             item {
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
@@ -613,19 +614,20 @@ fun AddPlayerScreen(
                                     )
                                 }
                             }
+                            } // end if (!forShortlist)
 
-                            // Save button
+                            // Save / Add to shortlist button
                             item {
                                 Spacer(modifier = Modifier.height(8.dp))
                                 PrimaryButtonNewDesign(
-                                    buttonText = stringResource(R.string.women_save_player),
+                                    buttonText = if (forShortlist) stringResource(R.string.add_player_to_shortlist) else stringResource(R.string.women_save_player),
                                     isEnabled = womanForm.fullName.isNotBlank() && !womanForm.isSaving,
                                     showProgress = womanForm.isSaving,
                                     containerColor = currentPlatform.accent,
                                     onButtonClicked = {
                                         focusManager.clearFocus()
                                         keyboardController?.hide()
-                                        viewModel.saveWomanPlayer()
+                                        if (forShortlist) viewModel.saveWomanToShortlist() else viewModel.saveWomanPlayer()
                                     }
                                 )
                             }
@@ -967,7 +969,8 @@ fun AddPlayerScreen(
                             }
                         }
 
-                        // Player Phone (with contact import) + Player Email row
+                        // Player Phone (with contact import) + Player Email row (roster only)
+                        if (!forShortlist) {
                         item {
                             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                 // Player Phone with import button
@@ -1211,19 +1214,20 @@ fun AddPlayerScreen(
                                 )
                             }
                         }
+                        } // end if (!forShortlist)
 
-                        // Save button
+                        // Save / Add to shortlist button
                         item {
                             Spacer(modifier = Modifier.height(8.dp))
                             PrimaryButtonNewDesign(
-                                buttonText = stringResource(R.string.youth_save_player),
+                                buttonText = if (forShortlist) stringResource(R.string.add_player_to_shortlist) else stringResource(R.string.youth_save_player),
                                 isEnabled = (youthForm.fullName.isNotBlank() || youthForm.fullNameHe.isNotBlank()) && !youthForm.isSaving,
                                 showProgress = youthForm.isSaving,
                                 containerColor = currentPlatform.accent,
                                 onButtonClicked = {
                                     focusManager.clearFocus()
                                     keyboardController?.hide()
-                                    viewModel.saveYouthPlayer()
+                                    if (forShortlist) viewModel.saveYouthToShortlist() else viewModel.saveYouthPlayer()
                                 }
                             )
                         }
