@@ -100,6 +100,14 @@ fun Player.getAgentPhoneNumber(): String? {
     else agentPhoneNumber?.takeIf { it.isNotBlank() }
 }
 
+/** Single source of truth for free-agent detection. */
+val Player.isFreeAgent: Boolean
+    get() = currentClub?.clubName.equals("Without Club", ignoreCase = true)
+
+/** Check whether a raw club-name string represents a free agent. */
+fun isFreeAgentClub(clubName: String?): Boolean =
+    clubName.equals("Without Club", ignoreCase = true)
+
 @Keep
 @Parcelize
 data class Club(

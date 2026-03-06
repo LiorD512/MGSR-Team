@@ -109,6 +109,7 @@ import com.liordahan.mgsrteam.features.add.IAddPlayerViewModel
 import com.liordahan.mgsrteam.features.add.SnakeBarMessage
 import com.liordahan.mgsrteam.features.add.showSnakeBarMessage
 import com.liordahan.mgsrteam.features.players.models.Player
+import com.liordahan.mgsrteam.features.players.models.isFreeAgent
 import com.liordahan.mgsrteam.features.players.sort.SortOption
 import com.liordahan.mgsrteam.features.players.ui.RosterEmptyState
 import com.liordahan.mgsrteam.navigation.Screens
@@ -1288,8 +1289,7 @@ private fun PlayerCardVariantA(
     platform: Platform = Platform.MEN
 ) {
     val context = LocalContext.current
-    val isFreeAgent = player.currentClub?.clubName.equals("Without Club", ignoreCase = true) ||
-            player.currentClub?.clubName.equals("Without club", ignoreCase = true)
+    val isFreeAgent = player.isFreeAgent
     val isExpiring = remember(player.contractExpired) {
         isContractExpiringSoon(player.contractExpired)
     }

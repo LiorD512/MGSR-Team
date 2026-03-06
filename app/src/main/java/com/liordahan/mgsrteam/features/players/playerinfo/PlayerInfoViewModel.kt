@@ -377,10 +377,10 @@ class PlayerInfoViewModel(
             it?.copy(playerPhoneNumber = number, playerAdditionalInfoModel = null)
         }
 
-        _playerInfoFlow.value?.let { player ->
-            viewModelScope.launch {
-                getPlayerDocRef()?.set(player)?.await()
-            }
+        viewModelScope.launch {
+            getPlayerDocRef()?.update(
+                mapOf("playerPhoneNumber" to number, "playerAdditionalInfoModel" to null)
+            )?.await()
         }
     }
 
@@ -389,10 +389,10 @@ class PlayerInfoViewModel(
             it?.copy(agentPhoneNumber = number, playerAdditionalInfoModel = null)
         }
 
-        _playerInfoFlow.value?.let { player ->
-            viewModelScope.launch {
-                getPlayerDocRef()?.set(player)?.await()
-            }
+        viewModelScope.launch {
+            getPlayerDocRef()?.update(
+                mapOf("agentPhoneNumber" to number, "playerAdditionalInfoModel" to null)
+            )?.await()
         }
     }
 
@@ -401,10 +401,10 @@ class PlayerInfoViewModel(
             it?.copy(agency = null, agencyUrl = null)
         }
 
-        _playerInfoFlow.value?.let { player ->
-            viewModelScope.launch {
-                getPlayerDocRef()?.set(player)?.await()
-            }
+        viewModelScope.launch {
+            getPlayerDocRef()?.update(
+                mapOf("agency" to null, "agencyUrl" to null)
+            )?.await()
         }
     }
 
@@ -414,7 +414,7 @@ class PlayerInfoViewModel(
         }
         viewModelScope.launch {
             val player = _playerInfoFlow.value ?: return@launch
-            getPlayerDocRef()?.set(player.copy(haveMandate = hasMandate))?.await()
+            getPlayerDocRef()?.update("haveMandate", hasMandate)?.await()
 
             if (isManual) {
                 val createdBy = getCurrentUserName()
@@ -447,9 +447,7 @@ class PlayerInfoViewModel(
             it?.copy(salaryRange = salaryRange)
         }
         viewModelScope.launch {
-            _playerInfoFlow.value?.let { player ->
-                getPlayerDocRef()?.set(player)?.await()
-            }
+            getPlayerDocRef()?.update("salaryRange", salaryRange)?.await()
         }
     }
 
@@ -458,9 +456,7 @@ class PlayerInfoViewModel(
             it?.copy(transferFee = transferFee)
         }
         viewModelScope.launch {
-            _playerInfoFlow.value?.let { player ->
-                getPlayerDocRef()?.set(player)?.await()
-            }
+            getPlayerDocRef()?.update("transferFee", transferFee)?.await()
         }
     }
 

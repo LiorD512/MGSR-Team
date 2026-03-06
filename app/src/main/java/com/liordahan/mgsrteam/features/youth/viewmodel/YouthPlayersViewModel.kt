@@ -11,6 +11,7 @@ import com.liordahan.mgsrteam.features.players.playerinfo.documents.PlayerDocume
 import com.liordahan.mgsrteam.features.players.sort.SortOption
 import com.liordahan.mgsrteam.features.youth.data.YouthFirebaseHandler
 import com.liordahan.mgsrteam.features.youth.models.YouthPlayer
+import com.liordahan.mgsrteam.features.youth.models.isFreeAgent
 import com.liordahan.mgsrteam.features.youth.models.toSharedPlayer
 import com.liordahan.mgsrteam.features.youth.repository.YouthPlayersRepository
 import com.liordahan.mgsrteam.helpers.Result
@@ -186,8 +187,7 @@ class YouthPlayersViewModel(
         // Quick filter: freeAgents / contractExpiring
         if (state.quickFilterFreeAgents || state.quickFilterContractExpiring) {
             visible = visible.filter { player ->
-                val isFreeAgent = player.currentClub?.clubName.equals("Without Club", ignoreCase = true) ||
-                        player.currentClub?.clubName.equals("Without club", ignoreCase = true)
+                val isFreeAgent = player.isFreeAgent
                 val isExpiring = isContractExpiringWithin6Months(player.contractExpired)
                 when {
                     state.quickFilterFreeAgents && state.quickFilterContractExpiring -> isFreeAgent || isExpiring
@@ -197,7 +197,7 @@ class YouthPlayersViewModel(
             }
         } else if (state.contractFilterOption != ContractFilterOption.NONE) {
             visible = when (state.contractFilterOption) {
-                ContractFilterOption.WITHOUT_CLUB -> visible.filter { it.currentClub?.clubName.equals("Without club", true) }
+                ContractFilterOption.WITHOUT_CLUB -> visible.filter { it.isFreeAgent }
                 ContractFilterOption.CONTRACT_FINISHING -> visible.filter { isContractExpiringWithin6Months(it.contractExpired) }
                 else -> visible
             }
@@ -273,10 +273,7 @@ class YouthPlayersViewModel(
             playersWithMandate = playersWithMandate,
             totalPlayers = allPlayers.size,
             mandateCount = playersWithMandate.size,
-            freeAgentCount = allPlayers.count { player ->
-                player.currentClub?.clubName.equals("Without Club", ignoreCase = true) ||
-                        player.currentClub?.clubName.equals("Without club", ignoreCase = true)
-            },
+            freeAgentCount = allPlayers.count { it.isFreeAgent },
             expiringCount = expiringSoon.size
         )
     }

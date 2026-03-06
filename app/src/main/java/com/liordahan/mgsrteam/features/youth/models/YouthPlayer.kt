@@ -4,6 +4,7 @@ import android.os.Parcelable
 import androidx.annotation.Keep
 import com.google.firebase.firestore.DocumentId
 import com.google.firebase.firestore.PropertyName
+import com.liordahan.mgsrteam.features.players.models.isFreeAgentClub
 import kotlinx.parcelize.Parcelize
 
 /**
@@ -109,6 +110,10 @@ fun YouthPlayer.getAgentPhoneNumber(): String? {
     return if (playerAdditionalInfoModel?.agentNumber?.isEmpty() == false) playerAdditionalInfoModel.agentNumber
     else agentPhoneNumber?.takeIf { it.isNotBlank() }
 }
+
+/** Single source of truth for free-agent detection — delegates to shared helper. */
+val YouthPlayer.isFreeAgent: Boolean
+    get() = isFreeAgentClub(currentClub?.clubName)
 
 @Keep
 @Parcelize

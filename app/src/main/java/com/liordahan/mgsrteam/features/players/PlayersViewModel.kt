@@ -18,6 +18,7 @@ import com.liordahan.mgsrteam.features.players.filters.usecases.ISetFootFilterOp
 import com.liordahan.mgsrteam.features.players.filters.usecases.ISetPositionFiltersByNamesUseCase
 import com.liordahan.mgsrteam.features.players.filters.usecases.ISetSortOptionUseCase
 import com.liordahan.mgsrteam.features.players.models.Player
+import com.liordahan.mgsrteam.features.players.models.isFreeAgent
 import com.liordahan.mgsrteam.features.players.models.Position
 import com.liordahan.mgsrteam.features.players.playerinfo.documents.PlayerDocument
 import com.liordahan.mgsrteam.features.players.sort.SortOption
@@ -208,10 +209,7 @@ class PlayersViewModel(
             }
             .sortedBy { it.mandateExpiryAt ?: Long.MAX_VALUE }
         val mandateCount = playersWithMandate.size
-        val freeAgentCount = allPlayers.count { player ->
-            player.currentClub?.clubName.equals("Without Club", ignoreCase = true) ||
-                    player.currentClub?.clubName.equals("Without club", ignoreCase = true)
-        }
+        val freeAgentCount = allPlayers.count { it.isFreeAgent }
 
         return state.copy(
             visibleList = visible,
@@ -379,8 +377,7 @@ class PlayersViewModel(
         return when {
             quickFilterFreeAgents || quickFilterContractExpiring -> {
                 this?.filter { player ->
-                    val isFreeAgent = player.currentClub?.clubName.equals("Without Club", ignoreCase = true) ||
-                            player.currentClub?.clubName.equals("Without club", ignoreCase = true)
+                    val isFreeAgent = player.isFreeAgent
                     val isExpiring = isContractExpiringWithin6Months(player.contractExpired)
                     when {
                         quickFilterFreeAgents && quickFilterContractExpiring -> isFreeAgent || isExpiring
@@ -397,12 +394,7 @@ class PlayersViewModel(
     private fun List<Player>?.filterPlayersByContractOption(contractFilterOption: ContractFilterOption): List<Player>? {
         return when (contractFilterOption) {
             ContractFilterOption.NONE -> this
-            ContractFilterOption.WITHOUT_CLUB -> this?.filter {
-                it.currentClub?.clubName.equals(
-                    "Without club",
-                    true
-                )
-            }
+            ContractFilterOption.WITHOUT_CLUB -> this?.filter { it.isFreeAgent }
 
             ContractFilterOption.CONTRACT_FINISHING -> this?.filter {
                 isContractExpiringWithin6Months(it.contractExpired)

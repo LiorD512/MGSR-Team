@@ -138,6 +138,7 @@ import com.liordahan.mgsrteam.features.players.playerinfo.notes.AddNoteBottomShe
 import com.liordahan.mgsrteam.features.players.playerinfo.notes.AllNotesScreen
 import com.liordahan.mgsrteam.features.players.playerinfo.notes.NotesSection
 import com.liordahan.mgsrteam.features.players.models.Player
+import com.liordahan.mgsrteam.features.players.models.isFreeAgentClub
 import com.liordahan.mgsrteam.features.players.models.getAgentPhoneNumber
 import com.liordahan.mgsrteam.features.players.models.getPlayerPhoneNumber
 import com.liordahan.mgsrteam.features.players.playerinfo.ai.AiHelperService
@@ -2707,9 +2708,9 @@ fun ClubInfoRow(
 ) {
     val labelColor = if (darkTheme) PlatformColors.palette.textSecondary else contentDefault
     val valueColor = if (darkTheme) {
-        if (value.equals("Without club", true)) PlatformColors.palette.red else PlatformColors.palette.textPrimary
+        if (isFreeAgentClub(value)) PlatformColors.palette.red else PlatformColors.palette.textPrimary
     } else {
-        if (value.equals("Without club", true)) redErrorColor else contentDefault
+        if (isFreeAgentClub(value)) redErrorColor else contentDefault
     }
     Row(
         modifier = Modifier

@@ -26,6 +26,7 @@ import com.liordahan.mgsrteam.features.home.models.FeedEvent
 import com.liordahan.mgsrteam.features.players.models.Club
 import com.liordahan.mgsrteam.features.players.models.MarketValueEntry
 import com.liordahan.mgsrteam.features.players.models.Player
+import com.liordahan.mgsrteam.features.players.models.isFreeAgentClub
 import com.liordahan.mgsrteam.firebase.FirebaseHandler
 import com.liordahan.mgsrteam.transfermarket.PlayerToUpdateValues
 import com.liordahan.mgsrteam.transfermarket.PlayersUpdate
@@ -325,7 +326,7 @@ class PlayerRefreshWorker(
         val now = System.currentTimeMillis()
 
         if (newClubName != null && !newClubName.equals(oldClubName, true)) {
-            val nowWithoutClub = newClubName.equals("Without club", true)
+            val nowWithoutClub = isFreeAgentClub(newClubName)
             val eventType = if (nowWithoutClub) {
                 FeedEvent.TYPE_BECAME_FREE_AGENT
             } else {

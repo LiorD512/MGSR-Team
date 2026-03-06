@@ -12,6 +12,7 @@ import com.liordahan.mgsrteam.features.home.models.FeedEvent
 import com.liordahan.mgsrteam.features.home.models.MyAgentOverview
 import com.liordahan.mgsrteam.features.login.models.Account
 import com.liordahan.mgsrteam.features.players.models.Player
+import com.liordahan.mgsrteam.features.players.models.isFreeAgent
 import com.google.firebase.firestore.ListenerRegistration
 import com.liordahan.mgsrteam.features.players.playerinfo.documents.DocumentType
 import com.liordahan.mgsrteam.features.players.playerinfo.documents.PlayerDocument
@@ -233,9 +234,10 @@ class HomeScreenViewModel(
                     .get()
                     .await()
                 val doc = snap.documents.firstOrNull() ?: return@launch
-                val player = doc.toObject(Player::class.java) ?: return@launch
-                doc.reference.set(player.copy(haveMandate = hasMandate)).await()
-            } catch (_: Exception) { }
+                doc.reference.update("haveMandate", hasMandate).await()
+            } catch (e: Exception) {
+                android.util.Log.e("HomeVM", "updatePlayerMandate failed for $tmProfile", e)
+            }
         }
     }
 
@@ -289,10 +291,7 @@ class HomeScreenViewModel(
                 val players = snapshot.toObjects(Player::class.java)
                 viewModelScope.launch(Dispatchers.Default) {
                     val total = players.size
-                    val freeAgents = players.count {
-                        it.currentClub?.clubName.equals("Without Club", true) ||
-                            it.currentClub?.clubName.equals("Without club", true)
-                    }
+                    val freeAgents = players.count { it.isFreeAgent }
                     val expiring = players.count { isContractExpiringWithinMonths(it.contractExpired, 5) }
 
                     val agentGroups = players.groupBy { it.agentInChargeName ?: "Unassigned" }
@@ -533,7 +532,9 @@ class HomeScreenViewModel(
                     .collection(firebaseHandler.agentTasksTable)
                     .add(newTask)
                     .await()
-            } catch (_: Exception) { }
+            } catch (e: Exception) {
+                android.util.Log.e("HomeVM", "addTask failed", e)
+            }
         }
     }
 
@@ -563,7 +564,9 @@ class HomeScreenViewModel(
                     .document(task.id)
                     .update(data)
                     .await()
-            } catch (_: Exception) { }
+            } catch (e: Exception) {
+                android.util.Log.e("HomeVM", "updateTask failed for id=${task.id}", e)
+            }
         }
     }
 
@@ -581,7 +584,9 @@ class HomeScreenViewModel(
                     .document(task.id)
                     .delete()
                     .await()
-            } catch (_: Exception) { }
+            } catch (e: Exception) {
+                android.util.Log.e("HomeVM", "deleteTask failed for id=${task.id}", e)
+            }
         }
     }
 
@@ -675,10 +680,7 @@ class HomeScreenViewModel(
         val withMandate = myPlayers.count { p ->
             p.haveMandate || p.tmProfile in mandateDocProfiles || p.id in mandateDocProfiles
         }
-        val freeAgents = myPlayers.count { p ->
-            p.currentClub?.clubName.equals("Without Club", true) ||
-                p.currentClub?.clubName.equals("Without club", true)
-        }
+        val freeAgents = myPlayers.count { it.isFreeAgent }
         val expiringContracts = myPlayers.count { isContractExpiringWithinMonths(it.contractExpired, 5) }
 
         // Tasks are stored with Account.id OR agentInChargeId from Player

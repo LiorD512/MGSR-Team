@@ -16,6 +16,7 @@ import com.liordahan.mgsrteam.features.youth.models.toSharedAgentTask
 import com.liordahan.mgsrteam.features.youth.models.YouthAlertSeverity
 import com.liordahan.mgsrteam.features.youth.models.YouthFeedEvent
 import com.liordahan.mgsrteam.features.youth.models.YouthPlayer
+import com.liordahan.mgsrteam.features.youth.models.isFreeAgent
 import com.liordahan.mgsrteam.features.players.playerinfo.documents.PlayerDocument
 import com.liordahan.mgsrteam.features.players.playerinfo.documents.DocumentType
 import com.liordahan.mgsrteam.transfermarket.Confederation
@@ -220,10 +221,7 @@ class YouthHomeViewModel(
                 val players = snapshot.toObjects(YouthPlayer::class.java)
                 viewModelScope.launch(Dispatchers.Default) {
                     val total = players.size
-                    val freeAgents = players.count {
-                        it.currentClub?.clubName.equals("Without Club", true) ||
-                            it.currentClub?.clubName.equals("Without club", true)
-                    }
+                    val freeAgents = players.count { it.isFreeAgent }
                     val expiring = players.count { isContractExpiringWithinMonths(it.contractExpired, 5) }
 
                     // Youth-specific: age group & academy distributions
@@ -523,9 +521,7 @@ class YouthHomeViewModel(
         val totalPlayers = myPlayers.size
         val mandateDocProfiles = current.mandateDocProfiles
         val withMandate = myPlayers.count { p -> p.haveMandate || p.tmProfile in mandateDocProfiles || p.id in mandateDocProfiles }
-        val freeAgents = myPlayers.count { p ->
-            p.currentClub?.clubName.equals("Without Club", true) || p.currentClub?.clubName.equals("Without club", true)
-        }
+        val freeAgents = myPlayers.count { it.isFreeAgent }
         val expiringContracts = myPlayers.count { isContractExpiringWithinMonths(it.contractExpired, 5) }
 
         // Youth-specific distributions for my players
