@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { doc, getDoc, setDoc, collection, getDocs, query, orderBy, onSnapshot, addDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, collection, getDocs, query, orderBy, onSnapshot, addDoc, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { getTeammates, extractPlayerIdFromUrl, type ContractFinisherPlayer } from '@/lib/api';
 import { subscribe, loadContractFinishers, getContractFinisherState } from '@/lib/contractFinisherStore';
@@ -13,7 +13,7 @@ import { getConfederation } from '@/lib/nationToConfederation';
 import type { Confederation } from '@/lib/api';
 import AppLayout from '@/components/AppLayout';
 import Link from 'next/link';
-import { getCurrentAccountForShortlist, useShortlistDocId, SHARED_SHORTLIST_DOC_ID } from '@/lib/accounts';
+import { getCurrentAccountForShortlist } from '@/lib/accounts';
 import { getScreenCache, setScreenCache } from '@/lib/screenCache';
 
 const VALUE_FILTERS = [
@@ -344,16 +344,13 @@ export default function ContractFinisherPage() {
     return () => unsub();
   }, []);
 
-  const shortlistDocId = useShortlistDocId(user ?? null);
   useEffect(() => {
-    if (!user || !shortlistDocId) return;
-    const docRef = doc(db, 'Shortlists', shortlistDocId);
-    const unsub = onSnapshot(docRef, (snap) => {
-      const entries = (snap.data()?.entries as { tmProfileUrl?: string }[]) || [];
-      setShortlistUrls(new Set(entries.map((e) => e.tmProfileUrl).filter((u): u is string => !!u)));
+    if (!user) return;
+    const unsub = onSnapshot(collection(db, 'Shortlists'), (snap) => {
+      setShortlistUrls(new Set(snap.docs.map((d) => d.data().tmProfileUrl as string).filter((u): u is string => !!u)));
     });
     return () => unsub();
-  }, [user, shortlistDocId]);
+  }, [user]);
 
   useEffect(() => {
     if (!loading && !user) router.replace('/login');
@@ -400,7 +397,7 @@ export default function ContractFinisherPage() {
       setAddingUrl(player.playerUrl);
       try {
         const account = await getCurrentAccountForShortlist(user);
-        const docRef = doc(db, 'Shortlists', SHARED_SHORTLIST_DOC_ID);
+        const colRef = collection(db, 'Shortlists');
         const rosterExists = rosterPlayers.some((p) => p.tmProfile === player.playerUrl);
         if (rosterExists) {
           setError(t('shortlist_player_in_roster'));
@@ -422,11 +419,10 @@ export default function ContractFinisherPage() {
           addedByAgentName: account.name ?? null,
           addedByAgentHebrewName: account.hebrewName ?? null,
         };
-        const snap = await getDoc(docRef);
-        const current = (snap.data()?.entries as Record<string, unknown>[]) || [];
-        const exists = current.some((e) => e.tmProfileUrl === player.playerUrl);
-        if (!exists) {
-          await setDoc(docRef, { entries: [...current, entry] }, { merge: true });
+        const q = query(colRef, where('tmProfileUrl', '==', player.playerUrl));
+        const existsSnap = await getDocs(q);
+        if (existsSnap.empty) {
+          await addDoc(colRef, entry);
           const feedEvent: Record<string, unknown> = {
             type: 'SHORTLIST_ADDED',
             playerName: entry.playerName ?? null,

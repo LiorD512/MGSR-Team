@@ -7,9 +7,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { usePlatform } from '@/contexts/PlatformContext';
 import { getScreenCache, setScreenCache } from '@/lib/screenCache';
-import { doc, onSnapshot, getDoc, setDoc, collection, addDoc, getDocs, query, orderBy } from 'firebase/firestore';
+import { doc, onSnapshot, getDoc, setDoc, collection, addDoc, getDocs, query, orderBy, where, deleteDoc, updateDoc, writeBatch } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { getCurrentAccountForShortlist, useShortlistDocId, SHARED_SHORTLIST_DOC_ID } from '@/lib/accounts';
+import { getCurrentAccountForShortlist } from '@/lib/accounts';
 import { getTeammates, extractPlayerIdFromUrl, getPlayerDetails, getPlayerPerformanceStats, getCurrentSeasonLabel } from '@/lib/api';
 import { SHORTLISTS_COLLECTIONS, PLAYERS_COLLECTIONS, FEED_EVENTS_COLLECTIONS, CLUB_REQUESTS_COLLECTIONS } from '@/lib/platformCollections';
 import { subscribePlayersWomen, type WomanPlayer } from '@/lib/playersWomen';
@@ -107,7 +107,6 @@ export default function ShortlistPage() {
   const { platform } = usePlatform();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const shortlistDocId = useShortlistDocId(user ?? null);
   const shortlistsCollection = SHORTLISTS_COLLECTIONS[platform];
   const isWomen = platform === 'women';
   const isYouth = platform === 'youth';
@@ -232,35 +231,51 @@ export default function ShortlistPage() {
   }, [highlightParam, entries.length, router]);
 
   useEffect(() => {
-    if (!user || !shortlistDocId) return;
-    const teamRef = doc(db, shortlistsCollection, SHARED_SHORTLIST_DOC_ID);
+    if (!user) return;
+    const colRef = collection(db, shortlistsCollection);
 
+    // One-time migration from legacy "team" document to per-player documents
     const migrateFromLegacy = async () => {
-      // Skip migration for women and youth — no legacy data to migrate
-      if (platform === 'women' || platform === 'youth') return;
       try {
+        const teamRef = doc(db, shortlistsCollection, 'team');
         const teamSnap = await getDoc(teamRef);
+        if (!teamSnap.exists()) return;
         const teamEntries = (teamSnap.data()?.entries as Record<string, unknown>[]) || [];
-        if (teamEntries.length > 0) return;
-        const allSnap = await getDocs(collection(db, shortlistsCollection));
-        const allEntries: Record<string, unknown>[] = [];
-        const seen = new Set<string>();
-        for (const d of allSnap.docs) {
-          if (d.id === SHARED_SHORTLIST_DOC_ID) continue;
-          const list = (d.data()?.entries as Record<string, unknown>[]) || [];
-          for (const e of list) {
-            const url = e.tmProfileUrl as string;
-            if (url && !seen.has(url)) {
-              seen.add(url);
-              allEntries.push(e);
-            }
+
+        // Check which URLs already exist as individual docs (handles re-runs / races)
+        const existingSnap = await getDocs(colRef);
+        const existingUrls = new Set<string>();
+        const duplicateDocIds: string[] = [];
+        for (const d of existingSnap.docs) {
+          if (d.id === 'team') continue;
+          const url = d.data().tmProfileUrl as string;
+          if (!url) continue;
+          if (existingUrls.has(url)) {
+            duplicateDocIds.push(d.id);
+          } else {
+            existingUrls.add(url);
           }
         }
-        if (allEntries.length > 0) {
-          const sanitize = (x: Record<string, unknown>) =>
-            Object.fromEntries(Object.entries(x).map(([k, v]) => [k, v === undefined ? null : v]));
-          await setDoc(teamRef, { entries: allEntries.map(sanitize) }, { merge: true });
+
+        const batch = writeBatch(db);
+        const sanitize = (x: Record<string, unknown>) =>
+          Object.fromEntries(Object.entries(x).map(([k, v]) => [k, v === undefined ? null : v]));
+        let count = 0;
+        for (const e of teamEntries) {
+          const url = e.tmProfileUrl as string;
+          if (!url || existingUrls.has(url)) continue;
+          existingUrls.add(url);
+          batch.set(doc(colRef), sanitize(e));
+          count++;
         }
+        // Delete duplicate docs found
+        for (const id of duplicateDocIds) {
+          batch.delete(doc(db, shortlistsCollection, id));
+        }
+        // Delete team doc in the same atomic batch
+        batch.delete(teamRef);
+        await batch.commit();
+        console.log(`[Shortlist] Migrated ${count} new entries, removed ${duplicateDocIds.length} duplicates`);
       } catch (err) {
         console.warn('[Shortlist] Migration skipped:', err);
       }
@@ -269,17 +284,22 @@ export default function ShortlistPage() {
     migrateFromLegacy();
 
     const unsub = onSnapshot(
-      teamRef,
+      colRef,
       (snap) => {
-        const data = snap.data();
-        const list = (data?.entries as Record<string, unknown>[]) || [];
-        const mapped = list.map((e) => {
-          const clubRaw = e.clubJoinedName ?? (e.currentClub && typeof e.currentClub === 'object' ? (e.currentClub as { clubName?: string }).clubName : null) ?? (e.currentClub as string);
-          const nameVal = e.playerName ?? e.fullName;
-          const playerName = typeof nameVal === 'string' ? nameVal : undefined;
-          const currentClub = e.currentClub && typeof e.currentClub === 'object' ? (e.currentClub as { clubName?: string; clubLogo?: string }) : undefined;
-          return {
-            tmProfileUrl: (e.tmProfileUrl as string) ?? '',
+        const seen = new Set<string>();
+        const mapped = snap.docs
+          .map((d) => {
+            const e = d.data();
+            const url = (e.tmProfileUrl as string) ?? '';
+            if (!url) return null; // skip docs without tmProfileUrl (legacy/team doc)
+            if (seen.has(url)) return null; // skip duplicates
+            seen.add(url);
+            const clubRaw = e.clubJoinedName ?? (e.currentClub && typeof e.currentClub === 'object' ? (e.currentClub as { clubName?: string }).clubName : null) ?? (e.currentClub as string);
+            const nameVal = e.playerName ?? e.fullName;
+            const playerName = typeof nameVal === 'string' ? nameVal : undefined;
+            const currentClub = e.currentClub && typeof e.currentClub === 'object' ? (e.currentClub as { clubName?: string; clubLogo?: string }) : undefined;
+            return {
+              tmProfileUrl: url,
             addedAt: e.addedAt as number,
             playerImage: (e.playerImage as string) ?? undefined,
             playerName,
@@ -310,7 +330,7 @@ export default function ShortlistPage() {
             transferFee: (e.transferFee as string) ?? undefined,
             currentClub,
           };
-        });
+        }).filter((x): x is NonNullable<typeof x> => x !== null);
         setEntries(mapped);
         setLoadingList(false);
         if (shortlistCacheKey) setScreenCache(shortlistCacheKey, mapped);
@@ -321,7 +341,7 @@ export default function ShortlistPage() {
       }
     );
     return () => unsub();
-  }, [user, shortlistDocId, shortlistsCollection, platform]);
+  }, [user, shortlistsCollection, platform]);
 
   // Load ClubRequests for matching (men only)
   useEffect(() => {
@@ -401,18 +421,20 @@ export default function ShortlistPage() {
   };
 
   // ── Notes CRUD ──
+  const findDocByUrl = useCallback(async (url: string) => {
+    const q = query(collection(db, shortlistsCollection), where('tmProfileUrl', '==', url));
+    const snap = await getDocs(q);
+    return snap.empty ? null : snap.docs[0];
+  }, [shortlistsCollection]);
+
   const addNoteToEntry = useCallback(async (entry: ShortlistEntry, noteText: string) => {
-    if (!user || !shortlistDocId) return;
+    if (!user) return;
     setSavingNote(true);
     try {
       const account = await getCurrentAccountForShortlist(user);
-      const docRef = doc(db, shortlistsCollection, SHARED_SHORTLIST_DOC_ID);
-      const snap = await getDoc(docRef);
-      const current = (snap.data()?.entries as Record<string, unknown>[]) || [];
-      const idx = current.findIndex((e) => e.tmProfileUrl === entry.tmProfileUrl);
-      if (idx < 0) return;
-      const entryData = { ...current[idx] };
-      const existingNotes = Array.isArray(entryData.notes) ? [...(entryData.notes as Record<string, unknown>[])] : [];
+      const found = await findDocByUrl(entry.tmProfileUrl);
+      if (!found) return;
+      const existingNotes = Array.isArray(found.data().notes) ? [...(found.data().notes as Record<string, unknown>[])] : [];
       existingNotes.push({
         text: noteText,
         createdBy: account.name ?? 'Unknown',
@@ -420,53 +442,39 @@ export default function ShortlistPage() {
         createdById: account.id,
         createdAt: Date.now(),
       });
-      entryData.notes = existingNotes;
-      current[idx] = entryData;
-      await setDoc(docRef, { entries: current.map((e) => sanitizeForFirestore(e as Record<string, unknown>)) }, { merge: true });
+      await updateDoc(found.ref, { notes: existingNotes });
     } finally {
       setSavingNote(false);
     }
-  }, [user, shortlistDocId, shortlistsCollection]);
+  }, [user, shortlistsCollection, findDocByUrl]);
 
   const updateNoteInEntry = useCallback(async (entry: ShortlistEntry, noteIndex: number, newText: string) => {
-    if (!user || !shortlistDocId) return;
+    if (!user) return;
     setSavingNote(true);
     try {
-      const docRef = doc(db, shortlistsCollection, SHARED_SHORTLIST_DOC_ID);
-      const snap = await getDoc(docRef);
-      const current = (snap.data()?.entries as Record<string, unknown>[]) || [];
-      const idx = current.findIndex((e) => e.tmProfileUrl === entry.tmProfileUrl);
-      if (idx < 0) return;
-      const entryData = { ...current[idx] };
-      const existingNotes = Array.isArray(entryData.notes) ? [...(entryData.notes as Record<string, unknown>[])] : [];
+      const found = await findDocByUrl(entry.tmProfileUrl);
+      if (!found) return;
+      const existingNotes = Array.isArray(found.data().notes) ? [...(found.data().notes as Record<string, unknown>[])] : [];
       if (noteIndex < 0 || noteIndex >= existingNotes.length) return;
       existingNotes[noteIndex] = { ...existingNotes[noteIndex], text: newText, updatedAt: Date.now() };
-      entryData.notes = existingNotes;
-      current[idx] = entryData;
-      await setDoc(docRef, { entries: current.map((e) => sanitizeForFirestore(e as Record<string, unknown>)) }, { merge: true });
+      await updateDoc(found.ref, { notes: existingNotes });
     } finally {
       setSavingNote(false);
     }
-  }, [user, shortlistDocId, shortlistsCollection]);
+  }, [user, findDocByUrl]);
 
   const deleteNoteFromEntry = useCallback(async (entry: ShortlistEntry, noteIndex: number) => {
-    if (!user || !shortlistDocId) return;
+    if (!user) return;
     try {
-      const docRef = doc(db, shortlistsCollection, SHARED_SHORTLIST_DOC_ID);
-      const snap = await getDoc(docRef);
-      const current = (snap.data()?.entries as Record<string, unknown>[]) || [];
-      const idx = current.findIndex((e) => e.tmProfileUrl === entry.tmProfileUrl);
-      if (idx < 0) return;
-      const entryData = { ...current[idx] };
-      const existingNotes = Array.isArray(entryData.notes) ? [...(entryData.notes as Record<string, unknown>[])] : [];
+      const found = await findDocByUrl(entry.tmProfileUrl);
+      if (!found) return;
+      const existingNotes = Array.isArray(found.data().notes) ? [...(found.data().notes as Record<string, unknown>[])] : [];
       existingNotes.splice(noteIndex, 1);
-      entryData.notes = existingNotes;
-      current[idx] = entryData;
-      await setDoc(docRef, { entries: current.map((e) => sanitizeForFirestore(e as Record<string, unknown>)) }, { merge: true });
+      await updateDoc(found.ref, { notes: existingNotes });
     } catch (err) {
       console.error('Delete note error:', err);
     }
-  }, [user, shortlistDocId, shortlistsCollection]);
+  }, [user, findDocByUrl]);
 
   const handleSaveNote = useCallback(async () => {
     if (!noteModalEntry || !noteModalText.trim()) return;
@@ -498,16 +506,11 @@ export default function ShortlistPage() {
   [isRtl]);
 
   const removeFromShortlist = async (entry: ShortlistEntry) => {
-    if (!user || !shortlistDocId) return;
+    if (!user) return;
     setRemovingUrl(entry.tmProfileUrl);
     try {
-      const docRef = doc(db, shortlistsCollection, SHARED_SHORTLIST_DOC_ID);
-      const snap = await getDoc(docRef);
-      const current = (snap.data()?.entries as Record<string, unknown>[]) || [];
-      const filtered = current
-        .filter((e) => e.tmProfileUrl !== entry.tmProfileUrl)
-        .map((e) => sanitizeForFirestore(e));
-      await setDoc(docRef, { entries: filtered }, { merge: true });
+      const found = await findDocByUrl(entry.tmProfileUrl);
+      if (found) await deleteDoc(found.ref);
       const account = await getCurrentAccountForShortlist(user);
       const feedEvent: Record<string, unknown> = {
         type: 'SHORTLIST_REMOVED',
@@ -526,24 +529,20 @@ export default function ShortlistPage() {
   // Refresh entry from Transfermarkt (men only, TM URLs)
   const refreshEntry = useCallback(
     async (entry: ShortlistEntry) => {
-      if (!user || !shortlistDocId || !entry.tmProfileUrl?.includes('transfermarkt')) return;
+      if (!user || !entry.tmProfileUrl?.includes('transfermarkt')) return;
       setRefreshingUrl(entry.tmProfileUrl);
       try {
         const details = await getPlayerDetails(entry.tmProfileUrl);
-        const docRef = doc(db, shortlistsCollection, SHARED_SHORTLIST_DOC_ID);
-        const snap = await getDoc(docRef);
-        const current = (snap.data()?.entries as Record<string, unknown>[]) || [];
-        const idx = current.findIndex((e) => e.tmProfileUrl === entry.tmProfileUrl);
-        if (idx < 0) return;
-        const prev = current[idx] as Record<string, unknown>;
+        const found = await findDocByUrl(entry.tmProfileUrl);
+        if (!found) return;
+        const prev = found.data() as Record<string, unknown>;
         const prevValue = prev.marketValue as string | undefined;
         const history = Array.isArray(prev.marketValueHistory) ? [...(prev.marketValueHistory as { value?: string; date?: number }[])] : [];
         if (prevValue && details.marketValue && prevValue !== details.marketValue) {
           history.unshift({ value: details.marketValue, date: Date.now() });
           if (history.length > 5) history.pop();
         }
-        const updated: Record<string, unknown> = {
-          ...prev,
+        await updateDoc(found.ref, sanitizeForFirestore({
           playerImage: details.profileImage ?? prev.playerImage,
           playerName: details.fullName ?? prev.playerName,
           playerPosition: details.positions?.[0] ?? prev.playerPosition,
@@ -557,16 +556,14 @@ export default function ShortlistPage() {
           foot: details.foot ?? prev.foot,
           lastRefreshedAt: Date.now(),
           marketValueHistory: history.length ? history : prev.marketValueHistory,
-        };
-        current[idx] = updated;
-        await setDoc(docRef, { entries: current.map((e) => sanitizeForFirestore(e as Record<string, unknown>)) }, { merge: true });
+        }));
       } catch (err) {
         console.error('Refresh failed:', err);
       } finally {
         setRefreshingUrl(null);
       }
     },
-    [user, shortlistDocId, shortlistsCollection]
+    [user, shortlistsCollection, findDocByUrl]
   );
 
   // Refresh on load: first 3 entries that are stale (>7 days) and TM URLs (men only) — run once when entries load

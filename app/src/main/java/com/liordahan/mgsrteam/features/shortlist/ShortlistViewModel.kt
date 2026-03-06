@@ -31,6 +31,7 @@ class ShortlistViewModel(
     override val shortlistFlow: StateFlow<ShortlistUiState> = _shortlistFlow.asStateFlow()
 
     init {
+        viewModelScope.launch { repository.migrateFromLegacyIfNeeded() }
         viewModelScope.launch {
             repository.getShortlistFlow().collect { entries ->
                 _shortlistFlow.update { it.copy(entries = entries, isLoading = false) }

@@ -10,7 +10,7 @@ import { addWomanPlayer, checkWomanPlayerExists } from '@/lib/playersWomen';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { getCurrentAccountForShortlist } from '@/lib/accounts';
-import { SHORTLISTS_COLLECTIONS, SHARED_SHORTLIST_DOC_ID } from '@/lib/platformCollections';
+import { SHORTLISTS_COLLECTIONS } from '@/lib/platformCollections';
 
 const POSITIONS = ['GK', 'CB', 'LB', 'RB', 'DM', 'CM', 'AM', 'LW', 'RW', 'CF', 'SS'];
 const DEBOUNCE_MS = 350;
@@ -305,7 +305,7 @@ export default function AddWomanPlayerForm() {
     setError('');
     setSaving(true);
     try {
-      const { collection, getDocs, addDoc } = await import('firebase/firestore');
+      const { collection, getDocs, addDoc, query, where, deleteDoc } = await import('firebase/firestore');
       const accountsSnap = await getDocs(collection(db, 'Accounts'));
       let agentName = user.displayName || user.email || '';
       accountsSnap.forEach((d) => {
@@ -331,11 +331,10 @@ export default function AddWomanPlayerForm() {
           }
         }
         const account = await getCurrentAccountForShortlist(user);
-        const docRef = doc(db, SHORTLISTS_COLLECTIONS.women, SHARED_SHORTLIST_DOC_ID);
-        const snap = await getDoc(docRef);
-        const current = (snap.data()?.entries as Record<string, unknown>[]) || [];
-        const exists = current.some((e) => (e.tmProfileUrl as string) === profileUrl);
-        if (exists) {
+        const colRef = collection(db, SHORTLISTS_COLLECTIONS.women);
+        const q = query(colRef, where('tmProfileUrl', '==', profileUrl));
+        const existsSnap = await getDocs(q);
+        if (!existsSnap.empty) {
           setError(t('shortlist_already_added'));
           setSaving(false);
           return;
@@ -354,7 +353,7 @@ export default function AddWomanPlayerForm() {
           addedByAgentName: account.name ?? null,
           addedByAgentHebrewName: account.hebrewName ?? null,
         };
-        await setDoc(docRef, { entries: [...current, entry] }, { merge: true });
+        await addDoc(colRef, entry);
         await addDoc(collection(db, 'FeedEventsWomen'), {
           type: 'SHORTLIST_ADDED',
           playerName: fullName.trim(),
@@ -397,13 +396,11 @@ export default function AddWomanPlayerForm() {
       });
 
       if (fromShortlist && preloadUrl) {
-        const docRef = doc(db, SHORTLISTS_COLLECTIONS.women, SHARED_SHORTLIST_DOC_ID);
-        const snap = await getDoc(docRef);
-        const entries = (snap.data()?.entries as Record<string, unknown>[]) || [];
-        const filtered = entries
-          .filter((e) => (e.tmProfileUrl as string) !== preloadUrl)
-          .map((e) => Object.fromEntries(Object.entries(e).map(([k, v]) => [k, v === undefined ? null : v])));
-        await setDoc(docRef, { entries: filtered }, { merge: true });
+        const q = query(collection(db, SHORTLISTS_COLLECTIONS.women), where('tmProfileUrl', '==', preloadUrl));
+        const shortlistSnap = await getDocs(q);
+        for (const d of shortlistSnap.docs) {
+          await deleteDoc(d.ref);
+        }
         await addDoc(collection(db, 'FeedEventsWomen'), {
           type: 'SHORTLIST_REMOVED',
           playerName: fullName.trim(),

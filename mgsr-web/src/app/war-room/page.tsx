@@ -4,9 +4,9 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { doc, onSnapshot, getDoc, setDoc, collection, addDoc } from 'firebase/firestore';
+import { doc, onSnapshot, getDoc, setDoc, collection, addDoc, getDocs, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { getCurrentAccountForShortlist, SHARED_SHORTLIST_DOC_ID } from '@/lib/accounts';
+import { getCurrentAccountForShortlist } from '@/lib/accounts';
 import { extractPlayerIdFromUrl } from '@/lib/api';
 import AppLayout from '@/components/AppLayout';
 import { AGENTS_CONFIG, type AgentId } from '@/lib/scoutAgentConfig';
@@ -127,10 +127,8 @@ export default function WarRoomPage() {
   // Listen to shortlist and roster for status badges
   useEffect(() => {
     if (!user) return;
-    const shortlistRef = doc(db, 'Shortlists', SHARED_SHORTLIST_DOC_ID);
-    const shortlistUnsub = onSnapshot(shortlistRef, (snap) => {
-      const entries = (snap.data()?.entries as { tmProfileUrl?: string }[]) || [];
-      setShortlistUrls(new Set(entries.map((e) => e.tmProfileUrl).filter((u): u is string => !!u)));
+    const shortlistUnsub = onSnapshot(collection(db, 'Shortlists'), (snap) => {
+      setShortlistUrls(new Set(snap.docs.map((d) => d.data().tmProfileUrl as string).filter((u): u is string => !!u)));
     });
     const rosterUnsub = onSnapshot(collection(db, 'Players'), (snap) => {
       const urls = snap.docs
@@ -192,11 +190,10 @@ export default function WarRoomPage() {
       setAddError(null);
       try {
         const account = await getCurrentAccountForShortlist(user);
-        const docRef = doc(db, 'Shortlists', SHARED_SHORTLIST_DOC_ID);
-        const snap = await getDoc(docRef);
-        const current = (snap.data()?.entries as Record<string, unknown>[]) || [];
-        const exists = current.some((e) => samePlayer((e.tmProfileUrl as string) || '', url));
-        if (exists) return;
+        const colRef = collection(db, 'Shortlists');
+        const q = query(colRef, where('tmProfileUrl', '==', url));
+        const existsSnap = await getDocs(q);
+        if (!existsSnap.empty) return;
         const entry: Record<string, unknown> = {
           tmProfileUrl: url,
           addedAt: Date.now(),
@@ -213,7 +210,7 @@ export default function WarRoomPage() {
           ...(c.sourceAgentId && { sourceAgentId: c.sourceAgentId }),
           ...(c.sourceProfileId && { sourceProfileId: c.sourceProfileId }),
         };
-        await setDoc(docRef, { entries: [...current, entry] }, { merge: true });
+        await addDoc(colRef, entry);
         await addDoc(collection(db, 'FeedEvents'), {
           type: 'SHORTLIST_ADDED',
           playerName: entry.playerName ?? null,

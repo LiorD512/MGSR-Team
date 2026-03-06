@@ -16,10 +16,11 @@ import {
   doc,
   getDoc,
   setDoc,
+  deleteDoc,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { searchPlayers, getPlayerDetails, SearchPlayer, PlayerDetails } from '@/lib/api';
-import { getCurrentAccountForShortlist, SHARED_SHORTLIST_DOC_ID } from '@/lib/accounts';
+import { getCurrentAccountForShortlist } from '@/lib/accounts';
 import AppLayout from '@/components/AppLayout';
 import Link from 'next/link';
 
@@ -145,7 +146,7 @@ export default function AddPlayerPage() {
     try {
       if (forShortlist) {
         const account = await getCurrentAccountForShortlist(user);
-        const docRef = doc(db, 'Shortlists', SHARED_SHORTLIST_DOC_ID);
+        const colRef = collection(db, 'Shortlists');
         const rosterExists = await getDocs(
           query(collection(db, 'Players'), where('tmProfile', '==', selectedPlayer.tmProfile))
         );
@@ -154,10 +155,9 @@ export default function AddPlayerPage() {
           setSaving(false);
           return;
         }
-        const snap = await getDoc(docRef);
-        const current = (snap.data()?.entries as Record<string, unknown>[]) || [];
-        const exists = current.some((e) => e.tmProfileUrl === selectedPlayer.tmProfile);
-        if (exists) {
+        const q = query(colRef, where('tmProfileUrl', '==', selectedPlayer.tmProfile));
+        const existsSnap = await getDocs(q);
+        if (!existsSnap.empty) {
           setError('Already in shortlist');
           setSaving(false);
           return;
@@ -177,7 +177,7 @@ export default function AddPlayerPage() {
           addedByAgentName: account.name ?? null,
           addedByAgentHebrewName: account.hebrewName ?? null,
         };
-        await setDoc(docRef, { entries: [...current, entry] }, { merge: true });
+        await addDoc(colRef, entry);
         const shortlistFeedEvent: Record<string, unknown> = {
           type: 'SHORTLIST_ADDED',
           playerName: selectedPlayer.fullName ?? null,
@@ -250,18 +250,11 @@ export default function AddPlayerPage() {
         await addDoc(collection(db, 'FeedEvents'), feedEvent);
 
         if (fromShortlist) {
-          const shortlistRef = doc(db, 'Shortlists', SHARED_SHORTLIST_DOC_ID);
-          const shortlistSnap = await getDoc(shortlistRef);
-          const entries = (shortlistSnap.data()?.entries as Record<string, unknown>[]) || [];
-          const sanitize = (e: Record<string, unknown>) => {
-            const out: Record<string, unknown> = {};
-            for (const [k, v] of Object.entries(e)) out[k] = v === undefined ? null : v;
-            return out;
-          };
-          const filtered = entries
-            .filter((e) => e.tmProfileUrl !== selectedPlayer.tmProfile)
-            .map(sanitize);
-          await setDoc(shortlistRef, { entries: filtered }, { merge: true });
+          const q = query(collection(db, 'Shortlists'), where('tmProfileUrl', '==', selectedPlayer.tmProfile));
+          const shortlistSnap = await getDocs(q);
+          for (const d of shortlistSnap.docs) {
+            await deleteDoc(d.ref);
+          }
           const removedFeedEvent: Record<string, unknown> = {
             type: 'SHORTLIST_REMOVED',
             playerName: selectedPlayer.fullName ?? null,

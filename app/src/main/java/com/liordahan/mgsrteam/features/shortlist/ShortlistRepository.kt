@@ -1,10 +1,10 @@
 package com.liordahan.mgsrteam.features.shortlist
 
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.firestore.DocumentSnapshot
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.ListenerRegistration
 import com.liordahan.mgsrteam.features.home.models.FeedEvent
 import com.liordahan.mgsrteam.features.login.models.Account
-import com.google.firebase.firestore.FirebaseFirestore
 import com.liordahan.mgsrteam.features.platform.PlatformManager
 import com.liordahan.mgsrteam.firebase.FirebaseHandler
 import com.liordahan.mgsrteam.transfermarket.LatestTransferModel
@@ -73,31 +73,81 @@ class ShortlistRepository(
     /** URLs currently being added or removed. Use for loading overlay on list items. */
     fun getShortlistPendingUrlsFlow(): Flow<Set<String>> = _shortlistPendingUrls.asStateFlow()
 
-    /** Shared shortlist document ID - all agents see the same shortlist (matches web). */
-    private val sharedShortlistDocId = "team"
+    private fun shortlistCollection() =
+        store.collection(firebaseHandler.shortlistsTable)
 
-    private fun shortlistDocRef() =
-        store.collection(firebaseHandler.shortlistsTable).document(sharedShortlistDocId)
+    // ── Migration from legacy single-document format ────────────────────
 
+    /**
+     * One-time migration: reads the old "team" document's entries array
+     * and writes each entry as its own document. Deletes the legacy doc after.
+     * Safe to call multiple times (idempotent).
+     */
     @Suppress("UNCHECKED_CAST")
-    private fun DocumentSnapshot?.getEntriesList(): List<Map<String, Any>> =
-        (this?.get("entries") as? List<Map<String, Any>>) ?: emptyList()
+    suspend fun migrateFromLegacyIfNeeded() {
+        try {
+            val legacyDoc = shortlistCollection().document("team").get().await()
+            if (!legacyDoc.exists()) return
+            val entries = (legacyDoc.get("entries") as? List<Map<String, Any>>)
+            if (entries.isNullOrEmpty()) {
+                // team doc exists but has no entries — just delete it
+                shortlistCollection().document("team").delete().await()
+                return
+            }
+
+            // Check which URLs already have individual docs (handles partial/duplicate migration)
+            val existingSnap = shortlistCollection().get().await()
+            val existingUrls = mutableSetOf<String>()
+            val duplicateRefs = mutableListOf<com.google.firebase.firestore.DocumentReference>()
+            for (doc in existingSnap.documents) {
+                if (doc.id == "team") continue
+                val url = doc.getString("tmProfileUrl") ?: continue
+                if (!existingUrls.add(url)) {
+                    duplicateRefs.add(doc.reference) // duplicate — mark for deletion
+                }
+            }
+
+            val batch = store.batch()
+            // Write only entries that don't already exist as individual docs
+            for (entry in entries) {
+                val url = entry["tmProfileUrl"] as? String ?: continue
+                if (existingUrls.contains(url)) continue
+                existingUrls.add(url)
+                batch.set(shortlistCollection().document(), entry)
+            }
+            // Delete duplicates found
+            for (ref in duplicateRefs) {
+                batch.delete(ref)
+            }
+            // Delete team doc in the same atomic batch
+            batch.delete(legacyDoc.reference)
+            batch.commit().await()
+        } catch (_: Exception) { /* migration is best-effort */ }
+    }
+
+    // ── Read ─────────────────────────────────────────────────────────────
 
     /**
      * Auto-reconnects on platform switch so the listener always targets
      * the correct Shortlists collection.
+     * Each shortlist entry is now its own document in the collection.
      */
     fun getShortlistFlow(): Flow<List<ShortlistEntry>> =
         platformManager.current.flatMapLatest {
             callbackFlow {
-                val docRef = shortlistDocRef()
-                val listener = docRef.addSnapshotListener { snapshot, _ ->
-                    val list = snapshot.getEntriesList()
-                    val entries = list.mapNotNull { map ->
-                        parseEntryFromMap(map)
-                    }.sortedByDescending { it.addedAt }
-                    trySend(entries)
-                }
+                val listener: ListenerRegistration = shortlistCollection()
+                    .addSnapshotListener { value, error ->
+                        if (error != null) {
+                            trySend(emptyList())
+                            return@addSnapshotListener
+                        }
+                        val seen = mutableSetOf<String>()
+                        val entries = value?.documents?.mapNotNull { doc ->
+                            parseEntryFromMap(doc.data ?: return@mapNotNull null)
+                        }?.filter { seen.add(it.tmProfileUrl) }
+                            ?.sortedByDescending { it.addedAt } ?: emptyList()
+                        trySend(entries)
+                    }
                 awaitClose { listener.remove() }
             }
         }
@@ -137,6 +187,8 @@ class ShortlistRepository(
         )
     }
 
+    // ── Write ────────────────────────────────────────────────────────────
+
     sealed class AddToShortlistResult {
         object Added : AddToShortlistResult()
         object AlreadyInShortlist : AddToShortlistResult()
@@ -144,7 +196,7 @@ class ShortlistRepository(
     }
 
     /**
-     * Adds a player to shortlist.
+     * Adds a player to shortlist as an individual document.
      */
     suspend fun addToShortlist(release: LatestTransferModel): AddToShortlistResult {
         val url = release.playerUrl ?: return AddToShortlistResult.AlreadyInShortlist
@@ -155,10 +207,11 @@ class ShortlistRepository(
                 .get()
                 .await()
             if (!rosterSnapshot.isEmpty) return AddToShortlistResult.AlreadyInRoster
-            val docRef = shortlistDocRef()
-            val snapshot = docRef.get().await()
-            val current = snapshot.getEntriesList().toMutableList()
-            if (current.any { (it["tmProfileUrl"] as? String) == url }) return AddToShortlistResult.AlreadyInShortlist
+
+            val existing = shortlistCollection()
+                .whereEqualTo("tmProfileUrl", url).get().await()
+            if (!existing.isEmpty) return AddToShortlistResult.AlreadyInShortlist
+
             val entryMap = mutableMapOf<String, Any>(
                 "tmProfileUrl" to url,
                 "addedAt" to System.currentTimeMillis()
@@ -178,8 +231,7 @@ class ShortlistRepository(
                 acc.name?.takeIf { it.isNotBlank() }?.let { entryMap["addedByAgentName"] = it }
                 acc.hebrewName?.takeIf { it.isNotBlank() }?.let { entryMap["addedByAgentHebrewName"] = it }
             }
-            current.add(entryMap)
-            docRef.set(mapOf("entries" to current)).await()
+            shortlistCollection().add(entryMap).await()
             writeFeedEventShortlist(
                 playerName = release.playerName,
                 playerImage = release.playerImage,
@@ -195,7 +247,6 @@ class ShortlistRepository(
     /**
      * Add a player to shortlist by URL only (e.g. from manual paste).
      * Stores minimal data; display will show Profile #ID until enriched from other sources.
-     * Returns AddToShortlistResult.
      */
     suspend fun addToShortlistByUrl(tmProfileUrl: String): AddToShortlistResult {
         val url = tmProfileUrl.trim().takeIf { it.isNotBlank() } ?: return AddToShortlistResult.AlreadyInShortlist
@@ -207,10 +258,11 @@ class ShortlistRepository(
                 .get()
                 .await()
             if (!rosterSnapshot.isEmpty) return AddToShortlistResult.AlreadyInRoster
-            val docRef = shortlistDocRef()
-            val snapshot = docRef.get().await()
-            val current = snapshot.getEntriesList().toMutableList()
-            if (current.any { (it["tmProfileUrl"] as? String) == url }) return AddToShortlistResult.AlreadyInShortlist
+
+            val existing = shortlistCollection()
+                .whereEqualTo("tmProfileUrl", url).get().await()
+            if (!existing.isEmpty) return AddToShortlistResult.AlreadyInShortlist
+
             val urlEntryMap = mutableMapOf<String, Any>(
                 "tmProfileUrl" to url,
                 "addedAt" to System.currentTimeMillis()
@@ -220,8 +272,7 @@ class ShortlistRepository(
                 acc.name?.takeIf { it.isNotBlank() }?.let { urlEntryMap["addedByAgentName"] = it }
                 acc.hebrewName?.takeIf { it.isNotBlank() }?.let { urlEntryMap["addedByAgentHebrewName"] = it }
             }
-            current.add(urlEntryMap)
-            docRef.set(mapOf("entries" to current)).await()
+            shortlistCollection().add(urlEntryMap).await()
             writeFeedEventShortlist(playerName = null, playerImage = null, playerTmProfile = url, agentName = getCurrentUserAccountName())
             AddToShortlistResult.Added
         } finally {
@@ -291,15 +342,13 @@ class ShortlistRepository(
         val url = tmProfileUrl.trim().takeIf { it.isNotBlank() } ?: return
         _shortlistPendingUrls.value = _shortlistPendingUrls.value + url
         try {
-            val docRef = shortlistDocRef()
-            val snapshot = docRef.get().await()
-            val current = snapshot.getEntriesList().toMutableList()
-            if (current.isEmpty()) return
-            val entry = current.find { (it["tmProfileUrl"] as? String) == url }
-            val playerName = entry?.get("playerName") as? String
-            val playerImage = entry?.get("playerImage") as? String
-            current.removeAll { (it["tmProfileUrl"] as? String) == url }
-            docRef.set(mapOf("entries" to current)).await()
+            val querySnapshot = shortlistCollection()
+                .whereEqualTo("tmProfileUrl", url).get().await()
+            if (querySnapshot.isEmpty) return
+            val doc = querySnapshot.documents.first()
+            val playerName = doc.getString("playerName")
+            val playerImage = doc.getString("playerImage")
+            doc.reference.delete().await()
             writeFeedEventShortlistRemoved(
                 playerName = playerName?.takeIf { it.isNotBlank() },
                 playerImage = playerImage?.takeIf { it.isNotBlank() },
@@ -312,23 +361,26 @@ class ShortlistRepository(
     }
 
     suspend fun isInShortlist(tmProfileUrl: String): Boolean {
-        val snapshot = shortlistDocRef().get().await()
-        return snapshot.getEntriesList().any { (it["tmProfileUrl"] as? String) == tmProfileUrl }
+        val snapshot = shortlistCollection()
+            .whereEqualTo("tmProfileUrl", tmProfileUrl).get().await()
+        return !snapshot.isEmpty
     }
 
     // ── Notes CRUD ──────────────────────────────────────────────────────────
 
+    private suspend fun findDocByUrl(tmProfileUrl: String) =
+        shortlistCollection().whereEqualTo("tmProfileUrl", tmProfileUrl)
+            .get().await().documents.firstOrNull()
+
     @Suppress("UNCHECKED_CAST")
     suspend fun addNoteToEntry(tmProfileUrl: String, noteText: String) {
-        val docRef = shortlistDocRef()
+        val docSnapshot = findDocByUrl(tmProfileUrl) ?: return
+        val docRef = docSnapshot.reference
         val account = getCurrentUserAccount()
         store.runTransaction { transaction ->
             val snapshot = transaction.get(docRef)
-            val current = (snapshot.get("entries") as? List<Map<String, Any>>)?.map { it.toMutableMap() }?.toMutableList() ?: return@runTransaction
-            val idx = current.indexOfFirst { (it["tmProfileUrl"] as? String) == tmProfileUrl }
-            if (idx == -1) return@runTransaction
-            val entry = current[idx].toMutableMap()
-            val notes = ((entry["notes"] as? List<Map<String, Any>>) ?: emptyList()).map { it.toMutableMap() }.toMutableList()
+            val notes = ((snapshot.get("notes") as? List<Map<String, Any>>) ?: emptyList())
+                .map { it.toMutableMap() }.toMutableList()
             val noteMap = mutableMapOf<String, Any>(
                 "text" to noteText,
                 "createdAt" to System.currentTimeMillis()
@@ -339,47 +391,35 @@ class ShortlistRepository(
                 acc.hebrewName?.takeIf { it.isNotBlank() }?.let { noteMap["createdByHebrewName"] = it }
             }
             notes.add(noteMap)
-            entry["notes"] = notes
-            current[idx] = entry
-            transaction.set(docRef, mapOf("entries" to current))
+            transaction.update(docRef, "notes", notes)
         }.await()
     }
 
     @Suppress("UNCHECKED_CAST")
     suspend fun updateNoteInEntry(tmProfileUrl: String, noteIndex: Int, newText: String) {
-        val docRef = shortlistDocRef()
+        val docSnapshot = findDocByUrl(tmProfileUrl) ?: return
+        val docRef = docSnapshot.reference
         store.runTransaction { transaction ->
             val snapshot = transaction.get(docRef)
-            val current = (snapshot.get("entries") as? List<Map<String, Any>>)?.map { it.toMutableMap() }?.toMutableList() ?: return@runTransaction
-            val idx = current.indexOfFirst { (it["tmProfileUrl"] as? String) == tmProfileUrl }
-            if (idx == -1) return@runTransaction
-            val entry = current[idx].toMutableMap()
-            val notes = ((entry["notes"] as? List<Map<String, Any>>) ?: emptyList()).map { it.toMutableMap() }.toMutableList()
+            val notes = ((snapshot.get("notes") as? List<Map<String, Any>>) ?: emptyList())
+                .map { it.toMutableMap() }.toMutableList()
             if (noteIndex !in notes.indices) return@runTransaction
-            val updatedNote = notes[noteIndex].toMutableMap()
-            updatedNote["text"] = newText
-            notes[noteIndex] = updatedNote
-            entry["notes"] = notes
-            current[idx] = entry
-            transaction.set(docRef, mapOf("entries" to current))
+            notes[noteIndex] = notes[noteIndex].toMutableMap().apply { put("text", newText) }
+            transaction.update(docRef, "notes", notes)
         }.await()
     }
 
     @Suppress("UNCHECKED_CAST")
     suspend fun deleteNoteFromEntry(tmProfileUrl: String, noteIndex: Int) {
-        val docRef = shortlistDocRef()
+        val docSnapshot = findDocByUrl(tmProfileUrl) ?: return
+        val docRef = docSnapshot.reference
         store.runTransaction { transaction ->
             val snapshot = transaction.get(docRef)
-            val current = (snapshot.get("entries") as? List<Map<String, Any>>)?.map { it.toMutableMap() }?.toMutableList() ?: return@runTransaction
-            val idx = current.indexOfFirst { (it["tmProfileUrl"] as? String) == tmProfileUrl }
-            if (idx == -1) return@runTransaction
-            val entry = current[idx].toMutableMap()
-            val notes = ((entry["notes"] as? List<Map<String, Any>>) ?: emptyList()).map { it.toMutableMap() }.toMutableList()
+            val notes = ((snapshot.get("notes") as? List<Map<String, Any>>) ?: emptyList())
+                .map { it.toMutableMap() }.toMutableList()
             if (noteIndex !in notes.indices) return@runTransaction
             notes.removeAt(noteIndex)
-            entry["notes"] = notes
-            current[idx] = entry
-            transaction.set(docRef, mapOf("entries" to current))
+            transaction.update(docRef, "notes", notes)
         }.await()
     }
 }

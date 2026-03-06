@@ -39,8 +39,8 @@ async function runScoutSkillLearning(runResult, runId) {
   const cutoff = now - FEEDBACK_DAYS * 24 * 60 * 60 * 1000;
 
   // Shortlist adds with sourceAgentId (last 14 days)
-  const shortlistSnap = await db.collection("Shortlists").doc("team").get();
-  const entries = (shortlistSnap.data()?.entries || []).filter((e) => (e.addedAt || 0) >= cutoff);
+  const shortlistSnap = await db.collection("Shortlists").get();
+  const entries = shortlistSnap.docs.map((d) => d.data()).filter((e) => (e.addedAt || 0) >= cutoff);
   const shortlistByAgent = {};
   for (const e of entries) {
     const aid = e.sourceAgentId;

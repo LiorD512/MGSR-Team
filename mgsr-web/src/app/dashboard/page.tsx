@@ -30,7 +30,6 @@ import {
 } from 'recharts';
 import { parseMarketValue, parseAge } from '@/lib/releases';
 import { extractPlayerIdFromUrl } from '@/lib/api';
-import { useShortlistDocId, SHARED_SHORTLIST_DOC_ID } from '@/lib/accounts';
 import { useIsMobile } from '@/hooks/useMediaQuery';
 import { getCountryDisplayName } from '@/lib/countryTranslations';
 import { toWhatsAppUrl } from '@/lib/whatsapp';
@@ -298,7 +297,6 @@ export default function DashboardPage() {
   const [expandedWindowCountries, setExpandedWindowCountries] = useState<Set<string>>(new Set());
   const [womenPlayers, setWomenPlayers] = useState<WomanPlayer[]>([]);
   const [youthPlayers, setYouthPlayers] = useState<YouthPlayer[]>([]);
-  const shortlistDocId = useShortlistDocId(user ?? null);
   const searchParams = useSearchParams();
 
   // When returning from player page with scrollTo, scroll to that feed item
@@ -407,18 +405,17 @@ export default function DashboardPage() {
   }, [platform]);
 
   useEffect(() => {
-    if (!user || !shortlistDocId) return;
+    if (!user) return;
     const shortlistColl = SHORTLISTS_COLLECTIONS[platform];
     const unsub = onSnapshot(
-      doc(db, shortlistColl, SHARED_SHORTLIST_DOC_ID),
+      collection(db, shortlistColl),
       (snap) => {
-        const entries = (snap.data()?.entries as unknown[]) || [];
-        setShortlistCount(entries.length);
+        setShortlistCount(snap.docs.length);
       },
       () => setShortlistCount(0)
     );
     return () => unsub();
-  }, [user, shortlistDocId, platform]);
+  }, [user, platform]);
 
   useEffect(() => {
     if (platform !== 'men') return; // Transfer windows only for men

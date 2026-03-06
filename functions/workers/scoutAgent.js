@@ -472,9 +472,9 @@ async function runScoutAgent() {
     const u = doc.data().tmProfileUrl;
     if (u) excludeUrls.add(normalizePlayerUrl(u));
   }
-  const shortlistSnap = await db.collection("Shortlists").doc("team").get();
-  const entries = shortlistSnap.data()?.entries || [];
-  for (const e of entries) {
+  const shortlistSnap = await db.collection("Shortlists").get();
+  for (const d of shortlistSnap.docs) {
+    const e = d.data();
     const u = e.tmProfileUrl;
     if (u && (e.addedAt || 0) >= cutoff) excludeUrls.add(normalizePlayerUrl(u));
   }

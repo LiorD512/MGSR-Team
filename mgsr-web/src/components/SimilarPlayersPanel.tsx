@@ -4,9 +4,9 @@ import { useState, useCallback } from 'react';
 import { findSimilarPlayers, type ScoutPlayerSuggestion } from '@/lib/scoutApi';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { doc, getDoc, setDoc, collection, addDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, collection, addDoc, getDocs, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { getCurrentAccountForShortlist, SHARED_SHORTLIST_DOC_ID } from '@/lib/accounts';
+import { getCurrentAccountForShortlist } from '@/lib/accounts';
 import { getPlayerDetails } from '@/lib/api';
 
 /* ------------------------------------------------------------------ */
@@ -550,11 +550,10 @@ export default function SimilarPlayersPanel({
     setAddingToShortlistUrl(url);
     try {
       const account = await getCurrentAccountForShortlist(user);
-      const docRef = doc(db, 'Shortlists', SHARED_SHORTLIST_DOC_ID);
-      const snap = await getDoc(docRef);
-      const current = (snap.data()?.entries as Record<string, unknown>[]) || [];
-      const exists = current.some((e) => e.tmProfileUrl === url);
-      if (exists) {
+      const colRef = collection(db, 'Shortlists');
+      const q = query(colRef, where('tmProfileUrl', '==', url));
+      const existsSnap = await getDocs(q);
+      if (!existsSnap.empty) {
         setShortlistSuccessUrls((prev) => new Set(prev).add(url));
         return;
       }
@@ -592,7 +591,7 @@ export default function SimilarPlayersPanel({
           ...agentFields,
         };
       }
-      await setDoc(docRef, { entries: [...current, entry] }, { merge: true });
+      await addDoc(colRef, entry);
       await addDoc(collection(db, 'FeedEvents'), {
         type: 'SHORTLIST_ADDED',
         playerName: entry.playerName ?? null,

@@ -2,13 +2,13 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { doc, getDoc, setDoc, addDoc, collection, onSnapshot } from 'firebase/firestore';
+import { doc, getDoc, setDoc, addDoc, collection, onSnapshot, getDocs, query as firestoreQuery, where } from 'firebase/firestore';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import AppLayout from '@/components/AppLayout';
 import FindNextTab from '@/components/FindNextTab';
 import { aiScoutSearch, type ScoutPlayerSuggestion } from '@/lib/scoutApi';
-import { getCurrentAccountForShortlist, SHARED_SHORTLIST_DOC_ID } from '@/lib/accounts';
+import { getCurrentAccountForShortlist } from '@/lib/accounts';
 import { db } from '@/lib/firebase';
 import { getPlayerDetails, extractPlayerIdFromUrl } from '@/lib/api';
 
@@ -89,10 +89,8 @@ export default function AiScoutPage() {
 
   useEffect(() => {
     if (!user) return;
-    const shortlistRef = doc(db, 'Shortlists', SHARED_SHORTLIST_DOC_ID);
-    const unsub = onSnapshot(shortlistRef, (snap) => {
-      const entries = (snap.data()?.entries as { tmProfileUrl?: string }[]) || [];
-      setShortlistUrls(new Set(entries.map((e) => e.tmProfileUrl).filter((u): u is string => !!u)));
+    const unsub = onSnapshot(collection(db, 'Shortlists'), (snap) => {
+      setShortlistUrls(new Set(snap.docs.map((d) => d.data().tmProfileUrl as string).filter((u): u is string => !!u)));
     });
     return () => unsub();
   }, [user]);
@@ -107,11 +105,10 @@ export default function AiScoutPage() {
       setAddingToShortlistUrl(url);
       try {
         const account = await getCurrentAccountForShortlist(user);
-        const docRef = doc(db, 'Shortlists', SHARED_SHORTLIST_DOC_ID);
-        const snap = await getDoc(docRef);
-        const current = (snap.data()?.entries as Record<string, unknown>[]) || [];
-        const exists = current.some((e) => samePlayer((e.tmProfileUrl as string) || '', url));
-        if (!exists) {
+        const colRef = collection(db, 'Shortlists');
+        const q = firestoreQuery(colRef, where('tmProfileUrl', '==', url));
+        const existsSnap = await getDocs(q);
+        if (existsSnap.empty) {
           let entry: Record<string, unknown>;
           try {
             const details = await getPlayerDetails(url);
@@ -145,7 +142,7 @@ export default function AiScoutPage() {
               addedByAgentHebrewName: account.hebrewName ?? null,
             };
           }
-          await setDoc(docRef, { entries: [...current, entry] }, { merge: true });
+          await addDoc(colRef, entry);
           await addDoc(collection(db, 'FeedEvents'), {
             type: 'SHORTLIST_ADDED',
             playerName: entry.playerName ?? null,

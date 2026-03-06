@@ -6,14 +6,14 @@ import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { usePlatform } from '@/contexts/PlatformContext';
-import { collection, onSnapshot, doc, deleteDoc, updateDoc, getDoc, setDoc, query, orderBy, addDoc } from 'firebase/firestore';
+import { collection, onSnapshot, doc, deleteDoc, updateDoc, getDoc, setDoc, query, orderBy, addDoc, getDocs, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import AppLayout from '@/components/AppLayout';
 import { getCountryDisplayName } from '@/lib/countryTranslations';
 import { matchRequestToPlayers, type RosterPlayer } from '@/lib/requestMatcher';
 import { findPlayersForRequest, type ScoutPlayerSuggestion } from '@/lib/scoutApi';
 import { getPlayerDetails } from '@/lib/api';
-import { getCurrentAccountForShortlist, useShortlistDocId, SHARED_SHORTLIST_DOC_ID } from '@/lib/accounts';
+import { getCurrentAccountForShortlist } from '@/lib/accounts';
 import { getScreenCache, setScreenCache } from '@/lib/screenCache';
 import { toWhatsAppUrl } from '@/lib/whatsapp';
 import { CLUB_REQUESTS_COLLECTIONS, PLAYERS_COLLECTIONS, SHORTLISTS_COLLECTIONS, FEED_EVENTS_COLLECTIONS } from '@/lib/platformCollections';
@@ -187,20 +187,18 @@ export default function RequestsPage() {
     if (!loading && !user) router.replace('/login');
   }, [user, loading, router]);
 
-  const shortlistDocId = useShortlistDocId(user ?? null);
   useEffect(() => {
-    if (!user || !shortlistDocId) return;
-    const docRef = doc(db, shortlistsCollection, shortlistDocId);
+    if (!user) return;
+    const colRef = collection(db, shortlistsCollection);
     const unsub = onSnapshot(
-      docRef,
+      colRef,
       (snap) => {
-        const entries = (snap.data()?.entries as { tmProfileUrl?: string }[]) || [];
-        setShortlistUrls(new Set(entries.map((e) => e.tmProfileUrl).filter((u): u is string => !!u)));
+        setShortlistUrls(new Set(snap.docs.map((d) => d.data().tmProfileUrl as string).filter((u): u is string => !!u)));
       },
       () => {}
     );
     return () => unsub();
-  }, [user, shortlistDocId, shortlistsCollection]);
+  }, [user, shortlistsCollection]);
 
   useEffect(() => {
     const unsub = onSnapshot(
@@ -336,16 +334,15 @@ export default function RequestsPage() {
       setAddingToShortlistUrl(url);
       try {
         const account = await getCurrentAccountForShortlist(user);
-        const docRef = doc(db, shortlistsCollection, SHARED_SHORTLIST_DOC_ID);
+        const colRef = collection(db, shortlistsCollection);
         const rosterExists = players.some((p) => p.tmProfile === url);
         if (rosterExists) {
           setShortlistError(t('shortlist_player_in_roster'));
           return;
         }
-        const snap = await getDoc(docRef);
-        const current = (snap.data()?.entries as Record<string, unknown>[]) || [];
-        const exists = current.some((e) => e.tmProfileUrl === url);
-        if (!exists) {
+        const q = query(colRef, where('tmProfileUrl', '==', url));
+        const existsSnap = await getDocs(q);
+        if (existsSnap.empty) {
           const agentFields = {
             addedByAgentId: account.id,
             addedByAgentName: account.name ?? null,
@@ -380,7 +377,7 @@ export default function RequestsPage() {
               ...agentFields,
             };
           }
-          await setDoc(docRef, { entries: [...current, entry] }, { merge: true });
+          await addDoc(colRef, entry);
           const feedEvent: Record<string, unknown> = {
             type: 'SHORTLIST_ADDED',
             playerName: entry.playerName ?? null,

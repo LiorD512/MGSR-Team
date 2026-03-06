@@ -47,13 +47,3 @@ export async function getCurrentAccountWithPhone(
 ): Promise<AccountForShortlist> {
   return getCurrentAccountForShortlist(user);
 }
-
-/** Shared shortlist document - all agents see the same shortlist. */
-export const SHARED_SHORTLIST_DOC_ID = 'team';
-
-/**
- * Returns the shortlist document ID. Uses shared team shortlist so all agents see the same entries.
- */
-export function useShortlistDocId(user: User | null): string | null {
-  return user ? SHARED_SHORTLIST_DOC_ID : null;
-}

@@ -46,6 +46,3 @@ export const PORTFOLIO_COLLECTIONS: Record<Platform, string> = {
   women: 'PortfolioWomen',
   youth: 'PortfolioYouth',
 };
-
-/** Shared shortlist document ID — same for all platforms, but different collections. */
-export const SHARED_SHORTLIST_DOC_ID = 'team';
