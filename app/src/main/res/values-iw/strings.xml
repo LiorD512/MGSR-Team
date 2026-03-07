@@ -316,6 +316,9 @@
     <string name="my_hub_view_my_players">השחקנים שלי</string>
     <string name="women_my_hub_view_my_players">הספורטאיות שלי</string>
 
+    <!-- MEN Dashboard -->
+    <string name="men_dashboard_greeting_tagline">מרכז פיקוד הסקאוטינג</string>
+
     <!-- ATHENA Women Dashboard — שפה מעצימה -->
     <string name="women_dashboard_greeting_tagline">מובילות את המשחק</string>
     <string name="women_stat_athletes">ספורטאיות</string>
@@ -900,7 +903,10 @@
     <string name="player_info_market_value">שווי שוק</string>
     <string name="player_info_updating">מעדכן…</string>
     <string name="player_info_player_label">שחקן</string>
+    <string name="player_info_player_label_women">שחקנית</string>
     <string name="player_info_agent_label">סוכן</string>
+    <string name="women_profile_sd_short">SD</string>
+    <string name="women_profile_fmi_short">FMI</string>
     <string name="player_info_message_whatsapp">שלח הודעה בוואטסאפ</string>
     <string name="player_info_edit_number">ערוך מספר</string>
     <string name="player_info_remove_number">הסר מספר</string>

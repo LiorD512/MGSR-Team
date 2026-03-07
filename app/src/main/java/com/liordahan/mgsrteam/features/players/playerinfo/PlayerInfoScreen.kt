@@ -826,12 +826,6 @@ fun PlayerInfoScreen(
                     PlayerInfoYouthSection(player = player)
                 }
             }
-            if (currentPlatform == Platform.WOMEN) {
-                playerToPresent?.let { player ->
-                    PlayerInfoWomenSection(player = player, context = context)
-                }
-            }
-
             PlayerInfoSectionHeader(stringResource(R.string.player_info_documents))
             DocumentsSection(
                 documents = documentsList,
@@ -1481,6 +1475,8 @@ private fun PlayerInfoQuickActions(
     val playerPhone = player.getPlayerPhoneNumber()
     val agentPhone = if (platform == Platform.YOUTH) player.parentContact?.parentPhoneNumber else player.getAgentPhoneNumber()
     val hasTmProfile = player.tmProfile != null
+    val hasSoccerDonna = platform == Platform.WOMEN && !player.soccerDonnaUrl.isNullOrBlank()
+    val hasFmInside = platform == Platform.WOMEN && !player.fmInsideUrl.isNullOrBlank()
 
     Card(
         modifier = Modifier
@@ -1500,7 +1496,7 @@ private fun PlayerInfoQuickActions(
             // Player phone action
             PlayerInfoPhoneAction(
                 modifier = Modifier.weight(1f),
-                label = stringResource(R.string.player_info_player_label),
+                label = if (platform == Platform.WOMEN) stringResource(R.string.player_info_player_label_women) else stringResource(R.string.player_info_player_label),
                 phone = playerPhone,
                 context = context,
                 onEditNumber = onEditPlayerNumber,
@@ -1547,6 +1543,54 @@ private fun PlayerInfoQuickActions(
                         if (url != null) {
                             context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
                         }
+                    }
+                )
+            }
+
+            if (hasSoccerDonna) {
+                Box(
+                    modifier = Modifier
+                        .width(1.dp)
+                        .height(32.dp)
+                        .background(PlatformColors.palette.cardBorder)
+                )
+                ContactActionChip(
+                    modifier = Modifier.weight(1f),
+                    icon = {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.OpenInNew,
+                            contentDescription = null,
+                            modifier = Modifier.size(24.dp),
+                            tint = PlatformWomenAccent
+                        )
+                    },
+                    label = stringResource(R.string.women_profile_sd_short),
+                    onClick = {
+                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(player.soccerDonnaUrl)))
+                    }
+                )
+            }
+
+            if (hasFmInside) {
+                Box(
+                    modifier = Modifier
+                        .width(1.dp)
+                        .height(32.dp)
+                        .background(PlatformColors.palette.cardBorder)
+                )
+                ContactActionChip(
+                    modifier = Modifier.weight(1f),
+                    icon = {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.OpenInNew,
+                            contentDescription = null,
+                            modifier = Modifier.size(24.dp),
+                            tint = PlatformWomenAccent
+                        )
+                    },
+                    label = stringResource(R.string.women_profile_fmi_short),
+                    onClick = {
+                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(player.fmInsideUrl)))
                     }
                 )
             }

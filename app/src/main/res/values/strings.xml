@@ -394,6 +394,9 @@
     <string name="my_hub_view_my_players">My Players</string>
     <string name="women_my_hub_view_my_players">My Athletes</string>
 
+    <!-- MEN Dashboard -->
+    <string name="men_dashboard_greeting_tagline">The Scouting Command Center</string>
+
     <!-- ATHENA Women Dashboard — Empowering Language -->
     <string name="women_dashboard_greeting_tagline">Empowering the game</string>
     <string name="women_stat_athletes">Athletes</string>
@@ -982,7 +985,10 @@
     <string name="player_info_market_value">Market Value</string>
     <string name="player_info_updating">Updating…</string>
     <string name="player_info_player_label">Player</string>
+    <string name="player_info_player_label_women">Player</string>
     <string name="player_info_agent_label">Agent</string>
+    <string name="women_profile_sd_short">SD</string>
+    <string name="women_profile_fmi_short">FMI</string>
     <string name="player_info_message_whatsapp">Message on WhatsApp</string>
     <string name="player_info_edit_number">Edit Number</string>
     <string name="player_info_remove_number">Remove Number</string>
