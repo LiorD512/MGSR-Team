@@ -21,6 +21,7 @@ import FmIntelligencePanel from '@/components/FmIntelligencePanel';
 import SimilarPlayersPanel from '@/components/SimilarPlayersPanel';
 import PlayerHighlightsPanel from '@/components/PlayerHighlightsPanel';
 import MatchingRequestsSection from '@/components/MatchingRequestsSection';
+import ProposalHistorySection, { type ProposalOffer } from '@/components/ProposalHistorySection';
 import { matchingRequestsForPlayer, type RosterPlayer, type ClubRequest } from '@/lib/requestMatcher';
 import { useEuCountries, isEuNational } from '@/hooks/useEuCountries';
 import {
@@ -322,6 +323,13 @@ export default function PlayerInfoPage() {
       offer: offerByRequestId[req.id] as { id: string; requestId?: string; clubFeedback?: string; offeredAt?: number; markedByAgentName?: string; clubName?: string; clubLogo?: string; position?: string } | undefined,
     }));
   }, [playerAsRoster, player?.tmProfile, clubRequests, playerOffers]);
+
+  const proposalHistory: ProposalOffer[] = useMemo(() => {
+    const activeRequestIds = new Set(matchingRequests.map((m) => m.request.id));
+    return playerOffers
+      .filter((o) => !activeRequestIds.has(o.requestId ?? ''))
+      .sort((a, b) => (b.offeredAt ?? 0) - (a.offeredAt ?? 0)) as ProposalOffer[];
+  }, [playerOffers, matchingRequests]);
 
   const handleMarkAsOffered = useCallback(
     async (requestId: string, clubName?: string, clubLogo?: string, position?: string, feedback?: string) => {
@@ -1498,6 +1506,14 @@ export default function PlayerInfoPage() {
                 onMarkAsOffered={handleMarkAsOffered}
                 onUpdateFeedback={handleUpdateOfferFeedback}
                 isWomen={false}
+              />
+            )}
+
+            {/* Proposal History (persists after request deletion) */}
+            {proposalHistory.length > 0 && (
+              <ProposalHistorySection
+                offers={proposalHistory}
+                accounts={accounts}
               />
             )}
 
