@@ -37,6 +37,7 @@ export async function GET(request: NextRequest) {
       fullNameHe: r.fullNameHe,
       currentClub: r.currentClub,
       dateOfBirth: r.dateOfBirth,
+      nationality: r.nationality,
       ifaUrl: r.ifaUrl,
       ifaPlayerId: r.ifaPlayerId,
       source: 'ifa' as const,

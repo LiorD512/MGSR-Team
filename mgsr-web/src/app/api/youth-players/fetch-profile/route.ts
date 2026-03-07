@@ -15,10 +15,37 @@ import {
 export const dynamic = 'force-dynamic';
 export const maxDuration = 120; // Scout cold start + retry can take ~2 min
 
+/** Use Serper.dev image search as a last resort to find IFA player photo + basic data */
+async function serperImageFallback(playerName: string, playerId: string): Promise<{ profileImage?: string } | null> {
+  const serperKey = process.env.SERPER_API_KEY?.trim();
+  if (!serperKey) return null;
+  try {
+    const res = await fetch('https://google.serper.dev/images', {
+      method: 'POST',
+      headers: { 'X-API-KEY': serperKey, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ q: `${playerName} football.org.il`, gl: 'il', hl: 'he', num: 5 }),
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!res.ok) return null;
+    const data = (await res.json()) as { images?: Array<{ imageUrl?: string; link?: string }> };
+    // Find image whose source link matches the player_id
+    const match = data.images?.find((img) => img.link?.includes(`player_id=${playerId}`));
+    if (match?.imageUrl) return { profileImage: match.imageUrl };
+    // Fallback: first football.org.il image
+    const ifaImg = data.images?.find((img) => img.imageUrl?.includes('football.org.il'));
+    if (ifaImg?.imageUrl) return { profileImage: ifaImg.imageUrl };
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 export async function POST(request: NextRequest) {
+  let requestUrl = '';
   try {
     const body = (await request.json()) as { url?: string };
     const url = (body?.url || '').trim();
+    requestUrl = url;
 
     if (!url || !isValidIfaUrl(url)) {
       return NextResponse.json(
@@ -88,6 +115,14 @@ export async function POST(request: NextRequest) {
         } catch (proxyErr) {
           console.warn('[youth-fetch-profile] Proxy fallback failed:', proxyErr);
         }
+        // Last resort: Serper.dev image search — at least return the photo
+        const pidMatch = normalizedUrl.match(/player_id=(\d+)/);
+        if (pidMatch) {
+          const imgResult = await serperImageFallback('', pidMatch[1]);
+          if (imgResult?.profileImage) {
+            return NextResponse.json({ ifaUrl: normalizedUrl, ifaPlayerId: pidMatch[1], profileImage: imgResult.profileImage });
+          }
+        }
         return NextResponse.json(
           { error: 'Could not load profile from football.org.il. Enter details manually or try again later.' },
           { status: 500 }
@@ -103,6 +138,16 @@ export async function POST(request: NextRequest) {
     const isTimeout = msg.includes('abort') || msg.includes('timeout') || msg.includes('Timeout');
     const isNetwork = msg.includes('fetch') || msg.includes('ECONNREFUSED') || msg.includes('ENOTFOUND');
     const is403 = msg.includes('403') || msg.includes('Forbidden');
+
+    // Last resort on any failure: try Serper.dev image search for the photo
+    const pidMatch = requestUrl.match(/player_id=(\d+)/);
+    if (pidMatch) {
+      const imgResult = await serperImageFallback('', pidMatch[1]);
+      if (imgResult?.profileImage) {
+        return NextResponse.json({ ifaUrl: requestUrl, ifaPlayerId: pidMatch[1], profileImage: imgResult.profileImage });
+      }
+    }
+
     const userMsg = is403
       ? 'Could not load profile from football.org.il. Enter details manually or try again later.'
       : isTimeout

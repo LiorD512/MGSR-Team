@@ -57,6 +57,7 @@ export interface IFASearchResult {
   fullNameHe?: string;
   currentClub?: string;
   dateOfBirth?: string;
+  nationality?: string;
   ifaUrl?: string;
   ifaPlayerId?: string;
   source: 'ifa';
@@ -122,6 +123,20 @@ async function fetchIfaHtml(url: string): Promise<string> {
   }
 
   throw new Error(`IFA HTTP ${res.status}`);
+}
+
+/** Extract date of birth from IFA snippet (e.g. "תאריך לידה: 04/2009") */
+function extractDobFromSnippet(snippet: string | undefined): string | undefined {
+  if (!snippet?.trim()) return undefined;
+  const m = snippet.match(/תאריך לידה[:\s]*(\d{1,2}\/\d{4}|\d{1,2}[./]\d{1,2}[./]\d{4})/);
+  return m?.[1];
+}
+
+/** Extract nationality from IFA snippet (e.g. "אזרחות: ישראל") */
+function extractNationalityFromSnippet(snippet: string | undefined): string | undefined {
+  if (!snippet?.trim()) return undefined;
+  const m = snippet.match(/אזרחות[:\s]*([^\n;.,]+)/);
+  return m?.[1]?.trim() || undefined;
 }
 
 /** Israeli club name prefixes — fallback when profile fetch fails */
@@ -315,6 +330,10 @@ export async function searchIFA(query: string): Promise<IFASearchResult[]> {
     if (playerUrlMap.size < 5 && !isHebrew) {
       await runSerperSearch(`site:football.org.il inurl:player_id ${q} שחקן`, 'he');
     }
+    // Hebrew + inurl: often returns 0 on Serper — retry without inurl:
+    if (playerUrlMap.size < 3 && isHebrew) {
+      await runSerperSearch(`site:football.org.il ${q} שחקן`, 'he');
+    }
   }
 
   // ── Strategy 2: SerpAPI legacy fallback ──
@@ -367,12 +386,15 @@ export async function searchIFA(query: string): Promise<IFASearchResult[]> {
     const fullName = fallbackNameFromTitle(meta?.title ?? '') || 'Unknown';
     const fullNameHe = /[\u0590-\u05FF]/.test(fullName) ? fullName : undefined;
     const currentClub = extractClubFromSnippet(meta?.snippet);
+    const dateOfBirth = extractDobFromSnippet(meta?.snippet);
+    const nationality = extractNationalityFromSnippet(meta?.snippet);
 
     results.push({
       fullName,
       fullNameHe,
       currentClub,
-      dateOfBirth: undefined,
+      dateOfBirth,
+      nationality,
       ifaUrl,
       ifaPlayerId: pid,
       source: 'ifa',
