@@ -374,9 +374,12 @@ class DocumentDetectionService(
      */
     private fun parseForMandate(text: String, originalFileName: String, playerName: String?): DetectionResult? {
         val fileNameLower = originalFileName.lowercase().substringBeforeLast(".")
-        val isMandateFilename = fileNameLower.startsWith("mandate_") || fileNameLower.startsWith("mandate ")
+        val isMandateFilename = fileNameLower.startsWith("mandate_") || fileNameLower.startsWith("mandate ") ||
+            fileNameLower.contains("mandate")
         val hasMandateContent = text.contains("FOOTBALL AGENT MANDATE", ignoreCase = true) ||
-            (text.contains("Mandate", ignoreCase = true) && text.contains("ends on", ignoreCase = true))
+            (text.contains("Mandate", ignoreCase = true) && text.contains("ends on", ignoreCase = true)) ||
+            (text.contains("authorize", ignoreCase = true) && text.contains("agent", ignoreCase = true) && text.contains("valid", ignoreCase = true)) ||
+            (text.contains("valid from", ignoreCase = true) && text.contains("until", ignoreCase = true))
         if (!isMandateFilename && !hasMandateContent) return null
 
         val suggestedName = "Mandate_${sanitizeFileName(playerName ?: extractNameFromMandateFilename(originalFileName) ?: "player")}"
@@ -406,7 +409,11 @@ class DocumentDetectionService(
             Regex("ends on\\s+(\\d{1,2})-(\\d{1,2})-(\\d{4})", RegexOption.IGNORE_CASE),
             Regex("ends on\\s+(\\d{1,2})\\.(\\d{1,2})\\.(\\d{4})", RegexOption.IGNORE_CASE),
             Regex("and ends on\\s+(\\d{1,2})/(\\d{1,2})/(\\d{4})", RegexOption.IGNORE_CASE),
-            Regex("(\\d{1,2})/(\\d{1,2})/(\\d{4})\\s*\\([^)]*Term[^)]*\\)", RegexOption.IGNORE_CASE)
+            Regex("(\\d{1,2})/(\\d{1,2})/(\\d{4})\\s*\\([^)]*Term[^)]*\\)", RegexOption.IGNORE_CASE),
+            // "valid from DATE until DATE" pattern (external mandates)
+            Regex("until\\s+(\\d{1,2})/(\\d{1,2})/(\\d{4})", RegexOption.IGNORE_CASE),
+            Regex("until\\s+(\\d{1,2})-(\\d{1,2})-(\\d{4})", RegexOption.IGNORE_CASE),
+            Regex("until\\s+(\\d{1,2})\\.(\\d{1,2})\\.(\\d{4})", RegexOption.IGNORE_CASE)
         )
         for (regex in patterns) {
             val match = regex.find(text) ?: continue
@@ -430,12 +437,13 @@ class DocumentDetectionService(
         val termLine = text.lines().find { it.contains("Term", ignoreCase = true) && it.contains("Mandate", ignoreCase = true) }
             ?: text.lines().find { it.contains("Term", ignoreCase = true) && (it.contains("starts", ignoreCase = true) || it.contains("ends", ignoreCase = true)) }
             ?: text.lines().find { it.contains("starts", ignoreCase = true) && it.contains("ends", ignoreCase = true) }
+            ?: text.lines().find { it.contains("valid from", ignoreCase = true) && it.contains("until", ignoreCase = true) }
         val searchText = termLine
         if (searchText != null) {
             val datesInLine = dateRegex.findAll(searchText).map { it.destructured }.toList()
             val targetDate = when {
                 datesInLine.size >= 2 -> datesInLine.last() // second date = end/expiry
-                datesInLine.size == 1 && searchText.contains("ends", ignoreCase = true) -> datesInLine.first() // line split: "and ends on DD/MM/YYYY (Term)"
+                datesInLine.size == 1 && (searchText.contains("ends", ignoreCase = true) || searchText.contains("until", ignoreCase = true)) -> datesInLine.first()
                 else -> null
             }
             if (targetDate != null) {
@@ -455,6 +463,34 @@ class DocumentDetectionService(
                 }
             }
         }
+
+        // Universal fallback: scan entire text for all dates, pick the furthest future date.
+        // Mandate expiry is always the latest date in the document.
+        val allDatesRegex = Regex("(\\d{1,2})[/\\-\\.](\\d{1,2})[/\\-\\.](\\d{4})")
+        val now = System.currentTimeMillis()
+        var furthestMillis: Long? = null
+        for (match in allDatesRegex.findAll(text)) {
+            val (dd, mm, yy) = match.destructured
+            try {
+                val millis = Calendar.getInstance().apply {
+                    set(Calendar.YEAR, yy.toInt())
+                    set(Calendar.MONTH, mm.toInt() - 1)
+                    set(Calendar.DAY_OF_MONTH, dd.toInt())
+                    set(Calendar.HOUR_OF_DAY, 23)
+                    set(Calendar.MINUTE, 59)
+                    set(Calendar.SECOND, 59)
+                    set(Calendar.MILLISECOND, 999)
+                }.timeInMillis
+                if (furthestMillis == null || millis > furthestMillis!!) {
+                    furthestMillis = millis
+                }
+            } catch (_: Exception) { /* skip unparseable */ }
+        }
+        if (furthestMillis != null) {
+            Log.i(TAG, "Mandate expiry via furthest-date fallback: $furthestMillis")
+            return furthestMillis
+        }
+
         return null
     }
 

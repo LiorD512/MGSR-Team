@@ -31,6 +31,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.filled.BookmarkAdd
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.ThumbDown
 import androidx.compose.material.icons.filled.ThumbUp
@@ -45,8 +47,12 @@ import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -78,7 +84,11 @@ import com.liordahan.mgsrteam.ui.theme.HomeRedAccent
 import com.liordahan.mgsrteam.ui.utils.clickWithNoRipple
 import com.liordahan.mgsrteam.ui.utils.boldTextStyle
 import com.liordahan.mgsrteam.ui.utils.regularTextStyle
+import com.liordahan.mgsrteam.features.shortlist.ShortlistRepository
+import com.liordahan.mgsrteam.ui.components.ToastManager
+import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
+import org.koin.compose.koinInject
 import coil.compose.SubcomposeAsyncImage
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -288,6 +298,15 @@ private fun WarRoomTabBar(selectedTab: WarRoomTab, onTabSelected: (WarRoomTab) -
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun DiscoveryTab(state: WarRoomUiState, viewModel: IWarRoomViewModel, navController: NavController) {
+    val context = LocalContext.current
+    val shortlistRepository: ShortlistRepository = koinInject()
+    val shortlistEntries by shortlistRepository.getShortlistFlow().collectAsState(initial = emptyList())
+    val shortlistUrls = remember(shortlistEntries) { shortlistEntries.map { it.tmProfileUrl }.toSet() }
+    var justAddedUrls by remember { mutableStateOf<Set<String>>(emptySet()) }
+    val shortlistPendingUrls by shortlistRepository.getShortlistPendingUrlsFlow()
+        .collectAsState(initial = emptySet())
+    val coroutineScope = rememberCoroutineScope()
+
     val filteredCandidates = if (state.selectedSourceFilter == "all") {
         state.candidates
     } else {
@@ -400,17 +419,51 @@ private fun DiscoveryTab(state: WarRoomUiState, viewModel: IWarRoomViewModel, na
 
         // Candidate cards
         items(filteredCandidates, key = { it.transfermarktUrl.ifBlank { it.name } }) { candidate ->
+            val tmUrl = candidate.transfermarktUrl
+            val isInShortlist = tmUrl.isNotBlank() && (tmUrl in shortlistUrls || tmUrl in justAddedUrls)
+            val isShortlistPending = tmUrl in shortlistPendingUrls
             CandidateCard(
                 candidate = candidate,
                 isExpanded = state.expandedCandidateUrl == candidate.transfermarktUrl,
                 report = state.candidateReports[candidate.transfermarktUrl],
                 isReportLoading = state.loadingReportUrls.contains(candidate.transfermarktUrl),
+                isInShortlist = isInShortlist,
+                isShortlistPending = isShortlistPending,
                 onToggle = { viewModel.toggleCandidateExpanded(candidate.transfermarktUrl) },
                 onFullReport = {
                     navController.navigate(Screens.fullReportRoute(Uri.encode(candidate.transfermarktUrl), candidate.name)) {
                         launchSingleTop = true
                     }
-                }
+                },
+                onAddToShortlist = if (tmUrl.isNotBlank()) {
+                    {
+                        coroutineScope.launch {
+                            val inList = tmUrl in shortlistUrls || tmUrl in justAddedUrls
+                            if (inList) {
+                                shortlistRepository.removeFromShortlist(tmUrl)
+                                justAddedUrls = justAddedUrls - tmUrl
+                            } else {
+                                when (shortlistRepository.addToShortlistFromForm(
+                                    tmProfileUrl = tmUrl,
+                                    playerName = candidate.name,
+                                    playerPosition = candidate.position,
+                                    playerAge = candidate.age.toString(),
+                                    playerNationality = candidate.nationality,
+                                    clubJoinedName = candidate.club,
+                                    marketValue = candidate.marketValue,
+                                    playerImage = candidate.imageUrl
+                                )) {
+                                    is ShortlistRepository.AddToShortlistResult.Added ->
+                                        justAddedUrls = justAddedUrls + tmUrl
+                                    is ShortlistRepository.AddToShortlistResult.AlreadyInShortlist ->
+                                        ToastManager.showInfo(context.getString(R.string.add_player_already_in_shortlist))
+                                    is ShortlistRepository.AddToShortlistResult.AlreadyInRoster ->
+                                        ToastManager.showInfo(context.getString(R.string.add_player_already_in_roster))
+                                }
+                            }
+                        }
+                    }
+                } else null
             )
         }
     }
@@ -427,8 +480,11 @@ private fun CandidateCard(
     isExpanded: Boolean,
     report: WarRoomReportResponse?,
     isReportLoading: Boolean,
+    isInShortlist: Boolean,
+    isShortlistPending: Boolean,
     onToggle: () -> Unit,
-    onFullReport: () -> Unit
+    onFullReport: () -> Unit,
+    onAddToShortlist: (() -> Unit)?
 ) {
     val context = LocalContext.current
 
@@ -562,14 +618,41 @@ private fun CandidateCard(
             }
         }
 
-        // Expand hint (single report link)
+        // Always-visible action bar: shortlist + TM on left, report toggle on right
         Spacer(Modifier.height(8.dp))
-        Text(
-            text = if (isExpanded) "${stringResource(R.string.war_room_view_report)} ▲" else "${stringResource(R.string.war_room_view_report)} ▼",
-            style = regularTextStyle(WarPurple, 12.sp),
+        Row(
             modifier = Modifier.fillMaxWidth(),
-            textAlign = TextAlign.End
-        )
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            onAddToShortlist?.let { onAdd ->
+                IconButton(
+                    onClick = { if (!isShortlistPending) onAdd() },
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Icon(
+                        imageVector = if (isInShortlist) Icons.Default.Bookmark else Icons.Default.BookmarkAdd,
+                        contentDescription = if (isInShortlist) stringResource(R.string.shortlist_in_shortlist) else stringResource(R.string.shortlist_add_to_shortlist),
+                        tint = if (isInShortlist) HomeGreenAccent else HomeTextSecondary,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+            }
+            if (candidate.transfermarktUrl.isNotBlank()) {
+                SmallActionButton(
+                    text = "↗ TM",
+                    color = HomeBlueAccent,
+                    onClick = {
+                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(candidate.transfermarktUrl)))
+                    }
+                )
+            }
+            Spacer(Modifier.weight(1f))
+            Text(
+                text = if (isExpanded) "${stringResource(R.string.war_room_view_report)} ▲" else "${stringResource(R.string.war_room_view_report)} ▼",
+                style = regularTextStyle(WarPurple, 12.sp)
+            )
+        }
 
         // Expanded report content
         AnimatedVisibility(
@@ -635,28 +718,6 @@ private fun CandidateCard(
                     }
                 }
 
-                Spacer(Modifier.height(12.dp))
-
-                // Action buttons
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    if (candidate.transfermarktUrl.isNotBlank()) {
-                        SmallActionButton(
-                            text = "↗ TM",
-                            color = HomeBlueAccent,
-                            modifier = Modifier.weight(1f),
-                            onClick = {
-                                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(candidate.transfermarktUrl)))
-                            }
-                        )
-                    }
-                    SmallActionButton(
-                        text = "⭐ " + stringResource(R.string.war_room_shortlist),
-                        color = HomeTealAccent,
-                        modifier = Modifier.weight(1f),
-                        onClick = { /* TODO: Add to shortlist */ }
-                    )
-                }
-
                 // Full report link
                 if (report != null) {
                     Spacer(Modifier.height(8.dp))
@@ -679,6 +740,13 @@ private fun CandidateCard(
 @Composable
 private fun AgentsTab(state: WarRoomUiState, viewModel: IWarRoomViewModel, navController: NavController) {
     val context = LocalContext.current
+    val shortlistRepository: ShortlistRepository = koinInject()
+    val shortlistEntries by shortlistRepository.getShortlistFlow().collectAsState(initial = emptyList())
+    val shortlistUrls = remember(shortlistEntries) { shortlistEntries.map { it.tmProfileUrl }.toSet() }
+    var justAddedUrls by remember { mutableStateOf<Set<String>>(emptySet()) }
+    val shortlistPendingUrls by shortlistRepository.getShortlistPendingUrlsFlow()
+        .collectAsState(initial = emptySet())
+    val coroutineScope = rememberCoroutineScope()
 
     // Group profiles by agent
     val groupedProfiles = state.scoutProfiles.groupBy { it.agentId to it.agentName }
@@ -818,11 +886,50 @@ private fun AgentsTab(state: WarRoomUiState, viewModel: IWarRoomViewModel, navCo
 
             // Profile cards
             items(profiles, key = { it.id }) { profile ->
-                ProfileCard(profile = profile, onTmClick = {
-                    if (profile.transfermarktUrl.isNotBlank()) {
-                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(profile.transfermarktUrl)))
-                    }
-                })
+                val tmUrl = profile.transfermarktUrl
+                val isInShortlist = tmUrl.isNotBlank() && (tmUrl in shortlistUrls || tmUrl in justAddedUrls)
+                val isShortlistPending = tmUrl in shortlistPendingUrls
+                ProfileCard(
+                    profile = profile,
+                    isInShortlist = isInShortlist,
+                    isShortlistPending = isShortlistPending,
+                    feedback = state.scoutFeedback[profile.id],
+                    onTmClick = {
+                        if (profile.transfermarktUrl.isNotBlank()) {
+                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(profile.transfermarktUrl)))
+                        }
+                    },
+                    onAddToShortlist = if (tmUrl.isNotBlank()) {
+                        {
+                            coroutineScope.launch {
+                                val inList = tmUrl in shortlistUrls || tmUrl in justAddedUrls
+                                if (inList) {
+                                    shortlistRepository.removeFromShortlist(tmUrl)
+                                    justAddedUrls = justAddedUrls - tmUrl
+                                } else {
+                                    when (shortlistRepository.addToShortlistFromForm(
+                                        tmProfileUrl = tmUrl,
+                                        playerName = profile.name,
+                                        playerPosition = profile.position,
+                                        playerAge = profile.age.toString(),
+                                        playerNationality = profile.nationality,
+                                        clubJoinedName = profile.club,
+                                        marketValue = profile.marketValue,
+                                        playerImage = profile.imageUrl
+                                    )) {
+                                        is ShortlistRepository.AddToShortlistResult.Added ->
+                                            justAddedUrls = justAddedUrls + tmUrl
+                                        is ShortlistRepository.AddToShortlistResult.AlreadyInShortlist ->
+                                            ToastManager.showInfo(context.getString(R.string.add_player_already_in_shortlist))
+                                        is ShortlistRepository.AddToShortlistResult.AlreadyInRoster ->
+                                            ToastManager.showInfo(context.getString(R.string.add_player_already_in_roster))
+                                    }
+                                }
+                            }
+                        }
+                    } else null,
+                    onFeedback = { fb -> viewModel.setProfileFeedback(profile.id, fb, profile.agentId) }
+                )
             }
         }
     }
@@ -834,7 +941,15 @@ private fun AgentsTab(state: WarRoomUiState, viewModel: IWarRoomViewModel, navCo
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun ProfileCard(profile: ScoutProfile, onTmClick: () -> Unit) {
+private fun ProfileCard(
+    profile: ScoutProfile,
+    isInShortlist: Boolean,
+    isShortlistPending: Boolean,
+    feedback: String?,
+    onTmClick: () -> Unit,
+    onAddToShortlist: (() -> Unit)?,
+    onFeedback: (String) -> Unit
+) {
     val context = LocalContext.current
     Column(
         modifier = Modifier
@@ -974,14 +1089,33 @@ private fun ProfileCard(profile: ScoutProfile, onTmClick: () -> Unit) {
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            SmallActionButton(text = "↗ TM", color = HomeBlueAccent, onClick = onTmClick)
-            SmallActionButton(text = "⭐ " + stringResource(R.string.war_room_shortlist), color = HomeTealAccent, onClick = { })
-            Spacer(Modifier.weight(1f))
-            IconButton(onClick = { }, modifier = Modifier.size(32.dp)) {
-                Icon(Icons.Default.ThumbUp, null, tint = HomeTextSecondary, modifier = Modifier.size(16.dp))
+            onAddToShortlist?.let { onAdd ->
+                IconButton(
+                    onClick = { if (!isShortlistPending) onAdd() },
+                    modifier = Modifier.size(36.dp)
+                ) {
+                    Icon(
+                        imageVector = if (isInShortlist) Icons.Default.Bookmark else Icons.Default.BookmarkAdd,
+                        contentDescription = if (isInShortlist) stringResource(R.string.shortlist_in_shortlist) else stringResource(R.string.shortlist_add_to_shortlist),
+                        tint = if (isInShortlist) HomeGreenAccent else HomeTextSecondary
+                    )
+                }
             }
-            IconButton(onClick = { }, modifier = Modifier.size(32.dp)) {
-                Icon(Icons.Default.ThumbDown, null, tint = HomeTextSecondary, modifier = Modifier.size(16.dp))
+            SmallActionButton(text = "↗ TM", color = HomeBlueAccent, onClick = onTmClick)
+            Spacer(Modifier.weight(1f))
+            IconButton(onClick = { onFeedback("up") }, modifier = Modifier.size(32.dp)) {
+                Icon(
+                    Icons.Default.ThumbUp, null,
+                    tint = if (feedback == "up") HomeGreenAccent else HomeTextSecondary,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+            IconButton(onClick = { onFeedback("down") }, modifier = Modifier.size(32.dp)) {
+                Icon(
+                    Icons.Default.ThumbDown, null,
+                    tint = if (feedback == "down") HomeRedAccent else HomeTextSecondary,
+                    modifier = Modifier.size(16.dp)
+                )
             }
         }
     }

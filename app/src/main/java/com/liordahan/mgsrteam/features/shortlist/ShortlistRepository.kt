@@ -304,7 +304,7 @@ class ShortlistRepository(
         val url = tmProfileUrl.trim().takeIf { it.isNotBlank() } ?: return AddToShortlistResult.AlreadyInShortlist
         _shortlistPendingUrls.value = _shortlistPendingUrls.value + url
         return try {
-            // Check roster by soccerDonnaUrl (women) or ifaUrl (youth)
+            // Check roster by soccerDonnaUrl (women) or ifaUrl (youth) or tmProfile (men)
             if (url.contains("soccerdonna", ignoreCase = true)) {
                 val rosterSnapshot = firebaseHandler.firebaseStore
                     .collection(firebaseHandler.playersTable)
@@ -315,6 +315,12 @@ class ShortlistRepository(
                 val rosterSnapshot = firebaseHandler.firebaseStore
                     .collection(firebaseHandler.playersTable)
                     .whereEqualTo("ifaUrl", url)
+                    .get().await()
+                if (!rosterSnapshot.isEmpty) return AddToShortlistResult.AlreadyInRoster
+            } else if (url.contains("transfermarkt", ignoreCase = true)) {
+                val rosterSnapshot = firebaseHandler.firebaseStore
+                    .collection(firebaseHandler.playersTable)
+                    .whereEqualTo("tmProfile", url)
                     .get().await()
                 if (!rosterSnapshot.isEmpty) return AddToShortlistResult.AlreadyInRoster
             }

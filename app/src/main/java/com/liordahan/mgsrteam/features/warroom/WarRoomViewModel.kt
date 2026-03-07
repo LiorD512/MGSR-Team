@@ -3,6 +3,8 @@ package com.liordahan.mgsrteam.features.warroom
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
 import com.liordahan.mgsrteam.features.aiscout.MgsrWebApiClient
 import com.liordahan.mgsrteam.localization.LocaleManager
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -10,6 +12,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 
 // ── UI State ────────────────────────────────────────────────────────────────
 
@@ -41,7 +44,10 @@ data class WarRoomUiState(
 
     // Expanded reports inside discovery (loaded on demand)
     val candidateReports: Map<String, WarRoomReportResponse> = emptyMap(),
-    val loadingReportUrls: Set<String> = emptySet()
+    val loadingReportUrls: Set<String> = emptySet(),
+
+    // Scout profile feedback (thumbs up/down)
+    val scoutFeedback: Map<String, String> = emptyMap()  // profileId -> "up" | "down"
 )
 
 enum class WarRoomTab { DISCOVERY, AGENTS, AI_SCOUT }
@@ -58,6 +64,7 @@ abstract class IWarRoomViewModel : ViewModel() {
     abstract fun toggleCandidateExpanded(transfermarktUrl: String)
     abstract fun loadReport(playerUrl: String, playerName: String?)
     abstract fun clearReport()
+    abstract fun setProfileFeedback(profileId: String, feedback: String, agentId: String)
 }
 
 // ── Implementation ──────────────────────────────────────────────────────────
@@ -77,8 +84,11 @@ class WarRoomViewModel(
     private val lang: String
         get() = LocaleManager.getSavedLanguage(context)
 
+    private val store = FirebaseFirestore.getInstance()
+
     init {
         loadDiscovery()
+        loadScoutFeedback()
     }
 
     override fun selectTab(tab: WarRoomTab) {
@@ -251,5 +261,44 @@ class WarRoomViewModel(
 
     override fun clearReport() {
         _uiState.update { it.copy(currentReport = null, reportPlayerUrl = null, reportError = null) }
+    }
+
+    // ── Scout Profile Feedback ───────────────────────────────────────────
+
+    private fun loadScoutFeedback() {
+        val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
+        store.collection("ScoutProfileFeedback").document(uid)
+            .addSnapshotListener { snap, error ->
+                if (error != null || snap == null || !snap.exists()) return@addSnapshotListener
+                val feedbackMap = snap.get("feedback") as? Map<*, *> ?: return@addSnapshotListener
+                val flat = mutableMapOf<String, String>()
+                for ((k, v) in feedbackMap) {
+                    val key = k as? String ?: continue
+                    when (v) {
+                        is String -> flat[key] = v
+                        is Map<*, *> -> (v["feedback"] as? String)?.let { flat[key] = it }
+                    }
+                }
+                _uiState.update { it.copy(scoutFeedback = flat) }
+            }
+    }
+
+    override fun setProfileFeedback(profileId: String, feedback: String, agentId: String) {
+        val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
+        // Optimistic UI update
+        _uiState.update { it.copy(scoutFeedback = it.scoutFeedback + (profileId to feedback)) }
+
+        viewModelScope.launch {
+            try {
+                val docRef = store.collection("ScoutProfileFeedback").document(uid)
+                val snap = docRef.get().await()
+                @Suppress("UNCHECKED_CAST")
+                val current = (snap.get("feedback") as? Map<String, Any>)?.toMutableMap() ?: mutableMapOf()
+                current[profileId] = mapOf("feedback" to feedback, "agentId" to agentId)
+                docRef.set(mapOf("feedback" to current, "updatedAt" to System.currentTimeMillis()), com.google.firebase.firestore.SetOptions.merge()).await()
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to set profile feedback", e)
+            }
+        }
     }
 }

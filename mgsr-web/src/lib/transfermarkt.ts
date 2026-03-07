@@ -1658,3 +1658,665 @@ export async function* handleReturneesStream(): AsyncGenerator<{
   );
   yield { players: sorted, loadedLeagues: total, totalLeagues: total, isLoading: false };
 }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   NEWS & RUMORS — Transfermarkt rumours + league news scraping
+   ═══════════════════════════════════════════════════════════════════════ */
+
+export interface TmRumour {
+  playerName: string;
+  playerUrl: string;
+  playerImage: string;
+  position: string;
+  age: number;
+  nationality: string[];
+  currentClub: string;
+  currentClubUrl: string;
+  currentClubImage: string;
+  interestedClub: string;
+  interestedClubUrl: string;
+  interestedClubImage: string;
+  interestedClubLeague: string;
+  probability: number | null;
+  marketValue: string;
+  rumouredDate: string;
+  source: 'rumour';
+}
+
+const RUMOURS_CACHE: { data: TmRumour[]; ts: number } = { data: [], ts: 0 };
+const RUMOURS_CACHE_TTL = 15 * 60 * 1000; // 15 min
+const RUMOURS_MAX_PAGES = 15; // fetch up to 15 pages = ~225 rumours
+
+async function scrapeSingleRumoursPage(page: number): Promise<TmRumour[]> {
+  const url = `${TRANSFERMARKT_BASE}/geruechte/aktuellegeruechte/statistik/plus/1//page/${page}`;
+  const html = await fetchHtmlWithRetry(url);
+  const $ = cheerio.load(html);
+
+  const rumours: TmRumour[] = [];
+
+  // Rows have class "odd" or "even" directly inside <tbody>
+  $('tbody tr.odd, tbody tr.even').each((_i, row) => {
+    try {
+      const $row = $(row);
+      const tds = $row.children('td');
+      if (tds.length < 6) return;
+
+      // Col 0: Player cell — nested inline-table with image, name link, position
+      const playerCell = $(tds[0]);
+      const playerLink = playerCell.find('td.hauptlink a').first();
+      const playerName = playerLink.text().trim();
+      const playerUrl = makeAbsoluteUrl(playerLink.attr('href') || '');
+      // Image uses data-src (lazy) or src
+      const imgEl = playerCell.find('img.bilderrahmen-fixed');
+      const playerImage = makeAbsoluteUrl(imgEl.attr('data-src') || imgEl.attr('src') || '');
+      // Position is in the second <tr> of the inline-table
+      const posText = playerCell.find('table.inline-table tr').eq(1).find('td').text().trim();
+      const position = convertPosition(posText) || posText;
+
+      // Col 1: Age (zentriert)
+      const age = parseInt($(tds[1]).text().trim(), 10) || 0;
+
+      // Col 2: Nationality flags (zentriert)
+      const nationality: string[] = [];
+      $(tds[2]).find('img.flaggenrahmen').each((_j, img) => {
+        const title = $(img).attr('title');
+        if (title) nationality.push(title);
+      });
+
+      // Col 3: Current club (zentriert, has club badge img with title)
+      const curClubImg = $(tds[3]).find('img').first();
+      const currentClub = curClubImg.attr('title') || curClubImg.attr('alt') || '';
+      const currentClubUrl = makeAbsoluteUrl($(tds[3]).find('a').first().attr('href') || '');
+      const currentClubImage = curClubImg.attr('src') || curClubImg.attr('data-src') || '';
+
+      // Col 4: Interested club — nested inline-table with club name + league
+      const intCell = $(tds[4]);
+      const intClubLink = intCell.find('td.hauptlink a').first();
+      const interestedClub = intClubLink.text().trim();
+      const interestedClubUrl = makeAbsoluteUrl(intClubLink.attr('href') || '');
+      const intClubImg = intCell.find('img').first();
+      const interestedClubImage = intClubImg.attr('src') || intClubImg.attr('data-src') || '';
+      // League is in the second <tr> of the inline-table
+      const leagueLink = intCell.find('table.inline-table tr').eq(1).find('a').first();
+      const interestedClubLeague = leagueLink.text().trim();
+
+      // Col 5: Last reply date (rechts)
+      const rumouredDate = $(tds[5]).text().trim();
+
+      // Col 6: User assessment — no numeric probability, just "?" symbol
+      const probability: number | null = null;
+
+      // No market value in the rumours table
+      const marketValue = '';
+
+      // Filter: skip players older than 32
+      if (!playerName || age > 32) return;
+
+      rumours.push({
+        playerName, playerUrl, playerImage, position, age,
+        nationality, currentClub, currentClubUrl, currentClubImage,
+        interestedClub, interestedClubUrl, interestedClubImage, interestedClubLeague,
+        probability, marketValue, rumouredDate, source: 'rumour',
+      });
+    } catch { /* skip malformed row */ }
+  });
+
+  return rumours;
+}
+
+/** Parse market value string like "€3.50m" or "€500k" to numeric euros. Returns 0 on failure. */
+function parseMarketValueToEuros(mv: string): number {
+  if (!mv) return 0;
+  const cleaned = mv.replace(/[^0-9.mkMK€]/g, '');
+  const num = parseFloat(cleaned.replace(/[mkMK€]/g, ''));
+  if (isNaN(num)) return 0;
+  if (/m/i.test(mv)) return num * 1_000_000;
+  if (/k/i.test(mv)) return num * 1_000;
+  return num;
+}
+
+/** Fetch a player's market value from their TM profile page (lightweight). */
+async function fetchPlayerMarketValue(playerUrl: string): Promise<string> {
+  try {
+    const html = await fetchHtmlWithRetry(playerUrl);
+    const $ = cheerio.load(html);
+    const box = $('div[class*="data-header__box--small"]').text();
+    return box.substring(0, box.indexOf('Last')).trim() || '';
+  } catch {
+    return '';
+  }
+}
+
+const MAX_MV_EUROS = 4_000_000; // Filter out players above €4M
+
+export async function handleRumours(maxPages = RUMOURS_MAX_PAGES): Promise<TmRumour[]> {
+  const now = Date.now();
+  if (RUMOURS_CACHE.data.length && now - RUMOURS_CACHE.ts < RUMOURS_CACHE_TTL) {
+    return RUMOURS_CACHE.data;
+  }
+
+  const pages = Math.min(Math.max(maxPages, 1), 20);
+  // Fetch page 1 first to confirm data exists, then remaining pages in parallel
+  const page1 = await scrapeSingleRumoursPage(1);
+  if (!page1.length || pages <= 1) {
+    RUMOURS_CACHE.data = page1;
+    RUMOURS_CACHE.ts = now;
+    return page1;
+  }
+
+  const remaining = Array.from({ length: pages - 1 }, (_, i) => i + 2);
+  const BATCH = 3;
+  const rawRumours = [...page1];
+  for (let i = 0; i < remaining.length; i += BATCH) {
+    const batch = remaining.slice(i, i + BATCH);
+    const results = await Promise.allSettled(batch.map(p => scrapeSingleRumoursPage(p)));
+    for (const r of results) {
+      if (r.status === 'fulfilled') rawRumours.push(...r.value);
+    }
+  }
+
+  // Deduplicate across pages: same player + same interested club = same rumour
+  const seenKeys = new Set<string>();
+  const allRumours = rawRumours.filter(r => {
+    const key = `${r.playerUrl}||${r.interestedClubUrl}`;
+    if (seenKeys.has(key)) return false;
+    seenKeys.add(key);
+    return true;
+  });
+
+  // Enrich with market value from player profiles (batches of 10)
+  const MV_BATCH = 10;
+  for (let i = 0; i < allRumours.length; i += MV_BATCH) {
+    const batch = allRumours.slice(i, i + MV_BATCH);
+    const mvResults = await Promise.allSettled(
+      batch.map(r => fetchPlayerMarketValue(r.playerUrl))
+    );
+    for (let j = 0; j < mvResults.length; j++) {
+      if (mvResults[j].status === 'fulfilled') {
+        allRumours[i + j].marketValue = (mvResults[j] as PromiseFulfilledResult<string>).value;
+      }
+    }
+  }
+
+  // Filter out players with market value above €4M (keep those without a value)
+  const filtered = allRumours.filter(r => {
+    if (!r.marketValue) return true;
+    const euros = parseMarketValueToEuros(r.marketValue);
+    return euros === 0 || euros <= MAX_MV_EUROS;
+  });
+
+  RUMOURS_CACHE.data = filtered;
+  RUMOURS_CACHE.ts = now;
+  return filtered;
+}
+
+/* ── Transfermarkt league news ── */
+
+export interface TmLeagueNewsItem {
+  headline: string;
+  url: string;
+  excerpt: string;
+  imageUrl: string | null;
+  date: string;
+  leagueCode: string;
+  leagueName: string;
+  country: string;
+  countryFlag: string;
+  source: 'tm-news';
+}
+
+const LEAGUE_NEWS_CONFIG: { code: string; slug: string; name: string; country: string; flag: string }[] = [
+  { code: 'ISR1', slug: 'ligat-haal', name: 'Ligat Ha\'al', country: 'Israel', flag: '🇮🇱' },
+  { code: 'NL1', slug: 'eredivisie', name: 'Eredivisie', country: 'Netherlands', flag: '🇳🇱' },
+  { code: 'BE1', slug: 'jupiler-pro-league', name: 'Jupiler Pro League', country: 'Belgium', flag: '🇧🇪' },
+  { code: 'TR1', slug: 'super-lig', name: 'Süper Lig', country: 'Turkey', flag: '🇹🇷' },
+  { code: 'PO1', slug: 'liga-portugal', name: 'Liga Portugal', country: 'Portugal', flag: '🇵🇹' },
+  { code: 'GR1', slug: 'super-league-1', name: 'Super League', country: 'Greece', flag: '🇬🇷' },
+  { code: 'PL1', slug: 'pko-bp-ekstraklasa', name: 'Ekstraklasa', country: 'Poland', flag: '🇵🇱' },
+  { code: 'A1', slug: 'bundesliga', name: 'Bundesliga', country: 'Austria', flag: '🇦🇹' },
+  { code: 'SER1', slug: 'super-liga-srbije', name: 'Super Liga', country: 'Serbia', flag: '🇷🇸' },
+  { code: 'SE1', slug: 'allsvenskan', name: 'Allsvenskan', country: 'Sweden', flag: '🇸🇪' },
+  { code: 'C1', slug: 'super-league', name: 'Super League', country: 'Switzerland', flag: '🇨🇭' },
+  { code: 'TS1', slug: 'chance-liga', name: 'Chance Liga', country: 'Czech Republic', flag: '🇨🇿' },
+  { code: 'RO1', slug: 'superliga', name: 'SuperLiga', country: 'Romania', flag: '🇷🇴' },
+  { code: 'BU1', slug: 'efbet-liga', name: 'First League', country: 'Bulgaria', flag: '🇧🇬' },
+  { code: 'UNG1', slug: 'nemzeti-bajnoksag', name: 'NB I', country: 'Hungary', flag: '🇭🇺' },
+  { code: 'ZYP1', slug: 'cyprus-league', name: 'First Division', country: 'Cyprus', flag: '🇨🇾' },
+  { code: 'GB2', slug: 'championship', name: 'Championship', country: 'England', flag: '🏴󠁧󠁢󠁥󠁮󠁧󠁿' },
+  { code: 'L2', slug: '2-bundesliga', name: '2. Bundesliga', country: 'Germany', flag: '🇩🇪' },
+  { code: 'SLO1', slug: 'nike-liga', name: 'Nike Liga', country: 'Slovakia', flag: '🇸🇰' },
+];
+
+export function getLeagueNewsConfig() {
+  return LEAGUE_NEWS_CONFIG;
+}
+
+const NEWS_CACHE = new Map<string, { items: TmLeagueNewsItem[]; ts: number }>();
+const NEWS_CACHE_TTL = 15 * 60 * 1000;
+
+async function scrapeLeagueNews(league: typeof LEAGUE_NEWS_CONFIG[number]): Promise<TmLeagueNewsItem[]> {
+  const url = `${TRANSFERMARKT_BASE}/${league.slug}/news/wettbewerb/${league.code}`;
+  const html = await fetchHtmlWithRetry(url);
+  const $ = cheerio.load(html);
+
+  const items: TmLeagueNewsItem[] = [];
+
+  // TM news pages use .newsticker__box elements containing a .newsticker__link <a>
+  $('.newsticker__box').each((_i, el) => {
+    const $el = $(el);
+    const linkEl = $el.find('a.newsticker__link').first();
+    const href = makeAbsoluteUrl(linkEl.attr('href') || '');
+    if (!href) return;
+
+    // Headline: big items use __headline-big, small use __headline
+    const headline = ($el.find('.newsticker__headline-big').text().trim()
+      || $el.find('.newsticker__headline').text().trim());
+
+    // Date from boxheader (strip any suffix text like "Done Deal")
+    const boxheader = $el.find('.newsticker__boxheader, .newsticker__boxheader-big').first();
+    // Date is the text directly in the boxheader, not inside the suffix span
+    const suffixText = boxheader.find('.newsticker__boxheader-suffix').text().trim();
+    let rawDate = boxheader.text().trim();
+    if (suffixText) rawDate = rawDate.replace(suffixText, '').trim();
+
+    // Excerpt: big items have teasertext, small have subline  
+    const excerpt = ($el.find('.newsticker__teasertext').text().trim()
+      || $el.find('.newsticker__subline-big, .newsticker__subline').text().trim());
+
+    // Image from emblem or image containers
+    const imageUrl = makeAbsoluteUrl(
+      $el.find('.newsticker__emblem-big img, .newsticker__emblem img').first().attr('src') || ''
+    ) || null;
+
+    if (headline && !items.some(n => n.url === href)) {
+      items.push({
+        headline, url: href, excerpt: excerpt || '',
+        imageUrl, date: rawDate || '',
+        leagueCode: league.code, leagueName: league.name,
+        country: league.country, countryFlag: league.flag,
+        source: 'tm-news',
+      });
+    }
+  });
+
+  // Filter to last 14 days only
+  const cutoff = Date.now() - 14 * 24 * 60 * 60 * 1000;
+  return items.filter(item => {
+    if (!item.date) return false;
+    // TM dates look like "07.03.2026 - 14:22"
+    const m = item.date.match(/(\d{2})\.(\d{2})\.(\d{4})/);
+    if (!m) return true; // keep items we can't parse
+    const ts = new Date(`${m[3]}-${m[2]}-${m[1]}T00:00:00`).getTime();
+    return !isNaN(ts) && ts >= cutoff;
+  });
+}
+
+export async function handleLeagueNews(leagueCodes?: string[]): Promise<TmLeagueNewsItem[]> {
+  const targetLeagues = leagueCodes?.length
+    ? LEAGUE_NEWS_CONFIG.filter(l => leagueCodes.includes(l.code))
+    : LEAGUE_NEWS_CONFIG;
+
+  const now = Date.now();
+  const toFetch: typeof LEAGUE_NEWS_CONFIG = [];
+  const cached: TmLeagueNewsItem[] = [];
+
+  for (const league of targetLeagues) {
+    const c = NEWS_CACHE.get(league.code);
+    if (c && now - c.ts < NEWS_CACHE_TTL) {
+      cached.push(...c.items);
+    } else {
+      toFetch.push(league);
+    }
+  }
+
+  // Fetch uncached leagues in parallel (batches of 5 to be polite)
+  const BATCH = 5;
+  const fresh: TmLeagueNewsItem[] = [];
+  for (let i = 0; i < toFetch.length; i += BATCH) {
+    const batch = toFetch.slice(i, i + BATCH);
+    const results = await Promise.allSettled(batch.map(l => scrapeLeagueNews(l)));
+    for (let j = 0; j < results.length; j++) {
+      const r = results[j];
+      if (r.status === 'fulfilled' && r.value.length) {
+        NEWS_CACHE.set(batch[j].code, { items: r.value, ts: now });
+        fresh.push(...r.value);
+      }
+    }
+  }
+
+  return [...cached, ...fresh];
+}
+
+/* ── Google News RSS feed ── */
+
+export interface GoogleNewsItem {
+  headline: string;
+  originalHeadline?: string;
+  url: string;
+  sourceName: string;
+  date: string;
+  leagueCode: string;
+  leagueName: string;
+  country: string;
+  countryFlag: string;
+  source: 'google-news';
+}
+
+const GOOGLE_NEWS_QUERIES: { query: string; code: string; name: string; country: string; flag: string; hl?: string; gl?: string; ceid?: string }[] = [
+  // English transfer-focused queries per league — headline filter handles big-club noise
+  { query: '"Ligat Ha\'al" OR "Israeli Premier League" (transfer OR signing OR loan OR deal)', code: 'ISR1', name: 'Ligat Ha\'al', country: 'Israel', flag: '🇮🇱' },
+  { query: '"Eredivisie" (signing OR signs OR signed OR loan OR joins OR transfer)', code: 'NL1', name: 'Eredivisie', country: 'Netherlands', flag: '🇳🇱' },
+  { query: '"Jupiler Pro League" OR "Belgian Pro League" (signing OR loan OR deal OR transfer)', code: 'BE1', name: 'Jupiler Pro League', country: 'Belgium', flag: '🇧🇪' },
+  { query: '"Süper Lig" (signing OR loan OR deal OR signs OR transfer)', code: 'TR1', name: 'Süper Lig', country: 'Turkey', flag: '🇹🇷' },
+  { query: '"Liga Portugal" OR "Primeira Liga" (signing OR loan OR deal OR transfer)', code: 'PO1', name: 'Liga Portugal', country: 'Portugal', flag: '🇵🇹' },
+  { query: '"Greek Super League" (signing OR loan OR deal OR transfer)', code: 'GR1', name: 'Super League', country: 'Greece', flag: '🇬🇷' },
+  { query: '"Ekstraklasa" (signing OR loan OR transfer)', code: 'PL1', name: 'Ekstraklasa', country: 'Poland', flag: '🇵🇱' },
+  { query: '"Austrian Bundesliga" (signing OR loan OR transfer)', code: 'A1', name: 'Bundesliga', country: 'Austria', flag: '🇦🇹' },
+  { query: '"Serbian SuperLiga" (signing OR loan OR transfer)', code: 'SER1', name: 'Super Liga', country: 'Serbia', flag: '🇷🇸' },
+  { query: '"Allsvenskan" (signing OR loan OR transfer)', code: 'SE1', name: 'Allsvenskan', country: 'Sweden', flag: '🇸🇪' },
+  { query: '"Swiss Super League" (signing OR loan OR transfer)', code: 'C1', name: 'Super League', country: 'Switzerland', flag: '🇨🇭' },
+  { query: '"Chance Liga" OR "Czech First League" (signing OR transfer)', code: 'TS1', name: 'Chance Liga', country: 'Czech Republic', flag: '🇨🇿' },
+  { query: '"EFL Championship" (signing OR loan OR deal OR signs OR transfer)', code: 'GB2', name: 'Championship', country: 'England', flag: '🏴󠁧󠁢󠁥󠁮󠁧󠁿' },
+  { query: '"2. Bundesliga" (signing OR loan OR transfer)', code: 'L2', name: '2. Bundesliga', country: 'Germany', flag: '🇩🇪' },
+  { query: '"SuperLiga Romania" OR "Liga 1 Romania" (signing OR transfer)', code: 'RO1', name: 'SuperLiga', country: 'Romania', flag: '🇷🇴' },
+  { query: '"NB I" OR "Nemzeti Bajnokság" (signing OR transfer)', code: 'UNG1', name: 'NB I', country: 'Hungary', flag: '🇭🇺' },
+  { query: '"efbet Liga" OR "Bulgarian First League" (signing OR transfer)', code: 'BU1', name: 'First League', country: 'Bulgaria', flag: '🇧🇬' },
+  { query: '"Cyprus First Division" (signing OR loan OR transfer)', code: 'ZYP1', name: 'First Division', country: 'Cyprus', flag: '🇨🇾' },
+  { query: '"Azerbaijan Premier League" OR "Qarabag" OR "Neftchi" (transfer OR signing OR loan)', code: 'AZE1', name: 'Premier League', country: 'Azerbaijan', flag: '🇦🇿' },
+  { query: '"Kazakhstan Premier League" OR "FC Astana" OR "Kairat" (transfer OR signing OR loan)', code: 'KAZ1', name: 'Premier League', country: 'Kazakhstan', flag: '🇰🇿' },
+
+  // ── Local-language queries from professional sports outlets per country ──
+
+  // Netherlands — local Dutch transfer news
+  { query: 'site:voetbalzone.nl (transfer OR laat OR komt OR huurt OR tekent OR vertrekt)', code: 'NL1', name: 'Eredivisie', country: 'Netherlands', flag: '🇳🇱', hl: 'nl', gl: 'NL', ceid: 'NL:nl' },
+  { query: 'site:vi.nl (transfer OR contractverlenging OR huurdeal OR overstap)', code: 'NL1', name: 'Eredivisie', country: 'Netherlands', flag: '🇳🇱', hl: 'nl', gl: 'NL', ceid: 'NL:nl' },
+
+  // Belgium — local Belgian transfer news
+  { query: 'site:transfertalk.be OR site:voetbalkrant.com (transfer OR tekent OR vertrekt OR huurt)', code: 'BE1', name: 'Jupiler Pro League', country: 'Belgium', flag: '🇧🇪', hl: 'nl', gl: 'BE', ceid: 'BE:nl' },
+
+  // Turkey — local Turkish transfer news
+  { query: 'site:fanatik.com.tr (transfer OR imzaladı OR kiralık OR anlaştı OR ayrılık)', code: 'TR1', name: 'Süper Lig', country: 'Turkey', flag: '🇹🇷', hl: 'tr', gl: 'TR', ceid: 'TR:tr' },
+  { query: 'site:sabah.com.tr spor (transfer OR imza OR kiralık OR sözleşme)', code: 'TR1', name: 'Süper Lig', country: 'Turkey', flag: '🇹🇷', hl: 'tr', gl: 'TR', ceid: 'TR:tr' },
+
+  // Portugal — local Portuguese transfer news
+  { query: 'site:ojogo.pt OR site:abola.pt (transferência OR contratação OR empréstimo OR reforço)', code: 'PO1', name: 'Liga Portugal', country: 'Portugal', flag: '🇵🇹', hl: 'pt-PT', gl: 'PT', ceid: 'PT:pt-150' },
+
+  // Greece — local Greek transfer news
+  { query: 'site:sport24.gr OR site:gazzetta.gr (μεταγραφή OR δανεικός OR απόκτηση OR συμβόλαιο)', code: 'GR1', name: 'Super League', country: 'Greece', flag: '🇬🇷', hl: 'el', gl: 'GR', ceid: 'GR:el' },
+  { query: 'site:sdna.gr OR site:sportfm.gr (μεταγραφή OR δανεικός OR απόκτηση OR αποδέσμευση)', code: 'GR1', name: 'Super League', country: 'Greece', flag: '🇬🇷', hl: 'el', gl: 'GR', ceid: 'GR:el' },
+
+  // Poland — local Polish transfer news
+  { query: 'site:meczyki.pl OR site:sport.pl (transfer OR podpisał OR wypożyczenie OR kontrakt)', code: 'PL1', name: 'Ekstraklasa', country: 'Poland', flag: '🇵🇱', hl: 'pl', gl: 'PL', ceid: 'PL:pl' },
+
+  // Sweden — local Swedish transfer news
+  { query: 'site:fotbollskanalen.se (övergång OR lån OR värvning OR kontrakt OR lämnar)', code: 'SE1', name: 'Allsvenskan', country: 'Sweden', flag: '🇸🇪', hl: 'sv', gl: 'SE', ceid: 'SE:sv' },
+
+  // Serbia — diverse English sources
+  { query: '"Serbian SuperLiga" OR "Red Star Belgrade" OR "Partizan Belgrade" (transfer OR signs OR loan)', code: 'SER1', name: 'Super Liga', country: 'Serbia', flag: '🇷🇸' },
+
+  // Romania — local Romanian transfer news
+  { query: 'site:gsp.ro OR site:digisport.ro (transfer OR împrumut OR semnează OR achiziție)', code: 'RO1', name: 'SuperLiga', country: 'Romania', flag: '🇷🇴', hl: 'ro', gl: 'RO', ceid: 'RO:ro' },
+
+  // England Championship — additional sources
+  { query: 'site:footballleagueworld.co.uk (signing OR deal OR transfer OR loan)', code: 'GB2', name: 'Championship', country: 'England', flag: '🏴󠁧󠁢󠁥󠁮󠁧󠁿' },
+
+  // Austria — local Austrian transfer news
+  { query: 'site:laola1.at OR site:sport.orf.at Fußball (Transfer OR Verpflichtung OR Leihe OR wechselt)', code: 'A1', name: 'Bundesliga', country: 'Austria', flag: '🇦🇹', hl: 'de', gl: 'AT', ceid: 'AT:de' },
+
+  // Switzerland — local Swiss transfer news
+  { query: 'site:blick.ch Fussball (Transfer OR Verpflichtung OR Leihe OR wechselt)', code: 'C1', name: 'Super League', country: 'Switzerland', flag: '🇨🇭', hl: 'de', gl: 'CH', ceid: 'CH:de' },
+
+  // Hungary — local Hungarian transfer news
+  { query: 'site:nemzetisport.hu OR site:m4sport.hu (igazolás OR kölcsön OR szerződés OR átigazolás)', code: 'UNG1', name: 'NB I', country: 'Hungary', flag: '🇭🇺', hl: 'hu', gl: 'HU', ceid: 'HU:hu' },
+
+  // Bulgaria — local Bulgarian transfer news
+  { query: 'site:sportal.bg (трансфер OR подписа OR наем OR договор)', code: 'BU1', name: 'First League', country: 'Bulgaria', flag: '🇧🇬', hl: 'bg', gl: 'BG', ceid: 'BG:bg' },
+
+  // Cyprus — English + Greek-language local sources
+  { query: '"Cyprus football" OR "AEL Limassol" OR "APOEL" OR "Omonia" (transfer OR signing OR loan)', code: 'ZYP1', name: 'First Division', country: 'Cyprus', flag: '🇨🇾' },
+  { query: 'site:sigmalive.com ποδόσφαιρο (μεταγραφή OR δανεικός OR συμβόλαιο OR απόκτηση)', code: 'ZYP1', name: 'First Division', country: 'Cyprus', flag: '🇨🇾', hl: 'el', gl: 'CY', ceid: 'CY:el' },
+  { query: 'site:ant1.com.cy OR site:politis.com.cy (ΑΠΟΕΛ OR Ομόνοια OR ΑΕΛ OR Ανόρθωση) (μεταγραφή OR απόκτηση OR ανανέωση)', code: 'ZYP1', name: 'First Division', country: 'Cyprus', flag: '🇨🇾', hl: 'el', gl: 'CY', ceid: 'CY:el' },
+
+  // Germany 2. Bundesliga — local German sources
+  { query: 'site:kicker.de "2. Bundesliga" (Transfer OR Verpflichtung OR Leihe)', code: 'L2', name: '2. Bundesliga', country: 'Germany', flag: '🇩🇪', hl: 'de', gl: 'DE', ceid: 'DE:de' },
+
+  // Czech Republic — local Czech sources
+  { query: 'site:isport.blesk.cz OR site:sport.cz (přestup OR hostování OR smlouva OR posila)', code: 'TS1', name: 'Chance Liga', country: 'Czech Republic', flag: '🇨🇿', hl: 'cs', gl: 'CZ', ceid: 'CZ:cs' },
+
+  // Azerbaijan — local Azerbaijani sources
+  { query: 'site:report.az futbol (transfer OR imzaladı OR icarə)', code: 'AZE1', name: 'Premier League', country: 'Azerbaijan', flag: '🇦🇿', hl: 'az', gl: 'AZ', ceid: 'AZ:az' },
+  { query: 'site:oxu.az OR site:sportinfo.az (transfer OR futbolçu OR müqavilə)', code: 'AZE1', name: 'Premier League', country: 'Azerbaijan', flag: '🇦🇿', hl: 'az', gl: 'AZ', ceid: 'AZ:az' },
+
+  // Kazakhstan — local Kazakh/Russian sources
+  { query: 'site:prosports.kz OR site:sportinfo.kz (трансфер OR подписал OR аренда)', code: 'KAZ1', name: 'Premier League', country: 'Kazakhstan', flag: '🇰🇿', hl: 'ru', gl: 'KZ', ceid: 'KZ:ru' },
+  { query: 'site:vesti.kz OR site:sports.kz футбол (трансфер OR контракт OR подписание)', code: 'KAZ1', name: 'Premier League', country: 'Kazakhstan', flag: '🇰🇿', hl: 'ru', gl: 'KZ', ceid: 'KZ:ru' },
+
+  // Hebrew Israeli transfer news — site-specific for best quality, "כדורגל" added to reduce basketball/other sport noise
+  { query: 'site:sport5.co.il כדורגל (העברה OR חתימה OR חיזוק OR רכש OR השאלה OR מצטרף OR עסקה)', code: 'ISR1', name: 'ליגת העל', country: 'Israel', flag: '🇮🇱', hl: 'he', gl: 'IL', ceid: 'IL:he' },
+  { query: 'site:one.co.il כדורגל (העברה OR חתימה OR חיזוק OR רכש OR השאלה OR מצטרף)', code: 'ISR1', name: 'ליגת העל', country: 'Israel', flag: '🇮🇱', hl: 'he', gl: 'IL', ceid: 'IL:he' },
+  { query: 'site:sport1.maariv.co.il כדורגל (העברה OR חתימה OR חיזוק OR רכש OR מצטרף OR עסקה)', code: 'ISR1', name: 'ליגת העל', country: 'Israel', flag: '🇮🇱', hl: 'he', gl: 'IL', ceid: 'IL:he' },
+  { query: '"ליגת העל" OR "הליגה הלאומית" (חתימה OR חיזוק OR רכש OR מצטרף OR עסקה OR החתימה OR התחזק OR העברה)', code: 'ISR1', name: 'ליגת העל', country: 'Israel', flag: '🇮🇱', hl: 'he', gl: 'IL', ceid: 'IL:he' },
+];
+
+const GNEWS_CACHE = new Map<string, { items: GoogleNewsItem[]; ts: number }>();
+const GNEWS_CACHE_TTL = 20 * 60 * 1000; // 20 min
+const GNEWS_RESULT_CACHE = new Map<string, { items: GoogleNewsItem[]; ts: number }>();
+
+/** Headline relevance filter — keeps only transfer/market related articles */
+const TRANSFER_KEYWORDS_EN = /\btransfer|sign(s|ed|ing)|loan(s|ed)?|deal|fee|target|move[sd]?|join[sd]?|buy|sell|contract|free agent|release[sd]?|depart|arriv(e|al)|recruit|bid|offer|swap|scout|reinforce|market value|window|deadline|summer|january|winter\b/i;
+const TRANSFER_KEYWORDS_HE = /העברה|חתימה|חיזוק|רכש|השאלה|מצטרף|עסקה|מעוניינת|החתימה|התחזק|שחקן חדש|חלון ההעברות|שוק ההעברות|שחרור|עוזב|שמוע|פיצויים|חוזה|סוכן|ניהול משא/;
+const NOISE_KEYWORDS = /\b(ted lasso|video game|fifa (2[0-9]|mobile)|esports?|fantasy football|betting|odds|podcast|recap|highlight|goal of the week|table standing|fixture|schedule|results? round|preview round|matchday|rankings?)\b/i;
+
+/** Big-club headline filter — reject articles where the headline is primarily about a top-5 league giant */
+const BIG_CLUB_HEADLINE = /\b(liverpool|arsenal|chelsea|man(chester)?\s*(city|united|utd)|tottenham|spurs|barcelona|barca|real madrid|psg|paris saint.germain|juventus|juve|bayern munich|bayern|inter milan|ac milan|napoli|atletico madrid|newcastle|aston villa|west ham|everton|wolves|bournemouth|crystal palace|brentford|fulham|nottingham forest|leicester|ipswich|southampton|roma|lazio|fiorentina|atalanta|dortmund|borussia|rb leipzig|leverkusen|lyon|marseille|monaco|lille|sociedad|athletic bilbao|villarreal|sevilla|betis|benfica|sporting cp|porto)\b/i;
+
+/** Hebrew big-club filter — same clubs in Hebrew transliteration + global star players */
+const BIG_CLUB_HEADLINE_HE = /ב[א]?רצלונה|ב[א]?רסה|ריאל מדריד|צ'?לסי|ליברפול|ארסנל|מנצ'?סטר (סיטי|יונייטד)|טוטנהאם|פ\.?ס\.?ג|פריז סן ז'רמן|יובנטוס|באיירן|אינטר מילאן|מילאן|נאפולי|אתלטיקו מדריד|ניוקאסל|אסטון וילה|ווסטהאם|דורטמונד|לייפציג|לברקוזן|ליון|מארסיי|מונאקו|ליל|סביליה|בנפיקה|פורטו|סלטיק|ריינג'רס|מסי|רונאלדו|CR7|נייאר|אמבפה|הולנד|סאלאח|דה בריינה/;
+
+/** Hebrew non-football noise — basketball, baseball, general sports noise, politics */
+const NOISE_KEYWORDS_HE = /כדורסל|יורוליג|NBA|NFL|MLB|גארד מה|סנטר מה|פורוורד מה|ג.י.?ליג|ליגת המשנה|טקסס ריינג.רס|בייסבול|אמריקן פוטבול|כדוריד|טניס|שחייה|אתלטיקה קלה|אולימפי(אדה)?|KSI|יוטיוב(ר)?|טיקטוק(ר)?|אירוויזיון|חמינאי|איראני(ו)?ת|פארסה של האיראני/;
+
+/** Israeli football club names — to verify Hebrew articles are about Israeli football */
+const ISRAELI_FOOTBALL_CLUBS = /מכבי (תל.?אביב|חיפה|נתניה|פ\.?ת|הרצליה|בני ריינה)|הפועל (תל.?אביב|באר.?שבע|חיפה|ירושלים|חדרה|רעננה|נוף הגליל|עפולה|פ\.?ת|ראשון|אשקלון|כפר.?שלם|הרצליה|עכו|מרמורק|קטמון)|בית"?ר ירושלים|בני (יהודה|סכנין)|עירוני (טבריה|קריית שמונה|אשדוד|ראשון)|סקציה נס ציונה|הכח|אשדוד|נתניה|ליגת העל|לאומית|ליגה לאומית/;
+
+function isTransferRelevant(headline: string, isLocalSiteQuery = false): boolean {
+  if (NOISE_KEYWORDS.test(headline)) return false;
+  // Hebrew headlines
+  if (/[\u0590-\u05FF]/.test(headline)) {
+    // Reject Hebrew non-football noise (basketball, etc.)
+    if (NOISE_KEYWORDS_HE.test(headline)) return false;
+    // Must have transfer keywords
+    if (!TRANSFER_KEYWORDS_HE.test(headline)) return false;
+    // If headline mentions a big foreign club but NO Israeli club — reject
+    if (BIG_CLUB_HEADLINE_HE.test(headline) && !ISRAELI_FOOTBALL_CLUBS.test(headline)) return false;
+    return true;
+  }
+  // Local-language site queries (Dutch, Turkish, Greek, etc.) — trust the query's own filtering
+  // These queries already contain site: restriction + local transfer keywords, so just check English big-club filter
+  if (isLocalSiteQuery) {
+    if (BIG_CLUB_HEADLINE.test(headline)) return false;
+    return true;
+  }
+  // English headlines: must have transfer keywords AND must NOT be primarily about a big club
+  if (!TRANSFER_KEYWORDS_EN.test(headline)) return false;
+  if (BIG_CLUB_HEADLINE.test(headline)) return false;
+  return true;
+}
+
+/** Translate headlines using Google Translate free endpoint (batched + concurrency-limited) */
+async function translateHeadlines(texts: string[], targetLang = 'en'): Promise<string[]> {
+  if (!texts.length) return [];
+  // Batch texts into groups of 15, joined by newline — Google Translate handles multi-line
+  const BATCH_SIZE = 15;
+  const CONCURRENCY = 5;
+  const batches: string[][] = [];
+  for (let i = 0; i < texts.length; i += BATCH_SIZE) {
+    batches.push(texts.slice(i, i + BATCH_SIZE));
+  }
+
+  const translateBatch = async (batch: string[]): Promise<string[]> => {
+    const joined = batch.join('\n');
+    try {
+      const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${encodeURIComponent(targetLang)}&dt=t&q=${encodeURIComponent(joined)}`;
+      const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+      if (!res.ok) return batch;
+      const data = await res.json();
+      if (Array.isArray(data) && Array.isArray(data[0])) {
+        const translated = data[0].map((seg: unknown[]) => seg[0]).join('');
+        return translated.split('\n');
+      }
+      return batch;
+    } catch {
+      return batch;
+    }
+  };
+
+  // Run with concurrency limit
+  const results: string[][] = new Array(batches.length);
+  for (let i = 0; i < batches.length; i += CONCURRENCY) {
+    const chunk = batches.slice(i, i + CONCURRENCY);
+    const res = await Promise.allSettled(chunk.map(b => translateBatch(b)));
+    for (let j = 0; j < res.length; j++) {
+      const r = res[j];
+      results[i + j] = r.status === 'fulfilled' ? r.value : chunk[j];
+    }
+  }
+
+  const flat = results.flat();
+  // Ensure we return exactly the same length as input
+  while (flat.length < texts.length) flat.push(texts[flat.length]);
+  return flat.slice(0, texts.length);
+}
+
+async function fetchGoogleNewsRss(q: typeof GOOGLE_NEWS_QUERIES[number]): Promise<GoogleNewsItem[]> {
+  // Add when:30d to restrict results to last 30 days
+  const hl = q.hl || 'en';
+  const gl = q.gl || 'US';
+  const ceid = q.ceid || 'US:en';
+  // Detect local-language site queries (site: + non-English locale)
+  const isLocalSiteQuery = q.query.startsWith('site:') && hl !== 'en' && hl !== 'he';
+  const rssUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(q.query + ' when:14d')}&hl=${hl}&gl=${gl}&ceid=${ceid}`;
+  const res = await fetch(rssUrl, {
+    headers: { 'User-Agent': 'Mozilla/5.0 (compatible; MGSR-Bot/1.0)' },
+    signal: AbortSignal.timeout(15000),
+  });
+  if (!res.ok) return [];
+  const xml = await res.text();
+  const $ = cheerio.load(xml, { xmlMode: true });
+
+  const items: GoogleNewsItem[] = [];
+  $('item').each((_i, el) => {
+    const $el = $(el);
+    const headline = $el.find('title').text().trim();
+    const url = $el.find('link').text().trim();
+    const sourceName = $el.find('source').text().trim();
+    const pubDate = $el.find('pubDate').text().trim();
+
+    // Format date to shorter form
+    let date = '';
+    if (pubDate) {
+      try {
+        const d = new Date(pubDate);
+        const dd = String(d.getDate()).padStart(2, '0');
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const hh = String(d.getHours()).padStart(2, '0');
+        const min = String(d.getMinutes()).padStart(2, '0');
+        date = `${dd}.${mm}.${d.getFullYear()} · ${hh}:${min}`;
+      } catch { date = pubDate; }
+    }
+
+    if (headline && url) {
+      // Also filter by parsed date — only keep items from last 14 days
+      if (pubDate) {
+        const age = Date.now() - new Date(pubDate).getTime();
+        if (age > 14 * 24 * 60 * 60 * 1000) return; // skip old articles
+      }
+      // Filter headline for transfer relevance
+      if (!isTransferRelevant(headline, isLocalSiteQuery)) return;
+      items.push({
+        headline, url, sourceName: sourceName || 'Google News',
+        date, leagueCode: q.code, leagueName: q.name,
+        country: q.country, countryFlag: q.flag,
+        source: 'google-news',
+      });
+    }
+  });
+
+  const sliced = items.slice(0, 15);
+
+  return sliced;
+}
+
+export async function handleGoogleNews(leagueCodes?: string[], targetLang = 'en'): Promise<GoogleNewsItem[]> {
+  // Check result cache first (includes translations)
+  const resultKey = `${(leagueCodes || ['all']).join(',')}:${targetLang}`;
+  const resultCached = GNEWS_RESULT_CACHE.get(resultKey);
+  if (resultCached && Date.now() - resultCached.ts < GNEWS_CACHE_TTL) {
+    return resultCached.items;
+  }
+
+  const targets = leagueCodes?.length
+    ? GOOGLE_NEWS_QUERIES.filter(q => leagueCodes.includes(q.code))
+    : GOOGLE_NEWS_QUERIES;
+
+  const now = Date.now();
+  const toFetch: typeof GOOGLE_NEWS_QUERIES = [];
+  const cached: GoogleNewsItem[] = [];
+
+  for (const q of targets) {
+    const cacheKey = `${q.code}:${q.hl || 'en'}:${q.query.slice(0, 30)}`;
+    const c = GNEWS_CACHE.get(cacheKey);
+    if (c && now - c.ts < GNEWS_CACHE_TTL) {
+      cached.push(...c.items);
+    } else {
+      toFetch.push(q);
+    }
+  }
+
+  // Fetch RSS in parallel batches of 8 (no translation yet — fast)
+  const BATCH = 8;
+  const fresh: GoogleNewsItem[] = [];
+  for (let i = 0; i < toFetch.length; i += BATCH) {
+    const batch = toFetch.slice(i, i + BATCH);
+    const results = await Promise.allSettled(batch.map(q => fetchGoogleNewsRss(q)));
+    for (let j = 0; j < results.length; j++) {
+      const r = results[j];
+      if (r.status === 'fulfilled' && r.value.length) {
+        const cacheKey = `${batch[j].code}:${batch[j].hl || 'en'}:${batch[j].query.slice(0, 30)}`;
+        GNEWS_CACHE.set(cacheKey, { items: r.value, ts: now });
+        fresh.push(...r.value);
+      }
+    }
+  }
+
+  // Deduplicate by URL (multiple queries for same league may return same articles)
+  const seen = new Set<string>();
+  const deduped = [...cached, ...fresh].filter(item => {
+    if (seen.has(item.url)) return false;
+    seen.add(item.url);
+    return true;
+  });
+
+  // Translate headlines that aren't already in the target language
+  const HE_CHARS = /[\u0590-\u05FF]/;
+  const needTranslation = deduped.filter(item => {
+    if (item.originalHeadline) return false; // already translated (from cache)
+    if (targetLang === 'he' && HE_CHARS.test(item.headline)) return false; // already Hebrew
+    return true;
+  });
+
+  if (needTranslation.length > 0) {
+    try {
+      const translated = await translateHeadlines(needTranslation.map(it => it.headline), targetLang);
+      for (let i = 0; i < needTranslation.length; i++) {
+        if (translated[i] && translated[i] !== needTranslation[i].headline) {
+          needTranslation[i].originalHeadline = needTranslation[i].headline;
+          needTranslation[i].headline = translated[i];
+        }
+      }
+    } catch { /* keep originals on translation failure */ }
+  }
+
+  GNEWS_RESULT_CACHE.set(resultKey, { items: deduped, ts: Date.now() });
+  return deduped;
+}

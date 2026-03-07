@@ -407,3 +407,78 @@ export function streamContractFinishers(
 
   return () => es.close();
 }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   NEWS & RUMORS client API helpers
+   ═══════════════════════════════════════════════════════════════════════ */
+
+export interface RumourItem {
+  playerName: string;
+  playerUrl: string;
+  playerImage: string;
+  position: string;
+  age: number;
+  nationality: string[];
+  currentClub: string;
+  currentClubUrl: string;
+  currentClubImage: string;
+  interestedClub: string;
+  interestedClubUrl: string;
+  interestedClubImage: string;
+  interestedClubLeague: string;
+  probability: number | null;
+  marketValue: string;
+  rumouredDate: string;
+  source: 'rumour';
+}
+
+export interface LeagueNewsItem {
+  headline: string;
+  url: string;
+  excerpt: string;
+  imageUrl: string | null;
+  date: string;
+  leagueCode: string;
+  leagueName: string;
+  country: string;
+  countryFlag: string;
+  source: 'tm-news';
+}
+
+export interface GoogleNewsItem {
+  headline: string;
+  originalHeadline?: string;
+  url: string;
+  sourceName: string;
+  date: string;
+  leagueCode: string;
+  leagueName: string;
+  country: string;
+  countryFlag: string;
+  source: 'google-news';
+}
+
+export type NewsFeedItem = RumourItem | LeagueNewsItem | GoogleNewsItem;
+
+export async function getRumours(pages = 15): Promise<RumourItem[]> {
+  const res = await fetch(`/api/news/rumours?pages=${pages}`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+export async function getLeagueNews(leagues?: string[]): Promise<LeagueNewsItem[]> {
+  const q = leagues?.length ? `?leagues=${leagues.join(',')}` : '';
+  const res = await fetch(`/api/news/league-news${q}`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+export async function getGoogleNews(leagues?: string[], lang?: string): Promise<GoogleNewsItem[]> {
+  const params = new URLSearchParams();
+  if (leagues?.length) params.set('leagues', leagues.join(','));
+  if (lang) params.set('lang', lang);
+  const q = params.toString() ? `?${params}` : '';
+  const res = await fetch(`/api/news/google-news${q}`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}

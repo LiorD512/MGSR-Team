@@ -482,7 +482,16 @@ private fun FindNextTabContent(state: FindNextUiState, viewModel: IAiScoutViewMo
                                     shortlistRepository.removeFromShortlist(tmUrl)
                                     justAddedUrls = justAddedUrls - tmUrl
                                 } else {
-                                    when (shortlistRepository.addToShortlistByUrl(tmUrl)) {
+                                    when (shortlistRepository.addToShortlistFromForm(
+                                        tmProfileUrl = tmUrl,
+                                        playerName = player.name,
+                                        playerPosition = player.position,
+                                        playerAge = player.age,
+                                        playerNationality = player.citizenship,
+                                        clubJoinedName = player.club,
+                                        marketValue = player.marketValue,
+                                        playerImage = null
+                                    )) {
                                         is ShortlistRepository.AddToShortlistResult.Added ->
                                             justAddedUrls = justAddedUrls + tmUrl
                                         is ShortlistRepository.AddToShortlistResult.AlreadyInShortlist ->
@@ -1473,7 +1482,16 @@ private fun PlayerResultCard(
                                         shortlistRepository.removeFromShortlist(tmUrl)
                                         onJustRemoved(tmUrl)
                                     } else {
-                                        when (shortlistRepository.addToShortlistByUrl(tmUrl)) {
+                                        when (shortlistRepository.addToShortlistFromForm(
+                                            tmProfileUrl = tmUrl,
+                                            playerName = player.name,
+                                            playerPosition = player.position,
+                                            playerAge = if (player.age > 0) player.age.toString() else null,
+                                            playerNationality = player.nationality,
+                                            clubJoinedName = player.club,
+                                            marketValue = player.marketValue,
+                                            playerImage = player.imageUrl
+                                        )) {
                                             is ShortlistRepository.AddToShortlistResult.Added ->
                                                 onJustAdded(tmUrl)
                                             is ShortlistRepository.AddToShortlistResult.AlreadyInShortlist ->

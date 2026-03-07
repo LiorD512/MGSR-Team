@@ -129,26 +129,12 @@ fun PlatformSwitcher(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.Center
                     ) {
-                        // Tinted emoji badge
-                        Box(
-                            modifier = Modifier
-                                .size(22.dp)
-                                .then(
-                                    if (isSelected) Modifier.shadow(4.dp, CircleShape, ambientColor = platform.accent, spotColor = platform.accent)
-                                    else Modifier
-                                )
-                                .background(
-                                    color = platform.accent.copy(alpha = if (isSelected) 0.30f else 0.12f),
-                                    shape = CircleShape
-                                ),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = platform.emoji,
-                                fontSize = 12.sp,
-                                textAlign = TextAlign.Center
-                            )
-                        }
+                        // Premium Canvas-drawn insignia
+                        PlatformInsignia(
+                            platform = platform,
+                            isSelected = isSelected,
+                            modifier = Modifier.size(20.dp)
+                        )
                         Spacer(Modifier.width(4.dp))
                         Text(
                             text = stringResource(platform.labelRes),
