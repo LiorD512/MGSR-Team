@@ -54,6 +54,7 @@
     <string name="players_filter_my_players_only">השחקנים שלי בלבד</string>
     <string name="players_filter_loan_players_only">שחקנים בהשאלה בלבד</string>
     <string name="players_filter_without_registered_agent">ללא סוכן רשום</string>
+    <string name="players_filter_offered_no_feedback">הוצע · ללא משוב</string>
     <string name="players_expiring_soon_count">%d חוזים מסתיימים בקרוב</string>
     <string name="players_expiring_action_needed">נדרש טיפול לפני סיום החוזה</string>
     <string name="players_with_mandate_count">%d שחקנים עם מנדט</string>

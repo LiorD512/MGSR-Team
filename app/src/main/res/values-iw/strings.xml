@@ -1229,4 +1229,7 @@
 
     <!-- Shortlist: My Players filter -->
     <string name="shortlist_filter_my_players">השחקנים שלי</string>
+
+    <!-- Offered No Feedback filter -->
+    <string name="players_filter_offered_no_feedback">הוצע · ללא משוב</string>
 </resources>

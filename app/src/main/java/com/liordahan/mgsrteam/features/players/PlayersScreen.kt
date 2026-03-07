@@ -266,6 +266,7 @@ fun PlayersScreen(
                 withoutRegisteredAgentSelected = playersState.quickFilterWithoutRegisteredAgent,
                 withNotesOnlySelected = playersState.isWithNotesChecked,
                 euNationalSelected = playersState.quickFilterEuNational,
+                offeredNoFeedbackSelected = playersState.quickFilterOfferedNoFeedback,
                 footFilterOption = playersState.footFilterOption,
                 onFreeAgentsClick = { viewModel.toggleQuickFilterFreeAgents() },
                 onContractExpiringClick = { viewModel.toggleQuickFilterContractExpiring() },
@@ -275,6 +276,7 @@ fun PlayersScreen(
                 onWithoutRegisteredAgentClick = { viewModel.toggleQuickFilterWithoutRegisteredAgent() },
                 onWithNotesOnlyClick = { viewModel.toggleQuickFilterWithNotesOnly() },
                 onEuNationalClick = { viewModel.toggleQuickFilterEuNational() },
+                onOfferedNoFeedbackClick = { viewModel.toggleQuickFilterOfferedNoFeedback() },
                 onFootFilterClick = { viewModel.setFootFilterOption(it) }
             )
             }
@@ -845,6 +847,7 @@ private fun QuickFilterChips(
     withoutRegisteredAgentSelected: Boolean,
     withNotesOnlySelected: Boolean,
     euNationalSelected: Boolean,
+    offeredNoFeedbackSelected: Boolean,
     footFilterOption: FootFilterOption,
     onFreeAgentsClick: () -> Unit,
     onContractExpiringClick: () -> Unit,
@@ -854,6 +857,7 @@ private fun QuickFilterChips(
     onWithoutRegisteredAgentClick: () -> Unit,
     onWithNotesOnlyClick: () -> Unit,
     onEuNationalClick: () -> Unit,
+    onOfferedNoFeedbackClick: () -> Unit,
     onFootFilterClick: (FootFilterOption) -> Unit
 ) {
     LazyRow(
@@ -908,6 +912,13 @@ private fun QuickFilterChips(
                 label = stringResource(R.string.players_filter_eu_national),
                 isSelected = euNationalSelected,
                 onClick = onEuNationalClick
+            )
+        }
+        item(key = "offered_no_feedback") {
+            QuickFilterChip(
+                label = stringResource(R.string.players_filter_offered_no_feedback),
+                isSelected = offeredNoFeedbackSelected,
+                onClick = onOfferedNoFeedbackClick
             )
         }
         item(key = "with_notes") {

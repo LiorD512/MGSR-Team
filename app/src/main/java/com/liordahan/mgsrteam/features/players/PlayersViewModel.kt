@@ -22,6 +22,7 @@ import com.liordahan.mgsrteam.features.players.models.isFreeAgent
 import com.liordahan.mgsrteam.utils.EuCountries
 import com.liordahan.mgsrteam.features.players.models.Position
 import com.liordahan.mgsrteam.features.players.playerinfo.documents.PlayerDocument
+import com.liordahan.mgsrteam.features.players.playerinfo.matchingrequests.PlayerOffer
 import com.liordahan.mgsrteam.features.players.sort.SortOption
 import com.google.firebase.firestore.ListenerRegistration
 import com.liordahan.mgsrteam.firebase.FirebaseHandler
@@ -73,6 +74,8 @@ data class PlayersUiState(
     val quickFilterLoanPlayersOnly: Boolean = false,
     val quickFilterWithoutRegisteredAgent: Boolean = false,
     val quickFilterEuNational: Boolean = false,
+    val quickFilterOfferedNoFeedback: Boolean = false,
+    val offeredNoFeedbackTmProfiles: Set<String> = emptySet(),
     val footFilterOption: FootFilterOption = FootFilterOption.NONE,
     val currentUserName: String? = null
 )
@@ -90,6 +93,7 @@ abstract class IPlayersViewModel : ViewModel() {
     abstract fun toggleQuickFilterLoanPlayersOnly()
     abstract fun toggleQuickFilterWithoutRegisteredAgent()
     abstract fun toggleQuickFilterEuNational()
+    abstract fun toggleQuickFilterOfferedNoFeedback()
     /** Apply "My Players Only" filter only when first landing from dashboard. Never re-apply on back. */
     abstract fun applyInitialMyPlayersOnlyIfNeeded(initialMyPlayersOnly: Boolean)
     abstract fun toggleQuickFilterWithNotesOnly()
@@ -121,15 +125,26 @@ class PlayersViewModel(
     private val _searchQuery = MutableStateFlow("")
     private val _mandateExpiryByPlayer = MutableStateFlow<Map<String, Long>>(emptyMap())
     private val _quickFilterEuNational = MutableStateFlow(false)
+    private val _quickFilterOfferedNoFeedback = MutableStateFlow(false)
+    private val _offeredNoFeedbackTmProfiles = MutableStateFlow<Set<String>>(emptySet())
 
     @OptIn(kotlinx.coroutines.FlowPreview::class)
     override val playersFlow: StateFlow<PlayersUiState> = combine(
         _inputState,
         _searchQuery.debounce(300L),
         _mandateExpiryByPlayer,
-        _quickFilterEuNational
-    ) { state, debouncedQuery, mandateMap, euNational ->
-        computeUiState(state.copy(quickFilterEuNational = euNational), debouncedQuery, mandateMap)
+        _quickFilterEuNational,
+        combine(_quickFilterOfferedNoFeedback, _offeredNoFeedbackTmProfiles) { a, b -> a to b }
+    ) { state, debouncedQuery, mandateMap, euNational, (offeredNoFb, offeredNoFbProfiles) ->
+        computeUiState(
+            state.copy(
+                quickFilterEuNational = euNational,
+                quickFilterOfferedNoFeedback = offeredNoFb,
+                offeredNoFeedbackTmProfiles = offeredNoFbProfiles
+            ),
+            debouncedQuery,
+            mandateMap
+        )
     }
         .flowOn(Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.Eagerly, PlayersUiState(showPageLoader = true))
@@ -141,6 +156,7 @@ class PlayersViewModel(
         getAllPlayers()
         loadAllAccounts()
         loadMandateDocuments()
+        loadOfferedNoFeedbackProfiles()
 
         viewModelScope.launch(Dispatchers.IO) {
             val name = getCurrentUserName()
@@ -157,6 +173,7 @@ class PlayersViewModel(
                     getAllPlayers()
                     loadAllAccounts()
                     loadMandateDocuments()
+                    loadOfferedNoFeedbackProfiles()
                 }
         }
 
@@ -194,6 +211,7 @@ class PlayersViewModel(
             ?.filterPlayersByLoanPlayers(state.quickFilterLoanPlayersOnly)
             ?.filterPlayersByWithoutRegisteredAgent(state.quickFilterWithoutRegisteredAgent)
             ?.filterPlayersByEuNational(state.quickFilterEuNational)
+            ?.filterPlayersByOfferedNoFeedback(state.quickFilterOfferedNoFeedback, state.offeredNoFeedbackTmProfiles)
             ?.filterPlayersByFoot(state.footFilterOption)
             ?.filterByNotes(state.isWithNotesChecked)
             ?.filterPlayersByNameOrByNote(query)
@@ -283,6 +301,7 @@ class PlayersViewModel(
     override fun removeAllFilters() {
         updateSearchQuery("")
         _quickFilterEuNational.value = false
+        _quickFilterOfferedNoFeedback.value = false
         removeAllFiltersUseCase()
     }
 
@@ -305,6 +324,7 @@ class PlayersViewModel(
     override fun toggleQuickFilterLoanPlayersOnly() = quickFilterUseCase.toggleLoanPlayersOnly()
     override fun toggleQuickFilterWithoutRegisteredAgent() = quickFilterUseCase.toggleWithoutRegisteredAgent()
     override fun toggleQuickFilterEuNational() { _quickFilterEuNational.value = !_quickFilterEuNational.value }
+    override fun toggleQuickFilterOfferedNoFeedback() { _quickFilterOfferedNoFeedback.value = !_quickFilterOfferedNoFeedback.value }
     override fun toggleQuickFilterWithNotesOnly() = quickFilterUseCase.toggleWithNotesOnly()
     override fun setFootFilterOption(option: FootFilterOption) = setFootFilterOptionUseCase(option)
 
@@ -444,6 +464,11 @@ class PlayersViewModel(
         else this?.filter { EuCountries.isEuNational(it.nationality) }
     }
 
+    private fun List<Player>?.filterPlayersByOfferedNoFeedback(enabled: Boolean, profiles: Set<String>): List<Player>? {
+        return if (!enabled) this
+        else this?.filter { it.tmProfile != null && it.tmProfile in profiles }
+    }
+
     private fun List<Player>?.filterPlayersByFoot(footFilterOption: FootFilterOption): List<Player>? {
         return when (footFilterOption) {
             FootFilterOption.NONE -> this
@@ -541,6 +566,25 @@ class PlayersViewModel(
                         .groupBy { it.playerTmProfile!! }
                         .mapValues { (_, list) -> list.maxOf { it.expiresAt!! } }
                     _mandateExpiryByPlayer.value = map
+                }
+            }
+        listenerRegistrations.add(reg)
+    }
+
+    private fun loadOfferedNoFeedbackProfiles() {
+        val reg = firebaseHandler.firebaseStore.collection(firebaseHandler.playerOffersTable)
+            .addSnapshotListener { snapshot, _ ->
+                if (snapshot == null) return@addSnapshotListener
+                val offers = snapshot.toObjects(PlayerOffer::class.java)
+                viewModelScope.launch(Dispatchers.Default) {
+                    // Group by player; keep only those where ALL offers have no feedback
+                    val byPlayer = offers.groupBy { it.playerTmProfile ?: "" }
+                    val noFeedbackProfiles = byPlayer
+                        .filter { (profile, playerOffers) ->
+                            profile.isNotBlank() && playerOffers.all { it.clubFeedback.isNullOrBlank() }
+                        }
+                        .keys
+                    _offeredNoFeedbackTmProfiles.value = noFeedbackProfiles
                 }
             }
         listenerRegistrations.add(reg)

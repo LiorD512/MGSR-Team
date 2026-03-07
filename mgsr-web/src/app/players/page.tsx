@@ -53,6 +53,7 @@ interface PlayersCache {
   withNotes: boolean;
   footFilter: 'left' | 'right' | null;
   euNationalOnly: boolean;
+  offeredNoFeedback: boolean;
 }
 
 const POSITION_GROUPS = ['GK', 'DEF', 'MID', 'FWD'] as const;
@@ -116,6 +117,8 @@ export default function PlayersPage() {
   const [withNotes, setWithNotes] = useState(cached?.withNotes ?? false);
   const [footFilter, setFootFilter] = useState<'left' | 'right' | null>(cached?.footFilter ?? null);
   const [euNationalOnly, setEuNationalOnly] = useState(cached?.euNationalOnly ?? false);
+  const [offeredNoFeedback, setOfferedNoFeedback] = useState(cached?.offeredNoFeedback ?? false);
+  const [offeredNoFeedbackProfiles, setOfferedNoFeedbackProfiles] = useState<Set<string>>(new Set());
   const [currentAccountName, setCurrentAccountName] = useState<string | null>(null);
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
 
@@ -167,6 +170,29 @@ export default function PlayersPage() {
   }, []);
 
   useEffect(() => {
+    const unsub = onSnapshot(collection(db, 'PlayerOffers'), (snap) => {
+      const byPlayer = new Map<string, boolean>();
+      snap.docs.forEach((doc) => {
+        const d = doc.data();
+        const profile = d.playerTmProfile as string | undefined;
+        if (!profile) return;
+        const hasFeedback = !!(d.clubFeedback as string | undefined)?.trim();
+        if (hasFeedback) {
+          byPlayer.set(profile, true);
+        } else if (!byPlayer.has(profile)) {
+          byPlayer.set(profile, false);
+        }
+      });
+      const profiles = new Set<string>();
+      byPlayer.forEach((hasAnyFeedback, profile) => {
+        if (!hasAnyFeedback) profiles.add(profile);
+      });
+      setOfferedNoFeedbackProfiles(profiles);
+    });
+    return () => unsub();
+  }, []);
+
+  useEffect(() => {
     setScreenCache<PlayersCache>('players', {
       players,
       search,
@@ -180,8 +206,9 @@ export default function PlayersPage() {
       withNotes,
       footFilter,
       euNationalOnly,
+      offeredNoFeedback,
     });
-  }, [players, search, positionFilter, freeAgents, contractExpiring, withMandate, myPlayersOnly, loanPlayersOnly, withoutRegisteredAgent, withNotes, footFilter, euNationalOnly]);
+  }, [players, search, positionFilter, freeAgents, contractExpiring, withMandate, myPlayersOnly, loanPlayersOnly, withoutRegisteredAgent, withNotes, footFilter, euNationalOnly, offeredNoFeedback]);
 
   const filtered = useMemo(() => {
     if (platform === 'youth') {
@@ -304,6 +331,11 @@ export default function PlayersPage() {
       result = result.filter((p) => p.nationality ? isEuNational(p.nationality, euCountries) : false);
     }
 
+    // Offered · No Feedback
+    if (offeredNoFeedback) {
+      result = result.filter((p) => p.tmProfile && offeredNoFeedbackProfiles.has(p.tmProfile));
+    }
+
     return result;
   }, [
     players,
@@ -321,6 +353,8 @@ export default function PlayersPage() {
     withNotes,
     footFilter,
     euNationalOnly,
+    offeredNoFeedback,
+    offeredNoFeedbackProfiles,
     euCountries,
     currentAccountName,
   ]);
@@ -336,6 +370,7 @@ export default function PlayersPage() {
         withoutRegisteredAgent ||
         withNotes ||
         euNationalOnly ||
+        offeredNoFeedback ||
         !!footFilter));
 
   const clearFilters = useCallback(() => {
@@ -349,6 +384,7 @@ export default function PlayersPage() {
     setWithNotes(false);
     setFootFilter(null);
     setEuNationalOnly(false);
+    setOfferedNoFeedback(false);
   }, []);
 
   const displayList = filtered;
@@ -614,6 +650,16 @@ export default function PlayersPage() {
             >
               🇪🇺 {t('players_filter_eu_national')}
             </button>
+            <button
+              onClick={() => setOfferedNoFeedback((v) => !v)}
+              className={`shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 ${
+                offeredNoFeedback
+                  ? 'bg-mgsr-teal text-mgsr-dark shadow-sm shadow-mgsr-teal/25'
+                  : 'bg-mgsr-card border border-mgsr-border text-mgsr-muted hover:text-mgsr-text hover:border-mgsr-teal/40'
+              }`}
+            >
+              {t('players_filter_offered_no_feedback')}
+            </button>
           </div>
         </div>
         )}
@@ -633,6 +679,7 @@ export default function PlayersPage() {
               { key: 'footLeft', active: footFilter === 'left', toggle: () => setFootFilter(v => v === 'left' ? null : 'left'), label: t('players_filter_foot_left') },
               { key: 'footRight', active: footFilter === 'right', toggle: () => setFootFilter(v => v === 'right' ? null : 'right'), label: t('players_filter_foot_right') },
               { key: 'euNational', active: euNationalOnly, toggle: () => setEuNationalOnly(v => !v), label: `🇪🇺 ${t('players_filter_eu_national')}` },
+              { key: 'offeredNoFeedback', active: offeredNoFeedback, toggle: () => setOfferedNoFeedback(v => !v), label: t('players_filter_offered_no_feedback') },
             ].map(f => (
               <button
                 key={f.key}
