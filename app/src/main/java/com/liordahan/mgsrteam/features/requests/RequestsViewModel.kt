@@ -56,7 +56,8 @@ abstract class IRequestsViewModel : ViewModel() {
         dominateFoot: String?,
         salaryRange: String?,
         transferFee: String?,
-        notes: String?
+        notes: String?,
+        euOnly: Boolean = false
     )
     abstract fun updateRequest(
         existingRequest: Request,
@@ -71,7 +72,8 @@ abstract class IRequestsViewModel : ViewModel() {
         dominateFoot: String?,
         salaryRange: String?,
         transferFee: String?,
-        notes: String?
+        notes: String?,
+        euOnly: Boolean = false
     )
     abstract fun deleteRequest(request: Request)
     abstract fun clearAddRequestMessage()
@@ -163,7 +165,8 @@ class RequestsViewModel(
         dominateFoot: String?,
         salaryRange: String?,
         transferFee: String?,
-        notes: String?
+        notes: String?,
+        euOnly: Boolean
     ) {
         viewModelScope.launch {
             _addRequestError.value = null
@@ -185,7 +188,8 @@ class RequestsViewModel(
                 salaryRange = salaryRange?.takeIf { it.isNotBlank() },
                 transferFee = transferFee?.takeIf { it.isNotBlank() },
                 createdAt = System.currentTimeMillis(),
-                status = "pending"
+                status = "pending",
+                euOnly = euOnly
             )
             requestsRepository.addRequest(request).fold(
                 onSuccess = { _addRequestMessage.value = "Request added" },
@@ -207,7 +211,8 @@ class RequestsViewModel(
         dominateFoot: String?,
         salaryRange: String?,
         transferFee: String?,
-        notes: String?
+        notes: String?,
+        euOnly: Boolean
     ) {
         viewModelScope.launch {
             _addRequestError.value = null
@@ -227,7 +232,8 @@ class RequestsViewModel(
                 ageDoesntMatter = ageDoesntMatter,
                 dominateFoot = dominateFoot?.takeIf { it.isNotBlank() },
                 salaryRange = salaryRange?.takeIf { it.isNotBlank() },
-                transferFee = transferFee?.takeIf { it.isNotBlank() }
+                transferFee = transferFee?.takeIf { it.isNotBlank() },
+                euOnly = euOnly
             )
             requestsRepository.updateRequest(updatedRequest).fold(
                 onSuccess = { _addRequestMessage.value = "Request updated" },

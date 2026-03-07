@@ -25,7 +25,9 @@ data class Request(
     val transferFee: String? = null, // "Free/Free loan", "<200", "300-600", "700-900", "1m+"
     val dominateFoot: String? = null, // "left", "right", "any"
     val createdAt: Long? = null,
-    val status: String? = "pending" // pending | fulfilled | cancelled
+    val status: String? = "pending", // pending | fulfilled | cancelled
+    val euOnly: Boolean? = false,
+    val createdByAgent: String? = null
 )
 
 object DominateFootOptions {

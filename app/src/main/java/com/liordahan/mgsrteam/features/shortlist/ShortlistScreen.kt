@@ -109,6 +109,10 @@ import com.liordahan.mgsrteam.ui.utils.clickWithNoRipple
 import com.liordahan.mgsrteam.ui.utils.regularTextStyle
 import com.liordahan.mgsrteam.utils.extractPlayerIdFromUrl
 import com.liordahan.mgsrteam.localization.LocaleManager
+import com.liordahan.mgsrteam.firebase.FirebaseHandler
+import com.liordahan.mgsrteam.features.login.models.Account
+import com.google.firebase.auth.FirebaseAuth
+import kotlinx.coroutines.tasks.await
 import com.liordahan.mgsrteam.features.platform.Platform
 import com.liordahan.mgsrteam.features.platform.PlatformManager
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -185,6 +189,25 @@ fun ShortlistScreen(
     var expandedPlayerUrl by remember { mutableStateOf<String?>(null) }
     var teammatesCache by remember { mutableStateOf<Map<String, List<RosterTeammateMatch>>>(emptyMap()) }
     var loadingPlayerUrl by remember { mutableStateOf<String?>(null) }
+
+    // My Players filter
+    var myPlayersOnly by remember { mutableStateOf(false) }
+    var currentUserName by remember { mutableStateOf<String?>(null) }
+    val firebaseHandler: FirebaseHandler = koinInject()
+
+    LaunchedEffect(Unit) {
+        val email = FirebaseAuth.getInstance().currentUser?.email ?: return@LaunchedEffect
+        try {
+            val snapshot = firebaseHandler.firebaseStore.collection(firebaseHandler.accountsTable).get().await()
+            val accounts = snapshot.toObjects(Account::class.java)
+            currentUserName = accounts.firstOrNull { it.email?.equals(email, ignoreCase = true) == true }?.name
+        } catch (_: Exception) { }
+    }
+
+    val filteredEntries = remember(state.entries, myPlayersOnly, currentUserName) {
+        if (!myPlayersOnly || currentUserName.isNullOrBlank()) state.entries
+        else state.entries.filter { it.addedByAgentName.equals(currentUserName, ignoreCase = true) }
+    }
 
     val addPlayerState = addPlayerViewModel.playerSearchStateFlow.collectAsState()
     val selectedPlayer by addPlayerViewModel.selectedPlayerFlow.collectAsState()
@@ -286,6 +309,30 @@ fun ShortlistScreen(
                 thisWeek = thisWeekCount
             )
 
+            // My Players filter chip (MEN only)
+            if (currentPlatform == Platform.MEN) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    val bgColor = if (myPlayersOnly) PlatformColors.palette.accent else Color.Transparent
+                    val textColor = if (myPlayersOnly) PlatformColors.palette.background else PlatformColors.palette.textSecondary
+                    val borderColor = if (myPlayersOnly) PlatformColors.palette.accent else PlatformColors.palette.cardBorder
+                    Text(
+                        text = stringResource(R.string.shortlist_filter_my_players),
+                        style = boldTextStyle(textColor, 11.sp),
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(bgColor)
+                            .border(1.dp, borderColor, RoundedCornerShape(20.dp))
+                            .clickWithNoRipple { myPlayersOnly = !myPlayersOnly }
+                            .padding(horizontal = 14.dp, vertical = 5.dp)
+                    )
+                }
+            }
+
             when {
                 state.isLoading -> {
                     SkeletonPlayerCardList(modifier = Modifier.fillMaxSize())
@@ -302,7 +349,7 @@ fun ShortlistScreen(
                         contentPadding = PaddingValues(16.dp, 4.dp, 16.dp, 100.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        items(state.entries, key = { it.tmProfileUrl }) { entry ->
+                        items(filteredEntries, key = { it.tmProfileUrl }) { entry ->
                             val playerUrl = entry.tmProfileUrl
                             val isExpanded = playerUrl == expandedPlayerUrl
                             ShortlistCard(

@@ -110,6 +110,7 @@ import com.liordahan.mgsrteam.features.add.SnakeBarMessage
 import com.liordahan.mgsrteam.features.add.showSnakeBarMessage
 import com.liordahan.mgsrteam.features.players.models.Player
 import com.liordahan.mgsrteam.features.players.models.isFreeAgent
+import com.liordahan.mgsrteam.utils.EuCountries
 import com.liordahan.mgsrteam.features.players.sort.SortOption
 import com.liordahan.mgsrteam.features.players.ui.RosterEmptyState
 import com.liordahan.mgsrteam.navigation.Screens
@@ -264,6 +265,7 @@ fun PlayersScreen(
                 loanPlayersOnlySelected = playersState.quickFilterLoanPlayersOnly,
                 withoutRegisteredAgentSelected = playersState.quickFilterWithoutRegisteredAgent,
                 withNotesOnlySelected = playersState.isWithNotesChecked,
+                euNationalSelected = playersState.quickFilterEuNational,
                 footFilterOption = playersState.footFilterOption,
                 onFreeAgentsClick = { viewModel.toggleQuickFilterFreeAgents() },
                 onContractExpiringClick = { viewModel.toggleQuickFilterContractExpiring() },
@@ -272,6 +274,7 @@ fun PlayersScreen(
                 onLoanPlayersOnlyClick = { viewModel.toggleQuickFilterLoanPlayersOnly() },
                 onWithoutRegisteredAgentClick = { viewModel.toggleQuickFilterWithoutRegisteredAgent() },
                 onWithNotesOnlyClick = { viewModel.toggleQuickFilterWithNotesOnly() },
+                onEuNationalClick = { viewModel.toggleQuickFilterEuNational() },
                 onFootFilterClick = { viewModel.setFootFilterOption(it) }
             )
             }
@@ -841,6 +844,7 @@ private fun QuickFilterChips(
     loanPlayersOnlySelected: Boolean,
     withoutRegisteredAgentSelected: Boolean,
     withNotesOnlySelected: Boolean,
+    euNationalSelected: Boolean,
     footFilterOption: FootFilterOption,
     onFreeAgentsClick: () -> Unit,
     onContractExpiringClick: () -> Unit,
@@ -849,6 +853,7 @@ private fun QuickFilterChips(
     onLoanPlayersOnlyClick: () -> Unit,
     onWithoutRegisteredAgentClick: () -> Unit,
     onWithNotesOnlyClick: () -> Unit,
+    onEuNationalClick: () -> Unit,
     onFootFilterClick: (FootFilterOption) -> Unit
 ) {
     LazyRow(
@@ -896,6 +901,13 @@ private fun QuickFilterChips(
                 label = stringResource(R.string.players_filter_without_registered_agent),
                 isSelected = withoutRegisteredAgentSelected,
                 onClick = onWithoutRegisteredAgentClick
+            )
+        }
+        item(key = "eu_national") {
+            QuickFilterChip(
+                label = stringResource(R.string.players_filter_eu_national),
+                isSelected = euNationalSelected,
+                onClick = onEuNationalClick
             )
         }
         item(key = "with_notes") {
@@ -1496,6 +1508,17 @@ private fun PlayerCardVariantA(
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
+
+                        if (platform == Platform.MEN && EuCountries.isEuNational(player.nationality)) {
+                            Text(
+                                text = stringResource(R.string.eu_nat_badge),
+                                style = boldTextStyle(Color.White, 8.sp),
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .background(Color(0xFF1565C0))
+                                    .padding(horizontal = 4.dp, vertical = 1.dp)
+                            )
+                        }
                     }
 
                     // Club

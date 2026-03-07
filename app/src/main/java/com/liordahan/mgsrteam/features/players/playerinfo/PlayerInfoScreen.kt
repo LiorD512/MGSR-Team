@@ -171,6 +171,7 @@ import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.koinInject
 import com.liordahan.mgsrteam.features.platform.Platform
 import com.liordahan.mgsrteam.features.platform.PlatformManager
+import com.liordahan.mgsrteam.utils.EuCountries
 import com.liordahan.mgsrteam.ui.components.WomenGlowPhotoRing
 import com.liordahan.mgsrteam.ui.components.WomenSectionHeader
 import com.liordahan.mgsrteam.ui.theme.PlatformWomenAccent
@@ -708,6 +709,22 @@ fun PlayerInfoScreen(
                         playerToPresent?.nationalityFlag,
                         darkTheme = true
                     )
+
+                    if (currentPlatform == Platform.MEN && EuCountries.isEuNational(playerToPresent?.nationality)) {
+                        Row(
+                            modifier = Modifier.padding(start = 28.dp, top = 2.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = stringResource(R.string.eu_nat_badge),
+                                style = boldTextStyle(Color.White, 9.sp),
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .background(Color(0xFF1565C0))
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
 
                     HorizontalDivider(
                         color = PlatformColors.palette.cardBorder,

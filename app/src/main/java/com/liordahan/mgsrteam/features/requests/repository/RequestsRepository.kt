@@ -110,7 +110,9 @@ class RequestsRepository(
             "transferFee" to (request.transferFee ?: ""),
             "dominateFoot" to (request.dominateFoot ?: ""),
             "createdAt" to (request.createdAt ?: System.currentTimeMillis()),
-            "status" to (request.status ?: "pending")
+            "status" to (request.status ?: "pending"),
+            "euOnly" to (request.euOnly ?: false),
+            "createdByAgent" to (request.createdByAgent ?: agentName ?: "")
         )
         firebaseHandler.firebaseStore
             .collection(firebaseHandler.clubRequestsTable)
@@ -139,7 +141,9 @@ class RequestsRepository(
             "salaryRange" to (request.salaryRange ?: ""),
             "transferFee" to (request.transferFee ?: ""),
             "dominateFoot" to (request.dominateFoot ?: ""),
-            "status" to (request.status ?: "pending")
+            "status" to (request.status ?: "pending"),
+            "euOnly" to (request.euOnly ?: false),
+            "createdByAgent" to (request.createdByAgent ?: "")
         )
         firebaseHandler.firebaseStore
             .collection(firebaseHandler.clubRequestsTable)

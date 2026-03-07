@@ -1188,4 +1188,16 @@
     <string name="youth_detail_phone">טלפון</string>
     <string name="youth_detail_email">אימייל</string>
     <string name="youth_hebrew_name">שם בעברית</string>
+
+    <!-- EU National -->
+    <string name="eu_nat_badge">EU</string>
+    <string name="players_filter_eu_national">אזרחות EU</string>
+
+    <!-- Request: EU Only + Agent + Timestamp -->
+    <string name="requests_eu_only">EU בלבד</string>
+    <string name="requests_eu_only_badge">EU בלבד</string>
+    <string name="requests_created_by">ע״י %1$s</string>
+
+    <!-- Shortlist: My Players filter -->
+    <string name="shortlist_filter_my_players">השחקנים שלי</string>
 </resources>

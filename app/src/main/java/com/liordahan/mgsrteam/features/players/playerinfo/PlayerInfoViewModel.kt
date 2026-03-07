@@ -374,25 +374,35 @@ class PlayerInfoViewModel(
 
     override fun updatePlayerNumber(number: String) {
         _playerInfoFlow.update {
-            it?.copy(playerPhoneNumber = number, playerAdditionalInfoModel = null)
+            it?.copy(
+                playerPhoneNumber = number,
+                playerAdditionalInfoModel = it?.playerAdditionalInfoModel?.copy(playerNumber = number.takeIf { n -> n.isNotBlank() })
+            )
         }
 
         viewModelScope.launch {
-            getPlayerDocRef()?.update(
-                mapOf("playerPhoneNumber" to number, "playerAdditionalInfoModel" to null)
-            )?.await()
+            val updates = mutableMapOf<String, Any?>("playerPhoneNumber" to number)
+            if (_playerInfoFlow.value?.playerAdditionalInfoModel != null) {
+                updates["playerAdditionalInfoModel.playerNumber"] = number.takeIf { it.isNotBlank() }
+            }
+            getPlayerDocRef()?.update(updates)?.await()
         }
     }
 
     override fun updateAgentNumber(number: String) {
         _playerInfoFlow.update {
-            it?.copy(agentPhoneNumber = number, playerAdditionalInfoModel = null)
+            it?.copy(
+                agentPhoneNumber = number,
+                playerAdditionalInfoModel = it?.playerAdditionalInfoModel?.copy(agentNumber = number.takeIf { n -> n.isNotBlank() })
+            )
         }
 
         viewModelScope.launch {
-            getPlayerDocRef()?.update(
-                mapOf("agentPhoneNumber" to number, "playerAdditionalInfoModel" to null)
-            )?.await()
+            val updates = mutableMapOf<String, Any?>("agentPhoneNumber" to number)
+            if (_playerInfoFlow.value?.playerAdditionalInfoModel != null) {
+                updates["playerAdditionalInfoModel.agentNumber"] = number.takeIf { it.isNotBlank() }
+            }
+            getPlayerDocRef()?.update(updates)?.await()
         }
     }
 

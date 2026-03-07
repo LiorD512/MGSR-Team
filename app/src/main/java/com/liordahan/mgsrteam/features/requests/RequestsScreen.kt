@@ -436,7 +436,7 @@ fun RequestsScreen(
                         showAddSheet = false
                         requestToEdit = null
                     },
-                    onSave = { club, position, contactId, contactName, contactPhone, minAge, maxAge, ageDoesntMatter, dominateFoot, salaryRange, transferFee, notes ->
+                    onSave = { club, position, contactId, contactName, contactPhone, minAge, maxAge, ageDoesntMatter, dominateFoot, salaryRange, transferFee, notes, euOnly ->
                         val existing = requestToEdit
                         if (existing != null) {
                             viewModel.updateRequest(
@@ -452,7 +452,8 @@ fun RequestsScreen(
                                 dominateFoot = dominateFoot,
                                 salaryRange = salaryRange,
                                 transferFee = transferFee,
-                                notes = notes
+                                notes = notes,
+                                euOnly = euOnly
                             )
                         } else {
                             viewModel.addRequest(
@@ -467,7 +468,8 @@ fun RequestsScreen(
                                 dominateFoot = dominateFoot,
                                 salaryRange = salaryRange,
                                 transferFee = transferFee,
-                                notes = notes
+                                notes = notes,
+                                euOnly = euOnly
                             )
                         }
                         showAddSheet = false
@@ -844,12 +846,28 @@ private fun RequestCard(
                         viaShort,
                         style = regularTextStyle(PlatformColors.palette.textSecondary, 10.sp)
                     )
-                    if (ageLabel != null || salaryLabel != null || feeLabel != null || footLabel != null || notesText != null) {
+                    if (!request.createdByAgent.isNullOrBlank()) {
+                        Text(
+                            stringResource(R.string.requests_created_by, request.createdByAgent),
+                            style = regularTextStyle(PlatformColors.palette.textSecondary, 9.sp)
+                        )
+                    }
+                    if (request.euOnly == true || ageLabel != null || salaryLabel != null || feeLabel != null || footLabel != null || notesText != null) {
                         FlowRow(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(6.dp),
                             verticalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
+                            if (request.euOnly == true) {
+                                Text(
+                                    text = stringResource(R.string.requests_eu_only_badge),
+                                    style = boldTextStyle(Color.White, 9.sp),
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(6.dp))
+                                        .background(Color(0xFF1565C0))
+                                        .padding(horizontal = 6.dp, vertical = 3.dp)
+                                )
+                            }
                             ageLabel?.let { RequestChip(text = it) }
                             salaryLabel?.let { RequestChip(text = it) }
                             feeLabel?.let { RequestChip(text = it) }
@@ -1928,7 +1946,8 @@ private fun AddRequestBottomSheet(
         dominateFoot: String?,
         salaryRange: String?,
         transferFee: String?,
-        notes: String?
+        notes: String?,
+        euOnly: Boolean
     ) -> Unit
 ) {
     val clubSearch: ClubSearch = koinInject()
@@ -1998,6 +2017,7 @@ private fun AddRequestBottomSheet(
     }
     var selectedSalaryRange by remember(initialRequest) { mutableStateOf<String?>(initialRequest?.salaryRange) }
     var selectedTransferFee by remember(initialRequest) { mutableStateOf<String?>(initialRequest?.transferFee) }
+    var euOnly by remember(initialRequest) { mutableStateOf(initialRequest?.euOnly ?: false) }
     var notes by remember(initialRequest) { mutableStateOf(initialRequest?.notes ?: "") }
 
     var contactInitializedFromRequest by remember { mutableStateOf(false) }
@@ -2185,7 +2205,8 @@ private fun AddRequestBottomSheet(
                                                             data.dominateFoot?.takeIf { it != DominateFootOptions.ANY },
                                                             data.salaryRange,
                                                             data.transferFee,
-                                                            data.notes
+                                                            data.notes,
+                                                            false
                                                         )
                                                     }
                                                 },
@@ -2278,12 +2299,14 @@ private fun AddRequestBottomSheet(
                                 ageDoesntMatter = ageDoesntMatter,
                                 minAge = minAge,
                                 maxAge = maxAge,
+                                euOnly = euOnly,
                                 selectedDominateFoot = selectedDominateFoot,
                                 selectedSalaryRange = selectedSalaryRange,
                                 selectedTransferFee = selectedTransferFee,
                                 onAgeDoesntMatterChange = { ageDoesntMatter = it },
                                 onMinAgeChange = { minAge = it },
                                 onMaxAgeChange = { maxAge = it },
+                                onEuOnlyChange = { euOnly = it },
                                 onDominateFootSelect = { selectedDominateFoot = it },
                                 onSalaryRangeSelect = { selectedSalaryRange = it },
                                 onTransferFeeSelect = { selectedTransferFee = it }
@@ -2308,7 +2331,8 @@ private fun AddRequestBottomSheet(
                                             selectedDominateFoot?.takeIf { it != DominateFootOptions.ANY },
                                             selectedSalaryRange,
                                             selectedTransferFee,
-                                            notes.takeIf { it.isNotBlank() }
+                                            notes.takeIf { it.isNotBlank() },
+                                            euOnly
                                         )
                                     }
                                 }
@@ -2569,12 +2593,14 @@ private fun AddRequestStep3RequirementsContent(
     ageDoesntMatter: Boolean,
     minAge: String,
     maxAge: String,
+    euOnly: Boolean,
     selectedDominateFoot: String?,
     selectedSalaryRange: String?,
     selectedTransferFee: String?,
     onAgeDoesntMatterChange: (Boolean) -> Unit,
     onMinAgeChange: (String) -> Unit,
     onMaxAgeChange: (String) -> Unit,
+    onEuOnlyChange: (Boolean) -> Unit,
     onDominateFootSelect: (String?) -> Unit,
     onSalaryRangeSelect: (String?) -> Unit,
     onTransferFeeSelect: (String?) -> Unit
@@ -2638,6 +2664,22 @@ private fun AddRequestStep3RequirementsContent(
                     )
                 )
             }
+        }
+        Spacer(Modifier.height(8.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Checkbox(
+                checked = euOnly,
+                onCheckedChange = onEuOnlyChange,
+                colors = CheckboxDefaults.colors(checkedColor = PlatformColors.palette.accent)
+            )
+            Text(
+                stringResource(R.string.requests_eu_only),
+                style = regularTextStyle(PlatformColors.palette.textPrimary, 14.sp),
+                modifier = Modifier.clickWithNoRipple { onEuOnlyChange(!euOnly) }
+            )
         }
         Spacer(Modifier.height(20.dp))
         Text(

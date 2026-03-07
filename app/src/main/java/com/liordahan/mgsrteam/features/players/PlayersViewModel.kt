@@ -19,6 +19,7 @@ import com.liordahan.mgsrteam.features.players.filters.usecases.ISetPositionFilt
 import com.liordahan.mgsrteam.features.players.filters.usecases.ISetSortOptionUseCase
 import com.liordahan.mgsrteam.features.players.models.Player
 import com.liordahan.mgsrteam.features.players.models.isFreeAgent
+import com.liordahan.mgsrteam.utils.EuCountries
 import com.liordahan.mgsrteam.features.players.models.Position
 import com.liordahan.mgsrteam.features.players.playerinfo.documents.PlayerDocument
 import com.liordahan.mgsrteam.features.players.sort.SortOption
@@ -71,6 +72,7 @@ data class PlayersUiState(
     val quickFilterMyPlayersOnly: Boolean = false,
     val quickFilterLoanPlayersOnly: Boolean = false,
     val quickFilterWithoutRegisteredAgent: Boolean = false,
+    val quickFilterEuNational: Boolean = false,
     val footFilterOption: FootFilterOption = FootFilterOption.NONE,
     val currentUserName: String? = null
 )
@@ -87,6 +89,7 @@ abstract class IPlayersViewModel : ViewModel() {
     abstract fun toggleQuickFilterMyPlayersOnly()
     abstract fun toggleQuickFilterLoanPlayersOnly()
     abstract fun toggleQuickFilterWithoutRegisteredAgent()
+    abstract fun toggleQuickFilterEuNational()
     /** Apply "My Players Only" filter only when first landing from dashboard. Never re-apply on back. */
     abstract fun applyInitialMyPlayersOnlyIfNeeded(initialMyPlayersOnly: Boolean)
     abstract fun toggleQuickFilterWithNotesOnly()
@@ -117,14 +120,16 @@ class PlayersViewModel(
     private val _inputState = MutableStateFlow(PlayersUiState())
     private val _searchQuery = MutableStateFlow("")
     private val _mandateExpiryByPlayer = MutableStateFlow<Map<String, Long>>(emptyMap())
+    private val _quickFilterEuNational = MutableStateFlow(false)
 
     @OptIn(kotlinx.coroutines.FlowPreview::class)
     override val playersFlow: StateFlow<PlayersUiState> = combine(
         _inputState,
         _searchQuery.debounce(300L),
-        _mandateExpiryByPlayer
-    ) { state, debouncedQuery, mandateMap ->
-        computeUiState(state, debouncedQuery, mandateMap)
+        _mandateExpiryByPlayer,
+        _quickFilterEuNational
+    ) { state, debouncedQuery, mandateMap, euNational ->
+        computeUiState(state.copy(quickFilterEuNational = euNational), debouncedQuery, mandateMap)
     }
         .flowOn(Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.Eagerly, PlayersUiState(showPageLoader = true))
@@ -188,6 +193,7 @@ class PlayersViewModel(
             ?.filterPlayersByMyPlayersOnly(state.quickFilterMyPlayersOnly, state.currentUserName)
             ?.filterPlayersByLoanPlayers(state.quickFilterLoanPlayersOnly)
             ?.filterPlayersByWithoutRegisteredAgent(state.quickFilterWithoutRegisteredAgent)
+            ?.filterPlayersByEuNational(state.quickFilterEuNational)
             ?.filterPlayersByFoot(state.footFilterOption)
             ?.filterByNotes(state.isWithNotesChecked)
             ?.filterPlayersByNameOrByNote(query)
@@ -276,6 +282,7 @@ class PlayersViewModel(
 
     override fun removeAllFilters() {
         updateSearchQuery("")
+        _quickFilterEuNational.value = false
         removeAllFiltersUseCase()
     }
 
@@ -297,6 +304,7 @@ class PlayersViewModel(
     override fun toggleQuickFilterMyPlayersOnly() = quickFilterUseCase.toggleMyPlayersOnly()
     override fun toggleQuickFilterLoanPlayersOnly() = quickFilterUseCase.toggleLoanPlayersOnly()
     override fun toggleQuickFilterWithoutRegisteredAgent() = quickFilterUseCase.toggleWithoutRegisteredAgent()
+    override fun toggleQuickFilterEuNational() { _quickFilterEuNational.value = !_quickFilterEuNational.value }
     override fun toggleQuickFilterWithNotesOnly() = quickFilterUseCase.toggleWithNotesOnly()
     override fun setFootFilterOption(option: FootFilterOption) = setFootFilterOptionUseCase(option)
 
@@ -429,6 +437,11 @@ class PlayersViewModel(
             val agency = player.agency?.trim()?.lowercase()
             agency.isNullOrBlank() || noAgentValues.any { agency == it || agency.contains(it) }
         }
+    }
+
+    private fun List<Player>?.filterPlayersByEuNational(enabled: Boolean): List<Player>? {
+        return if (!enabled) this
+        else this?.filter { EuCountries.isEuNational(it.nationality) }
     }
 
     private fun List<Player>?.filterPlayersByFoot(footFilterOption: FootFilterOption): List<Player>? {

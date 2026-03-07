@@ -1198,4 +1198,16 @@
     <string name="war_room_agent_uruguay">Uruguay</string>
     <string name="war_room_agent_ecuador">Ecuador</string>
     <string name="war_room_agent_peru">Peru</string>
+
+    <!-- EU National -->
+    <string name="eu_nat_badge">EU</string>
+    <string name="players_filter_eu_national">EU National</string>
+
+    <!-- Request: EU Only + Agent + Timestamp -->
+    <string name="requests_eu_only">EU Only</string>
+    <string name="requests_eu_only_badge">EU Only</string>
+    <string name="requests_created_by">By %1$s</string>
+
+    <!-- Shortlist: My Players filter -->
+    <string name="shortlist_filter_my_players">My Players</string>
 </resources>
