@@ -402,31 +402,60 @@ export async function searchIFA(query: string): Promise<IFASearchResult[]> {
     });
   }
 
-  // ── Batch image lookup via Serper.dev image search ──
-  if (results.length > 0 && serperKey) {
-    try {
-      const playerIds = results.map((r) => r.ifaPlayerId).filter(Boolean) as string[];
-      const nameHint = results[0]?.fullNameHe || results[0]?.fullName || '';
-      const imgRes = await fetch('https://google.serper.dev/images', {
-        method: 'POST',
-        headers: { 'X-API-KEY': serperKey, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ q: `${nameHint} site:football.org.il`, gl: 'il', hl: 'he', num: 10 }),
-        signal: AbortSignal.timeout(8000),
-      });
-      if (imgRes.ok) {
-        const imgData = (await imgRes.json()) as { images?: Array<{ imageUrl?: string; link?: string }> };
-        const images = imgData.images ?? [];
-        for (const r of results) {
-          if (!r.ifaPlayerId) continue;
-          const match = images.find((img) => img.link?.includes(`player_id=${r.ifaPlayerId}`));
-          if (match?.imageUrl && match.imageUrl.includes('GetImage.ashx')) {
-            r.profileImage = match.imageUrl;
+  // ── Enrich results: fetch real IFA profiles + batch image lookup (in parallel) ──
+  if (results.length > 0) {
+    const enrichProfilesPromise = (async () => {
+      // Fetch top results' actual IFA pages to get real club/DOB/nationality/image
+      const topResults = results.slice(0, 8).filter((r) => r.ifaUrl);
+      const profiles = await Promise.allSettled(
+        topResults.map(async (r) => {
+          try {
+            return await fetchIFAProfile(r.ifaUrl!);
+          } catch {
+            return null;
+          }
+        })
+      );
+      for (let i = 0; i < topResults.length; i++) {
+        const outcome = profiles[i];
+        if (outcome.status !== 'fulfilled' || !outcome.value) continue;
+        const p = outcome.value;
+        const r = topResults[i];
+        if (p.currentClub) r.currentClub = p.currentClub;
+        if (p.dateOfBirth) r.dateOfBirth = p.dateOfBirth;
+        if (p.nationality) r.nationality = p.nationality;
+        if (p.fullNameHe) r.fullNameHe = p.fullNameHe;
+        if (p.profileImage) r.profileImage = p.profileImage;
+      }
+    })();
+
+    const batchImagePromise = (async () => {
+      if (!serperKey) return;
+      try {
+        const nameHint = results[0]?.fullNameHe || results[0]?.fullName || '';
+        const imgRes = await fetch('https://google.serper.dev/images', {
+          method: 'POST',
+          headers: { 'X-API-KEY': serperKey, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ q: `${nameHint} site:football.org.il`, gl: 'il', hl: 'he', num: 10 }),
+          signal: AbortSignal.timeout(8000),
+        });
+        if (imgRes.ok) {
+          const imgData = (await imgRes.json()) as { images?: Array<{ imageUrl?: string; link?: string }> };
+          const images = imgData.images ?? [];
+          for (const r of results) {
+            if (!r.ifaPlayerId || r.profileImage) continue;
+            const match = images.find((img) => img.link?.includes(`player_id=${r.ifaPlayerId}`));
+            if (match?.imageUrl && match.imageUrl.includes('GetImage.ashx')) {
+              r.profileImage = match.imageUrl;
+            }
           }
         }
+      } catch (err) {
+        console.warn('[IFA] Image batch lookup failed:', err);
       }
-    } catch (err) {
-      console.warn('[IFA] Image batch lookup failed:', err);
-    }
+    })();
+
+    await Promise.all([enrichProfilesPromise, batchImagePromise]);
   }
 
   return results;
