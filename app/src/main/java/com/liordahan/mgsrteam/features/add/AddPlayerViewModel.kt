@@ -156,6 +156,8 @@ abstract class IAddPlayerViewModel : ViewModel() {
     abstract fun onWomanPlayerSelected(result: SoccerDonnaSearchResult)
     /** Load a Women player by direct SoccerDonna profile URL. */
     abstract fun loadWomanPlayerByUrl(soccerDonnaUrl: String)
+    /** Load a Youth player by IFA profile URL (from shortlist → roster). */
+    abstract fun loadYouthPlayerByUrl(ifaUrl: String)
     /** Call when closing the add-player sheet so the next open doesn't use stale state. */
     abstract fun resetAfterAdd()
 
@@ -515,6 +517,74 @@ class AddPlayerViewModel(
         return emptyList()
     }
 
+    override fun loadYouthPlayerByUrl(ifaUrl: String) {
+        val url = ifaUrl.trim()
+        if (url.isBlank() || !url.contains("football.org.il")) return
+        viewModelScope.launch {
+            _playerSearchStateFlow.update { it.copy(showPlayerSelectedSearchProgress = true) }
+            try {
+                // Duplicate check by ifaUrl
+                val snapshot = firebaseHandler.firebaseStore
+                    .collection(firebaseHandler.playersTable)
+                    .whereEqualTo("ifaUrl", url)
+                    .get()
+                    .await()
+                if (snapshot.documents.isNotEmpty()) {
+                    _errorMessageFlow.emit("Player already in roster")
+                    _playerSearchStateFlow.update { it.copy(showPlayerSelectedSearchProgress = false) }
+                    return@launch
+                }
+
+                // Fetch full profile from IFA via Vercel API
+                val requestBody = org.json.JSONObject().apply {
+                    put("url", url)
+                }.toString().toRequestBody("application/json".toMediaType())
+
+                val request = okhttp3.Request.Builder()
+                    .url("${com.liordahan.mgsrteam.features.aiscout.MgsrWebApiClient.DEFAULT_BASE_URL}/api/youth-players/fetch-profile")
+                    .post(requestBody)
+                    .build()
+
+                val response = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    httpClient.newCall(request).execute()
+                }
+                val body = response.body?.string()
+                if (response.isSuccessful && body != null) {
+                    val data = org.json.JSONObject(body)
+                    val positions = mutableListOf<String>()
+                    data.optJSONArray("positions")?.let { posArr ->
+                        for (i in 0 until posArr.length()) {
+                            posArr.optString(i)?.takeIf { it.isNotBlank() }?.let { positions.add(it) }
+                        }
+                    }
+                    _youthFormState.update {
+                        YouthPlayerFormState(
+                            fullName = data.optString("fullName", ""),
+                            fullNameHe = data.optString("fullNameHe", "").takeIf { it.isNotBlank() }
+                                ?: data.optString("fullName", ""),
+                            positions = positions,
+                            currentClub = data.optString("currentClub", ""),
+                            academy = data.optString("academy", ""),
+                            dateOfBirth = data.optString("dateOfBirth", ""),
+                            ageGroup = data.optString("dateOfBirth", "").takeIf { it.isNotBlank() }
+                                ?.let { YouthPlayerFormState.computeAgeGroup(it) } ?: "",
+                            nationality = data.optString("nationality", ""),
+                            profileImage = data.optString("profileImage", ""),
+                            ifaUrl = data.optString("ifaUrl", "").takeIf { it.isNotBlank() } ?: url
+                        )
+                    }
+                } else {
+                    // Fallback: populate form with just the URL so user can fill manually
+                    _youthFormState.update { YouthPlayerFormState(ifaUrl = url) }
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("AddPlayerVM", "Youth IFA profile load error", e)
+                _youthFormState.update { YouthPlayerFormState(ifaUrl = url) }
+            }
+            _playerSearchStateFlow.update { it.copy(showPlayerSelectedSearchProgress = false) }
+        }
+    }
+
     // ── Women form-state helpers ──
 
     override fun updateWomanForm(updater: (WomanPlayerFormState) -> WomanPlayerFormState) {
@@ -817,6 +887,11 @@ class AddPlayerViewModel(
         // Route SoccerDonna URLs to the Women-specific loader
         if (url.contains("soccerdonna")) {
             loadWomanPlayerByUrl(url)
+            return
+        }
+        // Route IFA URLs to the Youth-specific loader
+        if (url.contains("football.org.il")) {
+            loadYouthPlayerByUrl(url)
             return
         }
         viewModelScope.launch {

@@ -388,8 +388,8 @@ fun ShortlistScreen(
                                     viewModel.deleteNote(entry.tmProfileUrl, noteIndex)
                                 },
                                 onAddToAgency = {
-                                    if (isWomen) {
-                                        // Women: navigate to full AddPlayerScreen with pre-filled data
+                                    if (isWomen || currentPlatform == Platform.YOUTH) {
+                                        // Women/Youth: navigate to full AddPlayerScreen with pre-filled data
                                         navController.navigate(
                                             Screens.addPlayerWithTmProfileRoute(Uri.encode(entry.tmProfileUrl))
                                         )
