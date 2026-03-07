@@ -23,5 +23,6 @@ data class PlayerOffer(
     val clubFeedback: String? = null,
     val markedByAgentName: String? = null,
     val requestStatus: String? = null,
-    val requestSnapshot: String? = null
+    val requestSnapshot: String? = null,
+    val historySummary: String? = null
 )

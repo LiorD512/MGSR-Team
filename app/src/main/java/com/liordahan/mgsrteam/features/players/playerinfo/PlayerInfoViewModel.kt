@@ -93,6 +93,7 @@ abstract class IPlayerInfoViewModel : ViewModel() {
     abstract fun addPlayerTask(agentId: String, agentName: String, title: String, dueDate: Long, priority: Int, notes: String, playerId: String, playerName: String, playerTmProfile: String, templateId: String)
     abstract fun togglePlayerTaskCompleted(task: com.liordahan.mgsrteam.features.home.models.AgentTask)
     abstract fun updateClubFeedback(offerId: String, clubFeedback: String?)
+    abstract fun updateHistorySummary(offerId: String, summary: String?)
     abstract suspend fun createShareUrl(player: Player, playerDocId: String, documents: List<PlayerDocument>, scoutReport: String?, lang: String): Result<String>
 }
 
@@ -788,6 +789,12 @@ class PlayerInfoViewModel(
     override fun updateClubFeedback(offerId: String, clubFeedback: String?) {
         viewModelScope.launch {
             offersRepository.updateClubFeedback(offerId, clubFeedback)
+        }
+    }
+
+    override fun updateHistorySummary(offerId: String, summary: String?) {
+        viewModelScope.launch {
+            offersRepository.updateHistorySummary(offerId, summary)
         }
     }
 

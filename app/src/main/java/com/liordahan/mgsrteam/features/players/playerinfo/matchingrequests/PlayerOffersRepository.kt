@@ -14,6 +14,7 @@ interface IPlayerOffersRepository {
     suspend fun addOffer(offer: PlayerOffer): Result<Unit>
     suspend fun updateClubFeedback(offerId: String, clubFeedback: String?): Result<Unit>
     suspend fun stampOffersAsDeleted(requestId: String, requestSnapshot: String?): Result<Unit>
+    suspend fun updateHistorySummary(offerId: String, summary: String?): Result<Unit>
 }
 
 class PlayerOffersRepository(
@@ -92,6 +93,14 @@ class PlayerOffersRepository(
             ))
         }
         batch.commit().await()
+    }
+
+    override suspend fun updateHistorySummary(offerId: String, summary: String?): Result<Unit> = runCatching {
+        firebaseHandler.firebaseStore
+            .collection(firebaseHandler.playerOffersTable)
+            .document(offerId)
+            .update("historySummary", summary ?: "")
+            .await()
     }
 
     private suspend fun getCurrentUserAccountName(): String? {

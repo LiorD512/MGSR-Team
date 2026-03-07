@@ -325,37 +325,79 @@ class AddPlayerViewModel(
         }
     }
 
-    /** Fire background /enrich calls for each player to replace stale Google snippet data. */
+    /**
+     * Fetch IFA player page directly from the device (mobile IPs aren't blocked by IFA)
+     * and parse key fields with regex. Returns a map of field→value.
+     */
+    private suspend fun fetchIfaProfileDirect(playerId: String): Map<String, String> {
+        val url = "https://www.football.org.il/players/player/?player_id=$playerId&season_id="
+        val directClient = okhttp3.OkHttpClient.Builder()
+            .connectTimeout(8, java.util.concurrent.TimeUnit.SECONDS)
+            .readTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
+            .build()
+        val req = okhttp3.Request.Builder()
+            .url(url)
+            .header("User-Agent", "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36")
+            .header("Accept-Language", "he-IL,he;q=0.9,en-US;q=0.8,en;q=0.7")
+            .get().build()
+        val resp = directClient.newCall(req).execute()
+        if (!resp.isSuccessful) return emptyMap()
+        val html = resp.body?.string() ?: return emptyMap()
+        val result = mutableMapOf<String, String>()
+
+        // Player name from card title
+        Regex("""new-player-card_title[^>]*>([^<]+)""").find(html)
+            ?.groupValues?.get(1)?.trim()?.takeIf { it.isNotBlank() }
+            ?.let { result["fullNameHe"] = it }
+
+        // Club from team section span
+        Regex("""js-container-title[^>]*>[^<]*<span[^>]*>([^<]+)""").find(html)
+            ?.groupValues?.get(1)?.trim()?.takeIf { it.isNotBlank() }
+            ?.let { result["currentClub"] = it }
+        // Fallback: regex for קבוצה
+        if ("currentClub" !in result) {
+            Regex("""קבוצה[:\s]*([^\n,<]+)""").find(html)
+                ?.groupValues?.get(1)?.trim()?.takeIf { it.isNotBlank() }
+                ?.let { result["currentClub"] = it }
+        }
+
+        // Date of birth
+        Regex("""תאריך לידה[:\s]*(\d{1,2}/\d{4}|\d{1,2}[./]\d{1,2}[./]\d{4})""").find(html)
+            ?.groupValues?.get(1)?.let { result["dateOfBirth"] = it }
+
+        // Nationality
+        Regex("""אזרחות[:\s]*([^\n,<]+)""").find(html)
+            ?.groupValues?.get(1)?.trim()?.takeIf { it.isNotBlank() }
+            ?.let { result["nationality"] = it }
+
+        // Profile image
+        Regex("""new-player-card_img-container[^>]*>\s*<img[^>]+src="([^"]+)""").find(html)
+            ?.groupValues?.get(1)?.trim()?.takeIf { it.isNotBlank() }
+            ?.let {
+                result["profileImage"] = if (it.startsWith("http")) it else "https://www.football.org.il$it"
+            }
+
+        return result
+    }
+
+    /** Fire background direct-IFA fetches per player to replace stale Google snippet data. */
     private fun enrichYouthResults(results: List<YouthIFASearchResult>) {
-        val baseUrl = com.liordahan.mgsrteam.features.aiscout.MgsrWebApiClient.DEFAULT_BASE_URL
         for (result in results) {
             val pid = result.ifaPlayerId ?: continue
             viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
                 try {
-                    val req = okhttp3.Request.Builder()
-                        .url("$baseUrl/api/youth-players/enrich?player_id=$pid")
-                        .get().build()
-                    val resp = httpClient.newCall(req).execute()
-                    val body = resp.body?.string()
-                    if (resp.isSuccessful && body != null) {
-                        val obj = org.json.JSONObject(body)
-                        val club = obj.optString("currentClub", "").takeIf { it.isNotBlank() }
-                        val dob = obj.optString("dateOfBirth", "").takeIf { it.isNotBlank() }
-                        val nat = obj.optString("nationality", "").takeIf { it.isNotBlank() }
-                        val nameHe = obj.optString("fullNameHe", "").takeIf { it.isNotBlank() }
-                        val img = obj.optString("profileImage", "").takeIf { it.isNotBlank() }
-                        if (club != null || dob != null || nat != null || nameHe != null || img != null) {
-                            _playerSearchStateFlow.update { state ->
-                                state.copy(youthSearchResults = state.youthSearchResults.map { r ->
-                                    if (r.ifaPlayerId == pid) r.copy(
-                                        currentClub = club?.let { cleanYouthClubSnippet(it) } ?: r.currentClub,
-                                        dateOfBirth = dob ?: r.dateOfBirth,
-                                        nationality = nat ?: r.nationality,
-                                        fullNameHe = nameHe ?: r.fullNameHe,
-                                        profileImage = img ?: r.profileImage
-                                    ) else r
-                                })
-                            }
+                    val data = fetchIfaProfileDirect(pid)
+                    if (data.isNotEmpty()) {
+                        _playerSearchStateFlow.update { state ->
+                            state.copy(youthSearchResults = state.youthSearchResults.map { r ->
+                                if (r.ifaPlayerId == pid) r.copy(
+                                    currentClub = data["currentClub"]?.let { cleanYouthClubSnippet(it) } ?: r.currentClub,
+                                    dateOfBirth = data["dateOfBirth"] ?: r.dateOfBirth,
+                                    nationality = data["nationality"] ?: r.nationality,
+                                    fullNameHe = data["fullNameHe"] ?: r.fullNameHe,
+                                    profileImage = data["profileImage"] ?: r.profileImage
+                                ) else r
+                            })
                         }
                     }
                 } catch (_: Exception) { /* keep snippet data */ }
@@ -381,49 +423,72 @@ class AddPlayerViewModel(
         _playerSearchStateFlow.update { it.copy(youthSearchResults = emptyList()) }
         _searchQuery.update { "" }
 
-        // If we have an IFA URL, fetch the full profile for more data
-        result.ifaUrl?.takeIf { it.isNotBlank() }?.let { url ->
+        // Fetch real IFA data: fast direct fetch from device, then server for positions
+        val pid = result.ifaPlayerId
+        if (pid != null) {
             viewModelScope.launch {
                 _playerSearchStateFlow.update { it.copy(showPlayerSelectedSearchProgress = true) }
                 try {
-                    kotlinx.coroutines.withTimeout(15_000) {
-                        val requestBody = org.json.JSONObject().apply {
-                            put("url", url)
-                        }.toString().toRequestBody("application/json".toMediaType())
-
-                        val request = okhttp3.Request.Builder()
-                            .url("${com.liordahan.mgsrteam.features.aiscout.MgsrWebApiClient.DEFAULT_BASE_URL}/api/youth-players/fetch-profile")
-                            .post(requestBody)
-                            .build()
-
-                        val response = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                            httpClient.newCall(request).execute()
+                    // Phase 1: Direct IFA fetch from device (~1-2s, mobile IPs not blocked)
+                    val directData = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                        try { fetchIfaProfileDirect(pid) } catch (_: Exception) { emptyMap() }
+                    }
+                    if (directData.isNotEmpty()) {
+                        _youthFormState.update { state ->
+                            state.copy(
+                                fullNameHe = directData["fullNameHe"]?.takeIf { it.isNotBlank() } ?: state.fullNameHe,
+                                currentClub = directData["currentClub"]?.takeIf { it.isNotBlank() } ?: state.currentClub,
+                                dateOfBirth = directData["dateOfBirth"]?.takeIf { it.isNotBlank() } ?: state.dateOfBirth,
+                                ageGroup = directData["dateOfBirth"]?.let { YouthPlayerFormState.computeAgeGroup(it) }?.ifBlank { state.ageGroup } ?: state.ageGroup,
+                                nationality = directData["nationality"]?.takeIf { it.isNotBlank() } ?: state.nationality,
+                                profileImage = directData["profileImage"]?.takeIf { it.isNotBlank() } ?: state.profileImage
+                            )
                         }
-                        val body = response.body?.string()
-                        if (response.isSuccessful && body != null) {
-                            val data = org.json.JSONObject(body)
-                            _youthFormState.update { state ->
-                                state.copy(
-                                    fullNameHe = data.optString("fullNameHe", "").takeIf { it.isNotBlank() }
-                                        ?: data.optString("fullName", "").takeIf { it.isNotBlank() }
-                                        ?: state.fullNameHe,
-                                    currentClub = data.optString("currentClub", "").takeIf { it.isNotBlank() } ?: state.currentClub,
-                                    nationality = data.optString("nationality", "").takeIf { it.isNotBlank() } ?: state.nationality,
-                                    profileImage = data.optString("profileImage", "").takeIf { it.isNotBlank() } ?: state.profileImage,
-                                    ifaUrl = data.optString("ifaUrl", "").takeIf { it.isNotBlank() } ?: state.ifaUrl,
-                                    dateOfBirth = data.optString("dateOfBirth", "").takeIf { it.isNotBlank() } ?: state.dateOfBirth,
-                                    ageGroup = data.optString("dateOfBirth", "").takeIf { it.isNotBlank() }?.let { YouthPlayerFormState.computeAgeGroup(it) }?.ifBlank { state.ageGroup } ?: state.ageGroup
-                                )
-                            }
-                            data.optJSONArray("positions")?.let { posArr ->
-                                val positions = mutableListOf<String>()
-                                for (i in 0 until posArr.length()) {
-                                    posArr.optString(i)?.takeIf { it.isNotBlank() }?.let { positions.add(it) }
+                    }
+
+                    // Phase 2: Server fetch for full profile (positions, stats, etc.)
+                    result.ifaUrl?.takeIf { it.isNotBlank() }?.let { url ->
+                        try {
+                            kotlinx.coroutines.withTimeout(45_000) {
+                                val requestBody = org.json.JSONObject().apply {
+                                    put("url", url)
+                                }.toString().toRequestBody("application/json".toMediaType())
+
+                                val request = okhttp3.Request.Builder()
+                                    .url("${com.liordahan.mgsrteam.features.aiscout.MgsrWebApiClient.DEFAULT_BASE_URL}/api/youth-players/fetch-profile")
+                                    .post(requestBody)
+                                    .build()
+
+                                val response = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                                    httpClient.newCall(request).execute()
                                 }
-                                if (positions.isNotEmpty()) {
-                                    _youthFormState.update { it.copy(positions = positions) }
+                                val body = response.body?.string()
+                                if (response.isSuccessful && body != null) {
+                                    val data = org.json.JSONObject(body)
+                                    _youthFormState.update { state ->
+                                        state.copy(
+                                            fullNameHe = data.optString("fullNameHe", "").takeIf { it.isNotBlank() }
+                                                ?: state.fullNameHe,
+                                            currentClub = data.optString("currentClub", "").takeIf { it.isNotBlank() } ?: state.currentClub,
+                                            nationality = data.optString("nationality", "").takeIf { it.isNotBlank() } ?: state.nationality,
+                                            profileImage = data.optString("profileImage", "").takeIf { it.isNotBlank() } ?: state.profileImage,
+                                            dateOfBirth = data.optString("dateOfBirth", "").takeIf { it.isNotBlank() } ?: state.dateOfBirth,
+                                            ageGroup = data.optString("dateOfBirth", "").takeIf { it.isNotBlank() }?.let { YouthPlayerFormState.computeAgeGroup(it) }?.ifBlank { state.ageGroup } ?: state.ageGroup
+                                        )
+                                    }
+                                    data.optJSONArray("positions")?.let { posArr ->
+                                        val positions = mutableListOf<String>()
+                                        for (i in 0 until posArr.length()) {
+                                            posArr.optString(i)?.takeIf { it.isNotBlank() }?.let { positions.add(it) }
+                                        }
+                                        if (positions.isNotEmpty()) {
+                                            _youthFormState.update { it.copy(positions = positions) }
+                                        }
+                                    }
                                 }
                             }
+                        } catch (e: Exception) {
+                            android.util.Log.e("AddPlayerVM", "Youth IFA server fetch error (non-critical)", e)
                         }
                     }
                 } catch (e: Exception) {
@@ -578,7 +643,33 @@ class AddPlayerViewModel(
                     return@launch
                 }
 
-                // Fetch full profile from IFA via Vercel API
+                // Phase 1: Fast direct IFA fetch from device (~1-2s)
+                val pidMatch = Regex("player_id=(\\d+)").find(url)
+                val pid = pidMatch?.groupValues?.get(1)
+                if (pid != null) {
+                    try {
+                        val directData = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                            fetchIfaProfileDirect(pid)
+                        }
+                        if (directData.isNotEmpty()) {
+                            _youthFormState.update {
+                                YouthPlayerFormState(
+                                    fullNameHe = directData["fullNameHe"] ?: "",
+                                    currentClub = directData["currentClub"] ?: "",
+                                    dateOfBirth = directData["dateOfBirth"] ?: "",
+                                    ageGroup = directData["dateOfBirth"]?.let { YouthPlayerFormState.computeAgeGroup(it) } ?: "",
+                                    nationality = directData["nationality"] ?: "",
+                                    profileImage = directData["profileImage"] ?: "",
+                                    ifaUrl = url
+                                )
+                            }
+                            // Hide spinner after phase 1 — form has real data now
+                            _playerSearchStateFlow.update { it.copy(showPlayerSelectedSearchProgress = false) }
+                        }
+                    } catch (_: Exception) { /* continue to server fetch */ }
+                }
+
+                // Phase 2: Server fetch for full profile (positions, stats, academy)
                 val requestBody = org.json.JSONObject().apply {
                     put("url", url)
                 }.toString().toRequestBody("application/json".toMediaType())

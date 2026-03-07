@@ -66,7 +66,7 @@ interface TabItem {
 const menTabs: TabItem[] = [
   { href: '/dashboard', labelKey: 'nav_dashboard', icon: IconDashboard },
   { href: '/players', labelKey: 'nav_players', icon: IconPlayers, matchPrefixes: ['/players'] },
-  { href: '/ai-scout', labelKey: 'nav_ai_scout', icon: IconAIScout },
+  { href: '/war-room', labelKey: 'nav_war_room', icon: IconAIScout },
   { href: '/tasks', labelKey: 'nav_tasks', icon: IconTasks },
 ];
 

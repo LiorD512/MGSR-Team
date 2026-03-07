@@ -18,9 +18,13 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
@@ -35,9 +39,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
@@ -63,6 +70,7 @@ private val StatusActiveGreen = Color(0xFF22C55E)
 fun ProposalHistorySection(
     offers: List<PlayerOffer>,
     allAccounts: List<Account>,
+    onUpdateSummary: (offerId: String, summary: String?) -> Unit,
     modifier: Modifier = Modifier
 ) {
     if (offers.isEmpty()) return
@@ -117,6 +125,7 @@ fun ProposalHistorySection(
             ProposalHistoryTimelineItem(
                 offer = offer,
                 allAccounts = allAccounts,
+                onUpdateSummary = onUpdateSummary,
                 showConnector = !isLast
             )
             if (!isLast) Spacer(Modifier.height(8.dp))
@@ -156,9 +165,11 @@ fun ProposalHistorySection(
 private fun ProposalHistoryTimelineItem(
     offer: PlayerOffer,
     allAccounts: List<Account>,
+    onUpdateSummary: (offerId: String, summary: String?) -> Unit,
     showConnector: Boolean
 ) {
     val context = LocalContext.current
+    val focusManager = LocalFocusManager.current
     val dotColor = statusColor(offer.requestStatus)
 
     Row(
@@ -291,6 +302,15 @@ private fun ProposalHistoryTimelineItem(
                     }
                 }
 
+                // Agent summary — tap to add/edit
+                Spacer(Modifier.height(8.dp))
+                AgentSummaryBlock(
+                    currentSummary = offer.historySummary,
+                    onSave = { newSummary ->
+                        offer.id?.let { id -> onUpdateSummary(id, newSummary) }
+                    }
+                )
+
                 // Meta row: agent + date
                 Spacer(Modifier.height(8.dp))
                 HorizontalDivider(
@@ -371,6 +391,104 @@ private fun StatusBadge(requestStatus: String?) {
             .background(color.copy(alpha = 0.15f))
             .padding(horizontal = 10.dp, vertical = 4.dp)
     )
+}
+
+private val SummaryOrange = Color(0xFFE8913A)
+
+@Composable
+private fun AgentSummaryBlock(
+    currentSummary: String?,
+    onSave: (String?) -> Unit
+) {
+    val focusManager = LocalFocusManager.current
+    val hasSummary = !currentSummary.isNullOrBlank()
+    var editing by remember { mutableStateOf(false) }
+    var draft by remember(currentSummary) { mutableStateOf(currentSummary ?: "") }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .background(SummaryOrange.copy(alpha = 0.10f))
+            .padding(10.dp)
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Text(
+                stringResource(R.string.proposal_history_summary),
+                style = regularTextStyle(SummaryOrange, 10.sp),
+                modifier = Modifier.weight(1f)
+            )
+            Icon(
+                Icons.Default.Edit,
+                contentDescription = null,
+                modifier = Modifier
+                    .size(14.dp)
+                    .clickWithNoRipple { editing = !editing },
+                tint = SummaryOrange.copy(alpha = 0.7f)
+            )
+        }
+        Spacer(Modifier.height(4.dp))
+
+        if (editing) {
+            BasicTextField(
+                value = draft,
+                onValueChange = { draft = it },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(PlatformColors.palette.cardBorder.copy(alpha = 0.3f))
+                    .padding(8.dp),
+                textStyle = regularTextStyle(PlatformColors.palette.textPrimary, 12.sp).copy(),
+                cursorBrush = SolidColor(SummaryOrange),
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(onDone = {
+                    focusManager.clearFocus()
+                    onSave(draft.takeIf { it.isNotBlank() })
+                    editing = false
+                }),
+                decorationBox = { innerTextField ->
+                    Box {
+                        if (draft.isBlank()) {
+                            Text(
+                                stringResource(R.string.proposal_history_summary_hint),
+                                style = regularTextStyle(PlatformColors.palette.textSecondary.copy(alpha = 0.5f), 11.sp)
+                            )
+                        }
+                        innerTextField()
+                    }
+                }
+            )
+            Spacer(Modifier.height(6.dp))
+            Text(
+                stringResource(R.string.proposal_history_summary_save),
+                style = boldTextStyle(SummaryOrange, 11.sp),
+                modifier = Modifier
+                    .align(Alignment.End)
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(SummaryOrange.copy(alpha = 0.15f))
+                    .clickWithNoRipple {
+                        focusManager.clearFocus()
+                        onSave(draft.takeIf { it.isNotBlank() })
+                        editing = false
+                    }
+                    .padding(horizontal = 12.dp, vertical = 4.dp)
+            )
+        } else if (hasSummary) {
+            Text(
+                "\"$currentSummary\"",
+                style = regularTextStyle(PlatformColors.palette.textPrimary, 12.sp)
+            )
+        } else {
+            Text(
+                stringResource(R.string.proposal_history_add_summary),
+                style = regularTextStyle(PlatformColors.palette.textSecondary.copy(alpha = 0.6f), 11.sp),
+                modifier = Modifier.clickWithNoRipple { editing = true }
+            )
+        }
+    }
 }
 
 private fun statusColor(requestStatus: String?): Color = when (requestStatus) {

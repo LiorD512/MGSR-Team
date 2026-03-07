@@ -1070,6 +1070,10 @@
     <string name="proposal_history_status_legacy">Previously offered</string>
     <string name="proposal_history_feedback">Club feedback</string>
     <string name="proposal_history_no_feedback">No feedback recorded</string>
+    <string name="proposal_history_summary">Agent summary</string>
+    <string name="proposal_history_add_summary">Add summary…</string>
+    <string name="proposal_history_summary_hint">e.g. Deal fell through — player refused terms</string>
+    <string name="proposal_history_summary_save">Save</string>
     <string name="proposal_history_by_agent">by %1$s</string>
     <string name="proposal_history_show_all">Show all (%1$d)</string>
     <string name="proposal_history_show_less">Show less</string>

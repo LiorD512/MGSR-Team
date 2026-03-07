@@ -624,7 +624,10 @@ fun PlayerInfoScreen(
                 val proposalHistory by viewModel.proposalHistoryFlow.collectAsState(initial = emptyList())
                 ProposalHistorySection(
                     offers = proposalHistory,
-                    allAccounts = allAccounts
+                    allAccounts = allAccounts,
+                    onUpdateSummary = { offerId, summary ->
+                        viewModel.updateHistorySummary(offerId, summary)
+                    }
                 )
             }
 

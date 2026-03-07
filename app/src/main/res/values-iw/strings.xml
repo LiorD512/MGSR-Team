@@ -986,6 +986,10 @@
     <string name="proposal_history_status_legacy">הוצע בעבר</string>
     <string name="proposal_history_feedback">פידבק מהמועדון</string>
     <string name="proposal_history_no_feedback">לא נרשם פידבק</string>
+    <string name="proposal_history_summary">סיכום סוכן</string>
+    <string name="proposal_history_add_summary">הוסף סיכום…</string>
+    <string name="proposal_history_summary_hint">לדוגמה: העסקה נפלה — השחקן סירב לתנאים</string>
+    <string name="proposal_history_summary_save">שמור</string>
     <string name="proposal_history_by_agent">ע״י %1$s</string>
     <string name="proposal_history_show_all">הצג הכל (%1$d)</string>
     <string name="proposal_history_show_less">הצג פחות</string>
