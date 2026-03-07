@@ -37,6 +37,7 @@ data class YouthIFASearchResult(
     val currentClub: String? = null,
     val dateOfBirth: String? = null,
     val nationality: String? = null,
+    val profileImage: String? = null,
     val ifaUrl: String? = null,
     val ifaPlayerId: String? = null
 )
@@ -304,6 +305,7 @@ class AddPlayerViewModel(
                                 currentClub = cleanYouthClubSnippet(obj.optString("currentClub", null)),
                                 dateOfBirth = obj.optString("dateOfBirth", null),
                                 nationality = obj.optString("nationality", null),
+                                profileImage = obj.optString("profileImage", null),
                                 ifaUrl = obj.optString("ifaUrl", null),
                                 ifaPlayerId = obj.optString("ifaPlayerId", null)
                             )
@@ -331,6 +333,7 @@ class AddPlayerViewModel(
                 dateOfBirth = result.dateOfBirth?.takeIf { it.isNotBlank() } ?: state.dateOfBirth,
                 ageGroup = result.dateOfBirth?.let { YouthPlayerFormState.computeAgeGroup(it) }?.ifBlank { state.ageGroup } ?: state.ageGroup,
                 nationality = result.nationality?.takeIf { it.isNotBlank() } ?: state.nationality,
+                profileImage = result.profileImage?.takeIf { it.isNotBlank() } ?: state.profileImage,
                 ifaUrl = result.ifaUrl?.takeIf { it.isNotBlank() } ?: state.ifaUrl
             )
         }

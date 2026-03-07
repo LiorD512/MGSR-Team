@@ -23,7 +23,7 @@ async function serperImageFallback(playerName: string, playerId: string): Promis
     const res = await fetch('https://google.serper.dev/images', {
       method: 'POST',
       headers: { 'X-API-KEY': serperKey, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ q: `${playerName} football.org.il`, gl: 'il', hl: 'he', num: 5 }),
+      body: JSON.stringify({ q: `site:football.org.il player_id=${playerId}`, gl: 'il', hl: 'he', num: 5 }),
       signal: AbortSignal.timeout(10000),
     });
     if (!res.ok) return null;

@@ -58,6 +58,7 @@ export interface IFASearchResult {
   currentClub?: string;
   dateOfBirth?: string;
   nationality?: string;
+  profileImage?: string;
   ifaUrl?: string;
   ifaPlayerId?: string;
   source: 'ifa';
@@ -322,17 +323,17 @@ export async function searchIFA(query: string): Promise<IFASearchResult[]> {
       }
     };
 
-    await runSerperSearch(`site:football.org.il inurl:player_id ${q}`);
-    if (playerUrlMap.size < 5) {
-      const keyword = isHebrew ? 'שחקן' : 'player';
-      await runSerperSearch(`site:football.org.il inurl:player_id ${q} ${keyword}`);
-    }
-    if (playerUrlMap.size < 5 && !isHebrew) {
-      await runSerperSearch(`site:football.org.il inurl:player_id ${q} שחקן`, 'he');
-    }
-    // Hebrew + inurl: often returns 0 on Serper — retry without inurl:
-    if (playerUrlMap.size < 3 && isHebrew) {
+    if (isHebrew) {
+      // Hebrew + inurl: returns 0 on Serper — go straight to working query
       await runSerperSearch(`site:football.org.il ${q} שחקן`, 'he');
+    } else {
+      await runSerperSearch(`site:football.org.il inurl:player_id ${q}`);
+      if (playerUrlMap.size < 5) {
+        await runSerperSearch(`site:football.org.il inurl:player_id ${q} player`);
+      }
+      if (playerUrlMap.size < 5) {
+        await runSerperSearch(`site:football.org.il inurl:player_id ${q} שחקן`, 'he');
+      }
     }
   }
 
@@ -399,6 +400,33 @@ export async function searchIFA(query: string): Promise<IFASearchResult[]> {
       ifaPlayerId: pid,
       source: 'ifa',
     });
+  }
+
+  // ── Batch image lookup via Serper.dev image search ──
+  if (results.length > 0 && serperKey) {
+    try {
+      const playerIds = results.map((r) => r.ifaPlayerId).filter(Boolean) as string[];
+      const nameHint = results[0]?.fullNameHe || results[0]?.fullName || '';
+      const imgRes = await fetch('https://google.serper.dev/images', {
+        method: 'POST',
+        headers: { 'X-API-KEY': serperKey, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ q: `${nameHint} site:football.org.il`, gl: 'il', hl: 'he', num: 10 }),
+        signal: AbortSignal.timeout(8000),
+      });
+      if (imgRes.ok) {
+        const imgData = (await imgRes.json()) as { images?: Array<{ imageUrl?: string; link?: string }> };
+        const images = imgData.images ?? [];
+        for (const r of results) {
+          if (!r.ifaPlayerId) continue;
+          const match = images.find((img) => img.link?.includes(`player_id=${r.ifaPlayerId}`));
+          if (match?.imageUrl && match.imageUrl.includes('GetImage.ashx')) {
+            r.profileImage = match.imageUrl;
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('[IFA] Image batch lookup failed:', err);
+    }
   }
 
   return results;
