@@ -154,9 +154,9 @@ object WomenDesignSystem {
     val statLabel: TextStyle
         get() = TextStyle(
             color = WomenColors.TextSecondary,
-            fontSize = 11.sp,
+            fontSize = 9.sp,
             fontWeight = FontWeight.Medium,
-            letterSpacing = 0.8.sp
+            letterSpacing = 0.6.sp
         )
 
     /** Chip text — compact label. */
