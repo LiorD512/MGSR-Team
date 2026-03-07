@@ -488,34 +488,28 @@ class AddPlayerViewModel(
      * to short position abbreviations used in the app (e.g. "CF", "LW").
      */
     private fun mapSoccerDonnaPosition(raw: String): List<String> {
-        val mapping = mapOf(
-            "goalkeeper" to "GK",
-            "centre back" to "CB",
-            "centre-back" to "CB",
-            "left back" to "LB",
-            "left-back" to "LB",
-            "right back" to "RB",
-            "right-back" to "RB",
-            "defensive midfielder" to "DM",
-            "defensive midfield" to "DM",
-            "central midfielder" to "CM",
-            "central midfield" to "CM",
-            "attacking midfielder" to "AM",
-            "attacking midfield" to "AM",
-            "left midfielder" to "LM",
-            "left midfield" to "LM",
-            "right midfielder" to "RM",
-            "right midfield" to "RM",
-            "left winger" to "LW",
-            "right winger" to "RW",
-            "centre forward" to "CF",
-            "centre-forward" to "CF",
-            "striker" to "ST",
-            "forward" to "ST"
-        )
-        val lower = raw.lowercase().trim()
-        val mapped = mapping[lower]
-        return if (mapped != null) listOf(mapped) else listOf(raw)
+        val p = raw.lowercase().trim()
+        if (p.isBlank() || p == "-" || p == "- -") return emptyList()
+        // Partial matching – mirrors the web platform's mapPosition logic.
+        // SoccerDonna may return compound values like "Defence - Centre Back".
+        if (p.contains("keeper") || p.contains("goalkeeper") || p == "gk") return listOf("GK")
+        if (p.contains("centre back") || p.contains("center back") || p == "cb") return listOf("CB")
+        if (p.contains("left back") || p.contains("fullback, left") || p == "lb") return listOf("LB")
+        if (p.contains("right back") || p.contains("fullback, right") || p == "rb") return listOf("RB")
+        if (p.contains("defensive mid") || p == "dm") return listOf("DM")
+        if (p.contains("central mid") || p.contains("centre mid") || p == "cm") return listOf("CM")
+        if (p.contains("attacking mid") || p == "am") return listOf("AM")
+        if (p.contains("left mid") || p == "lm") return listOf("LM")
+        if (p.contains("right mid") || p == "rm") return listOf("RM")
+        if (p.contains("left wing") || p == "lw") return listOf("LW")
+        if (p.contains("right wing") || p == "rw") return listOf("RW")
+        if (p.contains("centre forward") || p.contains("center forward") || p.contains("striker") || p == "cf") return listOf("CF")
+        if (p.contains("second striker") || p == "ss") return listOf("SS")
+        if (p.contains("forward") || p.contains("attack")) return listOf("CF")
+        // Category-only fallbacks ("Defence", "Midfield")
+        if (p.contains("defence") || p.contains("defense")) return listOf("CB")
+        if (p.contains("midfield")) return listOf("CM")
+        return emptyList()
     }
 
     // ── Women form-state helpers ──
@@ -755,6 +749,11 @@ class AddPlayerViewModel(
                             agentName = agentInChargeName
                         )
                     )
+
+                // Auto-remove from shortlist (same behaviour as men platform)
+                if (form.soccerDonnaUrl.isNotBlank()) {
+                    try { shortlistRepository.removeFromShortlist(form.soccerDonnaUrl) } catch (_: Exception) {}
+                }
 
                 _isPlayerAddedFlow.update { true }
             } catch (e: Exception) {

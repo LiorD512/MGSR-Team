@@ -13,9 +13,12 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -197,6 +200,22 @@ fun DashboardScreen(
         label = "dashboard_bg"
     )
 
+    // ── Platform switch glow sweep ─────────────────────────────────
+    val sweepProgress = remember { Animatable(0f) }
+    var prevPlatformOrdinal by remember { mutableStateOf(currentPlatform.ordinal) }
+    var platformSwitchInit by remember { mutableStateOf(false) }
+    LaunchedEffect(currentPlatform) {
+        if (!platformSwitchInit) {
+            platformSwitchInit = true
+            prevPlatformOrdinal = currentPlatform.ordinal
+            return@LaunchedEffect
+        }
+        prevPlatformOrdinal = currentPlatform.ordinal
+        sweepProgress.snapTo(0f)
+        sweepProgress.animateTo(1f, tween(600, easing = FastOutSlowInEasing))
+    }
+    val sweepAccentColor = currentPlatform.accent
+
     if (state.isLoading) {
         SkeletonDashboardLayout(
             modifier = Modifier
@@ -210,6 +229,29 @@ fun DashboardScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(dashboardBg)
+            .drawWithContent {
+                drawContent()
+                val progress = sweepProgress.value
+                if (progress > 0.001f && progress < 0.999f) {
+                    // Glowing accent line that sweeps top→bottom
+                    val sweepY = size.height * progress
+                    val bandHeight = size.height * 0.08f
+                    val topEdge = sweepY - bandHeight / 2f
+                    drawRect(
+                        brush = Brush.verticalGradient(
+                            colors = listOf(
+                                Color.Transparent,
+                                sweepAccentColor.copy(alpha = 0.35f),
+                                sweepAccentColor.copy(alpha = 0.5f),
+                                sweepAccentColor.copy(alpha = 0.35f),
+                                Color.Transparent
+                            ),
+                            startY = topEdge,
+                            endY = topEdge + bandHeight
+                        )
+                    )
+                }
+            }
     ) {
         // ── Sticky top section (does NOT scroll) ─────────────────────────
         GreetingHeader(
@@ -222,8 +264,12 @@ fun DashboardScreen(
         AnimatedContent(
             targetState = currentPlatform,
             transitionSpec = {
-                (fadeIn(tween(300, delayMillis = 50)) + slideInVertically(tween(300, delayMillis = 50)) { it / 8 })
-                    .togetherWith(fadeOut(tween(200)) + slideOutVertically(tween(200)) { -it / 8 })
+                val forward = targetState.ordinal > initialState.ordinal
+                val enter = fadeIn(tween(350)) +
+                    slideInHorizontally(tween(400, easing = FastOutSlowInEasing)) { if (forward) it / 3 else -it / 3 }
+                val exit = fadeOut(tween(250)) +
+                    slideOutHorizontally(tween(300, easing = FastOutSlowInEasing)) { if (forward) -it / 3 else it / 3 }
+                enter.togetherWith(exit)
             },
             label = "tagline"
         ) { platform ->
@@ -256,16 +302,48 @@ fun DashboardScreen(
             )
         }
 
-        // ── Stats & Quick Actions (animated) ─────────────────────────────
+        // ── All content below switcher (one cohesive animated transition) ──
         AnimatedContent(
             targetState = currentPlatform,
             transitionSpec = {
-                (fadeIn(tween(300, delayMillis = 100)) + slideInVertically(tween(300, delayMillis = 100)) { it / 8 })
-                    .togetherWith(fadeOut(tween(200)) + slideOutVertically(tween(200)) { -it / 8 })
+                val forward = targetState.ordinal > initialState.ordinal
+                val enter = fadeIn(tween(400, easing = FastOutSlowInEasing)) +
+                    slideInHorizontally(tween(500, easing = FastOutSlowInEasing)) { if (forward) it / 3 else -it / 3 }
+                val exit = fadeOut(tween(300, easing = FastOutSlowInEasing)) +
+                    slideOutHorizontally(tween(400, easing = FastOutSlowInEasing)) { if (forward) -it / 3 else it / 3 }
+                enter.togetherWith(exit)
             },
-            label = "stats_quick_actions"
+            modifier = Modifier.weight(1f),
+            label = "platform_content"
         ) { platform ->
-            Column {
+            val isWomen = platform == Platform.WOMEN
+            val isYouth = platform == Platform.YOUTH
+
+            val filteredEvents = remember(state.feedEvents, state.selectedFeedFilter, isYouth) {
+                val base = if (isYouth) {
+                    state.feedEvents.filter { event ->
+                        event.type != FeedEvent.TYPE_NEW_RELEASE_FROM_CLUB &&
+                        event.type != FeedEvent.TYPE_BECAME_FREE_AGENT &&
+                        event.type != FeedEvent.TYPE_MANDATE_EXPIRED &&
+                        event.type != FeedEvent.TYPE_MANDATE_UPLOADED &&
+                        event.type != FeedEvent.TYPE_MANDATE_SWITCHED_ON &&
+                        event.type != FeedEvent.TYPE_MANDATE_SWITCHED_OFF &&
+                        event.type != FeedEvent.TYPE_MARKET_VALUE_CHANGE &&
+                        event.type != FeedEvent.TYPE_CONTRACT_EXPIRING
+                    }
+                } else state.feedEvents
+                base.filterByType(state.selectedFeedFilter)
+            }
+
+            val platformLazyState = rememberLazyListState()
+            LaunchedEffect(state.myAgentOverview) {
+                state.myAgentOverview?.let { overview ->
+                    WidgetUpdateHelper.syncToWidget(context, overview)
+                }
+            }
+
+            Column(modifier = Modifier.fillMaxSize()) {
+                // ── Stats & Quick Actions ─────────────────────────────────
                 when (platform) {
                     Platform.WOMEN -> {
                         WomenStatsRow(state)
@@ -280,160 +358,108 @@ fun DashboardScreen(
                         QuickActionsRow(navController = navController, platform = platform)
                     }
                 }
-            }
-        }
 
-        // ── Pre-compute filtered data (cached across recompositions) ─────
-        val filteredEvents = remember(state.feedEvents, state.selectedFeedFilter, isYouthPlatform) {
-            val base = if (isYouthPlatform) {
-                state.feedEvents.filter { event ->
-                    event.type != FeedEvent.TYPE_NEW_RELEASE_FROM_CLUB &&
-                    event.type != FeedEvent.TYPE_BECAME_FREE_AGENT &&
-                    event.type != FeedEvent.TYPE_MANDATE_EXPIRED &&
-                    event.type != FeedEvent.TYPE_MANDATE_UPLOADED &&
-                    event.type != FeedEvent.TYPE_MANDATE_SWITCHED_ON &&
-                    event.type != FeedEvent.TYPE_MANDATE_SWITCHED_OFF &&
-                    event.type != FeedEvent.TYPE_MARKET_VALUE_CHANGE &&
-                    event.type != FeedEvent.TYPE_CONTRACT_EXPIRING
-                }
-            } else state.feedEvents
-            base.filterByType(state.selectedFeedFilter)
-        }
-
-        val lazyListState = rememberLazyListState()
-        LaunchedEffect(state.myAgentOverview) {
-            state.myAgentOverview?.let { overview ->
-                WidgetUpdateHelper.syncToWidget(context, overview)
-            }
-        }
-        LaunchedEffect(Unit) {
-            lazyListState.scrollToItem(0)
-        }
-        LaunchedEffect(state.myAgentOverview) {
-            if (state.myAgentOverview != null) {
-                lazyListState.scrollToItem(0)
-            }
-        }
-
-        // ── Scrollable section ────────────────────────────────────────
-        LazyColumn(
-            state = lazyListState,
-            modifier = Modifier
-                .fillMaxSize()
-                .weight(1f),
-            contentPadding = PaddingValues(bottom = 64.dp)
-        ) {
-            // ── My Agent Hub (animated) ───────────────────────────────
-            item {
-                val overview = state.myAgentOverview
-                AnimatedContent(
-                    targetState = currentPlatform,
-                    transitionSpec = {
-                        (fadeIn(tween(300, delayMillis = 200)) + slideInVertically(tween(300, delayMillis = 200)) { it / 8 })
-                            .togetherWith(fadeOut(tween(200)) + slideOutVertically(tween(200)) { -it / 8 })
-                    },
-                    label = "agent_hub"
-                ) { platform ->
-                    when (platform) {
-                        Platform.WOMEN -> when {
-                            overview != null && overview.totalPlayers > 0 -> {
-                                WomenAgentHubSection(
-                                    overview = overview,
-                                    navController = navController,
-                                    onTaskToggle = { viewModel.toggleTaskCompleted(it) }
-                                )
+                // ── Scrollable section ────────────────────────────────────
+                LazyColumn(
+                    state = platformLazyState,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .weight(1f),
+                    contentPadding = PaddingValues(bottom = 64.dp)
+                ) {
+                    // ── My Agent Hub ───────────────────────────────────
+                    item {
+                        val overview = state.myAgentOverview
+                        when (platform) {
+                            Platform.WOMEN -> when {
+                                overview != null && overview.totalPlayers > 0 -> {
+                                    WomenAgentHubSection(
+                                        overview = overview,
+                                        navController = navController,
+                                        onTaskToggle = { viewModel.toggleTaskCompleted(it) }
+                                    )
+                                }
+                                overview != null -> WomenAgentEmptyState()
+                                else -> MyBoardLoadingPlaceholder()
                             }
-                            overview != null -> WomenAgentEmptyState()
-                            else -> MyBoardLoadingPlaceholder()
-                        }
-                        Platform.YOUTH -> when {
-                            overview != null && overview.totalPlayers > 0 -> {
-                                YouthAgentHubSection(
-                                    overview = overview,
-                                    navController = navController,
-                                    onTaskToggle = { viewModel.toggleTaskCompleted(it) }
-                                )
+                            Platform.YOUTH -> when {
+                                overview != null && overview.totalPlayers > 0 -> {
+                                    YouthAgentHubSection(
+                                        overview = overview,
+                                        navController = navController,
+                                        onTaskToggle = { viewModel.toggleTaskCompleted(it) }
+                                    )
+                                }
+                                overview != null -> YouthAgentEmptyState()
+                                else -> MyBoardLoadingPlaceholder()
                             }
-                            overview != null -> YouthAgentEmptyState()
-                            else -> MyBoardLoadingPlaceholder()
-                        }
-                        else -> when {
-                            overview != null && overview.totalPlayers > 0 -> {
-                                MyAgentHubSection(
-                                    overview = overview,
-                                    navController = navController,
-                                    onTaskToggle = { viewModel.toggleTaskCompleted(it) }
-                                )
+                            else -> when {
+                                overview != null && overview.totalPlayers > 0 -> {
+                                    MyAgentHubSection(
+                                        overview = overview,
+                                        navController = navController,
+                                        onTaskToggle = { viewModel.toggleTaskCompleted(it) }
+                                    )
+                                }
+                                overview != null -> MyAgentEmptyState()
+                                else -> MyBoardLoadingPlaceholder()
                             }
-                            overview != null -> MyAgentEmptyState()
-                            else -> MyBoardLoadingPlaceholder()
                         }
                     }
-                }
-            }
 
-            // ── Activity Feed (animated) ─────────────────────────────────
-            item {
-                AnimatedContent(
-                    targetState = currentPlatform,
-                    transitionSpec = {
-                        (fadeIn(tween(300, delayMillis = 250)) + slideInVertically(tween(300, delayMillis = 250)) { it / 8 })
-                            .togetherWith(fadeOut(tween(200)) + slideOutVertically(tween(200)) { -it / 8 })
-                    },
-                    label = "feed_header"
-                ) { platform ->
-                    when (platform) {
-                        Platform.WOMEN -> WomenFeedSectionHeader(
-                            selectedFilter = state.selectedFeedFilter,
-                            onFilterSelected = { viewModel.selectFeedFilter(it) }
-                        )
-                        Platform.YOUTH -> YouthFeedSectionHeader(
-                            selectedFilter = state.selectedFeedFilter,
-                            onFilterSelected = { viewModel.selectFeedFilter(it) }
-                        )
-                        else -> FeedSectionHeader(
-                            selectedFilter = state.selectedFeedFilter,
-                            onFilterSelected = { viewModel.selectFeedFilter(it) }
-                        )
+                    // ── Activity Feed ─────────────────────────────────────
+                    item {
+                        when (platform) {
+                            Platform.WOMEN -> WomenFeedSectionHeader(
+                                selectedFilter = state.selectedFeedFilter,
+                                onFilterSelected = { viewModel.selectFeedFilter(it) }
+                            )
+                            Platform.YOUTH -> YouthFeedSectionHeader(
+                                selectedFilter = state.selectedFeedFilter,
+                                onFilterSelected = { viewModel.selectFeedFilter(it) }
+                            )
+                            else -> FeedSectionHeader(
+                                selectedFilter = state.selectedFeedFilter,
+                                onFilterSelected = { viewModel.selectFeedFilter(it) }
+                            )
+                        }
                     }
-                }
-            }
 
-            if (filteredEvents.isEmpty()) {
-                item {
-                    Text(
-                        text = stringResource(
-                            when {
-                                isWomenPlatform -> R.string.women_feed_empty
-                                isYouthPlatform -> R.string.youth_feed_empty
-                                else -> R.string.feed_empty
-                            }
-                        ),
-                        style = regularTextStyle(
-                            when {
-                                isWomenPlatform -> WomenColors.TextSecondary
-                                isYouthPlatform -> YouthColors.TextSecondary
-                                else -> HomeTextSecondary
-                            },
+                    if (filteredEvents.isEmpty()) {
+                        item {
+                            Text(
+                                text = stringResource(
+                                    when (platform) {
+                                        Platform.WOMEN -> R.string.women_feed_empty
+                                        Platform.YOUTH -> R.string.youth_feed_empty
+                                        else -> R.string.feed_empty
+                                    }
+                                ),
+                                style = regularTextStyle(
+                                    when (platform) {
+                                        Platform.WOMEN -> WomenColors.TextSecondary
+                                        Platform.YOUTH -> YouthColors.TextSecondary
+                                        else -> HomeTextSecondary
+                                    },
                             13.sp,
                             textAlign = TextAlign.Center
                         ),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 32.dp, horizontal = 16.dp)
-                    )
-                }
-            } else {
-                items(
-                    filteredEvents.take(if (state.isFeedExpanded) filteredEvents.size else 15),
-                    key = { it.id ?: it.hashCode() }
-                ) { event ->
-                    FeedEventCard(
-                        event = event,
-                        navController = navController,
-                        allAccounts = state.allAccounts,
-                        isWomenPlatform = isWomenPlatform,
-                        isYouthPlatform = isYouthPlatform,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 32.dp, horizontal = 16.dp)
+                            )
+                        }
+                    } else {
+                        items(
+                            filteredEvents.take(if (state.isFeedExpanded) filteredEvents.size else 15),
+                            key = { it.id ?: it.hashCode() }
+                        ) { event ->
+                            FeedEventCard(
+                                event = event,
+                                navController = navController,
+                                allAccounts = state.allAccounts,
+                                isWomenPlatform = isWomen,
+                                isYouthPlatform = isYouth,
                         onNavigateToPlayer = { tmProfile, autoRefresh ->
                             viewModel.checkPlayerExists(tmProfile) { exists ->
                                 if (exists) {
@@ -443,9 +469,9 @@ fun DashboardScreen(
                                 } else {
                                     ToastManager.showError(
                                         context.getString(
-                                            when {
-                                                isWomenPlatform -> R.string.feed_women_player_deleted_error
-                                                isYouthPlatform -> R.string.feed_youth_player_deleted_error
+                                            when (platform) {
+                                                Platform.WOMEN -> R.string.feed_women_player_deleted_error
+                                                Platform.YOUTH -> R.string.feed_youth_player_deleted_error
                                                 else -> R.string.feed_player_deleted_error
                                             }
                                         )
@@ -461,9 +487,9 @@ fun DashboardScreen(
                                 } else {
                                     ToastManager.showError(
                                         context.getString(
-                                            when {
-                                                isWomenPlatform -> R.string.feed_women_player_deleted_error
-                                                isYouthPlatform -> R.string.feed_youth_player_deleted_error
+                                            when (platform) {
+                                                Platform.WOMEN -> R.string.feed_women_player_deleted_error
+                                                Platform.YOUTH -> R.string.feed_youth_player_deleted_error
                                                 else -> R.string.feed_player_deleted_error
                                             }
                                         )
@@ -473,110 +499,112 @@ fun DashboardScreen(
                         }
                     )
                 }
-                if (filteredEvents.size > 15) {
-                    item(key = "feed_show_more_less") {
-                        FeedShowMoreLessButton(
-                            isExpanded = state.isFeedExpanded,
-                            onToggle = { viewModel.toggleFeedExpanded() }
-                        )
-                    }
-                }
-            }
-
-            // ── Team Overview (collapsible) ───────────────────────────
-            if (state.agentSummaries.isNotEmpty()) {
-                item {
-                    TeamOverviewSection(
-                        agents = state.agentSummaries,
-                        allAccounts = state.allAccounts,
-                        isExpanded = state.isTeamOverviewExpanded,
-                        onToggle = { viewModel.toggleTeamOverview() }
-                    )
-                }
-            }
-
-            // ── Agent Tasks Summary Widget ──────────────────────────────
-            item {
-                TasksSummaryWidget(
-                    agentTasks = state.agentTasks,
-                    accounts = state.allAccounts,
-                    navController = navController,
-                    onViewAllClick = { navController.navigate(Screens.TasksScreen.route) },
-                    onAddTaskClick = { showAddTaskSheet = true },
-                    onTaskClick = { task ->
-                        navController.navigate(Screens.taskDetailRoute(task.id))
-                    },
-                    onToggleTask = { viewModel.toggleTaskCompleted(it) }
-                )
-            }
-
-            // ── Transfer Windows (Grouped & Collapsible) — hidden for women & youth ──
-            if (!isWomenPlatform && !isYouthPlatform) {
-                item {
-                    TransferWindowsSectionHeader(totalCount = state.transferWindows.size)
-                }
-                when {
-                    state.transferWindowsLoading -> {
-                        item {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 24.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(28.dp),
-                                    color = HomeTealAccent,
-                                    strokeWidth = 2.dp
+                        if (filteredEvents.size > 15) {
+                            item(key = "feed_show_more_less") {
+                                FeedShowMoreLessButton(
+                                    isExpanded = state.isFeedExpanded,
+                                    onToggle = { viewModel.toggleFeedExpanded() }
                                 )
                             }
                         }
                     }
-                    state.transferWindowGroups.isEmpty() -> {
+
+                    // ── Team Overview (collapsible) ───────────────────────────
+                    if (state.agentSummaries.isNotEmpty()) {
                         item {
-                            Text(
-                                text = stringResource(R.string.transfer_windows_empty),
-                                style = regularTextStyle(HomeTextSecondary, 13.sp),
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 20.dp, vertical = 16.dp)
+                            TeamOverviewSection(
+                                agents = state.agentSummaries,
+                                allAccounts = state.allAccounts,
+                                isExpanded = state.isTeamOverviewExpanded,
+                                onToggle = { viewModel.toggleTeamOverview() }
                             )
                         }
                     }
-                    else -> {
-                        state.transferWindowGroups.forEach { (confederation, windows) ->
-                            val isExpanded = confederation in state.expandedConfederations
-                            item(key = "tw_header_${confederation.name}") {
-                                TransferWindowGroupHeader(
-                                    confederation = confederation,
-                                    count = windows.size,
-                                    isExpanded = isExpanded,
-                                    closingSoonCount = windows.count { (it.daysLeft ?: Int.MAX_VALUE) <= 7 },
-                                    onToggle = { viewModel.toggleTransferWindowGroup(confederation) }
-                                )
+
+                    // ── Agent Tasks Summary Widget ──────────────────────────────
+                    item {
+                        TasksSummaryWidget(
+                            agentTasks = state.agentTasks,
+                            accounts = state.allAccounts,
+                            navController = navController,
+                            onViewAllClick = { navController.navigate(Screens.TasksScreen.route) },
+                            onAddTaskClick = { showAddTaskSheet = true },
+                            onTaskClick = { task ->
+                                navController.navigate(Screens.taskDetailRoute(task.id))
+                            },
+                            onToggleTask = { viewModel.toggleTaskCompleted(it) }
+                        )
+                    }
+
+                    // ── Transfer Windows — hidden for women & youth ──────────────
+                    if (!isWomen && !isYouth) {
+                        item {
+                            TransferWindowsSectionHeader(totalCount = state.transferWindows.size)
+                        }
+                        when {
+                            state.transferWindowsLoading -> {
+                                item {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(vertical = 24.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(28.dp),
+                                            color = HomeTealAccent,
+                                            strokeWidth = 2.dp
+                                        )
+                                    }
+                                }
                             }
-                            if (isExpanded) {
-                                items(
-                                    items = windows,
-                                    key = { "tw_${confederation.name}_${it.countryName}" }
-                                ) { window ->
-                                    TransferWindowRow(
-                                        window = window,
-                                        modifier = Modifier.padding(horizontal = 20.dp)
+                            state.transferWindowGroups.isEmpty() -> {
+                                item {
+                                    Text(
+                                        text = stringResource(R.string.transfer_windows_empty),
+                                        style = regularTextStyle(HomeTextSecondary, 13.sp),
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 20.dp, vertical = 16.dp)
                                     )
+                                }
+                            }
+                            else -> {
+                                state.transferWindowGroups.forEach { (confederation, windows) ->
+                                    val isExpanded = confederation in state.expandedConfederations
+                                    item(key = "tw_header_${confederation.name}") {
+                                        TransferWindowGroupHeader(
+                                            confederation = confederation,
+                                            count = windows.size,
+                                            isExpanded = isExpanded,
+                                            closingSoonCount = windows.count { (it.daysLeft ?: Int.MAX_VALUE) <= 7 },
+                                            onToggle = { viewModel.toggleTransferWindowGroup(confederation) }
+                                        )
+                                    }
+                                    if (isExpanded) {
+                                        items(
+                                            items = windows,
+                                            key = { "tw_${confederation.name}_${it.countryName}" }
+                                        ) { window ->
+                                            TransferWindowRow(
+                                                window = window,
+                                                modifier = Modifier.padding(horizontal = 20.dp)
+                                            )
+                                        }
+                                    }
                                 }
                             }
                         }
                     }
-                }
-            }
 
-            // ── Document Reminders ───────────────────────────────────────
-            if (state.documentReminders.isNotEmpty()) {
-                item { DocumentRemindersSection(state.documentReminders) }
-            }
-        }
-    }
+                    // ── Document Reminders ───────────────────────────────────────
+                    if (state.documentReminders.isNotEmpty()) {
+                        item { DocumentRemindersSection(state.documentReminders) }
+                    }
+                } // LazyColumn
+            } // Column(fillMaxSize)
+        } // AnimatedContent
+    } // outer Column
 
     // ── Language change dialog ───────────────────────────────────────────
     if (showLanguageDialog) {

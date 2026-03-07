@@ -441,7 +441,9 @@ class HomeScreenViewModel(
 
                 _state.update { it.copy(documentReminders = reminders) }
                 recomputeMyOverview()
-            } catch (_: Exception) { }
+            } catch (e: Exception) {
+                android.util.Log.e("HomeVM", "loadDocumentReminders failed", e)
+            }
         }
     }
 

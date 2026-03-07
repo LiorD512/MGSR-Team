@@ -85,7 +85,7 @@ class ContactsRepository(
         firebaseHandler.firebaseStore
             .collection(firebaseHandler.contactsTable)
             .document(id)
-            .set(data)
+            .update(data)
             .await()
     }
 

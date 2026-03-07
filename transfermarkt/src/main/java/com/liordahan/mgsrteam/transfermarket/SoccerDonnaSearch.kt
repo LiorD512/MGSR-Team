@@ -232,13 +232,22 @@ class SoccerDonnaSearch {
             }
         }
 
-        // Position
+        // Position – prefer the "Detailed position" image title (e.g. "Centre Back")
+        // over the table cell which uses compound format ("Defence - Centre Back")
         var position: String? = null
-        val posMatch = Regex(
-            """<td[^>]*>Position:</td>\s*<td[^>]*>([^<]+)</td>""",
+        val detailedPosMatch = Regex(
+            """Detailed position[\s\S]*?title="([^"]+)"""",
             RegexOption.IGNORE_CASE
         ).find(html)
-        if (posMatch != null) position = posMatch.groupValues[1].trim()
+        if (detailedPosMatch != null) {
+            position = detailedPosMatch.groupValues[1].trim()
+        } else {
+            val posMatch = Regex(
+                """<td[^>]*>Position:</td>\s*<td[^>]*>([^<]+)</td>""",
+                RegexOption.IGNORE_CASE
+            ).find(html)
+            if (posMatch != null) position = posMatch.groupValues[1].trim()
+        }
 
         // Market value
         var marketValue: String? = null

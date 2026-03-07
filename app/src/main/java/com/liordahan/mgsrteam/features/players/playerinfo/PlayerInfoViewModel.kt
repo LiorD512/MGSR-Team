@@ -491,7 +491,13 @@ class PlayerInfoViewModel(
             }
 
             updatedPlayer?.let { player ->
-                getPlayerDocRef()?.set(player)?.await()
+                getPlayerDocRef()?.update(
+                    mapOf(
+                        "noteList" to player.noteList,
+                        "salaryRange" to player.salaryRange,
+                        "transferFee" to player.transferFee
+                    )
+                )?.await()
 
                 // Write FeedEvent so dashboard updates immediately
                 val feedRef = firebaseHandler.firebaseStore.collection(firebaseHandler.feedEventsTable)
@@ -530,7 +536,13 @@ class PlayerInfoViewModel(
             }
 
             updatedPlayer?.let { player ->
-                getPlayerDocRef()?.set(player)?.await()
+                getPlayerDocRef()?.update(
+                    mapOf(
+                        "noteList" to player.noteList,
+                        "salaryRange" to player.salaryRange,
+                        "transferFee" to player.transferFee
+                    )
+                )?.await()
 
                 // Write feed event for note deleted
                 val deletedBy = getCurrentUserName()
@@ -613,7 +625,26 @@ class PlayerInfoViewModel(
                         notes = ""
                     )
 
-                    getPlayerDocRef()?.set(playerToUpdate)?.await()
+                    getPlayerDocRef()?.update(
+                        mapOf(
+                            "marketValue" to playerToUpdate.marketValue,
+                            "profileImage" to playerToUpdate.profileImage,
+                            "nationalityFlag" to playerToUpdate.nationalityFlag,
+                            "nationality" to playerToUpdate.nationality,
+                            "age" to playerToUpdate.age,
+                            "contractExpired" to playerToUpdate.contractExpired,
+                            "positions" to playerToUpdate.positions,
+                            "currentClub" to playerToUpdate.currentClub,
+                            "marketValueHistory" to playerToUpdate.marketValueHistory,
+                            "lastRefreshedAt" to playerToUpdate.lastRefreshedAt,
+                            "isOnLoan" to playerToUpdate.isOnLoan,
+                            "foot" to playerToUpdate.foot,
+                            "agency" to playerToUpdate.agency,
+                            "agencyUrl" to playerToUpdate.agencyUrl,
+                            "noteList" to playerToUpdate.noteList,
+                            "notes" to playerToUpdate.notes
+                        )
+                    )?.await()
                     _updatePlayerFlow.update { UiResult.Success("Update succeed") }
                 } else if (response is TransfermarktResult.Failed) {
                     _updatePlayerFlow.update { UiResult.Failed(cause = "Update failed\nTry again later") }

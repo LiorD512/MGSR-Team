@@ -162,7 +162,9 @@ class ShadowTeamsViewModel(
                     .document(accountId)
                     .set(data)
                     .await()
-            } catch (_: Exception) { /* ignore */ }
+            } catch (e: Exception) {
+                android.util.Log.e("ShadowTeamsVM", "saveShadowTeam failed", e)
+            }
         }
     }
 
