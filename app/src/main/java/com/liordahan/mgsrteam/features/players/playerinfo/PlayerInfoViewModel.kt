@@ -85,6 +85,7 @@ abstract class IPlayerInfoViewModel : ViewModel() {
     abstract fun generateScoutReport(player: Player, languageCode: String = "en", options: ScoutReportOptions = ScoutReportOptions())
     abstract fun consumeUpdateResult()
     abstract val matchingRequestsFlow: StateFlow<List<MatchingRequestUiState>>
+    abstract val proposalHistoryFlow: StateFlow<List<PlayerOffer>>
     abstract val allAccountsFlow: StateFlow<List<Account>>
     abstract val playerDocumentIdFlow: StateFlow<String?>
     abstract val playerTasksFlow: Flow<List<com.liordahan.mgsrteam.features.home.models.AgentTask>>
@@ -188,6 +189,20 @@ class PlayerInfoViewModel(
                 MatchingRequestUiState(request = req, offer = offerByRequestId[req.id])
             }
         }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    override val proposalHistoryFlow: StateFlow<List<PlayerOffer>> = combine(
+        combine(_playerInfoFlow, _playerDocumentIdFlow) { player, docId ->
+            val key = if (platformManager.current.value != Platform.MEN) docId else player?.tmProfile
+            key
+        }.flatMapLatest { key ->
+            key?.let { offersRepository.offersForPlayerFlow(it) } ?: flowOf(emptyList())
+        },
+        matchingRequestsFlow
+    ) { allOffers, matchingStates ->
+        val activeRequestIds = matchingStates.map { it.request.id }.toSet()
+        allOffers.filter { it.requestId !in activeRequestIds }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     override val allAccountsFlow: StateFlow<List<Account>> = callbackFlow {

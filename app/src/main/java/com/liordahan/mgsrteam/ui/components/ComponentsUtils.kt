@@ -30,7 +30,10 @@ import androidx.compose.material3.TextFieldColors
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -206,9 +209,16 @@ fun AppTextField(
     val iconTint = if (darkTheme) HomeTextSecondary else contentDefault
     val colors = if (darkTheme) setSearchViewTextFieldColorsDarkTheme() else setSearchViewTextFieldColors()
 
+    // Track cursor/selection internally to prevent cursor jumping on recomposition
+    var internalValue by remember { mutableStateOf(textInput) }
+    if (internalValue.text != textInput.text) {
+        internalValue = textInput
+    }
+
     BasicTextField(
-        value = textInput,
+        value = internalValue,
         onValueChange = {
+            internalValue = it
             onValueChange(it)
         },
         modifier = modifier

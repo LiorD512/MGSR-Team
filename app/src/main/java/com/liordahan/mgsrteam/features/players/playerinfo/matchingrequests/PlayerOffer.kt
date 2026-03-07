@@ -21,5 +21,7 @@ data class PlayerOffer(
     val position: String? = null,
     val offeredAt: Long? = null,
     val clubFeedback: String? = null,
-    val markedByAgentName: String? = null
+    val markedByAgentName: String? = null,
+    val requestStatus: String? = null,
+    val requestSnapshot: String? = null
 )

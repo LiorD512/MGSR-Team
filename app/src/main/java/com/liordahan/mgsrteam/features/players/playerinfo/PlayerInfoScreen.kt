@@ -148,6 +148,7 @@ import com.liordahan.mgsrteam.features.players.playerinfo.documents.DocumentType
 import com.liordahan.mgsrteam.features.players.playerinfo.documents.DocumentsSection
 import com.liordahan.mgsrteam.features.players.playerinfo.documents.PlayerDocument
 import com.liordahan.mgsrteam.features.players.playerinfo.matchingrequests.MatchingRequestsSection
+import com.liordahan.mgsrteam.features.players.playerinfo.matchingrequests.ProposalHistorySection
 import com.liordahan.mgsrteam.features.requests.models.SalaryRangeOptions
 import com.liordahan.mgsrteam.features.requests.models.TransferFeeOptions
 import com.liordahan.mgsrteam.features.shortlist.ShortlistRepository
@@ -617,6 +618,13 @@ fun PlayerInfoScreen(
                     player = player,
                     allAccounts = allAccounts,
                     viewModel = viewModel
+                )
+
+                // Section: Proposal History (persists after request deletion)
+                val proposalHistory by viewModel.proposalHistoryFlow.collectAsState(initial = emptyList())
+                ProposalHistorySection(
+                    offers = proposalHistory,
+                    allAccounts = allAccounts
                 )
             }
 

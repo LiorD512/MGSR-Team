@@ -1062,6 +1062,23 @@
     <string name="player_info_matching_requests_feedback_placeholder">e.g. Interested, will discuss with coach…</string>
     <string name="player_info_matching_requests_cancel">Cancel</string>
 
+    <!-- Proposal History -->
+    <string name="proposal_history_title">Proposal History</string>
+    <string name="proposal_history_status_deleted">Request deleted</string>
+    <string name="proposal_history_status_fulfilled">Fulfilled</string>
+    <string name="proposal_history_status_active">Active</string>
+    <string name="proposal_history_status_legacy">Previously offered</string>
+    <string name="proposal_history_feedback">Club feedback</string>
+    <string name="proposal_history_no_feedback">No feedback recorded</string>
+    <string name="proposal_history_by_agent">by %1$s</string>
+    <string name="proposal_history_show_all">Show all (%1$d)</string>
+    <string name="proposal_history_show_less">Show less</string>
+    <string name="proposal_history_just_now">just now</string>
+    <string name="proposal_history_minutes_ago">%1$d min ago</string>
+    <string name="proposal_history_hours_ago">%1$d hours ago</string>
+    <string name="proposal_history_days_ago">%1$d days ago</string>
+    <string name="proposal_history_months_ago">%1$d months ago</string>
+
     <!-- Highlights -->
     <string name="highlights_find_videos">Find videos</string>
     <string name="highlights_refresh">Refresh</string>

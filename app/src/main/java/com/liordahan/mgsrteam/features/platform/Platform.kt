@@ -30,7 +30,7 @@ enum class Platform(
 ) {
     MEN(
         labelRes = R.string.platform_men,
-        emoji = "⚽",
+        emoji = "⚔️",
         accent = Color(0xFF4DB6AC),          // teal – the classic MGSR colour
         accentSecondary = Color(0xFF26A69A),
         playersCollection = "Players",
@@ -44,7 +44,7 @@ enum class Platform(
     ),
     WOMEN(
         labelRes = R.string.platform_women,
-        emoji = "🏅",
+        emoji = "👑",
         accent = Color(0xFFB24BF3),           // ATHENA deep orchid — power & creativity
         accentSecondary = Color(0xFFF5A623),   // ATHENA warm gold — excellence & achievement
         playersCollection = "PlayersWomen",
@@ -58,7 +58,7 @@ enum class Platform(
     ),
     YOUTH(
         labelRes = R.string.platform_youth,
-        emoji = "🌟",
+        emoji = "⚡",
         accent = Color(0xFF00D4FF),           // cyan (web --youth-cyan)
         accentSecondary = Color(0xFFA855F7),  // violet (web --youth-violet)
         playersCollection = "PlayersYouth",

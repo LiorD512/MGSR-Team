@@ -978,6 +978,23 @@
     <string name="player_info_matching_requests_feedback_placeholder">למשל: מעוניינים, ידונו עם המאמן…</string>
     <string name="player_info_matching_requests_cancel">ביטול</string>
 
+    <!-- Proposal History -->
+    <string name="proposal_history_title">היסטוריית הצעות</string>
+    <string name="proposal_history_status_deleted">הבקשה נמחקה</string>
+    <string name="proposal_history_status_fulfilled">הושלם</string>
+    <string name="proposal_history_status_active">פעיל</string>
+    <string name="proposal_history_status_legacy">הוצע בעבר</string>
+    <string name="proposal_history_feedback">פידבק מהמועדון</string>
+    <string name="proposal_history_no_feedback">לא נרשם פידבק</string>
+    <string name="proposal_history_by_agent">ע״י %1$s</string>
+    <string name="proposal_history_show_all">הצג הכל (%1$d)</string>
+    <string name="proposal_history_show_less">הצג פחות</string>
+    <string name="proposal_history_just_now">עכשיו</string>
+    <string name="proposal_history_minutes_ago">לפני %1$d דק׳</string>
+    <string name="proposal_history_hours_ago">לפני %1$d שעות</string>
+    <string name="proposal_history_days_ago">לפני %1$d ימים</string>
+    <string name="proposal_history_months_ago">לפני %1$d חודשים</string>
+
     <!-- Player Info Accessibility -->
     <string name="player_info_cd_go_back">חזרה</string>
     <string name="player_info_cd_value_up">שווי שוק במגמת עלייה</string>

@@ -312,6 +312,8 @@ class AddPlayerViewModel(
                         )
                     }
                     _playerSearchStateFlow.update { it.copy(youthSearchResults = results) }
+                    // Background enrichment: fetch real IFA data per player (progressive)
+                    enrichYouthResults(results)
                 } else {
                     _playerSearchStateFlow.update { it.copy(youthSearchResults = emptyList()) }
                 }
@@ -320,6 +322,44 @@ class AddPlayerViewModel(
                 _playerSearchStateFlow.update { it.copy(youthSearchResults = emptyList()) }
             }
             updateProgress(false)
+        }
+    }
+
+    /** Fire background /enrich calls for each player to replace stale Google snippet data. */
+    private fun enrichYouthResults(results: List<YouthIFASearchResult>) {
+        val baseUrl = com.liordahan.mgsrteam.features.aiscout.MgsrWebApiClient.DEFAULT_BASE_URL
+        for (result in results) {
+            val pid = result.ifaPlayerId ?: continue
+            viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                try {
+                    val req = okhttp3.Request.Builder()
+                        .url("$baseUrl/api/youth-players/enrich?player_id=$pid")
+                        .get().build()
+                    val resp = httpClient.newCall(req).execute()
+                    val body = resp.body?.string()
+                    if (resp.isSuccessful && body != null) {
+                        val obj = org.json.JSONObject(body)
+                        val club = obj.optString("currentClub", "").takeIf { it.isNotBlank() }
+                        val dob = obj.optString("dateOfBirth", "").takeIf { it.isNotBlank() }
+                        val nat = obj.optString("nationality", "").takeIf { it.isNotBlank() }
+                        val nameHe = obj.optString("fullNameHe", "").takeIf { it.isNotBlank() }
+                        val img = obj.optString("profileImage", "").takeIf { it.isNotBlank() }
+                        if (club != null || dob != null || nat != null || nameHe != null || img != null) {
+                            _playerSearchStateFlow.update { state ->
+                                state.copy(youthSearchResults = state.youthSearchResults.map { r ->
+                                    if (r.ifaPlayerId == pid) r.copy(
+                                        currentClub = club?.let { cleanYouthClubSnippet(it) } ?: r.currentClub,
+                                        dateOfBirth = dob ?: r.dateOfBirth,
+                                        nationality = nat ?: r.nationality,
+                                        fullNameHe = nameHe ?: r.fullNameHe,
+                                        profileImage = img ?: r.profileImage
+                                    ) else r
+                                })
+                            }
+                        }
+                    }
+                } catch (_: Exception) { /* keep snippet data */ }
+            }
         }
     }
 
@@ -706,6 +746,11 @@ class AddPlayerViewModel(
                             agentName = agentInChargeName
                         )
                     )
+
+                // Auto-remove from shortlist (same behaviour as women/men platform)
+                if (form.ifaUrl.isNotBlank()) {
+                    try { shortlistRepository.removeFromShortlist(form.ifaUrl) } catch (_: Exception) {}
+                }
 
                 _isPlayerAddedFlow.update { true }
             } catch (e: Exception) {

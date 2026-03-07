@@ -11,7 +11,7 @@ import org.koin.dsl.bind
 import org.koin.dsl.module
 
 val requestsModule = module {
-    single { RequestsRepository(get(), get()) } bind IRequestsRepository::class
+    single { RequestsRepository(get(), get(), get()) } bind IRequestsRepository::class
     single { RequestVoiceAnalyzer(get<ClubSearch>()) }
     viewModel<IRequestsViewModel> { RequestsViewModel(get(), get(), get(), get(), get()) }
 }

@@ -6,6 +6,7 @@ import com.liordahan.mgsrteam.features.home.models.FeedEvent
 import com.liordahan.mgsrteam.features.login.models.Account
 import com.liordahan.mgsrteam.features.platform.PlatformManager
 import com.liordahan.mgsrteam.features.requests.models.Request
+import com.liordahan.mgsrteam.features.players.playerinfo.matchingrequests.IPlayerOffersRepository
 import com.liordahan.mgsrteam.firebase.FirebaseHandler
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -23,7 +24,8 @@ interface IRequestsRepository {
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class RequestsRepository(
     private val firebaseHandler: FirebaseHandler,
-    private val platformManager: PlatformManager
+    private val platformManager: PlatformManager,
+    private val offersRepository: IPlayerOffersRepository
 ) : IRequestsRepository {
 
     /**
@@ -156,10 +158,24 @@ class RequestsRepository(
         val requestId = request.id ?: return@runCatching
         val agentName = getCurrentUserAccountName() ?: FirebaseAuth.getInstance().currentUser?.displayName
         writeFeedEventRequestDeleted(request, agentName)
+        // Stamp linked PlayerOffers with deletion status and a snapshot of the request details
+        val snapshot = buildRequestSnapshot(request)
+        offersRepository.stampOffersAsDeleted(requestId, snapshot)
         firebaseHandler.firebaseStore
             .collection(firebaseHandler.clubRequestsTable)
             .document(requestId)
             .delete()
             .await()
+    }
+
+    private fun buildRequestSnapshot(request: Request): String {
+        val parts = mutableListOf<String>()
+        if (request.ageDoesntMatter != true && request.minAge != null && request.maxAge != null && request.minAge > 0 && request.maxAge > 0) {
+            parts.add("Age: ${request.minAge}-${request.maxAge}")
+        }
+        request.salaryRange?.takeIf { it.isNotBlank() }?.let { parts.add("Salary: $it") }
+        request.transferFee?.takeIf { it.isNotBlank() }?.let { parts.add("Fee: $it") }
+        request.dominateFoot?.takeIf { it.isNotBlank() && it != "any" }?.let { parts.add("Foot: $it") }
+        return parts.joinToString(" • ")
     }
 }

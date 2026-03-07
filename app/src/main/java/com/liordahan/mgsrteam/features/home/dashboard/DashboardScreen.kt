@@ -18,6 +18,10 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
@@ -145,6 +149,7 @@ import com.liordahan.mgsrteam.ui.theme.HomeRoseAccent
 import com.liordahan.mgsrteam.ui.theme.WarRoomAccent
 import com.liordahan.mgsrteam.ui.theme.HomePurpleAccent
 import com.liordahan.mgsrteam.ui.theme.HomeRedAccent
+import com.liordahan.mgsrteam.ui.theme.HomeYellowAccent
 import com.liordahan.mgsrteam.ui.theme.HomeTealAccent
 import com.liordahan.mgsrteam.ui.theme.HomeTextPrimary
 import com.liordahan.mgsrteam.ui.theme.HomeTextSecondary
@@ -199,6 +204,16 @@ fun DashboardScreen(
         animationSpec = tween(durationMillis = 450, easing = FastOutSlowInEasing),
         label = "dashboard_bg"
     )
+    val dividerAccent1 by animateColorAsState(
+        targetValue = currentPlatform.accent,
+        animationSpec = tween(400, easing = FastOutSlowInEasing),
+        label = "divider_c1"
+    )
+    val dividerAccent2 by animateColorAsState(
+        targetValue = currentPlatform.accentSecondary,
+        animationSpec = tween(400, easing = FastOutSlowInEasing),
+        label = "divider_c2"
+    )
 
     // ── Platform switch glow sweep ─────────────────────────────────
     val sweepProgress = remember { Animatable(0f) }
@@ -233,17 +248,25 @@ fun DashboardScreen(
                 drawContent()
                 val progress = sweepProgress.value
                 if (progress > 0.001f && progress < 0.999f) {
-                    // Glowing accent line that sweeps top→bottom
+                    // Layer 1: Full-screen color wash (peaks at 22% alpha)
+                    val washAlpha = if (progress < 0.3f) {
+                        (progress / 0.3f) * 0.22f
+                    } else {
+                        ((1f - progress) / 0.7f) * 0.22f
+                    }
+                    drawRect(color = sweepAccentColor.copy(alpha = washAlpha))
+
+                    // Layer 2: Bright accent sweep line
                     val sweepY = size.height * progress
-                    val bandHeight = size.height * 0.08f
+                    val bandHeight = size.height * 0.12f
                     val topEdge = sweepY - bandHeight / 2f
                     drawRect(
                         brush = Brush.verticalGradient(
                             colors = listOf(
                                 Color.Transparent,
-                                sweepAccentColor.copy(alpha = 0.35f),
-                                sweepAccentColor.copy(alpha = 0.5f),
-                                sweepAccentColor.copy(alpha = 0.35f),
+                                sweepAccentColor.copy(alpha = 0.40f),
+                                sweepAccentColor.copy(alpha = 0.65f),
+                                sweepAccentColor.copy(alpha = 0.40f),
                                 Color.Transparent
                             ),
                             startY = topEdge,
@@ -266,9 +289,11 @@ fun DashboardScreen(
             transitionSpec = {
                 val forward = targetState.ordinal > initialState.ordinal
                 val enter = fadeIn(tween(350)) +
-                    slideInHorizontally(tween(400, easing = FastOutSlowInEasing)) { if (forward) it / 3 else -it / 3 }
+                    slideInHorizontally(tween(400, easing = FastOutSlowInEasing)) { if (forward) it / 3 else -it / 3 } +
+                    scaleIn(tween(400, easing = FastOutSlowInEasing), initialScale = 0.90f)
                 val exit = fadeOut(tween(250)) +
-                    slideOutHorizontally(tween(300, easing = FastOutSlowInEasing)) { if (forward) -it / 3 else it / 3 }
+                    slideOutHorizontally(tween(300, easing = FastOutSlowInEasing)) { if (forward) -it / 3 else it / 3 } +
+                    scaleOut(tween(300, easing = FastOutSlowInEasing), targetScale = 0.90f)
                 enter.togetherWith(exit)
             },
             label = "tagline"
@@ -282,7 +307,15 @@ fun DashboardScreen(
                     YouthGreetingTagline()
                     Spacer(Modifier.height(4.dp))
                 }
-                else -> Spacer(Modifier.height(0.dp))
+                else -> Column {
+                    Text(
+                        text = stringResource(R.string.men_dashboard_greeting_tagline),
+                        style = boldTextStyle(HomeTealAccent.copy(alpha = 0.7f), 13.sp),
+                        letterSpacing = 0.8.sp,
+                        modifier = Modifier.padding(horizontal = 20.dp)
+                    )
+                    Spacer(Modifier.height(4.dp))
+                }
             }
         }
 
@@ -302,15 +335,41 @@ fun DashboardScreen(
             )
         }
 
+        // ── Animated platform accent divider ─────────────────────────────
+        Spacer(Modifier.height(2.dp))
+        Box(
+            modifier = Modifier
+                .fillMaxWidth(0.45f)
+                .height(2.dp)
+                .align(Alignment.CenterHorizontally)
+                .background(
+                    brush = Brush.horizontalGradient(
+                        listOf(
+                            Color.Transparent,
+                            dividerAccent1.copy(alpha = 0.7f),
+                            dividerAccent2.copy(alpha = 0.7f),
+                            Color.Transparent,
+                        )
+                    ),
+                    shape = RoundedCornerShape(1.dp)
+                )
+        )
+        Spacer(Modifier.height(6.dp))
+
         // ── All content below switcher (one cohesive animated transition) ──
         AnimatedContent(
             targetState = currentPlatform,
             transitionSpec = {
                 val forward = targetState.ordinal > initialState.ordinal
                 val enter = fadeIn(tween(400, easing = FastOutSlowInEasing)) +
-                    slideInHorizontally(tween(500, easing = FastOutSlowInEasing)) { if (forward) it / 3 else -it / 3 }
+                    slideInHorizontally(tween(500, easing = FastOutSlowInEasing)) { if (forward) it / 3 else -it / 3 } +
+                    scaleIn(
+                        spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMediumLow),
+                        initialScale = 0.88f
+                    )
                 val exit = fadeOut(tween(300, easing = FastOutSlowInEasing)) +
-                    slideOutHorizontally(tween(400, easing = FastOutSlowInEasing)) { if (forward) -it / 3 else it / 3 }
+                    slideOutHorizontally(tween(400, easing = FastOutSlowInEasing)) { if (forward) -it / 3 else it / 3 } +
+                    scaleOut(tween(350, easing = FastOutSlowInEasing), targetScale = 0.88f)
                 enter.togetherWith(exit)
             },
             modifier = Modifier.weight(1f),
@@ -1009,7 +1068,7 @@ private fun QuickActionsRow(navController: NavController, platform: Platform = P
                 QuickActionChip(
                     icon = Icons.Default.ContactPhone,
                     label = stringResource(R.string.quick_action_contacts),
-                    color = HomeTealAccent,
+                    color = HomeYellowAccent,
                     onClick = {
                         navController.navigate(Screens.ContactsScreen.route) {
                             launchSingleTop = true

@@ -13,6 +13,7 @@ interface IPlayerOffersRepository {
     fun offersForPlayerFlow(playerTmProfile: String): Flow<List<PlayerOffer>>
     suspend fun addOffer(offer: PlayerOffer): Result<Unit>
     suspend fun updateClubFeedback(offerId: String, clubFeedback: String?): Result<Unit>
+    suspend fun stampOffersAsDeleted(requestId: String, requestSnapshot: String?): Result<Unit>
 }
 
 class PlayerOffersRepository(
@@ -75,6 +76,22 @@ class PlayerOffersRepository(
             .document(offerId)
             .update("clubFeedback", clubFeedback ?: "")
             .await()
+    }
+
+    override suspend fun stampOffersAsDeleted(requestId: String, requestSnapshot: String?): Result<Unit> = runCatching {
+        val snapshot = firebaseHandler.firebaseStore
+            .collection(firebaseHandler.playerOffersTable)
+            .whereEqualTo("requestId", requestId)
+            .get()
+            .await()
+        val batch = firebaseHandler.firebaseStore.batch()
+        for (doc in snapshot.documents) {
+            batch.update(doc.reference, mapOf(
+                "requestStatus" to "deleted",
+                "requestSnapshot" to (requestSnapshot ?: "")
+            ))
+        }
+        batch.commit().await()
     }
 
     private suspend fun getCurrentUserAccountName(): String? {

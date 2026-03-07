@@ -35,6 +35,7 @@ val HomeOrangeAccent = Color(0xFFFF9800)
 val HomeRedAccent = Color(0xFFE53935)
 val HomeBlueAccent = Color(0xFF42A5F5)
 val HomePurpleAccent = Color(0xFFAB47BC)
+val HomeYellowAccent = Color(0xFFFDD835)  // bright yellow for contacts - unique across all chips
 val HomeRoseAccent = Color(0xFFF48FB1)   // soft rose/pink for notes - distinct from other accents
 val HomeAmberAccent = Color(0xFFEC407A)   // hot pink for contract finisher — totally distinct from all other chips
 val HomeLiveRed = Color(0xFFFF1744)
