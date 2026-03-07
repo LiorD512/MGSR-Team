@@ -3,12 +3,19 @@ package com.liordahan.mgsrteam.features.home.dashboard
 import android.content.Intent
 import android.net.Uri
 import androidx.core.net.toUri
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -180,11 +187,15 @@ fun DashboardScreen(
 
     val isWomenPlatform = currentPlatform == Platform.WOMEN
     val isYouthPlatform = currentPlatform == Platform.YOUTH
-    val dashboardBg = when {
-        isWomenPlatform -> WomenColors.Background
-        isYouthPlatform -> YouthColors.Background
-        else -> HomeDarkBackground
-    }
+    val dashboardBg by animateColorAsState(
+        targetValue = when {
+            isWomenPlatform -> WomenColors.Background
+            isYouthPlatform -> YouthColors.Background
+            else -> HomeDarkBackground
+        },
+        animationSpec = tween(durationMillis = 450, easing = FastOutSlowInEasing),
+        label = "dashboard_bg"
+    )
 
     if (state.isLoading) {
         SkeletonDashboardLayout(
@@ -207,16 +218,26 @@ fun DashboardScreen(
             onLanguageClick = { showLanguageDialog = true }
         )
 
-        // ── Women tagline (empowering subtitle) ─────────────────────────
-        if (isWomenPlatform) {
-            WomenGreetingTagline()
-            Spacer(Modifier.height(4.dp))
-        }
-
-        // ── Youth tagline (rising stars) ─────────────────────────────────
-        if (isYouthPlatform) {
-            YouthGreetingTagline()
-            Spacer(Modifier.height(4.dp))
+        // ── Platform tagline (animated) ──────────────────────────────────
+        AnimatedContent(
+            targetState = currentPlatform,
+            transitionSpec = {
+                (fadeIn(tween(300, delayMillis = 50)) + slideInVertically(tween(300, delayMillis = 50)) { it / 8 })
+                    .togetherWith(fadeOut(tween(200)) + slideOutVertically(tween(200)) { -it / 8 })
+            },
+            label = "tagline"
+        ) { platform ->
+            when (platform) {
+                Platform.WOMEN -> Column {
+                    WomenGreetingTagline()
+                    Spacer(Modifier.height(4.dp))
+                }
+                Platform.YOUTH -> Column {
+                    YouthGreetingTagline()
+                    Spacer(Modifier.height(4.dp))
+                }
+                else -> Spacer(Modifier.height(0.dp))
+            }
         }
 
         // ── Platform switcher (Men / Women / Youth) ─────────────────────
@@ -235,19 +256,30 @@ fun DashboardScreen(
             )
         }
 
-        // ── Stats & Quick Actions (women / youth / default) ─────────────
-        when {
-            isWomenPlatform -> {
-                WomenStatsRow(state)
-                WomenQuickActionsRow(navController = navController)
-            }
-            isYouthPlatform -> {
-                YouthStatsRow(state)
-                YouthQuickActionsRow(navController = navController)
-            }
-            else -> {
-                StatsRow(state, currentPlatform)
-                QuickActionsRow(navController = navController, platform = currentPlatform)
+        // ── Stats & Quick Actions (animated) ─────────────────────────────
+        AnimatedContent(
+            targetState = currentPlatform,
+            transitionSpec = {
+                (fadeIn(tween(300, delayMillis = 100)) + slideInVertically(tween(300, delayMillis = 100)) { it / 8 })
+                    .togetherWith(fadeOut(tween(200)) + slideOutVertically(tween(200)) { -it / 8 })
+            },
+            label = "stats_quick_actions"
+        ) { platform ->
+            Column {
+                when (platform) {
+                    Platform.WOMEN -> {
+                        WomenStatsRow(state)
+                        WomenQuickActionsRow(navController = navController)
+                    }
+                    Platform.YOUTH -> {
+                        YouthStatsRow(state)
+                        YouthQuickActionsRow(navController = navController)
+                    }
+                    else -> {
+                        StatsRow(state, platform)
+                        QuickActionsRow(navController = navController, platform = platform)
+                    }
+                }
             }
         }
 
@@ -291,61 +323,79 @@ fun DashboardScreen(
                 .weight(1f),
             contentPadding = PaddingValues(bottom = 64.dp)
         ) {
-            // ── My Agent Hub (personal dashboard) ─────────────────────
+            // ── My Agent Hub (animated) ───────────────────────────────
             item {
                 val overview = state.myAgentOverview
-                when {
-                    isWomenPlatform -> when {
-                        overview != null && overview.totalPlayers > 0 -> {
-                            WomenAgentHubSection(
-                                overview = overview,
-                                navController = navController,
-                                onTaskToggle = { viewModel.toggleTaskCompleted(it) }
-                            )
+                AnimatedContent(
+                    targetState = currentPlatform,
+                    transitionSpec = {
+                        (fadeIn(tween(300, delayMillis = 200)) + slideInVertically(tween(300, delayMillis = 200)) { it / 8 })
+                            .togetherWith(fadeOut(tween(200)) + slideOutVertically(tween(200)) { -it / 8 })
+                    },
+                    label = "agent_hub"
+                ) { platform ->
+                    when (platform) {
+                        Platform.WOMEN -> when {
+                            overview != null && overview.totalPlayers > 0 -> {
+                                WomenAgentHubSection(
+                                    overview = overview,
+                                    navController = navController,
+                                    onTaskToggle = { viewModel.toggleTaskCompleted(it) }
+                                )
+                            }
+                            overview != null -> WomenAgentEmptyState()
+                            else -> MyBoardLoadingPlaceholder()
                         }
-                        overview != null -> WomenAgentEmptyState()
-                        else -> MyBoardLoadingPlaceholder()
-                    }
-                    isYouthPlatform -> when {
-                        overview != null && overview.totalPlayers > 0 -> {
-                            YouthAgentHubSection(
-                                overview = overview,
-                                navController = navController,
-                                onTaskToggle = { viewModel.toggleTaskCompleted(it) }
-                            )
+                        Platform.YOUTH -> when {
+                            overview != null && overview.totalPlayers > 0 -> {
+                                YouthAgentHubSection(
+                                    overview = overview,
+                                    navController = navController,
+                                    onTaskToggle = { viewModel.toggleTaskCompleted(it) }
+                                )
+                            }
+                            overview != null -> YouthAgentEmptyState()
+                            else -> MyBoardLoadingPlaceholder()
                         }
-                        overview != null -> YouthAgentEmptyState()
-                        else -> MyBoardLoadingPlaceholder()
-                    }
-                    else -> when {
-                        overview != null && overview.totalPlayers > 0 -> {
-                            MyAgentHubSection(
-                                overview = overview,
-                                navController = navController,
-                                onTaskToggle = { viewModel.toggleTaskCompleted(it) }
-                            )
+                        else -> when {
+                            overview != null && overview.totalPlayers > 0 -> {
+                                MyAgentHubSection(
+                                    overview = overview,
+                                    navController = navController,
+                                    onTaskToggle = { viewModel.toggleTaskCompleted(it) }
+                                )
+                            }
+                            overview != null -> MyAgentEmptyState()
+                            else -> MyBoardLoadingPlaceholder()
                         }
-                        overview != null -> MyAgentEmptyState()
-                        else -> MyBoardLoadingPlaceholder()
                     }
                 }
             }
 
-            // ── Activity Feed ────────────────────────────────────────────
+            // ── Activity Feed (animated) ─────────────────────────────────
             item {
-                when {
-                    isWomenPlatform -> WomenFeedSectionHeader(
-                        selectedFilter = state.selectedFeedFilter,
-                        onFilterSelected = { viewModel.selectFeedFilter(it) }
-                    )
-                    isYouthPlatform -> YouthFeedSectionHeader(
-                        selectedFilter = state.selectedFeedFilter,
-                        onFilterSelected = { viewModel.selectFeedFilter(it) }
-                    )
-                    else -> FeedSectionHeader(
-                        selectedFilter = state.selectedFeedFilter,
-                        onFilterSelected = { viewModel.selectFeedFilter(it) }
-                    )
+                AnimatedContent(
+                    targetState = currentPlatform,
+                    transitionSpec = {
+                        (fadeIn(tween(300, delayMillis = 250)) + slideInVertically(tween(300, delayMillis = 250)) { it / 8 })
+                            .togetherWith(fadeOut(tween(200)) + slideOutVertically(tween(200)) { -it / 8 })
+                    },
+                    label = "feed_header"
+                ) { platform ->
+                    when (platform) {
+                        Platform.WOMEN -> WomenFeedSectionHeader(
+                            selectedFilter = state.selectedFeedFilter,
+                            onFilterSelected = { viewModel.selectFeedFilter(it) }
+                        )
+                        Platform.YOUTH -> YouthFeedSectionHeader(
+                            selectedFilter = state.selectedFeedFilter,
+                            onFilterSelected = { viewModel.selectFeedFilter(it) }
+                        )
+                        else -> FeedSectionHeader(
+                            selectedFilter = state.selectedFeedFilter,
+                            onFilterSelected = { viewModel.selectFeedFilter(it) }
+                        )
+                    }
                 }
             }
 

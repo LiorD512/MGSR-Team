@@ -13,7 +13,6 @@ import com.liordahan.mgsrteam.features.aiscout.di.aiScoutModule
 import com.liordahan.mgsrteam.features.shadowteams.di.shadowTeamsModule
 import com.liordahan.mgsrteam.features.shortlist.di.shortlistModule
 import com.liordahan.mgsrteam.features.warroom.di.warRoomModule
-import com.liordahan.mgsrteam.features.youth.di.youthModule
 
 val applicationModules = listOf(
     mainModule,
@@ -29,6 +28,5 @@ val applicationModules = listOf(
     requestsModule,
     shadowTeamsModule,
     aiScoutModule,
-    warRoomModule,
-    youthModule
+    warRoomModule
 )

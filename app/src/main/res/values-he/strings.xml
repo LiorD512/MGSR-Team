@@ -631,6 +631,8 @@
     <string name="add_player_title">הוסף שחקן</string>
     <string name="add_player_search_roster">חפש ב-Transfermarkt להוספה לסגל</string>
     <string name="add_player_search_shortlist">חפש ב-Transfermarkt להוספה לרשימת מעקב</string>
+    <string name="women_search_shortlist_subtitle">חפש ב-SoccerDonna להוספה לרשימת מעקב</string>
+    <string name="youth_search_shortlist_subtitle">חפש שחקן להוספה לרשימת מעקב</string>
     <string name="add_player_from_link_title">הוסף שחקן מקישור</string>
     <string name="add_player_from_link_roster">הוסף לסגל (עם פרטי קשר)</string>
     <string name="add_player_from_link_shortlist">הוסף לרשימת מעקב</string>

@@ -134,8 +134,8 @@ function extractClubFromSnippet(snippet: string | undefined): string | undefined
   if (!snippet?.trim()) return undefined;
   const s = snippet.trim();
   const clubMatch =
-    s.match(/קבוצה[:\s]*([^\n·|]+)/) ||
-    s.match(/(?:מכבי|הפועל|בני|ביתר|עירוני|הכח|מ\.ס\.|הפ')\s+[^\n·|]{2,30}/) ||
+    s.match(/קבוצה[:\s]*([^\n·|]+?)(?:\. |$)/) ||
+    s.match(/(?:מכבי|הפועל|בני|ביתר|עירוני|הכח|מ\.ס\.|הפ')\s+[^\n·|.]{2,60}(?:\)|[^.])/) ||
     s.match(/(?:Maccabi|Hapoel|Beitar|Bnei)\s+[A-Za-z\s]{2,40}/);
   const raw = clubMatch ? clubMatch[1]?.trim() || clubMatch[0]?.trim() : undefined;
   return cleanClubSnippet(raw);
@@ -156,6 +156,8 @@ function cleanClubSnippet(club: string | undefined): string | undefined {
   // Take only the first club (before comma-separated second club)
   const commaIdx = c.indexOf('),');
   if (commaIdx > 0) c = c.substring(0, commaIdx + 1).trim();
+  // Strip trailing truncated IFA noise (e.g. "עונהשי" from 30-char regex cutoff)
+  c = c.replace(/\.?\s*עונה.*$/, '').trim();
   // Remove trailing periods
   c = c.replace(/\.\s*$/, '').trim();
   // If nothing meaningful remains, return undefined
@@ -250,65 +252,112 @@ function collectPlayerUrlsFromSerpData(data: {
   return map;
 }
 
-/** ─── SEARCH (via SerpAPI) ─── */
+/** ─── SEARCH (via Serper.dev → SerpAPI fallback) ─── */
 export async function searchIFA(query: string): Promise<IFASearchResult[]> {
   const q = query.trim();
   if (!q || q.length < 2) return [];
 
-  const serpKey = process.env.SERPAPI_KEY;
-  if (!serpKey?.trim()) {
-    console.warn('[IFA] No SERPAPI_KEY — cannot search IFA');
-    return [];
-  }
-
   const isHebrew = /[\u0590-\u05FF]/.test(q);
   const playerUrlMap = new Map<string, { title?: string; snippet?: string }>();
 
-  const runSearch = async (searchQuery: string, extraParams?: Record<string, string>) => {
-    try {
-      const url = new URL('https://serpapi.com/search.json');
-      url.searchParams.set('engine', 'google');
-      url.searchParams.set('q', searchQuery);
-      url.searchParams.set('api_key', serpKey.trim());
-      url.searchParams.set('num', '15');
-      url.searchParams.set('gl', 'il');
-      url.searchParams.set('hl', extraParams?.hl ?? (isHebrew ? 'he' : 'en'));
-      for (const [k, v] of Object.entries(extraParams ?? {})) {
-        if (k === 'hl') continue;
-        url.searchParams.set(k, v);
+  // ── Strategy 1: Serper.dev (2,500 free/month) ──
+  const serperKey = process.env.SERPER_API_KEY?.trim();
+  if (serperKey) {
+    const runSerperSearch = async (searchQuery: string, hl?: string) => {
+      try {
+        const res = await fetch('https://google.serper.dev/search', {
+          method: 'POST',
+          headers: {
+            'X-API-KEY': serperKey,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            q: searchQuery,
+            num: 15,
+            gl: 'il',
+            hl: hl ?? (isHebrew ? 'he' : 'en'),
+          }),
+          cache: 'no-store',
+          signal: AbortSignal.timeout(15000),
+        });
+        if (!res.ok) {
+          console.error('[IFA] Serper HTTP', res.status);
+          return;
+        }
+        const data = (await res.json()) as {
+          organic?: Array<{ title?: string; link?: string; snippet?: string;
+            sitelinks?: { inline?: Array<{ title?: string; link?: string }>; expanded?: Array<{ title?: string; link?: string; snippet?: string }> };
+          }>;
+        };
+        const addLink = (link: string, title?: string, snippet?: string) => {
+          const pid = extractPlayerIdFromLink(link);
+          if (!pid) return;
+          const ifaUrl = `${IFA_BASE}/players/player/?player_id=${pid}&season_id=${CURRENT_SEASON_ID}`;
+          if (!playerUrlMap.has(ifaUrl)) {
+            playerUrlMap.set(ifaUrl, { title, snippet });
+          }
+        };
+        for (const r of data.organic ?? []) {
+          addLink(r.link ?? '', r.title, r.snippet);
+          for (const sl of r.sitelinks?.inline ?? []) addLink(sl.link ?? '', sl.title);
+          for (const sl of r.sitelinks?.expanded ?? []) addLink(sl.link ?? '', sl.title, sl.snippet);
+        }
+      } catch (err) {
+        console.error('[IFA] Serper search error:', err);
       }
+    };
 
-      const res = await fetch(url.toString(), {
-        headers: { 'User-Agent': 'MGSR/1.0' },
-        signal: AbortSignal.timeout(15000),
-      });
-      const data = (await res.json()) as Parameters<typeof collectPlayerUrlsFromSerpData>[0];
-      const collected = collectPlayerUrlsFromSerpData(data);
-      collected.forEach((meta, ifaUrl) => {
-        if (!playerUrlMap.has(ifaUrl)) playerUrlMap.set(ifaUrl, meta);
-      });
-    } catch (err) {
-      console.error('[IFA] Search error:', err);
+    await runSerperSearch(`site:football.org.il inurl:player_id ${q}`);
+    if (playerUrlMap.size < 5) {
+      const keyword = isHebrew ? 'שחקן' : 'player';
+      await runSerperSearch(`site:football.org.il inurl:player_id ${q} ${keyword}`);
     }
-  };
-
-  // Primary search
-  await runSearch(`site:football.org.il inurl:player_id ${q}`);
-
-  // Fallbacks only when few results (max 2 extra calls for speed)
-  if (playerUrlMap.size < 5) {
-    const keyword = isHebrew ? 'שחקן' : 'player';
-    await runSearch(`site:football.org.il inurl:player_id ${q} ${keyword}`);
+    if (playerUrlMap.size < 5 && !isHebrew) {
+      await runSerperSearch(`site:football.org.il inurl:player_id ${q} שחקן`, 'he');
+    }
   }
-  if (playerUrlMap.size < 5 && !isHebrew) {
-    await runSearch(`site:football.org.il inurl:player_id ${q} שחקן`, { hl: 'he' });
+
+  // ── Strategy 2: SerpAPI legacy fallback ──
+  if (playerUrlMap.size < 3) {
+    const serpKey = process.env.SERPAPI_KEY;
+    if (serpKey?.trim()) {
+      const runSearch = async (searchQuery: string, extraParams?: Record<string, string>) => {
+        try {
+          const url = new URL('https://serpapi.com/search.json');
+          url.searchParams.set('engine', 'google');
+          url.searchParams.set('q', searchQuery);
+          url.searchParams.set('api_key', serpKey.trim());
+          url.searchParams.set('num', '15');
+          url.searchParams.set('gl', 'il');
+          url.searchParams.set('hl', extraParams?.hl ?? (isHebrew ? 'he' : 'en'));
+          for (const [k, v] of Object.entries(extraParams ?? {})) {
+            if (k === 'hl') continue;
+            url.searchParams.set(k, v);
+          }
+          const res = await fetch(url.toString(), {
+            headers: { 'User-Agent': 'MGSR/1.0' },
+            signal: AbortSignal.timeout(15000),
+          });
+          const data = (await res.json()) as Parameters<typeof collectPlayerUrlsFromSerpData>[0];
+          const collected = collectPlayerUrlsFromSerpData(data);
+          collected.forEach((meta, ifaUrl) => {
+            if (!playerUrlMap.has(ifaUrl)) playerUrlMap.set(ifaUrl, meta);
+          });
+        } catch (err) {
+          console.error('[IFA] SerpAPI search error:', err);
+        }
+      };
+      await runSearch(`site:football.org.il inurl:player_id ${q}`);
+    }
   }
 
   const urls = Array.from(playerUrlMap.keys()).slice(0, 20);
-  if (urls.length === 0) return [];
+  if (urls.length === 0) {
+    console.warn('[IFA] No results for query:', q, '— ensure SERPER_API_KEY is set');
+    return [];
+  }
 
-  // Fast path: use SerpAPI title/snippet only — no profile fetch (saves 40–120s)
-  // Profile is fetched on select via fetch-profile API
+  // Fast path: use search title/snippet only — no profile fetch (saves 40–120s)
   const results: IFASearchResult[] = [];
   for (const ifaUrl of urls) {
     const meta = playerUrlMap.get(ifaUrl);

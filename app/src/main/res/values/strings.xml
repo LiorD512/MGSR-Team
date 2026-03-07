@@ -841,6 +841,8 @@
     <string name="add_player_title">Add Player</string>
     <string name="add_player_search_roster">Search Transfermarkt to add to roster</string>
     <string name="add_player_search_shortlist">Search Transfermarkt to add to shortlist</string>
+    <string name="women_search_shortlist_subtitle">Search SoccerDonna to add to shortlist</string>
+    <string name="youth_search_shortlist_subtitle">Search player to add to shortlist</string>
     <string name="add_player_from_link_title">Add player from link</string>
     <string name="add_player_from_link_roster">Add to roster (with contact info)</string>
     <string name="add_player_from_link_shortlist">Add to shortlist</string>

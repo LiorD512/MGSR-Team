@@ -1937,6 +1937,8 @@ fun AddPlayerHeader(
                 )
                 Text(
                     text = when {
+                        forShortlist && platform == Platform.WOMEN -> stringResource(R.string.women_search_shortlist_subtitle)
+                        forShortlist && platform == Platform.YOUTH -> stringResource(R.string.youth_search_shortlist_subtitle)
                         forShortlist -> stringResource(R.string.add_player_search_shortlist)
                         platform == Platform.WOMEN -> stringResource(R.string.women_search_subtitle)
                         platform == Platform.YOUTH -> stringResource(R.string.youth_search_subtitle)
