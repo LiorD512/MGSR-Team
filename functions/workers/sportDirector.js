@@ -21,6 +21,221 @@ const { getFirestore } = require("firebase-admin/firestore");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 // ═══════════════════════════════════════════════════════════════
+// Player Intelligence — multi-source enrichment for verdicts
+// Sources: TheSportsDB (bio, wage, honours), FotMob (ID), ClubElo (strength)
+// Note: FBref & Sofascore blocked by Cloudflare/403 from server-side
+// ═══════════════════════════════════════════════════════════════
+const INTEL_TIMEOUT = 10000;
+const INTEL_UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
+
+async function intelFetch(url, opts = {}) {
+  return fetch(url, {
+    ...opts,
+    headers: {
+      "User-Agent": INTEL_UA,
+      "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      "Accept-Language": "en-US,en;q=0.9",
+      ...(opts.headers || {}),
+    },
+    signal: AbortSignal.timeout(INTEL_TIMEOUT),
+  });
+}
+
+function normalizeNameForMatch(name) {
+  return (name || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+}
+
+function intelNamesMatch(a, b) {
+  const na = normalizeNameForMatch(a);
+  const nb = normalizeNameForMatch(b);
+  if (na === nb) return true;
+  const partsA = na.split(/\s+/);
+  const partsB = nb.split(/\s+/);
+  const [shorter, longer] = partsA.length <= partsB.length ? [partsA, nb] : [partsB, na];
+  return shorter.length >= 2 && shorter.every(p => longer.includes(p));
+}
+
+/**
+ * Fetch TheSportsDB player intel: bio, physical, wage, honours, career history.
+ * Free API — reliable, no Cloudflare blocking.
+ */
+async function fetchTheSportsDBIntel(playerName) {
+  try {
+    const searchUrl = `https://www.thesportsdb.com/api/v1/json/3/searchplayers.php?p=${encodeURIComponent(playerName)}`;
+    const searchRes = await intelFetch(searchUrl, { headers: { Accept: "application/json" } });
+    if (!searchRes.ok) return null;
+    const searchData = await searchRes.json();
+    const players = searchData?.player;
+    if (!Array.isArray(players) || players.length === 0) return null;
+
+    let best = null;
+    for (const p of players) {
+      if (p.strSport !== "Soccer") continue;
+      if (intelNamesMatch(p.strPlayer || "", playerName)) { best = p; break; }
+      if (!best) best = p;
+    }
+    if (!best) return null;
+
+    const playerId = best.idPlayer;
+
+    // Full player lookup (more fields)
+    let fullPlayer = best;
+    try {
+      const lookupRes = await intelFetch(`https://www.thesportsdb.com/api/v1/json/3/lookupplayer.php?id=${playerId}`, { headers: { Accept: "application/json" } });
+      if (lookupRes.ok) {
+        const d = await lookupRes.json();
+        if (d?.players?.[0]) fullPlayer = d.players[0];
+      }
+    } catch { /* use search data */ }
+
+    const intel = {
+      id: playerId,
+      name: fullPlayer.strPlayer,
+      team: fullPlayer.strTeam,
+      nationality: fullPlayer.strNationality,
+      position: fullPlayer.strPosition,
+      height: fullPlayer.strHeight || undefined,
+      weight: fullPlayer.strWeight || undefined,
+      dateBorn: fullPlayer.dateBorn || undefined,
+      wage: fullPlayer.strWage || undefined,
+      signingFee: fullPlayer.strSigning || undefined,
+      agent: fullPlayer.strAgent || undefined,
+      preferredFoot: fullPlayer.strSide || undefined,
+      number: fullPlayer.strNumber || undefined,
+      description: (fullPlayer.strDescriptionEN || "").slice(0, 300),
+    };
+
+    // Cross-reference IDs
+    if (fullPlayer.idTransferMkt) intel.tmId = String(fullPlayer.idTransferMkt);
+    if (fullPlayer.idAPIfootball) intel.apiFootballId = String(fullPlayer.idAPIfootball);
+
+    // Honours (parallel)
+    try {
+      const honRes = await intelFetch(`https://www.thesportsdb.com/api/v1/json/3/lookuphonours.php?id=${playerId}`, { headers: { Accept: "application/json" } });
+      if (honRes.ok) {
+        const hd = await honRes.json();
+        intel.honours = (hd?.honours || []).map(h => `${h.strSeason || ""} ${h.strHonour || ""}`.trim()).slice(0, 15);
+      }
+    } catch { /* non-fatal */ }
+
+    // Former teams
+    try {
+      const ftRes = await intelFetch(`https://www.thesportsdb.com/api/v1/json/3/lookupformerteams.php?id=${playerId}`, { headers: { Accept: "application/json" } });
+      if (ftRes.ok) {
+        const ftd = await ftRes.json();
+        intel.formerTeams = (ftd?.formerteams || []).map(t => t.strFormerTeam || "").filter(Boolean);
+      }
+    } catch { /* non-fatal */ }
+
+    return intel;
+  } catch (err) {
+    console.warn("[Intel:TheSportsDB]", err.message || err);
+    return null;
+  }
+}
+
+/**
+ * Fetch FotMob player ID via search (rating/stats blocked by Turnstile).
+ */
+async function fetchFotMobIntel(playerName) {
+  try {
+    const searchUrl = `https://www.fotmob.com/api/search/suggest?term=${encodeURIComponent(playerName)}&lang=en`;
+    const res = await intelFetch(searchUrl, { headers: { Accept: "application/json" } });
+    if (!res.ok) return null;
+    const sd = await res.json();
+
+    let playerId = null;
+    for (const group of (Array.isArray(sd) ? sd : [])) {
+      for (const s of (Array.isArray(group?.suggestions) ? group.suggestions : [])) {
+        if (s.type !== "player") continue;
+        const id = parseInt(s.id);
+        if (isNaN(id)) continue;
+        if (intelNamesMatch(s.name || "", playerName) && id) { playerId = id; break; }
+        if (!playerId) playerId = id;
+      }
+      if (playerId) break;
+    }
+    if (!playerId) return null;
+    return { id: playerId };
+  } catch (err) {
+    console.warn("[Intel:FotMob]", err.message || err);
+    return null;
+  }
+}
+
+/**
+ * Fetch ClubElo rating for a club.
+ */
+async function fetchClubElo(clubName) {
+  try {
+    if (!clubName) return null;
+    const attempts = [clubName.trim(), clubName.trim().replace(/^FC\s+/i, ""), clubName.trim().replace(/\s+FC$/i, "")];
+    for (const name of attempts) {
+      const res = await fetch(`http://api.clubelo.com/${encodeURIComponent(name)}`, { signal: AbortSignal.timeout(6000) });
+      if (!res.ok) continue;
+      const text = await res.text();
+      const lines = text.trim().split("\n");
+      if (lines.length < 2) continue;
+      const parts = lines[lines.length - 1].split(",");
+      if (parts.length < 5) continue;
+      const elo = parseFloat(parts[4]);
+      if (isNaN(elo)) continue;
+      let level;
+      if (elo >= 1800) level = "elite";
+      else if (elo >= 1600) level = "strong";
+      else if (elo >= 1400) level = "mid";
+      else level = "low";
+      return { clubName: parts[1] || name, elo: Math.round(elo), level };
+    }
+    return null;
+  } catch { return null; }
+}
+
+/**
+ * Gather lightweight intelligence for a player (TheSportsDB + FotMob + ClubElo).
+ * Used by Sport Director before Gemini verdicts.
+ */
+async function gatherQuickIntel(playerName, club) {
+  const [tsdb, fotmob, clubElo] = await Promise.allSettled([
+    fetchTheSportsDBIntel(playerName),
+    fetchFotMobIntel(playerName),
+    fetchClubElo(club),
+  ]);
+  const intel = { sources: [] };
+  if (tsdb.status === "fulfilled" && tsdb.value) { intel.tsdb = tsdb.value; intel.sources.push("thesportsdb"); }
+  if (fotmob.status === "fulfilled" && fotmob.value) { intel.fotmob = fotmob.value; intel.sources.push("fotmob"); }
+  if (clubElo.status === "fulfilled" && clubElo.value) { intel.clubElo = clubElo.value; intel.sources.push("clubelo"); }
+  return intel;
+}
+
+/**
+ * Format intel into compact text for Gemini prompt.
+ */
+function formatIntelLine(intel) {
+  const parts = [];
+  if (intel.tsdb) {
+    const t = intel.tsdb;
+    const profileParts = [];
+    if (t.position) profileParts.push(t.position);
+    if (t.nationality) profileParts.push(t.nationality);
+    if (t.height) profileParts.push(t.height);
+    if (t.weight) profileParts.push(t.weight);
+    if (t.preferredFoot) profileParts.push(`Foot: ${t.preferredFoot}`);
+    if (t.dateBorn) profileParts.push(`Born: ${t.dateBorn}`);
+    if (profileParts.length > 0) parts.push(`Profile: ${profileParts.join(" | ")}`);
+    if (t.wage) parts.push(`Wage: ${t.wage}`);
+    if (t.signingFee) parts.push(`Signed for: ${t.signingFee}`);
+    if (t.agent) parts.push(`Agent: ${t.agent}`);
+    if (t.honours?.length > 0) parts.push(`Honours: ${t.honours.length} titles`);
+    if (t.formerTeams?.length > 0) parts.push(`Career: ${t.formerTeams.join(" > ")} > ${t.team || "?"}`);
+    if (t.description) parts.push(`Bio: ${t.description.slice(0, 150)}`);
+  }
+  if (intel.fotmob?.id) parts.push(`FotMob ID: ${intel.fotmob.id}`);
+  if (intel.clubElo) parts.push(`Club Elo: ${intel.clubElo.elo} (${intel.clubElo.level})`);
+  return parts.length > 0 ? parts.join(" | ") : "";
+}
+
+// ═══════════════════════════════════════════════════════════════
 // Per-90 quality minimums by profile type + position group
 // ═══════════════════════════════════════════════════════════════
 const QUALITY_BARS = {
@@ -376,19 +591,46 @@ For each player output:
 - fitScore: 1-10 how well this player fits the Israeli market`,
     });
 
+    // ═══ INTELLIGENCE ENRICHMENT ═══
+    // Gather FBref + FotMob + ClubElo for top candidates before Gemini
+    const intelMap = {};
+    const INTEL_BATCH = 5;
+    for (let i = 0; i < topProfiles.length; i += INTEL_BATCH) {
+      const batch = topProfiles.slice(i, i + INTEL_BATCH);
+      const results = await Promise.allSettled(
+        batch.map(pw => gatherQuickIntel(pw.data.playerName, pw.data.club))
+      );
+      for (let j = 0; j < results.length; j++) {
+        if (results[j].status === "fulfilled" && results[j].value?.sources?.length > 0) {
+          const key = batch[j].data.playerName.toLowerCase().trim();
+          intelMap[key] = results[j].value;
+        }
+      }
+      // Rate limit between batches
+      if (i + INTEL_BATCH < topProfiles.length) {
+        await new Promise(r => setTimeout(r, 1200));
+      }
+    }
+    const intelCount = Object.keys(intelMap).length;
+    if (intelCount > 0) {
+      console.log(`[SportDirector] Intelligence gathered for ${intelCount}/${topProfiles.length} players`);
+    }
+
     const playerLines = topProfiles.map((pw, i) => {
       const d = pw.data;
       const per90 = d.fbrefMinutes90s > 0
         ? `G/90: ${d.goalsPer90.toFixed(2)}, (G+A)/90: ${d.contribPer90.toFixed(2)}`
         : "no per-90 data";
       const nationality = d.nationality || "unknown";
+      const intel = intelMap[d.playerName.toLowerCase().trim()];
+      const intelLine = intel ? formatIntelLine(intel) : "";
       return `${i + 1}. ${d.playerName} (${d.age}, ${nationality}, ${d.position}, ${d.club}, ${d.league}, Tier ${d.leagueTier})
    Agent: ${d.agentId} | Profile: ${d.profileType} | Score: ${d.matchScore}/100
    Value: ${d.marketValue} (€${d.marketValueEuro}) | Contract: ${d.contractExpires || "?"}
    FM PA: ${d.fmPa || "?"}, CA: ${d.fmCa || "?"} | ${per90}
    Stats: ${d.fbrefGoals || 0}G ${d.fbrefAssists || 0}A in ${d.fbrefMinutes90s?.toFixed(1) || 0} 90s
    Reason: ${d.matchReason}
-   Director code issues: ${(pw.directorReasons || []).join(", ") || "none"}`;
+   Director code issues: ${(pw.directorReasons || []).join(", ") || "none"}${intelLine ? `\n   INTEL: ${intelLine}` : ""}`;
     }).join("\n");
 
     // Include agent performance context
@@ -398,6 +640,8 @@ For each player output:
 
     const prompt = `Evaluate these ${topProfiles.length} profiles from my AI agents.
 Your job: verify data accuracy, check Israeli market realism, assess the VALUE ARC (Monchi method), and validate that each player truly fits across all four dimensions (technical, physical, tactical, mental).
+
+IMPORTANT: Some players have an INTEL line with real-time data from TheSportsDB (physical profile, wage, signing fee, agent, honours, career history), FotMob (player ID), and ClubElo (club strength). USE THIS DATA in your evaluation — it provides verified biographical context, salary expectations, career trajectory (former teams & trophies), and physical attributes that inform your assessment. Club Elo contextualizes the league level. Multiple honours signal elite experience.
 
 Agent performance this run: ${agentContext}
 
@@ -432,10 +676,10 @@ ONLY valid JSON. No explanations outside the JSON.`;
         };
       }
     }
-    return verdictMap;
+    return { verdictMap, intelMap };
   } catch (err) {
     console.warn("[SportDirector] Gemini verdict generation failed (non-fatal):", err.message);
-    return {};
+    return { verdictMap: {}, intelMap: {} };
   }
 }
 
@@ -562,18 +806,44 @@ async function reviewProfiles(profilesToWrite) {
   }
 
   // Generate Gemini Sport Director verdicts for top approved profiles
-  const directorVerdicts = await generateDirectorVerdicts(approved, agentReports);
+  const { verdictMap: directorVerdicts, intelMap: directorIntel } = await generateDirectorVerdicts(approved, agentReports);
 
-  // Merge verdicts into approved profiles + handle REJECT_OVERRIDE
+  // Merge verdicts + intel into approved profiles + handle REJECT_OVERRIDE
   const postGeminiRejected = [];
   for (const profile of approved) {
-    const v = directorVerdicts[profile.data.playerName.toLowerCase().trim()];
+    const key = profile.data.playerName.toLowerCase().trim();
+    const v = directorVerdicts[key];
     if (v) {
       profile.data.directorVerdict = v.verdict;
       profile.data.directorAction = v.action;
       profile.data.directorFitScore = v.fitScore;
       profile.data.directorValueArc = v.valueArc;
       profile.data.directorDataFlags = v.dataFlags;
+    }
+    // Store intel data in Firestore for display in War Room
+    const intel = directorIntel[key];
+    if (intel?.sources?.length > 0) {
+      profile.data.intelSources = intel.sources;
+      if (intel.tsdb) {
+        const t = intel.tsdb;
+        if (t.position) profile.data.intelPosition = t.position;
+        if (t.nationality) profile.data.intelNationality = t.nationality;
+        if (t.height) profile.data.intelHeight = t.height;
+        if (t.weight) profile.data.intelWeight = t.weight;
+        if (t.wage) profile.data.intelWage = t.wage;
+        if (t.signingFee) profile.data.intelSigningFee = t.signingFee;
+        if (t.agent) profile.data.intelAgent = t.agent;
+        if (t.preferredFoot) profile.data.intelFoot = t.preferredFoot;
+        if (t.dateBorn) profile.data.intelDOB = t.dateBorn;
+        if (t.honours?.length > 0) profile.data.intelHonours = t.honours.length;
+        if (t.formerTeams?.length > 0) profile.data.intelCareer = t.formerTeams.join(" > ");
+        if (t.description) profile.data.intelBio = t.description.slice(0, 200);
+      }
+      if (intel.fotmob?.id) profile.data.intelFotMobId = intel.fotmob.id;
+      if (intel.clubElo) {
+        profile.data.intelClubElo = intel.clubElo.elo;
+        profile.data.intelClubLevel = intel.clubElo.level;
+      }
     }
   }
   // REJECT_OVERRIDE: Gemini found issues the code checks missed

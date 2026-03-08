@@ -51,6 +51,14 @@ Every 6 hours (Pub/Sub trigger):
 │  ✓ SHORTLIST_NOW / MONITOR / LOW_PRIORITY        │
 │  ✓ REJECT_OVERRIDE for code-check misses        │
 │                                                 │
+│  Multi-source intelligence (per candidate):     │
+│  📊 FBref: xG, xA, progressive stats,          │
+│     scouting percentiles vs peers               │
+│  📈 FotMob: match ratings, season stats         │
+│  🏟️ ClubElo: club/league strength context       │
+│  (+ on-demand: Sofascore, Capology, Wikipedia,  │
+│     TM Injuries via /api/player-intel)          │
+│                                                 │
 │  Result: APPROVED / REJECTED per profile        │
 │  + Agent report card (grade, freshness, issues) │
 └──────┬──────────────────┬───────────────────────┘
@@ -168,8 +176,21 @@ The backbone. Runs every 6 hours via `scoutAgentWorker` (Pub/Sub → Firebase Fu
 - `directorFitScore` — 1-10 how well the player fits the Israeli market
 - `directorValueArc` — "rising" / "peak" / "declining" (Monchi Method value trajectory)
 - `directorDataFlags` — Array of data accuracy concerns flagged by Gemini
+- `intelSources` — Array of intel sources that returned data (e.g. ["fbref", "fotmob", "clubelo"])
+- `intelXG` / `intelXA` — FBref StatsBomb expected goals/assists (most recent season)
+- `intelProgPasses` / `intelProgCarries` — FBref progressive actions (ball advancement)
+- `intelPassPct` — FBref pass completion %
+- `intelTackles` / `intelInterceptions` — FBref defensive actions
+- `intelAerialPct` — FBref aerial duels won %
+- `intelSCA` / `intelGCA` — FBref shot/goal creating actions
+- `intelScoutPercentiles` — FBref scouting report: percentile rankings vs position peers (0-99)
+- `intelRating` — FotMob season match rating
+- `intelClubElo` / `intelClubLevel` — ClubElo club strength rating and tier
 
-**Key files:** `functions/workers/scoutAgent.js`, `functions/workers/sportDirector.js`, `functions/workers/scoutSkillLearner.js`
+**On-demand intelligence API** (`/api/player-intel?name=X&club=Y&tmUrl=Z`):
+Full 7-source dossier: FBref + FotMob + Sofascore + Capology + Wikipedia + TM Injuries + ClubElo.
+
+**Key files:** `functions/workers/scoutAgent.js`, `functions/workers/sportDirector.js`, `functions/workers/scoutSkillLearner.js`, `mgsr-web/src/lib/playerIntel.ts`
 **Firestore:** `ScoutProfiles` (approved only), `ScoutAgentSkills/{agentId}`, `ScoutAgentRuns` (includes `sportDirector` field with agent reports + rejection data), `ScoutProfileFeedback/{userId}`
 
 ---
@@ -317,6 +338,65 @@ Predicts which clubs will need specific positions in the next 6 months by analyz
 - **Mindset**: You are NOT a passive observer of data. You are an active executive who tells agents what to do, judges their work ruthlessly, and demands excellence.
 - **Perspective**: You evaluate like someone who has watched 50,000 games, not a spreadsheet analyst
 - **Tone**: Direct, commanding, opinionated. You don't hedge. You decide.
+
+---
+
+## MULTI-SOURCE INTELLIGENCE NETWORK
+
+You don't rely on a single data source. Like a real Sport Director who has scouts in 30 countries, you cross-reference data from **multiple free, independent sources** to build a complete picture of every player. No single source tells the whole story.
+
+### Primary Intelligence Sources (Sport Director pipeline, automated)
+
+| Source | Data | Why It Matters |
+|--------|------|---------------|
+| **TheSportsDB** (PRIMARY) | Full profile: position, nationality, height, weight, DOB, wage, signing fee, agent, preferred foot, kit number, career description, honours list, former teams, cross-reference IDs (TM, ESPN, API-Football, Wikidata) | The backbone source. Free JSON API, no auth needed, reliable. Gives a complete player dossier in 3 API calls: search → lookup → honours + former teams. Covers 50,000+ players. |
+| **FotMob** | Player ID via search API | Player identification and cross-referencing. Note: Player data endpoint blocked by Turnstile — search-only for now. |
+| **ClubElo** | Club Elo rating, league strength tier | Contextualizes stats. 15 goals for an Elo-1800 (elite) club means more than 15 goals for an Elo-1200 (low) club. |
+
+### Extended Intelligence (on-demand via /api/player-intel)
+
+| Source | Data | Why It Matters |
+|--------|------|---------------|
+| **Wikipedia** | Career summary, bio, image | Background intelligence — career context, national team experience, major achievements. |
+| **FBref** (StatsBomb) | xG, xA, npxG, progressive passes, scouting percentiles | Gold standard advanced analytics — **currently blocked by Cloudflare 403**. Kept as fallback if a bypass becomes available. |
+| **Sofascore** | Player rating, form trend | Form validation — **currently blocked (403)**. Kept as fallback. |
+| **Capology** | Weekly wage, annual salary | Wage reality check — **untested, likely protected**. Kept as fallback. |
+| **TM Injuries** | Injury history, days missed, games missed | Durability assessment. Uses existing TM infrastructure. |
+
+### How Intelligence Flows Into Decisions
+
+```
+Player discovered by AI Agent
+     │
+     ▼
+Code checks (7 checks, free, every profile)
+     │ Passes code checks
+     ▼
+INTELLIGENCE GATHERING (3 sources in parallel per player)
+├── TheSportsDB: search → lookup → honours + formerteams (profile, wage, agent, career)
+├── FotMob: search API → player ID
+└── ClubElo: club name → Elo rating + tier
+     │ ~3-5 seconds per player
+     ▼
+Gemini Sport Director Verdict (with INTEL DATA in prompt)
+├── "TheSportsDB shows 22 honours, career: Basel→Roma→Liverpool → proven winner at elite level"
+├── "Wage £20.8M + Agent: SPOCS → big contract, likely not Israel-viable"
+├── "Club Elo 1952 (elite tier) → stats are at the highest competitive level"
+├── "Height 1.75m, preferred foot Left, Right Winger → fits Israeli league style"
+└── "Cross-IDs: TM 148455, ESPN 173896 → can validate with other systems"
+     │
+     ▼
+APPROVED with enriched data → Firestore → War Room
+```
+
+### Data Cross-Reference Rules
+
+1. **Wage reality**: TheSportsDB wage data is critical. A player earning £10M+/year will NOT move to Israel. Israeli top tier: €500K-€1.5M/year.
+2. **Honours count**: 10+ honours = proven winner at top level. 0 honours at age 28+ = never competed for titles.
+3. **Career trajectory**: Former teams reveal ambition. Basel→Roma→Liverpool = upward trajectory. Chelsea→Crystal Palace→Burnley = declining.
+4. **Club Elo**: Elo ≥1600 = stats are at a high competitive level. Elo <1200 = inflate heavily.
+5. **Agent intelligence**: TheSportsDB provides agent name — useful for knowing who represents the player and deal complexity.
+6. **Cross-reference IDs**: TheSportsDB provides TM ID, ESPN ID, API-Football ID, Wikidata ID — instant linking to other data sources.
 
 ---
 
