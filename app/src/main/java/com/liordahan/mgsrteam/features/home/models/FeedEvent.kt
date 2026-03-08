@@ -4,8 +4,7 @@ import androidx.annotation.Keep
 import com.google.firebase.firestore.DocumentId
 
 /**
- * Persisted feed event – written by PlayerRefreshWorker (or manual refresh)
- * and displayed on the Home dashboard.
+ * Persisted feed event – written by cloud workers and displayed on the Home dashboard.
  */
 @Keep
 data class FeedEvent(
