@@ -1037,6 +1037,15 @@
     <string name="ai_scout_example_2">קשר התקפי יצירתי, סקנדינבי, U23</string>
     <string name="ai_scout_example_3">בלם רגל שמאל, שחקן חופשי</string>
     <string name="ai_scout_example_4">כנף מהירה לליגת העל</string>
+    <string name="ai_scout_example_5">שוער מתחת לגיל 25, טוב עם הרגליים</string>
+    <string name="ai_scout_example_6">קשר הגנתי, אפריקאי, מתחת ל־€500K</string>
+    <string name="ai_scout_example_7">מגן ימני שיכול לשחק גם כנף</string>
+    <string name="ai_scout_example_8">חלוץ מטרה, מעל 185 ס"מ, חזק באוויר</string>
+    <string name="ai_scout_example_9">קשר יצירתי דרום אמריקאי, חוזה מסתיים</string>
+    <string name="ai_scout_example_10">חלוץ שני ממזרח אירופה, מתחת ל-21</string>
+    <string name="ai_scout_example_11">קשר בוקס-טו-בוקס, קצב עבודה גבוה</string>
+    <string name="ai_scout_example_12">מגן רב-תכליתי שיכול לשחק בלם ומגן שמאלי</string>
+    <string name="ai_scout_voice_hint">הקש על המיקרופון לחיפוש קולי</string>
     <string name="ai_scout_powered_title">סקאוטינג מונע AI</string>
     <string name="ai_scout_powered_subtitle">חיפוש בשפה חופשית ב-Transfermarkt + נתוני FM</string>
     <string name="ai_scout_interpretation">פרשנות AI</string>
@@ -1104,6 +1113,7 @@
     <string name="war_room_key_stats">סטטיסטיקות מרכזיות</string>
     <string name="war_room_comparables">שחקנים דומים</string>
     <string name="war_room_formations">מערכים מומלצים</string>
+    <string name="war_room_match_score">התאמה</string>
     <!-- Agent country names (for filter chips) -->
     <string name="war_room_agent_portugal">פורטוגל</string>
     <string name="war_room_agent_serbia">סרביה</string>

@@ -102,6 +102,23 @@ import com.liordahan.mgsrteam.ui.utils.boldTextStyle
 import com.liordahan.mgsrteam.ui.utils.regularTextStyle
 import com.liordahan.mgsrteam.features.shortlist.ShortlistRepository
 import com.liordahan.mgsrteam.ui.components.ToastManager
+import android.Manifest
+import android.content.pm.PackageManager
+import android.speech.RecognitionListener
+import android.speech.SpeechRecognizer
+import android.view.HapticFeedbackConstants
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.Stop
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalView
+import androidx.core.content.ContextCompat
+import com.liordahan.mgsrteam.features.players.playerinfo.notes.VoiceNoteRecorder
+import com.liordahan.mgsrteam.ui.components.RecordingWaveform
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.koinInject
@@ -252,94 +269,208 @@ private fun FindNextTabContent(state: FindNextUiState, viewModel: IAiScoutViewMo
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(bottom = 32.dp)
     ) {
-        // Hero
+        // Compact hero
         item {
-            Column(
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+                    .padding(horizontal = 20.dp, vertical = 16.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("🧠", fontSize = 32.sp)
-                Spacer(Modifier.height(12.dp))
-                Text(
-                    text = stringResource(R.string.ai_scout_find_next_hero_title),
-                    style = boldTextStyle(HomeTextPrimary, 22.sp),
-                    textAlign = TextAlign.Center
-                )
-                Spacer(Modifier.height(6.dp))
-                Text(
-                    text = stringResource(R.string.ai_scout_find_next_hero_subtitle),
-                    style = regularTextStyle(HomeTextSecondary, 14.sp),
-                    textAlign = TextAlign.Center,
-                    lineHeight = 20.sp
-                )
+                Box(
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(
+                            Brush.linearGradient(
+                                listOf(
+                                    HomePurpleAccent.copy(alpha = 0.3f),
+                                    HomeTealAccent.copy(alpha = 0.2f)
+                                )
+                            )
+                        )
+                        .border(
+                            1.dp,
+                            HomePurpleAccent.copy(alpha = 0.3f),
+                            RoundedCornerShape(12.dp)
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("🧠", fontSize = 22.sp)
+                }
+                Spacer(Modifier.width(14.dp))
+                Column {
+                    Text(
+                        text = stringResource(R.string.ai_scout_find_next_hero_title),
+                        style = boldTextStyle(HomeTextPrimary, 18.sp)
+                    )
+                    Spacer(Modifier.height(2.dp))
+                    Text(
+                        text = stringResource(R.string.ai_scout_find_next_hero_subtitle),
+                        style = regularTextStyle(HomeTextSecondary, 12.sp),
+                        maxLines = 2,
+                        lineHeight = 16.sp
+                    )
+                }
             }
         }
 
-        // Search form
+        // Player name input section
         item {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(HomeDarkCard)
-                    .border(1.5.dp, HomeDarkCardBorder, RoundedCornerShape(16.dp))
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(HomeDarkCard, HomeDarkCard.copy(alpha = 0.85f))
+                        )
+                    )
+                    .border(1.dp, HomePurpleAccent.copy(alpha = 0.12f), RoundedCornerShape(20.dp))
                     .padding(16.dp)
             ) {
-                Text(
-                    text = stringResource(R.string.ai_scout_find_next_player_label),
-                    style = boldTextStyle(HomeTextPrimary, 13.sp),
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
+                // Section label
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("⚽", fontSize = 13.sp)
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        text = stringResource(R.string.ai_scout_find_next_player_label),
+                        style = boldTextStyle(HomeTextPrimary, 13.sp)
+                    )
+                }
+                Spacer(Modifier.height(10.dp))
+
+                // Text field with search icon
                 BasicTextField(
                     value = state.playerName,
                     onValueChange = { viewModel.updateFindNextPlayerName(it) },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(48.dp)
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(HomeDarkBackground)
-                        .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(10.dp))
-                        .padding(horizontal = 12.dp, vertical = 12.dp),
+                        .height(50.dp)
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(HomeDarkBackground.copy(alpha = 0.6f))
+                        .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(14.dp))
+                        .padding(horizontal = 14.dp),
                     textStyle = regularTextStyle(HomeTextPrimary, 15.sp),
+                    singleLine = true,
                     decorationBox = { inner ->
-                        Box {
-                            if (state.playerName.isEmpty()) {
-                                Text(
-                                    stringResource(R.string.ai_scout_find_next_placeholder),
-                                    style = regularTextStyle(HomeTextSecondary, 15.sp)
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxSize()
+                        ) {
+                            Icon(
+                                Icons.Default.Search,
+                                contentDescription = null,
+                                tint = HomeTextSecondary.copy(alpha = 0.4f),
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(Modifier.width(10.dp))
+                            Box(modifier = Modifier.weight(1f)) {
+                                if (state.playerName.isEmpty()) {
+                                    Text(
+                                        stringResource(R.string.ai_scout_find_next_placeholder),
+                                        style = regularTextStyle(HomeTextSecondary.copy(alpha = 0.5f), 14.sp)
+                                    )
+                                }
+                                inner()
+                            }
+                            if (state.playerName.isNotEmpty()) {
+                                Icon(
+                                    Icons.Default.Clear,
+                                    contentDescription = null,
+                                    tint = HomeTextSecondary.copy(alpha = 0.5f),
+                                    modifier = Modifier
+                                        .size(18.dp)
+                                        .clickable { viewModel.updateFindNextPlayerName("") }
                                 )
                             }
-                            inner()
                         }
                     }
                 )
-                Spacer(Modifier.height(12.dp))
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.fillMaxWidth()
+
+                // Example players as horizontal scroll
+                Spacer(Modifier.height(10.dp))
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    FIND_NEXT_EXAMPLE_PLAYERS.take(5).forEach { name ->
+                    items(FIND_NEXT_EXAMPLE_PLAYERS) { name ->
+                        val isSelected = state.playerName == name
                         Row(
                             modifier = Modifier
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(HomeDarkBackground)
-                                .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(8.dp))
+                                .clip(RoundedCornerShape(20.dp))
+                                .background(
+                                    if (isSelected) HomePurpleAccent.copy(alpha = 0.2f)
+                                    else HomeDarkBackground.copy(alpha = 0.5f)
+                                )
+                                .border(
+                                    1.dp,
+                                    if (isSelected) HomePurpleAccent.copy(alpha = 0.4f)
+                                    else Color.Transparent,
+                                    RoundedCornerShape(20.dp)
+                                )
                                 .clickable { viewModel.updateFindNextPlayerName(name) }
-                                .padding(horizontal = 10.dp, vertical = 6.dp),
+                                .padding(horizontal = 12.dp, vertical = 7.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(name, style = regularTextStyle(HomeTextPrimary, 12.sp), maxLines = 1)
+                            Text(
+                                name,
+                                style = boldTextStyle(
+                                    if (isSelected) HomePurpleAccent else HomeTextSecondary,
+                                    12.sp
+                                ),
+                                maxLines = 1
+                            )
                         }
                     }
                 }
-                Spacer(Modifier.height(16.dp))
-                Text(
-                    text = stringResource(R.string.ai_scout_find_next_age_max, state.ageMax),
-                    style = regularTextStyle(HomeTextSecondary, 12.sp)
-                )
+            }
+        }
+
+        item { Spacer(Modifier.height(12.dp)) }
+
+        // Filters section (age + value)
+        item {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(HomeDarkCard, HomeDarkCard.copy(alpha = 0.85f))
+                        )
+                    )
+                    .border(1.dp, HomeTealAccent.copy(alpha = 0.08f), RoundedCornerShape(20.dp))
+                    .padding(16.dp)
+            ) {
+                // Age section
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("📅", fontSize = 13.sp)
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            text = stringResource(R.string.ai_scout_find_next_age_max, state.ageMax),
+                            style = regularTextStyle(HomeTextSecondary, 12.sp)
+                        )
+                    }
+                    // Age badge
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(HomePurpleAccent.copy(alpha = 0.15f))
+                            .padding(horizontal = 10.dp, vertical = 4.dp)
+                    ) {
+                        Text(
+                            text = "≤ ${state.ageMax}",
+                            style = boldTextStyle(HomePurpleAccent, 13.sp)
+                        )
+                    }
+                }
                 Slider(
                     value = state.ageMax.toFloat(),
                     onValueChange = { viewModel.updateFindNextAgeMax(it.toInt()) },
@@ -351,29 +482,49 @@ private fun FindNextTabContent(state: FindNextUiState, viewModel: IAiScoutViewMo
                         inactiveTrackColor = HomeDarkCardBorder
                     )
                 )
+
+                // Divider
                 Spacer(Modifier.height(8.dp))
-                Text(
-                    text = stringResource(R.string.ai_scout_find_next_value_max),
-                    style = regularTextStyle(HomeTextSecondary, 12.sp)
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(1.dp)
+                        .background(HomeDarkCardBorder.copy(alpha = 0.5f))
                 )
+                Spacer(Modifier.height(14.dp))
+
+                // Value section
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("💰", fontSize = 13.sp)
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        text = stringResource(R.string.ai_scout_find_next_value_max),
+                        style = regularTextStyle(HomeTextSecondary, 12.sp)
+                    )
+                }
+                Spacer(Modifier.height(10.dp))
                 FlowRow(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
                     VALUE_PRESETS.forEach { (value, label) ->
                         val isSelected = state.valueMax == value
-                        Row(
+                        Box(
                             modifier = Modifier
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(if (isSelected) HomePurpleAccent.copy(alpha = 0.2f) else HomeDarkBackground)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(
+                                    if (isSelected) HomePurpleAccent.copy(alpha = 0.2f)
+                                    else HomeDarkBackground.copy(alpha = 0.5f)
+                                )
                                 .border(
                                     1.dp,
-                                    if (isSelected) HomePurpleAccent.copy(alpha = 0.5f) else HomeDarkCardBorder,
-                                    RoundedCornerShape(8.dp)
+                                    if (isSelected) HomePurpleAccent.copy(alpha = 0.5f)
+                                    else Color.Transparent,
+                                    RoundedCornerShape(12.dp)
                                 )
                                 .clickable { viewModel.updateFindNextValueMax(value) }
-                                .padding(horizontal = 10.dp, vertical = 6.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                                .padding(horizontal = 14.dp, vertical = 8.dp)
                         ) {
                             Text(
                                 if (value == 0) stringResource(R.string.ai_scout_find_next_no_limit) else label,
@@ -385,36 +536,56 @@ private fun FindNextTabContent(state: FindNextUiState, viewModel: IAiScoutViewMo
                         }
                     }
                 }
-                Spacer(Modifier.height(16.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(HomePurpleAccent)
-                            .clickable(enabled = !state.isSearching && state.playerName.isNotBlank()) {
-                                viewModel.findNextSearch()
-                            }
-                            .padding(horizontal = 20.dp, vertical = 10.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        if (state.isSearching) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(16.dp),
-                                color = HomeDarkBackground,
-                                strokeWidth = 2.dp
+            }
+        }
+
+        item { Spacer(Modifier.height(16.dp)) }
+
+        // Search button — full width
+        item {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+                    .height(52.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(
+                        if (!state.isSearching && state.playerName.isNotBlank())
+                            Brush.horizontalGradient(
+                                listOf(HomePurpleAccent, HomePurpleAccent.copy(alpha = 0.8f))
                             )
-                        } else {
-                            Icon(Icons.Default.Search, null, tint = HomeDarkBackground, modifier = Modifier.size(16.dp))
-                        }
-                        Spacer(Modifier.width(6.dp))
-                        Text(
-                            text = stringResource(R.string.ai_scout_find_next_search_button),
-                            style = boldTextStyle(HomeDarkBackground, 14.sp)
+                        else Brush.horizontalGradient(
+                            listOf(
+                                HomePurpleAccent.copy(alpha = 0.3f),
+                                HomePurpleAccent.copy(alpha = 0.2f)
+                            )
+                        )
+                    )
+                    .clickable(enabled = !state.isSearching && state.playerName.isNotBlank()) {
+                        viewModel.findNextSearch()
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (state.isSearching) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(18.dp),
+                            color = HomeDarkBackground,
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Icon(
+                            Icons.Default.Search,
+                            contentDescription = null,
+                            tint = HomeDarkBackground,
+                            modifier = Modifier.size(18.dp)
                         )
                     }
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        text = stringResource(R.string.ai_scout_find_next_search_button),
+                        style = boldTextStyle(HomeDarkBackground, 15.sp)
+                    )
                 }
             }
         }
@@ -762,67 +933,204 @@ private fun AiScoutEmptyState(state: AiScoutUiState, viewModel: IAiScoutViewMode
 //  SEARCH INPUT BOX
 // ═══════════════════════════════════════════════════════════════════════════════
 
+private fun appendToQuery(current: String, addition: String): String {
+    val trimmed = addition.trim()
+    if (trimmed.isBlank()) return current
+    val separator = if (current.isBlank()) "" else " "
+    return (current + separator + trimmed).take(500)
+}
+
 @Composable
 private fun SearchInputBox(state: AiScoutUiState, viewModel: IAiScoutViewModel) {
+    val context = LocalContext.current
+    val view = LocalView.current
+    var isRecording by remember { mutableStateOf(false) }
+    var recordingDuration by remember { mutableStateOf(0) }
+    val speechRecognizer = remember { VoiceNoteRecorder.createSpeechRecognizer(context) }
+
+    LaunchedEffect(isRecording) {
+        if (!isRecording) return@LaunchedEffect
+        recordingDuration = 0
+        while (true) {
+            delay(1000)
+            recordingDuration += 1
+        }
+    }
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+            val recognizer = speechRecognizer ?: return@rememberLauncherForActivityResult
+            recognizer.setRecognitionListener(object : RecognitionListener {
+                override fun onReadyForSpeech(params: android.os.Bundle?) {}
+                override fun onBeginningOfSpeech() {}
+                override fun onRmsChanged(rmsdB: Float) {}
+                override fun onBufferReceived(buffer: ByteArray?) {}
+                override fun onEndOfSpeech() { isRecording = false }
+                override fun onError(error: Int) { isRecording = false }
+                override fun onResults(results: android.os.Bundle?) {
+                    val matches = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+                    matches?.firstOrNull()?.takeIf { it.isNotBlank() }?.let { transcribed ->
+                        viewModel.updateQuery(appendToQuery(state.query, transcribed))
+                    }
+                    isRecording = false
+                }
+                override fun onPartialResults(partialResults: android.os.Bundle?) {}
+                override fun onEvent(eventType: Int, params: android.os.Bundle?) {}
+            })
+            recognizer.startListening(VoiceNoteRecorder.createRecognizerIntent(context))
+            isRecording = true
+        }
+    }
+
+    DisposableEffect(speechRecognizer) {
+        onDispose { speechRecognizer?.destroy() }
+    }
+
+    fun onRecordClick() {
+        if (!VoiceNoteRecorder.isAvailable(context)) return
+        if (!VoiceNoteRecorder.hasRecordAudioPermission(context)) {
+            permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+            return
+        }
+        view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+        if (isRecording) {
+            speechRecognizer?.stopListening()
+            isRecording = false
+        } else {
+            val recognizer = speechRecognizer ?: return
+            recognizer.setRecognitionListener(object : RecognitionListener {
+                override fun onReadyForSpeech(params: android.os.Bundle?) {}
+                override fun onBeginningOfSpeech() {}
+                override fun onRmsChanged(rmsdB: Float) {}
+                override fun onBufferReceived(buffer: ByteArray?) {}
+                override fun onEndOfSpeech() { isRecording = false }
+                override fun onError(error: Int) { isRecording = false }
+                override fun onResults(results: android.os.Bundle?) {
+                    val matches = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+                    matches?.firstOrNull()?.takeIf { it.isNotBlank() }?.let { transcribed ->
+                        viewModel.updateQuery(appendToQuery(state.query, transcribed))
+                    }
+                    isRecording = false
+                }
+                override fun onPartialResults(partialResults: android.os.Bundle?) {}
+                override fun onEvent(eventType: Int, params: android.os.Bundle?) {}
+            })
+            recognizer.startListening(VoiceNoteRecorder.createRecognizerIntent(context))
+            isRecording = true
+        }
+    }
+
     Column(
         modifier = Modifier
             .padding(horizontal = 16.dp)
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(HomeDarkCard)
-            .border(1.5.dp, HomeDarkCardBorder, RoundedCornerShape(16.dp))
-            .padding(14.dp)
+            .clip(RoundedCornerShape(20.dp))
+            .background(
+                Brush.verticalGradient(
+                    listOf(HomeDarkCard, HomeDarkCard.copy(alpha = 0.9f))
+                )
+            )
+            .border(1.5.dp, HomeTealAccent.copy(alpha = 0.15f), RoundedCornerShape(20.dp))
+            .padding(16.dp)
     ) {
+        // Search label
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                Icons.Default.Search,
+                contentDescription = null,
+                tint = HomeTealAccent.copy(alpha = 0.6f),
+                modifier = Modifier.size(16.dp)
+            )
+            Spacer(Modifier.width(6.dp))
+            Text(
+                text = stringResource(R.string.ai_scout_search_hint).split(":").firstOrNull() ?: "",
+                style = regularTextStyle(HomeTealAccent.copy(alpha = 0.6f), 11.sp),
+                letterSpacing = 0.5.sp
+            )
+        }
+
+        Spacer(Modifier.height(8.dp))
+
         BasicTextField(
             value = state.query,
             onValueChange = { viewModel.updateQuery(it) },
             modifier = Modifier
                 .fillMaxWidth()
-                .height(72.dp),
+                .height(72.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(HomeDarkBackground.copy(alpha = 0.5f))
+                .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(12.dp))
+                .padding(12.dp),
             textStyle = regularTextStyle(HomeTextPrimary, 15.sp),
             decorationBox = { innerTextField ->
-                Box {
-                    if (state.query.isEmpty()) {
-                        Text(
-                            text = stringResource(R.string.ai_scout_search_hint),
-                            style = regularTextStyle(HomeTextSecondary, 15.sp)
-                        )
+                Row(modifier = Modifier.fillMaxSize(), verticalAlignment = Alignment.Top) {
+                    Box(modifier = Modifier.weight(1f)) {
+                        if (state.query.isEmpty()) {
+                            Text(
+                                text = stringResource(R.string.ai_scout_search_hint),
+                                style = regularTextStyle(HomeTextSecondary.copy(alpha = 0.6f), 14.sp)
+                            )
+                        }
+                        innerTextField()
                     }
-                    innerTextField()
+                    if (!isRecording) {
+                        IconButton(
+                            onClick = { onRecordClick() },
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Mic,
+                                contentDescription = stringResource(R.string.ai_scout_voice_hint),
+                                tint = HomeTextSecondary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
                 }
             }
         )
 
-        Spacer(Modifier.height(10.dp))
+        // Recording panel (same as add-note)
+        if (isRecording) {
+            Spacer(Modifier.height(12.dp))
+            ScoutRecordingContent(
+                durationSeconds = recordingDuration,
+                onStopClick = { onRecordClick() }
+            )
+        }
 
-        // Divider
-        Box(
-            Modifier
-                .fillMaxWidth()
-                .height(1.dp)
-                .background(HomeDarkCardBorder)
-        )
-
-        Spacer(Modifier.height(10.dp))
+        Spacer(Modifier.height(12.dp))
 
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
+            // Character count
             Text(
-                text = "${state.query.length} / 500",
-                style = regularTextStyle(HomeTextSecondary, 12.sp)
+                text = "${state.query.length}/500",
+                style = regularTextStyle(HomeTextSecondary.copy(alpha = 0.5f), 11.sp)
             )
 
+            // Search button
             Row(
                 modifier = Modifier
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(HomeTealAccent)
+                    .height(40.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(
+                        if (!state.isLoading && state.query.isNotBlank()) HomeTealAccent
+                        else HomeTealAccent.copy(alpha = 0.4f)
+                    )
                     .clickable(enabled = !state.isLoading && state.query.isNotBlank()) {
                         viewModel.search()
                     }
-                    .padding(horizontal = 20.dp, vertical = 8.dp),
+                    .padding(horizontal = 20.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 if (state.isLoading) {
@@ -849,12 +1157,96 @@ private fun SearchInputBox(state: AiScoutUiState, viewModel: IAiScoutViewModel) 
     }
 }
 
+@Composable
+private fun ScoutRecordingContent(
+    durationSeconds: Int,
+    onStopClick: () -> Unit
+) {
+    val infiniteTransition = rememberInfiniteTransition(label = "scout_stop_pulse")
+    val pulseScale by infiniteTransition.animateFloat(
+        initialValue = 1f,
+        targetValue = 1.08f,
+        animationSpec = infiniteRepeatable<Float>(
+            animation = tween(600),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "pulse"
+    )
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(HomeTealAccent.copy(alpha = 0.08f))
+            .border(1.dp, HomeTealAccent.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
+            .padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = stringResource(R.string.player_info_recording),
+            style = regularTextStyle(HomeTealAccent, 16.sp),
+            modifier = Modifier.padding(bottom = 16.dp)
+        )
+        RecordingWaveform(
+            barCount = 10,
+            color = HomeTealAccent,
+            barWidth = 6.dp,
+            barHeight = 12.dp,
+            modifier = Modifier.padding(vertical = 16.dp)
+        )
+        Text(
+            text = "%d:%02d".format(durationSeconds / 60, durationSeconds % 60),
+            style = boldTextStyle(HomeTextPrimary, 24.sp),
+            modifier = Modifier.padding(vertical = 8.dp)
+        )
+        Box(
+            modifier = Modifier
+                .size(80.dp)
+                .graphicsLayer { scaleX = pulseScale; scaleY = pulseScale }
+                .clip(CircleShape)
+                .background(Color(0xFFE53935).copy(alpha = 0.2f))
+                .clickable(onClick = onStopClick),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                Icons.Default.Stop,
+                contentDescription = stringResource(R.string.player_info_stop_recording),
+                modifier = Modifier.size(40.dp),
+                tint = Color(0xFFE53935)
+            )
+        }
+        Spacer(Modifier.height(8.dp))
+        Text(
+            text = stringResource(R.string.requests_tap_to_stop),
+            style = regularTextStyle(HomeTextSecondary, 14.sp)
+        )
+    }
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════
 //  EXAMPLE CHIPS
 // ═══════════════════════════════════════════════════════════════════════════════
 
 @Composable
 private fun ExampleChipsSection(viewModel: IAiScoutViewModel) {
+    // All possible examples with emojis
+    val allExamples = listOf(
+        "⚡" to R.string.ai_scout_example_1,
+        "🎯" to R.string.ai_scout_example_2,
+        "🛡️" to R.string.ai_scout_example_3,
+        "🏃" to R.string.ai_scout_example_4,
+        "🧤" to R.string.ai_scout_example_5,
+        "🌍" to R.string.ai_scout_example_6,
+        "↔️" to R.string.ai_scout_example_7,
+        "💪" to R.string.ai_scout_example_8,
+        "✨" to R.string.ai_scout_example_9,
+        "🔥" to R.string.ai_scout_example_10,
+        "🔄" to R.string.ai_scout_example_11,
+        "🛡️" to R.string.ai_scout_example_12
+    )
+
+    // Pick 4 random examples each time this screen is composed
+    val selectedExamples = remember { allExamples.shuffled().take(4) }
+
     Column(modifier = Modifier.padding(top = 20.dp)) {
         Text(
             text = stringResource(R.string.ai_scout_try_examples),
@@ -867,13 +1259,7 @@ private fun ExampleChipsSection(viewModel: IAiScoutViewModel) {
             contentPadding = PaddingValues(horizontal = 16.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            val examples = listOf(
-                "⚡" to R.string.ai_scout_example_1,
-                "🎯" to R.string.ai_scout_example_2,
-                "🛡️" to R.string.ai_scout_example_3,
-                "🏃" to R.string.ai_scout_example_4
-            )
-            items(examples) { (emoji, resId) ->
+            items(selectedExamples) { (emoji, resId) ->
                 val text = stringResource(resId)
                 Row(
                     modifier = Modifier
@@ -1742,7 +2128,7 @@ fun FmBadge(ca: Int?, pa: Int?, tier: String?) {
         Spacer(Modifier.width(4.dp))
         ca?.let { Text("$it", style = regularTextStyle(HomeTextSecondary, 11.sp)) }
         if (ca != null && pa != null) {
-            Text(" → ", style = regularTextStyle(HomePurpleAccent, 11.sp))
+            Text("\u200E→\u200E", style = regularTextStyle(HomePurpleAccent, 11.sp))
         }
         pa?.let { Text("$it", style = boldTextStyle(HomeTextPrimary, 11.sp)) }
 

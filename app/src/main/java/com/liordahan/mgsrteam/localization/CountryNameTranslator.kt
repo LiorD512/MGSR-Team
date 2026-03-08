@@ -74,6 +74,8 @@ object CountryNameTranslator {
         "Italy" to "איטליה",
         "Ivory Coast" to "חוף השנהב",
         "Côte d'Ivoire" to "חוף השנהב",
+        "Cote d'Ivoire" to "חוף השנהב",
+        "Cote D'Ivoire" to "חוף השנהב",
         "Japan" to "יפן",
         "Jordan" to "ירדן",
         "Kazakhstan" to "קזחסטן",

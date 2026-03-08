@@ -2,12 +2,14 @@ package com.liordahan.mgsrteam.features.warroom
 
 import android.content.Intent
 import android.net.Uri
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -22,29 +24,33 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkAdd
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.ThumbDown
 import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
-import androidx.compose.material3.TabRowDefaults
-import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -56,7 +62,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -74,7 +85,6 @@ import com.liordahan.mgsrteam.ui.theme.HomeDarkBackground
 import com.liordahan.mgsrteam.ui.theme.HomeDarkCard
 import com.liordahan.mgsrteam.ui.theme.HomeDarkCardBorder
 import com.liordahan.mgsrteam.ui.theme.HomeTealAccent
-import com.liordahan.mgsrteam.ui.theme.HomePurpleAccent
 import com.liordahan.mgsrteam.ui.theme.HomeTextPrimary
 import com.liordahan.mgsrteam.ui.theme.HomeTextSecondary
 import com.liordahan.mgsrteam.ui.theme.HomeBlueAccent
@@ -94,32 +104,44 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-// Purple theme for War Room
-private val WarPurple = Color(0xFFA855F7)
-private val WarPurpleBg = Color(0x1AA855F7)
-private val WarPurpleBorder = Color(0x40A855F7)
+// ═══════════════════════════════════════════════════════════════════════════════
+//  COLOR SYSTEM — War Room "Mission Control" palette
+// ═══════════════════════════════════════════════════════════════════════════════
+
+private val WrIndigo = Color(0xFF6366F1)
+private val WrIndigoLight = Color(0xFF818CF8)
+private val WrIndigoDim = Color(0xFF4F46E5)
+private val WrIndigoBg = Color(0x1A6366F1)
+private val WrIndigoBorder = Color(0x406366F1)
+
+private val WrSurface = Color(0xFF141C2B)
+private val WrSurfaceElevated = Color(0xFF1C2640)
+private val WrSurfaceBorder = Color(0xFF2A3654)
+
+private val WrGem = Color(0xFFD97706)
+private val WrGemBg = Color(0x1AD97706)
+private val WrMatch = Color(0xFF10B981)
+private val WrMatchBg = Color(0x1A10B981)
+private val WrAgent = Color(0xFF8B5CF6)
+private val WrAgentBg = Color(0x1A8B5CF6)
+
+private val WrScoreExcellent = Color(0xFF10B981)
+private val WrScoreGood = Color(0xFF3B82F6)
+private val WrScoreMedium = Color(0xFFF59E0B)
 
 private const val TM_IMAGE_BASE = "https://img.a.transfermarkt.technology/portrait/medium/"
 private const val TM_DEFAULT_IMAGE = "${TM_IMAGE_BASE}0.jpg"
 
-/**
- * Translate nationality string (may contain multiple countries, e.g. "Brazil · Germany")
- * to the current app locale (e.g. Hebrew) using CountryNameTranslator.
- */
 private fun translateNationalityDisplay(nationality: String, context: android.content.Context): String {
     if (nationality.isBlank()) return ""
     val parts = nationality
-        .split(Regex("\\s*[·]\\s*|\\s{2,}"))  // " · " or 2+ spaces (dual nationality)
+        .split(Regex("\\s*[·]\\s*|\\s{2,}"))
         .map { it.trim() }
         .filter { it.isNotBlank() }
     if (parts.isEmpty()) return nationality
     return parts.joinToString(" · ") { CountryNameTranslator.getDisplayName(context, it) }
 }
 
-/**
- * Derive Transfermarkt portrait URL from profileImage or transfermarktUrl.
- * Same logic as the web app's getPlayerImageUrl.
- */
 private fun getPlayerImageUrl(profileImage: String?, transfermarktUrl: String): String {
     if (!profileImage.isNullOrBlank()) return profileImage.trim()
     val id = extractPlayerIdFromUrl(transfermarktUrl)
@@ -127,7 +149,6 @@ private fun getPlayerImageUrl(profileImage: String?, transfermarktUrl: String): 
     return TM_DEFAULT_IMAGE
 }
 
-/** Extract numeric player ID from Transfermarkt URL. */
 private fun extractPlayerIdFromUrl(url: String): String? {
     if (url.isBlank()) return null
     val parts = url.trim().split("/")
@@ -142,6 +163,17 @@ private fun extractPlayerIdFromUrl(url: String): String? {
     return if (last != null && last.all { it.isDigit() }) last else null
 }
 
+private fun scoreColor(score: Int): Color = when {
+    score >= 80 -> WrScoreExcellent
+    score >= 60 -> WrScoreGood
+    else -> WrScoreMedium
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  MAIN SCREEN
+// ═══════════════════════════════════════════════════════════════════════════════
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WarRoomScreen(
     navController: NavController,
@@ -149,10 +181,61 @@ fun WarRoomScreen(
     initialTab: WarRoomTab? = null
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val coroutineScope = rememberCoroutineScope()
+
+    val pagerState = rememberPagerState(
+        initialPage = initialTab?.ordinal ?: 0,
+        pageCount = { 3 }
+    )
+
+    // Sync pager → ViewModel tab
+    LaunchedEffect(pagerState.currentPage) {
+        val tab = WarRoomTab.entries[pagerState.currentPage]
+        viewModel.selectTab(tab)
+    }
 
     if (initialTab != null) {
         LaunchedEffect(initialTab) {
-            viewModel.selectTab(initialTab)
+            pagerState.scrollToPage(initialTab.ordinal)
+        }
+    }
+
+    // Bottom sheet for report preview
+    var reportSheetCandidate by remember { mutableStateOf<DiscoveryCandidate?>(null) }
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    if (reportSheetCandidate != null) {
+        val candidate = reportSheetCandidate!!
+        val report = state.candidateReports[candidate.transfermarktUrl]
+        val isLoading = state.loadingReportUrls.contains(candidate.transfermarktUrl)
+
+        ModalBottomSheet(
+            onDismissRequest = { reportSheetCandidate = null },
+            sheetState = sheetState,
+            containerColor = WrSurface,
+            contentColor = HomeTextPrimary,
+            dragHandle = {
+                Box(
+                    Modifier
+                        .padding(top = 12.dp, bottom = 8.dp)
+                        .width(40.dp)
+                        .height(4.dp)
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(WrSurfaceBorder)
+                )
+            }
+        ) {
+            ReportBottomSheetContent(
+                candidate = candidate,
+                report = report,
+                isLoading = isLoading,
+                onFullReport = {
+                    reportSheetCandidate = null
+                    navController.navigate(
+                        Screens.fullReportRoute(Uri.encode(candidate.transfermarktUrl), candidate.name)
+                    ) { launchSingleTop = true }
+                }
+            )
         }
     }
 
@@ -161,133 +244,185 @@ fun WarRoomScreen(
             .fillMaxSize()
             .background(HomeDarkBackground)
     ) {
-        // Top Bar
-        WarRoomTopBar(onBack = {
-            if (!navController.popBackStack(Screens.DashboardScreen.route, false)) {
-                navController.popBackStack()
-            }
-        })
-
-        // Tab Row
-        WarRoomTabBar(
+        // Command Center Header
+        CommandHeader(
             selectedTab = state.selectedTab,
-            onTabSelected = { viewModel.selectTab(it) }
+            onBack = {
+                if (!navController.popBackStack(Screens.DashboardScreen.route, false)) {
+                    navController.popBackStack()
+                }
+            },
+            onTabSelected = { tab ->
+                coroutineScope.launch { pagerState.animateScrollToPage(tab.ordinal) }
+            }
         )
 
-        // Tab Content
-        when (state.selectedTab) {
-            WarRoomTab.DISCOVERY -> DiscoveryTab(state = state, viewModel = viewModel, navController = navController)
-            WarRoomTab.AGENTS -> AgentsTab(state = state, viewModel = viewModel, navController = navController)
-            WarRoomTab.AI_SCOUT -> AiScoutContentBody(
-                navController = navController,
-                showTopBar = false
-            )
+        // Swipeable pager content
+        HorizontalPager(
+            state = pagerState,
+            modifier = Modifier.fillMaxSize(),
+            beyondViewportPageCount = 1
+        ) { page ->
+            when (page) {
+                0 -> DiscoveryTab(
+                    state = state,
+                    viewModel = viewModel,
+                    navController = navController,
+                    onShowReport = { candidate ->
+                        reportSheetCandidate = candidate
+                        if (!state.candidateReports.containsKey(candidate.transfermarktUrl) &&
+                            !state.loadingReportUrls.contains(candidate.transfermarktUrl)
+                        ) {
+                            viewModel.toggleCandidateExpanded(candidate.transfermarktUrl)
+                        }
+                    }
+                )
+                1 -> AgentsTab(state = state, viewModel = viewModel, navController = navController)
+                2 -> AiScoutContentBody(navController = navController, showTopBar = false)
+            }
         }
     }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-//  TOP BAR
+//  COMMAND HEADER — Gradient top bar with integrated tab selector
 // ═══════════════════════════════════════════════════════════════════════════════
 
 @Composable
-private fun WarRoomTopBar(onBack: () -> Unit) {
+private fun CommandHeader(
+    selectedTab: WarRoomTab,
+    onBack: () -> Unit,
+    onTabSelected: (WarRoomTab) -> Unit
+) {
+    val infiniteTransition = rememberInfiniteTransition(label = "header_pulse")
+    val pulseAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.3f,
+        targetValue = 0.7f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2000, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "pulse"
+    )
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .drawBehind {
+                val gradient = Brush.verticalGradient(
+                    colors = listOf(
+                        WrIndigoDim.copy(alpha = 0.25f),
+                        HomeDarkBackground
+                    )
+                )
+                drawRect(gradient)
+            }
+    ) {
+        // Top row: back + title + live indicator
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 4.dp, end = 16.dp, top = 48.dp, bottom = 4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(
+                onClick = onBack,
+                modifier = Modifier.size(48.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = null,
+                    tint = WrIndigoLight,
+                    modifier = Modifier.size(22.dp)
+                )
+            }
+
+            Text(
+                text = stringResource(R.string.war_room_title),
+                style = boldTextStyle(HomeTextPrimary, 20.sp),
+            )
+
+            Spacer(Modifier.weight(1f))
+
+            // Live pulse dot
+            Box(contentAlignment = Alignment.Center) {
+                Canvas(modifier = Modifier.size(10.dp)) {
+                    drawCircle(
+                        color = WrScoreExcellent.copy(alpha = pulseAlpha),
+                        radius = size.minDimension / 2
+                    )
+                    drawCircle(
+                        color = WrScoreExcellent,
+                        radius = size.minDimension / 3.5f
+                    )
+                }
+            }
+            Spacer(Modifier.width(6.dp))
+            Text("LIVE", style = boldTextStyle(WrScoreExcellent, 10.sp), letterSpacing = 1.sp)
+        }
+
+        // Segmented tab selector
+        SegmentedTabBar(selectedTab = selectedTab, onTabSelected = onTabSelected)
+
+        Spacer(Modifier.height(4.dp))
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  SEGMENTED TAB BAR — Pill-style tab selector
+// ═══════════════════════════════════════════════════════════════════════════════
+
+@Composable
+private fun SegmentedTabBar(selectedTab: WarRoomTab, onTabSelected: (WarRoomTab) -> Unit) {
+    val tabs = listOf(
+        WarRoomTab.DISCOVERY to R.string.war_room_tab_discovery,
+        WarRoomTab.AGENTS to R.string.war_room_tab_agents,
+        WarRoomTab.AI_SCOUT to R.string.war_room_tab_ai_scout
+    )
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(HomeDarkCard)
-            .padding(start = 12.dp, end = 12.dp, top = 48.dp, bottom = 12.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .padding(horizontal = 16.dp, vertical = 6.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(WrSurface)
+            .border(1.dp, WrSurfaceBorder, RoundedCornerShape(12.dp))
+            .padding(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
     ) {
-        Box(
-            modifier = Modifier
-                .size(48.dp)
-                .clickWithNoRipple { onBack() },
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                contentDescription = null,
-                tint = HomeTealAccent,
-                modifier = Modifier.size(24.dp)
+        tabs.forEach { (tab, labelRes) ->
+            val isSelected = selectedTab == tab
+            val bgColor by animateColorAsState(
+                targetValue = if (isSelected) WrIndigo.copy(alpha = 0.25f) else Color.Transparent,
+                label = "tab_bg"
             )
-        }
-        Text(
-            text = stringResource(R.string.war_room_title),
-            style = boldTextStyle(HomeTextPrimary, 18.sp),
-            modifier = Modifier.weight(1f),
-            textAlign = TextAlign.Center
-        )
-        Spacer(Modifier.width(48.dp))
-    }
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-//  TAB BAR
-// ═══════════════════════════════════════════════════════════════════════════════
-
-private fun WarRoomTab.selectedIndex() = when (this) {
-    WarRoomTab.DISCOVERY -> 0
-    WarRoomTab.AGENTS -> 1
-    WarRoomTab.AI_SCOUT -> 2
-}
-
-@Composable
-private fun WarRoomTabBar(selectedTab: WarRoomTab, onTabSelected: (WarRoomTab) -> Unit) {
-    TabRow(
-        selectedTabIndex = selectedTab.selectedIndex(),
-        containerColor = HomeDarkCard,
-        contentColor = WarPurple,
-        indicator = { tabPositions ->
-            TabRowDefaults.SecondaryIndicator(
-                modifier = Modifier.tabIndicatorOffset(tabPositions[selectedTab.selectedIndex()]),
-                color = WarPurple,
-                height = 3.dp
+            val textColor by animateColorAsState(
+                targetValue = if (isSelected) WrIndigoLight else HomeTextSecondary,
+                label = "tab_text"
             )
-        },
-        divider = {
-            Box(Modifier.fillMaxWidth().height(1.dp).background(HomeDarkCardBorder))
+
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(bgColor)
+                    .then(
+                        if (isSelected) Modifier.border(
+                            1.dp,
+                            WrIndigoBorder,
+                            RoundedCornerShape(10.dp)
+                        ) else Modifier
+                    )
+                    .clickable { onTabSelected(tab) }
+                    .padding(vertical = 10.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = stringResource(labelRes),
+                    style = boldTextStyle(textColor, 13.sp)
+                )
+            }
         }
-    ) {
-        Tab(
-            selected = selectedTab == WarRoomTab.DISCOVERY,
-            onClick = { onTabSelected(WarRoomTab.DISCOVERY) },
-            text = {
-                Text(
-                    stringResource(R.string.war_room_tab_discovery),
-                    style = boldTextStyle(
-                        if (selectedTab == WarRoomTab.DISCOVERY) WarPurple else HomeTextSecondary,
-                        14.sp
-                    )
-                )
-            }
-        )
-        Tab(
-            selected = selectedTab == WarRoomTab.AGENTS,
-            onClick = { onTabSelected(WarRoomTab.AGENTS) },
-            text = {
-                Text(
-                    stringResource(R.string.war_room_tab_agents),
-                    style = boldTextStyle(
-                        if (selectedTab == WarRoomTab.AGENTS) WarPurple else HomeTextSecondary,
-                        14.sp
-                    )
-                )
-            }
-        )
-        Tab(
-            selected = selectedTab == WarRoomTab.AI_SCOUT,
-            onClick = { onTabSelected(WarRoomTab.AI_SCOUT) },
-            text = {
-                Text(
-                    stringResource(R.string.war_room_tab_ai_scout),
-                    style = boldTextStyle(
-                        if (selectedTab == WarRoomTab.AI_SCOUT) WarPurple else HomeTextSecondary,
-                        14.sp
-                    )
-                )
-            }
-        )
     }
 }
 
@@ -295,9 +430,13 @@ private fun WarRoomTabBar(selectedTab: WarRoomTab, onTabSelected: (WarRoomTab) -
 //  DISCOVERY TAB
 // ═══════════════════════════════════════════════════════════════════════════════
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun DiscoveryTab(state: WarRoomUiState, viewModel: IWarRoomViewModel, navController: NavController) {
+private fun DiscoveryTab(
+    state: WarRoomUiState,
+    viewModel: IWarRoomViewModel,
+    navController: NavController,
+    onShowReport: (DiscoveryCandidate) -> Unit
+) {
     val context = LocalContext.current
     val shortlistRepository: ShortlistRepository = koinInject()
     val shortlistEntries by shortlistRepository.getShortlistFlow().collectAsState(initial = emptyList())
@@ -317,124 +456,45 @@ private fun DiscoveryTab(state: WarRoomUiState, viewModel: IWarRoomViewModel, na
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(bottom = 32.dp)
     ) {
-        // Hero
+        // Status bar
         item {
-            Column(modifier = Modifier.padding(20.dp, 20.dp, 20.dp, 12.dp)) {
-                Text(
-                    text = stringResource(R.string.war_room_discovery_title),
-                    style = boldTextStyle(HomeTextPrimary, 22.sp)
-                )
-                Spacer(Modifier.height(6.dp))
-                Text(
-                    text = stringResource(R.string.war_room_discovery_subtitle),
-                    style = regularTextStyle(HomeTextSecondary, 13.sp),
-                    lineHeight = 18.sp
-                )
-            }
+            DiscoveryStatusBar(
+                count = state.discoveryCount,
+                updatedAt = state.discoveryUpdatedAt,
+                onRefresh = { viewModel.loadDiscovery() }
+            )
         }
 
-        // Meta badges
+        // Filter chips
         item {
-            val playersCountText = stringResource(R.string.war_room_players_count, state.discoveryCount)
-
-            // Format timestamp outside try-catch (composable calls not allowed in try-catch)
-            val formattedDate = if (state.discoveryUpdatedAt.isNotBlank()) {
-                val ts = state.discoveryUpdatedAt.toLongOrNull()
-                if (ts != null) {
-                    val sdf = SimpleDateFormat("dd/MM/yy HH:mm", Locale.getDefault())
-                    sdf.format(Date(ts))
-                } else state.discoveryUpdatedAt
-            } else ""
-            val updatedText = if (formattedDate.isNotBlank()) {
-                stringResource(R.string.war_room_updated, formattedDate)
-            } else ""
-
-            FlowRow(
-                modifier = Modifier.padding(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                if (updatedText.isNotBlank()) {
-                    MetaBadge(text = updatedText, color = HomeTealAccent)
-                }
-                MetaBadge(text = playersCountText, color = WarPurple)
-
-                // Refresh button
-                Row(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
-                        .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(8.dp))
-                        .clickable { viewModel.loadDiscovery() }
-                        .padding(horizontal = 10.dp, vertical = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(Icons.Default.Refresh, null, tint = HomeTextSecondary, modifier = Modifier.size(12.dp))
-                    Spacer(Modifier.width(4.dp))
-                    Text(stringResource(R.string.war_room_refresh), style = regularTextStyle(HomeTextSecondary, 11.sp))
-                }
-            }
-        }
-
-        // Source filters
-        item {
-            Spacer(Modifier.height(12.dp))
-            val filterAll = stringResource(R.string.war_room_filter_all)
-            val filterRequests = stringResource(R.string.war_room_filter_requests)
-            val filterGems = stringResource(R.string.war_room_filter_gems)
-            LazyRow(
-                contentPadding = PaddingValues(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                val filters = listOf(
-                    "all" to filterAll,
-                    "request_match" to filterRequests,
-                    "hidden_gem" to filterGems
-                )
-                items(filters) { (key, label) ->
-                    SourceChip(
-                        text = label,
-                        isActive = state.selectedSourceFilter == key,
-                        onClick = { viewModel.setSourceFilter(key) }
-                    )
-                }
-            }
-            Spacer(Modifier.height(12.dp))
+            DiscoveryFilters(
+                selected = state.selectedSourceFilter,
+                onSelect = { viewModel.setSourceFilter(it) }
+            )
         }
 
         // Loading
         if (state.discoveryLoading) {
-            item {
-                Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = WarPurple, strokeWidth = 3.dp)
-                }
-            }
+            item { LoadingState(color = WrIndigo) }
         }
 
         // Error
         state.discoveryError?.let { error ->
             item {
-                Text(error, style = regularTextStyle(HomeRedAccent, 13.sp), modifier = Modifier.padding(16.dp))
+                ErrorBanner(message = error, onRetry = { viewModel.loadDiscovery() })
             }
         }
 
-        // Candidate cards
+        // Player cards
         items(filteredCandidates, key = { it.transfermarktUrl.ifBlank { it.name } }) { candidate ->
             val tmUrl = candidate.transfermarktUrl
             val isInShortlist = tmUrl.isNotBlank() && (tmUrl in shortlistUrls || tmUrl in justAddedUrls)
             val isShortlistPending = tmUrl in shortlistPendingUrls
-            CandidateCard(
+            DiscoveryPlayerCard(
                 candidate = candidate,
-                isExpanded = state.expandedCandidateUrl == candidate.transfermarktUrl,
-                report = state.candidateReports[candidate.transfermarktUrl],
-                isReportLoading = state.loadingReportUrls.contains(candidate.transfermarktUrl),
                 isInShortlist = isInShortlist,
                 isShortlistPending = isShortlistPending,
-                onToggle = { viewModel.toggleCandidateExpanded(candidate.transfermarktUrl) },
-                onFullReport = {
-                    navController.navigate(Screens.fullReportRoute(Uri.encode(candidate.transfermarktUrl), candidate.name)) {
-                        launchSingleTop = true
-                    }
-                },
+                onShowReport = { onShowReport(candidate) },
                 onAddToShortlist = if (tmUrl.isNotBlank()) {
                     {
                         coroutineScope.launch {
@@ -463,273 +523,581 @@ private fun DiscoveryTab(state: WarRoomUiState, viewModel: IWarRoomViewModel, na
                             }
                         }
                     }
-                } else null
+                } else null,
+                onOpenTm = {
+                    if (tmUrl.isNotBlank()) {
+                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(tmUrl)))
+                    }
+                }
             )
         }
     }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-//  CANDIDATE CARD
+//  DISCOVERY STATUS BAR
+// ═══════════════════════════════════════════════════════════════════════════════
+
+@Composable
+private fun DiscoveryStatusBar(count: Int, updatedAt: String, onRefresh: () -> Unit) {
+    val formattedDate = if (updatedAt.isNotBlank()) {
+        val ts = updatedAt.toLongOrNull()
+        if (ts != null) {
+            val sdf = SimpleDateFormat("dd/MM HH:mm", Locale.getDefault())
+            sdf.format(Date(ts))
+        } else updatedAt
+    } else ""
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Player count badge
+        Row(
+            modifier = Modifier
+                .clip(RoundedCornerShape(8.dp))
+                .background(WrIndigoBg)
+                .border(1.dp, WrIndigoBorder, RoundedCornerShape(8.dp))
+                .padding(horizontal = 10.dp, vertical = 5.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text("$count", style = boldTextStyle(WrIndigoLight, 14.sp))
+            Spacer(Modifier.width(4.dp))
+            Text(
+                stringResource(R.string.war_room_discovery_title).lowercase(),
+                style = regularTextStyle(HomeTextSecondary, 11.sp)
+            )
+        }
+
+        if (formattedDate.isNotBlank()) {
+            Spacer(Modifier.width(8.dp))
+            Text(formattedDate, style = regularTextStyle(HomeTextSecondary, 11.sp))
+        }
+
+        Spacer(Modifier.weight(1f))
+
+        IconButton(onClick = onRefresh, modifier = Modifier.size(40.dp)) {
+            Icon(
+                Icons.Default.Refresh,
+                contentDescription = stringResource(R.string.war_room_refresh),
+                tint = HomeTextSecondary,
+                modifier = Modifier.size(20.dp)
+            )
+        }
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  DISCOVERY FILTERS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+@Composable
+private fun DiscoveryFilters(selected: String, onSelect: (String) -> Unit) {
+    LazyRow(
+        contentPadding = PaddingValues(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier.padding(bottom = 8.dp)
+    ) {
+        val filters = listOf(
+            "all" to R.string.war_room_filter_all,
+            "request_match" to R.string.war_room_filter_requests,
+            "hidden_gem" to R.string.war_room_filter_gems
+        )
+        items(filters) { (key, labelRes) ->
+            val isActive = selected == key
+            val (accentColor, bgColor) = when (key) {
+                "request_match" -> WrMatch to WrMatchBg
+                "hidden_gem" -> WrGem to WrGemBg
+                else -> WrIndigo to WrIndigoBg
+            }
+
+            val displayBg by animateColorAsState(
+                if (isActive) bgColor else Color.Transparent, label = "filter_bg"
+            )
+            val displayBorder by animateColorAsState(
+                if (isActive) accentColor.copy(alpha = 0.4f) else WrSurfaceBorder, label = "filter_border"
+            )
+            val displayText by animateColorAsState(
+                if (isActive) accentColor else HomeTextSecondary, label = "filter_text"
+            )
+
+            Text(
+                text = stringResource(labelRes),
+                style = boldTextStyle(displayText, 12.sp),
+                modifier = Modifier
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(displayBg)
+                    .border(1.dp, displayBorder, RoundedCornerShape(20.dp))
+                    .clickable { onSelect(key) }
+                    .padding(horizontal = 16.dp, vertical = 9.dp)
+            )
+        }
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  DISCOVERY PLAYER CARD — Large hero layout with score ring
 // ═══════════════════════════════════════════════════════════════════════════════
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun CandidateCard(
+private fun DiscoveryPlayerCard(
     candidate: DiscoveryCandidate,
-    isExpanded: Boolean,
-    report: WarRoomReportResponse?,
-    isReportLoading: Boolean,
     isInShortlist: Boolean,
     isShortlistPending: Boolean,
-    onToggle: () -> Unit,
-    onFullReport: () -> Unit,
-    onAddToShortlist: (() -> Unit)?
+    onShowReport: () -> Unit,
+    onAddToShortlist: (() -> Unit)?,
+    onOpenTm: () -> Unit
 ) {
     val context = LocalContext.current
+    val sourceAccent = when (candidate.source) {
+        "request_match" -> WrMatch
+        "hidden_gem" -> WrGem
+        "agent_pick" -> WrAgent
+        else -> WrIndigo
+    }
 
     Column(
         modifier = Modifier
             .padding(horizontal = 16.dp, vertical = 6.dp)
             .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
-            .background(HomeDarkCard)
-            .border(
-                1.dp,
-                if (isExpanded) WarPurpleBorder else HomeDarkCardBorder,
-                RoundedCornerShape(14.dp)
-            )
-            .clickable { onToggle() }
-            .animateContentSize()
-            .padding(14.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(WrSurfaceElevated)
+            .border(1.dp, WrSurfaceBorder, RoundedCornerShape(16.dp))
     ) {
-        Row(verticalAlignment = Alignment.Top) {
-            // Player image from Transfermarkt
-            SubcomposeAsyncImage(
-                model = getPlayerImageUrl(candidate.imageUrl, candidate.transfermarktUrl),
-                contentDescription = candidate.name,
-                modifier = Modifier
-                    .size(52.dp)
-                    .clip(RoundedCornerShape(12.dp)),
-                contentScale = ContentScale.Crop,
-                loading = {
-                    Box(
-                        modifier = Modifier
-                            .size(52.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(HomeDarkCardBorder),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = candidate.name.split(" ").take(2).mapNotNull { it.firstOrNull()?.uppercase() }.joinToString(""),
-                            style = boldTextStyle(HomeTextSecondary, 16.sp)
-                        )
+        // Source accent strip at top
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(3.dp)
+                .background(
+                    Brush.horizontalGradient(
+                        listOf(sourceAccent, sourceAccent.copy(alpha = 0.2f))
+                    )
+                )
+        )
+
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.Top) {
+                // Player image with circular score ring
+                Box(contentAlignment = Alignment.Center) {
+                    val matchScore = candidate.matchScore ?: 0
+                    if (matchScore > 0) {
+                        val ringColor = scoreColor(matchScore)
+                        Canvas(modifier = Modifier.size(68.dp)) {
+                            drawArc(
+                                color = ringColor.copy(alpha = 0.15f),
+                                startAngle = -90f,
+                                sweepAngle = 360f,
+                                useCenter = false,
+                                style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round)
+                            )
+                            drawArc(
+                                color = ringColor,
+                                startAngle = -90f,
+                                sweepAngle = matchScore * 3.6f,
+                                useCenter = false,
+                                style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round)
+                            )
+                        }
                     }
-                },
-                error = {
-                    Box(
+
+                    SubcomposeAsyncImage(
+                        model = getPlayerImageUrl(candidate.imageUrl, candidate.transfermarktUrl),
+                        contentDescription = candidate.name,
                         modifier = Modifier
-                            .size(52.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(HomeDarkCardBorder),
-                        contentAlignment = Alignment.Center
-                    ) {
+                            .size(58.dp)
+                            .clip(CircleShape),
+                        contentScale = ContentScale.Crop,
+                        loading = { PlayerInitials(candidate.name, 58.dp) },
+                        error = { PlayerInitials(candidate.name, 58.dp) }
+                    )
+
+                    // Score label badge
+                    if (matchScore > 0) {
                         Text(
-                            text = candidate.name.split(" ").take(2).mapNotNull { it.firstOrNull()?.uppercase() }.joinToString(""),
-                            style = boldTextStyle(HomeTextSecondary, 16.sp)
+                            text = "$matchScore",
+                            style = boldTextStyle(scoreColor(matchScore), 9.sp),
+                            modifier = Modifier
+                                .align(Alignment.BottomEnd)
+                                .offset(x = 2.dp, y = 2.dp)
+                                .clip(CircleShape)
+                                .background(WrSurfaceElevated)
+                                .border(
+                                    1.dp,
+                                    scoreColor(matchScore).copy(alpha = 0.4f),
+                                    CircleShape
+                                )
+                                .padding(horizontal = 5.dp, vertical = 2.dp)
                         )
                     }
                 }
-            )
 
-            Spacer(Modifier.width(12.dp))
+                Spacer(Modifier.width(14.dp))
 
-            Column(modifier = Modifier.weight(1f)) {
-                // Name
-                Text(
-                    text = candidate.name,
-                    style = boldTextStyle(HomeTextPrimary, 15.sp),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-
-                Spacer(Modifier.height(4.dp))
-
-                // Meta line 1: age · position · value
-                Text(
-                    text = "${candidate.age} · ${candidate.position} · ${candidate.marketValue}",
-                    style = regularTextStyle(HomeTextSecondary, 12.sp),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-
-                // Meta line 2: club · nationality
-                Text(
-                    text = buildString {
-                        append(candidate.club)
-                        if (candidate.nationality.isNotBlank()) {
-                            append(" · ")
-                            append(translateNationalityDisplay(candidate.nationality, context))
-                        }
-                    },
-                    style = regularTextStyle(HomeTextSecondary, 12.sp),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-
-                Spacer(Modifier.height(6.dp))
-
-                // Source badge (translated)
-                TranslatedSourceBadge(source = candidate.source, label = candidate.sourceLabel)
-
-                // Stats pills
-                if (candidate.goalsPerNinety != null || candidate.fmCurrentAbility != null) {
-                    Spacer(Modifier.height(6.dp))
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        candidate.goalsPerNinety?.let {
-                            StatPill("G/90", String.format("%.2f", it))
-                        }
-                        candidate.assistsPerNinety?.let {
-                            StatPill("A/90", String.format("%.2f", it))
-                        }
-                        if (candidate.fmCurrentAbility != null || candidate.fmPotentialAbility != null) {
-                            val caStr = candidate.fmCurrentAbility?.toString() ?: "?"
-                            val paStr = candidate.fmPotentialAbility?.toString() ?: "?"
-                            StatPill("FM", "${paStr}→${caStr}")
-                        }
-                    }
-                }
-
-                // Hidden gem reason
-                candidate.hiddenGemReason?.let { reason ->
-                    Spacer(Modifier.height(8.dp))
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "💎 $reason",
-                        style = regularTextStyle(HomeOrangeAccent, 12.sp),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(HomeOrangeAccent.copy(alpha = 0.06f))
-                            .border(1.dp, HomeOrangeAccent.copy(alpha = 0.15f), RoundedCornerShape(8.dp))
-                            .padding(8.dp),
-                        lineHeight = 16.sp
+                        text = candidate.name,
+                        style = boldTextStyle(HomeTextPrimary, 16.sp),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+
+                    Spacer(Modifier.height(4.dp))
+
+                    // Position + Age + Value
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        PositionChip(candidate.position)
+                        Spacer(Modifier.width(8.dp))
+                        Text("${candidate.age}", style = boldTextStyle(HomeTextSecondary, 13.sp))
+                        Spacer(Modifier.width(8.dp))
+                        Text(candidate.marketValue, style = regularTextStyle(WrIndigoLight, 12.sp))
+                    }
+
+                    Spacer(Modifier.height(4.dp))
+
+                    // Club + Nationality
+                    Text(
+                        text = buildString {
+                            append(candidate.club)
+                            if (candidate.nationality.isNotBlank()) {
+                                append(" · ")
+                                append(translateNationalityDisplay(candidate.nationality, context))
+                            }
+                        },
+                        style = regularTextStyle(HomeTextSecondary, 12.sp),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(10.dp))
+
+            // Source badge + Stats
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                SourceTag(source = candidate.source, label = candidate.sourceLabel)
+
+                if (candidate.goalsPerNinety != null) {
+                    StatChip("G/90", String.format("%.2f", candidate.goalsPerNinety))
+                }
+                if (candidate.assistsPerNinety != null) {
+                    StatChip("A/90", String.format("%.2f", candidate.assistsPerNinety))
+                }
+                if (candidate.fmPotentialAbility != null || candidate.fmCurrentAbility != null) {
+                    val ca = candidate.fmCurrentAbility?.toString() ?: "?"
+                    val pa = candidate.fmPotentialAbility?.toString() ?: "?"
+                    StatChip("FM", "$ca\u200E→\u200E$pa")
+                }
+            }
+
+            // Hidden gem reason
+            candidate.hiddenGemReason?.let { reason ->
+                Spacer(Modifier.height(10.dp))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(WrGemBg)
+                        .border(1.dp, WrGem.copy(alpha = 0.2f), RoundedCornerShape(10.dp))
+                        .padding(10.dp),
+                    verticalAlignment = Alignment.Top
+                ) {
+                    Text("💎", style = regularTextStyle(HomeTextPrimary, 14.sp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(reason, style = regularTextStyle(HomeTextPrimary, 12.sp), lineHeight = 17.sp)
+                }
+            }
+
+            // Scout narrative preview
+            candidate.scoutNarrative?.let { narrative ->
+                if (candidate.hiddenGemReason == null) {
+                    Spacer(Modifier.height(10.dp))
+                    Text(
+                        text = narrative,
+                        style = regularTextStyle(HomeTextSecondary, 12.sp),
+                        lineHeight = 17.sp,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(12.dp))
+
+            // Action bar — 40dp+ hit targets in thumb zone
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                onAddToShortlist?.let { onAdd ->
+                    ActionPill(
+                        icon = {
+                            Icon(
+                                imageVector = if (isInShortlist) Icons.Default.Bookmark else Icons.Default.BookmarkAdd,
+                                contentDescription = if (isInShortlist) stringResource(R.string.shortlist_in_shortlist) else stringResource(R.string.shortlist_add_to_shortlist),
+                                tint = if (isInShortlist) HomeGreenAccent else HomeTextSecondary,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        },
+                        onClick = { if (!isShortlistPending) onAdd() }
+                    )
+                }
+
+                ActionPill(
+                    icon = {
+                        Icon(Icons.AutoMirrored.Filled.OpenInNew, null, tint = HomeBlueAccent, modifier = Modifier.size(16.dp))
+                    },
+                    label = "TM",
+                    labelColor = HomeBlueAccent,
+                    onClick = onOpenTm
+                )
+
+                Spacer(Modifier.weight(1f))
+
+                // Report button — prominent CTA
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(
+                            Brush.horizontalGradient(
+                                listOf(WrIndigo.copy(alpha = 0.3f), WrIndigoDim.copy(alpha = 0.15f))
+                            )
+                        )
+                        .border(1.dp, WrIndigoBorder, RoundedCornerShape(12.dp))
+                        .clickable { onShowReport() }
+                        .padding(horizontal = 18.dp, vertical = 10.dp)
+                ) {
+                    Text(
+                        "🧠 ${stringResource(R.string.war_room_view_report)}",
+                        style = boldTextStyle(WrIndigoLight, 13.sp)
                     )
                 }
             }
         }
+    }
+}
 
-        // Always-visible action bar: shortlist + TM on left, report toggle on right
-        Spacer(Modifier.height(8.dp))
+// ═══════════════════════════════════════════════════════════════════════════════
+//  REPORT BOTTOM SHEET
+// ═══════════════════════════════════════════════════════════════════════════════
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun ReportBottomSheetContent(
+    candidate: DiscoveryCandidate,
+    report: WarRoomReportResponse?,
+    isLoading: Boolean,
+    onFullReport: () -> Unit
+) {
+    LazyColumn(
+        modifier = Modifier.fillMaxWidth(),
+        contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 40.dp)
+    ) {
+        // Player header
+        item {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                SubcomposeAsyncImage(
+                    model = getPlayerImageUrl(candidate.imageUrl, candidate.transfermarktUrl),
+                    contentDescription = candidate.name,
+                    modifier = Modifier.size(48.dp).clip(CircleShape),
+                    contentScale = ContentScale.Crop,
+                    loading = { PlayerInitials(candidate.name, 48.dp) },
+                    error = { PlayerInitials(candidate.name, 48.dp) }
+                )
+                Spacer(Modifier.width(12.dp))
+                Column {
+                    Text(candidate.name, style = boldTextStyle(HomeTextPrimary, 16.sp))
+                    Text(
+                        "${candidate.position} · ${candidate.age} · ${candidate.marketValue}",
+                        style = regularTextStyle(HomeTextSecondary, 12.sp)
+                    )
+                }
+            }
+            Spacer(Modifier.height(16.dp))
+        }
+
+        if (isLoading) {
+            item {
+                Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        CircularProgressIndicator(
+                            color = WrIndigo,
+                            strokeWidth = 2.dp,
+                            modifier = Modifier.size(28.dp)
+                        )
+                        Spacer(Modifier.height(12.dp))
+                        Text(
+                            stringResource(R.string.war_room_generating_report),
+                            style = regularTextStyle(HomeTextSecondary, 13.sp)
+                        )
+                    }
+                }
+            }
+        } else if (report != null) {
+            // Recommendation
+            item {
+                ReportRecommendationBar(rec = report.recommendation, confidence = report.confidencePercent)
+                Spacer(Modifier.height(16.dp))
+            }
+
+            // Synthesis
+            item {
+                ReportSection(
+                    icon = "🧠",
+                    title = stringResource(R.string.war_room_synthesis),
+                    accentColor = WrIndigo,
+                    content = report.synthesis.summary
+                )
+                Spacer(Modifier.height(8.dp))
+            }
+
+            // Risks & Opportunities
+            if (report.synthesis.risks.isNotEmpty() || report.synthesis.opportunities.isNotEmpty()) {
+                item {
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        report.synthesis.risks.forEach { risk ->
+                            TagChip("⚠ $risk", HomeRedAccent, HomeRedAccent.copy(alpha = 0.1f))
+                        }
+                        report.synthesis.opportunities.forEach { opp ->
+                            TagChip("✓ $opp", HomeGreenAccent, HomeGreenAccent.copy(alpha = 0.1f))
+                        }
+                    }
+                    Spacer(Modifier.height(12.dp))
+                }
+            }
+
+            // Agent sections
+            item {
+                ReportSection("📊", stringResource(R.string.war_room_stats_agent), HomeTealAccent, report.stats.analysis)
+                Spacer(Modifier.height(8.dp))
+                ReportSection("💰", stringResource(R.string.war_room_market_agent), HomeOrangeAccent, report.market.analysis)
+                Spacer(Modifier.height(8.dp))
+                ReportSection("⚽", stringResource(R.string.war_room_tactics_agent), HomeBlueAccent, report.tactics.analysis)
+                Spacer(Modifier.height(16.dp))
+            }
+
+            // Full report CTA
+            item {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(
+                            Brush.horizontalGradient(
+                                listOf(WrIndigo.copy(alpha = 0.3f), WrIndigoDim.copy(alpha = 0.2f))
+                            )
+                        )
+                        .border(1.dp, WrIndigoBorder, RoundedCornerShape(14.dp))
+                        .clickable { onFullReport() }
+                        .padding(vertical = 14.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        stringResource(R.string.war_room_full_report),
+                        style = boldTextStyle(WrIndigoLight, 14.sp)
+                    )
+                }
+            }
+        } else {
+            item {
+                Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
+                    Text(
+                        stringResource(R.string.war_room_generating_report),
+                        style = regularTextStyle(HomeTextSecondary, 13.sp)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ReportRecommendationBar(rec: String, confidence: Int) {
+    val (bgColor, textColor, icon) = when (rec.uppercase()) {
+        "SIGN" -> Triple(HomeGreenAccent, HomeGreenAccent, "✓")
+        "MONITOR" -> Triple(HomeOrangeAccent, HomeOrangeAccent, "👁")
+        "PASS" -> Triple(HomeRedAccent, HomeRedAccent, "✗")
+        else -> Triple(HomeTextSecondary, HomeTextSecondary, "—")
+    }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(bgColor.copy(alpha = 0.1f))
+            .border(1.dp, bgColor.copy(alpha = 0.25f), RoundedCornerShape(12.dp))
+            .padding(14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(icon, style = boldTextStyle(textColor, 18.sp))
+            Spacer(Modifier.width(10.dp))
+            Column {
+                Text(rec.uppercase(), style = boldTextStyle(textColor, 16.sp))
+                Text(
+                    stringResource(R.string.war_room_recommendation),
+                    style = regularTextStyle(HomeTextSecondary, 10.sp)
+                )
+            }
+        }
+
+        Column(horizontalAlignment = Alignment.End) {
+            Text("$confidence%", style = boldTextStyle(textColor, 20.sp))
+            Text(
+                stringResource(R.string.war_room_confidence),
+                style = regularTextStyle(HomeTextSecondary, 10.sp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun ReportSection(icon: String, title: String, accentColor: Color, content: String) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(WrSurfaceElevated)
+            .border(1.dp, WrSurfaceBorder, RoundedCornerShape(12.dp))
+    ) {
         Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .drawBehind {
+                    drawLine(
+                        color = accentColor,
+                        start = Offset(0f, 0f),
+                        end = Offset(0f, size.height),
+                        strokeWidth = 4.dp.toPx()
+                    )
+                }
+                .padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            onAddToShortlist?.let { onAdd ->
-                IconButton(
-                    onClick = { if (!isShortlistPending) onAdd() },
-                    modifier = Modifier.size(32.dp)
-                ) {
-                    Icon(
-                        imageVector = if (isInShortlist) Icons.Default.Bookmark else Icons.Default.BookmarkAdd,
-                        contentDescription = if (isInShortlist) stringResource(R.string.shortlist_in_shortlist) else stringResource(R.string.shortlist_add_to_shortlist),
-                        tint = if (isInShortlist) HomeGreenAccent else HomeTextSecondary,
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
-            }
-            if (candidate.transfermarktUrl.isNotBlank()) {
-                SmallActionButton(
-                    text = "↗ TM",
-                    color = HomeBlueAccent,
-                    onClick = {
-                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(candidate.transfermarktUrl)))
-                    }
-                )
-            }
-            Spacer(Modifier.weight(1f))
-            Text(
-                text = if (isExpanded) "${stringResource(R.string.war_room_view_report)} ▲" else "${stringResource(R.string.war_room_view_report)} ▼",
-                style = regularTextStyle(WarPurple, 12.sp)
-            )
+            Text(icon, style = regularTextStyle(HomeTextPrimary, 14.sp))
+            Spacer(Modifier.width(8.dp))
+            Text(title, style = boldTextStyle(accentColor, 11.sp), letterSpacing = 0.8.sp)
         }
-
-        // Expanded report content
-        AnimatedVisibility(
-            visible = isExpanded,
-            enter = fadeIn() + expandVertically(),
-            exit = fadeOut() + shrinkVertically()
-        ) {
-            Column {
-                Spacer(Modifier.height(14.dp))
-                Box(Modifier.fillMaxWidth().height(1.dp).background(HomeDarkCardBorder))
-                Spacer(Modifier.height(14.dp))
-
-                if (isReportLoading) {
-                    Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            CircularProgressIndicator(color = WarPurple, strokeWidth = 2.dp, modifier = Modifier.size(24.dp))
-                            Spacer(Modifier.height(8.dp))
-                            Text(stringResource(R.string.war_room_generating_report), style = regularTextStyle(HomeTextSecondary, 12.sp))
-                        }
-                    }
-                } else if (report != null) {
-                    // Synthesis box
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(WarPurpleBg)
-                            .border(1.dp, WarPurpleBorder, RoundedCornerShape(12.dp))
-                            .padding(12.dp)
-                    ) {
-                        Text("🧠 " + stringResource(R.string.war_room_synthesis), style = boldTextStyle(WarPurple, 11.sp), letterSpacing = 0.5.sp)
-                        Spacer(Modifier.height(6.dp))
-                        Text(report.synthesis.summary, style = regularTextStyle(HomeTextPrimary, 13.sp), lineHeight = 18.sp)
-
-                        Spacer(Modifier.height(8.dp))
-                        RecommendationBadge(rec = report.recommendation, confidence = report.confidencePercent)
-
-                        if (report.synthesis.risks.isNotEmpty() || report.synthesis.opportunities.isNotEmpty()) {
-                            Spacer(Modifier.height(10.dp))
-                            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                report.synthesis.risks.forEach { risk ->
-                                    RiskPill(text = "⚠ $risk")
-                                }
-                                report.synthesis.opportunities.forEach { opp ->
-                                    OpportunityPill(text = "✓ $opp")
-                                }
-                            }
-                        }
-                    }
-
-                    Spacer(Modifier.height(12.dp))
-
-                    // Mini agent cards
-                    AgentMiniCard("📊", stringResource(R.string.war_room_stats_agent), report.stats.analysis)
-                    Spacer(Modifier.height(8.dp))
-                    AgentMiniCard("💰", stringResource(R.string.war_room_market_agent), report.market.analysis)
-                    Spacer(Modifier.height(8.dp))
-                    AgentMiniCard("⚽", stringResource(R.string.war_room_tactics_agent), report.tactics.analysis)
-                } else {
-                    // No report yet — just show scout narrative if available
-                    candidate.scoutNarrative?.let { narrative ->
-                        Text(narrative, style = regularTextStyle(HomeTextPrimary, 13.sp), lineHeight = 18.sp)
-                    }
-                }
-
-                // Full report link
-                if (report != null) {
-                    Spacer(Modifier.height(8.dp))
-                    SmallActionButton(
-                        text = stringResource(R.string.war_room_full_report),
-                        color = WarPurple,
-                        modifier = Modifier.fillMaxWidth(),
-                        onClick = onFullReport
-                    )
-                }
-            }
-        }
+        Text(
+            text = content,
+            style = regularTextStyle(HomeTextPrimary, 13.sp),
+            lineHeight = 19.sp,
+            modifier = Modifier.padding(start = 12.dp, end = 12.dp, bottom = 12.dp),
+            maxLines = 4,
+            overflow = TextOverflow.Ellipsis
+        )
     }
 }
 
@@ -748,11 +1116,9 @@ private fun AgentsTab(state: WarRoomUiState, viewModel: IWarRoomViewModel, navCo
         .collectAsState(initial = emptySet())
     val coroutineScope = rememberCoroutineScope()
 
-    // Group profiles by agent
     val groupedProfiles = state.scoutProfiles.groupBy { it.agentId to it.agentName }
     val uniqueAgents = groupedProfiles.keys.toList()
 
-    // Agent display names via string resources (follows app locale like tabs "סוכנים", "תגליות")
     val agentDisplayNames = remember(uniqueAgents, state.scoutProfiles) {
         uniqueAgents.associate { (agentId, agentName) ->
             val key = agentId to agentName
@@ -767,129 +1133,75 @@ private fun AgentsTab(state: WarRoomUiState, viewModel: IWarRoomViewModel, navCo
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(bottom = 32.dp)
     ) {
-        // Info banner
-        item {
-            Column(
-                modifier = Modifier
-                    .padding(16.dp, 12.dp)
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(WarPurpleBg)
-                    .border(1.dp, WarPurpleBorder, RoundedCornerShape(12.dp))
-                    .padding(12.dp)
-            ) {
-                Text(
-                    "🌐 " + stringResource(R.string.war_room_agent_network_title),
-                    style = boldTextStyle(WarPurple, 14.sp)
-                )
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    stringResource(R.string.war_room_agent_network_desc),
-                    style = regularTextStyle(HomeTextSecondary, 12.sp),
-                    lineHeight = 16.sp
-                )
-            }
-        }
-
-        // Meta bar
+        // Status bar
         item {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                    .padding(horizontal = 16.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "${state.scoutProfilesTotal} " + stringResource(R.string.war_room_profiles),
-                    style = regularTextStyle(HomeTextSecondary, 12.sp)
-                )
                 Row(
                     modifier = Modifier
                         .clip(RoundedCornerShape(8.dp))
-                        .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(8.dp))
-                        .clickable { viewModel.loadScoutProfiles(state.selectedAgentFilter) }
-                        .padding(horizontal = 10.dp, vertical = 4.dp),
+                        .background(WrAgentBg)
+                        .border(1.dp, WrAgent.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
+                        .padding(horizontal = 10.dp, vertical = 5.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(Icons.Default.Refresh, null, tint = HomeTextSecondary, modifier = Modifier.size(12.dp))
+                    Text("${state.scoutProfilesTotal}", style = boldTextStyle(WrAgent, 14.sp))
                     Spacer(Modifier.width(4.dp))
-                    Text(stringResource(R.string.war_room_refresh), style = regularTextStyle(HomeTextSecondary, 11.sp))
+                    Text(stringResource(R.string.war_room_profiles), style = regularTextStyle(HomeTextSecondary, 11.sp))
+                }
+
+                Spacer(Modifier.weight(1f))
+
+                IconButton(
+                    onClick = { viewModel.loadScoutProfiles(state.selectedAgentFilter) },
+                    modifier = Modifier.size(40.dp)
+                ) {
+                    Icon(Icons.Default.Refresh, null, tint = HomeTextSecondary, modifier = Modifier.size(20.dp))
                 }
             }
         }
 
-        // Agent filter chips
+        // Agent filter carousel
         item {
-            Spacer(Modifier.height(10.dp))
-            LazyRow(
-                contentPadding = PaddingValues(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                item {
-                    SourceChip(
-                        text = stringResource(R.string.war_room_all_agents),
-                        isActive = state.selectedAgentFilter == null,
-                        onClick = { viewModel.setAgentFilter(null) }
-                    )
-                }
-                items(uniqueAgents) { (agentId, agentName) ->
-                    SourceChip(
-                        text = agentDisplayNames[agentId to agentName] ?: agentName,
-                        isActive = state.selectedAgentFilter == agentId,
-                        onClick = { viewModel.setAgentFilter(agentId) }
-                    )
-                }
-            }
-            Spacer(Modifier.height(14.dp))
+            AgentFilterCarousel(
+                agents = uniqueAgents,
+                agentDisplayNames = agentDisplayNames,
+                selectedAgentId = state.selectedAgentFilter,
+                onSelect = { viewModel.setAgentFilter(it) }
+            )
+            Spacer(Modifier.height(8.dp))
         }
 
         // Loading
         if (state.agentsLoading) {
-            item {
-                Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = WarPurple, strokeWidth = 3.dp)
-                }
-            }
+            item { LoadingState(color = WrAgent) }
         }
 
         // Error
         state.agentsError?.let { error ->
-            item {
-                Text(error, style = regularTextStyle(HomeRedAccent, 13.sp), modifier = Modifier.padding(16.dp))
-            }
+            item { ErrorBanner(message = error, onRetry = { viewModel.loadScoutProfiles(state.selectedAgentFilter) }) }
         }
 
         // Agent sections
         groupedProfiles.forEach { (key, profiles) ->
             val (agentId, agentName) = key
 
-            // Section header
             item(key = "header_$agentId") {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(agentDisplayNames[agentId to agentName] ?: agentName, style = boldTextStyle(HomeTextPrimary, 15.sp), modifier = Modifier.weight(1f))
-                    Text(
-                        text = "${profiles.size}",
-                        style = boldTextStyle(WarPurple, 11.sp),
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(WarPurpleBg)
-                            .padding(horizontal = 8.dp, vertical = 3.dp)
-                    )
-                }
+                AgentSectionHeader(
+                    name = agentDisplayNames[agentId to agentName] ?: agentName,
+                    count = profiles.size
+                )
             }
 
-            // Profile cards
             items(profiles, key = { it.id }) { profile ->
                 val tmUrl = profile.transfermarktUrl
                 val isInShortlist = tmUrl.isNotBlank() && (tmUrl in shortlistUrls || tmUrl in justAddedUrls)
                 val isShortlistPending = tmUrl in shortlistPendingUrls
-                ProfileCard(
+                AgentProfileCard(
                     profile = profile,
                     isInShortlist = isInShortlist,
                     isShortlistPending = isShortlistPending,
@@ -936,12 +1248,129 @@ private fun AgentsTab(state: WarRoomUiState, viewModel: IWarRoomViewModel, navCo
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-//  PROFILE CARD (Agent tab)
+//  AGENT FILTER CAROUSEL — Circular avatars
+// ═══════════════════════════════════════════════════════════════════════════════
+
+@Composable
+private fun AgentFilterCarousel(
+    agents: List<Pair<String, String>>,
+    agentDisplayNames: Map<Pair<String, String>, String>,
+    selectedAgentId: String?,
+    onSelect: (String?) -> Unit
+) {
+    LazyRow(
+        contentPadding = PaddingValues(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        item {
+            AgentAvatar(
+                name = stringResource(R.string.war_room_all_agents),
+                initial = "⚡",
+                isSelected = selectedAgentId == null,
+                accentColor = WrIndigo,
+                onClick = { onSelect(null) }
+            )
+        }
+
+        items(agents) { (agentId, agentName) ->
+            val displayName = agentDisplayNames[agentId to agentName] ?: agentName
+            AgentAvatar(
+                name = displayName,
+                initial = displayName.take(2).uppercase(),
+                isSelected = selectedAgentId == agentId,
+                accentColor = WrAgent,
+                onClick = { onSelect(agentId) }
+            )
+        }
+    }
+}
+
+@Composable
+private fun AgentAvatar(
+    name: String,
+    initial: String,
+    isSelected: Boolean,
+    accentColor: Color,
+    onClick: () -> Unit
+) {
+    val borderColor by animateColorAsState(
+        if (isSelected) accentColor else WrSurfaceBorder, label = "avatar_border"
+    )
+
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier
+            .width(64.dp)
+            .clickable { onClick() }
+    ) {
+        Box(
+            modifier = Modifier
+                .size(48.dp)
+                .clip(CircleShape)
+                .background(if (isSelected) accentColor.copy(alpha = 0.15f) else WrSurface)
+                .border(2.dp, borderColor, CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = initial,
+                style = boldTextStyle(
+                    if (isSelected) accentColor else HomeTextSecondary,
+                    if (initial.length <= 2) 14.sp else 16.sp
+                )
+            )
+        }
+        Spacer(Modifier.height(4.dp))
+        Text(
+            text = name,
+            style = regularTextStyle(
+                if (isSelected) accentColor else HomeTextSecondary,
+                10.sp
+            ),
+            textAlign = TextAlign.Center,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  AGENT SECTION HEADER
+// ═══════════════════════════════════════════════════════════════════════════════
+
+@Composable
+private fun AgentSectionHeader(name: String, count: Int) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(8.dp)
+                .clip(CircleShape)
+                .background(WrAgent)
+        )
+        Spacer(Modifier.width(10.dp))
+        Text(name, style = boldTextStyle(HomeTextPrimary, 15.sp), modifier = Modifier.weight(1f))
+        Text(
+            text = "$count",
+            style = boldTextStyle(WrAgent, 12.sp),
+            modifier = Modifier
+                .clip(RoundedCornerShape(6.dp))
+                .background(WrAgentBg)
+                .padding(horizontal = 8.dp, vertical = 3.dp)
+        )
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  AGENT PROFILE CARD
 // ═══════════════════════════════════════════════════════════════════════════════
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun ProfileCard(
+private fun AgentProfileCard(
     profile: ScoutProfile,
     isInShortlist: Boolean,
     isShortlistPending: Boolean,
@@ -951,66 +1380,40 @@ private fun ProfileCard(
     onFeedback: (String) -> Unit
 ) {
     val context = LocalContext.current
+
     Column(
         modifier = Modifier
             .padding(horizontal = 16.dp, vertical = 5.dp)
             .fillMaxWidth()
             .clip(RoundedCornerShape(14.dp))
-            .background(HomeDarkCard)
-            .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(14.dp))
+            .background(WrSurfaceElevated)
+            .border(1.dp, WrSurfaceBorder, RoundedCornerShape(14.dp))
             .padding(14.dp)
     ) {
         Row(verticalAlignment = Alignment.Top) {
-            // Player image from Transfermarkt
             SubcomposeAsyncImage(
                 model = getPlayerImageUrl(profile.imageUrl, profile.transfermarktUrl),
                 contentDescription = profile.name,
                 modifier = Modifier
-                    .size(48.dp)
+                    .size(50.dp)
                     .clip(RoundedCornerShape(12.dp)),
                 contentScale = ContentScale.Crop,
-                loading = {
-                    Box(
-                        modifier = Modifier
-                            .size(48.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(HomeDarkCardBorder),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = profile.name.split(" ").take(2).mapNotNull { it.firstOrNull()?.uppercase() }.joinToString(""),
-                            style = boldTextStyle(HomeTextSecondary, 14.sp)
-                        )
-                    }
-                },
-                error = {
-                    Box(
-                        modifier = Modifier
-                            .size(48.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(HomeDarkCardBorder),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = profile.name.split(" ").take(2).mapNotNull { it.firstOrNull()?.uppercase() }.joinToString(""),
-                            style = boldTextStyle(HomeTextSecondary, 14.sp)
-                        )
-                    }
-                }
+                loading = { PlayerInitials(profile.name, 50.dp) },
+                error = { PlayerInitials(profile.name, 50.dp) }
             )
 
             Spacer(Modifier.width(12.dp))
 
             Column(modifier = Modifier.weight(1f)) {
-                // Name + score
+                // Name + score pill
                 Row(
-                    verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(
                         text = profile.name,
-                        style = boldTextStyle(HomeTextPrimary, 14.sp),
+                        style = boldTextStyle(HomeTextPrimary, 15.sp),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f, fill = false)
@@ -1018,276 +1421,292 @@ private fun ProfileCard(
 
                     Spacer(Modifier.width(8.dp))
 
-                    // Score bar + value
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    val sColor = scoreColor(profile.matchScore)
+                    Row(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(sColor.copy(alpha = 0.12f))
+                            .border(1.dp, sColor.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
+                            .padding(horizontal = 8.dp, vertical = 3.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            stringResource(R.string.war_room_match_score),
+                            style = regularTextStyle(sColor.copy(alpha = 0.7f), 9.sp)
+                        )
+                        Spacer(Modifier.width(4.dp))
                         LinearProgressIndicator(
                             progress = { profile.matchScore / 100f },
                             modifier = Modifier
-                                .width(60.dp)
-                                .height(4.dp)
+                                .width(36.dp)
+                                .height(3.dp)
                                 .clip(RoundedCornerShape(2.dp)),
-                            color = HomeTealAccent,
-                            trackColor = HomeDarkCardBorder,
+                            color = sColor,
+                            trackColor = sColor.copy(alpha = 0.2f),
                         )
                         Spacer(Modifier.width(6.dp))
-                        Text(
-                            text = "${profile.matchScore}",
-                            style = boldTextStyle(HomeTealAccent, 11.sp)
-                        )
+                        Text("${profile.matchScore}", style = boldTextStyle(sColor, 12.sp))
                     }
                 }
 
-                Spacer(Modifier.height(2.dp))
+                Spacer(Modifier.height(3.dp))
 
-                // Meta
                 Text(
-                    text = buildString {
-                        append(profile.age)
-                        append(" · ")
-                        append(profile.position)
-                        append(" · ")
-                        append(profile.marketValue)
-                        append(" · ")
-                        append(profile.club)
-                    },
-                    style = regularTextStyle(HomeTextSecondary, 12.sp)
+                    text = "${profile.age} · ${profile.position} · ${profile.marketValue} · ${profile.club}",
+                    style = regularTextStyle(HomeTextSecondary, 12.sp),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
 
                 Spacer(Modifier.height(6.dp))
 
-                // Type badge
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
                     if (profile.profileTypeLabel.isNotBlank()) {
-                        TypeBadge(text = profile.profileTypeLabel, color = WarPurple)
+                        TagChip(profile.profileTypeLabel.uppercase(), WrAgent, WrAgentBg)
                     }
                     if (profile.nationality.isNotBlank()) {
-                        TypeBadge(text = translateNationalityDisplay(profile.nationality, context), color = HomeBlueAccent)
+                        TagChip(
+                            translateNationalityDisplay(profile.nationality, context).uppercase(),
+                            HomeBlueAccent,
+                            HomeBlueAccent.copy(alpha = 0.1f)
+                        )
                     }
                 }
 
-                // Explanation
                 if (profile.explanation.isNotBlank()) {
                     Spacer(Modifier.height(8.dp))
                     Text(
                         text = profile.explanation,
                         style = regularTextStyle(HomeTextPrimary, 12.sp),
-                        lineHeight = 16.sp,
+                        lineHeight = 17.sp,
+                        maxLines = 3,
+                        overflow = TextOverflow.Ellipsis,
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(8.dp))
-                            .background(HomeDarkCardBorder.copy(alpha = 0.5f))
-                            .padding(8.dp)
+                            .background(WrSurface)
+                            .padding(10.dp)
                     )
                 }
             }
         }
 
-        // Actions
         Spacer(Modifier.height(10.dp))
+
+        // Actions — 40dp hit targets
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             onAddToShortlist?.let { onAdd ->
-                IconButton(
-                    onClick = { if (!isShortlistPending) onAdd() },
-                    modifier = Modifier.size(36.dp)
-                ) {
-                    Icon(
-                        imageVector = if (isInShortlist) Icons.Default.Bookmark else Icons.Default.BookmarkAdd,
-                        contentDescription = if (isInShortlist) stringResource(R.string.shortlist_in_shortlist) else stringResource(R.string.shortlist_add_to_shortlist),
-                        tint = if (isInShortlist) HomeGreenAccent else HomeTextSecondary
-                    )
-                }
+                ActionPill(
+                    icon = {
+                        Icon(
+                            imageVector = if (isInShortlist) Icons.Default.Bookmark else Icons.Default.BookmarkAdd,
+                            contentDescription = if (isInShortlist) stringResource(R.string.shortlist_in_shortlist) else stringResource(R.string.shortlist_add_to_shortlist),
+                            tint = if (isInShortlist) HomeGreenAccent else HomeTextSecondary,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    },
+                    onClick = { if (!isShortlistPending) onAdd() }
+                )
             }
-            SmallActionButton(text = "↗ TM", color = HomeBlueAccent, onClick = onTmClick)
+            ActionPill(
+                icon = {
+                    Icon(Icons.AutoMirrored.Filled.OpenInNew, null, tint = HomeBlueAccent, modifier = Modifier.size(16.dp))
+                },
+                label = "TM",
+                labelColor = HomeBlueAccent,
+                onClick = onTmClick
+            )
+
             Spacer(Modifier.weight(1f))
-            IconButton(onClick = { onFeedback("up") }, modifier = Modifier.size(32.dp)) {
-                Icon(
-                    Icons.Default.ThumbUp, null,
-                    tint = if (feedback == "up") HomeGreenAccent else HomeTextSecondary,
-                    modifier = Modifier.size(16.dp)
-                )
-            }
-            IconButton(onClick = { onFeedback("down") }, modifier = Modifier.size(32.dp)) {
-                Icon(
-                    Icons.Default.ThumbDown, null,
-                    tint = if (feedback == "down") HomeRedAccent else HomeTextSecondary,
-                    modifier = Modifier.size(16.dp)
-                )
-            }
+
+            FeedbackButton(
+                isActive = feedback == "up",
+                activeColor = HomeGreenAccent,
+                icon = Icons.Default.ThumbUp,
+                onClick = { onFeedback("up") }
+            )
+            FeedbackButton(
+                isActive = feedback == "down",
+                activeColor = HomeRedAccent,
+                icon = Icons.Default.ThumbDown,
+                onClick = { onFeedback("down") }
+            )
         }
     }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-//  SHARED COMPOSABLES
+//  SHARED COMPOSABLES — Design System
 // ═══════════════════════════════════════════════════════════════════════════════
 
 @Composable
-private fun MetaBadge(text: String, color: Color) {
-    Text(
-        text = text,
-        style = regularTextStyle(color, 11.sp),
-        modifier = Modifier
-            .clip(RoundedCornerShape(8.dp))
-            .background(color.copy(alpha = 0.15f))
-            .padding(horizontal = 10.dp, vertical = 4.dp)
-    )
-}
+private fun PlayerInitials(name: String, size: androidx.compose.ui.unit.Dp) {
+    val initials = name.split(" ")
+        .take(2)
+        .mapNotNull { it.firstOrNull()?.uppercase() }
+        .joinToString("")
 
-@Composable
-private fun SourceChip(text: String, isActive: Boolean, onClick: () -> Unit) {
-    Text(
-        text = text,
-        style = boldTextStyle(if (isActive) WarPurple else HomeTextSecondary, 12.sp),
+    Box(
         modifier = Modifier
-            .clip(RoundedCornerShape(10.dp))
-            .background(if (isActive) WarPurpleBg else HomeDarkCard)
-            .border(1.dp, if (isActive) WarPurpleBorder else HomeDarkCardBorder, RoundedCornerShape(10.dp))
-            .clickable { onClick() }
-            .padding(horizontal = 14.dp, vertical = 7.dp)
-    )
-}
-
-@Composable
-private fun SourceBadge(source: String, label: String) {
-    val (bgColor, textColor) = when (source) {
-        "request_match" -> HomeTealAccent.copy(alpha = 0.2f) to HomeTealAccent
-        "hidden_gem" -> HomeOrangeAccent.copy(alpha = 0.2f) to HomeOrangeAccent
-        "agent_pick" -> WarPurple.copy(alpha = 0.15f) to WarPurple
-        else -> WarPurple.copy(alpha = 0.15f) to WarPurple
+            .size(size)
+            .clip(CircleShape)
+            .background(WrSurfaceBorder),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(initials, style = boldTextStyle(HomeTextSecondary, (size.value / 3.5f).sp))
     }
+}
 
+@Composable
+private fun PositionChip(position: String) {
     Text(
-        text = label.ifBlank { source.replace("_", " ").uppercase() },
-        style = boldTextStyle(textColor, 10.sp),
-        letterSpacing = 0.5.sp,
+        text = position,
+        style = boldTextStyle(WrIndigoLight, 11.sp),
         modifier = Modifier
-            .clip(RoundedCornerShape(4.dp))
-            .background(bgColor)
-            .padding(horizontal = 8.dp, vertical = 2.dp)
+            .clip(RoundedCornerShape(6.dp))
+            .background(WrIndigoBg)
+            .border(1.dp, WrIndigoBorder, RoundedCornerShape(6.dp))
+            .padding(horizontal = 8.dp, vertical = 3.dp)
     )
 }
 
 @Composable
-private fun TranslatedSourceBadge(source: String, label: String) {
-    // Extract the club name from "Matches ClubName" if present
+private fun SourceTag(source: String, label: String) {
     val clubName = if (label.startsWith("Matches ")) label.removePrefix("Matches ") else ""
-
     val translatedLabel = when (source) {
         "request_match" -> stringResource(R.string.war_room_source_request_match, clubName.ifBlank { "" })
         "hidden_gem" -> stringResource(R.string.war_room_source_hidden_gem)
         "agent_pick" -> stringResource(R.string.war_room_source_agent_pick)
         else -> stringResource(R.string.war_room_source_discovery)
     }
+    val (textColor, bgColor) = when (source) {
+        "request_match" -> WrMatch to WrMatchBg
+        "hidden_gem" -> WrGem to WrGemBg
+        "agent_pick" -> WrAgent to WrAgentBg
+        else -> WrIndigo to WrIndigoBg
+    }
 
-    SourceBadge(source = source, label = translatedLabel)
+    Text(
+        text = translatedLabel,
+        style = boldTextStyle(textColor, 10.sp),
+        letterSpacing = 0.4.sp,
+        modifier = Modifier
+            .clip(RoundedCornerShape(6.dp))
+            .background(bgColor)
+            .padding(horizontal = 8.dp, vertical = 3.dp)
+    )
 }
 
 @Composable
-private fun StatPill(label: String, value: String) {
+private fun StatChip(label: String, value: String) {
     Row(
         modifier = Modifier
             .clip(RoundedCornerShape(6.dp))
-            .background(HomeDarkCardBorder.copy(alpha = 0.8f))
-            .padding(horizontal = 8.dp, vertical = 3.dp)
+            .background(WrSurface)
+            .border(1.dp, WrSurfaceBorder, RoundedCornerShape(6.dp))
+            .padding(horizontal = 7.dp, vertical = 3.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(label, style = regularTextStyle(HomeTextSecondary, 11.sp))
-        Spacer(Modifier.width(4.dp))
-        Text(value, style = boldTextStyle(HomeTextPrimary, 11.sp))
+        Text(label, style = regularTextStyle(HomeTextSecondary, 10.sp))
+        Spacer(Modifier.width(3.dp))
+        Text(value, style = boldTextStyle(HomeTextPrimary, 10.sp))
     }
 }
 
 @Composable
-private fun RecommendationBadge(rec: String, confidence: Int) {
-    val (bgColor, textColor) = when (rec.uppercase()) {
-        "SIGN" -> HomeGreenAccent.copy(alpha = 0.15f) to HomeGreenAccent
-        "MONITOR" -> HomeOrangeAccent.copy(alpha = 0.15f) to HomeOrangeAccent
-        "PASS" -> HomeRedAccent.copy(alpha = 0.15f) to HomeRedAccent
-        else -> HomeTextSecondary.copy(alpha = 0.15f) to HomeTextSecondary
-    }
-
+private fun TagChip(text: String, textColor: Color, bgColor: Color) {
     Text(
-        text = "${if (rec.uppercase() == "SIGN") "✓" else if (rec.uppercase() == "PASS") "✗" else "👁"} $rec — ${confidence}%",
-        style = boldTextStyle(textColor, 13.sp),
+        text = text,
+        style = boldTextStyle(textColor, 10.sp),
+        letterSpacing = 0.3.sp,
         modifier = Modifier
-            .clip(RoundedCornerShape(8.dp))
+            .clip(RoundedCornerShape(6.dp))
             .background(bgColor)
-            .padding(horizontal = 12.dp, vertical = 6.dp)
+            .padding(horizontal = 8.dp, vertical = 3.dp)
     )
 }
 
 @Composable
-private fun RiskPill(text: String) {
-    Text(
-        text = text,
-        style = regularTextStyle(HomeRedAccent, 11.sp),
-        modifier = Modifier
-            .clip(RoundedCornerShape(6.dp))
-            .background(HomeRedAccent.copy(alpha = 0.1f))
-            .padding(horizontal = 8.dp, vertical = 4.dp)
-    )
-}
-
-@Composable
-private fun OpportunityPill(text: String) {
-    Text(
-        text = text,
-        style = regularTextStyle(HomeGreenAccent, 11.sp),
-        modifier = Modifier
-            .clip(RoundedCornerShape(6.dp))
-            .background(HomeGreenAccent.copy(alpha = 0.1f))
-            .padding(horizontal = 8.dp, vertical = 4.dp)
-    )
-}
-
-@Composable
-private fun TypeBadge(text: String, color: Color) {
-    Text(
-        text = text.uppercase(),
-        style = boldTextStyle(color, 10.sp),
-        letterSpacing = 0.4.sp,
-        modifier = Modifier
-            .clip(RoundedCornerShape(4.dp))
-            .background(color.copy(alpha = 0.2f))
-            .padding(horizontal = 8.dp, vertical = 2.dp)
-    )
-}
-
-@Composable
-private fun AgentMiniCard(icon: String, title: String, content: String) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(10.dp))
-            .background(HomeDarkBackground)
-            .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(10.dp))
-            .padding(10.dp)
-    ) {
-        Text("$icon $title", style = boldTextStyle(HomeTextSecondary, 11.sp), letterSpacing = 0.4.sp)
-        Spacer(Modifier.height(4.dp))
-        Text(content, style = regularTextStyle(HomeTextPrimary, 12.sp), lineHeight = 16.sp, maxLines = 3, overflow = TextOverflow.Ellipsis)
-    }
-}
-
-@Composable
-private fun SmallActionButton(
-    text: String,
-    color: Color,
-    modifier: Modifier = Modifier,
+private fun ActionPill(
+    icon: @Composable () -> Unit,
+    label: String? = null,
+    labelColor: Color = HomeTextSecondary,
     onClick: () -> Unit
 ) {
-    Text(
-        text = text,
-        style = boldTextStyle(color, 12.sp),
-        textAlign = TextAlign.Center,
-        modifier = modifier
-            .clip(RoundedCornerShape(8.dp))
-            .background(color.copy(alpha = 0.12f))
-            .border(1.dp, color.copy(alpha = 0.25f), RoundedCornerShape(8.dp))
+    Row(
+        modifier = Modifier
+            .height(40.dp)
+            .clip(RoundedCornerShape(10.dp))
+            .background(WrSurface)
+            .border(1.dp, WrSurfaceBorder, RoundedCornerShape(10.dp))
             .clickable { onClick() }
-            .padding(horizontal = 12.dp, vertical = 6.dp)
-    )
+            .padding(horizontal = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        icon()
+        if (label != null) {
+            Spacer(Modifier.width(5.dp))
+            Text(label, style = boldTextStyle(labelColor, 12.sp))
+        }
+    }
+}
+
+@Composable
+private fun FeedbackButton(
+    isActive: Boolean,
+    activeColor: Color,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    onClick: () -> Unit
+) {
+    IconButton(onClick = onClick, modifier = Modifier.size(40.dp)) {
+        Icon(
+            icon,
+            contentDescription = null,
+            tint = if (isActive) activeColor else HomeTextSecondary,
+            modifier = Modifier.size(18.dp)
+        )
+    }
+}
+
+@Composable
+private fun LoadingState(color: Color) {
+    Box(
+        Modifier.fillMaxWidth().padding(48.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        CircularProgressIndicator(color = color, strokeWidth = 3.dp, modifier = Modifier.size(32.dp))
+    }
+}
+
+@Composable
+private fun ErrorBanner(message: String, onRetry: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(HomeRedAccent.copy(alpha = 0.08f))
+            .border(1.dp, HomeRedAccent.copy(alpha = 0.2f), RoundedCornerShape(12.dp))
+            .padding(12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(message, style = regularTextStyle(HomeRedAccent, 13.sp), modifier = Modifier.weight(1f))
+        Spacer(Modifier.width(8.dp))
+        Box(
+            modifier = Modifier
+                .clip(RoundedCornerShape(8.dp))
+                .background(HomeRedAccent.copy(alpha = 0.15f))
+                .clickable { onRetry() }
+                .padding(horizontal = 12.dp, vertical = 6.dp)
+        ) {
+            Text(stringResource(R.string.war_room_refresh), style = boldTextStyle(HomeRedAccent, 12.sp))
+        }
+    }
 }

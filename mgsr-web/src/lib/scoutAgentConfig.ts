@@ -421,6 +421,8 @@ export const SCOUT_PROFILE_TYPES = [
   'CONTRACT_EXPIRING',
   'HIDDEN_GEM',
   'LOWER_LEAGUE_RISER',
+  'BREAKOUT_SEASON',
+  'UNDERVALUED_BY_FM',
 ] as const;
 
 export type ScoutProfileType = (typeof SCOUT_PROFILE_TYPES)[number];
@@ -511,6 +513,26 @@ export const SCOUT_PROFILES: Record<
       marketValueMax: 1_000_000,
       ageMax: 23,
       leagueTierMin: 2,
+    },
+  },
+  BREAKOUT_SEASON: {
+    label: 'Breakout Season',
+    labelHe: 'עונת פריצה',
+    explanationEn: 'Young player having a breakout season with exceptional goal/assist numbers — buy before the price jumps.',
+    explanationHe: 'שחקן צעיר בעונת פריצה עם מספרי גולים/אסיסטים יוצאי דופן — לרכוש לפני שהמחיר קופץ.',
+    params: {
+      marketValueMax: 2_000_000,
+      ageMax: 21,
+    },
+  },
+  UNDERVALUED_BY_FM: {
+    label: 'Undervalued by FM',
+    labelHe: 'מוערך מתחת לשווי ב-FM',
+    explanationEn: 'Player with very high FM potential but extremely low market value — data says he\'s worth much more.',
+    explanationHe: 'שחקן עם פוטנציאל FM גבוה מאוד אבל שווי שוק נמוך במיוחד — הנתונים אומרים שהוא שווה הרבה יותר.',
+    params: {
+      marketValueMax: 300_000,
+      fmPaMin: 150,
     },
   },
 };

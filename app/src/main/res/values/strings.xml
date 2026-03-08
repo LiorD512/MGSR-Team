@@ -1124,6 +1124,15 @@
     <string name="ai_scout_example_2">Creative AM, Scandinavian, U23</string>
     <string name="ai_scout_example_3">Left-footed CB, free agent</string>
     <string name="ai_scout_example_4">Fast winger for Ligat Ha\'Al</string>
+    <string name="ai_scout_example_5">Goalkeeper U25, good with feet</string>
+    <string name="ai_scout_example_6">Defensive midfielder, African, under €500K</string>
+    <string name="ai_scout_example_7">Right-back who can also play wing</string>
+    <string name="ai_scout_example_8">Target man CF, over 185cm, strong in the air</string>
+    <string name="ai_scout_example_9">South American playmaker, contract expiring</string>
+    <string name="ai_scout_example_10">Second striker from Eastern Europe, U21</string>
+    <string name="ai_scout_example_11">Box-to-box midfielder, high work rate</string>
+    <string name="ai_scout_example_12">Versatile defender who can play CB and LB</string>
+    <string name="ai_scout_voice_hint">Tap mic to search by voice</string>
     <string name="ai_scout_powered_title">AI-Powered Scouting</string>
     <string name="ai_scout_powered_subtitle">Natural language search across Transfermarkt + FM data</string>
     <string name="ai_scout_interpretation">AI interpretation</string>
@@ -1191,6 +1200,7 @@
     <string name="war_room_key_stats">Key Stats</string>
     <string name="war_room_comparables">Comparable Players</string>
     <string name="war_room_formations">Best Formations</string>
+    <string name="war_room_match_score">Match</string>
     <!-- Agent country names (for filter chips) - Hebrew in values-he -->
     <string name="war_room_agent_portugal">Portugal</string>
     <string name="war_room_agent_serbia">Serbia</string>
