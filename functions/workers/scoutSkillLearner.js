@@ -16,7 +16,8 @@ const FEEDBACK_DAYS = 14; // Extended from 7 — more data for better learning
 
 /**
  * Run post-scout learning for each agent that had profiles.
- * @param {Object} runResult - { profilesFound, durationMs, profilesByAgent, crossLeagueDetections }
+ * Now includes Sport Director agent reports for enhanced learning.
+ * @param {Object} runResult - { profilesFound, profilesRejected, durationMs, profilesByAgent, agentReports, crossLeagueDetections }
  * @param {string} runId - ScoutAgentRuns doc ID
  */
 async function runScoutSkillLearning(runResult, runId) {
@@ -77,7 +78,7 @@ async function runScoutSkillLearning(runResult, runId) {
   const genAI = new GoogleGenerativeAI(apiKey);
   const model = genAI.getGenerativeModel({
     model: "gemini-2.0-flash",
-    systemInstruction: `You are an elite scouting director managing AI scout agents. Each agent covers a country/league. Your job is to help each agent improve its scouting strategy based on performance data. Be specific and actionable — vague advice like "find better players" is useless. Focus on tuning profile parameters, identifying blind spots, and learning from user feedback patterns.`,
+    systemInstruction: `You are an AI scout agent that reports to the Sport Director. The Sport Director reviews ALL your profiles before they reach the user — he grades you on quality, freshness, and accuracy. Your job is to improve based on his feedback and user signals. Be specific and actionable — respond to rejection patterns with concrete parameter changes. If the Director says you're "RECYCLING", find NEW players. If he says your approval rate is low, tighten your quality bars.`,
   });
 
   for (const agentId of agentIds) {
@@ -101,6 +102,7 @@ async function runScoutSkillLearning(runResult, runId) {
       const shortlistAdds = shortlistByAgent[agentId] || 0;
       const fb = feedbackByAgent[agentId] || { up: 0, down: 0 };
       const fbDetails = feedbackDetails[agentId] || {};
+      const directorReport = (runResult.agentReports || {})[agentId] || null;
 
       const skillDoc = await skillsRef.doc(agentId).get();
       const currentSkill = (skillDoc.data()?.skillMarkdown || "").trim();
@@ -116,12 +118,24 @@ Current tuning params:
 ${currentParams}
 
 ═══ THIS RUN ═══
-- Profiles found: ${profiles.length}
+- Profiles found (after Sport Director review): ${profiles.length}
+- Profiles BEFORE review: ${runResult.profilesBeforeReview || "?"}
+- Profiles rejected by Sport Director: ${runResult.profilesRejected || 0}
 - By type: ${JSON.stringify(byType)}
 - By league: ${JSON.stringify(byLeague)}
 - Avg match scores by type: ${JSON.stringify(avgScores)}
 - Run duration: ${runResult.durationMs || 0}ms
 - Cross-league detections (global): ${runResult.crossLeagueDetections || 0}
+
+═══ SPORT DIRECTOR REPORT CARD ═══
+${directorReport ? `- Grade: ${directorReport.overallGrade}
+- Approval Rate: ${directorReport.approvalRate}%
+- Freshness: ${directorReport.freshnessGrade} (${directorReport.recycleRate}% recycled from previous runs)
+- Profiles: ${directorReport.approved} approved / ${directorReport.rejected} rejected of ${directorReport.total}
+- Top Rejection Reasons: ${(directorReport.topRejectionReasons || []).join(", ") || "none"}
+- Profile Type Distribution: ${JSON.stringify(directorReport.profileTypes || {})}` : "- No Sport Director report available"}
+
+IMPORTANT: The Sport Director is your boss. If your approval rate is below 60%, you MUST adjust parameters to produce higher-quality profiles. If freshness is "STALE" or "RECYCLING", you MUST diversify your search — look for NEW players, different positions, different profile types.
 
 ═══ USER FEEDBACK (last ${FEEDBACK_DAYS} days) ═══
 - Shortlist adds from your profiles: ${shortlistAdds}
@@ -130,16 +144,16 @@ ${Object.keys(fbDetails).length > 0 ? `- By profile type: ${JSON.stringify(fbDet
 
 ═══ AVAILABLE PROFILE TYPES ═══
 HIGH_VALUE_BENCHED, LOW_VALUE_STARTER, YOUNG_STRIKER_HOT, CONTRACT_EXPIRING,
-HIDDEN_GEM, LOWER_LEAGUE_RISER, BREAKOUT_SEASON (new!), UNDERVALUED_BY_FM (new!)
+HIDDEN_GEM, LOWER_LEAGUE_RISER, BREAKOUT_SEASON, UNDERVALUED_BY_FM
 
 ═══ INSTRUCTIONS ═══
-Analyze the data and produce:
-1. Updated SKILL.md — lessons learned, what to focus on next run, which profile types work best in your leagues
-2. Updated params — adjust thresholds based on feedback (e.g. if HIDDEN_GEM gets 👎, raise FM PA threshold)
+You report to the Sport Director. Analyze the data and produce:
+1. Updated SKILL.md — lessons learned, what to focus on next run, which profile types work best in your leagues. RESPOND TO SPORT DIRECTOR FEEDBACK: if profiles were rejected, explain how you'll fix it.
+2. Updated params — adjust thresholds based on Sport Director rejections AND user feedback. If the Director rejected profiles for "low_goals_per90" or "low_contrib_per90", raise your per-90 bars. If "old_expensive_no_upside", tighten age/value filters.
 3. Scouting priorities — which positions/profiles should be emphasized next run
 
 Produce a JSON object with exactly two keys:
-1. "skillMarkdown": string — Updated SKILL.md. Start with "# ${agentId.charAt(0).toUpperCase() + agentId.slice(1)} Scout Agent". Include: Strategy, Lessons, Priorities, Known Issues.
+1. "skillMarkdown": string — Updated SKILL.md. Start with "# ${agentId.charAt(0).toUpperCase() + agentId.slice(1)} Scout Agent". Include: Strategy, Lessons, Sport Director Response, Priorities, Known Issues.
 2. "paramsJson": string — JSON string of overrides. Example: {"LOW_VALUE_STARTER":{"minMinutes90s":8},"BREAKOUT_SEASON":{"minMinutes90s":10},"priorities":["HIDDEN_GEM","BREAKOUT_SEASON"]}
 
 Return ONLY valid JSON, no markdown code blocks.`;

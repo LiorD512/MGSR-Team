@@ -6,13 +6,16 @@
  * 2. Assigns to country agents by league
  * 3. Matches 8 scouting profiles (including BREAKOUT_SEASON, UNDERVALUED_BY_FM)
  * 4. Computes real matchScore based on profile criteria strength
- * 5. Generates Gemini scout narratives for the best discoveries
- * 6. Detects cross-league patterns (same player surfacing in multiple searches)
- * 7. Writes to ScoutProfiles in Firestore
+ * 5. Sport Director reviews ALL profiles — quality gate before Firestore
+ * 6. Only approved profiles get Gemini scout narratives
+ * 7. Detects cross-league patterns (same player surfacing in multiple searches)
+ * 8. Writes ONLY Sport Director-approved profiles to ScoutProfiles
+ * 9. Agent report cards feed into scoutSkillLearner
  */
 
 const { getFirestore } = require("firebase-admin/firestore");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
+const { reviewProfiles } = require("./sportDirector");
 
 function getScoutBaseUrl() {
   const url = process.env.SCOUT_SERVER_URL || "https://football-scout-server-l38w.onrender.com";
@@ -551,6 +554,13 @@ async function runScoutAgent() {
           const matchScore = computeMatchScore(p, profileType, valEuro, ageNum);
           const now = Date.now();
 
+          // Per-90 stats for Sport Director evaluation
+          const fbrefMinutes90s = getMinutes90s(p);
+          const fbrefGoals = getFbrefGoals(p);
+          const fbrefAssists = getFbrefAssists(p);
+          const goalsPer90 = fbrefMinutes90s > 0 ? fbrefGoals / fbrefMinutes90s : 0;
+          const contribPer90 = fbrefMinutes90s > 0 ? (fbrefGoals + fbrefAssists) / fbrefMinutes90s : 0;
+
           profilesToWrite.push({
             docId,
             data: {
@@ -572,6 +582,11 @@ async function runScoutAgent() {
               fmPa: getFmPa(p) ?? null,
               fmCa: p.fm_ca ?? p.fmi_ca ?? null,
               contractExpires: (p.contract || "").trim() || null,
+              fbrefMinutes90s,
+              fbrefGoals,
+              fbrefAssists,
+              goalsPer90: Math.round(goalsPer90 * 100) / 100,
+              contribPer90: Math.round(contribPer90 * 100) / 100,
               discoveredAt: now,
               lastRefreshedAt: now,
             },
@@ -583,19 +598,31 @@ async function runScoutAgent() {
     }
   }
 
+  // ═══════════════════════════════════════════════════════════════
+  // Sport Director Review — quality gate before Firestore
+  // ═══════════════════════════════════════════════════════════════
+  console.log(`[ScoutAgent] Sending ${profilesToWrite.length} profiles to Sport Director for review...`);
+  const directorReview = await reviewProfiles(profilesToWrite);
+  const approvedProfiles = directorReview.approved;
+  const rejectedProfiles = directorReview.rejected;
+  const agentReports = directorReview.agentReports;
+  console.log(`[ScoutAgent] Sport Director: ${approvedProfiles.length} approved, ${rejectedProfiles.length} rejected`);
+
+  // Write ONLY approved profiles to ScoutProfiles
   const batch = db.batch();
-  for (const { docId, data } of profilesToWrite) {
+  for (const { docId, data } of approvedProfiles) {
     const ref = profilesRef.doc(docId);
     batch.set(ref, data, { merge: true });
   }
 
-  if (profilesToWrite.length > 0) {
+  if (approvedProfiles.length > 0) {
     await batch.commit();
-    console.log(`[ScoutAgent] Wrote ${profilesToWrite.length} profiles`);
+    console.log(`[ScoutAgent] Wrote ${approvedProfiles.length} Sport Director-approved profiles`);
   }
 
   // ═══════════════════════════════════════════════════════════════
   // Cross-agent intelligence: detect players surfacing in multiple agents
+  // (Run on ALL profiles including rejected — cross-agent signal is still valuable)
   // ═══════════════════════════════════════════════════════════════
   const urlToAgents = {};
   for (const { data } of profilesToWrite) {
@@ -622,11 +649,11 @@ async function runScoutAgent() {
   }
 
   // ═══════════════════════════════════════════════════════════════
-  // Gemini narrative generation for TOP discoveries (matchScore >= 70)
+  // Gemini narrative generation for TOP Sport Director-approved discoveries
   // ═══════════════════════════════════════════════════════════════
   const apiKey = process.env.GEMINI_API_KEY;
-  if (apiKey?.trim() && profilesToWrite.length > 0) {
-    const topProfiles = profilesToWrite
+  if (apiKey?.trim() && approvedProfiles.length > 0) {
+    const topProfiles = approvedProfiles
       .filter((pw) => pw.data.matchScore >= 70)
       .sort((a, b) => b.data.matchScore - a.data.matchScore)
       .slice(0, 10);
@@ -636,14 +663,19 @@ async function runScoutAgent() {
         const genAI = new GoogleGenerativeAI(apiKey);
         const model = genAI.getGenerativeModel({
           model: "gemini-2.0-flash",
-          systemInstruction: `You are an elite football scout with 40 years of experience at top European clubs. You write concise, insightful scouting narratives that cut through the noise. Your tone is professional but opinionated — you've seen thousands of players and you know what separates the good from the great.`,
+          systemInstruction: `You are the Sport Director of MGSR — an elite football executive with 25 years of scouting experience. You write concise, opinionated scout narratives for profiles that passed your quality gate. These profiles are pre-approved — your narratives add the human scouting insight that data alone can't provide. Focus on: why this player matters for Israeli Premier League clubs (budget ≤€2.5M), league-level calibration, and a clear action recommendation.`,
         });
 
         const playerLines = topProfiles.map((pw, i) => {
           const d = pw.data;
-          return `${i + 1}. ${d.playerName} (${d.age}, ${d.position}, ${d.club}, ${d.league})
-   Profile: ${d.profileType} | Value: ${d.marketValue} | Score: ${d.matchScore}
-   FM PA: ${d.fmPa || "?"}, CA: ${d.fmCa || "?"} | Contract: ${d.contractExpires || "?"}
+          const per90 = d.fbrefMinutes90s > 0
+            ? `G/90: ${d.goalsPer90}, (G+A)/90: ${d.contribPer90}`
+            : "no per-90";
+          return `${i + 1}. ${d.playerName} (${d.age}, ${d.position}, ${d.club}, ${d.league}, Tier ${d.leagueTier})
+   Agent: ${d.agentId} | Profile: ${d.profileType} | Score: ${d.matchScore}
+   Value: ${d.marketValue} | FM PA: ${d.fmPa || "?"}, CA: ${d.fmCa || "?"} | Contract: ${d.contractExpires || "?"}
+   Stats: ${d.fbrefGoals || 0}G ${d.fbrefAssists || 0}A in ${d.fbrefMinutes90s?.toFixed(1) || 0} 90s | ${per90}
+   ${d.directorVerdict ? `Director: ${d.directorVerdict}` : ""}
    Reason: ${d.matchReason}`;
         }).join("\n");
 
@@ -696,16 +728,26 @@ ONLY valid JSON.`;
   const runDoc = await runsRef.add({
     runAt: startTime,
     status: "success",
-    profilesFound: profilesToWrite.length,
+    profilesFound: approvedProfiles.length,
+    profilesBeforeReview: profilesToWrite.length,
+    profilesRejected: rejectedProfiles.length,
     leaguesScanned: leaguesScanned * POSITIONS.length,
     durationMs,
     error: null,
     crossLeagueDetections: crossLeague.length,
-    topScoreProfiles: profilesToWrite.filter((pw) => pw.data.matchScore >= 70).length,
+    topScoreProfiles: approvedProfiles.filter((pw) => pw.data.matchScore >= 70).length,
+    sportDirector: {
+      agentReports,
+      rejectedCount: rejectedProfiles.length,
+      approvedCount: approvedProfiles.length,
+      topRejectionReasons: rejectedProfiles
+        .flatMap((p) => p.directorReasons || [])
+        .reduce((acc, r) => { acc[r] = (acc[r] || 0) + 1; return acc; }, {}),
+    },
   });
 
   const profilesByAgent = {};
-  for (const { docId, data } of profilesToWrite) {
+  for (const { docId, data } of approvedProfiles) {
     const aid = data.agentId;
     if (!profilesByAgent[aid]) profilesByAgent[aid] = [];
     profilesByAgent[aid].push({
@@ -716,11 +758,14 @@ ONLY valid JSON.`;
     });
   }
 
-  console.log(`[ScoutAgent] Completed in ${durationMs}ms — ${profilesToWrite.length} profiles (${crossLeague.length} cross-agent)`);
+  console.log(`[ScoutAgent] Completed in ${durationMs}ms — ${approvedProfiles.length} approved of ${profilesToWrite.length} total (${rejectedProfiles.length} rejected by Sport Director, ${crossLeague.length} cross-agent)`);
   return {
-    profilesFound: profilesToWrite.length,
+    profilesFound: approvedProfiles.length,
+    profilesBeforeReview: profilesToWrite.length,
+    profilesRejected: rejectedProfiles.length,
     durationMs,
     profilesByAgent,
+    agentReports,
     runId: runDoc.id,
     crossLeagueDetections: crossLeague.length,
   };

@@ -12,7 +12,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { parseFreeQuery } from '@/lib/parseFreeQuery';
 import { getScoutBaseUrl } from '@/lib/scoutServerUrl';
-import { getLeagueAvgMarketValue } from '@/lib/transfermarkt';
+import { getLeagueAvgMarketValue, searchFreeAgentsFallback } from '@/lib/transfermarkt';
 import { translateHebrewToEnglish } from '@/lib/translateQuery';
 import { parseScoutQueryWithGemini } from '@/lib/aiQueryParser';
 import { SCOUT_PERSONA, SEARCH_PERSONA_EXT } from '@/lib/scoutPersona';
@@ -60,17 +60,76 @@ async function fetchFreesearch(
       console.error('[AI Scout] Freesearch failed:', res.status, data?.error);
       return null;
     }
-    const results = data.results ?? [];
+    let results = data.results ?? [];
     const targetLeague = getTargetLeagueCode(query);
     const leagueAvg = targetLeague
       ? await getLeagueAvgMarketValue(targetLeague, 2025).catch(() => null)
       : null;
     const leagueAvgEuro = targetLeague && leagueAvg != null && leagueAvg > 0 ? leagueAvg : 398_000;
+
+    // Apply market value cap — freesearch server doesn't filter by value
+    const FREESEARCH_CAPS: Record<string, number> = { ISR1: 2_500_000, PL1: 5_000_000, GR1: 5_000_000, BE1: 10_000_000 };
+    const fsCap = targetLeague ? FREESEARCH_CAPS[targetLeague] : undefined;
+    if (fsCap != null && fsCap > 0) {
+      const before = results.length;
+      results = results.filter((p) => {
+        const mv = p.market_value;
+        if (mv == null || mv === '') return true;
+        const valEuro = _parseMarketValue(String(mv));
+        return valEuro <= fsCap;
+      });
+      if (results.length < before) {
+        console.log(`[AI Scout] Freesearch market cap (€${fsCap.toLocaleString()}): ${before} → ${results.length}`);
+      }
+    }
+
+    // Apply min goals filter — freesearch server doesn't support it
+    const fsMinGoals = parsed.minGoals;
+    if (fsMinGoals != null && fsMinGoals > 0) {
+      results = results.filter((p) => {
+        const goals = p.fbref_goals;
+        if (goals == null) return false;
+        const n = typeof goals === 'string' ? parseInt(goals, 10) : Number(goals);
+        return !isNaN(n) && n >= fsMinGoals;
+      });
+      console.log(`[AI Scout] Freesearch goals filter (≥${fsMinGoals}): → ${results.length} results`);
+    }
+
+    // Apply free agent filter + TM fallback — freesearch server doesn't filter by club status
+    const fsFreeAgent = parsed.freeAgent === true;
+    let fsFallbackNote = '';
+    if (fsFreeAgent) {
+      const freeAgentPattern = /^(without\s*club|vereinslos|free\s*agent|ללא\s*מועדון|שחקן\s*חופשי|—|\s*)$/i;
+      const freeResults = results.filter((p) => {
+        const club = (p.club ?? p.current_club ?? '').toString().trim();
+        return !club || freeAgentPattern.test(club);
+      });
+      if (freeResults.length > 0) {
+        results = freeResults;
+      } else {
+        try {
+          const tmFree = await searchFreeAgentsFallback({
+            position: parsed.position,
+            foot: parsed.foot,
+            nationality: parsed.nationality,
+            ageMax: parsed.ageMax,
+            valueMax: fsCap ?? 3_000_000,
+          });
+          if (tmFree.length > 0) {
+            results = tmFree;
+            fsFallbackNote = lang === 'he'
+              ? ` 🔄 מטרנספרמרקט (שחקנים ללא חוזה + חוזה שמסתיים תוך 6 חודשים)`
+              : ` 🔄 From Transfermarkt (free agents + expiring contracts)`;
+          }
+        } catch { /* non-fatal */ }
+      }
+    }
+
     let interpretation =
       parsed.interpretation ||
       (lang === 'he'
-        ? `מצאתי ${results.length} שחקנים מתוך מאגר (freesearch).`
-        : `Found ${results.length} players (freesearch).`);
+        ? `מצאתי ${results.length} שחקנים מתוך מאגר (freesearch).${fsFallbackNote}`
+        : `Found ${results.length} players (freesearch).${fsFallbackNote}`);
     if (results.length < requestedTotal && requestedTotal > 0) {
       interpretation +=
         lang === 'he'
@@ -102,10 +161,10 @@ async function fetchFreesearch(
 /** Map query to league for market filter display */
 function getTargetLeagueCode(query: string): string | null {
   const q = query.toLowerCase();
-  if (/(שוק\s*ה?ישראלי|israeli market|israel market|ליגה\s*ה?ישראלית|ליגת\s*העל|ligat\s*ha.?al)/i.test(q)) return 'ISR1';
-  if (/(שוק\s*פולני|polish market|poland market)/i.test(q)) return 'PL1';
-  if (/(שוק\s*יווני|greek market|greece market)/i.test(q)) return 'GR1';
-  if (/(שוק\s*בלגי|belgian market|belgium market)/i.test(q)) return 'BE1';
+  if (/(שוק\s*ה?ישראלי|israeli\s*market|israel\s*market|ליגה\s*ה?ישראלית|ליגת\s*העל|ligat\s*ha.?al|מתאימים?\s*(ל|ב)?ליגה\s*ה?ישראלית|for\s*(the\s*)?israeli\s*league|ישראל|israeli\s*premier)/i.test(q)) return 'ISR1';
+  if (/(שוק\s*פולני|polish\s*market|poland\s*market|ekstraklasa)/i.test(q)) return 'PL1';
+  if (/(שוק\s*יווני|greek\s*market|greece\s*market|super\s*league\s*(1|greece))/i.test(q)) return 'GR1';
+  if (/(שוק\s*בלגי|belgian\s*market|belgium\s*market|jupiler)/i.test(q)) return 'BE1';
   return null;
 }
 
@@ -390,11 +449,36 @@ export async function POST(request: NextRequest) {
           results = freeAgentResults;
           console.log('[AI Scout] Filtered by free agent:', before, '→', results.length, 'results');
         } else {
-          // No free agents found — keep all results but add note to interpretation
-          console.log('[AI Scout] No free agents found among', before, 'results — showing all with note');
-          freeAgentFallbackNote = lang === 'he'
-            ? '\n⚠️ לא נמצאו שחקנים חופשיים התואמים לקריטריונים — מציג שחקנים עם מועדון'
-            : '\n⚠️ No free agents found matching criteria — showing players with clubs';
+          // ═══════════════════════════════════════════════════════════════
+          // FREE AGENT FALLBACK: Scout server had 0 free agents.
+          // Fall back to Transfermarkt: free agents + contracts expiring ≤6mo
+          // ═══════════════════════════════════════════════════════════════
+          console.log('[AI Scout] No free agents in scout DB — triggering TM fallback');
+          try {
+            const tmFreeAgents = await searchFreeAgentsFallback({
+              position: parsed.position,
+              foot: parsed.foot,
+              nationality: parsed.nationality,
+              ageMax: parsed.ageMax,
+              valueMax: marketCap ?? 3_000_000,
+            });
+            if (tmFreeAgents.length > 0) {
+              results = tmFreeAgents;
+              freeAgentFallbackNote = lang === 'he'
+                ? `\n🔄 לא נמצאו שחקנים חופשיים במאגר הסקאוט — מצאתי ${tmFreeAgents.length} מטרנספרמרקט (שחקנים ללא חוזה + חוזה שמסתיים תוך 6 חודשים)`
+                : `\n🔄 No free agents in scout DB — found ${tmFreeAgents.length} from Transfermarkt (free agents + contracts expiring within 6 months)`;
+              console.log(`[AI Scout] TM fallback: ${tmFreeAgents.length} results`);
+            } else {
+              freeAgentFallbackNote = lang === 'he'
+                ? '\n⚠️ לא נמצאו שחקנים חופשיים גם בטרנספרמרקט — מציג שחקנים עם מועדון'
+                : '\n⚠️ No free agents found even on Transfermarkt — showing players with clubs';
+            }
+          } catch (tmErr) {
+            console.warn('[AI Scout] TM free agent fallback failed:', tmErr);
+            freeAgentFallbackNote = lang === 'he'
+              ? '\n⚠️ לא נמצאו שחקנים חופשיים התואמים לקריטריונים — מציג שחקנים עם מועדון'
+              : '\n⚠️ No free agents found matching criteria — showing players with clubs';
+          }
         }
       }
 

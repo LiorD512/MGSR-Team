@@ -588,6 +588,200 @@ export async function handleReleases(minVal = 0, maxVal = 50000000, page = 1) {
   return { players };
 }
 
+// ─── Free Agent Fallback Search (for AI Scout) ──────────────────────────────
+// When the scout server returns 0 free agents, fall back to Transfermarkt's
+// dedicated free agents page + contract finishers (≤6 months), then enrich
+// top candidates with profile data (foot, positions, etc.).
+
+/** Map scout position code → TM position IDs for URL filtering */
+const POSITION_TO_TM_IDS: Record<string, number[]> = {
+  GK: [1],
+  CB: [3],
+  LB: [4],
+  RB: [5],
+  DM: [6],
+  CM: [7],
+  AM: [10],
+  RW: [11],
+  LW: [12],
+  SS: [13],
+  CF: [14],
+};
+
+const FA_MAX_PAGES = 5;
+const FA_ENRICH_BATCH = 5;
+const FA_MAX_RESULTS = 25;
+
+/**
+ * Search Transfermarkt for free agents + contract expiring (≤6 months)
+ * matching a position and optionally a preferred foot.
+ * Returns results in the same shape as the scout server so the search route
+ * can merge them seamlessly.
+ */
+export async function searchFreeAgentsFallback(opts: {
+  position?: string;
+  foot?: string;
+  nationality?: string;
+  ageMax?: number;
+  valueMax?: number;
+}): Promise<Record<string, unknown>[]> {
+  const { position, foot, nationality, ageMax, valueMax = 3_000_000 } = opts;
+  const tmPosIds = position ? (POSITION_TO_TM_IDS[position] ?? []) : [];
+  const candidates: Record<string, unknown>[] = [];
+  const seenUrls = new Set<string>();
+
+  // ── Source 1: Free agents (no club at all) ──
+  const posParam = tmPosIds.length === 1 ? tmPosIds[0] : 0;
+  for (let page = 1; page <= FA_MAX_PAGES; page++) {
+    try {
+      const { players } = await handleReleases(0, valueMax, page);
+      if (players.length === 0) break;
+      for (const p of players) {
+        const url = (p.playerUrl as string) || '';
+        if (seenUrls.has(url)) continue;
+        seenUrls.add(url);
+        // Position pre-filter (from TM's own position text)
+        if (position && p.playerPosition !== position) continue;
+        // Age pre-filter
+        const age = parseInt(String(p.playerAge), 10);
+        if (ageMax && !isNaN(age) && age > ageMax) continue;
+        candidates.push({ ...p, source: 'free_agent' });
+      }
+    } catch {
+      break;
+    }
+    await new Promise((r) => setTimeout(r, 200));
+  }
+
+  // ── Source 2: Contract expiring within 6 months ──
+  const now = new Date();
+  const sixMonthsLater = new Date(now.getTime() + 6 * 30 * 24 * 60 * 60 * 1000);
+  const expiryYear = now.getMonth() >= 6 ? now.getFullYear() + 1 : now.getFullYear();
+  const cfMaxPages = 10;
+  for (let page = 1; page <= cfMaxPages; page++) {
+    try {
+      const url = `${TRANSFERMARKT_BASE}/transfers/endendevertraege/statistik?plus=1&jahr=${expiryYear}&land_id=0&ausrichtung=alle&spielerposition_id=${posParam || 'alle'}&altersklasse=alle&page=${page}`;
+      const html = await fetchHtmlWithRetry(url);
+      const $ = cheerio.load(html);
+      const rows = $('table.items tbody tr.odd, table.items tbody tr.even, table.items tr.odd, table.items tr.even');
+      if (rows.length === 0) break;
+
+      rows.each((_, row) => {
+        try {
+          const playerLink = $(row).find('a[href*="/profil/spieler/"], a[href*="/profile/player/"]').first();
+          const href = playerLink.attr('href');
+          if (!href) return;
+          const playerUrl = href.startsWith('http') ? href : TRANSFERMARKT_BASE + href;
+          if (seenUrls.has(playerUrl)) return;
+
+          const tables = $(row).find('table.inline-table');
+          const playerTable = tables.first();
+          const playerName = (playerLink.attr('title') || playerTable.find('img').attr('title') || playerLink.text().trim() || '').trim();
+          const posText = playerTable.find('tr').eq(1).text().replace(/-/g, ' ').trim();
+          const playerPosition = convertPosition(posText) || posText;
+          if (position && playerPosition !== position) return;
+
+          const ageTd = $(row).find('td.zentriert').first().text().trim();
+          const ageMatch = ageTd.match(/\((\d+)\)/);
+          const playerAge = ageMatch ? ageMatch[1] : (parseInt(ageTd, 10) || '').toString();
+          const ageNum = parseInt(playerAge, 10);
+          if (ageMax && !isNaN(ageNum) && ageNum > ageMax) return;
+
+          let marketValue: string | null = null;
+          $(row).find('td').each((__, td) => {
+            const t = $(td).text().trim();
+            if (t.includes('€')) { marketValue = t; return false; }
+          });
+          const valNum = parseMarketValueCF(marketValue);
+          if (valNum > valueMax || valNum < 50_000) return;
+
+          seenUrls.add(playerUrl);
+          const { nationality: nat, flag } = extractNationalityAndFlagCF($, row);
+          const playerImageRaw = playerTable.find('img').attr('data-src') || playerTable.find('img').attr('src') || '';
+
+          candidates.push({
+            playerImage: makeAbsoluteUrl(playerImageRaw.replace('medium', 'big')),
+            playerName,
+            playerUrl,
+            playerPosition,
+            playerAge,
+            playerNationality: nat,
+            playerNationalityFlag: flag,
+            marketValue: marketValue || '',
+            source: 'contract_expiring',
+          });
+        } catch { /* skip */ }
+      });
+    } catch {
+      break;
+    }
+    await new Promise((r) => setTimeout(r, 200));
+  }
+
+  console.log(`[TM Fallback] Candidates before enrichment: ${candidates.length} (position=${position || 'any'}, foot=${foot || 'any'})`);
+
+  // ── Enrich top candidates with foot + full positions from player profiles ──
+  // If foot filter requested, we MUST enrich to get the foot field.
+  // If no foot filter, skip enrichment (faster).
+  let enrichedResults: Record<string, unknown>[];
+
+  if (foot) {
+    const toEnrich = candidates.slice(0, FA_MAX_RESULTS * 3); // Over-fetch to filter down
+    const enriched: Record<string, unknown>[] = [];
+
+    for (let i = 0; i < toEnrich.length; i += FA_ENRICH_BATCH) {
+      if (enriched.length >= FA_MAX_RESULTS) break;
+      const batch = toEnrich.slice(i, i + FA_ENRICH_BATCH);
+      const profiles = await Promise.all(
+        batch.map(async (c) => {
+          try {
+            const profile = await handlePlayer(c.playerUrl as string);
+            return { candidate: c, profile };
+          } catch {
+            return { candidate: c, profile: null };
+          }
+        })
+      );
+      for (const { candidate, profile } of profiles) {
+        if (!profile) continue;
+        const playerFoot = (profile.foot || '').toLowerCase();
+        if (foot && playerFoot !== foot.toLowerCase()) continue;
+        // Check nationality if requested
+        if (nationality) {
+          const natLower = (profile.nationality || '').toLowerCase();
+          if (!natLower.includes(nationality.toLowerCase())) continue;
+        }
+        enriched.push({
+          ...candidate,
+          foot: profile.foot,
+          contractExpires: profile.contractExpires,
+          positions: profile.positions,
+        });
+      }
+      await new Promise((r) => setTimeout(r, 300));
+    }
+    enrichedResults = enriched;
+  } else {
+    enrichedResults = candidates.slice(0, FA_MAX_RESULTS);
+  }
+
+  // ── Convert to scout-server-compatible format ──
+  return enrichedResults.map((p) => ({
+    name: p.playerName,
+    position: p.playerPosition,
+    age: String(p.playerAge),
+    market_value: p.marketValue,
+    url: p.playerUrl,
+    club: p.source === 'free_agent' ? 'Without Club' : undefined,
+    citizenship: p.playerNationality,
+    profile_image: p.playerImage,
+    foot: p.foot || undefined,
+    contract: p.contractExpires || (p.source === 'free_agent' ? 'Free Agent' : undefined),
+    _source: 'transfermarkt_fallback',
+    _tm_source: p.source,
+  }));
+}
+
 // ─── Contract Finishers ──────────────────────────────────────────────────────
 const CF_MIN_VALUE = 150000;
 const CF_MAX_VALUE = 3000000;
