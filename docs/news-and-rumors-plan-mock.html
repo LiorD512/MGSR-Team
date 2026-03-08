@@ -1,0 +1,1349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>News & Rumors – Feature Plan + UI Mock</title>
+<style>
+  :root {
+    --mgsr-dark: #0F1923;
+    --mgsr-card: #1A2736;
+    --mgsr-border: #2A3A4A;
+    --mgsr-accent: #4DB6AC;
+    --mgsr-text: #E8EAED;
+    --mgsr-muted: #8C999B;
+    --mgsr-red: #EF5350;
+    --mgsr-orange: #FFA726;
+    --mgsr-green: #66BB6A;
+    --mgsr-blue: #42A5F5;
+    --mgsr-purple: #AB47BC;
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--mgsr-dark);
+    color: var(--mgsr-text);
+    line-height: 1.6;
+  }
+
+  /* ── Plan Section ── */
+  .plan-section {
+    max-width: 980px;
+    margin: 0 auto;
+    padding: 40px 24px;
+  }
+  .plan-section h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: 32px;
+    color: var(--mgsr-accent);
+    margin-bottom: 8px;
+  }
+  .plan-section .subtitle {
+    color: var(--mgsr-muted);
+    font-size: 15px;
+    margin-bottom: 40px;
+  }
+  .plan-block {
+    background: var(--mgsr-card);
+    border: 1px solid var(--mgsr-border);
+    border-radius: 12px;
+    padding: 28px;
+    margin-bottom: 24px;
+  }
+  .plan-block h2 {
+    font-size: 20px;
+    color: var(--mgsr-accent);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .plan-block h3 {
+    font-size: 16px;
+    color: var(--mgsr-text);
+    margin: 16px 0 8px;
+  }
+  .plan-block p, .plan-block li {
+    color: var(--mgsr-muted);
+    font-size: 14px;
+    line-height: 1.7;
+  }
+  .plan-block ul { padding-left: 20px; }
+  .plan-block li { margin-bottom: 6px; }
+  .plan-block code {
+    background: rgba(77,182,172,0.15);
+    color: var(--mgsr-accent);
+    padding: 2px 7px;
+    border-radius: 4px;
+    font-size: 13px;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+  }
+  .badge-source {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .badge-tm { background: rgba(77,182,172,0.2); color: var(--mgsr-accent); }
+  .badge-news { background: rgba(66,165,245,0.2); color: var(--mgsr-blue); }
+  .badge-rss { background: rgba(171,71,188,0.2); color: var(--mgsr-purple); }
+
+  .file-tree {
+    background: rgba(0,0,0,0.3);
+    border-radius: 8px;
+    padding: 16px 20px;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 13px;
+    color: var(--mgsr-muted);
+    line-height: 1.8;
+    margin: 12px 0;
+    white-space: pre;
+  }
+  .file-tree .new { color: var(--mgsr-green); }
+  .file-tree .existing { color: var(--mgsr-muted); opacity: 0.5; }
+
+  .step-number {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--mgsr-accent);
+    color: var(--mgsr-dark);
+    font-weight: 700;
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+
+  table.data-schema {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0;
+    font-size: 13px;
+  }
+  table.data-schema th {
+    text-align: left;
+    color: var(--mgsr-accent);
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--mgsr-border);
+    font-weight: 600;
+  }
+  table.data-schema td {
+    padding: 6px 12px;
+    color: var(--mgsr-muted);
+    border-bottom: 1px solid rgba(42,58,74,0.5);
+  }
+
+  hr.divider {
+    border: none;
+    border-top: 2px solid var(--mgsr-accent);
+    margin: 60px 0 40px;
+    opacity: 0.3;
+  }
+
+  /* ── UI Mock Section ── */
+  .mock-label {
+    text-align: center;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--mgsr-accent);
+    margin-bottom: 8px;
+    font-weight: 600;
+  }
+  .mock-title {
+    text-align: center;
+    font-family: 'Syne', sans-serif;
+    font-size: 28px;
+    margin-bottom: 32px;
+    color: var(--mgsr-text);
+  }
+
+  /* Simulated App Layout */
+  .app-shell {
+    max-width: 1280px;
+    margin: 0 auto;
+    display: flex;
+    background: var(--mgsr-dark);
+    border: 1px solid var(--mgsr-border);
+    border-radius: 16px;
+    overflow: hidden;
+    min-height: 820px;
+  }
+
+  /* Sidebar */
+  .sidebar {
+    width: 220px;
+    background: #0B1219;
+    border-right: 1px solid var(--mgsr-border);
+    padding: 20px 0;
+    flex-shrink: 0;
+  }
+  .sidebar .logo {
+    font-family: 'Syne', sans-serif;
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--mgsr-accent);
+    padding: 0 20px 20px;
+    border-bottom: 1px solid var(--mgsr-border);
+    margin-bottom: 16px;
+  }
+  .sidebar .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 20px;
+    color: var(--mgsr-muted);
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .sidebar .nav-item:hover { color: var(--mgsr-text); background: rgba(255,255,255,0.03); }
+  .sidebar .nav-item.active {
+    color: var(--mgsr-accent);
+    background: rgba(77,182,172,0.08);
+    border-right: 3px solid var(--mgsr-accent);
+  }
+  .sidebar .nav-item .icon { width: 18px; text-align: center; }
+
+  /* Main Content */
+  .main-content {
+    flex: 1;
+    padding: 28px 32px;
+    overflow-y: auto;
+  }
+
+  .page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+  }
+  .page-header h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: 26px;
+    color: var(--mgsr-text);
+  }
+  .page-header .subtitle-text {
+    font-size: 13px;
+    color: var(--mgsr-muted);
+    margin-top: 2px;
+  }
+
+  /* Filter Tabs */
+  .filter-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+  .filter-tab {
+    padding: 7px 16px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: 1px solid var(--mgsr-border);
+    color: var(--mgsr-muted);
+    background: transparent;
+  }
+  .filter-tab:hover { color: var(--mgsr-text); border-color: var(--mgsr-muted); }
+  .filter-tab.active {
+    background: var(--mgsr-accent);
+    color: var(--mgsr-dark);
+    border-color: var(--mgsr-accent);
+    font-weight: 600;
+  }
+  .filter-tab .tab-count {
+    background: rgba(255,255,255,0.2);
+    padding: 1px 6px;
+    border-radius: 10px;
+    font-size: 11px;
+    margin-left: 4px;
+  }
+  .filter-tab.active .tab-count {
+    background: rgba(0,0,0,0.2);
+  }
+
+  /* League filter chips */
+  .league-chips {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .league-chip {
+    padding: 4px 12px;
+    border-radius: 14px;
+    font-size: 12px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--mgsr-border);
+    color: var(--mgsr-muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .league-chip:hover { border-color: var(--mgsr-accent); color: var(--mgsr-text); }
+  .league-chip.active { background: rgba(77,182,172,0.12); border-color: var(--mgsr-accent); color: var(--mgsr-accent); }
+  .league-chip .flag { font-size: 14px; }
+  .league-chips-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--mgsr-muted);
+    margin-right: 6px;
+  }
+
+  /* ── RUMOUR CARDS ── */
+  .rumour-card {
+    background: var(--mgsr-card);
+    border: 1px solid var(--mgsr-border);
+    border-radius: 12px;
+    padding: 16px 20px;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    transition: all 0.2s;
+    cursor: pointer;
+  }
+  .rumour-card:hover {
+    border-color: var(--mgsr-accent);
+    background: rgba(26,39,54,0.8);
+    transform: translateY(-1px);
+  }
+  .rumour-player-img {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: rgba(77,182,172,0.15);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    flex-shrink: 0;
+    border: 2px solid var(--mgsr-border);
+    overflow: hidden;
+  }
+  .rumour-player-img img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .rumour-body { flex: 1; min-width: 0; }
+  .rumour-player-name {
+    font-weight: 600;
+    font-size: 15px;
+    color: var(--mgsr-text);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .rumour-pos {
+    font-size: 11px;
+    padding: 1px 7px;
+    border-radius: 4px;
+    background: rgba(77,182,172,0.15);
+    color: var(--mgsr-accent);
+    font-weight: 500;
+  }
+  .rumour-age {
+    font-size: 12px;
+    color: var(--mgsr-muted);
+  }
+  .rumour-transfer {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 6px;
+    font-size: 13px;
+    color: var(--mgsr-muted);
+  }
+  .rumour-club {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .rumour-club .club-name { color: var(--mgsr-text); font-weight: 500; }
+  .rumour-arrow {
+    color: var(--mgsr-accent);
+    font-size: 16px;
+  }
+  .rumour-league-badge {
+    font-size: 11px;
+    padding: 1px 7px;
+    border-radius: 4px;
+    background: rgba(255,255,255,0.06);
+    color: var(--mgsr-muted);
+  }
+  .rumour-meta {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 6px;
+    flex-shrink: 0;
+    min-width: 90px;
+  }
+  .rumour-date {
+    font-size: 11px;
+    color: var(--mgsr-muted);
+  }
+  .rumour-probability {
+    font-size: 12px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 6px;
+  }
+  .prob-high { background: rgba(102,187,106,0.2); color: var(--mgsr-green); }
+  .prob-med { background: rgba(255,167,38,0.2); color: var(--mgsr-orange); }
+  .prob-low { background: rgba(239,83,80,0.15); color: var(--mgsr-red); }
+  .prob-unknown { background: rgba(255,255,255,0.06); color: var(--mgsr-muted); }
+  .rumour-market-value {
+    font-size: 12px;
+    color: var(--mgsr-green);
+    font-weight: 600;
+  }
+  .rumour-source-badge {
+    font-size: 10px;
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+  }
+  .source-tm { background: rgba(77,182,172,0.15); color: var(--mgsr-accent); }
+  .source-news { background: rgba(66,165,245,0.15); color: var(--mgsr-blue); }
+
+  .rumour-actions {
+    display: flex;
+    gap: 6px;
+  }
+  .rumour-action-btn {
+    width: 30px;
+    height: 30px;
+    border-radius: 6px;
+    border: 1px solid var(--mgsr-border);
+    background: transparent;
+    color: var(--mgsr-muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.15s;
+  }
+  .rumour-action-btn:hover { border-color: var(--mgsr-accent); color: var(--mgsr-accent); }
+  .rumour-action-btn.bookmarked { color: var(--mgsr-orange); border-color: var(--mgsr-orange); }
+
+  /* ── NEWS CARDS ── */
+  .news-card {
+    background: var(--mgsr-card);
+    border: 1px solid var(--mgsr-border);
+    border-radius: 12px;
+    padding: 16px 20px;
+    margin-bottom: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .news-card:hover {
+    border-color: var(--mgsr-blue);
+    transform: translateY(-1px);
+  }
+  .news-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+  }
+  .news-source {
+    font-size: 11px;
+    color: var(--mgsr-muted);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .news-source .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--mgsr-blue);
+  }
+  .news-headline {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--mgsr-text);
+    margin-bottom: 6px;
+    line-height: 1.4;
+  }
+  .news-excerpt {
+    font-size: 13px;
+    color: var(--mgsr-muted);
+    line-height: 1.5;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .news-tags {
+    display: flex;
+    gap: 6px;
+    margin-top: 10px;
+    flex-wrap: wrap;
+  }
+  .news-tag {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    background: rgba(66,165,245,0.12);
+    color: var(--mgsr-blue);
+  }
+  .news-tag.league-tag {
+    background: rgba(171,71,188,0.12);
+    color: var(--mgsr-purple);
+  }
+
+  /* ── COMBINED FEED (mixed) ── */
+  .feed-item-badge {
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .feed-badge-rumour { background: rgba(77,182,172,0.15); color: var(--mgsr-accent); }
+  .feed-badge-news { background: rgba(66,165,245,0.15); color: var(--mgsr-blue); }
+
+  /* ── Search bar ── */
+  .search-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--mgsr-border);
+    border-radius: 10px;
+    padding: 8px 14px;
+    width: 280px;
+  }
+  .search-bar input {
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--mgsr-text);
+    font-size: 13px;
+    width: 100%;
+  }
+  .search-bar input::placeholder { color: var(--mgsr-muted); }
+  .search-icon { color: var(--mgsr-muted); font-size: 14px; }
+
+  /* Refresh indicator */
+  .refresh-indicator {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--mgsr-muted);
+  }
+  .refresh-btn {
+    padding: 6px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--mgsr-border);
+    background: transparent;
+    color: var(--mgsr-muted);
+    font-size: 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    transition: all 0.15s;
+  }
+  .refresh-btn:hover { border-color: var(--mgsr-accent); color: var(--mgsr-accent); }
+
+  /* Skeleton loading preview */
+  .skeleton {
+    background: linear-gradient(90deg, var(--mgsr-card) 25%, rgba(255,255,255,0.06) 50%, var(--mgsr-card) 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+    border-radius: 6px;
+  }
+  @keyframes shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+  .skeleton-card {
+    background: var(--mgsr-card);
+    border: 1px solid var(--mgsr-border);
+    border-radius: 12px;
+    padding: 16px 20px;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .skeleton-avatar { width: 48px; height: 48px; border-radius: 50%; }
+  .skeleton-line { height: 12px; margin-bottom: 8px; }
+  .skeleton-line.w60 { width: 60%; }
+  .skeleton-line.w40 { width: 40%; }
+  .skeleton-line.w80 { width: 80%; }
+
+  /* Mock 2 - mobile bottom bar context */
+  .mock-section { margin-bottom: 80px; }
+
+  /* Stats bar */
+  .stats-bar {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+  .stat-box {
+    background: var(--mgsr-card);
+    border: 1px solid var(--mgsr-border);
+    border-radius: 10px;
+    padding: 12px 18px;
+    flex: 1;
+    text-align: center;
+  }
+  .stat-value {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--mgsr-text);
+  }
+  .stat-value.accent { color: var(--mgsr-accent); }
+  .stat-value.blue { color: var(--mgsr-blue); }
+  .stat-label {
+    font-size: 11px;
+    color: var(--mgsr-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-top: 2px;
+  }
+
+  /* Section divider in mock */
+  .section-label {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--mgsr-muted);
+    margin: 20px 0 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--mgsr-border);
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════ -->
+<!--          PART 1: IMPLEMENTATION PLAN        -->
+<!-- ═══════════════════════════════════════════ -->
+<div class="plan-section">
+
+<h1>📰 News &amp; Rumors – Feature Plan</h1>
+<p class="subtitle">Men platform · Combined transfer rumours + lower-division football news feed</p>
+
+<!-- ── OVERVIEW ── -->
+<div class="plan-block">
+  <h2><span class="step-number">1</span> Overview &amp; Goals</h2>
+  <p>A new <code>/news</code> page on the Men web platform that aggregates two data sources into a single, filterable feed:</p>
+  <ul>
+    <li><span class="badge-source badge-tm">TRANSFER RUMOURS</span> Scraped from Transfermarkt's <code>/geruechte/aktuellegeruechte/statistik</code> — structured player transfer rumour data with clubs, probability %, market value, positions</li>
+    <li><span class="badge-source badge-news">LEAGUE NEWS</span> Scraped from Transfermarkt's per-competition news pages — headlines, excerpts, and metadata for the leagues we actively work with (non-top-5 focus)</li>
+  </ul>
+  <p style="margin-top:12px;">Why Transfermarkt for both? It keeps the scraping stack unified (same <code>fetchHtmlWithRetry</code> + <code>cheerio</code> pattern), avoids third-party API keys, and Transfermarkt already has excellent coverage of the exact leagues in <code>LEAGUE_SLUGS</code>.</p>
+</div>
+
+<!-- ── DATA SOURCES DETAIL ── -->
+<div class="plan-block">
+  <h2><span class="step-number">2</span> Data Sources</h2>
+
+  <h3>Source A: Transfer Rumours</h3>
+  <p>URL: <code>https://www.transfermarkt.com/geruechte/aktuellegeruechte/statistik</code></p>
+  <p>Paginated (pages 1-N). Each rumour row contains:</p>
+  <table class="data-schema">
+    <tr><th>Field</th><th>Type</th><th>Source</th></tr>
+    <tr><td>playerName</td><td>string</td><td>Row cell – player link text</td></tr>
+    <tr><td>playerUrl</td><td>string</td><td>Row cell – player link href</td></tr>
+    <tr><td>playerImage</td><td>string</td><td>Row cell – img src</td></tr>
+    <tr><td>position</td><td>string</td><td>Row cell – position text under name</td></tr>
+    <tr><td>age</td><td>number</td><td>Age column</td></tr>
+    <tr><td>nationality</td><td>string[]</td><td>Flag img titles</td></tr>
+    <tr><td>currentClub</td><td>string</td><td>Club column text</td></tr>
+    <tr><td>currentClubUrl</td><td>string</td><td>Club column link</td></tr>
+    <tr><td>interestedClub</td><td>string</td><td>Interested club text</td></tr>
+    <tr><td>interestedClubUrl</td><td>string</td><td>Interested club link</td></tr>
+    <tr><td>interestedClubLeague</td><td>string</td><td>League text under interested club</td></tr>
+    <tr><td>probability</td><td>number | null</td><td>Probability % (or "?" → null)</td></tr>
+    <tr><td>marketValue</td><td>string</td><td>Market value column (e.g. "€1.50m")</td></tr>
+    <tr><td>rumouredDate</td><td>string</td><td>Date column (e.g. "07.03.2026 - 08:18")</td></tr>
+    <tr><td>source</td><td>"rumour"</td><td>Constant, for feed type</td></tr>
+  </table>
+
+  <h3 style="margin-top:24px;">Source B: League News (Lower Divisions)</h3>
+  <p>Transfermarkt has league-specific news at competition "news" tabs. We'll scrape news for our working leagues:</p>
+  <p style="margin-top:8px;">Target league news URLs (examples):</p>
+  <ul>
+    <li><code>/ligat-haal/news/wettbewerb/ISR1</code> — 🇮🇱 Israel Ligat Ha'al</li>
+    <li><code>/eredivisie/news/wettbewerb/NL1</code> — 🇳🇱 Eredivisie</li>
+    <li><code>/jupiler-pro-league/news/wettbewerb/BE1</code> — 🇧🇪 Belgium</li>
+    <li><code>/super-lig/news/wettbewerb/TR1</code> — 🇹🇷 Turkey</li>
+    <li><code>/liga-portugal/news/wettbewerb/PO1</code> — 🇵🇹 Portugal</li>
+    <li><code>/championship/news/wettbewerb/GB2</code> — 🏴 EFL Championship</li>
+    <li><code>/super-league-1/news/wettbewerb/GR1</code> — 🇬🇷 Greece</li>
+    <li><code>/pko-bp-ekstraklasa/news/wettbewerb/PL1</code> — 🇵🇱 Poland</li>
+    <li><code>/bundesliga/news/wettbewerb/A1</code> — 🇦🇹 Austria</li>
+    <li><code>/super-liga-srbije/news/wettbewerb/SER1</code> — 🇷🇸 Serbia</li>
+    <li><code>/allsvenskan/news/wettbewerb/SE1</code> — 🇸🇪 Sweden</li>
+    <li><code>/chance-liga/news/wettbewerb/TS1</code> — 🇨🇿 Czech Republic</li>
+    <li><code>/superliga/news/wettbewerb/RO1</code> — 🇷🇴 Romania</li>
+    <li><code>/super-league/news/wettbewerb/C1</code> — 🇨🇭 Switzerland</li>
+    <li><code>/2-bundesliga/news/wettbewerb/L2</code> — 🇩🇪 2. Bundesliga</li>
+    <li>+ more from existing LEAGUE_SLUGS</li>
+  </ul>
+  <table class="data-schema" style="margin-top:12px;">
+    <tr><th>Field</th><th>Type</th><th>Source</th></tr>
+    <tr><td>headline</td><td>string</td><td>News link text</td></tr>
+    <tr><td>url</td><td>string</td><td>News article link href</td></tr>
+    <tr><td>excerpt</td><td>string</td><td>Teaser/summary text</td></tr>
+    <tr><td>imageUrl</td><td>string | null</td><td>Thumbnail img src</td></tr>
+    <tr><td>date</td><td>string</td><td>Published date</td></tr>
+    <tr><td>leagueCode</td><td>string</td><td>e.g. "ISR1", "NL1"</td></tr>
+    <tr><td>leagueName</td><td>string</td><td>e.g. "Ligat Ha'al"</td></tr>
+    <tr><td>country</td><td>string</td><td>Country name</td></tr>
+    <tr><td>countryFlag</td><td>string</td><td>Flag emoji or URL</td></tr>
+    <tr><td>source</td><td>"news"</td><td>Constant, for feed type</td></tr>
+  </table>
+</div>
+
+<!-- ── ARCHITECTURE ── -->
+<div class="plan-block">
+  <h2><span class="step-number">3</span> Architecture &amp; File Structure</h2>
+
+  <div class="file-tree"><span class="existing">mgsr-web/src/</span>
+├── <span class="existing">app/</span>
+│   ├── <span class="new">news/</span>
+│   │   └── <span class="new">page.tsx</span>              ← News & Rumors page component
+│   └── <span class="existing">api/</span>
+│       └── <span class="new">news/</span>
+│           ├── <span class="new">rumours/route.ts</span>   ← API: scrape TM rumours
+│           └── <span class="new">league-news/route.ts</span> ← API: scrape TM league news
+├── <span class="existing">lib/</span>
+│   └── <span class="existing">transfermarkt.ts</span>       ← Add: handleRumours(), handleLeagueNews()
+├── <span class="existing">lib/</span>
+│   └── <span class="existing">api.ts</span>                 ← Add: getRumours(), getLeagueNews()
+├── <span class="existing">components/</span>
+│   └── <span class="existing">AppLayout.tsx</span>          ← Add nav item: { href: '/news', labelKey: 'nav_news' }
+└── <span class="existing">contexts/</span>
+    └── <span class="existing">LanguageContext.tsx</span>    ← Add translation keys (en + he)</div>
+
+  <h3>API Routes</h3>
+  <ul>
+    <li><code>GET /api/news/rumours?page=1</code> → calls <code>handleRumours(page)</code></li>
+    <li><code>GET /api/news/league-news?leagues=ISR1,NL1,TR1</code> → calls <code>handleLeagueNews(leagues)</code></li>
+  </ul>
+
+  <h3>Scraping Functions (in transfermarkt.ts)</h3>
+  <ul>
+    <li><code>handleRumours(page: number)</code> — Fetch + cheerio parse rumours table, return typed array</li>
+    <li><code>handleLeagueNews(leagueCodes: string[])</code> — Fetch news page for each league in parallel (Promise.allSettled), merge + sort by date, return combined array</li>
+  </ul>
+
+  <h3>Caching Strategy</h3>
+  <ul>
+    <li>Server-side: In-memory cache with 15-minute TTL (same pattern as <code>LEAGUE_AVG_CACHE</code>)</li>
+    <li>Client-side: <code>getScreenCache</code> / <code>setScreenCache</code> for session persistence (same as Releases page)</li>
+  </ul>
+</div>
+
+<!-- ── UI DESIGN ── -->
+<div class="plan-block">
+  <h2><span class="step-number">4</span> UI Design Decisions</h2>
+  <ul>
+    <li><strong>Combined feed by default</strong> — rumours and news interleaved by date (newest first)</li>
+    <li><strong>3 filter tabs</strong>: "All" | "Rumours" | "News" — toggle between combined and filtered views</li>
+    <li><strong>League filter chips</strong> — quick-filter by league (flags + abbreviations)</li>
+    <li><strong>Search bar</strong> — filter by player name, club name, or headline text</li>
+    <li><strong>Rumour card design</strong>: Player avatar → name/pos → from-club → arrow → to-club → probability badge + market value</li>
+    <li><strong>News card design</strong>: Source badge → headline → excerpt → league tag</li>
+    <li><strong>Quick actions on rumour cards</strong>: 🔍 View on TM (external link) | ⭐ Bookmark (future: save to Firestore) | 📋 Add to Shortlist</li>
+    <li><strong>Stats bar</strong>: Total rumours today / Total news / Leagues covered</li>
+    <li><strong>RTL support</strong> — same <code>isRtl</code> pattern, Hebrew translations</li>
+  </ul>
+</div>
+
+<!-- ── IMPLEMENTATION STEPS ── -->
+<div class="plan-block">
+  <h2><span class="step-number">5</span> Implementation Steps (Order)</h2>
+  <ol style="padding-left: 20px;">
+    <li style="margin-bottom:8px;"><strong>Step 1: Scraping functions</strong><br/>
+      Add <code>handleRumours()</code> and <code>handleLeagueNews()</code> to <code>transfermarkt.ts</code> with cheerio parsing + cache</li>
+    <li style="margin-bottom:8px;"><strong>Step 2: API routes</strong><br/>
+      Create <code>/api/news/rumours/route.ts</code> and <code>/api/news/league-news/route.ts</code></li>
+    <li style="margin-bottom:8px;"><strong>Step 3: Client API helpers</strong><br/>
+      Add <code>getRumours()</code> and <code>getLeagueNews()</code> to <code>api.ts</code></li>
+    <li style="margin-bottom:8px;"><strong>Step 4: Navigation</strong><br/>
+      Add <code>{ href: '/news', labelKey: 'nav_news' }</code> to <code>navItems</code> in AppLayout (men only)</li>
+    <li style="margin-bottom:8px;"><strong>Step 5: Translations</strong><br/>
+      Add all <code>news_*</code> keys in both <code>en</code> and <code>he</code> blocks</li>
+    <li style="margin-bottom:8px;"><strong>Step 6: Page component</strong><br/>
+      Build <code>/news/page.tsx</code> with tabs, filters, cards, search, caching</li>
+    <li style="margin-bottom:8px;"><strong>Step 7: Polish</strong><br/>
+      Loading skeletons, error states, empty states, external link handling</li>
+  </ol>
+</div>
+
+<!-- ── TRANSLATION KEYS ── -->
+<div class="plan-block">
+  <h2><span class="step-number">6</span> Translation Keys</h2>
+  <table class="data-schema">
+    <tr><th>Key</th><th>EN</th><th>HE</th></tr>
+    <tr><td>nav_news</td><td>News & Rumors</td><td>חדשות ושמועות</td></tr>
+    <tr><td>news_title</td><td>News & Rumors</td><td>חדשות ושמועות</td></tr>
+    <tr><td>news_subtitle</td><td>Transfer rumours & league news feed</td><td>שמועות העברות וחדשות ליגות</td></tr>
+    <tr><td>news_tab_all</td><td>All</td><td>הכל</td></tr>
+    <tr><td>news_tab_rumours</td><td>Rumours</td><td>שמועות</td></tr>
+    <tr><td>news_tab_news</td><td>News</td><td>חדשות</td></tr>
+    <tr><td>news_search_placeholder</td><td>Search players, clubs, headlines...</td><td>חיפוש שחקנים, מועדונים, כותרות...</td></tr>
+    <tr><td>news_from</td><td>from</td><td>מ</td></tr>
+    <tr><td>news_to</td><td>to</td><td>אל</td></tr>
+    <tr><td>news_probability</td><td>Probability</td><td>סיכוי</td></tr>
+    <tr><td>news_view_on_tm</td><td>View on Transfermarkt</td><td>צפה בטרנספרמרקט</td></tr>
+    <tr><td>news_add_shortlist</td><td>Add to Shortlist</td><td>הוסף לשורטליסט</td></tr>
+    <tr><td>news_no_results</td><td>No news or rumours found</td><td>לא נמצאו חדשות או שמועות</td></tr>
+    <tr><td>news_loading</td><td>Fetching latest news...</td><td>טוען חדשות אחרונות...</td></tr>
+    <tr><td>news_stat_rumours</td><td>Rumours Today</td><td>שמועות היום</td></tr>
+    <tr><td>news_stat_news</td><td>News Articles</td><td>כתבות חדשות</td></tr>
+    <tr><td>news_stat_leagues</td><td>Leagues</td><td>ליגות</td></tr>
+    <tr><td>news_refresh</td><td>Refresh</td><td>רענון</td></tr>
+  </table>
+</div>
+
+</div>
+
+<!-- ═══════════════════════════════════════════ -->
+<!--          PART 2: UI MOCKUPS                 -->
+<!-- ═══════════════════════════════════════════ -->
+<div class="plan-section">
+<hr class="divider">
+
+<p class="mock-label">UI Mockup</p>
+<p class="mock-title">Desktop — News &amp; Rumors Page</p>
+
+<div class="app-shell">
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="logo">⚽ MGSR</div>
+    <div class="nav-item"><span class="icon">📊</span> Dashboard</div>
+    <div class="nav-item"><span class="icon">✅</span> Tasks</div>
+    <div class="nav-item"><span class="icon">👥</span> Players</div>
+    <div class="nav-item"><span class="icon">⭐</span> Shortlist</div>
+    <div class="nav-item"><span class="icon">🏟️</span> Shadow Teams</div>
+    <div class="nav-item"><span class="icon">📤</span> Releases</div>
+    <div class="nav-item"><span class="icon">📋</span> Contract Finisher</div>
+    <div class="nav-item"><span class="icon">🔄</span> Returnees</div>
+    <div class="nav-item active"><span class="icon">📰</span> News & Rumors</div>
+    <div class="nav-item"><span class="icon">🎖️</span> War Room</div>
+    <div class="nav-item"><span class="icon">💼</span> Portfolio</div>
+    <div class="nav-item"><span class="icon">📇</span> Contacts</div>
+    <div class="nav-item"><span class="icon">📝</span> Requests</div>
+  </div>
+
+  <!-- Main Content -->
+  <div class="main-content">
+    <!-- Page Header -->
+    <div class="page-header">
+      <div>
+        <h1>📰 News &amp; Rumors</h1>
+        <p class="subtitle-text">Transfer rumours &amp; league news from your working markets</p>
+      </div>
+      <div style="display:flex; align-items:center; gap:12px;">
+        <div class="refresh-indicator">
+          <span>Updated 3 min ago</span>
+          <button class="refresh-btn">🔄 Refresh</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Stats Bar -->
+    <div class="stats-bar">
+      <div class="stat-box">
+        <div class="stat-value accent">47</div>
+        <div class="stat-label">Rumours Today</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-value blue">23</div>
+        <div class="stat-label">News Articles</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-value">16</div>
+        <div class="stat-label">Leagues Covered</div>
+      </div>
+    </div>
+
+    <!-- Filter Tabs + Search -->
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
+      <div class="filter-tabs" style="margin-bottom:0;">
+        <div class="filter-tab active">All <span class="tab-count">70</span></div>
+        <div class="filter-tab">🔄 Rumours <span class="tab-count">47</span></div>
+        <div class="filter-tab">📰 News <span class="tab-count">23</span></div>
+      </div>
+      <div class="search-bar">
+        <span class="search-icon">🔍</span>
+        <input type="text" placeholder="Search players, clubs, headlines...">
+      </div>
+    </div>
+
+    <!-- League Filter Chips -->
+    <div class="league-chips">
+      <span class="league-chips-label">Leagues:</span>
+      <div class="league-chip active"><span class="flag">🌍</span> All</div>
+      <div class="league-chip"><span class="flag">🇮🇱</span> ISR</div>
+      <div class="league-chip"><span class="flag">🇳🇱</span> NL</div>
+      <div class="league-chip"><span class="flag">🇧🇪</span> BEL</div>
+      <div class="league-chip"><span class="flag">🇹🇷</span> TUR</div>
+      <div class="league-chip"><span class="flag">🇵🇹</span> POR</div>
+      <div class="league-chip"><span class="flag">🇬🇷</span> GRE</div>
+      <div class="league-chip"><span class="flag">🇵🇱</span> POL</div>
+      <div class="league-chip"><span class="flag">🇦🇹</span> AUT</div>
+      <div class="league-chip"><span class="flag">🇷🇸</span> SER</div>
+      <div class="league-chip"><span class="flag">🏴󠁧󠁢󠁥󠁮󠁧󠁿</span> EFL</div>
+      <div class="league-chip"><span class="flag">🇸🇪</span> SWE</div>
+      <div class="league-chip"><span class="flag">🇨🇿</span> CZE</div>
+      <div class="league-chip"><span class="flag">🇨🇭</span> SUI</div>
+      <div class="league-chip"><span class="flag">🇷🇴</span> ROM</div>
+    </div>
+
+    <!-- ═══ COMBINED FEED ═══ -->
+
+    <!-- Rumour Card 1 -->
+    <div class="rumour-card">
+      <div class="rumour-player-img">👤</div>
+      <div class="rumour-body">
+        <div class="rumour-player-name">
+          Gianluca Lapadula
+          <span class="rumour-pos">CF</span>
+          <span class="rumour-age">36</span>
+          <span class="feed-item-badge feed-badge-rumour">RUMOUR</span>
+        </div>
+        <div class="rumour-transfer">
+          <div class="rumour-club">🇮🇹 <span class="club-name">Spezia Calcio</span></div>
+          <span class="rumour-arrow">→</span>
+          <div class="rumour-club">🇵🇪 <span class="club-name">Sporting Cristal</span></div>
+          <span class="rumour-league-badge">Peru Liga 1</span>
+        </div>
+      </div>
+      <div class="rumour-meta">
+        <span class="rumour-date">07.03 · 08:18</span>
+        <span class="rumour-probability prob-unknown">? %</span>
+        <div class="rumour-actions">
+          <button class="rumour-action-btn" title="View on TM">🔗</button>
+          <button class="rumour-action-btn" title="Add to shortlist">📋</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- News Card 1 -->
+    <div class="news-card">
+      <div class="news-card-header">
+        <div class="news-source">
+          <span class="dot"></span>
+          Transfermarkt · 🇳🇱 Eredivisie
+          <span class="feed-item-badge feed-badge-news">NEWS</span>
+        </div>
+        <span class="rumour-date">07.03 · 07:45</span>
+      </div>
+      <div class="news-headline">Ajax confirm departure of midfielder — heads to Belgian Pro League</div>
+      <div class="news-excerpt">Ajax Amsterdam have confirmed that central midfielder Davy Klaassen will leave the club in the upcoming transfer window. The 33-year-old veteran has agreed personal terms with Club Brugge...</div>
+      <div class="news-tags">
+        <span class="news-tag">Ajax</span>
+        <span class="news-tag">Club Brugge</span>
+        <span class="news-tag league-tag">🇳🇱 Eredivisie</span>
+        <span class="news-tag league-tag">🇧🇪 Jupiler Pro League</span>
+      </div>
+    </div>
+
+    <!-- Rumour Card 2 -->
+    <div class="rumour-card">
+      <div class="rumour-player-img">👤</div>
+      <div class="rumour-body">
+        <div class="rumour-player-name">
+          Walter Mazzantti
+          <span class="rumour-pos">RW</span>
+          <span class="rumour-age">29</span>
+          <span class="feed-item-badge feed-badge-rumour">RUMOUR</span>
+        </div>
+        <div class="rumour-transfer">
+          <div class="rumour-club">🇦🇷 <span class="club-name">CA Independiente</span></div>
+          <span class="rumour-arrow">→</span>
+          <div class="rumour-club">🇦🇷 <span class="club-name">Newell's Old Boys</span></div>
+          <span class="rumour-league-badge">Argentina Torneo Apertura</span>
+        </div>
+      </div>
+      <div class="rumour-meta">
+        <span class="rumour-date">07.03 · 07:27</span>
+        <span class="rumour-probability prob-unknown">? %</span>
+        <div class="rumour-actions">
+          <button class="rumour-action-btn" title="View on TM">🔗</button>
+          <button class="rumour-action-btn" title="Add to shortlist">📋</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Rumour Card 3 — with probability -->
+    <div class="rumour-card">
+      <div class="rumour-player-img">👤</div>
+      <div class="rumour-body">
+        <div class="rumour-player-name">
+          Farès Chaïbi
+          <span class="rumour-pos">AM</span>
+          <span class="rumour-age">23</span>
+          <span class="feed-item-badge feed-badge-rumour">RUMOUR</span>
+        </div>
+        <div class="rumour-transfer">
+          <div class="rumour-club">🇩🇪 <span class="club-name">Eintracht Frankfurt</span></div>
+          <span class="rumour-arrow">→</span>
+          <div class="rumour-club">🇩🇪 <span class="club-name">VfB Stuttgart</span></div>
+          <span class="rumour-league-badge">Bundesliga</span>
+        </div>
+      </div>
+      <div class="rumour-meta">
+        <span class="rumour-date">06.03 · 20:18</span>
+        <span class="rumour-probability prob-low">17%</span>
+        <span class="rumour-market-value">€8.00m</span>
+        <div class="rumour-actions">
+          <button class="rumour-action-btn" title="View on TM">🔗</button>
+          <button class="rumour-action-btn bookmarked" title="Bookmarked">⭐</button>
+          <button class="rumour-action-btn" title="Add to shortlist">📋</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- News Card 2 -->
+    <div class="news-card">
+      <div class="news-card-header">
+        <div class="news-source">
+          <span class="dot"></span>
+          Transfermarkt · 🇮🇱 Ligat Ha'al
+          <span class="feed-item-badge feed-badge-news">NEWS</span>
+        </div>
+        <span class="rumour-date">06.03 · 19:30</span>
+      </div>
+      <div class="news-headline">Maccabi Tel Aviv targeting two reinforcements for ACL campaign push</div>
+      <div class="news-excerpt">According to sources close to the club, Maccabi Tel Aviv are actively pursuing a central defender and a striker ahead of their Asian Champions League knockout stage...</div>
+      <div class="news-tags">
+        <span class="news-tag">Maccabi Tel Aviv</span>
+        <span class="news-tag league-tag">🇮🇱 Ligat Ha'al</span>
+      </div>
+    </div>
+
+    <!-- Rumour Card 4 — high probability -->
+    <div class="rumour-card">
+      <div class="rumour-player-img">👤</div>
+      <div class="rumour-body">
+        <div class="rumour-player-name">
+          Kevin Schade
+          <span class="rumour-pos">LW</span>
+          <span class="rumour-age">24</span>
+          <span class="feed-item-badge feed-badge-rumour">RUMOUR</span>
+        </div>
+        <div class="rumour-transfer">
+          <div class="rumour-club">🏴󠁧󠁢󠁥󠁮󠁧󠁿 <span class="club-name">Brentford FC</span></div>
+          <span class="rumour-arrow">→</span>
+          <div class="rumour-club">🇩🇪 <span class="club-name">Bayern Munich</span></div>
+          <span class="rumour-league-badge">Bundesliga</span>
+        </div>
+      </div>
+      <div class="rumour-meta">
+        <span class="rumour-date">06.03 · 17:39</span>
+        <span class="rumour-probability prob-med">28%</span>
+        <span class="rumour-market-value">€35.0m</span>
+        <div class="rumour-actions">
+          <button class="rumour-action-btn" title="View on TM">🔗</button>
+          <button class="rumour-action-btn" title="Add to shortlist">📋</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- News Card 3 -->
+    <div class="news-card">
+      <div class="news-card-header">
+        <div class="news-source">
+          <span class="dot"></span>
+          Transfermarkt · 🇹🇷 Süper Lig
+          <span class="feed-item-badge feed-badge-news">NEWS</span>
+        </div>
+        <span class="rumour-date">06.03 · 16:00</span>
+      </div>
+      <div class="news-headline">Galatasaray release squad for Europa League tie — three key absences</div>
+      <div class="news-excerpt">Galatasaray manager has announced his 23-man squad for Thursday's Europa League round of 16 first leg, with three key players missing through injury...</div>
+      <div class="news-tags">
+        <span class="news-tag">Galatasaray</span>
+        <span class="news-tag">Europa League</span>
+        <span class="news-tag league-tag">🇹🇷 Süper Lig</span>
+      </div>
+    </div>
+
+    <!-- Rumour Card 5 -->
+    <div class="rumour-card">
+      <div class="rumour-player-img">👤</div>
+      <div class="rumour-body">
+        <div class="rumour-player-name">
+          Joris Kayembe
+          <span class="rumour-pos">LB</span>
+          <span class="rumour-age">31</span>
+          <span class="feed-item-badge feed-badge-rumour">RUMOUR</span>
+        </div>
+        <div class="rumour-transfer">
+          <div class="rumour-club">🇧🇪 <span class="club-name">KRC Genk</span></div>
+          <span class="rumour-arrow">→</span>
+          <div class="rumour-club">🇹🇷 <span class="club-name">Samsunspor</span></div>
+          <span class="rumour-league-badge">Süper Lig</span>
+        </div>
+      </div>
+      <div class="rumour-meta">
+        <span class="rumour-date">07.03 · 07:19</span>
+        <span class="rumour-probability prob-unknown">? %</span>
+        <div class="rumour-actions">
+          <button class="rumour-action-btn" title="View on TM">🔗</button>
+          <button class="rumour-action-btn" title="Add to shortlist">📋</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Loading skeleton preview -->
+    <div class="section-label">Loading State</div>
+    <div class="skeleton-card">
+      <div class="skeleton skeleton-avatar"></div>
+      <div style="flex:1;">
+        <div class="skeleton skeleton-line w60"></div>
+        <div class="skeleton skeleton-line w40"></div>
+      </div>
+    </div>
+    <div class="skeleton-card">
+      <div class="skeleton skeleton-avatar"></div>
+      <div style="flex:1;">
+        <div class="skeleton skeleton-line w80"></div>
+        <div class="skeleton skeleton-line w60"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══ Mock 2: Rumours-Only Tab ═══ -->
+<div style="height:60px;"></div>
+<p class="mock-label">UI Mockup – Tab View</p>
+<p class="mock-title">Rumours Tab (Filtered)</p>
+
+<div class="app-shell" style="min-height:500px;">
+  <div class="sidebar">
+    <div class="logo">⚽ MGSR</div>
+    <div class="nav-item"><span class="icon">📊</span> Dashboard</div>
+    <div class="nav-item"><span class="icon">✅</span> Tasks</div>
+    <div class="nav-item"><span class="icon">👥</span> Players</div>
+    <div class="nav-item active"><span class="icon">📰</span> News & Rumors</div>
+    <div class="nav-item"><span class="icon">🎖️</span> War Room</div>
+    <div class="nav-item"><span class="icon">📝</span> Requests</div>
+  </div>
+  <div class="main-content">
+    <div class="page-header">
+      <div>
+        <h1>📰 News &amp; Rumors</h1>
+      </div>
+    </div>
+
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
+      <div class="filter-tabs" style="margin-bottom:0;">
+        <div class="filter-tab">All <span class="tab-count">70</span></div>
+        <div class="filter-tab active">🔄 Rumours <span class="tab-count">47</span></div>
+        <div class="filter-tab">📰 News <span class="tab-count">23</span></div>
+      </div>
+      <div class="search-bar">
+        <span class="search-icon">🔍</span>
+        <input type="text" placeholder="Search player or club...">
+      </div>
+    </div>
+
+    <!-- Only rumour cards shown -->
+    <div class="rumour-card">
+      <div class="rumour-player-img">👤</div>
+      <div class="rumour-body">
+        <div class="rumour-player-name">
+          Luka Vuskovic
+          <span class="rumour-pos">CB</span>
+          <span class="rumour-age">19</span>
+        </div>
+        <div class="rumour-transfer">
+          <div class="rumour-club">🇩🇪 <span class="club-name">Hamburger SV</span></div>
+          <span class="rumour-arrow">→</span>
+          <div class="rumour-club">🇫🇷 <span class="club-name">PSG</span></div>
+          <span class="rumour-league-badge">Ligue 1</span>
+        </div>
+      </div>
+      <div class="rumour-meta">
+        <span class="rumour-date">06.03 · 16:18</span>
+        <span class="rumour-probability prob-unknown">? %</span>
+        <div class="rumour-actions">
+          <button class="rumour-action-btn" title="View on TM">🔗</button>
+          <button class="rumour-action-btn" title="Add to shortlist">📋</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="rumour-card">
+      <div class="rumour-player-img">👤</div>
+      <div class="rumour-body">
+        <div class="rumour-player-name">
+          Capita
+          <span class="rumour-pos">LW</span>
+          <span class="rumour-age">24</span>
+        </div>
+        <div class="rumour-transfer">
+          <div class="rumour-club">🇵🇱 <span class="club-name">Radomiak Radom</span></div>
+          <span class="rumour-arrow">→</span>
+          <div class="rumour-club">🇺🇸 <span class="club-name">Sporting KC</span></div>
+          <span class="rumour-league-badge">MLS</span>
+        </div>
+      </div>
+      <div class="rumour-meta">
+        <span class="rumour-date">06.03 · 17:53</span>
+        <span class="rumour-probability prob-unknown">? %</span>
+        <div class="rumour-actions">
+          <button class="rumour-action-btn" title="View on TM">🔗</button>
+          <button class="rumour-action-btn" title="Add to shortlist">📋</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="rumour-card">
+      <div class="rumour-player-img">👤</div>
+      <div class="rumour-body">
+        <div class="rumour-player-name">
+          Leon Goretzka
+          <span class="rumour-pos">CM</span>
+          <span class="rumour-age">31</span>
+        </div>
+        <div class="rumour-transfer">
+          <div class="rumour-club">🇩🇪 <span class="club-name">Bayern Munich</span></div>
+          <span class="rumour-arrow">→</span>
+          <div class="rumour-club">🇫🇷 <span class="club-name">Olympique Marseille</span></div>
+          <span class="rumour-league-badge">Ligue 1</span>
+        </div>
+      </div>
+      <div class="rumour-meta">
+        <span class="rumour-date">06.03 · 16:30</span>
+        <span class="rumour-probability prob-unknown">? %</span>
+        <span class="rumour-market-value">€15.0m</span>
+        <div class="rumour-actions">
+          <button class="rumour-action-btn" title="View on TM">🔗</button>
+          <button class="rumour-action-btn" title="Add to shortlist">📋</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══ Mock 3: News-Only Tab ═══ -->
+<div style="height:60px;"></div>
+<p class="mock-label">UI Mockup – Tab View</p>
+<p class="mock-title">News Tab (Filtered by 🇮🇱 Israel)</p>
+
+<div class="app-shell" style="min-height:400px;">
+  <div class="sidebar">
+    <div class="logo">⚽ MGSR</div>
+    <div class="nav-item"><span class="icon">📊</span> Dashboard</div>
+    <div class="nav-item"><span class="icon">✅</span> Tasks</div>
+    <div class="nav-item"><span class="icon">👥</span> Players</div>
+    <div class="nav-item active"><span class="icon">📰</span> News & Rumors</div>
+    <div class="nav-item"><span class="icon">🎖️</span> War Room</div>
+    <div class="nav-item"><span class="icon">📝</span> Requests</div>
+  </div>
+  <div class="main-content">
+    <div class="page-header">
+      <div>
+        <h1>📰 News &amp; Rumors</h1>
+      </div>
+    </div>
+
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
+      <div class="filter-tabs" style="margin-bottom:0;">
+        <div class="filter-tab">All <span class="tab-count">70</span></div>
+        <div class="filter-tab">🔄 Rumours <span class="tab-count">47</span></div>
+        <div class="filter-tab active">📰 News <span class="tab-count">23</span></div>
+      </div>
+    </div>
+
+    <div class="league-chips">
+      <span class="league-chips-label">Leagues:</span>
+      <div class="league-chip"><span class="flag">🌍</span> All</div>
+      <div class="league-chip active"><span class="flag">🇮🇱</span> ISR</div>
+      <div class="league-chip"><span class="flag">🇳🇱</span> NL</div>
+      <div class="league-chip"><span class="flag">🇧🇪</span> BEL</div>
+      <div class="league-chip"><span class="flag">🇹🇷</span> TUR</div>
+    </div>
+
+    <!-- Only Israel news shown -->
+    <div class="news-card">
+      <div class="news-card-header">
+        <div class="news-source">
+          <span class="dot"></span>
+          Transfermarkt · 🇮🇱 Ligat Ha'al
+        </div>
+        <span class="rumour-date">06.03 · 19:30</span>
+      </div>
+      <div class="news-headline">Maccabi Tel Aviv targeting two reinforcements for ACL campaign push</div>
+      <div class="news-excerpt">According to sources close to the club, Maccabi Tel Aviv are actively pursuing a central defender and a striker ahead of their Asian Champions League knockout stage...</div>
+      <div class="news-tags">
+        <span class="news-tag">Maccabi Tel Aviv</span>
+        <span class="news-tag league-tag">🇮🇱 Ligat Ha'al</span>
+      </div>
+    </div>
+
+    <div class="news-card">
+      <div class="news-card-header">
+        <div class="news-source">
+          <span class="dot"></span>
+          Transfermarkt · 🇮🇱 Ligat Ha'al
+        </div>
+        <span class="rumour-date">06.03 · 14:15</span>
+      </div>
+      <div class="news-headline">Hapoel Beer Sheva complete signing of Serbian defender on 2-year deal</div>
+      <div class="news-excerpt">Hapoel Beer Sheva have officially announced the signing of centre-back Nikola Petrović from FK Vojvodina on a two-year contract with an option for a third year...</div>
+      <div class="news-tags">
+        <span class="news-tag">Hapoel Beer Sheva</span>
+        <span class="news-tag">FK Vojvodina</span>
+        <span class="news-tag league-tag">🇮🇱 Ligat Ha'al</span>
+      </div>
+    </div>
+
+    <div class="news-card">
+      <div class="news-card-header">
+        <div class="news-source">
+          <span class="dot"></span>
+          Transfermarkt · 🇮🇱 Ligat Ha'al
+        </div>
+        <span class="rumour-date">05.03 · 20:45</span>
+      </div>
+      <div class="news-headline">Maccabi Haifa youngster called up to Israel U-21 squad</div>
+      <div class="news-excerpt">The 19-year-old midfielder has been included in the latest Israel U-21 national team squad after impressive performances in the league...</div>
+      <div class="news-tags">
+        <span class="news-tag">Maccabi Haifa</span>
+        <span class="news-tag league-tag">🇮🇱 Ligat Ha'al</span>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div style="height:80px;"></div>
+</div>
+
+</body>
+</html>

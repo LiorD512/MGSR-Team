@@ -118,6 +118,116 @@ function StatCard({
   );
 }
 
+const SALARY_OPTIONS = ['>5', '6-10', '11-15', '16-20', '20-25', '26-30', '30+'];
+const FEE_OPTIONS = ['Free/Free loan', '<200', '300-600', '700-900', '1m+'];
+
+function SalaryTransferFeeModal({
+  currentSalaryRange,
+  currentTransferFee,
+  onDismiss,
+  onSave,
+  onClear,
+  t,
+}: {
+  currentSalaryRange: string | null;
+  currentTransferFee: string | null;
+  onDismiss: () => void;
+  onSave: (salary: string | null, fee: string | null) => void;
+  onClear: () => void;
+  t: (key: string) => string;
+}) {
+  const [selectedSalary, setSelectedSalary] = useState(currentSalaryRange);
+  const [selectedFee, setSelectedFee] = useState(currentTransferFee);
+  const hasCurrent = !!(currentSalaryRange || currentTransferFee);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
+      onClick={onDismiss}
+    >
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" aria-hidden />
+      <div
+        className="relative w-full sm:max-w-md bg-mgsr-card border border-mgsr-border rounded-t-2xl sm:rounded-2xl shadow-2xl p-6 animate-in slide-in-from-bottom duration-200"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between mb-5">
+          <h3 className="text-lg font-semibold text-mgsr-text">{t('player_info_salary_fee_title')}</h3>
+          <button
+            onClick={onDismiss}
+            className="text-mgsr-muted hover:text-mgsr-text transition p-1"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+          </button>
+        </div>
+
+        <div className="h-px bg-mgsr-border mb-5" />
+
+        {/* Salary range */}
+        <p className="text-sm text-mgsr-muted mb-2.5">{t('player_info_salary')}</p>
+        <div className="flex flex-wrap gap-2 mb-5">
+          {SALARY_OPTIONS.map((opt) => (
+            <button
+              key={opt}
+              type="button"
+              onClick={() => setSelectedSalary(selectedSalary === opt ? null : opt)}
+              className={`px-3.5 py-2 rounded-full text-sm border transition-all ${
+                selectedSalary === opt
+                  ? 'bg-mgsr-teal/20 border-mgsr-teal text-mgsr-teal font-medium'
+                  : 'bg-mgsr-dark/50 border-mgsr-border text-mgsr-muted hover:border-mgsr-muted/50'
+              }`}
+            >
+              {opt}
+            </button>
+          ))}
+        </div>
+
+        {/* Transfer fee */}
+        <p className="text-sm text-mgsr-muted mb-2.5">{t('player_info_transfer_fee')}</p>
+        <div className="flex flex-wrap gap-2 mb-6">
+          {FEE_OPTIONS.map((opt) => (
+            <button
+              key={opt}
+              type="button"
+              onClick={() => setSelectedFee(selectedFee === opt ? null : opt)}
+              className={`px-3.5 py-2 rounded-full text-sm border transition-all ${
+                selectedFee === opt
+                  ? 'bg-mgsr-teal/20 border-mgsr-teal text-mgsr-teal font-medium'
+                  : 'bg-mgsr-dark/50 border-mgsr-border text-mgsr-muted hover:border-mgsr-muted/50'
+              }`}
+            >
+              {opt === 'Free/Free loan' ? t('requests_fee_free_loan') : opt}
+            </button>
+          ))}
+        </div>
+
+        {/* Actions */}
+        <div className="flex gap-3">
+          {hasCurrent && (
+            <button
+              onClick={onClear}
+              className="px-4 py-2.5 rounded-xl border border-red-500/30 text-red-400 hover:bg-red-500/10 transition text-sm"
+            >
+              {t('player_info_salary_fee_clear')}
+            </button>
+          )}
+          <button
+            onClick={onDismiss}
+            className="flex-1 px-4 py-2.5 rounded-xl border border-mgsr-border text-mgsr-muted hover:bg-mgsr-card/80 transition text-sm"
+          >
+            {t('common_cancel')}
+          </button>
+          <button
+            onClick={() => onSave(selectedSalary ?? null, selectedFee ?? null)}
+            className="flex-1 px-4 py-2.5 rounded-xl bg-mgsr-teal text-white font-medium hover:bg-mgsr-teal/90 transition text-sm"
+          >
+            {t('player_info_salary_fee_save')}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function PlayerInfoPage() {
   const { user, loading } = useAuth();
   const { t, isRtl } = useLanguage();
@@ -175,6 +285,7 @@ export default function PlayerInfoPage() {
   const [savingPhone, setSavingPhone] = useState(false);
   const [confirmDeletePhone, setConfirmDeletePhone] = useState<'agent' | 'player' | null>(null);
   const [showPortfolioLanguageModal, setShowPortfolioLanguageModal] = useState(false);
+  const [showSalaryFeeModal, setShowSalaryFeeModal] = useState(false);
   const [clubRequests, setClubRequests] = useState<(ClubRequest & { status?: string; clubName?: string; clubLogo?: string; clubCountry?: string; contactPhoneNumber?: string })[]>([]);
   const [playerOffers, setPlayerOffers] = useState<{ id: string; requestId?: string; clubFeedback?: string; offeredAt?: number; markedByAgentName?: string; [key: string]: unknown }[]>([]);
   const prevValidMandateCountRef = useRef<number | null>(null);
@@ -642,6 +753,29 @@ export default function PlayerInfoPage() {
       setSavingPhone(false);
     }
   }, [id, player]);
+
+  const saveSalaryFee = useCallback(async (salaryRange: string | null, transferFee: string | null) => {
+    if (!id) return;
+    try {
+      const updates: Record<string, unknown> = {};
+      if (salaryRange !== undefined) updates.salaryRange = salaryRange;
+      if (transferFee !== undefined) updates.transferFee = transferFee;
+      await updateDoc(doc(db, 'Players', id), updates);
+      setShowSalaryFeeModal(false);
+    } catch (err) {
+      console.error('Failed to save salary/fee:', err);
+    }
+  }, [id]);
+
+  const clearSalaryFee = useCallback(async () => {
+    if (!id) return;
+    try {
+      await updateDoc(doc(db, 'Players', id), { salaryRange: deleteField(), transferFee: deleteField() });
+      setShowSalaryFeeModal(false);
+    } catch (err) {
+      console.error('Failed to clear salary/fee:', err);
+    }
+  }, [id]);
 
   const translateFoot = (foot: string | undefined): string | undefined => {
     if (!foot) return undefined;
@@ -1233,15 +1367,33 @@ export default function PlayerInfoPage() {
           <StatCard label={t('player_info_nationality')} value={merged.nationality} />
           <StatCard label={t('player_info_foot')} value={translateFoot(merged.foot)} />
           <StatCard label={t('player_info_contract')} value={merged.contractExpired} />
-          <StatCard label={t('player_info_salary')} value={player.salaryRange} />
-          <StatCard
-            label={t('player_info_transfer_fee')}
-            value={
-              player.transferFee?.toLowerCase() === 'free/free loan'
-                ? t('requests_fee_free_loan')
-                : player.transferFee
-            }
-          />
+          {/* Salary & Transfer Fee — clickable card */}
+          <button
+            type="button"
+            onClick={() => setShowSalaryFeeModal(true)}
+            className="shrink-0 min-w-[120px] lg:min-w-0 px-4 py-3 rounded-xl border bg-mgsr-card/50 border-mgsr-border hover:border-mgsr-teal/50 transition-colors text-start group cursor-pointer"
+          >
+            <p className="text-xs text-mgsr-muted uppercase tracking-wider whitespace-nowrap flex items-center gap-1">
+              {t('player_info_salary')}
+              <svg className="w-3 h-3 text-mgsr-muted opacity-0 group-hover:opacity-100 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+            </p>
+            <p className={`font-semibold mt-0.5 whitespace-nowrap ${player.salaryRange ? 'text-mgsr-text' : 'text-mgsr-muted/40'}`}>
+              {player.salaryRange || '—'}
+            </p>
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowSalaryFeeModal(true)}
+            className="shrink-0 min-w-[120px] lg:min-w-0 px-4 py-3 rounded-xl border bg-mgsr-card/50 border-mgsr-border hover:border-mgsr-teal/50 transition-colors text-start group cursor-pointer"
+          >
+            <p className="text-xs text-mgsr-muted uppercase tracking-wider whitespace-nowrap flex items-center gap-1">
+              {t('player_info_transfer_fee')}
+              <svg className="w-3 h-3 text-mgsr-muted opacity-0 group-hover:opacity-100 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+            </p>
+            <p className={`font-semibold mt-0.5 whitespace-nowrap ${player.transferFee ? 'text-mgsr-text' : 'text-mgsr-muted/40'}`}>
+              {player.transferFee?.toLowerCase() === 'free/free loan' ? t('requests_fee_free_loan') : player.transferFee || '—'}
+            </p>
+          </button>
           </div>
         </div>
 
@@ -2342,6 +2494,18 @@ export default function PlayerInfoPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Salary & Transfer Fee Modal */}
+      {showSalaryFeeModal && (
+        <SalaryTransferFeeModal
+          currentSalaryRange={player?.salaryRange ?? null}
+          currentTransferFee={player?.transferFee ?? null}
+          onDismiss={() => setShowSalaryFeeModal(false)}
+          onSave={saveSalaryFee}
+          onClear={clearSalaryFee}
+          t={t}
+        />
       )}
     </AppLayout>
   );
