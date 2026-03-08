@@ -51,7 +51,7 @@ export default function LoginPage() {
       <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg viewBox=%220 0 256 256%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noise%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.9%22 numOctaves=%224%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noise)%22 opacity=%220.03%22/%3E%3C/svg%3E')] opacity-30" />
 
       <div className="w-full max-w-md relative z-10">
-        <div className="bg-mgsr-card border border-mgsr-border rounded-2xl p-8 shadow-2xl shadow-black/30">
+        <div className="bg-mgsr-card border border-mgsr-border rounded-2xl p-6 sm:p-8 shadow-2xl shadow-black/30">
           <h1 className="text-3xl font-display font-bold text-mgsr-teal tracking-tight mb-2">
             {t('login_title')}
           </h1>

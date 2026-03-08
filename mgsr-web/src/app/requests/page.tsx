@@ -911,7 +911,7 @@ export default function RequestsPage() {
         />
 
         {deleteConfirm && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={() => !deleting && setDeleteConfirm(null)}>
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => !deleting && setDeleteConfirm(null)}>
             <div
               className="bg-mgsr-card border border-mgsr-border rounded-2xl p-6 max-w-sm w-full mx-4 shadow-xl"
               onClick={(e) => e.stopPropagation()}

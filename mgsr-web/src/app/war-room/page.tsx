@@ -534,10 +534,10 @@ export default function WarRoomPage() {
           </h1>
 
           {/* War Room main tabs: Discovery | AI Scout Agents | AI Scout */}
-          <div className="flex gap-1 p-1 rounded-xl bg-mgsr-card border border-mgsr-border mt-4 mb-4">
+          <div className="flex gap-1 p-1 rounded-xl bg-mgsr-card border border-mgsr-border mt-4 mb-4 overflow-x-auto" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
             <button
               onClick={() => setWarRoomTab('discovery')}
-              className={`flex-1 px-3 py-2 rounded-lg text-sm font-semibold transition ${
+              className={`shrink-0 flex-1 px-2 sm:px-3 py-2 rounded-lg text-xs sm:text-sm font-semibold transition whitespace-nowrap min-h-[40px] ${
                 warRoomTab === 'discovery'
                   ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30'
                   : 'text-mgsr-muted hover:text-mgsr-text hover:bg-mgsr-dark border border-transparent'
@@ -547,7 +547,7 @@ export default function WarRoomPage() {
             </button>
             <button
               onClick={() => setWarRoomTab('scout-agents')}
-              className={`flex-1 px-3 py-2 rounded-lg text-sm font-semibold transition ${
+              className={`shrink-0 flex-1 px-2 sm:px-3 py-2 rounded-lg text-xs sm:text-sm font-semibold transition whitespace-nowrap min-h-[40px] ${
                 warRoomTab === 'scout-agents'
                   ? 'bg-mgsr-teal/20 text-mgsr-teal border border-mgsr-teal/40'
                   : 'text-mgsr-muted hover:text-mgsr-text hover:bg-mgsr-dark border border-transparent'
@@ -557,23 +557,23 @@ export default function WarRoomPage() {
             </button>
             <button
               onClick={() => setWarRoomTab('ai-scout')}
-              className={`flex-1 px-3 py-2 rounded-lg text-sm font-semibold transition ${
+              className={`shrink-0 flex-1 px-2 sm:px-3 py-2 rounded-lg text-xs sm:text-sm font-semibold transition whitespace-nowrap min-h-[40px] ${
                 warRoomTab === 'ai-scout'
                   ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30'
                   : 'text-mgsr-muted hover:text-mgsr-text hover:bg-mgsr-dark border border-transparent'
               }`}
             >
-              {isHe ? '🔍 חיפוש AI' : '🔍 AI Search'}
+              {isHe ? '🔍 AI' : '🔍 AI Search'}
             </button>
             <button
               onClick={() => setWarRoomTab('find-next')}
-              className={`flex-1 px-3 py-2 rounded-lg text-sm font-semibold transition ${
+              className={`shrink-0 flex-1 px-2 sm:px-3 py-2 rounded-lg text-xs sm:text-sm font-semibold transition whitespace-nowrap min-h-[40px] ${
                 warRoomTab === 'find-next'
                   ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
                   : 'text-mgsr-muted hover:text-mgsr-text hover:bg-mgsr-dark border border-transparent'
               }`}
             >
-              {isHe ? '🧠 מצא את הבא' : '🧠 Find Next'}
+              {isHe ? '🧠 הבא' : '🧠 Find Next'}
             </button>
           </div>
 

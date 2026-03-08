@@ -404,18 +404,18 @@ export default function NewsPage() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-3 gap-3 mb-5">
-          <div className="bg-mgsr-card border border-mgsr-border rounded-xl p-3 text-center">
-            <div className="text-xl md:text-2xl font-bold text-mgsr-accent">{rumourCount}</div>
-            <div className="text-[11px] text-mgsr-muted uppercase tracking-wide">{t('news_stat_rumours')}</div>
+        <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-5">
+          <div className="bg-mgsr-card border border-mgsr-border rounded-xl p-2 sm:p-3 text-center">
+            <div className="text-lg sm:text-xl md:text-2xl font-bold text-mgsr-accent">{rumourCount}</div>
+            <div className="text-[10px] sm:text-[11px] text-mgsr-muted uppercase tracking-wide">{t('news_stat_rumours')}</div>
           </div>
-          <div className="bg-mgsr-card border border-mgsr-border rounded-xl p-3 text-center">
-            <div className="text-xl md:text-2xl font-bold text-blue-400">{newsCount}</div>
-            <div className="text-[11px] text-mgsr-muted uppercase tracking-wide">{t('news_stat_news')}</div>
+          <div className="bg-mgsr-card border border-mgsr-border rounded-xl p-2 sm:p-3 text-center">
+            <div className="text-lg sm:text-xl md:text-2xl font-bold text-blue-400">{newsCount}</div>
+            <div className="text-[10px] sm:text-[11px] text-mgsr-muted uppercase tracking-wide">{t('news_stat_news')}</div>
           </div>
-          <div className="bg-mgsr-card border border-mgsr-border rounded-xl p-3 text-center">
-            <div className="text-xl md:text-2xl font-bold text-mgsr-text">{uniqueLeagues || LEAGUE_CHIPS.length}</div>
-            <div className="text-[11px] text-mgsr-muted uppercase tracking-wide">{t('news_stat_leagues')}</div>
+          <div className="bg-mgsr-card border border-mgsr-border rounded-xl p-2 sm:p-3 text-center">
+            <div className="text-lg sm:text-xl md:text-2xl font-bold text-mgsr-text">{uniqueLeagues || LEAGUE_CHIPS.length}</div>
+            <div className="text-[10px] sm:text-[11px] text-mgsr-muted uppercase tracking-wide">{t('news_stat_leagues')}</div>
           </div>
         </div>
 
