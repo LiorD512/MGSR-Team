@@ -64,8 +64,15 @@ export function useEuCountries(): Set<string> {
 /**
  * Pure helper — check nationality against a Set of EU country names.
  * Handles common Transfermarkt nationality formats (e.g. "Germany", "Türkiye").
+ * When a nationalities array is provided, returns true if ANY nationality in
+ * the array is an EU country.
  */
-export function isEuNational(nationality: string | undefined, euSet: Set<string>): boolean {
-  if (!nationality?.trim() || euSet.size === 0) return false;
-  return euSet.has(nationality.trim().toLowerCase());
+export function isEuNational(
+  nationality: string | undefined,
+  euSet: Set<string>,
+  nationalities?: string[],
+): boolean {
+  if (euSet.size === 0) return false;
+  const list = nationalities?.length ? nationalities : nationality ? [nationality] : [];
+  return list.some((n) => euSet.has(n.trim().toLowerCase()));
 }

@@ -1521,7 +1521,7 @@ private fun PlayerCardVariantA(
                             overflow = TextOverflow.Ellipsis,
                         )
 
-                        if (platform == Platform.MEN && EuCountries.isEuNational(player.nationality)) {
+                        if (platform == Platform.MEN && EuCountries.isEuNational(player.nationalities, player.nationality)) {
                             Text(
                                 text = stringResource(R.string.eu_nat_badge),
                                 style = boldTextStyle(Color.White, 8.sp),

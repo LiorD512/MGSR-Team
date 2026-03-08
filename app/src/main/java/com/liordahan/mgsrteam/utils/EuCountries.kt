@@ -19,4 +19,9 @@ object EuCountries {
         if (nationality.isNullOrBlank()) return false
         return euCountryNames.any { it.equals(nationality.trim(), ignoreCase = true) }
     }
+
+    fun isEuNational(nationalities: List<String>?, fallbackNationality: String? = null): Boolean {
+        val list = nationalities?.takeIf { it.isNotEmpty() } ?: listOfNotNull(fallbackNationality)
+        return list.any { isEuNational(it) }
+    }
 }

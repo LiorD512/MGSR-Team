@@ -58,26 +58,6 @@ const POSITION_HE: Record<string, string> = {
 /* ── League chips config ── */
 const LEAGUE_CHIPS = [
   { code: 'ISR1', label: 'ISR', flag: '🇮🇱' },
-  { code: 'NL1', label: 'NL', flag: '🇳🇱' },
-  { code: 'BE1', label: 'BEL', flag: '🇧🇪' },
-  { code: 'TR1', label: 'TUR', flag: '🇹🇷' },
-  { code: 'PO1', label: 'POR', flag: '🇵🇹' },
-  { code: 'GR1', label: 'GRE', flag: '🇬🇷' },
-  { code: 'PL1', label: 'POL', flag: '🇵🇱' },
-  { code: 'A1', label: 'AUT', flag: '🇦🇹' },
-  { code: 'SER1', label: 'SER', flag: '🇷🇸' },
-  { code: 'SE1', label: 'SWE', flag: '🇸🇪' },
-  { code: 'C1', label: 'SUI', flag: '🇨🇭' },
-  { code: 'TS1', label: 'CZE', flag: '🇨🇿' },
-  { code: 'RO1', label: 'ROM', flag: '🇷🇴' },
-  { code: 'GB2', label: 'EFL', flag: '🏴󠁧󠁢󠁥󠁮󠁧󠁿' },
-  { code: 'L2', label: 'BL2', flag: '🇩🇪' },
-  { code: 'BU1', label: 'BUL', flag: '🇧🇬' },
-  { code: 'UNG1', label: 'HUN', flag: '🇭🇺' },
-  { code: 'ZYP1', label: 'CYP', flag: '🇨🇾' },
-  { code: 'AZE1', label: 'AZE', flag: '🇦🇿' },
-  { code: 'KAZ1', label: 'KAZ', flag: '🇰🇿' },
-  { code: 'SLO1', label: 'SVK', flag: '🇸🇰' },
 ];
 
 type TabFilter = 'all' | 'rumours' | 'news';
@@ -98,6 +78,7 @@ export default function NewsPage() {
   const [tmNews, setTmNews] = useState<LeagueNewsItem[]>([]);
   const [googleNews, setGoogleNews] = useState<GoogleNewsItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingRumours, setLoadingRumours] = useState(false);
   const [error, setError] = useState('');
   const [tab, setTab] = useState<TabFilter>('all');
   const [leagueFilter, setLeagueFilter] = useState<string | null>(null);
@@ -243,31 +224,45 @@ export default function NewsPage() {
     const currentLang = (typeof window !== 'undefined' && localStorage.getItem('mgsr-lang')) || 'en';
 
     setLoading(true);
+    setLoadingRumours(true);
     setError('');
-    try {
-      const [r, tn, gn] = await Promise.allSettled([
-        getRumours(15),
-        getLeagueNews(),
-        getGoogleNews(undefined, currentLang),
-      ]);
 
-      const rumData = r.status === 'fulfilled' ? r.value : [];
-      const tnData = tn.status === 'fulfilled' ? tn.value : [];
-      const gnData = gn.status === 'fulfilled' ? gn.value : [];
+    // Progressive loading: fire all 3 independently, update UI as each arrives
+    let rumData: RumourItem[] = [];
+    let tnData: LeagueNewsItem[] = [];
+    let gnData: GoogleNewsItem[] = [];
+    let settled = 0;
 
-      setRumours(rumData);
-      setTmNews(tnData);
-      setGoogleNews(gnData);
-      setLastUpdated(new Date());
+    const markArrived = () => {
+      settled++;
+      // Clear loading spinner as soon as the first data source arrives
+      if (settled === 1) setLoading(false);
+      // Cache once all 3 are done
+      if (settled >= 3) {
+        setLastUpdated(new Date());
+        setScreenCache('news-rumors', {
+          rumours: rumData, tmNews: tnData, googleNews: gnData, ts: Date.now(),
+        }, user?.uid);
+      }
+    };
 
-      setScreenCache('news-rumors', {
-        rumours: rumData, tmNews: tnData, googleNews: gnData, ts: Date.now(),
-      }, user?.uid);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load');
-    } finally {
-      setLoading(false);
-    }
+    // League news — fastest (1 league)
+    getLeagueNews()
+      .then(d => { tnData = d; setTmNews(d); })
+      .catch(() => {})
+      .finally(markArrived);
+
+    // Google News — medium speed (5 RSS feeds)
+    getGoogleNews(undefined, currentLang)
+      .then(d => { gnData = d; setGoogleNews(d); })
+      .catch(() => {})
+      .finally(markArrived);
+
+    // Rumours — slowest (15 pages + MV enrichment)
+    getRumours(15)
+      .then(d => { rumData = d; setRumours(d); })
+      .catch(() => {})
+      .finally(() => { setLoadingRumours(false); markArrived(); });
   }, [user?.uid]);
 
   useEffect(() => {
@@ -405,8 +400,14 @@ export default function NewsPage() {
 
         {/* Stats */}
         <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-5">
-          <div className="bg-mgsr-card border border-mgsr-border rounded-xl p-2 sm:p-3 text-center">
-            <div className="text-lg sm:text-xl md:text-2xl font-bold text-mgsr-accent">{rumourCount}</div>
+          <div className="bg-mgsr-card border border-mgsr-border rounded-xl p-2 sm:p-3 text-center relative">
+            <div className="text-lg sm:text-xl md:text-2xl font-bold text-mgsr-accent">
+              {loadingRumours ? (
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="w-3 h-3 border-2 border-mgsr-accent border-t-transparent rounded-full animate-spin" />
+                </span>
+              ) : rumourCount}
+            </div>
             <div className="text-[10px] sm:text-[11px] text-mgsr-muted uppercase tracking-wide">{t('news_stat_rumours')}</div>
           </div>
           <div className="bg-mgsr-card border border-mgsr-border rounded-xl p-2 sm:p-3 text-center">
@@ -435,6 +436,9 @@ export default function NewsPage() {
                 {t2 === 'all' && `${t('news_tab_all')}`}
                 {t2 === 'rumours' && `🔄 ${t('news_tab_rumours')}`}
                 {t2 === 'news' && `📰 ${t('news_tab_news')}`}
+                {loadingRumours && t2 === 'rumours' && (
+                  <span className="ml-1 inline-block w-2.5 h-2.5 border-2 border-mgsr-accent border-t-transparent rounded-full animate-spin align-middle" />
+                )}
                 <span className={`ml-1.5 text-xs px-1.5 py-0.5 rounded-full ${
                   tab === t2 ? 'bg-black/20' : 'bg-white/5'
                 }`}>

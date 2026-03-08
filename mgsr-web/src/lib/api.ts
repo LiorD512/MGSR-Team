@@ -45,7 +45,9 @@ export interface PlayerDetails {
   positions?: string[];
   profileImage?: string;
   nationality?: string;
+  nationalities?: string[];
   nationalityFlag?: string;
+  nationalityFlags?: string[];
   contractExpires?: string;
   marketValue?: string;
   currentClub?: {

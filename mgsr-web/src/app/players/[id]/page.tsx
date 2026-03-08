@@ -48,6 +48,8 @@ interface Player {
   height?: string;
   nationality?: string;
   nationalityFlag?: string;
+  nationalities?: string[];
+  nationalityFlags?: string[];
   contractExpired?: string;
   tmProfile?: string;
   notes?: string;
@@ -687,13 +689,15 @@ export default function PlayerInfoPage() {
     age: player?.age ?? liveData?.age,
     height: player?.height ?? liveData?.height,
     nationality: player?.nationality ?? liveData?.nationality,
+    nationalities: player?.nationalities ?? liveData?.nationalities,
     nationalityFlag: player?.nationalityFlag ?? liveData?.nationalityFlag,
+    nationalityFlags: (player as any)?.nationalityFlags ?? liveData?.nationalityFlags,
     contractExpired: player?.contractExpired ?? liveData?.contractExpires,
     positions: player?.positions ?? liveData?.positions,
     foot: player?.foot ?? liveData?.foot,
   };
 
-  const isEuPlayer = isEuNational(merged.nationality, euCountries);
+  const isEuPlayer = isEuNational(merged.nationality, euCountries, merged.nationalities);
 
   const getPhone = () =>
     player?.playerAdditionalInfoModel?.playerNumber ||
@@ -1303,13 +1307,24 @@ export default function PlayerInfoPage() {
                 alt=""
                 className="w-24 h-24 sm:w-40 sm:h-40 rounded-2xl object-cover bg-mgsr-dark ring-4 ring-mgsr-border shadow-2xl"
               />
-              {merged.nationalityFlag && (
-                <img
-                  src={merged.nationalityFlag}
-                  alt=""
-                  className="absolute -bottom-2 -right-2 w-8 h-6 rounded object-cover border-2 border-mgsr-dark shadow"
-                />
-              )}
+              {/* Nationality flags — overlapping flag-in-flag for dual citizenship */}
+              {(() => {
+                const flags = merged.nationalityFlags?.filter(Boolean);
+                const primaryFlag = merged.nationalityFlag;
+                if (flags && flags.length > 1) {
+                  return (
+                    <div className="absolute -bottom-3 -right-4 w-9 h-8 sm:w-10 sm:h-9">
+                      {/* Two overlapping rectangle flags */}
+                      <img src={flags[1]} alt="" className="absolute bottom-0 right-0 w-7 h-5 sm:w-8 sm:h-6 rounded object-cover border-2 border-mgsr-dark shadow" />
+                      <img src={flags[0]} alt="" className="absolute top-0 left-0 w-7 h-5 sm:w-8 sm:h-6 rounded object-cover border-2 border-mgsr-dark shadow-lg" />
+                    </div>
+                  );
+                }
+                if (primaryFlag) {
+                  return <img src={primaryFlag} alt="" className="absolute -bottom-2 -right-2 w-8 h-6 rounded object-cover border-2 border-mgsr-dark shadow" />;
+                }
+                return null;
+              })()}
             </div>
             <div className="flex-1 text-center sm:text-left min-w-0">
               <h1 className="text-2xl sm:text-4xl font-display font-bold text-mgsr-text tracking-tight">
@@ -1364,7 +1379,32 @@ export default function PlayerInfoPage() {
           <div className="flex lg:grid lg:grid-cols-6 gap-3 overflow-x-auto lg:overflow-visible pb-2 lg:pb-0" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
           <StatCard label={t('player_info_age')} value={merged.age} />
           <StatCard label={t('player_info_height')} value={merged.height} />
-          <StatCard label={t('player_info_nationality')} value={merged.nationality} />
+          {/* Nationality card — show all citizenships with flags */}
+          {(() => {
+            const allNat = merged.nationalities?.filter(Boolean) || [];
+            const allFlags = merged.nationalityFlags?.filter(Boolean) || [];
+            const primary = merged.nationality;
+            if (allNat.length > 1) {
+              return (
+                <div className="shrink-0 min-w-[120px] lg:min-w-0 px-4 py-3 rounded-xl border bg-mgsr-card/50 border-mgsr-border">
+                  <p className="text-xs text-mgsr-muted uppercase tracking-wider whitespace-nowrap">{t('player_info_nationality')}</p>
+                  <div className="mt-1.5 flex items-center gap-3">
+                    {/* Overlapping rectangle flags */}
+                    <div className="relative w-9 h-7 shrink-0">
+                      <img src={allFlags[1]} alt="" className="absolute bottom-0 right-0 w-7 h-5 rounded object-cover border border-mgsr-border shadow" />
+                      <img src={allFlags[0]} alt="" className="absolute top-0 left-0 w-7 h-5 rounded object-cover border border-mgsr-border shadow-lg" />
+                    </div>
+                    <div className="flex flex-col gap-0.5">
+                      {allNat.map((nat: string, i: number) => (
+                        <span key={i} className="font-semibold text-mgsr-text text-sm leading-tight whitespace-nowrap">{nat}</span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              );
+            }
+            return <StatCard label={t('player_info_nationality')} value={primary} />;
+          })()}
           <StatCard label={t('player_info_foot')} value={translateFoot(merged.foot)} />
           <StatCard label={t('player_info_contract')} value={merged.contractExpired} />
           {/* Salary & Transfer Fee — clickable card */}

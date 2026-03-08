@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -716,14 +717,19 @@ fun PlayerInfoScreen(
                     )
                     NationalityInfoRow(
                         stringResource(R.string.player_info_nationality),
-                        playerToPresent?.nationality,
-                        playerToPresent?.nationalityFlag,
+                        nationalities = playerToPresent?.nationalities,
+                        nationalityFlags = playerToPresent?.nationalityFlags,
+                        fallbackNationality = playerToPresent?.nationality,
+                        fallbackFlag = playerToPresent?.nationalityFlag,
                         darkTheme = true
                     )
 
-                    if (currentPlatform == Platform.MEN && EuCountries.isEuNational(playerToPresent?.nationality)) {
+                    if (currentPlatform == Platform.MEN && EuCountries.isEuNational(playerToPresent?.nationalities, playerToPresent?.nationality)) {
                         Row(
-                            modifier = Modifier.padding(start = 28.dp, top = 2.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 2.dp),
+                            horizontalArrangement = Arrangement.End,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
@@ -1238,7 +1244,9 @@ private fun PlayerInfoHeroCard(
                     player.age?.let { append(" • ${it.trim()} ${stringResource(R.string.player_info_years_short)}") }
                     player.currentClub?.clubName?.let { append(" • $it") }
                 }.ifEmpty { "—" },
-                style = regularTextStyle(PlatformColors.palette.textSecondary, 13.sp)
+                style = regularTextStyle(PlatformColors.palette.textSecondary, 13.sp),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
             Spacer(Modifier.height(2.dp))
             Text(
@@ -2800,19 +2808,22 @@ fun ClubInfoRow(
         Text(
             text = title,
             style = regularTextStyle(labelColor, 14.sp),
-            modifier = Modifier.weight(1f)
         )
+        Spacer(Modifier.width(8.dp))
         Row(
+            modifier = Modifier.weight(1f),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
+            horizontalArrangement = Arrangement.End
         ) {
             Text(
                 text = value ?: "--",
                 style = boldTextStyle(valueColor, 14.sp),
                 textAlign = TextAlign.End,
                 overflow = TextOverflow.Ellipsis,
-                maxLines = 1
+                maxLines = 1,
+                modifier = Modifier.weight(1f, fill = false)
             )
+            Spacer(Modifier.width(6.dp))
             AsyncImage(
                 model = clubLogo,
                 contentDescription = null,
@@ -2936,18 +2947,26 @@ fun AgencyInfoRow(
 @Composable
 fun NationalityInfoRow(
     title: String,
-    value: String?,
-    nationalityFlag: String?,
+    nationalities: List<String>? = null,
+    nationalityFlags: List<String>? = null,
+    fallbackNationality: String? = null,
+    fallbackFlag: String? = null,
     darkTheme: Boolean = false
 ) {
     val labelColor = if (darkTheme) PlatformColors.palette.textSecondary else contentDefault
     val valueColor = if (darkTheme) PlatformColors.palette.textPrimary else contentDefault
+    val names = nationalities?.filter { it.isNotBlank() }.orEmpty()
+    val rawFlags = nationalityFlags?.filter { it.isNotBlank() }.orEmpty()
+    // Fall back: if we have dual names but no flag URLs, use the single fallbackFlag
+    val flags = rawFlags.ifEmpty { listOfNotNull(fallbackFlag) }
+    val hasDual = names.size > 1
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 6.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = if (hasDual) Alignment.Top else Alignment.CenterVertically
     ) {
         Icon(
             modifier = Modifier.size(24.dp),
@@ -2961,24 +2980,82 @@ fun NationalityInfoRow(
             style = regularTextStyle(labelColor, 14.sp),
             modifier = Modifier.weight(1f)
         )
-        Row(
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = value ?: "--",
-                style = boldTextStyle(valueColor, 14.sp),
-                textAlign = TextAlign.End
-            )
-
-            Spacer(Modifier.width(8.dp))
-
-            AsyncImage(
-                model = nationalityFlag,
-                contentDescription = null,
-                modifier = Modifier
-                    .size(25.dp)
-                    .clip(CircleShape)
-            )
+        if (hasDual) {
+            // Dual citizenship — stacked names + overlapping rectangle flags
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Names stacked on the left
+                Column(
+                    horizontalAlignment = Alignment.End
+                ) {
+                    names.forEach { name ->
+                        Text(
+                            text = name,
+                            style = boldTextStyle(valueColor, 13.sp),
+                            textAlign = TextAlign.End
+                        )
+                    }
+                }
+                Spacer(Modifier.width(8.dp))
+                if (flags.size >= 2) {
+                    // Two overlapping rounded-rectangle flags
+                    Box(modifier = Modifier.size(width = 38.dp, height = 28.dp)) {
+                        // Back flag (second nationality) — offset to the right
+                        AsyncImage(
+                            model = flags.getOrNull(1),
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .size(width = 26.dp, height = 18.dp)
+                                .align(Alignment.BottomEnd)
+                                .clip(RoundedCornerShape(3.dp))
+                                .border(1.dp, PlatformColors.palette.cardBorder, RoundedCornerShape(3.dp))
+                        )
+                        // Front flag (first nationality) — top-left
+                        AsyncImage(
+                            model = flags.getOrNull(0),
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .size(width = 26.dp, height = 18.dp)
+                                .align(Alignment.TopStart)
+                                .clip(RoundedCornerShape(3.dp))
+                                .border(1.dp, PlatformColors.palette.cardBorder, RoundedCornerShape(3.dp))
+                        )
+                    }
+                } else if (flags.size == 1) {
+                    // Only one flag URL available — show single rounded flag
+                    AsyncImage(
+                        model = flags[0],
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .size(width = 26.dp, height = 18.dp)
+                            .clip(RoundedCornerShape(3.dp))
+                            .border(1.dp, PlatformColors.palette.cardBorder, RoundedCornerShape(3.dp))
+                    )
+                }
+            }
+        } else {
+            // Single nationality
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = names.firstOrNull() ?: fallbackNationality ?: "--",
+                    style = boldTextStyle(valueColor, 14.sp),
+                    textAlign = TextAlign.End
+                )
+                Spacer(Modifier.width(8.dp))
+                AsyncImage(
+                    model = flags.firstOrNull() ?: fallbackFlag,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(25.dp)
+                        .clip(CircleShape)
+                )
+            }
         }
     }
 }

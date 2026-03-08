@@ -535,10 +535,23 @@ app.get('/api/transfermarkt/player', async (req, res) => {
     const html = await fetchHtmlWithRetry(url);
     const $ = cheerio.load(html);
 
-    const natEl = $('[itemprop=nationality] img').first();
-    const nationality = natEl.attr('title') || 'Unknown';
-    const nationalityFlag = (natEl.attr('src') || '')
-      .replace('verysmall', 'head').replace('tiny', 'head');
+    // Info-table Citizenship row has ALL citizenships; header itemprop only has primary
+    const citizenshipLabel = $('span.info-table__content--regular').filter(function() {
+      return $(this).text().trim().startsWith('Citizenship');
+    });
+    const citizenshipContent = citizenshipLabel.next('.info-table__content--bold');
+    let natEls = citizenshipContent.find('img');
+    if (!natEls.length) natEls = $('[itemprop=nationality] img');
+    const nationalities = [];
+    const nationalityFlags = [];
+    natEls.each((_, el) => {
+      const title = $(el).attr('title');
+      if (title) nationalities.push(title);
+      const src = ($(el).attr('src') || '').replace('verysmall', 'head').replace('tiny', 'head');
+      if (src) nationalityFlags.push(src);
+    });
+    const nationality = nationalities[0] || 'Unknown';
+    const nationalityFlag = nationalityFlags[0] || '';
 
     const height = $('[itemprop=height]').text().trim() || 'Unknown';
     const marketValueBox = $('div[class*="data-header__box--small"]').text();
@@ -600,7 +613,9 @@ app.get('/api/transfermarkt/player', async (req, res) => {
       positions,
       profileImage: makeAbsoluteUrl(profileImage),
       nationality,
+      nationalities,
       nationalityFlag: makeAbsoluteUrl(nationalityFlag),
+      nationalityFlags: nationalityFlags.map(makeAbsoluteUrl),
       contractExpires,
       marketValue,
       currentClub: {

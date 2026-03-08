@@ -254,20 +254,35 @@ async function enrichFromProfile(model) {
         .split("Last")[0]
         .trim() ||
       null;
-    const nationalityEl = $("[itemprop=nationality] img").first();
+    // Info-table Citizenship row has ALL citizenships; header itemprop only has primary
+    const citizenshipLabel = $('span.info-table__content--regular').filter(function() {
+      return $(this).text().trim().startsWith('Citizenship');
+    });
+    const citizenshipContent = citizenshipLabel.next('.info-table__content--bold');
+    let nationalityEls = citizenshipContent.find('img');
+    if (!nationalityEls.length) nationalityEls = $("[itemprop=nationality] img");
+    const allNationalities = [];
+    const allFlags = [];
+    nationalityEls.each((_, el) => {
+      const title = $(el).attr("title");
+      if (title) allNationalities.push(title.trim());
+      const src = $(el).attr("src");
+      if (src) allFlags.push(src.replace("tiny", "head").replace("verysmall", "head"));
+    });
     const nationality =
       model.playerNationality?.trim() ||
-      nationalityEl.attr("title")?.trim() ||
+      allNationalities[0] ||
       null;
     let flagSrc =
       model.playerNationalityFlag?.trim() ||
-      nationalityEl.attr("src")?.replace("tiny", "head").replace("verysmall", "head");
+      allFlags[0];
     const playerNationalityFlag = flagSrc ? makeAbsoluteUrl(flagSrc) : null;
 
     return {
       ...model,
       marketValue: marketValue || model.marketValue,
       playerNationality: nationality || model.playerNationality,
+      playerNationalities: allNationalities.length ? allNationalities : (model.playerNationalities || []),
       playerNationalityFlag: playerNationalityFlag || model.playerNationalityFlag,
     };
   } catch (e) {

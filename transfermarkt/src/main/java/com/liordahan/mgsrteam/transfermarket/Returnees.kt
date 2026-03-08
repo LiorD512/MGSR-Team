@@ -142,21 +142,28 @@ class Returnees {
                     .substringBefore("Last")
                     .trim()
                     .takeIf { it.isNotBlank() }
-            val nationalityElement = doc.select("[itemprop=nationality] img").firstOrNull()
-            val nationality = model.playerNationality?.takeIf { it.isNotBlank() }
-                ?: nationalityElement?.attr("title")?.takeIf { it.isNotBlank() }
-            val flagSrc = model.playerNationalityFlag?.takeIf { it.isNotBlank() }
-                ?: nationalityElement?.attr("src")?.takeIf { it.isNotBlank() }
+            val nationalityElements = doc.select("[itemprop=nationality] img")
+            val allNationalities = nationalityElements.mapNotNull {
+                it.attr("title").takeIf(String::isNotBlank)
+            }
+            val allFlags = nationalityElements.mapNotNull {
+                it.attr("src").takeIf(String::isNotBlank)
                     ?.replace("tiny", "head")
                     ?.replace("verysmall", "head")
-                    ?.let { makeAbsoluteUrl(it) }
+                    ?.let { src -> makeAbsoluteUrl(src) }
+            }
+            val nationality = model.playerNationality?.takeIf { it.isNotBlank() }
+                ?: allNationalities.firstOrNull()
+            val flagSrc = model.playerNationalityFlag?.takeIf { it.isNotBlank() }
+                ?: allFlags.firstOrNull()
             model.copy(
                 clubJoinedName = clubName ?: model.clubJoinedName,
                 clubJoinedLogo = clubLogo ?: model.clubJoinedLogo,
                 transferDate = returnDate ?: model.transferDate,
                 marketValue = marketValue ?: model.marketValue,
                 playerNationality = nationality ?: model.playerNationality,
-                playerNationalityFlag = flagSrc ?: model.playerNationalityFlag
+                playerNationalityFlag = flagSrc ?: model.playerNationalityFlag,
+                playerNationalities = allNationalities.ifEmpty { model.playerNationalities }
             )
         } catch (e: Exception) {
             Log.w(TAG, "Failed to enrich ${model.playerName}: ${e.message}")

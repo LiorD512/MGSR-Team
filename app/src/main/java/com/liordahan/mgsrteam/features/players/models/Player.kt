@@ -20,6 +20,8 @@ data class Player(
     val description: String? = null,
     val nationality: String? = null,
     val nationalityFlag: String? = null,
+    val nationalities: List<String>? = null,
+    val nationalityFlags: List<String>? = null,
     val contractExpired: String? = null,
     val tmProfile: String? = null,
     val marketValue: String? = null,

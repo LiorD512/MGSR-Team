@@ -41,7 +41,9 @@ data class TransfermarktPlayerDetails(
     val positions: List<String?>? = null,
     val profileImage: String? = null,
     val nationality: String? = null,
+    val nationalities: List<String> = emptyList(),
     val nationalityFlag: String? = null,
+    val nationalityFlags: List<String> = emptyList(),
     val contractExpires: String? = null,
     val marketValue: String? = null,
     val currentClub: TransfermarktClub? = null,
@@ -127,14 +129,10 @@ class PlayerSearch {
                 val profileUrl = playerSearchModel.tmProfile.orEmpty()
                 val doc = TransfermarktHttp.fetchDocument(profileUrl)
 
-                val nationalityElement = doc.select("[itemprop=nationality] img").firstOrNull()
+                val (allNationalities, allNationalityFlags) = extractAllNationalitiesFromProfile(doc)
                 val nationality =
-                    nationalityElement?.attr("title")?.takeIf { it.isNotEmpty() } ?: "Unknown"
-                val nationalityFlagFromDoc = nationalityElement
-                    ?.attr("src")
-                    ?.replace("verysmall", "head")
-                    ?.replace("tiny", "head")
-                    ?.orEmpty()
+                    allNationalities.firstOrNull() ?: "Unknown"
+                val nationalityFlagFromDoc = allNationalityFlags.firstOrNull().orEmpty()
 
                 val height = doc.select("[itemprop=height]").text().ifEmpty { "Unknown" }
                 val marketValue = doc.select("div[class=data-header__box--small]").text()
@@ -192,6 +190,8 @@ class PlayerSearch {
                     profileImage = profileImage.ifEmpty { playerSearchModel.playerImage },
                     nationalityFlag = nationalityFlag?.ifEmpty { null },
                     nationality = nationality,
+                    nationalities = allNationalities,
+                    nationalityFlags = allNationalityFlags,
                     age = age.ifEmpty { playerSearchModel.playerAge },
                     height = height,
                     contractExpires = contract,

@@ -9,6 +9,8 @@ data class PlayerToUpdateValues(
     val profileImage: String?,
     val nationalityFlag: String?,
     val citizenship: String?,
+    val citizenships: List<String> = emptyList(),
+    val citizenshipFlags: List<String> = emptyList(),
     val age: String?,
     val contract: String?,
     val positions: List<String?>?,
@@ -42,12 +44,9 @@ class PlayersUpdate {
                     TransfermarktHttp.fetchDocument(profileUrl)
                 }
 
-                val nationalityElement = doc.select("[itemprop=nationality] img").firstOrNull()
-                val citizenship = nationalityElement?.attr("title").orEmpty()
-                val flag = nationalityElement
-                    ?.attr("src")
-                    ?.replace("tiny", "head")
-                    .orEmpty()
+                val (citizenships, citizenshipFlags) = extractAllNationalitiesFromProfile(doc)
+                val citizenship = citizenships.firstOrNull().orEmpty()
+                val flag = citizenshipFlags.firstOrNull().orEmpty()
 
                 val contract = doc.select("span.data-header__label")
                     .text()
@@ -149,6 +148,8 @@ class PlayersUpdate {
                         profileImage = playerImage,
                         nationalityFlag = flag,
                         citizenship = citizenship,
+                        citizenships = citizenships,
+                        citizenshipFlags = citizenshipFlags,
                         age = age,
                         contract = contract,
                         positions = positionsList,

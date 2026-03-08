@@ -140,10 +140,23 @@ async function updatePlayerByTmProfile(tmProfile) {
   try {
     const $ = await fetchDocument(url);
 
-    const nationalityEl = $("[itemprop=nationality] img").first();
-    const citizenship = nationalityEl.attr("title") || "";
-    let flag = nationalityEl.attr("src") || "";
-    if (flag) flag = flag.replace("tiny", "head");
+    // Info-table Citizenship row has ALL citizenships; header itemprop only has primary
+    const citizenshipLabel = $('span.info-table__content--regular').filter(function() {
+      return $(this).text().trim().startsWith('Citizenship');
+    });
+    const citizenshipContent = citizenshipLabel.next('.info-table__content--bold');
+    let natEls = citizenshipContent.find('img');
+    if (!natEls.length) natEls = $("[itemprop=nationality] img");
+    const citizenships = [];
+    const citizenshipFlags = [];
+    natEls.each((_, el) => {
+      const title = $(el).attr("title");
+      if (title) citizenships.push(title);
+      let src = $(el).attr("src") || "";
+      if (src) citizenshipFlags.push(src.replace("tiny", "head").replace("verysmall", "head"));
+    });
+    const citizenship = citizenships[0] || "";
+    let flag = citizenshipFlags[0] || "";
 
     const contractText = $("span.data-header__label").text();
     const contract = contractText.split(":").pop()?.trim() || "";
@@ -201,6 +214,8 @@ async function updatePlayerByTmProfile(tmProfile) {
         profileImage: playerImage,
         nationalityFlag: flag,
         citizenship,
+        citizenships,
+        citizenshipFlags,
         age,
         contract,
         positions: positionsList,

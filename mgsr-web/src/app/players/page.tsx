@@ -328,7 +328,7 @@ export default function PlayersPage() {
 
     // EU National
     if (euNationalOnly && euCountries.size > 0) {
-      result = result.filter((p) => p.nationality ? isEuNational(p.nationality, euCountries) : false);
+      result = result.filter((p) => p.nationality ? isEuNational(p.nationality, euCountries, (p as any).nationalities) : false);
     }
 
     // Offered · No Feedback
@@ -841,7 +841,7 @@ export default function PlayersPage() {
                   ) : (
                     <div className="flex flex-col items-end gap-1">
                       <p className={`font-semibold ${isWomen ? 'text-[var(--women-rose)]' : 'text-[var(--mgsr-accent)]'}`}>{p.marketValue || '—'}</p>
-                      {platform === 'men' && isEuNational(p.nationality, euCountries) && (
+                      {platform === 'men' && isEuNational(p.nationality, euCountries, (p as any).nationalities) && (
                         <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-500/15 text-blue-400 border border-blue-500/30 leading-tight">
                           🇪🇺 {t('eu_nat_tag')}
                         </span>

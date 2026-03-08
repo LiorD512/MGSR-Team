@@ -46,6 +46,7 @@ data class LatestTransferModel(
     val playerAge: String? = null,
     val playerNationality: String? = null,
     val playerNationalityFlag: String? = null,
+    val playerNationalities: List<String> = emptyList(),
     val playerFoot: String? = null, // "Left", "Right", "Both" - from profile enrichment
     val clubJoinedLogo: String? = null,
     val clubJoinedName: String? = null,
@@ -228,18 +229,18 @@ class LatestReleases {
                 val (playerNationality, playerNationalityFlag) = extractNationalityAndFlag(element)
 
                 LatestTransferModel(
-                    playerImage,
-                    playerName,
-                    playerUrl,
-                    playerPosition.convertLongPositionNameToShort(),
-                    playerAge,
-                    playerNationality,
-                    playerNationalityFlag,
+                    playerImage = playerImage,
+                    playerName = playerName,
+                    playerUrl = playerUrl,
+                    playerPosition = playerPosition.convertLongPositionNameToShort(),
+                    playerAge = playerAge,
+                    playerNationality = playerNationality,
+                    playerNationalityFlag = playerNationalityFlag,
                     playerFoot = null,
                     clubJoinedLogo = null,
                     clubJoinedName = null,
-                    transferDate,
-                    marketValue
+                    transferDate = transferDate,
+                    marketValue = marketValue
                 )
             } catch (e: Exception) {
                 null
@@ -302,18 +303,16 @@ class LatestReleases {
                     .substringBefore("Last")
                     .trim()
                     .takeIf { it.isNotBlank() }
-            val nationalityElement = doc.select("[itemprop=nationality] img").firstOrNull()
+            val (allNationalities, allFlags) = extractAllNationalitiesFromProfile(doc)
             val nationality = model.playerNationality?.takeIf { it.isNotBlank() }
-                ?: nationalityElement?.attr("title")?.takeIf { it.isNotBlank() }
+                ?: allNationalities.firstOrNull()
             val flagSrc = model.playerNationalityFlag?.takeIf { it.isNotBlank() }
-                ?: nationalityElement?.attr("src")?.takeIf { it.isNotBlank() }
-                    ?.replace("tiny", "head")
-                    ?.replace("verysmall", "head")
-                    ?.let { makeAbsoluteUrl(it) }
+                ?: allFlags.firstOrNull()
             model.copy(
                 marketValue = marketValue ?: model.marketValue,
                 playerNationality = nationality ?: model.playerNationality,
-                playerNationalityFlag = flagSrc ?: model.playerNationalityFlag
+                playerNationalityFlag = flagSrc ?: model.playerNationalityFlag,
+                playerNationalities = allNationalities.ifEmpty { model.playerNationalities }
             )
         } catch (e: Exception) {
             model

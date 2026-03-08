@@ -461,7 +461,7 @@ class PlayersViewModel(
 
     private fun List<Player>?.filterPlayersByEuNational(enabled: Boolean): List<Player>? {
         return if (!enabled) this
-        else this?.filter { EuCountries.isEuNational(it.nationality) }
+        else this?.filter { EuCountries.isEuNational(it.nationalities, it.nationality) }
     }
 
     private fun List<Player>?.filterPlayersByOfferedNoFeedback(enabled: Boolean, profiles: Set<String>): List<Player>? {

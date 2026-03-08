@@ -168,6 +168,8 @@ async function processSuccessfulUpdate(player, data, docRef, feedRef, tmProfile)
     profileImage: data.profileImage || player.profileImage,
     nationalityFlag: data.nationalityFlag || player.nationalityFlag,
     nationality: data.citizenship || player.nationality,
+    nationalities: data.citizenships?.length ? data.citizenships : (player.nationalities || []),
+    nationalityFlags: data.citizenshipFlags?.length ? data.citizenshipFlags : (player.nationalityFlags || []),
     age: data.age || player.age,
     contractExpired: data.contract || player.contractExpired,
     positions: data.positions || player.positions,

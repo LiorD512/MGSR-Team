@@ -42,6 +42,7 @@ interface ShortlistEntry {
   playerPosition?: string;
   playerAge?: string;
   playerNationality?: string;
+  playerNationalities?: string[];
   clubJoinedName?: string;
   transferDate?: string;
   marketValue?: string;
@@ -306,6 +307,7 @@ export default function ShortlistPage() {
             playerPosition: (e.playerPosition as string) ?? undefined,
             playerAge: (e.playerAge as string) ?? undefined,
             playerNationality: (e.playerNationality as string) ?? undefined,
+            playerNationalities: Array.isArray(e.playerNationalities) ? (e.playerNationalities as string[]) : undefined,
             clubJoinedName: typeof clubRaw === 'string' ? clubRaw : (currentClub?.clubName ?? undefined),
             transferDate: (e.transferDate as string) ?? undefined,
             marketValue: (e.marketValue as string) ?? undefined,
@@ -548,6 +550,7 @@ export default function ShortlistPage() {
           playerPosition: details.positions?.[0] ?? prev.playerPosition,
           playerAge: details.age ?? prev.playerAge,
           playerNationality: details.nationality ?? prev.playerNationality,
+          playerNationalities: details.nationalities ?? prev.playerNationalities,
           marketValue: details.marketValue ?? prev.marketValue,
           clubJoinedName: details.currentClub?.clubName ?? prev.clubJoinedName,
           currentClub: details.currentClub ?? prev.currentClub,
@@ -916,7 +919,7 @@ export default function ShortlistPage() {
               const isSoccerDonnaUrl = playerUrl?.includes('soccerdonna');
               const isFmInsideUrl = playerUrl?.includes('fminside');
 
-              const isEu = platform === 'men' && isEuNational(entry.playerNationality, euCountries);
+              const isEu = platform === 'men' && isEuNational(entry.playerNationality, euCountries, entry.playerNationalities);
               const isHighlighted = highlightedUrl === entry.tmProfileUrl;
               const isNotesExpanded = expandedNotesUrl === entry.tmProfileUrl;
               const notes = entry.notes ?? [];

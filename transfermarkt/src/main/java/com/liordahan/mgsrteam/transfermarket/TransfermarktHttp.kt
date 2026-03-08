@@ -149,3 +149,27 @@ internal fun extractNationalityAndFlag(row: Element): Pair<String?, String?> {
         ?.replace("tiny", "head")
     return nationality to flag
 }
+
+/** Extracts ALL nationality names and flag URLs from a profile page.
+ *  Primary source: info-table Citizenship row (contains all citizenships).
+ *  Fallback: header itemprop=nationality (single nationality only). */
+internal fun extractAllNationalitiesFromProfile(doc: org.jsoup.nodes.Document): Pair<List<String>, List<String>> {
+    // Info-table has ALL citizenships (e.g. France + Cameroon)
+    val citizenshipLabel = doc.select("span.info-table__content--regular:contains(Citizenship)")
+        .firstOrNull()
+    val citizenshipContent = citizenshipLabel?.nextElementSibling()
+    val imgs = if (citizenshipContent != null && citizenshipContent.select("img").isNotEmpty()) {
+        citizenshipContent.select("img")
+    } else {
+        // Fallback to header (only primary nationality)
+        doc.select("[itemprop=nationality] img")
+    }
+    val nationalities = imgs.mapNotNull { it.attr("title").takeIf(String::isNotBlank) }
+    val flags = imgs.mapNotNull {
+        it.attr("src").takeIf(String::isNotBlank)
+            ?.replace("tiny", "head")
+            ?.replace("verysmall", "head")
+            ?.let { src -> makeAbsoluteUrl(src) }
+    }
+    return nationalities to flags
+}

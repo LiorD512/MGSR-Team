@@ -316,9 +316,23 @@ export async function handlePlayer(urlParam: string) {
   const html = await fetchHtmlWithRetry(url);
   const $ = cheerio.load(html);
 
-  const natEl = $('[itemprop=nationality] img').first();
-  const nationality = natEl.attr('title') || 'Unknown';
-  const nationalityFlag = (natEl.attr('src') || '').replace('verysmall', 'head').replace('tiny', 'head');
+  // Info-table Citizenship row has ALL citizenships; header itemprop only has primary
+  const citizenshipLabel = $('span.info-table__content--regular').filter(function(this: cheerio.Element) {
+    return $(this).text().trim().startsWith('Citizenship');
+  });
+  const citizenshipContent = citizenshipLabel.next('.info-table__content--bold');
+  let natEls = citizenshipContent.find('img');
+  if (!natEls.length) natEls = $('[itemprop=nationality] img');
+  const nationalities: string[] = [];
+  const nationalityFlags: string[] = [];
+  natEls.each((_: number, el: cheerio.Element) => {
+    const title = $(el).attr('title');
+    if (title) nationalities.push(title);
+    const src = ($(el).attr('src') || '').replace('verysmall', 'head').replace('tiny', 'head');
+    if (src) nationalityFlags.push(src);
+  });
+  const nationality = nationalities[0] || 'Unknown';
+  const nationalityFlag = nationalityFlags[0] || '';
 
   const height = $('[itemprop=height]').text().trim() || 'Unknown';
   const marketValueBox = $('div[class*="data-header__box--small"]').text();
@@ -387,7 +401,9 @@ export async function handlePlayer(urlParam: string) {
     positions,
     profileImage: makeAbsoluteUrl(profileImage),
     nationality,
+    nationalities,
     nationalityFlag: makeAbsoluteUrl(nationalityFlag),
+    nationalityFlags: nationalityFlags.map(makeAbsoluteUrl),
     contractExpires,
     marketValue,
     currentClub: {
@@ -1990,23 +2006,21 @@ export async function handleRumours(maxPages = RUMOURS_MAX_PAGES): Promise<TmRum
   }
 
   const pages = Math.min(Math.max(maxPages, 1), 20);
-  // Fetch page 1 first to confirm data exists, then remaining pages in parallel
-  const page1 = await scrapeSingleRumoursPage(1);
-  if (!page1.length || pages <= 1) {
-    RUMOURS_CACHE.data = page1;
-    RUMOURS_CACHE.ts = now;
-    return page1;
-  }
-
-  const remaining = Array.from({ length: pages - 1 }, (_, i) => i + 2);
-  const BATCH = 3;
-  const rawRumours = [...page1];
-  for (let i = 0; i < remaining.length; i += BATCH) {
-    const batch = remaining.slice(i, i + BATCH);
+  // Fetch all pages in parallel (batches of 8 to avoid rate-limiting)
+  const allPages = Array.from({ length: pages }, (_, i) => i + 1);
+  const BATCH = 8;
+  const rawRumours: TmRumour[] = [];
+  for (let i = 0; i < allPages.length; i += BATCH) {
+    const batch = allPages.slice(i, i + BATCH);
     const results = await Promise.allSettled(batch.map(p => scrapeSingleRumoursPage(p)));
     for (const r of results) {
       if (r.status === 'fulfilled') rawRumours.push(...r.value);
     }
+  }
+  if (!rawRumours.length) {
+    RUMOURS_CACHE.data = [];
+    RUMOURS_CACHE.ts = now;
+    return [];
   }
 
   // Deduplicate across pages: same player + same interested club = same rumour
@@ -2018,8 +2032,8 @@ export async function handleRumours(maxPages = RUMOURS_MAX_PAGES): Promise<TmRum
     return true;
   });
 
-  // Enrich with market value from player profiles (batches of 10)
-  const MV_BATCH = 10;
+  // Enrich with market value from player profiles (batches of 20)
+  const MV_BATCH = 20;
   for (let i = 0; i < allRumours.length; i += MV_BATCH) {
     const batch = allRumours.slice(i, i + MV_BATCH);
     const mvResults = await Promise.allSettled(
@@ -2061,24 +2075,6 @@ export interface TmLeagueNewsItem {
 
 const LEAGUE_NEWS_CONFIG: { code: string; slug: string; name: string; country: string; flag: string }[] = [
   { code: 'ISR1', slug: 'ligat-haal', name: 'Ligat Ha\'al', country: 'Israel', flag: '🇮🇱' },
-  { code: 'NL1', slug: 'eredivisie', name: 'Eredivisie', country: 'Netherlands', flag: '🇳🇱' },
-  { code: 'BE1', slug: 'jupiler-pro-league', name: 'Jupiler Pro League', country: 'Belgium', flag: '🇧🇪' },
-  { code: 'TR1', slug: 'super-lig', name: 'Süper Lig', country: 'Turkey', flag: '🇹🇷' },
-  { code: 'PO1', slug: 'liga-portugal', name: 'Liga Portugal', country: 'Portugal', flag: '🇵🇹' },
-  { code: 'GR1', slug: 'super-league-1', name: 'Super League', country: 'Greece', flag: '🇬🇷' },
-  { code: 'PL1', slug: 'pko-bp-ekstraklasa', name: 'Ekstraklasa', country: 'Poland', flag: '🇵🇱' },
-  { code: 'A1', slug: 'bundesliga', name: 'Bundesliga', country: 'Austria', flag: '🇦🇹' },
-  { code: 'SER1', slug: 'super-liga-srbije', name: 'Super Liga', country: 'Serbia', flag: '🇷🇸' },
-  { code: 'SE1', slug: 'allsvenskan', name: 'Allsvenskan', country: 'Sweden', flag: '🇸🇪' },
-  { code: 'C1', slug: 'super-league', name: 'Super League', country: 'Switzerland', flag: '🇨🇭' },
-  { code: 'TS1', slug: 'chance-liga', name: 'Chance Liga', country: 'Czech Republic', flag: '🇨🇿' },
-  { code: 'RO1', slug: 'superliga', name: 'SuperLiga', country: 'Romania', flag: '🇷🇴' },
-  { code: 'BU1', slug: 'efbet-liga', name: 'First League', country: 'Bulgaria', flag: '🇧🇬' },
-  { code: 'UNG1', slug: 'nemzeti-bajnoksag', name: 'NB I', country: 'Hungary', flag: '🇭🇺' },
-  { code: 'ZYP1', slug: 'cyprus-league', name: 'First Division', country: 'Cyprus', flag: '🇨🇾' },
-  { code: 'GB2', slug: 'championship', name: 'Championship', country: 'England', flag: '🏴󠁧󠁢󠁥󠁮󠁧󠁿' },
-  { code: 'L2', slug: '2-bundesliga', name: '2. Bundesliga', country: 'Germany', flag: '🇩🇪' },
-  { code: 'SLO1', slug: 'nike-liga', name: 'Nike Liga', country: 'Slovakia', flag: '🇸🇰' },
 ];
 
 export function getLeagueNewsConfig() {
@@ -2197,93 +2193,8 @@ export interface GoogleNewsItem {
 }
 
 const GOOGLE_NEWS_QUERIES: { query: string; code: string; name: string; country: string; flag: string; hl?: string; gl?: string; ceid?: string }[] = [
-  // English transfer-focused queries per league — headline filter handles big-club noise
+  // English transfer-focused queries — Israel only
   { query: '"Ligat Ha\'al" OR "Israeli Premier League" (transfer OR signing OR loan OR deal)', code: 'ISR1', name: 'Ligat Ha\'al', country: 'Israel', flag: '🇮🇱' },
-  { query: '"Eredivisie" (signing OR signs OR signed OR loan OR joins OR transfer)', code: 'NL1', name: 'Eredivisie', country: 'Netherlands', flag: '🇳🇱' },
-  { query: '"Jupiler Pro League" OR "Belgian Pro League" (signing OR loan OR deal OR transfer)', code: 'BE1', name: 'Jupiler Pro League', country: 'Belgium', flag: '🇧🇪' },
-  { query: '"Süper Lig" (signing OR loan OR deal OR signs OR transfer)', code: 'TR1', name: 'Süper Lig', country: 'Turkey', flag: '🇹🇷' },
-  { query: '"Liga Portugal" OR "Primeira Liga" (signing OR loan OR deal OR transfer)', code: 'PO1', name: 'Liga Portugal', country: 'Portugal', flag: '🇵🇹' },
-  { query: '"Greek Super League" (signing OR loan OR deal OR transfer)', code: 'GR1', name: 'Super League', country: 'Greece', flag: '🇬🇷' },
-  { query: '"Ekstraklasa" (signing OR loan OR transfer)', code: 'PL1', name: 'Ekstraklasa', country: 'Poland', flag: '🇵🇱' },
-  { query: '"Austrian Bundesliga" (signing OR loan OR transfer)', code: 'A1', name: 'Bundesliga', country: 'Austria', flag: '🇦🇹' },
-  { query: '"Serbian SuperLiga" (signing OR loan OR transfer)', code: 'SER1', name: 'Super Liga', country: 'Serbia', flag: '🇷🇸' },
-  { query: '"Allsvenskan" (signing OR loan OR transfer)', code: 'SE1', name: 'Allsvenskan', country: 'Sweden', flag: '🇸🇪' },
-  { query: '"Swiss Super League" (signing OR loan OR transfer)', code: 'C1', name: 'Super League', country: 'Switzerland', flag: '🇨🇭' },
-  { query: '"Chance Liga" OR "Czech First League" (signing OR transfer)', code: 'TS1', name: 'Chance Liga', country: 'Czech Republic', flag: '🇨🇿' },
-  { query: '"EFL Championship" (signing OR loan OR deal OR signs OR transfer)', code: 'GB2', name: 'Championship', country: 'England', flag: '🏴󠁧󠁢󠁥󠁮󠁧󠁿' },
-  { query: '"2. Bundesliga" (signing OR loan OR transfer)', code: 'L2', name: '2. Bundesliga', country: 'Germany', flag: '🇩🇪' },
-  { query: '"SuperLiga Romania" OR "Liga 1 Romania" (signing OR transfer)', code: 'RO1', name: 'SuperLiga', country: 'Romania', flag: '🇷🇴' },
-  { query: '"NB I" OR "Nemzeti Bajnokság" (signing OR transfer)', code: 'UNG1', name: 'NB I', country: 'Hungary', flag: '🇭🇺' },
-  { query: '"efbet Liga" OR "Bulgarian First League" (signing OR transfer)', code: 'BU1', name: 'First League', country: 'Bulgaria', flag: '🇧🇬' },
-  { query: '"Cyprus First Division" (signing OR loan OR transfer)', code: 'ZYP1', name: 'First Division', country: 'Cyprus', flag: '🇨🇾' },
-  { query: '"Azerbaijan Premier League" OR "Qarabag" OR "Neftchi" (transfer OR signing OR loan)', code: 'AZE1', name: 'Premier League', country: 'Azerbaijan', flag: '🇦🇿' },
-  { query: '"Kazakhstan Premier League" OR "FC Astana" OR "Kairat" (transfer OR signing OR loan)', code: 'KAZ1', name: 'Premier League', country: 'Kazakhstan', flag: '🇰🇿' },
-
-  // ── Local-language queries from professional sports outlets per country ──
-
-  // Netherlands — local Dutch transfer news
-  { query: 'site:voetbalzone.nl (transfer OR laat OR komt OR huurt OR tekent OR vertrekt)', code: 'NL1', name: 'Eredivisie', country: 'Netherlands', flag: '🇳🇱', hl: 'nl', gl: 'NL', ceid: 'NL:nl' },
-  { query: 'site:vi.nl (transfer OR contractverlenging OR huurdeal OR overstap)', code: 'NL1', name: 'Eredivisie', country: 'Netherlands', flag: '🇳🇱', hl: 'nl', gl: 'NL', ceid: 'NL:nl' },
-
-  // Belgium — local Belgian transfer news
-  { query: 'site:transfertalk.be OR site:voetbalkrant.com (transfer OR tekent OR vertrekt OR huurt)', code: 'BE1', name: 'Jupiler Pro League', country: 'Belgium', flag: '🇧🇪', hl: 'nl', gl: 'BE', ceid: 'BE:nl' },
-
-  // Turkey — local Turkish transfer news
-  { query: 'site:fanatik.com.tr (transfer OR imzaladı OR kiralık OR anlaştı OR ayrılık)', code: 'TR1', name: 'Süper Lig', country: 'Turkey', flag: '🇹🇷', hl: 'tr', gl: 'TR', ceid: 'TR:tr' },
-  { query: 'site:sabah.com.tr spor (transfer OR imza OR kiralık OR sözleşme)', code: 'TR1', name: 'Süper Lig', country: 'Turkey', flag: '🇹🇷', hl: 'tr', gl: 'TR', ceid: 'TR:tr' },
-
-  // Portugal — local Portuguese transfer news
-  { query: 'site:ojogo.pt OR site:abola.pt (transferência OR contratação OR empréstimo OR reforço)', code: 'PO1', name: 'Liga Portugal', country: 'Portugal', flag: '🇵🇹', hl: 'pt-PT', gl: 'PT', ceid: 'PT:pt-150' },
-
-  // Greece — local Greek transfer news
-  { query: 'site:sport24.gr OR site:gazzetta.gr (μεταγραφή OR δανεικός OR απόκτηση OR συμβόλαιο)', code: 'GR1', name: 'Super League', country: 'Greece', flag: '🇬🇷', hl: 'el', gl: 'GR', ceid: 'GR:el' },
-  { query: 'site:sdna.gr OR site:sportfm.gr (μεταγραφή OR δανεικός OR απόκτηση OR αποδέσμευση)', code: 'GR1', name: 'Super League', country: 'Greece', flag: '🇬🇷', hl: 'el', gl: 'GR', ceid: 'GR:el' },
-
-  // Poland — local Polish transfer news
-  { query: 'site:meczyki.pl OR site:sport.pl (transfer OR podpisał OR wypożyczenie OR kontrakt)', code: 'PL1', name: 'Ekstraklasa', country: 'Poland', flag: '🇵🇱', hl: 'pl', gl: 'PL', ceid: 'PL:pl' },
-
-  // Sweden — local Swedish transfer news
-  { query: 'site:fotbollskanalen.se (övergång OR lån OR värvning OR kontrakt OR lämnar)', code: 'SE1', name: 'Allsvenskan', country: 'Sweden', flag: '🇸🇪', hl: 'sv', gl: 'SE', ceid: 'SE:sv' },
-
-  // Serbia — diverse English sources
-  { query: '"Serbian SuperLiga" OR "Red Star Belgrade" OR "Partizan Belgrade" (transfer OR signs OR loan)', code: 'SER1', name: 'Super Liga', country: 'Serbia', flag: '🇷🇸' },
-
-  // Romania — local Romanian transfer news
-  { query: 'site:gsp.ro OR site:digisport.ro (transfer OR împrumut OR semnează OR achiziție)', code: 'RO1', name: 'SuperLiga', country: 'Romania', flag: '🇷🇴', hl: 'ro', gl: 'RO', ceid: 'RO:ro' },
-
-  // England Championship — additional sources
-  { query: 'site:footballleagueworld.co.uk (signing OR deal OR transfer OR loan)', code: 'GB2', name: 'Championship', country: 'England', flag: '🏴󠁧󠁢󠁥󠁮󠁧󠁿' },
-
-  // Austria — local Austrian transfer news
-  { query: 'site:laola1.at OR site:sport.orf.at Fußball (Transfer OR Verpflichtung OR Leihe OR wechselt)', code: 'A1', name: 'Bundesliga', country: 'Austria', flag: '🇦🇹', hl: 'de', gl: 'AT', ceid: 'AT:de' },
-
-  // Switzerland — local Swiss transfer news
-  { query: 'site:blick.ch Fussball (Transfer OR Verpflichtung OR Leihe OR wechselt)', code: 'C1', name: 'Super League', country: 'Switzerland', flag: '🇨🇭', hl: 'de', gl: 'CH', ceid: 'CH:de' },
-
-  // Hungary — local Hungarian transfer news
-  { query: 'site:nemzetisport.hu OR site:m4sport.hu (igazolás OR kölcsön OR szerződés OR átigazolás)', code: 'UNG1', name: 'NB I', country: 'Hungary', flag: '🇭🇺', hl: 'hu', gl: 'HU', ceid: 'HU:hu' },
-
-  // Bulgaria — local Bulgarian transfer news
-  { query: 'site:sportal.bg (трансфер OR подписа OR наем OR договор)', code: 'BU1', name: 'First League', country: 'Bulgaria', flag: '🇧🇬', hl: 'bg', gl: 'BG', ceid: 'BG:bg' },
-
-  // Cyprus — English + Greek-language local sources
-  { query: '"Cyprus football" OR "AEL Limassol" OR "APOEL" OR "Omonia" (transfer OR signing OR loan)', code: 'ZYP1', name: 'First Division', country: 'Cyprus', flag: '🇨🇾' },
-  { query: 'site:sigmalive.com ποδόσφαιρο (μεταγραφή OR δανεικός OR συμβόλαιο OR απόκτηση)', code: 'ZYP1', name: 'First Division', country: 'Cyprus', flag: '🇨🇾', hl: 'el', gl: 'CY', ceid: 'CY:el' },
-  { query: 'site:ant1.com.cy OR site:politis.com.cy (ΑΠΟΕΛ OR Ομόνοια OR ΑΕΛ OR Ανόρθωση) (μεταγραφή OR απόκτηση OR ανανέωση)', code: 'ZYP1', name: 'First Division', country: 'Cyprus', flag: '🇨🇾', hl: 'el', gl: 'CY', ceid: 'CY:el' },
-
-  // Germany 2. Bundesliga — local German sources
-  { query: 'site:kicker.de "2. Bundesliga" (Transfer OR Verpflichtung OR Leihe)', code: 'L2', name: '2. Bundesliga', country: 'Germany', flag: '🇩🇪', hl: 'de', gl: 'DE', ceid: 'DE:de' },
-
-  // Czech Republic — local Czech sources
-  { query: 'site:isport.blesk.cz OR site:sport.cz (přestup OR hostování OR smlouva OR posila)', code: 'TS1', name: 'Chance Liga', country: 'Czech Republic', flag: '🇨🇿', hl: 'cs', gl: 'CZ', ceid: 'CZ:cs' },
-
-  // Azerbaijan — local Azerbaijani sources
-  { query: 'site:report.az futbol (transfer OR imzaladı OR icarə)', code: 'AZE1', name: 'Premier League', country: 'Azerbaijan', flag: '🇦🇿', hl: 'az', gl: 'AZ', ceid: 'AZ:az' },
-  { query: 'site:oxu.az OR site:sportinfo.az (transfer OR futbolçu OR müqavilə)', code: 'AZE1', name: 'Premier League', country: 'Azerbaijan', flag: '🇦🇿', hl: 'az', gl: 'AZ', ceid: 'AZ:az' },
-
-  // Kazakhstan — local Kazakh/Russian sources
-  { query: 'site:prosports.kz OR site:sportinfo.kz (трансфер OR подписал OR аренда)', code: 'KAZ1', name: 'Premier League', country: 'Kazakhstan', flag: '🇰🇿', hl: 'ru', gl: 'KZ', ceid: 'KZ:ru' },
-  { query: 'site:vesti.kz OR site:sports.kz футбол (трансфер OR контракт OR подписание)', code: 'KAZ1', name: 'Premier League', country: 'Kazakhstan', flag: '🇰🇿', hl: 'ru', gl: 'KZ', ceid: 'KZ:ru' },
 
   // Hebrew Israeli transfer news — site-specific for best quality, "כדורגל" added to reduce basketball/other sport noise
   { query: 'site:sport5.co.il כדורגל (העברה OR חתימה OR חיזוק OR רכש OR השאלה OR מצטרף OR עסקה)', code: 'ISR1', name: 'ליגת העל', country: 'Israel', flag: '🇮🇱', hl: 'he', gl: 'IL', ceid: 'IL:he' },
