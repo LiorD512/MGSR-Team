@@ -13,6 +13,7 @@ const { runMandateExpiry } = require("./workers/mandateExpiry");
 const { runReleasesRefresh } = require("./workers/releasesRefresh");
 const { runScoutAgent } = require("./workers/scoutAgent");
 const { runScoutSkillLearning } = require("./workers/scoutSkillLearner");
+const { runDailyDigest } = require("./workers/dailyDigest");
 
 initializeApp();
 const db = getFirestore();
@@ -398,5 +399,43 @@ exports.onTaskRemindersScheduled = onSchedule(
         console.error(`Reminder send failed for task ${taskId}:`, err);
       }
     }
+  }
+);
+
+// ─── Daily Digest Email ─────────────────────────────────────────────
+// Fires at 20:00 Israel time (Asia/Jerusalem). Sends nightly summary
+// email with agent performance, top 5 picks, and system suggestions.
+// Uses Pub/Sub pattern for reliability.
+// ─────────────────────────────────────────────────────────────────────
+const DAILY_DIGEST_TOPIC = "daily-digest-trigger";
+
+exports.dailyDigestScheduled = onSchedule(
+  { schedule: "0 20 * * *", timeZone: "Asia/Jerusalem" },
+  async () => {
+    console.log("[dailyDigestScheduled] Triggered at 20:00 Israel time — publishing to Pub/Sub");
+    const { PubSub } = require("@google-cloud/pubsub");
+    const pubsub = new PubSub();
+    await pubsub.topic(DAILY_DIGEST_TOPIC).publishMessage({ data: Buffer.from("{}") });
+    console.log("[dailyDigestScheduled] Published — worker will send email asynchronously");
+  }
+);
+
+exports.dailyDigestWorker = onMessagePublished(
+  {
+    topic: DAILY_DIGEST_TOPIC,
+    timeoutSeconds: 120,
+    retry: true,
+    secrets: ["GMAIL_USER", "GMAIL_APP_PASSWORD"],
+  },
+  async () => {
+    console.log("[dailyDigestWorker] Started");
+    const gmailUser = process.env.GMAIL_USER;
+    const gmailAppPassword = process.env.GMAIL_APP_PASSWORD;
+    if (!gmailUser || !gmailAppPassword) {
+      console.error("[dailyDigestWorker] Missing GMAIL_USER or GMAIL_APP_PASSWORD secrets");
+      throw new Error("Email credentials not configured. Run: firebase functions:secrets:set GMAIL_USER && firebase functions:secrets:set GMAIL_APP_PASSWORD");
+    }
+    await runDailyDigest(gmailUser, gmailAppPassword);
+    console.log("[dailyDigestWorker] Completed");
   }
 );
