@@ -575,7 +575,8 @@ function RumourCard({ item, t, isRtl, inRoster, inShortlist, onAddToShortlist, a
       rel="noopener noreferrer"
       className="block bg-mgsr-card border border-mgsr-border rounded-xl p-4 hover:border-mgsr-accent transition group cursor-pointer"
     >
-      <div className="flex items-center gap-4">
+      {/* Top row: image + name/tags + date/prob */}
+      <div className="flex items-start gap-3">
         {/* Player image */}
         <div className="w-12 h-12 rounded-full bg-mgsr-accent/10 border-2 border-mgsr-border flex-shrink-0 overflow-hidden flex items-center justify-center">
           {item.playerImage ? (
@@ -585,17 +586,22 @@ function RumourCard({ item, t, isRtl, inRoster, inShortlist, onAddToShortlist, a
           )}
         </div>
 
-        {/* Body */}
+        {/* Middle: name + tags */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="font-semibold text-[15px] text-mgsr-text">{item.playerName}</span>
             {item.nationality?.[0] && <span className="text-sm">{getFlagForCountry(item.nationality[0])}</span>}
             <span className="text-[11px] px-1.5 py-0.5 rounded bg-mgsr-accent/15 text-mgsr-accent font-medium">{displayPos}</span>
             <span className="text-xs text-mgsr-muted">{item.age}</span>
-            <span className="text-[10px] px-2 py-0.5 rounded-full bg-mgsr-accent/10 text-mgsr-accent font-semibold uppercase tracking-wider">
-              {t('news_tab_rumours').slice(0, 6)}
+          </div>
+          {/* Meta badges row */}
+          <div className="flex items-center gap-1.5 flex-wrap mt-1">
+            <span className={`text-xs font-bold px-2 py-0.5 rounded-md ${probClass}`}>
+              {item.probability !== null ? `${item.probability}%` : '? %'}
             </span>
-            {/* Database / Shortlist tags */}
+            {item.marketValue && item.marketValue !== '-' && (
+              <span className="text-xs font-semibold text-green-400">💰 {item.marketValue}</span>
+            )}
             {inRoster && (
               <span className="text-[10px] px-2 py-0.5 rounded-full bg-green-500/20 text-green-400 font-semibold uppercase tracking-wider">
                 📋 {t('news_tag_database')}
@@ -607,54 +613,59 @@ function RumourCard({ item, t, isRtl, inRoster, inShortlist, onAddToShortlist, a
               </span>
             )}
           </div>
-          <div className={`flex items-center gap-2 mt-1 text-sm text-mgsr-muted ${isRtl ? 'flex-row-reverse justify-end' : ''}`}>
-            <span className="flex items-center gap-1">
-              {item.currentClubImage && (
-                <img src={item.currentClubImage} alt="" className="w-5 h-5 object-contain" referrerPolicy="no-referrer" />
-              )}
-              <span className="text-mgsr-text font-medium truncate max-w-[140px]">{item.currentClub}</span>
-            </span>
-            <span className="text-mgsr-accent">→</span>
-            <span className="flex items-center gap-1">
-              {item.interestedClubImage && (
-                <img src={item.interestedClubImage} alt="" className="w-5 h-5 object-contain" referrerPolicy="no-referrer" />
-              )}
-              <span className="text-mgsr-text font-medium truncate max-w-[140px]">{item.interestedClub}</span>
-            </span>
-            {item.interestedClubLeague && (
-              <span className="text-[11px] px-1.5 py-0.5 rounded bg-white/5 text-mgsr-muted hidden md:inline">
-                {item.interestedClubLeague}
-              </span>
-            )}
-          </div>
         </div>
 
-        {/* Meta */}
-        <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
+        {/* Date + link */}
+        <div className="flex flex-col items-end gap-1 flex-shrink-0">
           <span className="text-[11px] text-mgsr-muted">{item.rumouredDate?.replace(/ - /, ' · ').slice(0, 13)}</span>
-          <span className={`text-xs font-bold px-2 py-0.5 rounded-md ${probClass}`}>
-            {item.probability !== null ? `${item.probability}%` : '? %'}
-          </span>
-          {item.marketValue && item.marketValue !== '-' && (
-            <span className="text-xs font-semibold text-green-400">💰 {item.marketValue}</span>
-          )}
-          {!alreadyTracked && (
-            <button
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                onAddToShortlist(item);
-              }}
-              disabled={isAdding}
-              className="text-[10px] px-2.5 py-1 rounded-md border border-mgsr-accent/40 text-mgsr-accent hover:bg-mgsr-accent/15 transition font-medium disabled:opacity-50 whitespace-nowrap"
-            >
-              {isAdding ? '...' : `+ ${t('news_add_shortlist')}`}
-            </button>
-          )}
-          <span className="w-7 h-7 rounded-md border border-mgsr-border text-mgsr-muted group-hover:text-mgsr-accent group-hover:border-mgsr-accent flex items-center justify-center text-xs transition">
-            🔗
+          <span className="text-[10px] px-2 py-0.5 rounded-full bg-mgsr-accent/10 text-mgsr-accent font-semibold uppercase tracking-wider">
+            {t('news_tab_rumours').slice(0, 6)}
           </span>
         </div>
+      </div>
+
+      {/* Transfer line */}
+      <div className={`flex items-center gap-2 mt-2.5 text-sm text-mgsr-muted ${isRtl ? 'flex-row-reverse justify-end' : ''}`}>
+        <span className="flex items-center gap-1 min-w-0">
+          {item.currentClubImage && (
+            <img src={item.currentClubImage} alt="" className="w-5 h-5 flex-shrink-0 object-contain" referrerPolicy="no-referrer" />
+          )}
+          <span className="text-mgsr-text font-medium truncate">{item.currentClub}</span>
+        </span>
+        <span className="text-mgsr-accent flex-shrink-0">→</span>
+        <span className="flex items-center gap-1 min-w-0">
+          {item.interestedClubImage && (
+            <img src={item.interestedClubImage} alt="" className="w-5 h-5 flex-shrink-0 object-contain" referrerPolicy="no-referrer" />
+          )}
+          <span className="text-mgsr-text font-medium truncate">{item.interestedClub}</span>
+        </span>
+        {item.interestedClubLeague && (
+          <span className="text-[11px] px-1.5 py-0.5 rounded bg-white/5 text-mgsr-muted hidden md:inline flex-shrink-0">
+            {item.interestedClubLeague}
+          </span>
+        )}
+      </div>
+
+      {/* Bottom row: shortlist button + link */}
+      <div className="flex items-center justify-between mt-2.5">
+        {!alreadyTracked ? (
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onAddToShortlist(item);
+            }}
+            disabled={isAdding}
+            className="text-xs px-3 py-1.5 rounded-lg border border-mgsr-accent/40 text-mgsr-accent hover:bg-mgsr-accent/15 transition font-medium disabled:opacity-50 whitespace-nowrap min-h-[36px]"
+          >
+            {isAdding ? '...' : `⭐ ${t('news_add_shortlist')}`}
+          </button>
+        ) : (
+          <div />
+        )}
+        <span className="w-7 h-7 rounded-md border border-mgsr-border text-mgsr-muted group-hover:text-mgsr-accent group-hover:border-mgsr-accent flex items-center justify-center text-xs transition">
+          🔗
+        </span>
       </div>
     </a>
   );
