@@ -215,13 +215,12 @@ object MandatePdfGenerator {
 
         y = drawMixedText(
             listOf(
-                "1. " to bodyPaint,
                 playerName to boldBodyPaint,
                 ", born: " to bodyPaint,
                 dob to boldBodyPaint,
-                ". Nationality: " to bodyPaint,
+                " nationality: " to bodyPaint,
                 nationality to boldBodyPaint,
-                ", identification document: passport No. " to bodyPaint,
+                ", identification document: passport No.: " to bodyPaint,
                 passportNo to boldBodyPaint,
                 "." to bodyPaint
             ),
@@ -231,7 +230,7 @@ object MandatePdfGenerator {
         y = drawMixedText(
             listOf(
                 data.agentName to boldBodyPaint,
-                " - FIFA Licensed Football Agent (FIFA Football Agent License ID: " to bodyPaint,
+                ", FIFA Licensed Football Agent License ID: " to bodyPaint,
                 data.fifaLicenseId to boldBodyPaint,
                 ", acting through " to bodyPaint,
                 AGENCY_NAME to boldBodyPaint,
@@ -242,7 +241,7 @@ object MandatePdfGenerator {
         drawLine(4)
         y = drawText("The Player and the Football Agent are the \"Parties\" and each a \"Party.\"", bodyPaint)
         drawLine(4)
-        y = drawText("Valid Leagues in the mandate.", headingPaint)
+        y = drawText("Valid Leagues for this mandate:", headingPaint)
         drawLine(4)
         data.validLeagues.forEach { league ->
             y = drawText("• $league", bodyPaint)
@@ -263,7 +262,7 @@ object MandatePdfGenerator {
         )
         drawLine(8)
 
-        y = drawText("II. EXCLUSIVITY", headingPaint)
+        y = drawText("EXCLUSIVITY", headingPaint)
         drawLine(4)
         y = drawText(
             "3. The Mandate is exclusive. During the Term, the Player shall not appoint, consult, or use any third party, whether licensed or unlicensed, to perform football agent services or to negotiate or facilitate a transaction on the Player's behalf.",
@@ -276,47 +275,57 @@ object MandatePdfGenerator {
         )
         drawLine(8)
 
-        y = drawText("III. TERM", headingPaint)
+        y = drawText("TERM", headingPaint)
         drawLine(4)
         val startStr = dateFormat.format(data.effectiveDate)
         val endStr = dateFormat.format(data.expiryDate)
         y = drawText("5. The Mandate starts on $startStr and ends on $endStr (the \"Term\").", bodyPaint)
         drawLine(8)
 
-        y = drawText("IV. SERVICE FEE", headingPaint)
+        y = drawText("SERVICE FEE", headingPaint)
         drawLine(4)
         y = drawText(
-            "6. In case the club will pay the commission – the commission will be paid to the agent (if there more than 1 agents involved from other agencies, the commission will be paid equally 50-50%.",
-            bodyPaint
-        )
-        drawLine(4)
-        y = drawText("7. Payment shall be made to the Agency's designated account and is exclusive of VAT, if applicable.", bodyPaint)
-        drawLine(4)
-        y = drawText(
-            "8. The Player gives advance consent to permit dual representation being allowed by the applicable regulatory framework, without prejudice to any transaction-specific disclosures and consents required at the relevant time.",
+            "6. In consideration of the exclusive Mandate, If the club does not pay any commission, the player will pay the agent 5% of his salary on monthly basis (exclude bonuses and other non-base salary).",
             bodyPaint
         )
         drawLine(4)
         y = drawText(
-            "9. The Parties agree that the service fee is due irrespective of causation and regardless of the Football Agent's actual involvement in the final negotiation or signature.",
+            "In case the club will pay the commission \u2013 the commission will be paid the agent (if there more than 1 agents involved from other agencies, the commission will be paid equally 50-50%.",
             bodyPaint
         )
         drawLine(4)
         y = drawText(
-            "10. If an employment contract concluded during the Term continues beyond the Term, the Football Agent remains entitled to the service fee for as long as that employment contract remains in force, until the Player, acting in good faith and without the Football Agent's involvement, signs a new employment contract with materially different financial terms or duration.",
+            "7. The service fee accrues monthly, pro rata to remuneration received. The Football Agent shall issue monthly invoices, each payable within fourteen (14) days of receipt.",
+            bodyPaint
+        )
+        drawLine(4)
+        y = drawText("8. Payment shall be made to the Agency's designated account and is exclusive of VAT, if applicable.", bodyPaint)
+        drawLine(4)
+        y = drawText(
+            "9. The Player gives advance consent to permit dual representation being allowed by the applicable regulatory framework, without prejudice to any transaction-specific disclosures and consents required at the relevant time.",
+            bodyPaint
+        )
+        drawLine(4)
+        y = drawText(
+            "10. The parties agree that the service fee will be paid in direct connection with the football agent's actual involvement in the final negotiations or signing.",
+            bodyPaint
+        )
+        drawLine(4)
+        y = drawText(
+            "11. If an employment contract concluded during the Term continues beyond the Term, the Football Agent remains entitled to the service fee for as long as that employment contract remains in force, until the Player, acting in good faith and without the Football Agent's involvement, signs a new employment contract with materially different financial terms or duration.",
             bodyPaint
         )
         drawLine(8)
 
-        y = drawText("V. CUMULATIVE PENALTY", headingPaint)
+        y = drawText("CUMULATIVE PENALTY", headingPaint)
         drawLine(4)
         y = drawText(
-            "12. If the Player breaches this Mandate, including by violating exclusivity, using a third party to perform football agent services, or revoking or terminating the Mandate at an inopportune time, the Player shall pay a contractual penalty equal to [ ] or fifty percent (50%) of the outstanding amount due at the time of breach, whichever is higher. The penalty is cumulative and payable in addition to the service fee.",
+            "12. If the Player breaches this Mandate, including by violating exclusivity, using a third party to perform football agent services, or revoking or terminating the Mandate at an inopportune time, the Player shall pay a contractual penalty equal to 20% (in USD or EURO depends how the player get paid) of the player monthly salary. The penalty is cumulative and payable in addition to the service fee.",
             bodyPaint
         )
         drawLine(8)
 
-        y = drawText("VI. RIGHTS AND OBLIGATIONS", headingPaint)
+        y = drawText("RIGHTS AND OBLIGATIONS", headingPaint)
         drawLine(4)
         y = drawText(
             "13. The Football Agent shall act independently, diligently, and in the Player's best interests, perform the football agent services in compliance with this Mandate and applicable regulations, keep the Player promptly informed of any material developments, be reasonably available for consultation, and enter into dual representation only where expressly permitted and after all required prior written disclosures and consents have been obtained.",
@@ -334,7 +343,7 @@ object MandatePdfGenerator {
         )
         drawLine(8)
 
-        y = drawText("VII. TERMINATION", headingPaint)
+        y = drawText("TERMINATION", headingPaint)
         drawLine(4)
         y = drawText(
             "16. Either Party may terminate this Mandate for just cause by written notice to the other Party.",
@@ -352,7 +361,7 @@ object MandatePdfGenerator {
         )
         drawLine(8)
 
-        y = drawText("VIII. GOVERNING LAW AND ARBITRATION", headingPaint)
+        y = drawText("GOVERNING LAW AND ARBITRATION", headingPaint)
         drawLine(4)
         y = drawText("19. This Mandate is governed by Swiss law.", bodyPaint)
         drawLine(4)
@@ -367,7 +376,7 @@ object MandatePdfGenerator {
         )
         drawLine(8)
 
-        y = drawText("IX. INDEPENDENT LEGAL ADVICE", headingPaint)
+        y = drawText("INDEPENDENT LEGAL ADVICE", headingPaint)
         drawLine(4)
         y = drawText(
             "22. The Player confirms that the Football Agent informed him in writing that he should consider obtaining independent legal advice and that the Player has either obtained such advice or knowingly waived it, as confirmed in the attached annex.",
@@ -375,7 +384,7 @@ object MandatePdfGenerator {
         )
         drawLine(8)
 
-        y = drawText("X. SIGNATURES", headingPaint)
+        y = drawText("SIGNATURES", headingPaint)
         drawLine(4)
         y = drawText("A copy of the Agreement has been provided to the Player.", bodyPaint)
         drawLine(8)
