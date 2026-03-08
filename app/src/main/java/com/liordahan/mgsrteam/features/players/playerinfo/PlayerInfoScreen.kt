@@ -1235,7 +1235,7 @@ private fun PlayerInfoHeroCard(
             Text(
                 text = buildString {
                     player.positions?.firstOrNull()?.let { append(it) }
-                    player.age?.let { append(" • $it ${stringResource(R.string.player_info_years_short)}") }
+                    player.age?.let { append(" • ${it.trim()} ${stringResource(R.string.player_info_years_short)}") }
                     player.currentClub?.clubName?.let { append(" • $it") }
                 }.ifEmpty { "—" },
                 style = regularTextStyle(PlatformColors.palette.textSecondary, 13.sp)

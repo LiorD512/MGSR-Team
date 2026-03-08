@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -1560,14 +1561,14 @@ private fun PlayerCardVariantA(
 
                     // Tags: age, positions, height — FlowRow for wrapping when crowded
                     FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
                         verticalArrangement = Arrangement.spacedBy(4.dp),
-                        modifier = Modifier.padding(top = 8.dp)
+                        modifier = Modifier.fillMaxWidth().padding(top = 12.dp)
                     ) {
                         if (!player.age.isNullOrBlank()) {
                             PlayerTag(text = stringResource(
                                 if (platform == Platform.WOMEN) R.string.women_players_age_format else R.string.players_age_format,
-                                player.age
+                                player.age.trim()
                             ))
                         }
                         player.positions?.filterNotNull()?.take(2)?.forEach { pos ->
@@ -1652,18 +1653,13 @@ private fun PlayerCardVariantA(
             )
 
             // ── Bottom Row: Badges (aligned with content: avatar 52 + spacer 10 = 62 from row start) ──
-            Row(
+            FlowRow(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(start = 74.dp, end = 12.dp, bottom = 10.dp, top = 4.dp),
-                verticalAlignment = Alignment.CenterVertically
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                // Badges row - same start as name/club above
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.weight(1f)
-                ) {
                     if (player.isOnLoan) {
                         OnLoanPill(text = stringResource(R.string.players_on_loan))
                     }
@@ -1734,7 +1730,6 @@ private fun PlayerCardVariantA(
                         )
                     }
                 }
-            }
         }
         }
     }
@@ -1859,12 +1854,14 @@ private fun PlayerTag(
 ) {
     val resolvedTextColor = textColor ?: if (isPosition) PlatformColors.palette.accent else PlatformColors.palette.textSecondary
     val resolvedBgColor = tagColor ?: if (isPosition) PlatformColors.palette.accent.copy(alpha = 0.15f) else Color.White.copy(alpha = 0.05f)
+
     Text(
         text = text,
         style = boldTextStyle(
             color = resolvedTextColor,
             fontSize = 10.sp
         ),
+        softWrap = false,
         modifier = Modifier
             .clip(RoundedCornerShape(6.dp))
             .background(resolvedBgColor)
