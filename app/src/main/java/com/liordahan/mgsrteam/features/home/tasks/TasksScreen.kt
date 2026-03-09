@@ -697,10 +697,36 @@ private fun TaskRowCard(
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
+                // "Opened by X"
+                if (task.createdByAgentName.isNotBlank()) {
+                    Text(
+                        text = stringResource(R.string.tasks_opened_by) + " " + task.createdByAgentName,
+                        style = regularTextStyle(PlatformColors.palette.accent, 11.sp),
+                        maxLines = 1
+                    )
+                }
                 if (showAgent && task.agentName.isNotBlank()) {
                     Text(
-                        text = task.agentName,
+                        text = stringResource(R.string.tasks_assigned_to_label) + ": " + task.agentName,
                         style = regularTextStyle(PlatformColors.palette.textSecondary, 11.sp),
+                        maxLines = 1
+                    )
+                }
+                // Created date
+                if (task.createdAt > 0L) {
+                    Text(
+                        text = stringResource(R.string.tasks_created_on) + " " + SimpleDateFormat("dd MMM", Locale.getDefault()).format(Date(task.createdAt)),
+                        style = regularTextStyle(PlatformColors.palette.textSecondary, 10.sp),
+                        maxLines = 1
+                    )
+                }
+                // Linked agent contact
+                if (task.linkedAgentContactName.isNotBlank()) {
+                    Spacer(Modifier.height(2.dp))
+                    Text(
+                        text = stringResource(R.string.tasks_linked_agent) + ": " + task.linkedAgentContactName +
+                            if (task.linkedAgentContactPhone.isNotBlank()) " · ${task.linkedAgentContactPhone}" else "",
+                        style = regularTextStyle(PlatformColors.palette.textSecondary, 10.sp),
                         maxLines = 1
                     )
                 }
@@ -730,6 +756,7 @@ private fun TaskRowCard(
             // Due date chip
             if (task.dueDate > 0L) {
                 Spacer(Modifier.width(8.dp))
+                val dueLabel = stringResource(R.string.tasks_due_label)
                 val dueDateStr = formatDueDate(task.dueDate)
                 val dueDateClr = dueDateColor(task.dueDate, task.isCompleted)
                 Box(
@@ -739,7 +766,7 @@ private fun TaskRowCard(
                         .padding(horizontal = 8.dp, vertical = 4.dp)
                 ) {
                     Text(
-                        text = dueDateStr,
+                        text = "$dueLabel: $dueDateStr",
                         style = boldTextStyle(dueDateClr, 11.sp)
                     )
                 }

@@ -500,6 +500,12 @@
     <string name="player_tasks_empty">אין עדיין משימות לשחקן זה</string>
     <string name="player_tasks_choose_template">בחר טמפלט (מומלץ)</string>
     <string name="player_tasks_created_by">נוצר ע״י</string>
+    <string name="tasks_opened_by">נפתח ע״י</string>
+    <string name="tasks_assigned_to_label">הוקצה ל</string>
+    <string name="tasks_created_on">נוצר</string>
+    <string name="tasks_due_label">יעד</string>
+    <string name="tasks_select_agent_contact">קשר סוכן מאנשי קשר</string>
+    <string name="tasks_linked_agent">סוכן</string>
     <string name="tasks_linked_player">שחקן מקושר</string>
 
     <!-- Due Dates -->

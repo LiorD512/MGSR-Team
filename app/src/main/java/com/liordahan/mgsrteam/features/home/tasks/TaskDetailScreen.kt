@@ -25,8 +25,11 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CalendarToday
+import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.PersonOutline
+import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
@@ -275,6 +278,58 @@ fun TaskDetailScreen(
                                 modifier = Modifier.size(18.dp)
                             )
                         }
+                    }
+
+                    // Linked agent contact
+                    if (task.linkedAgentContactName.isNotBlank()) {
+                        Spacer(Modifier.height(12.dp))
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(1.dp)
+                                .background(PlatformColors.palette.cardBorder)
+                        )
+                        Spacer(Modifier.height(12.dp))
+                        DetailInfoRow(
+                            icon = Icons.Default.Phone,
+                            label = stringResource(R.string.tasks_linked_agent),
+                            value = task.linkedAgentContactName +
+                                if (task.linkedAgentContactPhone.isNotBlank()) " · ${task.linkedAgentContactPhone}" else ""
+                        )
+                    }
+
+                    // Opened by
+                    if (task.createdByAgentName.isNotBlank()) {
+                        Spacer(Modifier.height(12.dp))
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(1.dp)
+                                .background(PlatformColors.palette.cardBorder)
+                        )
+                        Spacer(Modifier.height(12.dp))
+                        DetailInfoRow(
+                            icon = Icons.Default.PersonOutline,
+                            label = stringResource(R.string.tasks_opened_by),
+                            value = task.createdByAgentName
+                        )
+                    }
+
+                    // Created on
+                    if (task.createdAt > 0L) {
+                        Spacer(Modifier.height(12.dp))
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(1.dp)
+                                .background(PlatformColors.palette.cardBorder)
+                        )
+                        Spacer(Modifier.height(12.dp))
+                        DetailInfoRow(
+                            icon = Icons.Default.AccessTime,
+                            label = stringResource(R.string.tasks_created_on),
+                            value = SimpleDateFormat("dd MMM yyyy", Locale.getDefault()).format(Date(task.createdAt))
+                        )
                     }
 
                     if (showAgentPicker) {

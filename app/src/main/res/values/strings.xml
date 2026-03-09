@@ -948,6 +948,12 @@
     <string name="player_tasks_empty">No tasks for this player yet</string>
     <string name="player_tasks_choose_template">Choose template (recommended)</string>
     <string name="player_tasks_created_by">Created by</string>
+    <string name="tasks_opened_by">Opened by</string>
+    <string name="tasks_assigned_to_label">Assigned to</string>
+    <string name="tasks_created_on">Created</string>
+    <string name="tasks_due_label">Due</string>
+    <string name="tasks_select_agent_contact">Link agent from contacts</string>
+    <string name="tasks_linked_agent">Agent</string>
     <string name="tasks_linked_player">Linked player</string>
     <string name="player_info_note_placeholder">Add a new note…</string>
     <string name="player_info_save_note">Save Note</string>

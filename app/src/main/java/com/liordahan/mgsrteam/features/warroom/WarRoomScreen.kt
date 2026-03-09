@@ -95,6 +95,7 @@ import com.liordahan.mgsrteam.ui.utils.clickWithNoRipple
 import com.liordahan.mgsrteam.ui.utils.boldTextStyle
 import com.liordahan.mgsrteam.ui.utils.regularTextStyle
 import com.liordahan.mgsrteam.features.shortlist.ShortlistRepository
+import com.liordahan.mgsrteam.features.players.repository.IPlayersRepository
 import com.liordahan.mgsrteam.ui.components.ToastManager
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
@@ -439,17 +440,28 @@ private fun DiscoveryTab(
 ) {
     val context = LocalContext.current
     val shortlistRepository: ShortlistRepository = koinInject()
+    val playersRepository: IPlayersRepository = koinInject()
     val shortlistEntries by shortlistRepository.getShortlistFlow().collectAsState(initial = emptyList())
     val shortlistUrls = remember(shortlistEntries) { shortlistEntries.map { it.tmProfileUrl }.toSet() }
+    val rosterPlayers by playersRepository.playersFlow().collectAsState(initial = emptyList())
+    val rosterIds = remember(rosterPlayers) {
+        rosterPlayers.mapNotNull { extractPlayerIdFromUrl(it.tmProfile ?: "") }.toSet()
+    }
+    val shortlistIds = remember(shortlistUrls) {
+        shortlistUrls.mapNotNull { extractPlayerIdFromUrl(it) }.toSet()
+    }
     var justAddedUrls by remember { mutableStateOf<Set<String>>(emptySet()) }
     val shortlistPendingUrls by shortlistRepository.getShortlistPendingUrlsFlow()
         .collectAsState(initial = emptySet())
     val coroutineScope = rememberCoroutineScope()
 
-    val filteredCandidates = if (state.selectedSourceFilter == "all") {
+    val filteredCandidates = (if (state.selectedSourceFilter == "all") {
         state.candidates
     } else {
         state.candidates.filter { it.source == state.selectedSourceFilter }
+    }).filter { candidate ->
+        val id = extractPlayerIdFromUrl(candidate.transfermarktUrl)
+        id == null || (id !in rosterIds && id !in shortlistIds)
     }
 
     LazyColumn(
@@ -1109,14 +1121,28 @@ private fun ReportSection(icon: String, title: String, accentColor: Color, conte
 private fun AgentsTab(state: WarRoomUiState, viewModel: IWarRoomViewModel, navController: NavController) {
     val context = LocalContext.current
     val shortlistRepository: ShortlistRepository = koinInject()
+    val playersRepository: IPlayersRepository = koinInject()
     val shortlistEntries by shortlistRepository.getShortlistFlow().collectAsState(initial = emptyList())
     val shortlistUrls = remember(shortlistEntries) { shortlistEntries.map { it.tmProfileUrl }.toSet() }
+    val rosterPlayers by playersRepository.playersFlow().collectAsState(initial = emptyList())
+    val rosterIds = remember(rosterPlayers) {
+        rosterPlayers.mapNotNull { extractPlayerIdFromUrl(it.tmProfile ?: "") }.toSet()
+    }
+    val shortlistIds = remember(shortlistUrls) {
+        shortlistUrls.mapNotNull { extractPlayerIdFromUrl(it) }.toSet()
+    }
     var justAddedUrls by remember { mutableStateOf<Set<String>>(emptySet()) }
     val shortlistPendingUrls by shortlistRepository.getShortlistPendingUrlsFlow()
         .collectAsState(initial = emptySet())
     val coroutineScope = rememberCoroutineScope()
 
-    val groupedProfiles = state.scoutProfiles.groupBy { it.agentId to it.agentName }
+    val filteredScoutProfiles = remember(state.scoutProfiles, rosterIds, shortlistIds) {
+        state.scoutProfiles.filter { profile ->
+            val id = extractPlayerIdFromUrl(profile.transfermarktUrl)
+            id == null || (id !in rosterIds && id !in shortlistIds)
+        }
+    }
+    val groupedProfiles = filteredScoutProfiles.groupBy { it.agentId to it.agentName }
     val uniqueAgents = groupedProfiles.keys.toList()
 
     val agentDisplayNames = remember(uniqueAgents, state.scoutProfiles) {

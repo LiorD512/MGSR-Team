@@ -931,7 +931,7 @@ export default function YouthPlayerPage() {
                           {task.title}
                         </p>
                         <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5">
-                          {task.createdByAgentName && task.createdByAgentId !== task.agentId && (
+                          {task.createdByAgentName && (
                             <span className="text-xs text-mgsr-muted">
                               {t('tasks_opened_by')} <span className="text-[var(--youth-cyan)]">{task.createdByAgentName}</span>
                             </span>
@@ -1312,6 +1312,7 @@ export default function YouthPlayerPage() {
             }
             accounts={accounts}
             currentUserId={user?.uid || ''}
+            currentUserEmail={user?.email || ''}
             getDisplayName={(a, rtl) => (rtl ? a.hebrewName || a.name || '—' : a.name || a.hebrewName || '—')}
             taskCollection="AgentTasksYouth"
           />

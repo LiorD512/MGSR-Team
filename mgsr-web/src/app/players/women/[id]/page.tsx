@@ -1199,7 +1199,7 @@ export default function WomanPlayerPage() {
                           {task.title || '—'}
                         </p>
                         <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-1">
-                          {task.createdByAgentName && task.createdByAgentId !== task.agentId && (
+                          {task.createdByAgentName && (
                             <p className="text-xs text-mgsr-muted">
                               {t('tasks_opened_by')} <span className="text-[var(--women-rose)]">{task.createdByAgentName}</span>
                             </p>
@@ -1810,6 +1810,7 @@ export default function WomanPlayerPage() {
           }
           accounts={accounts}
           currentUserId={user?.uid || ''}
+          currentUserEmail={user?.email || ''}
           getDisplayName={(a, rtl) => (rtl ? a.hebrewName || a.name || '—' : a.name || a.hebrewName || '—')}
           taskCollection="AgentTasksWomen"
         />

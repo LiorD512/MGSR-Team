@@ -37,5 +37,9 @@ data class AgentTask(
     /** TM profile URL for navigation (Android uses this). */
     val playerTmProfile: String = "",
     /** Optional template ID when created from player page. */
-    val templateId: String = ""
+    val templateId: String = "",
+    /** Linked agent contact fields (from Contacts collection, for call_agent tasks). */
+    val linkedAgentContactId: String = "",
+    val linkedAgentContactName: String = "",
+    val linkedAgentContactPhone: String = ""
 )

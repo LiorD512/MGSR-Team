@@ -454,12 +454,14 @@ fun PlayerInfoScreen(
                     playerTmProfile = player.tmProfile,
                     playerImage = player.profileImage,
                     playerClub = player.currentClub?.clubName,
-                    playerPosition = player.positions?.filterNotNull()?.joinToString(" • ")
+                    playerPosition = player.positions?.filterNotNull()?.joinToString(" • "),
+                    playerAgency = player.agency,
+                    playerAgencyUrl = player.agencyUrl
                 ),
                 preselectedAgentIndex = preselectedIndex,
                 onDismiss = { showAddPlayerTaskSheet = false },
-                onConfirm = { agentId, agentName, title, dueDate, priority, notes, pId, pName, pTmProfile, templateId ->
-                    viewModel.addPlayerTask(agentId, agentName, title, dueDate, priority, notes, pId, pName, pTmProfile, templateId)
+                onConfirm = { agentId, agentName, title, dueDate, priority, notes, pId, pName, pTmProfile, templateId, linkedId, linkedName, linkedPhone ->
+                    viewModel.addPlayerTask(agentId, agentName, title, dueDate, priority, notes, pId, pName, pTmProfile, templateId, linkedId, linkedName, linkedPhone)
                     showAddPlayerTaskSheet = false
                 }
             )
@@ -2659,15 +2661,43 @@ private fun PlayerTasksSection(
                                 text = task.title.ifEmpty { "—" },
                                 style = if (task.isCompleted) regularTextStyle(PlatformColors.palette.textSecondary, 14.sp).copy(textDecoration = TextDecoration.LineThrough) else boldTextStyle(PlatformColors.palette.textPrimary, 14.sp)
                             )
-                            if (task.agentName.isNotBlank() || task.dueDate > 0) {
+                            // "Opened by X"
+                            if (task.createdByAgentName.isNotBlank()) {
+                                Text(
+                                    text = context.getString(R.string.tasks_opened_by) + " " + task.createdByAgentName,
+                                    style = regularTextStyle(PlatformColors.palette.accent, 11.sp)
+                                )
+                            }
+                            if (task.agentName.isNotBlank()) {
+                                Text(
+                                    text = context.getString(R.string.tasks_assigned_to_label) + ": " + task.agentName,
+                                    style = regularTextStyle(PlatformColors.palette.textSecondary, 12.sp)
+                                )
+                            }
+                            // Created + Due dates
+                            val metaLine = buildString {
+                                if (task.createdAt > 0L) {
+                                    append(context.getString(R.string.tasks_created_on) + " " + SimpleDateFormat("dd MMM", Locale.getDefault()).format(Date(task.createdAt)))
+                                }
+                                if (task.dueDate > 0L) {
+                                    if (isNotBlank()) append(" • ")
+                                    append(context.getString(R.string.tasks_due_label) + ": " + SimpleDateFormat("MMM d, yyyy", Locale.getDefault()).format(Date(task.dueDate)))
+                                }
+                            }
+                            if (metaLine.isNotBlank()) {
                                 Spacer(Modifier.height(2.dp))
                                 Text(
-                                    text = buildString {
-                                        if (task.agentName.isNotBlank()) append(context.getString(R.string.player_tasks_created_by) + " " + task.agentName)
-                                        if (task.agentName.isNotBlank() && task.dueDate > 0) append(" • ")
-                                        if (task.dueDate > 0) append(SimpleDateFormat("MMM d, yyyy", Locale.getDefault()).format(Date(task.dueDate)))
-                                    },
-                                    style = regularTextStyle(PlatformColors.palette.textSecondary, 12.sp)
+                                    text = metaLine,
+                                    style = regularTextStyle(PlatformColors.palette.textSecondary, 11.sp)
+                                )
+                            }
+                            // Linked agent contact
+                            if (task.linkedAgentContactName.isNotBlank()) {
+                                Spacer(Modifier.height(2.dp))
+                                Text(
+                                    text = context.getString(R.string.tasks_linked_agent) + ": " + task.linkedAgentContactName +
+                                        if (task.linkedAgentContactPhone.isNotBlank()) " · ${task.linkedAgentContactPhone}" else "",
+                                    style = regularTextStyle(PlatformColors.palette.textSecondary, 11.sp)
                                 )
                             }
                         }

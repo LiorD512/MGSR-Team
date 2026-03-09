@@ -330,7 +330,7 @@ export default function TasksPage() {
       const selected = accounts.find((a) => a.id === addAgentId);
       const agentName = selected ? getDisplayName(selected, isRtl) : '';
       const dueTs = addDueDate ? new Date(addDueDate).getTime() : 0;
-      const creatorAccount = accounts.find((a) => a.id === user.uid);
+      const creatorAccount = accounts.find((a) => a.email?.toLowerCase() === user.email?.toLowerCase());
       const creatorName = creatorAccount ? getDisplayName(creatorAccount, isRtl) : (user.displayName || user.email || '');
       await addDoc(collection(db, taskCollection), {
         agentId: addAgentId || user.uid,
@@ -653,10 +653,10 @@ export default function TasksPage() {
                                 <p className="text-sm text-mgsr-muted mt-1.5">{task.notes}</p>
                               )}
                               {/* Creator & assignee info */}
-                              {task.createdByAgentName && task.createdByAgentId !== task.agentId && (
+                              {task.createdByAgentName && (
                                 <p className="text-xs text-mgsr-muted mt-1.5">
                                   {t('tasks_opened_by')} <span className={accentText}>{task.createdByAgentName}</span>
-                                  {task.agentName && <> · {t('tasks_assigned_to_label')} <span className="text-mgsr-text">{task.agentName}</span></>}
+                                  {task.agentName && task.agentName !== task.createdByAgentName && <> · {t('tasks_assigned_to_label')} <span className="text-mgsr-text">{task.agentName}</span></>}
                                 </p>
                               )}
                               {/* Linked agent contact */}
@@ -860,7 +860,7 @@ export default function TasksPage() {
                                 <p className="text-sm text-mgsr-muted mt-1 line-clamp-2">{task.notes}</p>
                               )}
                               {/* Creator info when different from assignee */}
-                              {task.createdByAgentName && task.createdByAgentId !== task.agentId && (
+                              {task.createdByAgentName && (
                                 <p className="text-[10px] text-mgsr-muted mt-1">
                                   {t('tasks_opened_by')} <span className={accentText}>{task.createdByAgentName}</span>
                                 </p>

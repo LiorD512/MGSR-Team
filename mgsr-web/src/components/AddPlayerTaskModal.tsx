@@ -46,6 +46,7 @@ interface AddPlayerTaskModalProps {
   };
   accounts: Account[];
   currentUserId: string;
+  currentUserEmail?: string;
   getDisplayName: (a: Account, isRtl: boolean) => string;
   /** Firestore collection for tasks (AgentTasks or AgentTasksWomen or AgentTasksYouth) */
   taskCollection?: 'AgentTasks' | 'AgentTasksWomen' | 'AgentTasksYouth';
@@ -70,6 +71,7 @@ export default function AddPlayerTaskModal({
   playerContext,
   accounts,
   currentUserId,
+  currentUserEmail,
   getDisplayName,
   taskCollection = 'AgentTasks',
 }: AddPlayerTaskModalProps) {
@@ -160,8 +162,8 @@ export default function AddPlayerTaskModal({
       const selected = accounts.find((a) => a.id === agentId);
       const agentName = selected ? getDisplayName(selected, isRtl) : '';
       const dueTs = dueDate ? new Date(dueDate).getTime() : 0;
-      const createdBy = accounts.find((a) => a.id === currentUserId);
-      const createdByName = createdBy ? getDisplayName(createdBy, isRtl) : '';
+      const createdBy = accounts.find((a) => a.email?.toLowerCase() === currentUserEmail?.toLowerCase());
+      const createdByName = createdBy ? getDisplayName(createdBy, isRtl) : (currentUserEmail || '');
       const taskData: Record<string, unknown> = {
         agentId: agentId || currentUserId,
         agentName: agentName || '',

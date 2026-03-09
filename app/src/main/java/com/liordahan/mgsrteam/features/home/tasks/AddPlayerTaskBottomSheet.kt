@@ -39,6 +39,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
@@ -70,6 +71,8 @@ import com.liordahan.mgsrteam.ui.theme.HomePurpleAccent
 import com.liordahan.mgsrteam.utils.datePickerMillisToLocalMidnight
 import com.liordahan.mgsrteam.ui.utils.boldTextStyle
 import com.liordahan.mgsrteam.ui.utils.regularTextStyle
+import com.google.firebase.firestore.FirebaseFirestore
+import com.liordahan.mgsrteam.features.contacts.models.Contact
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -85,7 +88,9 @@ data class PlayerTaskContext(
     val playerTmProfile: String? = null,
     val playerImage: String? = null,
     val playerClub: String? = null,
-    val playerPosition: String? = null
+    val playerPosition: String? = null,
+    val playerAgency: String? = null,
+    val playerAgencyUrl: String? = null
 )
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
@@ -95,7 +100,7 @@ fun AddPlayerTaskBottomSheet(
     playerContext: PlayerTaskContext?,
     preselectedAgentIndex: Int = 0,
     onDismiss: () -> Unit,
-    onConfirm: (agentId: String, agentName: String, title: String, dueDate: Long, priority: Int, notes: String, playerId: String, playerName: String, playerTmProfile: String, templateId: String) -> Unit
+    onConfirm: (agentId: String, agentName: String, title: String, dueDate: Long, priority: Int, notes: String, playerId: String, playerName: String, playerTmProfile: String, templateId: String, linkedAgentContactId: String, linkedAgentContactName: String, linkedAgentContactPhone: String) -> Unit
 ) {
     val context = LocalContext.current
     val sheetState: SheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -108,6 +113,35 @@ fun AddPlayerTaskBottomSheet(
     var dueDate by remember { mutableLongStateOf(0L) }
     var notes by remember { mutableStateOf("") }
     var showDatePicker by remember { mutableStateOf(false) }
+    var agentContacts by remember { mutableStateOf<List<Contact>>(emptyList()) }
+    var selectedAgentContact by remember { mutableStateOf<Contact?>(null) }
+
+    // Fetch agent/intermediary contacts, filtered by player's agency (men only)
+    DisposableEffect(Unit) {
+        val listener = FirebaseFirestore.getInstance().collection("Contacts")
+            .addSnapshotListener { snapshot, _ ->
+                if (snapshot == null) return@addSnapshotListener
+                val allAgents = snapshot.documents.mapNotNull { doc ->
+                    doc.toObject(Contact::class.java)?.copy(id = doc.id)
+                }.filter { c ->
+                    c.role == "AGENT" || c.role == "INTERMEDIARY" || c.contactType == "AGENCY"
+                }
+                val agency = playerContext?.playerAgency?.trim()?.lowercase()
+                val agencyUrl = playerContext?.playerAgencyUrl?.trim()?.lowercase()
+                if (!agency.isNullOrBlank() || !agencyUrl.isNullOrBlank()) {
+                    val matched = allAgents.filter { c ->
+                        val cAgency = c.agencyName?.trim()?.lowercase()
+                        val cUrl = c.agencyUrl?.trim()?.lowercase()
+                        (!agency.isNullOrBlank() && !cAgency.isNullOrBlank() && (cAgency.contains(agency) || agency.contains(cAgency))) ||
+                        (!agencyUrl.isNullOrBlank() && !cUrl.isNullOrBlank() && (cUrl == agencyUrl || agencyUrl.contains(cUrl) || cUrl.contains(agencyUrl)))
+                    }
+                    agentContacts = if (matched.isNotEmpty()) matched else allAgents
+                } else {
+                    agentContacts = allAgents
+                }
+            }
+        onDispose { listener.remove() }
+    }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -220,6 +254,71 @@ fun AddPlayerTaskBottomSheet(
                     }
                 }
                 Spacer(Modifier.height(16.dp))
+
+                // Agent contact picker (only for call_agent template, men only)
+                if (selectedTemplate?.id == "call_agent" && agentContacts.isNotEmpty()) {
+                    Text(
+                        text = stringResource(R.string.tasks_select_agent_contact),
+                        style = boldTextStyle(HomeTextSecondary, 13.sp)
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        agentContacts.forEach { contact ->
+                            val isSelected = selectedAgentContact?.id == contact.id
+                            val bgColor by animateColorAsState(
+                                if (isSelected) HomeTealAccent.copy(alpha = 0.2f) else HomeDarkBackground,
+                                label = "contact_bg"
+                            )
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(bgColor)
+                                    .clickable {
+                                        selectedAgentContact = if (isSelected) null else contact
+                                    }
+                                    .padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(36.dp)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(HomeTealAccent),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = (contact.name ?: "?").take(1).uppercase(),
+                                        style = boldTextStyle(Color.White, 14.sp)
+                                    )
+                                }
+                                Spacer(Modifier.width(12.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = contact.name ?: "—",
+                                        style = boldTextStyle(HomeTextPrimary, 14.sp),
+                                        maxLines = 1
+                                    )
+                                    val sub = listOfNotNull(contact.agencyName ?: contact.clubName, contact.phoneNumber).joinToString(" · ")
+                                    if (sub.isNotBlank()) {
+                                        Text(
+                                            text = sub,
+                                            style = regularTextStyle(HomeTextSecondary, 11.sp),
+                                            maxLines = 1
+                                        )
+                                    }
+                                }
+                                if (isSelected) {
+                                    Text("✓", style = boldTextStyle(HomeTealAccent, 16.sp))
+                                }
+                            }
+                        }
+                    }
+                    Spacer(Modifier.height(16.dp))
+                }
             }
 
             // Task title
@@ -415,7 +514,10 @@ fun AddPlayerTaskBottomSheet(
                                 playerId,
                                 playerName,
                                 playerTmProfile,
-                                templateId
+                                templateId,
+                                selectedAgentContact?.id ?: "",
+                                selectedAgentContact?.name ?: "",
+                                selectedAgentContact?.phoneNumber ?: ""
                             )
                         } else Modifier
                     )

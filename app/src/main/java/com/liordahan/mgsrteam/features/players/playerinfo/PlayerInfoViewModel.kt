@@ -90,7 +90,7 @@ abstract class IPlayerInfoViewModel : ViewModel() {
     abstract val playerDocumentIdFlow: StateFlow<String?>
     abstract val playerTasksFlow: Flow<List<com.liordahan.mgsrteam.features.home.models.AgentTask>>
     abstract fun markPlayerAsOffered(player: Player, request: com.liordahan.mgsrteam.features.requests.models.Request, clubFeedback: String?)
-    abstract fun addPlayerTask(agentId: String, agentName: String, title: String, dueDate: Long, priority: Int, notes: String, playerId: String, playerName: String, playerTmProfile: String, templateId: String)
+    abstract fun addPlayerTask(agentId: String, agentName: String, title: String, dueDate: Long, priority: Int, notes: String, playerId: String, playerName: String, playerTmProfile: String, templateId: String, linkedAgentContactId: String = "", linkedAgentContactName: String = "", linkedAgentContactPhone: String = "")
     abstract fun togglePlayerTaskCompleted(task: com.liordahan.mgsrteam.features.home.models.AgentTask)
     abstract fun updateClubFeedback(offerId: String, clubFeedback: String?)
     abstract fun updateHistorySummary(offerId: String, summary: String?)
@@ -285,7 +285,7 @@ class PlayerInfoViewModel(
         }
     }
 
-    override fun addPlayerTask(agentId: String, agentName: String, title: String, dueDate: Long, priority: Int, notes: String, playerId: String, playerName: String, playerTmProfile: String, templateId: String) {
+    override fun addPlayerTask(agentId: String, agentName: String, title: String, dueDate: Long, priority: Int, notes: String, playerId: String, playerName: String, playerTmProfile: String, templateId: String, linkedAgentContactId: String, linkedAgentContactName: String, linkedAgentContactPhone: String) {
         viewModelScope.launch {
             val currentAccount = allAccountsFlow.value.firstOrNull {
                 it.email.equals(firebaseHandler.firebaseAuth.currentUser?.email, true)
@@ -306,7 +306,10 @@ class PlayerInfoViewModel(
                 playerId = playerId,
                 playerName = playerName,
                 playerTmProfile = playerTmProfile,
-                templateId = templateId
+                templateId = templateId,
+                linkedAgentContactId = linkedAgentContactId,
+                linkedAgentContactName = linkedAgentContactName,
+                linkedAgentContactPhone = linkedAgentContactPhone
             )
             firebaseHandler.firebaseStore.collection(firebaseHandler.agentTasksTable).add(newTask).await()
         }
