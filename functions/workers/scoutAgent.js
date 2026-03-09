@@ -58,9 +58,14 @@ const LEAGUE_TO_AGENT = {
   "3f superliga": "denmark",
   "superliga": "romania",
   "liga 1 romania": "romania",
+  "liga 1 rumanien": "romania",
   "romanian superliga": "romania",
   "efbet liga": "bulgaria",
+  "parva liga": "bulgaria",
+  "parva liga bulgarien": "bulgaria",
   "nemzeti bajnoksag": "hungary",
+  "nb i": "hungary",
+  "nb i ungarn": "hungary",
   "premier liga": "ukraine",
   "championship": "england",
   "bundesliga": "austria",
@@ -103,6 +108,7 @@ const LEAGUE_TO_AGENT = {
   "hnl": "croatia",
   "prva hnl": "croatia",
   "1. hnl": "croatia",
+  "hnl kroatien": "croatia",
   "croatian first football league": "croatia",
   "prvaliga": "slovenia",
   "slovenian prvaliga": "slovenia",
@@ -110,13 +116,20 @@ const LEAGUE_TO_AGENT = {
   "premier league bih": "bosnia",
   "bh telecom": "bosnia",
   "premier liga bih": "bosnia",
+  "prva liga bosne i hercegovine": "bosnia",
+  "premier liga bosne i hercegovine": "bosnia",
   "first league": "macedonia",
   "macedonian first league": "macedonia",
   "prva makedonska liga": "macedonia",
+  "primera makedonska liga": "macedonia",
+  "primera liga makedonien": "macedonia",
   "first league montenegro": "montenegro",
   "prva crnogorska liga": "montenegro",
+  "1. cfl": "montenegro",
   "superliga kosovo": "kosovo",
   "kosovo superleague": "kosovo",
+  "superliga e kosoves": "kosovo",
+  "superliga kosoves": "kosovo",
 };
 
 /** Fallback: league contains country keyword -> agentId. Denmark before Romania to avoid "superliga" clash. */
@@ -150,12 +163,12 @@ const LEAGUE_CONTAINS_AGENT = [
   [["spain", "spanish", "laliga"], "spain"],
   [["france", "french", "ligue", "championnat national"], "france"],
   [["scotland", "scottish", "premiership"], "scotland"],
-  [["croatia", "croatian", "hnl", "prva hnl"], "croatia"],
+  [["croatia", "croatian", "hnl", "prva hnl", "kroatien"], "croatia"],
   [["slovenia", "slovenian", "prvaliga"], "slovenia"],
-  [["bosnia", "bosnian", "bih", "premier liga bih"], "bosnia"],
-  [["macedonia", "macedonian", "prva makedonska"], "macedonia"],
+  [["bosnia", "bosnian", "bih", "premier liga bih", "hercegovine"], "bosnia"],
+  [["macedonia", "macedonian", "prva makedonska", "makedonien", "primera makedonska"], "macedonia"],
   [["montenegro", "crnogorska"], "montenegro"],
-  [["kosovo", "kosovar"], "kosovo"],
+  [["kosovo", "kosovar", "kosoves"], "kosovo"],
 ];
 
 const POSITIONS = ["CF", "AM", "CM", "CB", "DM", "LW", "RW", "LB", "RB", "SS"];
@@ -417,7 +430,7 @@ const SORT_OPTIONS = ["score", "market_value", "age"];
 
 async function fetchRecruitment(params) {
   const search = new URLSearchParams(params);
-  search.set("value_max", String(LIGAT_HAAL_VALUE_MAX));
+  if (!search.has("value_max")) search.set("value_max", String(LIGAT_HAAL_VALUE_MAX));
   search.set("limit", "30");
   search.set("sort_by", params.sort_by || "score");
   search.set("lang", "en");
@@ -596,6 +609,110 @@ async function runScoutAgent() {
     } catch (err) {
       console.error(`[ScoutAgent] Recruitment error for ${pos}:`, err.message);
     }
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // Balkan sweep — dedicated low-value pass for underrepresented markets
+  // These leagues rarely surface in the global top-30, so we run extra
+  // queries with lower value caps to give Balkan agents proper coverage.
+  // ═══════════════════════════════════════════════════════════════
+  const BALKAN_POSITIONS = ["CF", "AM", "CM", "CB", "LW", "RW"];
+  const BALKAN_VALUE_MAX = 800_000;
+  let balkanFound = 0;
+  for (const pos of BALKAN_POSITIONS) {
+    await sleep(DELAY_BETWEEN_REQUESTS_MS);
+    try {
+      const results = await fetchRecruitment({
+        position: pos,
+        age_max: "26",
+        sort_by: "score",
+        value_max: String(BALKAN_VALUE_MAX),
+      });
+      for (const p of results) {
+        const url = (p.url || "").trim();
+        if (!url) continue;
+        if (excludeUrls.has(normalizePlayerUrl(url))) continue;
+
+        const valEuro = parseMarketValue(p.market_value);
+        if (valEuro > BALKAN_VALUE_MAX) continue;
+
+        const agentId = leagueToAgent(p.league);
+        if (!agentId) continue;
+        // Only keep profiles for Balkan agents in this sweep
+        const BALKAN_AGENTS = new Set(["serbia", "croatia", "slovenia", "bosnia", "macedonia", "montenegro", "kosovo", "bulgaria", "romania", "hungary"]);
+        if (!BALKAN_AGENTS.has(agentId)) continue;
+
+        const ageNum = parseAge(p.age);
+        const league = (p.league || "").trim();
+        const lc = league.toLowerCase();
+        const leagueTier = lc.includes("national") || lc.includes("3. liga") ? 3
+          : lc.includes("2") || lc.includes("second") ? 2
+          : 1;
+
+        const agentParams = paramsByAgent[agentId] || {};
+
+        for (const profileType of [
+          "LOW_VALUE_STARTER", "YOUNG_STRIKER_HOT", "CONTRACT_EXPIRING",
+          "HIDDEN_GEM", "LOWER_LEAGUE_RISER", "BREAKOUT_SEASON", "UNDERVALUED_BY_FM",
+        ]) {
+          const profileOverrides = agentParams[profileType] || {};
+          if (!matchesProfile(p, profileType, valEuro, ageNum, leagueTier, profileOverrides)) continue;
+
+          const urlHash = Buffer.from(url).toString("base64").replace(/[+/=]/g, "_").slice(0, 40);
+          const docId = `${agentId}_${urlHash}_${profileType}`;
+          if (seen.has(docId)) continue;
+          if (rejectedProfileIds.has(docId)) continue;
+          seen.set(docId, true);
+
+          const matchReason = buildMatchReason(p, profileType, valEuro, ageNum);
+          const matchScore = computeMatchScore(p, profileType, valEuro, ageNum);
+          const now = Date.now();
+
+          const fbrefMinutes90s = getMinutes90s(p);
+          const fbrefGoals = getFbrefGoals(p);
+          const fbrefAssists = getFbrefAssists(p);
+          const goalsPer90 = fbrefMinutes90s > 0 ? fbrefGoals / fbrefMinutes90s : 0;
+          const contribPer90 = fbrefMinutes90s > 0 ? (fbrefGoals + fbrefAssists) / fbrefMinutes90s : 0;
+
+          profilesToWrite.push({
+            docId,
+            data: {
+              tmProfileUrl: url,
+              agentId,
+              profileType,
+              playerName: (p.name || "").trim() || "Unknown",
+              profileImage: (p.profile_image || "").trim() || null,
+              age: ageNum ?? 0,
+              position: (p.position || "").trim() || "",
+              marketValue: (p.market_value || "").trim() || "",
+              marketValueEuro: valEuro,
+              club: (p.club || "").trim() || "",
+              league: league || "",
+              leagueTier,
+              nationality: (p.citizenship || "").trim() || null,
+              matchReason,
+              matchScore,
+              fmPa: getFmPa(p) ?? null,
+              fmCa: p.fm_ca ?? p.fmi_ca ?? null,
+              contractExpires: (p.contract || "").trim() || null,
+              fbrefMinutes90s,
+              fbrefGoals,
+              fbrefAssists,
+              goalsPer90: Math.round(goalsPer90 * 100) / 100,
+              contribPer90: Math.round(contribPer90 * 100) / 100,
+              discoveredAt: now,
+              lastRefreshedAt: now,
+            },
+          });
+          balkanFound++;
+        }
+      }
+    } catch (err) {
+      console.error(`[ScoutAgent] Balkan sweep error for ${pos}:`, err.message);
+    }
+  }
+  if (balkanFound > 0) {
+    console.log(`[ScoutAgent] Balkan sweep found ${balkanFound} additional profiles`);
   }
 
   // ═══════════════════════════════════════════════════════════════

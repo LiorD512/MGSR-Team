@@ -240,23 +240,23 @@ function formatIntelLine(intel) {
 // ═══════════════════════════════════════════════════════════════
 const QUALITY_BARS = {
   BREAKOUT_SEASON: {
-    attacker: { minGoalsPer90: 0.35, minContribPer90: 0.50 },
-    midfielder: { minGoalsPer90: 0.12, minContribPer90: 0.30 },
+    attacker: { minGoalsPer90: 0.28, minContribPer90: 0.40 },
+    midfielder: { minGoalsPer90: 0.08, minContribPer90: 0.22 },
   },
   YOUNG_STRIKER_HOT: {
-    attacker: { minGoalsPer90: 0.25, minContribPer90: 0.35 },
+    attacker: { minGoalsPer90: 0.20, minContribPer90: 0.28 },
   },
   LOW_VALUE_STARTER: {
-    attacker: { minContribPer90: 0.15 },
-    midfielder: { minContribPer90: 0.10 },
+    attacker: { minContribPer90: 0.10 },
+    midfielder: { minContribPer90: 0.06 },
   },
 };
 
 // Minimum matchScore by league tier
 const MIN_SCORE_BY_TIER = {
-  1: 72,
-  2: 68,
-  3: 65,
+  1: 68,
+  2: 62,
+  3: 58,
 };
 
 // ═══════════════════════════════════════════════════════════════
@@ -346,8 +346,8 @@ function checkPer90Quality(data) {
 function checkAgeValueRationality(data) {
   const issues = [];
 
-  // Player 28+ with significant cost and no contract urgency = limited upside
-  if (data.age >= 28 && data.profileType !== "CONTRACT_EXPIRING" && data.marketValueEuro > 500_000) {
+  // Player 30+ with significant cost and no contract urgency = limited upside
+  if (data.age >= 30 && data.profileType !== "CONTRACT_EXPIRING" && data.marketValueEuro > 800_000) {
     issues.push("old_expensive_no_upside");
   }
 
@@ -356,17 +356,17 @@ function checkAgeValueRationality(data) {
     issues.push("benched_at_low_tier");
   }
 
-  // HIDDEN_GEM with FM PA at the bare minimum (130-134) AND age 23-24 = too little ceiling left
-  if (data.profileType === "HIDDEN_GEM" && data.fmPa != null && data.fmPa <= 134 && data.age >= 23) {
+  // HIDDEN_GEM with FM PA at the bare minimum (130-134) AND age 25+ = too little ceiling left
+  if (data.profileType === "HIDDEN_GEM" && data.fmPa != null && data.fmPa <= 130 && data.age >= 25) {
     issues.push("low_ceiling_hidden_gem");
   }
 
-  // Monchi Method: Declining value arc — player 26+ with no resale potential
+  // Monchi Method: Declining value arc — player 28+ with no resale potential
   // and low FM potential = end-of-line. Needs exceptional current performance.
-  if (data.age >= 26 && data.profileType !== "CONTRACT_EXPIRING") {
-    const hasResale = data.fmPa != null && data.fmPa >= 140 && data.age <= 27;
-    const isExceptionalPerformer = (data.contribPer90 || 0) >= 0.5;
-    if (!hasResale && !isExceptionalPerformer && data.marketValueEuro > 800_000) {
+  if (data.age >= 28 && data.profileType !== "CONTRACT_EXPIRING") {
+    const hasResale = data.fmPa != null && data.fmPa >= 135 && data.age <= 28;
+    const isExceptionalPerformer = (data.contribPer90 || 0) >= 0.35;
+    if (!hasResale && !isExceptionalPerformer && data.marketValueEuro > 1_200_000) {
       issues.push("no_value_arc_upside");
     }
   }
@@ -403,7 +403,7 @@ function checkIsraeliMarketRealism(data) {
   }
 
   // Expensive + old = no resale value for Israeli clubs
-  if (val >= 1_500_000 && data.age >= 27 && data.profileType !== "CONTRACT_EXPIRING") {
+  if (val >= 1_800_000 && data.age >= 29 && data.profileType !== "CONTRACT_EXPIRING") {
     issues.push("expensive_old_no_resale");
   }
 
@@ -418,14 +418,14 @@ function checkIsraeliMarketRealism(data) {
     }
   }
 
-  // Tier 3 goal inflation — scoring 15 goals in Macedonia/Azerbaijan != Ligat Ha'al quality
+  // Tier 3 goal inflation — scoring in very weak leagues != Ligat Ha'al quality
   if (data.leagueTier >= 3 && isAttacker(data.position)) {
     const goals = data.fbrefGoals || 0;
     const minutes90s = data.fbrefMinutes90s || 0;
     if (goals >= 10 && minutes90s > 0) {
       const goalsPer90 = goals / minutes90s;
-      // Insanely high rate in a weak league — looks good on paper, likely inflated
-      if (goalsPer90 > 0.7) {
+      // Extreme rate in a weak league — likely inflated
+      if (goalsPer90 > 0.9) {
         issues.push(`tier3_inflated_stats:${goalsPer90.toFixed(2)}g90_in_tier${data.leagueTier}`);
       }
     }
@@ -482,6 +482,36 @@ function checkDataConsistency(data) {
   }
 
   return issues;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Roster & Shortlist check — skip players we already know about
+// ═══════════════════════════════════════════════════════════════
+async function loadKnownPlayerUrls() {
+  const db = getFirestore();
+  const knownUrls = new Set();
+
+  try {
+    // All-time shortlist (men) — any player ever shortlisted
+    const shortlistSnap = await db.collection("Shortlists").get();
+    for (const doc of shortlistSnap.docs) {
+      const u = doc.data().tmProfileUrl;
+      if (u) knownUrls.add(normalizeUrl(u));
+    }
+    // Roster (men) — players already signed/tracked
+    const playersSnap = await db.collection("Players").get();
+    for (const doc of playersSnap.docs) {
+      const u = doc.data().tmProfileUrl;
+      if (u) knownUrls.add(normalizeUrl(u));
+    }
+  } catch (e) {
+    console.warn("[SportDirector] Could not load roster/shortlist URLs:", e.message);
+  }
+
+  if (knownUrls.size > 0) {
+    console.log(`[SportDirector] Loaded ${knownUrls.size} known roster/shortlist URLs — will skip these`);
+  }
+  return knownUrls;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -697,6 +727,9 @@ async function reviewProfiles(profilesToWrite) {
   const rejected = [];
   const agentStats = {};
 
+  // Load roster + shortlist URLs — skip players we already have
+  const knownPlayerUrls = await loadKnownPlayerUrls();
+
   // Load previous run URLs for freshness detection
   const previousUrls = await loadPreviousRunUrls();
 
@@ -727,6 +760,16 @@ async function reviewProfiles(profilesToWrite) {
       agentStats[agentId].newCount++;
     }
 
+    // Skip players already in roster or shortlist
+    const profileUrl = normalizeUrl(d.tmProfileUrl);
+    if (knownPlayerUrls.has(profileUrl)) {
+      rejected.push({ ...profile, directorVerdict: "rejected", directorReasons: ["already_in_roster_or_shortlist"] });
+      agentStats[agentId].rejected++;
+      agentStats[agentId].rejectionReasons["already_in_roster_or_shortlist"] =
+        (agentStats[agentId].rejectionReasons["already_in_roster_or_shortlist"] || 0) + 1;
+      continue;
+    }
+
     // Run all quality checks
     const allIssues = [];
     allIssues.push(...checkCompleteness(d));
@@ -754,8 +797,8 @@ async function reviewProfiles(profilesToWrite) {
         agentStats[agentId].rejectionReasons[issue] =
           (agentStats[agentId].rejectionReasons[issue] || 0) + 1;
       }
-    } else if (allIssues.length >= 3) {
-      // 3+ non-critical issues = cumulative quality concern → reject
+    } else if (allIssues.length >= 4) {
+      // 4+ non-critical issues = cumulative quality concern → reject
       rejected.push({ ...profile, directorVerdict: "rejected", directorReasons: allIssues });
       agentStats[agentId].rejected++;
       for (const issue of allIssues) {
@@ -763,7 +806,7 @@ async function reviewProfiles(profilesToWrite) {
           (agentStats[agentId].rejectionReasons[issue] || 0) + 1;
       }
     } else {
-      // 0-2 minor issues → approved
+      // 0-3 minor issues → approved
       approved.push({ ...profile, directorVerdict: "approved", directorReasons: allIssues });
       agentStats[agentId].approved++;
     }
