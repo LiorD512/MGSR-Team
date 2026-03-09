@@ -12,6 +12,9 @@
  * 5. Freshness — new finds vs recycled names from previous runs
  * 6. Israeli market realism — is the player truly attainable for Ligat Ha'al?
  * 7. Data consistency — cross-reference stats for impossible/stale data
+ * 8. TM stats verification — scrapes Transfermarkt season page to cross-check
+ *    FBref data for stats-dependent profiles (HIGH_VALUE_BENCHED, BREAKOUT_SEASON,
+ *    YOUNG_STRIKER_HOT). Overrides incorrect data and re-evaluates profile type.
  *
  * After code checks, Gemini generates Sport Director verdicts for top approved profiles
  * including full request-fit analysis (does the player match EVERY criteria?).
@@ -19,6 +22,21 @@
 
 const { getFirestore } = require("firebase-admin/firestore");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
+const cheerio = require("cheerio");
+
+// Lazy-loaded to avoid circular dependency (scoutAgent requires sportDirector)
+let _agentFns = null;
+function getAgentFns() {
+  if (!_agentFns) {
+    const sa = require("./scoutAgent");
+    _agentFns = {
+      matchesProfile: sa.matchesProfile,
+      computeMatchScore: sa.computeMatchScore,
+      buildMatchReason: sa.buildMatchReason,
+    };
+  }
+  return _agentFns;
+}
 
 // ═══════════════════════════════════════════════════════════════
 // Player Intelligence — multi-source enrichment for verdicts
@@ -552,6 +570,289 @@ function normalizeUrl(url) {
 }
 
 // ═══════════════════════════════════════════════════════════════
+// Transfermarkt Stats Verification — cross-check agent FBref data
+// Scrapes TM /leistungsdaten/ to get real season appearances/goals/assists/minutes
+// ═══════════════════════════════════════════════════════════════
+
+/** Current football season year (Jul+ = current year, before Jul = previous year). */
+function getCurrentSeasonYear() {
+  const now = new Date();
+  return now.getMonth() >= 6 ? now.getFullYear() : now.getFullYear() - 1;
+}
+
+/** Extract numeric player ID from a Transfermarkt URL. */
+function extractTmPlayerId(url) {
+  if (!url || typeof url !== "string") return null;
+  const parts = url.trim().split("/");
+  for (let i = parts.length - 1; i >= 0; i--) {
+    const p = parts[i].toLowerCase();
+    if (p === "spieler" || p === "player" || p === "profil") {
+      const id = parts[i + 1];
+      return id && /^\d+$/.test(id) ? id : null;
+    }
+  }
+  // Fallback: last numeric segment
+  for (let i = parts.length - 1; i >= 0; i--) {
+    if (/^\d+$/.test(parts[i])) return parts[i];
+  }
+  return null;
+}
+
+/**
+ * Fetch season performance stats from Transfermarkt via cheerio scraping.
+ * Returns { appearances, goals, assists, minutes } or null on failure.
+ */
+async function fetchTmPerformanceStats(tmProfileUrl) {
+  const id = extractTmPlayerId(tmProfileUrl);
+  if (!id) return null;
+
+  const season = getCurrentSeasonYear();
+  const perfUrl = tmProfileUrl
+    .replace(/\/profil\//, "/leistungsdaten/")
+    .replace(/\/player\//, "/leistungsdaten/")
+    .replace(/\/$/, "");
+  const urlWithSeason = perfUrl.includes("saison") ? perfUrl : `${perfUrl}/saison/${season}`;
+
+  try {
+    const res = await intelFetch(urlWithSeason);
+    if (!res.ok) return null;
+    const html = await res.text();
+    const $ = cheerio.load(html);
+
+    let appearances = 0, goals = 0, assists = 0, minutes = 0;
+
+    const rows = $("table.items tbody tr, table.items tr");
+    rows.each((_, row) => {
+      const $row = $(row);
+      const firstCell = $row.find("td").first().text().trim().toLowerCase();
+      if (!firstCell.includes("total") && !firstCell.includes("gesamt")) return;
+
+      const tds = $row.find("td");
+      if (tds.length < 4) return;
+
+      const nums = [];
+      tds.slice(1).each((__, td) => {
+        const raw = $(td).text().trim();
+        const t = raw.replace(/['\s]/g, "").replace(/\./g, "").replace(/,/g, "");
+        const n = parseInt(t, 10);
+        if (!isNaN(n)) nums.push(n);
+      });
+
+      if (nums.length >= 3) {
+        appearances = nums[0] ?? 0;
+        goals = nums[1] ?? 0;
+        // Compact: Spiele, Tore, Minuten. Extended: Spiele, Tore, Vorlagen, Minuten.
+        if (nums.length === 3) {
+          assists = 0;
+          minutes = nums[2] ?? 0;
+        } else {
+          assists = nums[2] ?? 0;
+          const last = nums[nums.length - 1];
+          if (last != null && last > 100) minutes = last;
+          else if (nums.length >= 6) minutes = nums[5] ?? 0;
+          else if (nums.length >= 4) minutes = nums[3] ?? 0;
+        }
+      }
+      return false;
+    });
+
+    if (appearances === 0 && goals === 0 && assists === 0) return null;
+    return { appearances, goals, assists, minutes };
+  } catch (err) {
+    console.warn(`[SportDirector:TM-Verify] Scrape failed for ${tmProfileUrl}:`, err.message);
+    return null;
+  }
+}
+
+/**
+ * Compare FBref data (from scout server) against TM scraped data.
+ * When significant mismatches are found, override profile data with TM values.
+ * Returns { overridden: boolean, overrides: string[], tmStats: object }.
+ */
+function verifyAndCorrectStats(d, tmStats) {
+  const overrides = [];
+  const tmMinutes90s = tmStats.minutes > 0 ? tmStats.minutes / 90 : 0;
+  const fbrefMin90s = d.fbrefMinutes90s || 0;
+
+  // Minutes mismatch: FBref says barely played but TM shows 15+ appearances
+  if (fbrefMin90s < 10 && tmStats.appearances >= 15 && tmMinutes90s >= 10) {
+    overrides.push(`minutes: FBref ${fbrefMin90s.toFixed(1)} 90s → TM ${tmMinutes90s.toFixed(1)} 90s (${tmStats.appearances} apps, ${tmStats.minutes} min)`);
+    d.fbrefMinutes90s = Math.round(tmMinutes90s * 10) / 10;
+  }
+  // Also catch: FBref has minutes but they're drastically low vs TM
+  if (fbrefMin90s > 0 && tmMinutes90s > 0 && tmMinutes90s > fbrefMin90s * 2 && tmMinutes90s - fbrefMin90s >= 5) {
+    overrides.push(`minutes: FBref ${fbrefMin90s.toFixed(1)} 90s → TM ${tmMinutes90s.toFixed(1)} 90s (significant under-count)`);
+    d.fbrefMinutes90s = Math.round(tmMinutes90s * 10) / 10;
+  }
+
+  // Goals mismatch: differ by >50% with minimum 3 gap
+  const fbGoals = d.fbrefGoals || 0;
+  if (tmStats.goals !== undefined && Math.abs(tmStats.goals - fbGoals) >= 3 && (fbGoals === 0 || Math.abs(tmStats.goals - fbGoals) / Math.max(fbGoals, 1) > 0.5)) {
+    overrides.push(`goals: FBref ${fbGoals} → TM ${tmStats.goals}`);
+    d.fbrefGoals = tmStats.goals;
+  }
+
+  // Assists mismatch: same threshold
+  const fbAssists = d.fbrefAssists || 0;
+  if (tmStats.assists !== undefined && Math.abs(tmStats.assists - fbAssists) >= 3 && (fbAssists === 0 || Math.abs(tmStats.assists - fbAssists) / Math.max(fbAssists, 1) > 0.5)) {
+    overrides.push(`assists: FBref ${fbAssists} → TM ${tmStats.assists}`);
+    d.fbrefAssists = tmStats.assists;
+  }
+
+  // Recalculate per-90 rates if anything was overridden
+  if (overrides.length > 0) {
+    const min90 = d.fbrefMinutes90s || 0;
+    d.goalsPer90 = min90 > 0 ? Math.round((d.fbrefGoals / min90) * 100) / 100 : 0;
+    d.contribPer90 = min90 > 0 ? Math.round(((d.fbrefGoals + d.fbrefAssists) / min90) * 100) / 100 : 0;
+    d.statsSource = "transfermarkt_verified";
+    d.tmVerification = {
+      appearances: tmStats.appearances,
+      goals: tmStats.goals,
+      assists: tmStats.assists,
+      minutes: tmStats.minutes,
+      overrides,
+    };
+  }
+
+  return { overridden: overrides.length > 0, overrides, tmStats };
+}
+
+/**
+ * After stats are corrected, re-evaluate whether the profile type still fits.
+ * If not, try all 8 types and pick the best match. Uses scoutAgent's matchesProfile.
+ * Returns { changed: boolean, oldType: string, newType: string|null }.
+ */
+function reEvaluateProfileType(d) {
+  const { matchesProfile, computeMatchScore, buildMatchReason } = getAgentFns();
+  const oldType = d.profileType;
+
+  // Build a fake player object that matchesProfile() expects
+  const fakePlayer = {
+    position: d.position,
+    contract: d.contractExpires || "",
+    fbref_minutes_90s: d.fbrefMinutes90s,
+    fbref_goals: d.fbrefGoals,
+    fbref_assists: d.fbrefAssists,
+    fm_pa: d.fmPa,
+    fm_ca: d.fmCa,
+    market_value: d.marketValue,
+    league: d.league,
+    name: d.playerName,
+  };
+
+  const valEuro = d.marketValueEuro;
+  const ageNum = d.age;
+  const leagueTier = d.leagueTier || 1;
+
+  // Check if current type still matches
+  if (matchesProfile(fakePlayer, oldType, valEuro, ageNum, leagueTier)) {
+    // Still valid — just update score and reason with corrected data
+    d.matchScore = computeMatchScore(fakePlayer, oldType, valEuro, ageNum);
+    d.matchReason = buildMatchReason(fakePlayer, oldType, valEuro, ageNum);
+    return { changed: false, oldType, newType: oldType };
+  }
+
+  // Profile type no longer fits — find a new one
+  const allTypes = [
+    "HIGH_VALUE_BENCHED", "LOW_VALUE_STARTER", "YOUNG_STRIKER_HOT",
+    "CONTRACT_EXPIRING", "HIDDEN_GEM", "LOWER_LEAGUE_RISER",
+    "BREAKOUT_SEASON", "UNDERVALUED_BY_FM",
+  ];
+
+  let bestType = null;
+  let bestScore = -1;
+  for (const pt of allTypes) {
+    if (matchesProfile(fakePlayer, pt, valEuro, ageNum, leagueTier)) {
+      const score = computeMatchScore(fakePlayer, pt, valEuro, ageNum);
+      if (score > bestScore) {
+        bestScore = score;
+        bestType = pt;
+      }
+    }
+  }
+
+  if (bestType) {
+    d.profileType = bestType;
+    d.matchScore = bestScore;
+    d.matchReason = buildMatchReason(fakePlayer, bestType, valEuro, ageNum);
+    return { changed: true, oldType, newType: bestType };
+  }
+
+  // No profile type matches with corrected data
+  return { changed: true, oldType, newType: null };
+}
+
+// Profile types that rely on FBref stats and are vulnerable to bad data
+const STATS_DEPENDENT_PROFILES = new Set([
+  "HIGH_VALUE_BENCHED",
+  "BREAKOUT_SEASON",
+  "YOUNG_STRIKER_HOT",
+]);
+
+/**
+ * Verify stats-dependent profiles against Transfermarkt.
+ * Batched: 5 concurrent, 1.5s between batches.
+ * Mutates profile data in-place when corrections are needed.
+ */
+async function verifyProfilesViaTm(profiles) {
+  const toVerify = profiles.filter((p) => STATS_DEPENDENT_PROFILES.has(p.data.profileType));
+  if (toVerify.length === 0) return { verified: 0, overridden: 0, typeChanged: 0, noTypeMatch: 0, failed: 0 };
+
+  console.log(`[SportDirector:TM-Verify] Verifying ${toVerify.length} stats-dependent profiles against Transfermarkt...`);
+
+  let verified = 0, overridden = 0, typeChanged = 0, noTypeMatch = 0, failed = 0;
+  const BATCH_SIZE = 5;
+  const BATCH_DELAY = 1500;
+
+  for (let i = 0; i < toVerify.length; i += BATCH_SIZE) {
+    if (i > 0) await new Promise((r) => setTimeout(r, BATCH_DELAY));
+    const batch = toVerify.slice(i, i + BATCH_SIZE);
+
+    const results = await Promise.allSettled(
+      batch.map(async (profile) => {
+        const d = profile.data;
+        const tmStats = await fetchTmPerformanceStats(d.tmProfileUrl);
+        if (!tmStats) {
+          failed++;
+          return;
+        }
+        verified++;
+
+        const { overridden: wasOverridden, overrides } = verifyAndCorrectStats(d, tmStats);
+        if (wasOverridden) {
+          overridden++;
+          console.log(`[SportDirector:TM-Verify] ${d.playerName}: ${overrides.join("; ")}`);
+
+          const { changed, oldType, newType } = reEvaluateProfileType(d);
+          if (changed && newType) {
+            typeChanged++;
+            console.log(`[SportDirector:TM-Verify] ${d.playerName}: profileType changed ${oldType} → ${newType}`);
+          } else if (changed && !newType) {
+            noTypeMatch++;
+            console.log(`[SportDirector:TM-Verify] ${d.playerName}: NO profile type matches after correction (was ${oldType}). Will be rejected.`);
+            d._tmVerifyReject = true;
+            d._tmVerifyRejectReason = `stats_override_no_profile_match:was_${oldType}`;
+          }
+        } else {
+          // TM data confirms FBref — note it as verified
+          d.statsSource = "fbref_tm_confirmed";
+          d.tmVerification = {
+            appearances: tmStats.appearances,
+            goals: tmStats.goals,
+            assists: tmStats.assists,
+            minutes: tmStats.minutes,
+            overrides: [],
+          };
+        }
+      })
+    );
+  }
+
+  console.log(`[SportDirector:TM-Verify] Done. Verified: ${verified}, Overridden: ${overridden}, TypeChanged: ${typeChanged}, NoMatch: ${noTypeMatch}, Failed: ${failed}`);
+  return { verified, overridden, typeChanged, noTypeMatch, failed };
+}
+
+// ═══════════════════════════════════════════════════════════════
 // Gemini Sport Director executive evaluation (top profiles only)
 // ═══════════════════════════════════════════════════════════════
 async function generateDirectorVerdicts(approvedProfiles, agentReports) {
@@ -733,6 +1034,12 @@ async function reviewProfiles(profilesToWrite) {
   // Load previous run URLs for freshness detection
   const previousUrls = await loadPreviousRunUrls();
 
+  // ═══ TM VERIFICATION ═══
+  // Cross-check stats-dependent profiles (HIGH_VALUE_BENCHED, BREAKOUT_SEASON,
+  // YOUNG_STRIKER_HOT) against Transfermarkt real season data. Corrects FBref
+  // mismatches and re-evaluates profile types before quality gate runs.
+  const tmVerifyStats = await verifyProfilesViaTm(profilesToWrite);
+
   for (const profile of profilesToWrite) {
     const d = profile.data;
     const agentId = d.agentId;
@@ -767,6 +1074,16 @@ async function reviewProfiles(profilesToWrite) {
       agentStats[agentId].rejected++;
       agentStats[agentId].rejectionReasons["already_in_roster_or_shortlist"] =
         (agentStats[agentId].rejectionReasons["already_in_roster_or_shortlist"] || 0) + 1;
+      continue;
+    }
+
+    // Check if TM verification rejected this profile (no matching type after correction)
+    if (d._tmVerifyReject) {
+      const reason = d._tmVerifyRejectReason || "stats_override_no_profile_match";
+      rejected.push({ ...profile, directorVerdict: "rejected", directorReasons: [reason] });
+      agentStats[agentId].rejected++;
+      agentStats[agentId].rejectionReasons[reason] =
+        (agentStats[agentId].rejectionReasons[reason] || 0) + 1;
       continue;
     }
 
@@ -911,6 +1228,12 @@ async function reviewProfiles(profilesToWrite) {
   // Log summary
   console.log(`[SportDirector] ═══ REVIEW COMPLETE ═══`);
   console.log(`[SportDirector] Total: ${profilesToWrite.length} | Approved: ${approved.length} | Rejected: ${rejected.length}`);
+  if (tmVerifyStats.verified > 0 || tmVerifyStats.failed > 0) {
+    console.log(
+      `[SportDirector] TM Verification: ${tmVerifyStats.verified} verified, ${tmVerifyStats.overridden} overridden, ` +
+      `${tmVerifyStats.typeChanged} type changes, ${tmVerifyStats.noTypeMatch} rejected, ${tmVerifyStats.failed} scrape failures`
+    );
+  }
   for (const [agentId, report] of Object.entries(agentReports)) {
     console.log(
       `[SportDirector] ${agentId}: Grade ${report.overallGrade} | ` +

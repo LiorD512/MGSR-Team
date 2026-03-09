@@ -888,4 +888,4 @@ ONLY valid JSON.`;
   };
 }
 
-module.exports = { runScoutAgent };
+module.exports = { runScoutAgent, matchesProfile, computeMatchScore, buildMatchReason };
