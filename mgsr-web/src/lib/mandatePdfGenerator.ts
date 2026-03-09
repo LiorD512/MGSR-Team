@@ -216,6 +216,7 @@ export async function generateMandatePdf(data: MandateData): Promise<Uint8Array>
     borderWidth: 1,
     font,
   });
+  playerSigField.defaultUpdateAppearances(font);
   const dateX = playerSigX + sigFieldW + 12;
   page.drawText(dateLabel, { x: dateX, y, size: BODY_SIZE, font, color: black });
   const playerDateField = form.createTextField('player_date');
@@ -229,6 +230,7 @@ export async function generateMandatePdf(data: MandateData): Promise<Uint8Array>
     borderWidth: 1,
     font,
   });
+  playerDateField.defaultUpdateAppearances(font);
   y -= sigFieldH + 12;
 
   page.drawText(printLabel, { x: MARGIN, y, size: BODY_SIZE, font, color: black });
@@ -243,6 +245,7 @@ export async function generateMandatePdf(data: MandateData): Promise<Uint8Array>
     borderWidth: 1,
     font,
   });
+  playerPrintField.defaultUpdateAppearances(font);
   y -= sigFieldH + 12;
 
   page.drawText(agentLabel, { x: MARGIN, y, size: BODY_SIZE, font, color: black });
@@ -258,6 +261,7 @@ export async function generateMandatePdf(data: MandateData): Promise<Uint8Array>
     borderWidth: 1,
     font,
   });
+  agentSigField.defaultUpdateAppearances(font);
   const agentDateX = agentSigX + sigFieldW + 12;
   page.drawText(dateLabel, { x: agentDateX, y, size: BODY_SIZE, font, color: black });
   const agentDateField = form.createTextField('agent_date');
@@ -271,6 +275,7 @@ export async function generateMandatePdf(data: MandateData): Promise<Uint8Array>
     borderWidth: 1,
     font,
   });
+  agentDateField.defaultUpdateAppearances(font);
   y -= sigFieldH + 12;
 
   page.drawText(printLabel, { x: MARGIN, y, size: BODY_SIZE, font, color: black });
