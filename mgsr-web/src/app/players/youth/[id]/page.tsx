@@ -102,7 +102,7 @@ export default function YouthPlayerPage() {
 
   // Tasks
   const [showAddTaskModal, setShowAddTaskModal] = useState(false);
-  const [playerTasks, setPlayerTasks] = useState<{ id: string; title?: string; notes?: string; dueDate?: number; isCompleted?: boolean; agentName?: string; createdAt?: number }[]>([]);
+  const [playerTasks, setPlayerTasks] = useState<{ id: string; title?: string; notes?: string; dueDate?: number; isCompleted?: boolean; agentId?: string; agentName?: string; createdAt?: number; createdByAgentId?: string; createdByAgentName?: string; templateId?: string; linkedAgentContactId?: string; linkedAgentContactName?: string; linkedAgentContactPhone?: string }[]>([]);
 
   // Portfolio
   const [addingToPortfolio, setAddingToPortfolio] = useState(false);
@@ -930,9 +930,36 @@ export default function YouthPlayerPage() {
                         <p className={`text-sm ${task.isCompleted ? 'line-through text-mgsr-muted' : 'text-mgsr-text'}`}>
                           {task.title}
                         </p>
-                        {task.dueDate && (
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5">
+                          {task.createdByAgentName && task.createdByAgentId !== task.agentId && (
+                            <span className="text-xs text-mgsr-muted">
+                              {t('tasks_opened_by')} <span className="text-[var(--youth-cyan)]">{task.createdByAgentName}</span>
+                            </span>
+                          )}
+                          {task.agentName && (
+                            <span className="text-xs text-mgsr-muted">
+                              {t('tasks_assigned_to_label')} <span className="text-mgsr-text">{task.agentName}</span>
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5">
+                          {task.createdAt && (
+                            <span className="text-xs text-mgsr-muted">
+                              {t('tasks_created_on')} {new Date(task.createdAt).toLocaleDateString(isRtl ? 'he-IL' : 'en-US', { day: 'numeric', month: 'short' })}
+                            </span>
+                          )}
+                          {task.dueDate && (
+                            <span className={`text-xs ${task.dueDate < Date.now() && !task.isCompleted ? 'text-red-400 font-medium' : 'text-mgsr-muted'}`}>
+                              {t('tasks_due_label')} {new Date(task.dueDate).toLocaleDateString(isRtl ? 'he-IL' : 'en-US', { day: 'numeric', month: 'short' })}
+                            </span>
+                          )}
+                        </div>
+                        {task.linkedAgentContactName && (
                           <p className="text-xs text-mgsr-muted mt-0.5">
-                            {t('youth_detail_due')} {new Date(task.dueDate).toLocaleDateString()}
+                            {t('tasks_linked_agent')}: <span className="text-mgsr-text">{task.linkedAgentContactName}</span>
+                            {task.linkedAgentContactPhone && (
+                              <a href={`tel:${task.linkedAgentContactPhone}`} className="ms-1.5 text-[var(--youth-cyan)] hover:underline">{task.linkedAgentContactPhone}</a>
+                            )}
                           </p>
                         )}
                       </div>

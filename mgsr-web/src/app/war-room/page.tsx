@@ -493,14 +493,21 @@ export default function WarRoomPage() {
     [user, rosterTmProfiles, lang]
   );
 
-  const filteredCandidates =
+  const filteredCandidates = (
     sourceFilter === 'all'
       ? candidates
       : sourceFilter === 'request'
         ? candidates.filter((c) => c.source === 'request_match')
         : sourceFilter === 'hidden_gem'
           ? candidates.filter((c) => c.source === 'hidden_gem')
-          : candidates;
+          : candidates
+  ).filter((c) => {
+    const url = c.transfermarktUrl;
+    if (!url) return true;
+    if (Array.from(rosterTmProfiles).some((r) => samePlayer(r, url))) return false;
+    if (Array.from(shortlistUrls).some((s) => samePlayer(s, url))) return false;
+    return true;
+  });
 
   const isHe = lang === 'he';
 
@@ -1059,7 +1066,15 @@ export default function WarRoomPage() {
               {!loadingScoutProfiles && scoutProfiles.length > 0 && (
                 <div className="space-y-4">
                   {Object.entries(
-                    scoutProfiles.reduce<Record<string, ScoutProfileResponse[]>>((acc, p) => {
+                    scoutProfiles
+                      .filter((p) => {
+                        const url = p.tmProfileUrl;
+                        if (!url) return true;
+                        if (Array.from(rosterTmProfiles).some((r) => samePlayer(r, url))) return false;
+                        if (Array.from(shortlistUrls).some((s) => samePlayer(s, url))) return false;
+                        return true;
+                      })
+                      .reduce<Record<string, ScoutProfileResponse[]>>((acc, p) => {
                       if (scoutAgentFilter !== 'all' && p.agentId !== scoutAgentFilter) return acc;
                       (acc[p.agentId] = acc[p.agentId] || []).push(p);
                       return acc;
@@ -1345,7 +1360,13 @@ export default function WarRoomPage() {
                   )}
 
                   <div className="space-y-3">
-                    {scoutResults.map((s) => {
+                    {scoutResults.filter((s) => {
+                      const url = s.transfermarktUrl;
+                      if (!url) return true;
+                      if (Array.from(rosterTmProfiles).some((r) => samePlayer(r, url))) return false;
+                      if (Array.from(shortlistUrls).some((su) => samePlayer(su, url))) return false;
+                      return true;
+                    }).map((s) => {
                       const url = s.transfermarktUrl;
                       const pct = s.matchPercent ?? 0;
                       const isExpanded = url ? scoutExpandedUrl === url : false;

@@ -93,7 +93,7 @@ export default function WomanPlayerPage() {
   const [docToDelete, setDocToDelete] = useState<PlayerDocument | null>(null);
   const [mandateToggling, setMandateToggling] = useState(false);
   const [showAddTaskModal, setShowAddTaskModal] = useState(false);
-  const [playerTasks, setPlayerTasks] = useState<{ id: string; title?: string; notes?: string; dueDate?: number; isCompleted?: boolean; agentName?: string; createdAt?: number }[]>([]);
+  const [playerTasks, setPlayerTasks] = useState<{ id: string; title?: string; notes?: string; dueDate?: number; isCompleted?: boolean; agentId?: string; agentName?: string; createdAt?: number; createdByAgentId?: string; createdByAgentName?: string; templateId?: string; linkedAgentContactId?: string; linkedAgentContactName?: string; linkedAgentContactPhone?: string }[]>([]);
   const [addingToPortfolio, setAddingToPortfolio] = useState(false);
   const [portfolioError, setPortfolioError] = useState<string | null>(null);
   const [showPortfolioLanguageModal, setShowPortfolioLanguageModal] = useState(false);
@@ -191,7 +191,7 @@ export default function WomanPlayerPage() {
     );
     const unsub = onSnapshot(q, (snap) => {
       const list = snap.docs
-        .map((d) => ({ id: d.id, ...d.data() } as { id: string; title?: string; notes?: string; dueDate?: number; isCompleted?: boolean; agentName?: string; createdAt?: number }))
+        .map((d) => ({ id: d.id, ...d.data() } as typeof playerTasks[0]))
         .sort((a, b) => (a.dueDate || 0) - (b.dueDate || 0));
       setPlayerTasks(list);
     });
@@ -1198,11 +1198,39 @@ export default function WomanPlayerPage() {
                         <p className={`font-medium ${task.isCompleted ? 'line-through text-mgsr-muted' : 'text-mgsr-text'}`}>
                           {task.title || '—'}
                         </p>
-                        <p className="text-sm text-mgsr-muted mt-0.5">
-                          {task.agentName && `${t('player_tasks_created_by')} ${task.agentName}`}
-                          {task.agentName && task.dueDate && ' • '}
-                          {task.dueDate && new Date(task.dueDate).toLocaleDateString(isRtl ? 'he-IL' : 'en-US', { day: 'numeric', month: 'short', year: 'numeric' })}
-                        </p>
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-1">
+                          {task.createdByAgentName && task.createdByAgentId !== task.agentId && (
+                            <p className="text-xs text-mgsr-muted">
+                              {t('tasks_opened_by')} <span className="text-[var(--women-rose)]">{task.createdByAgentName}</span>
+                            </p>
+                          )}
+                          {task.agentName && (
+                            <p className="text-xs text-mgsr-muted">
+                              {t('tasks_assigned_to_label')} <span className="text-mgsr-text">{task.agentName}</span>
+                            </p>
+                          )}
+                        </div>
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5">
+                          {task.createdAt && (
+                            <span className="text-xs text-mgsr-muted">
+                              {t('tasks_created_on')} {new Date(task.createdAt).toLocaleDateString(isRtl ? 'he-IL' : 'en-US', { day: 'numeric', month: 'short' })}
+                            </span>
+                          )}
+                          {task.createdAt && task.dueDate ? <span className="text-xs text-mgsr-muted">·</span> : null}
+                          {task.dueDate && (
+                            <span className={`text-xs ${task.dueDate < Date.now() && !task.isCompleted ? 'text-red-400 font-medium' : 'text-mgsr-muted'}`}>
+                              {t('tasks_due_label')} {new Date(task.dueDate).toLocaleDateString(isRtl ? 'he-IL' : 'en-US', { day: 'numeric', month: 'short', year: 'numeric' })}
+                            </span>
+                          )}
+                        </div>
+                        {task.linkedAgentContactName && (
+                          <p className="text-xs text-mgsr-muted mt-0.5">
+                            {t('tasks_linked_agent')}: <span className="text-mgsr-text">{task.linkedAgentContactName}</span>
+                            {task.linkedAgentContactPhone && (
+                              <a href={`tel:${task.linkedAgentContactPhone}`} className="ms-1.5 text-[var(--women-rose)] hover:underline">{task.linkedAgentContactPhone}</a>
+                            )}
+                          </p>
+                        )}
                       </div>
                       <Link
                         href="/tasks"

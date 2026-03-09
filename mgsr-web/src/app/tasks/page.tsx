@@ -32,6 +32,12 @@ interface AgentTask {
   playerTmProfile?: string;
   playerWomenId?: string;
   templateId?: string;
+  createdAt?: number;
+  createdByAgentId?: string;
+  createdByAgentName?: string;
+  linkedAgentContactId?: string;
+  linkedAgentContactName?: string;
+  linkedAgentContactPhone?: string;
 }
 
 interface Account {
@@ -324,6 +330,8 @@ export default function TasksPage() {
       const selected = accounts.find((a) => a.id === addAgentId);
       const agentName = selected ? getDisplayName(selected, isRtl) : '';
       const dueTs = addDueDate ? new Date(addDueDate).getTime() : 0;
+      const creatorAccount = accounts.find((a) => a.id === user.uid);
+      const creatorName = creatorAccount ? getDisplayName(creatorAccount, isRtl) : (user.displayName || user.email || '');
       await addDoc(collection(db, taskCollection), {
         agentId: addAgentId || user.uid,
         agentName: agentName || user.displayName || user.email,
@@ -334,7 +342,7 @@ export default function TasksPage() {
         isCompleted: false,
         createdAt: Date.now(),
         createdByAgentId: user.uid,
-        createdByAgentName: user.displayName || user.email || '',
+        createdByAgentName: creatorName,
       });
       setShowAdd(false);
       setAddTitle('');
@@ -644,6 +652,22 @@ export default function TasksPage() {
                               {task.notes && (
                                 <p className="text-sm text-mgsr-muted mt-1.5">{task.notes}</p>
                               )}
+                              {/* Creator & assignee info */}
+                              {task.createdByAgentName && task.createdByAgentId !== task.agentId && (
+                                <p className="text-xs text-mgsr-muted mt-1.5">
+                                  {t('tasks_opened_by')} <span className={accentText}>{task.createdByAgentName}</span>
+                                  {task.agentName && <> · {t('tasks_assigned_to_label')} <span className="text-mgsr-text">{task.agentName}</span></>}
+                                </p>
+                              )}
+                              {/* Linked agent contact */}
+                              {task.linkedAgentContactName && (
+                                <p className="text-xs text-mgsr-muted mt-1">
+                                  {t('tasks_linked_agent')}: <span className="text-mgsr-text">{task.linkedAgentContactName}</span>
+                                  {task.linkedAgentContactPhone && (
+                                    <a href={`tel:${task.linkedAgentContactPhone}`} className={`ms-1.5 ${accentText} hover:underline`}>{task.linkedAgentContactPhone}</a>
+                                  )}
+                                </p>
+                              )}
                               <div className="flex flex-wrap gap-2 mt-3">
                                 <span
                                   className="text-xs px-2.5 py-1 rounded-lg font-medium"
@@ -654,6 +678,11 @@ export default function TasksPage() {
                                 >
                                   {t(`tasks_priority_${priority.label}`)}
                                 </span>
+                                {task.createdAt && (
+                                  <span className="text-xs px-2.5 py-1 rounded-lg bg-mgsr-dark/60 text-mgsr-muted">
+                                    {t('tasks_created_on')} {new Date(task.createdAt).toLocaleDateString(isRtl ? 'he-IL' : 'en-US', { day: 'numeric', month: 'short' })}
+                                  </span>
+                                )}
                                 <span
                                   className={`text-xs px-2.5 py-1 rounded-lg ${
                                     overdue && !task.isCompleted
@@ -661,7 +690,7 @@ export default function TasksPage() {
                                       : 'bg-mgsr-dark/60 text-mgsr-muted'
                                   }`}
                                 >
-                                  {formatDue(task.dueDate)}
+                                  {task.dueDate ? `${t('tasks_due_label')} ${formatDue(task.dueDate)}` : formatDue(task.dueDate)}
                                 </span>
                                 {task.playerId && task.playerName && (
                                   <Link
@@ -830,6 +859,21 @@ export default function TasksPage() {
                               {task.notes && (
                                 <p className="text-sm text-mgsr-muted mt-1 line-clamp-2">{task.notes}</p>
                               )}
+                              {/* Creator info when different from assignee */}
+                              {task.createdByAgentName && task.createdByAgentId !== task.agentId && (
+                                <p className="text-[10px] text-mgsr-muted mt-1">
+                                  {t('tasks_opened_by')} <span className={accentText}>{task.createdByAgentName}</span>
+                                </p>
+                              )}
+                              {/* Linked agent contact */}
+                              {task.linkedAgentContactName && (
+                                <p className="text-[10px] text-mgsr-muted mt-0.5">
+                                  {t('tasks_linked_agent')}: <span className="text-mgsr-text">{task.linkedAgentContactName}</span>
+                                  {task.linkedAgentContactPhone && (
+                                    <a href={`tel:${task.linkedAgentContactPhone}`} className={`ms-1 ${accentText} hover:underline`}>{task.linkedAgentContactPhone}</a>
+                                  )}
+                                </p>
+                              )}
                               <div className="flex flex-wrap gap-2 mt-2">
                                 <span
                                   className="text-[10px] px-2 py-0.5 rounded font-medium"
@@ -840,6 +884,11 @@ export default function TasksPage() {
                                 >
                                   {t(`tasks_priority_${priority.label}`)}
                                 </span>
+                                {task.createdAt && (
+                                  <span className="text-[10px] px-2 py-0.5 rounded bg-mgsr-dark/50 text-mgsr-muted">
+                                    {t('tasks_created_on')} {new Date(task.createdAt).toLocaleDateString(isRtl ? 'he-IL' : 'en-US', { day: 'numeric', month: 'short' })}
+                                  </span>
+                                )}
                                 <span
                                   className={`text-[10px] px-2 py-0.5 rounded ${
                                     overdue && !task.isCompleted
@@ -847,7 +896,7 @@ export default function TasksPage() {
                                       : 'bg-mgsr-dark/50 text-mgsr-muted'
                                   }`}
                                 >
-                                  {formatDue(task.dueDate)}
+                                  {task.dueDate ? `${t('tasks_due_label')} ${formatDue(task.dueDate)}` : formatDue(task.dueDate)}
                                 </span>
                                 {task.playerId && task.playerName && (
                                   <Link

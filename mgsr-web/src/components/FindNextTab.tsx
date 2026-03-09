@@ -136,13 +136,20 @@ export default function FindNextTab() {
   const [addingToShortlistUrl, setAddingToShortlistUrl] = useState<string | null>(null);
   const [shortlistError, setShortlistError] = useState<string | null>(null);
   const [shortlistUrls, setShortlistUrls] = useState<Set<string>>(new Set());
+  const [rosterTmProfiles, setRosterTmProfiles] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (!user) return;
-    const unsub = onSnapshot(collection(db, 'Shortlists'), (snap) => {
+    const shortlistUnsub = onSnapshot(collection(db, 'Shortlists'), (snap) => {
       setShortlistUrls(new Set(snap.docs.map((d) => d.data().tmProfileUrl as string).filter((u): u is string => !!u)));
     });
-    return () => unsub();
+    const rosterUnsub = onSnapshot(collection(db, 'Players'), (snap) => {
+      const urls = snap.docs
+        .map((d) => (d.data().tmProfile as string)?.trim())
+        .filter((u): u is string => !!u);
+      setRosterTmProfiles(new Set(urls));
+    });
+    return () => { shortlistUnsub(); rosterUnsub(); };
   }, [user]);
 
   const addToShortlist = useCallback(
@@ -499,7 +506,13 @@ export default function FindNextTab() {
               </div>
             )}
             <div className="space-y-3">
-              {response.results.map((player) => {
+              {response.results.filter((player) => {
+                const url = player.url;
+                if (!url) return true;
+                if (Array.from(rosterTmProfiles).some((r) => samePlayer(r, url))) return false;
+                if (Array.from(shortlistUrls).some((s) => samePlayer(s, url))) return false;
+                return true;
+              }).map((player) => {
                 const pct = Math.round(player.find_next_score);
                 const url = player.url;
                 const isAdding = addingToShortlistUrl === url;

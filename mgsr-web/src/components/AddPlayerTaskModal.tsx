@@ -7,7 +7,7 @@ import {
   getTemplateTitle,
   type PlayerTaskTemplate,
 } from '@/lib/playerTaskTemplates';
-import { addDoc, collection } from 'firebase/firestore';
+import { addDoc, collection, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
 interface Account {
@@ -15,6 +15,17 @@ interface Account {
   name?: string;
   hebrewName?: string;
   email?: string;
+}
+
+interface AgentContact {
+  id: string;
+  name?: string;
+  phoneNumber?: string;
+  role?: string;
+  agencyName?: string;
+  agencyUrl?: string;
+  clubName?: string;
+  contactType?: string;
 }
 
 interface AddPlayerTaskModalProps {
@@ -30,6 +41,8 @@ interface AddPlayerTaskModalProps {
     playerImage?: string;
     playerClub?: string;
     playerPosition?: string;
+    playerAgency?: string;
+    playerAgencyUrl?: string;
   };
   accounts: Account[];
   currentUserId: string;
@@ -68,6 +81,12 @@ export default function AddPlayerTaskModal({
   const [agentId, setAgentId] = useState('');
   const [selectedTemplate, setSelectedTemplate] = useState<PlayerTaskTemplate | null>(null);
   const [saving, setSaving] = useState(false);
+  const [agentContacts, setAgentContacts] = useState<AgentContact[]>([]);
+  const [selectedAgentContact, setSelectedAgentContact] = useState<AgentContact | null>(null);
+
+  const isWomen = taskCollection === 'AgentTasksWomen';
+  const isYouth = taskCollection === 'AgentTasksYouth';
+  const contactsCollectionName = isYouth ? 'ContactsYouth' : isWomen ? 'ContactsWomen' : 'Contacts';
 
   useEffect(() => {
     if (open && accounts.length > 0 && !agentId) {
@@ -83,13 +102,47 @@ export default function AddPlayerTaskModal({
       setDueDate('');
       setPriority(0);
       setSelectedTemplate(null);
+      setSelectedAgentContact(null);
     }
   }, [open]);
+
+  // Fetch agent contacts when modal opens (men only), filtered by player's agency
+  const isMen = !isWomen && !isYouth;
+  useEffect(() => {
+    if (!open || !isMen) return;
+    const unsub = onSnapshot(collection(db, contactsCollectionName), (snap) => {
+      const allAgentContacts = snap.docs
+        .map((d) => ({ id: d.id, ...d.data() } as AgentContact))
+        .filter((c) => c.role === 'AGENT' || c.role === 'INTERMEDIARY' || c.contactType === 'AGENCY');
+
+      // If the player has a known agency, show only contacts from that agency
+      const agency = playerContext?.playerAgency?.trim().toLowerCase();
+      const agencyUrl = playerContext?.playerAgencyUrl?.trim().toLowerCase();
+      if (agency || agencyUrl) {
+        const matched = allAgentContacts.filter((c) => {
+          const cAgency = c.agencyName?.trim().toLowerCase();
+          const cUrl = c.agencyUrl?.trim().toLowerCase();
+          return (agency && cAgency && cAgency.includes(agency)) ||
+                 (agency && cAgency && agency.includes(cAgency)) ||
+                 (agencyUrl && cUrl && (cUrl === agencyUrl || agencyUrl.includes(cUrl) || cUrl.includes(agencyUrl)));
+        });
+        // If we found matching contacts, show only those; otherwise fallback to all
+        setAgentContacts(matched.length > 0 ? matched : allAgentContacts);
+      } else {
+        setAgentContacts(allAgentContacts);
+      }
+    });
+    return () => unsub();
+  }, [open, isMen, contactsCollectionName, playerContext?.playerAgency, playerContext?.playerAgencyUrl]);
 
   const handleTemplateSelect = (template: PlayerTaskTemplate) => {
     setSelectedTemplate(template);
     const month = dueDate ? new Date(dueDate).getMonth() : new Date().getMonth();
     setTitle(getTemplateTitle(template, lang, template.hasMonthPlaceholder ? month : undefined, isWomen));
+    // Reset agent contact when switching templates
+    if (template.id !== 'call_agent') {
+      setSelectedAgentContact(null);
+    }
   };
 
   const handleDueDateChange = (val: string) => {
@@ -121,6 +174,11 @@ export default function AddPlayerTaskModal({
         createdByAgentId: currentUserId,
         createdByAgentName: createdByName,
       };
+      if (selectedAgentContact) {
+        taskData.linkedAgentContactId = selectedAgentContact.id;
+        taskData.linkedAgentContactName = selectedAgentContact.name || '';
+        taskData.linkedAgentContactPhone = selectedAgentContact.phoneNumber || '';
+      }
       if (playerContext) {
         taskData.playerId = playerContext.playerId;
         taskData.playerName = playerContext.playerName;
@@ -139,7 +197,6 @@ export default function AddPlayerTaskModal({
     }
   };
 
-  const isWomen = taskCollection === 'AgentTasksWomen';
   const priorityColors = isWomen ? PRIORITY_COLORS_WOMEN : PRIORITY_COLORS;
 
   if (!open) return null;
@@ -203,6 +260,48 @@ export default function AddPlayerTaskModal({
                     }`}
                   >
                     {getTemplateTitle(tpl, lang, undefined, isWomen)}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Agent contact picker — shown when call_agent template is selected (men only) */}
+          {isMen && playerContext && selectedTemplate?.id === 'call_agent' && agentContacts.length > 0 && (
+            <div>
+              <label className="block text-xs font-semibold text-mgsr-muted uppercase mb-2">
+                {t('tasks_select_agent_contact')}
+              </label>
+              <div className="space-y-2 max-h-40 overflow-y-auto">
+                {agentContacts.map((contact) => (
+                  <button
+                    key={contact.id}
+                    type="button"
+                    onClick={() => setSelectedAgentContact(selectedAgentContact?.id === contact.id ? null : contact)}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition ${
+                      selectedAgentContact?.id === contact.id
+                        ? isWomen
+                          ? 'border-2 border-[var(--women-rose)] bg-[var(--women-rose)]/15'
+                          : 'border-2 border-mgsr-teal bg-mgsr-teal/15'
+                        : 'border border-mgsr-border bg-mgsr-dark/50 hover:border-mgsr-border/80'
+                    }`}
+                  >
+                    <div
+                      className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold text-white shrink-0 ${
+                        isWomen ? 'bg-[var(--women-rose)]' : 'bg-mgsr-teal'
+                      }`}
+                    >
+                      {(contact.name || '?').charAt(0).toUpperCase()}
+                    </div>
+                    <div className={`flex-1 min-w-0 ${isRtl ? 'text-right' : 'text-left'}`}>
+                      <p className="text-mgsr-text font-medium truncate">{contact.name || '—'}</p>
+                      <p className="text-xs text-mgsr-muted truncate">
+                        {[contact.agencyName || contact.clubName, contact.phoneNumber].filter(Boolean).join(' · ')}
+                      </p>
+                    </div>
+                    {selectedAgentContact?.id === contact.id && (
+                      <span className={`text-sm font-bold ${isWomen ? 'text-[var(--women-rose)]' : 'text-mgsr-teal'}`}>✓</span>
+                    )}
                   </button>
                 ))}
               </div>
