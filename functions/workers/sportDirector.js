@@ -526,14 +526,14 @@ function normalizeUrl(url) {
 // ═══════════════════════════════════════════════════════════════
 async function generateDirectorVerdicts(approvedProfiles, agentReports) {
   const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey?.trim()) return {};
+  if (!apiKey?.trim()) return { verdictMap: {}, intelMap: {} };
 
   // Only evaluate top 20 profiles (cost-efficient)
   const topProfiles = approvedProfiles
     .sort((a, b) => b.data.matchScore - a.data.matchScore)
     .slice(0, 20);
 
-  if (topProfiles.length === 0) return {};
+  if (topProfiles.length === 0) return { verdictMap: {}, intelMap: {} };
 
   try {
     const genAI = new GoogleGenerativeAI(apiKey);
@@ -661,7 +661,7 @@ ONLY valid JSON. No explanations outside the JSON.`;
     const result = await model.generateContent(prompt);
     const text = result.response?.text?.() || "";
     const jsonMatch = text.match(/\[[\s\S]*\]/);
-    if (!jsonMatch) return {};
+    if (!jsonMatch) return { verdictMap: {}, intelMap: {} };
 
     const verdicts = JSON.parse(jsonMatch[0]);
     const verdictMap = {};
@@ -806,7 +806,7 @@ async function reviewProfiles(profilesToWrite) {
   }
 
   // Generate Gemini Sport Director verdicts for top approved profiles
-  const { verdictMap: directorVerdicts, intelMap: directorIntel } = await generateDirectorVerdicts(approved, agentReports);
+  const { verdictMap: directorVerdicts = {}, intelMap: directorIntel = {} } = await generateDirectorVerdicts(approved, agentReports);
 
   // Merge verdicts + intel into approved profiles + handle REJECT_OVERRIDE
   const postGeminiRejected = [];
