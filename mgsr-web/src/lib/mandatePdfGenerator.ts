@@ -152,10 +152,12 @@ export async function generateMandatePdf(data: MandateData): Promise<Uint8Array>
   y -= 4;
   drawText('The Player and the Football Agent are the "Parties" and each a "Party."', BODY_SIZE, false);
   y -= 4;
-  drawText('Valid Leagues for this mandate:', HEADING_SIZE, true);
-  y -= 4;
-  for (const league of data.validLeagues) {
-    drawText(`- ${league}`, BODY_SIZE, false);
+  if (data.validLeagues.length > 0) {
+    drawText('Valid Leagues for this mandate:', HEADING_SIZE, true);
+    y -= 4;
+    for (const league of data.validLeagues) {
+      drawText(`- ${league}`, BODY_SIZE, false);
+    }
   }
   y -= 12;
 

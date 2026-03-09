@@ -10,12 +10,14 @@ interface IQuickFilterUseCase {
     val quickFilterMyPlayersOnly: StateFlow<Boolean>
     val quickFilterLoanPlayersOnly: StateFlow<Boolean>
     val quickFilterWithoutRegisteredAgent: StateFlow<Boolean>
+    val selectedAgentFilter: StateFlow<String?>
     fun toggleFreeAgents()
     fun toggleContractExpiring()
     fun toggleWithMandate()
     fun toggleMyPlayersOnly()
     fun toggleLoanPlayersOnly()
     fun toggleWithoutRegisteredAgent()
+    fun setSelectedAgentFilter(agentName: String?)
     fun toggleWithNotesOnly()
 }
 
@@ -29,6 +31,7 @@ class QuickFilterUseCase(
     override val quickFilterMyPlayersOnly: StateFlow<Boolean> = filterRepository.quickFilterMyPlayersOnly
     override val quickFilterLoanPlayersOnly: StateFlow<Boolean> = filterRepository.quickFilterLoanPlayersOnly
     override val quickFilterWithoutRegisteredAgent: StateFlow<Boolean> = filterRepository.quickFilterWithoutRegisteredAgent
+    override val selectedAgentFilter: StateFlow<String?> = filterRepository.selectedAgentFilter
 
     override fun toggleFreeAgents() = filterRepository.toggleQuickFilterFreeAgents()
     override fun toggleContractExpiring() = filterRepository.toggleQuickFilterContractExpiring()
@@ -36,5 +39,6 @@ class QuickFilterUseCase(
     override fun toggleMyPlayersOnly() = filterRepository.toggleQuickFilterMyPlayersOnly()
     override fun toggleLoanPlayersOnly() = filterRepository.toggleQuickFilterLoanPlayersOnly()
     override fun toggleWithoutRegisteredAgent() = filterRepository.toggleWithoutRegisteredAgent()
+    override fun setSelectedAgentFilter(agentName: String?) = filterRepository.setSelectedAgentFilter(agentName)
     override fun toggleWithNotesOnly() = filterRepository.toggleQuickFilterWithNotesOnly()
 }

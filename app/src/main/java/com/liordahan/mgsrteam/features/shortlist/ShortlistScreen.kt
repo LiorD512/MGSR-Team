@@ -3,6 +3,7 @@ package com.liordahan.mgsrteam.features.shortlist
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
@@ -192,7 +193,9 @@ fun ShortlistScreen(
 
     // My Players filter
     var myPlayersOnly by remember { mutableStateOf(false) }
+    var selectedAgentFilter by remember { mutableStateOf<String?>(null) }
     var currentUserName by remember { mutableStateOf<String?>(null) }
+    var allAccounts by remember { mutableStateOf<List<Account>>(emptyList()) }
     val firebaseHandler: FirebaseHandler = koinInject()
 
     LaunchedEffect(Unit) {
@@ -200,13 +203,19 @@ fun ShortlistScreen(
         try {
             val snapshot = firebaseHandler.firebaseStore.collection(firebaseHandler.accountsTable).get().await()
             val accounts = snapshot.toObjects(Account::class.java)
+            allAccounts = accounts
             currentUserName = accounts.firstOrNull { it.email?.equals(email, ignoreCase = true) == true }?.name
         } catch (_: Exception) { }
     }
 
-    val filteredEntries = remember(state.entries, myPlayersOnly, currentUserName) {
-        if (!myPlayersOnly || currentUserName.isNullOrBlank()) state.entries
-        else state.entries.filter { it.addedByAgentName.equals(currentUserName, ignoreCase = true) }
+    val filteredEntries = remember(state.entries, myPlayersOnly, selectedAgentFilter, currentUserName) {
+        when {
+            myPlayersOnly && !currentUserName.isNullOrBlank() ->
+                state.entries.filter { it.addedByAgentName.equals(currentUserName, ignoreCase = true) }
+            selectedAgentFilter != null ->
+                state.entries.filter { it.addedByAgentName.equals(selectedAgentFilter, ignoreCase = true) }
+            else -> state.entries
+        }
     }
 
     val addPlayerState = addPlayerViewModel.playerSearchStateFlow.collectAsState()
@@ -309,7 +318,7 @@ fun ShortlistScreen(
                 thisWeek = thisWeekCount
             )
 
-            // My Players filter chip (MEN only)
+            // My Players / Agent filter chips (MEN only)
             if (currentPlatform == Platform.MEN) {
                 Row(
                     modifier = Modifier
@@ -317,18 +326,27 @@ fun ShortlistScreen(
                         .padding(horizontal = 16.dp, vertical = 4.dp),
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    val bgColor = if (myPlayersOnly) PlatformColors.palette.accent else Color.Transparent
-                    val textColor = if (myPlayersOnly) PlatformColors.palette.background else PlatformColors.palette.textSecondary
-                    val borderColor = if (myPlayersOnly) PlatformColors.palette.accent else PlatformColors.palette.cardBorder
+                    val myBgColor = if (myPlayersOnly) PlatformColors.palette.accent else Color.Transparent
+                    val myTextColor = if (myPlayersOnly) PlatformColors.palette.background else PlatformColors.palette.textSecondary
+                    val myBorderColor = if (myPlayersOnly) PlatformColors.palette.accent else PlatformColors.palette.cardBorder
                     Text(
                         text = stringResource(R.string.shortlist_filter_my_players),
-                        style = boldTextStyle(textColor, 11.sp),
+                        style = boldTextStyle(myTextColor, 11.sp),
                         modifier = Modifier
                             .clip(RoundedCornerShape(20.dp))
-                            .background(bgColor)
-                            .border(1.dp, borderColor, RoundedCornerShape(20.dp))
-                            .clickWithNoRipple { myPlayersOnly = !myPlayersOnly }
+                            .background(myBgColor)
+                            .border(1.dp, myBorderColor, RoundedCornerShape(20.dp))
+                            .clickWithNoRipple { myPlayersOnly = !myPlayersOnly; if (myPlayersOnly) selectedAgentFilter = null }
                             .padding(horizontal = 14.dp, vertical = 5.dp)
+                    )
+                    ShortlistAgentFilterChip(
+                        selectedAgentFilter = selectedAgentFilter,
+                        allAccounts = allAccounts,
+                        currentUserName = currentUserName,
+                        onAgentSelected = { agent ->
+                            selectedAgentFilter = agent
+                            if (agent != null) myPlayersOnly = false
+                        }
                     )
                 }
             }
@@ -1549,6 +1567,79 @@ private fun ShortlistEmptyState(
                 Text(
                     text = stringResource(R.string.shortlist_browse_returnees),
                     style = boldTextStyle(PlatformColors.palette.textPrimary, 14.sp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ShortlistAgentFilterChip(
+    selectedAgentFilter: String?,
+    allAccounts: List<Account>,
+    currentUserName: String?,
+    onAgentSelected: (String?) -> Unit
+) {
+    val context = LocalContext.current
+    var expanded by remember { mutableStateOf(false) }
+    val isSelected = selectedAgentFilter != null
+    val bgColor by animateColorAsState(
+        targetValue = if (isSelected) PlatformColors.palette.accent else Color.Transparent,
+        label = "agentChipBg"
+    )
+    val textColor = if (isSelected) PlatformColors.palette.background else PlatformColors.palette.textSecondary
+    val borderColor = if (isSelected) PlatformColors.palette.accent else PlatformColors.palette.cardBorder
+
+    val filteredAccounts = allAccounts.filter { !it.name.equals(currentUserName, ignoreCase = true) }
+
+    val chipLabel = if (selectedAgentFilter != null) {
+        val account = filteredAccounts.firstOrNull { it.name.equals(selectedAgentFilter, ignoreCase = true) }
+        account?.getDisplayName(context) ?: selectedAgentFilter
+    } else {
+        stringResource(R.string.shortlist_filter_agent)
+    }
+
+    Box {
+        Text(
+            text = chipLabel + " ▾",
+            style = boldTextStyle(textColor, 11.sp),
+            modifier = Modifier
+                .clip(RoundedCornerShape(20.dp))
+                .background(bgColor)
+                .border(1.dp, borderColor, RoundedCornerShape(20.dp))
+                .clickWithNoRipple { expanded = true }
+                .padding(horizontal = 14.dp, vertical = 5.dp)
+        )
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+            modifier = Modifier.background(PlatformColors.palette.card),
+            containerColor = PlatformColors.palette.card
+        ) {
+            if (isSelected) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.filter_clear), style = boldTextStyle(PlatformColors.palette.accent, 13.sp)) },
+                    onClick = {
+                        onAgentSelected(null)
+                        expanded = false
+                    }
+                )
+            }
+            filteredAccounts.forEach { account ->
+                val displayName = account.getDisplayName(context)
+                val isThisSelected = account.name.equals(selectedAgentFilter, ignoreCase = true)
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            text = displayName,
+                            style = if (isThisSelected) boldTextStyle(PlatformColors.palette.accent, 13.sp)
+                                    else regularTextStyle(PlatformColors.palette.textPrimary, 13.sp)
+                        )
+                    },
+                    onClick = {
+                        onAgentSelected(account.name)
+                        expanded = false
+                    }
                 )
             }
         }

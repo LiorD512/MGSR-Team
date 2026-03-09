@@ -10,6 +10,8 @@ import { PlatformSwitcher } from '@/components/PlatformSwitcher';
 import { useIsMobileOrTablet } from '@/hooks/useMediaQuery';
 import MobileHeader from '@/components/mobile/MobileHeader';
 import MobileBottomTabBar from '@/components/mobile/MobileBottomTabBar';
+import NotificationBell from '@/components/NotificationBell';
+import NotificationPrompt from '@/components/NotificationPrompt';
 
 const navItems = [
   { href: '/dashboard', labelKey: 'nav_dashboard' },
@@ -103,6 +105,7 @@ function NavContent({
       </nav>
       <div className="p-4 border-t border-mgsr-border space-y-2 shrink-0">
         {platformSwitcher}
+        <NotificationBell />
         <button
           onClick={() => {
             setLang();
@@ -188,6 +191,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
         {/* Fixed bottom tab bar */}
         <MobileBottomTabBar />
+        <NotificationPrompt />
       </div>
     );
   }
@@ -217,6 +221,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       </aside>
 
       <main className="flex-1 overflow-auto p-6 min-w-0">{children}</main>
+      <NotificationPrompt />
     </div>
   );
 }

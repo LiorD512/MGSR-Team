@@ -109,6 +109,7 @@ import com.liordahan.mgsrteam.features.add.AddPlayerContactFormContent
 import com.liordahan.mgsrteam.features.add.IAddPlayerViewModel
 import com.liordahan.mgsrteam.features.add.SnakeBarMessage
 import com.liordahan.mgsrteam.features.add.showSnakeBarMessage
+import com.liordahan.mgsrteam.features.login.models.Account
 import com.liordahan.mgsrteam.features.players.models.Player
 import com.liordahan.mgsrteam.features.players.models.isFreeAgent
 import com.liordahan.mgsrteam.utils.EuCountries
@@ -263,6 +264,9 @@ fun PlayersScreen(
                 contractExpiringSelected = playersState.quickFilterContractExpiring,
                 withMandateSelected = playersState.quickFilterWithMandate,
                 myPlayersOnlySelected = playersState.quickFilterMyPlayersOnly,
+                selectedAgentFilter = playersState.selectedAgentFilter,
+                allAccounts = playersState.allAccounts,
+                currentUserName = playersState.currentUserName,
                 loanPlayersOnlySelected = playersState.quickFilterLoanPlayersOnly,
                 withoutRegisteredAgentSelected = playersState.quickFilterWithoutRegisteredAgent,
                 withNotesOnlySelected = playersState.isWithNotesChecked,
@@ -273,6 +277,7 @@ fun PlayersScreen(
                 onContractExpiringClick = { viewModel.toggleQuickFilterContractExpiring() },
                 onWithMandateClick = { viewModel.toggleQuickFilterWithMandate() },
                 onMyPlayersOnlyClick = { viewModel.toggleQuickFilterMyPlayersOnly() },
+                onAgentFilterSelected = { viewModel.setSelectedAgentFilter(it) },
                 onLoanPlayersOnlyClick = { viewModel.toggleQuickFilterLoanPlayersOnly() },
                 onWithoutRegisteredAgentClick = { viewModel.toggleQuickFilterWithoutRegisteredAgent() },
                 onWithNotesOnlyClick = { viewModel.toggleQuickFilterWithNotesOnly() },
@@ -844,6 +849,9 @@ private fun QuickFilterChips(
     contractExpiringSelected: Boolean,
     withMandateSelected: Boolean,
     myPlayersOnlySelected: Boolean,
+    selectedAgentFilter: String?,
+    allAccounts: List<Account>,
+    currentUserName: String?,
     loanPlayersOnlySelected: Boolean,
     withoutRegisteredAgentSelected: Boolean,
     withNotesOnlySelected: Boolean,
@@ -854,6 +862,7 @@ private fun QuickFilterChips(
     onContractExpiringClick: () -> Unit,
     onWithMandateClick: () -> Unit,
     onMyPlayersOnlyClick: () -> Unit,
+    onAgentFilterSelected: (String?) -> Unit,
     onLoanPlayersOnlyClick: () -> Unit,
     onWithoutRegisteredAgentClick: () -> Unit,
     onWithNotesOnlyClick: () -> Unit,
@@ -943,6 +952,14 @@ private fun QuickFilterChips(
                 onClick = { onFootFilterClick(FootFilterOption.RIGHT) }
             )
         }
+        item(key = "agent_filter") {
+            AgentFilterChip(
+                selectedAgentFilter = selectedAgentFilter,
+                allAccounts = allAccounts,
+                currentUserName = currentUserName,
+                onAgentSelected = onAgentFilterSelected
+            )
+        }
     }
 }
 
@@ -969,6 +986,79 @@ private fun QuickFilterChip(
             .clickWithNoRipple { onClick() }
             .padding(horizontal = 14.dp, vertical = 5.dp)
     )
+}
+
+@Composable
+private fun AgentFilterChip(
+    selectedAgentFilter: String?,
+    allAccounts: List<Account>,
+    currentUserName: String?,
+    onAgentSelected: (String?) -> Unit
+) {
+    val context = LocalContext.current
+    var expanded by remember { mutableStateOf(false) }
+    val isSelected = selectedAgentFilter != null
+    val bgColor by animateColorAsState(
+        targetValue = if (isSelected) PlatformColors.palette.accent else Color.Transparent,
+        label = "agentChipBg"
+    )
+    val textColor = if (isSelected) PlatformColors.palette.background else PlatformColors.palette.textSecondary
+    val borderColor = if (isSelected) PlatformColors.palette.accent else PlatformColors.palette.cardBorder
+
+    val filteredAccounts = allAccounts.filter { !it.name.equals(currentUserName, ignoreCase = true) }
+
+    val chipLabel = if (selectedAgentFilter != null) {
+        val account = filteredAccounts.firstOrNull { it.name.equals(selectedAgentFilter, ignoreCase = true) }
+        account?.getDisplayName(context) ?: selectedAgentFilter
+    } else {
+        stringResource(R.string.players_filter_agent)
+    }
+
+    Box {
+        Text(
+            text = chipLabel + " ▾",
+            style = boldTextStyle(textColor, 11.sp),
+            modifier = Modifier
+                .clip(RoundedCornerShape(20.dp))
+                .background(bgColor)
+                .border(1.dp, borderColor, RoundedCornerShape(20.dp))
+                .clickWithNoRipple { expanded = true }
+                .padding(horizontal = 14.dp, vertical = 5.dp)
+        )
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+            modifier = Modifier.background(PlatformColors.palette.card),
+            containerColor = PlatformColors.palette.card
+        ) {
+            if (isSelected) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.filter_clear), style = boldTextStyle(PlatformColors.palette.accent, 13.sp)) },
+                    onClick = {
+                        onAgentSelected(null)
+                        expanded = false
+                    }
+                )
+            }
+            filteredAccounts.forEach { account ->
+                val displayName = account.getDisplayName(context)
+                val isThisSelected = account.name.equals(selectedAgentFilter, ignoreCase = true)
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            text = displayName,
+                            style = if (isThisSelected) boldTextStyle(PlatformColors.palette.accent, 13.sp)
+                                    else regularTextStyle(PlatformColors.palette.textPrimary, 13.sp)
+                        )
+                    },
+                    onClick = {
+                        onAgentSelected(account.name)
+                        expanded = false
+                    }
+                )
+            }
+        }
+    }
 }
 
 // ═════════════════════════════════════════════════════════════════════════════

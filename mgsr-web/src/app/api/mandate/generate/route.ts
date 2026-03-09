@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
     const {
       passportDetails,
       expiryDate,
-      validLeagues,
+      validLeagues = [],
       agentName = 'Lior Dahan',
       fifaLicenseId = '22412-9595',
     } = body as {
@@ -23,8 +23,8 @@ export async function POST(req: NextRequest) {
       fifaLicenseId?: string;
     };
 
-    if (!passportDetails || !validLeagues?.length) {
-      return NextResponse.json({ error: 'Missing passportDetails or validLeagues' }, { status: 400 });
+    if (!passportDetails) {
+      return NextResponse.json({ error: 'Missing passportDetails' }, { status: 400 });
     }
 
     const effectiveDate = new Date();

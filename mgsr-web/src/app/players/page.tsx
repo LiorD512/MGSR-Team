@@ -8,7 +8,7 @@ import { usePlatform } from '@/contexts/PlatformContext';
 import { getScreenCache, setScreenCache } from '@/lib/screenCache';
 import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { getCurrentAccountForShortlist } from '@/lib/accounts';
+import { getCurrentAccountForShortlist, getAllAccounts, type AccountForShortlist } from '@/lib/accounts';
 import { subscribePlayersWomen, type WomanPlayer } from '@/lib/playersWomen';
 import { subscribePlayersYouth, type YouthPlayer } from '@/lib/playersYouth';
 import AppLayout from '@/components/AppLayout';
@@ -48,6 +48,7 @@ interface PlayersCache {
   contractExpiring: boolean;
   withMandate: boolean;
   myPlayersOnly: boolean;
+  agentFilter: string | null;
   loanPlayersOnly: boolean;
   withoutRegisteredAgent: boolean;
   withNotes: boolean;
@@ -94,7 +95,7 @@ function isContractExpiringWithin6Months(contractExpired: string | undefined): b
 
 export default function PlayersPage() {
   const { user, loading } = useAuth();
-  const { t, isRtl } = useLanguage();
+  const { t, isRtl, lang } = useLanguage();
   const { platform } = usePlatform();
   const router = useRouter();
   const isMobileOrTablet = useIsMobileOrTablet();
@@ -112,6 +113,7 @@ export default function PlayersPage() {
   const [contractExpiring, setContractExpiring] = useState(cached?.contractExpiring ?? false);
   const [withMandate, setWithMandate] = useState(cached?.withMandate ?? false);
   const [myPlayersOnly, setMyPlayersOnly] = useState(cached?.myPlayersOnly ?? false);
+  const [agentFilter, setAgentFilter] = useState<string | null>(cached?.agentFilter ?? null);
   const [loanPlayersOnly, setLoanPlayersOnly] = useState(cached?.loanPlayersOnly ?? false);
   const [withoutRegisteredAgent, setWithoutRegisteredAgent] = useState(cached?.withoutRegisteredAgent ?? false);
   const [withNotes, setWithNotes] = useState(cached?.withNotes ?? false);
@@ -120,6 +122,7 @@ export default function PlayersPage() {
   const [offeredNoFeedback, setOfferedNoFeedback] = useState(cached?.offeredNoFeedback ?? false);
   const [offeredNoFeedbackProfiles, setOfferedNoFeedbackProfiles] = useState<Set<string>>(new Set());
   const [currentAccountName, setCurrentAccountName] = useState<string | null>(null);
+  const [allAccounts, setAllAccounts] = useState<AccountForShortlist[]>([]);
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
 
   useEffect(() => {
@@ -131,6 +134,7 @@ export default function PlayersPage() {
     getCurrentAccountForShortlist(user).then((acc) => {
       setCurrentAccountName(acc.name ?? null);
     });
+    getAllAccounts().then(setAllAccounts);
   }, [user]);
 
   useEffect(() => {
@@ -201,6 +205,7 @@ export default function PlayersPage() {
       contractExpiring,
       withMandate,
       myPlayersOnly,
+      agentFilter,
       loanPlayersOnly,
       withoutRegisteredAgent,
       withNotes,
@@ -208,7 +213,7 @@ export default function PlayersPage() {
       euNationalOnly,
       offeredNoFeedback,
     });
-  }, [players, search, positionFilter, freeAgents, contractExpiring, withMandate, myPlayersOnly, loanPlayersOnly, withoutRegisteredAgent, withNotes, footFilter, euNationalOnly, offeredNoFeedback]);
+  }, [players, search, positionFilter, freeAgents, contractExpiring, withMandate, myPlayersOnly, agentFilter, loanPlayersOnly, withoutRegisteredAgent, withNotes, footFilter, euNationalOnly, offeredNoFeedback]);
 
   const filtered = useMemo(() => {
     if (platform === 'youth') {
@@ -297,6 +302,13 @@ export default function PlayersPage() {
       );
     }
 
+    // Agent filter (specific agent)
+    if (agentFilter) {
+      result = result.filter(
+        (p) => p.agentInChargeName?.toLowerCase() === agentFilter.toLowerCase()
+      );
+    }
+
     // Loan players only
     if (loanPlayersOnly) {
       result = result.filter((p) => p.isOnLoan === true);
@@ -348,6 +360,7 @@ export default function PlayersPage() {
     contractExpiring,
     withMandate,
     myPlayersOnly,
+    agentFilter,
     loanPlayersOnly,
     withoutRegisteredAgent,
     withNotes,
@@ -366,6 +379,7 @@ export default function PlayersPage() {
         contractExpiring ||
         withMandate ||
         myPlayersOnly ||
+        !!agentFilter ||
         loanPlayersOnly ||
         withoutRegisteredAgent ||
         withNotes ||
@@ -379,6 +393,7 @@ export default function PlayersPage() {
     setContractExpiring(false);
     setWithMandate(false);
     setMyPlayersOnly(false);
+    setAgentFilter(null);
     setLoanPlayersOnly(false);
     setWithoutRegisteredAgent(false);
     setWithNotes(false);
@@ -660,6 +675,24 @@ export default function PlayersPage() {
             >
               {t('players_filter_offered_no_feedback')}
             </button>
+            <div className="relative shrink-0">
+              <select
+                value={agentFilter ?? ''}
+                onChange={(e) => setAgentFilter(e.target.value || null)}
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 appearance-none cursor-pointer pr-7 ${
+                  agentFilter
+                    ? 'bg-mgsr-teal text-mgsr-dark shadow-sm shadow-mgsr-teal/25'
+                    : 'bg-mgsr-card border border-mgsr-border text-mgsr-muted hover:text-mgsr-text hover:border-mgsr-teal/40'
+                }`}
+              >
+                <option value="">{t('players_filter_agent')} ▾</option>
+                {allAccounts.filter((acc) => acc.name?.toLowerCase() !== currentAccountName?.toLowerCase()).map((acc) => (
+                  <option key={acc.id} value={acc.name ?? ''}>
+                    {(lang === 'he' ? acc.hebrewName : null) ?? acc.name ?? acc.id}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
         </div>
         )}
@@ -694,6 +727,22 @@ export default function PlayersPage() {
                 {f.label}
               </button>
             ))}
+            <select
+              value={agentFilter ?? ''}
+              onChange={(e) => setAgentFilter(e.target.value || null)}
+              className={`px-4 py-2.5 rounded-xl text-sm font-medium transition min-h-[44px] appearance-none cursor-pointer ${
+                agentFilter
+                  ? 'bg-mgsr-teal text-mgsr-dark shadow-sm'
+                  : 'bg-mgsr-dark/60 border border-mgsr-border text-mgsr-muted'
+              }`}
+            >
+              <option value="">{t('players_filter_agent')} ▾</option>
+              {allAccounts.filter((acc) => acc.name?.toLowerCase() !== currentAccountName?.toLowerCase()).map((acc) => (
+                <option key={acc.id} value={acc.name ?? ''}>
+                  {(lang === 'he' ? acc.hebrewName : null) ?? acc.name ?? acc.id}
+                </option>
+              ))}
+            </select>
           </div>
           {hasActiveFilters && (
             <button

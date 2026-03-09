@@ -9,7 +9,7 @@ import { usePlatform } from '@/contexts/PlatformContext';
 import { getScreenCache, setScreenCache } from '@/lib/screenCache';
 import { doc, onSnapshot, getDoc, setDoc, collection, addDoc, getDocs, query, orderBy, where, deleteDoc, updateDoc, writeBatch } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { getCurrentAccountForShortlist } from '@/lib/accounts';
+import { getCurrentAccountForShortlist, getAllAccounts, type AccountForShortlist } from '@/lib/accounts';
 import { getTeammates, extractPlayerIdFromUrl, getPlayerDetails, getPlayerPerformanceStats, getCurrentSeasonLabel } from '@/lib/api';
 import { SHORTLISTS_COLLECTIONS, PLAYERS_COLLECTIONS, FEED_EVENTS_COLLECTIONS, CLUB_REQUESTS_COLLECTIONS } from '@/lib/platformCollections';
 import { subscribePlayersWomen, type WomanPlayer } from '@/lib/playersWomen';
@@ -104,7 +104,7 @@ function youthToRosterPlayer(y: YouthPlayer): RosterPlayer {
 
 export default function ShortlistPage() {
   const { user, loading } = useAuth();
-  const { t, isRtl } = useLanguage();
+  const { t, isRtl, lang } = useLanguage();
   const { platform } = usePlatform();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -183,7 +183,9 @@ export default function ShortlistPage() {
   const [refreshingUrl, setRefreshingUrl] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<'contact_score' | 'added' | 'market_value' | 'matches'>('contact_score');
   const [filterBy, setFilterBy] = useState<'all' | 'action_today' | 'has_matches' | 'contract_expiring' | 'free_agent' | 'my_players'>('all');
+  const [agentFilter, setAgentFilter] = useState<string | null>(null);
   const [currentAccountId, setCurrentAccountId] = useState<string | null>(null);
+  const [allAccounts, setAllAccounts] = useState<AccountForShortlist[]>([]);
 
   // ── Notes state ──
   const [noteModalEntry, setNoteModalEntry] = useState<ShortlistEntry | null>(null);
@@ -203,6 +205,7 @@ export default function ShortlistPage() {
     getCurrentAccountForShortlist(user).then((acc) => {
       setCurrentAccountId(acc.id);
     });
+    getAllAccounts().then(setAllAccounts);
   }, [user]);
 
   // Handle ?highlight=url — scroll to and animate the matching shortlist entry
@@ -672,6 +675,10 @@ export default function ShortlistPage() {
       });
     if (filterBy === 'free_agent') list = list.filter((e) => isFreeAgent(e.currentClub?.clubName ?? e.clubJoinedName));
     if (filterBy === 'my_players' && currentAccountId) list = list.filter((e) => e.addedByAgentId === currentAccountId);
+    if (agentFilter) {
+      const matchAccount = allAccounts.find((a) => a.name === agentFilter);
+      if (matchAccount) list = list.filter((e) => e.addedByAgentId === matchAccount.id || e.addedByAgentName?.toLowerCase() === agentFilter.toLowerCase());
+    }
     if (sortBy === 'contact_score') list.sort((a, b) => (entryIntelligence.get(b.tmProfileUrl)?.contactScore ?? 0) - (entryIntelligence.get(a.tmProfileUrl)?.contactScore ?? 0));
     else if (sortBy === 'added') list.sort((a, b) => (b.addedAt || 0) - (a.addedAt || 0));
     else if (sortBy === 'matches') list.sort((a, b) => (entryIntelligence.get(b.tmProfileUrl)?.matchCount ?? 0) - (entryIntelligence.get(a.tmProfileUrl)?.matchCount ?? 0));
@@ -680,7 +687,7 @@ export default function ShortlistPage() {
       list.sort((a, b) => toNum(b.marketValue) - toNum(a.marketValue));
     } else list.sort((a, b) => (b.addedAt || 0) - (a.addedAt || 0));
     return list;
-  }, [entries, filterBy, sortBy, entryIntelligence, currentAccountId]);
+  }, [entries, filterBy, sortBy, entryIntelligence, currentAccountId, agentFilter, allAccounts]);
 
   const formatAddedDate = (addedAt?: number) => {
     if (!addedAt) return '';
@@ -822,9 +829,9 @@ export default function ShortlistPage() {
                     <button
                       key={f}
                       type="button"
-                      onClick={() => setFilterBy(f)}
+                      onClick={() => { setFilterBy(f); if (f !== 'all') setAgentFilter(null); }}
                       className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
-                        filterBy === f
+                        filterBy === f && !agentFilter
                           ? 'bg-mgsr-teal text-mgsr-dark shadow-lg shadow-mgsr-teal/20'
                           : 'bg-mgsr-dark/60 border border-mgsr-border text-mgsr-muted hover:text-mgsr-text hover:border-mgsr-teal/40'
                       }`}
@@ -832,18 +839,34 @@ export default function ShortlistPage() {
                       {t(`shortlist_filter_${f}`)}
                     </button>
                   ))}
+                  <select
+                    value={agentFilter ?? ''}
+                    onChange={(e) => { setAgentFilter(e.target.value || null); if (e.target.value) setFilterBy('all'); }}
+                    className={`px-4 py-2 rounded-xl text-sm font-medium transition-all appearance-none cursor-pointer ${
+                      agentFilter
+                        ? 'bg-mgsr-teal text-mgsr-dark shadow-lg shadow-mgsr-teal/20'
+                        : 'bg-mgsr-dark/60 border border-mgsr-border text-mgsr-muted hover:text-mgsr-text hover:border-mgsr-teal/40'
+                    }`}
+                  >
+                    <option value="">{t('shortlist_filter_agent')} ▾</option>
+                    {allAccounts.filter((acc) => acc.id !== currentAccountId).map((acc) => (
+                      <option key={acc.id} value={acc.name ?? ''}>
+                        {(lang === 'he' ? acc.hebrewName : null) ?? acc.name ?? acc.id}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
             )}
 
             {sorted.length === 0 ? (
-              entries.length > 0 && platform === 'men' && filterBy !== 'all' ? (
+              entries.length > 0 && platform === 'men' && (filterBy !== 'all' || agentFilter) ? (
             <div className="py-20 px-6 rounded-2xl bg-mgsr-card/50 border border-mgsr-border text-center">
               <p className="text-mgsr-text text-lg font-medium mb-2">{t('shortlist_filter_empty')}</p>
               <p className="text-mgsr-muted text-sm mb-6 max-w-sm mx-auto">{t('shortlist_filter_empty_hint').replace('{n}', String(entries.length))}</p>
               <button
                 type="button"
-                onClick={() => setFilterBy('all')}
+                onClick={() => { setFilterBy('all'); setAgentFilter(null); }}
                 className="px-6 py-3 rounded-xl bg-mgsr-teal text-mgsr-dark font-semibold hover:bg-mgsr-teal/90 transition shadow-lg shadow-mgsr-teal/20"
               >
                 {t('shortlist_filter_clear')}

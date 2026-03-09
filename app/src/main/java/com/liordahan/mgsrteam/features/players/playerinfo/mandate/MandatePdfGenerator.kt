@@ -241,12 +241,16 @@ object MandatePdfGenerator {
         drawLine(4)
         y = drawText("The Player and the Football Agent are the \"Parties\" and each a \"Party.\"", bodyPaint)
         drawLine(4)
-        y = drawText("Valid Leagues for this mandate:", headingPaint)
-        drawLine(4)
-        data.validLeagues.forEach { league ->
-            y = drawText("• $league", bodyPaint)
+        if (data.validLeagues.isNotEmpty()) {
+            y = drawText("Valid Leagues for this mandate:", headingPaint)
+            drawLine(4)
+            data.validLeagues.forEach { league ->
+                y = drawText("• $league", bodyPaint)
+            }
+            drawLine(12)
+        } else {
+            drawLine(12)
         }
-        drawLine(12)
 
         // Section I
         y = drawText("APPOINTMENT AND SERVICES", headingPaint)

@@ -27,6 +27,9 @@ class GenerateMandateViewModel : ViewModel() {
     }
 
     fun goNext() {
+        val step = _currentStep.value
+        if (step == 0 && !canProceedStep1) return
+        if (step == 1 && !canProceedStep2) return
         _currentStep.update { (it + 1).coerceAtMost(2) }
     }
 
@@ -103,7 +106,7 @@ class GenerateMandateViewModel : ViewModel() {
     // ── Step 2 validation ──
 
     val canProceedStep2: Boolean
-        get() = _expiryDate.value != null && validLeagues.isNotEmpty()
+        get() = _expiryDate.value != null
 
     // ── Valid leagues (computed) ──
 

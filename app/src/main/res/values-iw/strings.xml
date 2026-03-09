@@ -58,6 +58,8 @@
     <string name="players_filter_contract_expiring">חוזה מסתיים</string>
     <string name="players_filter_with_mandate">עם מנדט</string>
     <string name="players_filter_my_players_only">השחקנים שלי בלבד</string>
+    <string name="players_filter_agent">סוכן</string>
+    <string name="filter_clear">נקה</string>
     <string name="players_filter_loan_players_only">שחקנים בהשאלה בלבד</string>
     <string name="players_filter_without_registered_agent">ללא סוכן רשום</string>
     <string name="players_expiring_soon_count">%d חוזים מסתיימים בקרוב</string>
@@ -1248,4 +1250,7 @@
 
     <!-- Offered No Feedback filter -->
     <string name="players_filter_offered_no_feedback">הוצע · ללא משוב</string>
+
+    <!-- Agent filter for shortlist -->
+    <string name="shortlist_filter_agent">סוכן</string>
 </resources>

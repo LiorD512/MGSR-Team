@@ -47,3 +47,17 @@ export async function getCurrentAccountWithPhone(
 ): Promise<AccountForShortlist> {
   return getCurrentAccountForShortlist(user);
 }
+
+/** Fetch all accounts from Firestore Accounts collection */
+export async function getAllAccounts(): Promise<AccountForShortlist[]> {
+  const snap = await getDocs(collection(db, 'Accounts'));
+  return snap.docs.map((doc) => {
+    const data = doc.data();
+    return {
+      id: doc.id,
+      name: (data.name as string)?.trim() || undefined,
+      hebrewName: (data.hebrewName as string)?.trim() || undefined,
+      phone: (data.phone as string)?.trim() || undefined,
+    };
+  });
+}

@@ -7,7 +7,9 @@ import {
   signOut as firebaseSignOut,
   onAuthStateChanged,
 } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
+import { auth, db } from '@/lib/firebase';
+import { collection, query, where, getDocs } from 'firebase/firestore';
+import { removeWebFcmToken } from '@/lib/notifications';
 
 interface AuthContextType {
   user: User | null;
@@ -35,6 +37,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signOut = async () => {
+    // Remove web FCM token before signing out
+    try {
+      if (user?.email) {
+        const q = query(collection(db, 'Accounts'), where('email', '==', user.email.toLowerCase()));
+        const snap = await getDocs(q);
+        if (!snap.empty) {
+          const accountId = snap.docs[0].id;
+          const { getToken } = await import('firebase/messaging');
+          const { getMessaging: getMessagingInstance } = await import('@/lib/firebase');
+          const messaging = await getMessagingInstance();
+          if (messaging) {
+            const token = await getToken(messaging).catch(() => null);
+            if (token) {
+              await removeWebFcmToken(accountId, token);
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to remove FCM token on logout:', e);
+    }
     await firebaseSignOut(auth);
   };
 

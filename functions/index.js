@@ -6,9 +6,10 @@ if (typeof globalThis.File === "undefined") {
 const { onDocumentCreated } = require("firebase-functions/v2/firestore");
 const { onMessagePublished } = require("firebase-functions/v2/pubsub");
 const { onSchedule } = require("firebase-functions/v2/scheduler");
+const { onCall } = require("firebase-functions/v2/https");
 const { initializeApp } = require("firebase-admin/app");
 const { getMessaging } = require("firebase-admin/messaging");
-const { getFirestore } = require("firebase-admin/firestore");
+const { getFirestore, FieldValue } = require("firebase-admin/firestore");
 const { runMandateExpiry } = require("./workers/mandateExpiry");
 const { runReleasesRefresh } = require("./workers/releasesRefresh");
 const { runScoutAgent } = require("./workers/scoutAgent");
@@ -37,6 +38,77 @@ const NOTIFIABLE_TYPES = [
   "NEW_RELEASE_FROM_CLUB",
   "MANDATE_EXPIRED",
 ];
+
+/**
+ * Collects all FCM tokens for an account (legacy fcmToken + fcmTokens array).
+ * Returns a deduped array of token strings.
+ */
+function getAllTokens(accountData) {
+  const tokens = new Set();
+  if (accountData.fcmToken) tokens.add(accountData.fcmToken);
+  if (Array.isArray(accountData.fcmTokens)) {
+    for (const entry of accountData.fcmTokens) {
+      const t = typeof entry === "string" ? entry : entry?.token;
+      if (t) tokens.add(t);
+    }
+  }
+  return [...tokens];
+}
+
+/**
+ * Send a notification to all tokens of an account. Cleans up invalid tokens.
+ * @param {string} accountId Firestore Account doc ID
+ * @param {object} accountData Account document data
+ * @param {object} payload { notification, data, android, webpush }
+ */
+async function sendToAllTokens(accountId, accountData, payload) {
+  const tokens = getAllTokens(accountData);
+  if (tokens.length === 0) return;
+
+  const messages = tokens.map((token) => ({
+    token,
+    notification: payload.notification,
+    data: payload.data,
+    android: payload.android,
+    webpush: payload.webpush,
+  }));
+
+  const results = await getMessaging().sendEach(messages);
+  // Clean up invalid tokens
+  const invalidTokens = [];
+  results.responses.forEach((resp, idx) => {
+    if (resp.error && (
+      resp.error.code === "messaging/registration-token-not-registered" ||
+      resp.error.code === "messaging/invalid-registration-token"
+    )) {
+      invalidTokens.push(tokens[idx]);
+    }
+  });
+  if (invalidTokens.length > 0) {
+    try {
+      const accountRef = db.collection(ACCOUNTS_COLLECTION).doc(accountId);
+      const updates = {};
+      // Clear legacy token if invalid
+      if (invalidTokens.includes(accountData.fcmToken)) {
+        updates.fcmToken = "";
+      }
+      // Remove from fcmTokens array
+      if (Array.isArray(accountData.fcmTokens)) {
+        const cleaned = accountData.fcmTokens.filter((entry) => {
+          const t = typeof entry === "string" ? entry : entry?.token;
+          return !invalidTokens.includes(t);
+        });
+        updates.fcmTokens = cleaned;
+      }
+      if (Object.keys(updates).length > 0) {
+        await accountRef.update(updates);
+        console.log(`Cleaned ${invalidTokens.length} invalid token(s) for account ${accountId}`);
+      }
+    } catch (e) {
+      console.error(`Token cleanup failed for ${accountId}:`, e);
+    }
+  }
+}
 
 /**
  * Triggered every time a new document is created in the FeedEvents collection
@@ -107,6 +179,16 @@ exports.onNewFeedEvent = onDocumentCreated("FeedEvents/{eventId}", async (event)
         channelId: "mgsr_team_notifications",
       },
     },
+    webpush: {
+      notification: {
+        title,
+        body,
+        icon: "/logo.svg",
+      },
+      fcmOptions: {
+        link: "/dashboard",
+      },
+    },
   };
 
   try {
@@ -136,16 +218,22 @@ exports.onNewAgentTask = onDocumentCreated(
     // Only notify when task is assigned to someone other than the creator (skip if creator unknown)
     if (!agentId || !createdByAgentId || agentId === createdByAgentId) return;
 
-    let token;
+    let accountData;
     try {
       const accountSnap = await db.collection(ACCOUNTS_COLLECTION).doc(agentId).get();
-      token = accountSnap.data()?.fcmToken;
+      if (!accountSnap.exists) {
+        console.log(`Account not found for ${agentId}, skipping task notification`);
+        return;
+      }
+      accountData = accountSnap.data();
     } catch (e) {
-      console.error("Failed to fetch assignee FCM token:", e);
+      console.error("Failed to fetch assignee account:", e);
       return;
     }
-    if (!token) {
-      console.log(`No FCM token for assignee ${agentId}, skipping task notification`);
+
+    const tokens = getAllTokens(accountData);
+    if (tokens.length === 0) {
+      console.log(`No FCM tokens for assignee ${agentId}, skipping task notification`);
       return;
     }
 
@@ -154,8 +242,7 @@ exports.onNewAgentTask = onDocumentCreated(
       ? `${createdByAgentName} assigned you: ${title}`
       : `You have a new task: ${title}`;
 
-    const message = {
-      token,
+    const payload = {
       notification: { title: notifTitle, body: notifBody },
       data: {
         type: "TASK_ASSIGNED",
@@ -170,11 +257,21 @@ exports.onNewAgentTask = onDocumentCreated(
           channelId: "mgsr_team_notifications",
         },
       },
+      webpush: {
+        notification: {
+          title: notifTitle,
+          body: notifBody,
+          icon: "/logo.svg",
+        },
+        fcmOptions: {
+          link: "/tasks",
+        },
+      },
     };
 
     try {
-      await getMessaging().send(message);
-      console.log(`Task notification sent to ${agentId}: ${title}`);
+      await sendToAllTokens(agentId, accountData, payload);
+      console.log(`Task notification sent to ${agentId} (${tokens.length} token(s)): ${title}`);
     } catch (err) {
       console.error("FCM task notification error:", err);
     }
@@ -349,20 +446,22 @@ exports.onTaskRemindersScheduled = onSchedule(
     for (const { taskId, agentId, taskTitle, daysLeft, reminderDay, remindersSent } of remindersToSend) {
       if (!agentId) continue;
 
-      let token;
+      let accountData;
       try {
         const accountSnap = await db.collection(ACCOUNTS_COLLECTION).doc(agentId).get();
         if (!accountSnap.exists) {
           console.warn(`Account not found for agentId ${agentId} — skipping task reminder for "${taskTitle}"`);
           continue;
         }
-        token = accountSnap.data()?.fcmToken;
+        accountData = accountSnap.data();
       } catch (e) {
-        console.error(`Failed to fetch token for agent ${agentId}:`, e);
+        console.error(`Failed to fetch account for agent ${agentId}:`, e);
         continue;
       }
-      if (!token) {
-        console.warn(`No FCM token for agent ${agentId} — skipping task reminder for "${taskTitle}"`);
+
+      const tokens = getAllTokens(accountData);
+      if (tokens.length === 0) {
+        console.warn(`No FCM tokens for agent ${agentId} — skipping task reminder for "${taskTitle}"`);
         continue;
       }
 
@@ -371,8 +470,7 @@ exports.onTaskRemindersScheduled = onSchedule(
       const notifTitle = "Task Reminder";
       const notifBody = `"${taskTitle}" is due ${dayText}`;
 
-      const message = {
-        token,
+      const payload = {
         notification: { title: notifTitle, body: notifBody },
         data: {
           type: "TASK_REMINDER",
@@ -387,10 +485,14 @@ exports.onTaskRemindersScheduled = onSchedule(
             channelId: "mgsr_team_notifications",
           },
         },
+        webpush: {
+          notification: { title: notifTitle, body: notifBody, icon: "/logo.svg" },
+          fcmOptions: { link: "/tasks" },
+        },
       };
 
       try {
-        await getMessaging().send(message);
+        await sendToAllTokens(agentId, accountData, payload);
         await db.collection(AGENT_TASKS_COLLECTION).doc(taskId).update({
           remindersSent: [...remindersSent, reminderDay],
         });
@@ -401,6 +503,24 @@ exports.onTaskRemindersScheduled = onSchedule(
     }
   }
 );
+
+// ─── Subscribe to FCM Topic (callable) ──────────────────────────────
+// Called from the web app after obtaining a push token.
+// Subscribes that token to the "mgsr_all" broadcast topic.
+// ─────────────────────────────────────────────────────────────────────
+exports.subscribeToTopicCallable = onCall(async (request) => {
+  const { token, topic } = request.data || {};
+  if (!token || !topic) {
+    throw new Error("Missing token or topic");
+  }
+  // Only allow subscribing to the known broadcast topic
+  if (topic !== "mgsr_all") {
+    throw new Error("Invalid topic");
+  }
+  await getMessaging().subscribeToTopic([token], topic);
+  console.log(`Subscribed token to topic "${topic}"`);
+  return { success: true };
+});
 
 // ─── Daily Digest Email ─────────────────────────────────────────────
 // Fires at 20:00 Israel time (Asia/Jerusalem). Sends nightly summary

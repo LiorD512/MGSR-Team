@@ -334,13 +334,15 @@ class HomeScreenViewModel(
     private fun countMandates(players: List<Player>) {
         viewModelScope.launch(Dispatchers.IO) {
             // Query mandate documents; fall back to empty set so haveMandate still counts
+            val now = System.currentTimeMillis()
             val profilesWithMandateDoc: Set<String> = try {
                 val docsSnap = firebaseHandler.firebaseStore
                     .collection(firebaseHandler.playerDocumentsTable)
                     .whereEqualTo("type", DocumentType.MANDATE.name)
                     .get().await()
                 val docs = docsSnap.toObjects(PlayerDocument::class.java)
-                docs.mapNotNull { it.playerTmProfile }.toSet()
+                docs.filter { it.playerTmProfile != null && it.expiresAt != null && !it.expired && it.expiresAt >= now }
+                    .mapNotNull { it.playerTmProfile }.toSet()
             } catch (_: Exception) { emptySet() }
 
             // For Women/Youth, mandate docs store Firestore doc ID as playerTmProfile,

@@ -52,6 +52,8 @@
     <string name="players_filter_contract_expiring">Contract Expiring</string>
     <string name="players_filter_with_mandate">With Mandate</string>
     <string name="players_filter_my_players_only">My Players Only</string>
+    <string name="players_filter_agent">Agent</string>
+    <string name="filter_clear">Clear</string>
     <string name="players_filter_loan_players_only">Loan Players Only</string>
     <string name="players_filter_without_registered_agent">Without Registered Agent</string>
     <string name="players_expiring_soon_count">%d Contracts Expiring Soon</string>
@@ -1255,6 +1257,7 @@
 
     <!-- Shortlist: My Players filter -->
     <string name="shortlist_filter_my_players">My Players</string>
+    <string name="shortlist_filter_agent">Agent</string>
 
     <!-- Offered No Feedback filter -->
     <string name="players_filter_offered_no_feedback">Offered · No Feedback</string>

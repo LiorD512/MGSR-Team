@@ -130,7 +130,7 @@ export default function GenerateMandatePage() {
   }, [modalClubQuery, modalSelectedCountry, modalEntireCountry]);
 
   const handleGenerate = useCallback(async () => {
-    if (!player?.passportDetails || validLeagues.length === 0) return;
+    if (!player?.passportDetails) return;
     setGenerating(true);
     setError(null);
     try {
@@ -420,10 +420,12 @@ export default function GenerateMandatePage() {
                 <p className="text-xs font-medium text-mgsr-muted uppercase tracking-wider mb-1">{t('mandate_expiry_date')}</p>
                 <p className="text-mgsr-text font-medium">{new Date(expiryDate).toLocaleDateString()}</p>
               </div>
-              <div>
-                <p className="text-xs font-medium text-mgsr-muted uppercase tracking-wider mb-1">{t('mandate_valid_leagues')}</p>
-                <p className="text-mgsr-text text-sm leading-relaxed">{validLeagues.join(', ')}</p>
-              </div>
+              {validLeagues.length > 0 && (
+                <div>
+                  <p className="text-xs font-medium text-mgsr-muted uppercase tracking-wider mb-1">{t('mandate_valid_leagues')}</p>
+                  <p className="text-mgsr-text text-sm leading-relaxed">{validLeagues.join(', ')}</p>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -440,10 +442,14 @@ export default function GenerateMandatePage() {
           )}
           {step < 2 ? (
             <button
-              onClick={() => setStep(step + 1)}
+              onClick={() => {
+                if (step === 0 && agentsWithFifa.length > 0 && !selectedAgent) return;
+                if (step === 1 && !expiryDate) return;
+                setStep(step + 1);
+              }}
               disabled={
                 (step === 0 && agentsWithFifa.length > 0 && !selectedAgent) ||
-                (step === 1 && (!expiryDate || validLeagues.length === 0))
+                (step === 1 && !expiryDate)
               }
               className="px-6 py-3 rounded-xl bg-mgsr-teal text-mgsr-dark font-semibold hover:bg-mgsr-teal/90 transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
@@ -452,7 +458,7 @@ export default function GenerateMandatePage() {
           ) : (
             <button
               onClick={handleGenerate}
-              disabled={generating || validLeagues.length === 0}
+              disabled={generating}
               className="px-6 py-3 rounded-xl bg-mgsr-teal text-mgsr-dark font-semibold hover:bg-mgsr-teal/90 transition disabled:opacity-50 flex items-center gap-2"
             >
               {generating ? (

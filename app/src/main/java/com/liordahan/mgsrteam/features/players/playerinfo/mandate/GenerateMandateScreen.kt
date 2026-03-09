@@ -283,7 +283,7 @@ fun GenerateMandateScreen(
                 Spacer(Modifier.height(16.dp))
 
                 val canProceedStep1 = selectedAgent != null
-                val canProceedStep2 = expiryDate != null && validLeagues.isNotEmpty()
+                val canProceedStep2 = expiryDate != null
 
                 when (currentStep) {
                     0 -> {
@@ -334,16 +334,8 @@ fun GenerateMandateScreen(
                             )
                         }
                         if (!canProceedStep2) {
-                            val hint = when {
-                                expiryDate == null && validLeagues.isEmpty() ->
-                                    stringResource(R.string.mandate_hint_date_and_leagues)
-                                expiryDate == null ->
-                                    stringResource(R.string.mandate_hint_select_date)
-                                else ->
-                                    stringResource(R.string.mandate_hint_add_league)
-                            }
                             Text(
-                                text = hint,
+                                text = stringResource(R.string.mandate_hint_select_date),
                                 style = regularTextStyle(HomeTextSecondary, 12.sp),
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -355,7 +347,7 @@ fun GenerateMandateScreen(
                     2 -> {
                         Button(
                             onClick = {
-                                if (expiryDate == null || validLeagues.isEmpty()) return@Button
+                                if (expiryDate == null) return@Button
                                 mandateViewModel.setIsGenerating(true)
                                 scope.launch {
                                     val result = withContext(Dispatchers.IO) {
@@ -956,28 +948,30 @@ private fun MandateStep3ReviewContent(
                 stringResource(R.string.mandate_expiry_date),
                 expiryDate?.let { dateFormat.format(it) } ?: "—"
             )
-            Spacer(Modifier.height(6.dp))
-            Text(
-                text = stringResource(R.string.mandate_valid_leagues),
-                style = regularTextStyle(HomeTextSecondary, 12.sp)
-            )
-            Spacer(Modifier.height(4.dp))
-            validLeagues.forEach { league ->
-                Row(
-                    modifier = Modifier.padding(vertical = 2.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        if (Countries.all.contains(league)) Icons.Default.Public else Icons.Default.SportsSoccer,
-                        contentDescription = null,
-                        tint = HomeTealAccent.copy(alpha = 0.7f),
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        text = league,
-                        style = regularTextStyle(HomeTextPrimary, 14.sp)
-                    )
+            if (validLeagues.isNotEmpty()) {
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    text = stringResource(R.string.mandate_valid_leagues),
+                    style = regularTextStyle(HomeTextSecondary, 12.sp)
+                )
+                Spacer(Modifier.height(4.dp))
+                validLeagues.forEach { league ->
+                    Row(
+                        modifier = Modifier.padding(vertical = 2.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            if (Countries.all.contains(league)) Icons.Default.Public else Icons.Default.SportsSoccer,
+                            contentDescription = null,
+                            tint = HomeTealAccent.copy(alpha = 0.7f),
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            text = league,
+                            style = regularTextStyle(HomeTextPrimary, 14.sp)
+                        )
+                    }
                 }
             }
         }

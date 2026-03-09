@@ -2,6 +2,7 @@ import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
 import { getAuth, Auth } from 'firebase/auth';
 import { getFirestore, Firestore } from 'firebase/firestore';
 import { getStorage, FirebaseStorage } from 'firebase/storage';
+import { getMessaging as _getMessaging, isSupported, Messaging } from 'firebase/messaging';
 
 // Use env vars; fallbacks allow build without .env.local (user must add real config to run)
 const firebaseConfig = {
@@ -30,4 +31,15 @@ if (getApps().length === 0) {
   storage = getStorage(app);
 }
 
-export { app, auth, db, storage };
+/** Returns Messaging instance only in the browser where supported. */
+let messagingInstance: Messaging | null = null;
+async function getMessaging(): Promise<Messaging | null> {
+  if (typeof window === 'undefined') return null;
+  if (messagingInstance) return messagingInstance;
+  const supported = await isSupported();
+  if (!supported) return null;
+  messagingInstance = _getMessaging(app);
+  return messagingInstance;
+}
+
+export { app, auth, db, storage, getMessaging };

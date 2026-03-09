@@ -73,6 +73,7 @@ data class PlayersUiState(
     val quickFilterMyPlayersOnly: Boolean = false,
     val quickFilterLoanPlayersOnly: Boolean = false,
     val quickFilterWithoutRegisteredAgent: Boolean = false,
+    val selectedAgentFilter: String? = null,
     val quickFilterEuNational: Boolean = false,
     val quickFilterOfferedNoFeedback: Boolean = false,
     val offeredNoFeedbackTmProfiles: Set<String> = emptySet(),
@@ -92,6 +93,7 @@ abstract class IPlayersViewModel : ViewModel() {
     abstract fun toggleQuickFilterMyPlayersOnly()
     abstract fun toggleQuickFilterLoanPlayersOnly()
     abstract fun toggleQuickFilterWithoutRegisteredAgent()
+    abstract fun setSelectedAgentFilter(agentName: String?)
     abstract fun toggleQuickFilterEuNational()
     abstract fun toggleQuickFilterOfferedNoFeedback()
     /** Apply "My Players Only" filter only when first landing from dashboard. Never re-apply on back. */
@@ -190,6 +192,7 @@ class PlayersViewModel(
             launch { quickFilterUseCase.quickFilterMyPlayersOnly.collect { v -> _inputState.update { it.copy(quickFilterMyPlayersOnly = v) } } }
             launch { quickFilterUseCase.quickFilterLoanPlayersOnly.collect { v -> _inputState.update { it.copy(quickFilterLoanPlayersOnly = v) } } }
             launch { quickFilterUseCase.quickFilterWithoutRegisteredAgent.collect { v -> _inputState.update { it.copy(quickFilterWithoutRegisteredAgent = v) } } }
+            launch { quickFilterUseCase.selectedAgentFilter.collect { v -> _inputState.update { it.copy(selectedAgentFilter = v) } } }
         }
     }
 
@@ -208,6 +211,7 @@ class PlayersViewModel(
             )
             ?.filterPlayersByWithMandate(state.quickFilterWithMandate, mandateMap)
             ?.filterPlayersByMyPlayersOnly(state.quickFilterMyPlayersOnly, state.currentUserName)
+            ?.filterPlayersBySelectedAgent(state.selectedAgentFilter)
             ?.filterPlayersByLoanPlayers(state.quickFilterLoanPlayersOnly)
             ?.filterPlayersByWithoutRegisteredAgent(state.quickFilterWithoutRegisteredAgent)
             ?.filterPlayersByEuNational(state.quickFilterEuNational)
@@ -323,6 +327,7 @@ class PlayersViewModel(
     override fun toggleQuickFilterMyPlayersOnly() = quickFilterUseCase.toggleMyPlayersOnly()
     override fun toggleQuickFilterLoanPlayersOnly() = quickFilterUseCase.toggleLoanPlayersOnly()
     override fun toggleQuickFilterWithoutRegisteredAgent() = quickFilterUseCase.toggleWithoutRegisteredAgent()
+    override fun setSelectedAgentFilter(agentName: String?) = quickFilterUseCase.setSelectedAgentFilter(agentName)
     override fun toggleQuickFilterEuNational() { _quickFilterEuNational.value = !_quickFilterEuNational.value }
     override fun toggleQuickFilterOfferedNoFeedback() { _quickFilterOfferedNoFeedback.value = !_quickFilterOfferedNoFeedback.value }
     override fun toggleQuickFilterWithNotesOnly() = quickFilterUseCase.toggleWithNotesOnly()
@@ -443,6 +448,11 @@ class PlayersViewModel(
     private fun List<Player>?.filterPlayersByMyPlayersOnly(enabled: Boolean, currentUserName: String?): List<Player>? {
         return if (!enabled || currentUserName.isNullOrBlank()) this
         else this?.filter { it.agentInChargeName.equals(currentUserName, ignoreCase = true) }
+    }
+
+    private fun List<Player>?.filterPlayersBySelectedAgent(agentName: String?): List<Player>? {
+        return if (agentName.isNullOrBlank()) this
+        else this?.filter { it.agentInChargeName.equals(agentName, ignoreCase = true) }
     }
 
     private fun List<Player>?.filterPlayersByLoanPlayers(enabled: Boolean): List<Player>? {
