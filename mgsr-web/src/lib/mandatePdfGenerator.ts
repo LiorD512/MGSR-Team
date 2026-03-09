@@ -206,7 +206,6 @@ export async function generateMandatePdf(data: MandateData): Promise<Uint8Array>
   page.drawText(playerLabel, { x: MARGIN, y, size: BODY_SIZE, font, color: black });
   const playerSigX = MARGIN + font.widthOfTextAtSize(playerLabel, BODY_SIZE) + 4;
   const playerSigField = form.createTextField('player_signature');
-  playerSigField.setFontSize(BODY_SIZE);
   playerSigField.addToPage(page, {
     x: playerSigX,
     y: y - 2,
@@ -216,11 +215,11 @@ export async function generateMandatePdf(data: MandateData): Promise<Uint8Array>
     borderWidth: 1,
     font,
   });
+  playerSigField.setFontSize(BODY_SIZE);
   playerSigField.defaultUpdateAppearances(font);
   const dateX = playerSigX + sigFieldW + 12;
   page.drawText(dateLabel, { x: dateX, y, size: BODY_SIZE, font, color: black });
   const playerDateField = form.createTextField('player_date');
-  playerDateField.setFontSize(BODY_SIZE);
   playerDateField.addToPage(page, {
     x: dateX + font.widthOfTextAtSize(dateLabel, BODY_SIZE) + 4,
     y: y - 2,
@@ -230,12 +229,12 @@ export async function generateMandatePdf(data: MandateData): Promise<Uint8Array>
     borderWidth: 1,
     font,
   });
+  playerDateField.setFontSize(BODY_SIZE);
   playerDateField.defaultUpdateAppearances(font);
   y -= sigFieldH + 12;
 
   page.drawText(printLabel, { x: MARGIN, y, size: BODY_SIZE, font, color: black });
   const playerPrintField = form.createTextField('player_print_name');
-  playerPrintField.setFontSize(BODY_SIZE);
   playerPrintField.addToPage(page, {
     x: MARGIN + font.widthOfTextAtSize(printLabel, BODY_SIZE) + 4,
     y: y - 2,
@@ -245,13 +244,13 @@ export async function generateMandatePdf(data: MandateData): Promise<Uint8Array>
     borderWidth: 1,
     font,
   });
+  playerPrintField.setFontSize(BODY_SIZE);
   playerPrintField.defaultUpdateAppearances(font);
   y -= sigFieldH + 12;
 
   page.drawText(agentLabel, { x: MARGIN, y, size: BODY_SIZE, font, color: black });
   const agentSigX = MARGIN + font.widthOfTextAtSize(agentLabel, BODY_SIZE) + 4;
   const agentSigField = form.createTextField('agent_signature');
-  agentSigField.setFontSize(BODY_SIZE);
   agentSigField.addToPage(page, {
     x: agentSigX,
     y: y - 2,
@@ -261,11 +260,11 @@ export async function generateMandatePdf(data: MandateData): Promise<Uint8Array>
     borderWidth: 1,
     font,
   });
+  agentSigField.setFontSize(BODY_SIZE);
   agentSigField.defaultUpdateAppearances(font);
   const agentDateX = agentSigX + sigFieldW + 12;
   page.drawText(dateLabel, { x: agentDateX, y, size: BODY_SIZE, font, color: black });
   const agentDateField = form.createTextField('agent_date');
-  agentDateField.setFontSize(BODY_SIZE);
   agentDateField.addToPage(page, {
     x: agentDateX + font.widthOfTextAtSize(dateLabel, BODY_SIZE) + 4,
     y: y - 2,
@@ -275,13 +274,12 @@ export async function generateMandatePdf(data: MandateData): Promise<Uint8Array>
     borderWidth: 1,
     font,
   });
+  agentDateField.setFontSize(BODY_SIZE);
   agentDateField.defaultUpdateAppearances(font);
   y -= sigFieldH + 12;
 
   page.drawText(printLabel, { x: MARGIN, y, size: BODY_SIZE, font, color: black });
   const agentNameField = form.createTextField('agent_print_name');
-  agentNameField.setText(data.agentName);
-  agentNameField.setFontSize(BODY_SIZE);
   agentNameField.addToPage(page, {
     x: MARGIN + font.widthOfTextAtSize(printLabel, BODY_SIZE) + 4,
     y: y - 2,
@@ -291,6 +289,8 @@ export async function generateMandatePdf(data: MandateData): Promise<Uint8Array>
     borderWidth: 1,
     font,
   });
+  agentNameField.setFontSize(BODY_SIZE);
+  agentNameField.setText(data.agentName);
   agentNameField.defaultUpdateAppearances(font);
   y -= sigFieldH + 8;
 
