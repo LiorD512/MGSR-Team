@@ -288,6 +288,8 @@ export default function PlayerInfoPage() {
   const [confirmDeletePhone, setConfirmDeletePhone] = useState<'agent' | 'player' | null>(null);
   const [showPortfolioLanguageModal, setShowPortfolioLanguageModal] = useState(false);
   const [showSalaryFeeModal, setShowSalaryFeeModal] = useState(false);
+  const [includePlayerContact, setIncludePlayerContact] = useState(false);
+  const [includeAgencyContact, setIncludeAgencyContact] = useState(false);
   const [clubRequests, setClubRequests] = useState<(ClubRequest & { status?: string; clubName?: string; clubLogo?: string; clubCountry?: string; contactPhoneNumber?: string })[]>([]);
   const [playerOffers, setPlayerOffers] = useState<{ id: string; requestId?: string; clubFeedback?: string; offeredAt?: number; markedByAgentName?: string; [key: string]: unknown }[]>([]);
   const prevValidMandateCountRef = useRef<number | null>(null);
@@ -865,7 +867,9 @@ export default function PlayerInfoPage() {
           onLoanFromClub: player.onLoanFromClub ?? merged.onLoanFromClub,
           agency: player.agency,
           tmProfile: merged.tmProfile || player.tmProfile,
-          // Never include agent/player contact - only Accounts phone when sharing
+          agentPhoneNumber: player.agentPhoneNumber,
+          playerPhoneNumber: player.playerPhoneNumber,
+          playerAdditionalInfoModel: player.playerAdditionalInfoModel,
         };
 
         let scoutReport = '';
@@ -908,6 +912,8 @@ export default function PlayerInfoPage() {
             scoutReport: scoutReport || undefined,
             highlights: highlightsPayload,
             lang,
+            includePlayerContact,
+            includeAgencyContact,
           },
           () =>
             user ? auth.currentUser?.getIdToken() ?? Promise.resolve(null) : Promise.resolve(null)
@@ -943,7 +949,7 @@ export default function PlayerInfoPage() {
         setSharing(false);
       }
     },
-    [player, id, documents, merged, user, accounts, sharing, isRtl]
+    [player, id, documents, merged, user, accounts, sharing, isRtl, includePlayerContact, includeAgencyContact]
   );
 
   const handleAddToPortfolio = useCallback(
@@ -2249,6 +2255,8 @@ export default function PlayerInfoPage() {
                     type="button"
                     onClick={(e) => {
                       e.preventDefault();
+                      setIncludePlayerContact(false);
+                      setIncludeAgencyContact(false);
                       setShowShareLanguageModal(true);
                     }}
                     disabled={sharing}
@@ -2379,6 +2387,44 @@ export default function PlayerInfoPage() {
             <p className="text-sm text-mgsr-muted mb-4">
               {isRtl ? 'בחר את שפת הדף המשותף' : 'Choose the language for the shared page'}
             </p>
+
+            {/* Contact inclusion checkboxes */}
+            {(() => {
+              const hasPlayerPhone = !!(player?.playerAdditionalInfoModel?.playerNumber || player?.playerPhoneNumber);
+              const hasAgentPhone = !!(player?.playerAdditionalInfoModel?.agentNumber || player?.agentPhoneNumber);
+              if (!hasPlayerPhone && !hasAgentPhone) return null;
+              return (
+                <div className="space-y-3 mb-4">
+                  {hasPlayerPhone && (
+                    <label className="flex items-start gap-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={includePlayerContact}
+                        onChange={(e) => setIncludePlayerContact(e.target.checked)}
+                        className="mt-1 w-4 h-4 rounded border-mgsr-border text-mgsr-teal focus:ring-mgsr-teal"
+                      />
+                      <span className="text-sm text-mgsr-text">
+                        {isRtl ? 'צרף טלפון שחקן' : 'Attach player contact'}
+                      </span>
+                    </label>
+                  )}
+                  {hasAgentPhone && (
+                    <label className="flex items-start gap-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={includeAgencyContact}
+                        onChange={(e) => setIncludeAgencyContact(e.target.checked)}
+                        className="mt-1 w-4 h-4 rounded border-mgsr-border text-mgsr-teal focus:ring-mgsr-teal"
+                      />
+                      <span className="text-sm text-mgsr-text">
+                        {isRtl ? 'צרף טלפון סוכן' : 'Attach agency contact'}
+                      </span>
+                    </label>
+                  )}
+                </div>
+              );
+            })()}
+
             <div className="flex gap-3">
               <button
                 type="button"
