@@ -32,7 +32,7 @@ gcloud builds submit --tag gcr.io/$PROJECT_ID/$JOB_NAME --project $PROJECT_ID
 
 echo ""
 echo "=== Step 3: Creating/updating Cloud Run Job ==="
-BUILD_CMD="${BUILD_COMMAND:-python3 build.py}"
+BUILD_CMD="${BUILD_COMMAND:-python3 run_build.py}"
 DB_FILES="${DB_FILES_TO_COMMIT:-*.db data/*.db}"
 BRANCH="${GIT_BRANCH:-main}"
 ENV_VARS="SCOUT_REPO_URL=$SCOUT_REPO_URL,BUILD_COMMAND=$BUILD_CMD,DB_FILES_TO_COMMIT=$DB_FILES,GIT_BRANCH=$BRANCH"
