@@ -1107,11 +1107,9 @@ async function runScoutAgent() {
     czech: ["https://www.transfermarkt.com/chance-liga/startseite/wettbewerb/TS1"],
     slovakia: ["https://www.transfermarkt.com/nike-liga/startseite/wettbewerb/SLO1"],
     bosnia: ["https://www.transfermarkt.com/premier-liga-bosne-i-hercegovine/startseite/wettbewerb/BOS1"],
-    macedonia: ["https://www.transfermarkt.com/prva-makedonska-liga/startseite/wettbewerb/MAC1"],
-    montenegro: ["https://www.transfermarkt.com/prva-crnogorska-liga/startseite/wettbewerb/MON1"],
-    kosovo: ["https://www.transfermarkt.com/superliga-e-kosoves/startseite/wettbewerb/KOS1"],
     azerbaijan: ["https://www.transfermarkt.com/premyer-liqa/startseite/wettbewerb/AZ1"],
     kazakhstan: ["https://www.transfermarkt.com/premier-liga-kazakhstan/startseite/wettbewerb/KAS1"],
+    // Macedonia (MAC1), Montenegro (MON1), Kosovo (KOS1) — TM redirects these to SPA/competition page, no table.items available
   };
 
   const TM_USER_AGENTS = [
@@ -1278,18 +1276,14 @@ async function runScoutAgent() {
             const ageNum = parseAge(p.age);
             if (ageNum != null && ageNum > MAX_AGE) continue;
             const league = (p.league || "").trim();
-            const lc = league.toLowerCase();
-            const leagueTier = lc.includes("national") || lc.includes("3. liga") ? 3
-              : lc.includes("2") || lc.includes("second") ? 2
-              : 1;
+            // TM fallback leagues are small-market top divisions — treat as tier 2
+            // so they qualify for LOWER_LEAGUE_RISER profile type
+            const leagueTier = 2;
 
             const agentParams = paramsByAgent[agentId] || {};
 
-            for (const profileType of [
-              "HIGH_VALUE_BENCHED", "LOW_VALUE_STARTER", "YOUNG_STRIKER_HOT",
-              "CONTRACT_EXPIRING", "HIDDEN_GEM", "LOWER_LEAGUE_RISER",
-              "BREAKOUT_SEASON", "UNDERVALUED_BY_FM",
-            ]) {
+            // TM fallback has no fbref minutes/goals/FM data — only HIDDEN_GEM and LOWER_LEAGUE_RISER can match
+            for (const profileType of ["HIDDEN_GEM", "LOWER_LEAGUE_RISER"]) {
               const profileOverrides = agentParams[profileType] || {};
               if (!matchesProfile(p, profileType, valEuro, ageNum, leagueTier, profileOverrides)) continue;
 
