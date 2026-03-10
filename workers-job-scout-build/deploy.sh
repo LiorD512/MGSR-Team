@@ -35,8 +35,7 @@ echo "=== Step 3: Creating/updating Cloud Run Job ==="
 BUILD_CMD="${BUILD_COMMAND:-python3 build.py}"
 DB_FILES="${DB_FILES_TO_COMMIT:-*.db data/*.db}"
 BRANCH="${GIT_BRANCH:-main}"
-# Quote BUILD_COMMAND if it contains spaces (gcloud requirement)
-ENV_VARS="SCOUT_REPO_URL=$SCOUT_REPO_URL,BUILD_COMMAND=\"$BUILD_CMD\",DB_FILES_TO_COMMIT=$DB_FILES,GIT_BRANCH=$BRANCH"
+ENV_VARS="SCOUT_REPO_URL=$SCOUT_REPO_URL,BUILD_COMMAND=$BUILD_CMD,DB_FILES_TO_COMMIT=$DB_FILES,GIT_BRANCH=$BRANCH"
 
 if gcloud run jobs describe $JOB_NAME --region $REGION --project $PROJECT_ID 2>/dev/null; then
   gcloud run jobs update $JOB_NAME \
