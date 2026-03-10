@@ -1356,16 +1356,39 @@ async function runScoutAgent() {
 
   // ═══════════════════════════════════════════════════════════════
   // Enrich approved profiles with TM images (before Firestore write)
-  // Extract player ID from tmProfileUrl and construct image URL
+  // TM image URLs now require a timestamp suffix, so we scrape the actual URL
   // ═══════════════════════════════════════════════════════════════
-  for (const profile of approvedProfiles) {
-    if (profile.data.profileImage) continue; // Already has image
-    const url = profile.data.tmProfileUrl || "";
-    const idMatch = url.match(/\/profil\/spieler\/(\d+)/);
-    if (idMatch) {
-      profile.data.profileImage = `https://img.a.transfermarkt.technology/portrait/big/${idMatch[1]}.jpg`;
-    }
+  const ENRICH_CONCURRENCY = 5;
+  const profilesToEnrich = approvedProfiles.filter((p) => !p.data.profileImage);
+  console.log(`[ScoutAgent] Enriching ${profilesToEnrich.length} profiles with TM images...`);
+  for (let i = 0; i < profilesToEnrich.length; i += ENRICH_CONCURRENCY) {
+    const chunk = profilesToEnrich.slice(i, i + ENRICH_CONCURRENCY);
+    await Promise.all(
+      chunk.map(async (profile) => {
+        try {
+          const url = profile.data.tmProfileUrl;
+          if (!url) return;
+          const html = await fetchTmHtml(url);
+          // Look for portrait image URL with the player ID
+          const idMatch = url.match(/\/profil\/spieler\/(\d+)/);
+          if (!idMatch) return;
+          const pid = idMatch[1];
+          const imgMatch = html.match(new RegExp(`https://img[^"]*?/portrait/(?:big|medium|header)/${pid}-[^"?]+\\.jpg[^"]*`));
+          if (imgMatch) {
+            let imgUrl = imgMatch[0].split("'")[0]; // Clean trailing attributes
+            // Prefer big size
+            imgUrl = imgUrl.replace("/medium/", "/big/").replace("/header/", "/big/");
+            profile.data.profileImage = imgUrl;
+          }
+        } catch {
+          // Skip — player will show placeholder
+        }
+      })
+    );
+    if (i + ENRICH_CONCURRENCY < profilesToEnrich.length) await sleep(2000);
   }
+  const enrichedCount = profilesToEnrich.filter((p) => p.data.profileImage).length;
+  console.log(`[ScoutAgent] Enriched ${enrichedCount}/${profilesToEnrich.length} profiles with images`);
 
   // Write ONLY approved profiles to ScoutProfiles
   const batch = db.batch();
