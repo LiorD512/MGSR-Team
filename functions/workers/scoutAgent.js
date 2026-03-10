@@ -601,6 +601,18 @@ async function runScoutAgent() {
         const agentId = leagueToAgent(p.league);
         if (!agentId || !AGENT_IDS.includes(agentId)) continue;
 
+        // Turkey agent: only non-Turkish players (foreign talent in Turkish leagues)
+        if (agentId === "turkey") {
+          const cit = (p.citizenship || "").toLowerCase();
+          if (cit.includes("turkey") || cit.includes("türkiye") || cit.includes("turkish")) continue;
+        }
+
+        // Morocco agent: only non-Moroccan African players
+        if (agentId === "morocco") {
+          const cit = (p.citizenship || "").toLowerCase();
+          if (cit.includes("morocco") || cit.includes("moroccan") || cit.includes("maroc")) continue;
+        }
+
         const ageNum = parseAge(p.age);
         if (ageNum != null && ageNum > MAX_AGE) continue; // Hard age cap
         const league = (p.league || "").trim();
@@ -1091,15 +1103,15 @@ async function runScoutAgent() {
   // LIVE TM FALLBACK — for agents with 0 profiles after all sweeps,
   // scrape Transfermarkt league kader (squad) pages directly.
   // ═══════════════════════════════════════════════════════════════
-  const agentsWithProfiles = new Set();
+  const agentsWithProfiles = new Map();
   for (const { data } of profilesToWrite) {
-    agentsWithProfiles.add(data.agentId);
+    agentsWithProfiles.set(data.agentId, (agentsWithProfiles.get(data.agentId) || 0) + 1);
   }
   // Also count existing Firestore profiles (from previous runs)
   const existingSnap = await profilesRef.get();
   for (const doc of existingSnap.docs) {
     const d = doc.data();
-    if (d.agentId) agentsWithProfiles.add(d.agentId);
+    if (d.agentId) agentsWithProfiles.set(d.agentId, (agentsWithProfiles.get(d.agentId) || 0) + 1);
   }
 
   // League URLs for live TM scraping (from scoutAgentConfig)
@@ -1141,23 +1153,24 @@ async function runScoutAgent() {
     const startHtml = await fetchTmHtml(leagueUrl);
     const $start = cheerio.load(startHtml);
     const kaderUrls = [];
-    $start('table.items a[href*="/kader/"], a.vereinprofil_tooltip[href*="/startseite/verein/"]').each((_, el) => {
+    // TM uses multiple link patterns for clubs — try all of them
+    $start('a[href*="/verein/"]').each((_, el) => {
       let href = $start(el).attr("href") || "";
       if (!href) return;
+      // Only club links (startseite or kader)
+      if (!href.includes("/startseite/") && !href.includes("/kader/")) return;
+      // Skip season-specific links (duplicates with saison_id)
+      if (href.includes("saison_id")) return;
       if (!href.startsWith("http")) href = "https://www.transfermarkt.com" + href;
-      // Convert startseite to kader
-      if (href.includes("/startseite/")) {
-        href = href.replace("/startseite/", "/kader/");
-      }
-      // Normalize: ensure /plus/1 for detailed view
+      href = href.replace("/startseite/", "/kader/");
       if (!href.includes("/plus/")) href += "/plus/1";
       if (!kaderUrls.includes(href)) kaderUrls.push(href);
     });
 
     if (kaderUrls.length === 0) return players;
 
-    // Step 2: scrape up to 6 clubs (rate-limit friendly)
-    const MAX_CLUBS = 6;
+    // Step 2: scrape up to 10 clubs (more coverage for small leagues)
+    const MAX_CLUBS = 10;
     for (const kaderUrl of kaderUrls.slice(0, MAX_CLUBS)) {
       await sleep(5000); // Respectful delay for TM
       try {
@@ -1174,33 +1187,82 @@ async function runScoutAgent() {
 
         $("table.items tbody tr.odd, table.items tbody tr.even").each((_, row) => {
           try {
-            const inlineTable = $(row).find("table.inline-table").first();
-            const nameEl = inlineTable.find("td.hauptlink a").first();
+            // ── Name & URL ──
+            // /plus/1 layout: td.hauptlink contains the player name link directly
+            // Regular layout: table.inline-table > td.hauptlink > a
+            let nameEl = $(row).find("table.inline-table td.hauptlink a").first();
+            if (!nameEl.length) nameEl = $(row).find("td.hauptlink a[href*='/profil/']").first();
             const name = nameEl.text().trim();
             const playerHref = nameEl.attr("href") || "";
             const playerUrl = playerHref.startsWith("http")
               ? playerHref
               : "https://www.transfermarkt.com" + playerHref;
-            const profileImage = (inlineTable.find("img").attr("data-src") || inlineTable.find("img").attr("src") || "")
-              .replace("small", "big")
-              .replace("medium", "big");
-            const posText = inlineTable.find("tr").eq(1).text().trim().replace(/-/g, " ");
 
-            // Age from zentriert columns
-            const zentriert = $(row).find("td.zentriert");
+            // ── Profile image ──
+            const imgEl = $(row).find("table.inline-table img").first();
+            let profileImage = "";
+            if (imgEl.length) {
+              profileImage = (imgEl.attr("data-src") || imgEl.attr("src") || "")
+                .replace("small", "big").replace("medium", "big");
+            }
+
+            // ── Position ──
+            // /plus/1: separate td after hauptlink; regular: inline-table second row
+            let posText = $(row).find("table.inline-table tr").eq(1).text().trim().replace(/-/g, " ");
+            if (!posText) {
+              // In /plus/1 layout, position is the td right after the hauptlink name td
+              const allTds = $(row).find("td");
+              allTds.each((idx, td) => {
+                const cls = $(td).attr("class") || "";
+                if (cls.includes("hauptlink") && !posText) {
+                  const nextTd = allTds.eq(idx + 1);
+                  if (nextTd.length) posText = nextTd.text().trim().replace(/-/g, " ");
+                }
+              });
+            }
+
+            // ── Age ──
+            // Regular: standalone "24" in td.zentriert
+            // /plus/1: "08/02/2000 (26)" in td.zentriert — extract from parentheses
             let age = "";
-            zentriert.each((_, td) => {
+            $(row).find("td.zentriert").each((_, td) => {
               const txt = $(td).text().trim();
+              // Direct number match (regular kader)
               if (/^\d{1,2}$/.test(txt) && parseInt(txt) >= 15 && parseInt(txt) <= 45) {
                 age = txt;
               }
+              // Date + age format: "DD/MM/YYYY (age)" — /plus/1 pages
+              const ageInParens = txt.match(/\((\d{1,2})\)/);
+              if (ageInParens && parseInt(ageInParens[1]) >= 15 && parseInt(ageInParens[1]) <= 45) {
+                age = ageInParens[1];
+              }
             });
 
-            // Market value from rechts column
-            const valueCell = $(row).find("td.rechts a, td.rechts").last();
-            const marketValue = valueCell.text().trim();
+            // ── Market value ──
+            // /plus/1: td with class "rechts hauptlink" contains "€3.00m"
+            let marketValue = "";
+            const rechtsHaupt = $(row).find("td.rechts.hauptlink").first();
+            if (rechtsHaupt.length) {
+              marketValue = rechtsHaupt.text().trim();
+            } else {
+              const rechts = $(row).find("td.rechts a").first();
+              marketValue = rechts.length ? rechts.text().trim() : $(row).find("td.rechts").last().text().trim();
+            }
 
-            // Nationality from flag image
+            // ── Contract end ──
+            // /plus/1: second-to-last td.zentriert typically has the contract end date
+            let contract = "";
+            const zentriertTds = $(row).find("td.zentriert");
+            if (zentriertTds.length >= 2) {
+              const lastZentriert = zentriertTds.eq(zentriertTds.length - 1).text().trim();
+              // Contract dates look like "30/06/2027"
+              if (/\d{2}\/\d{2}\/\d{4}/.test(lastZentriert)) {
+                const parts = lastZentriert.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+                if (parts) contract = `${parts[3]}`; // Just the year for contract parsing
+              }
+            }
+
+            // ── Nationality ──
             const natImg = $(row).find("img.flaggenrahmen").first();
             const nationality = natImg.attr("title") || "";
 
@@ -1216,8 +1278,7 @@ async function runScoutAgent() {
               club: clubName,
               league: leagueName || agentId,
               citizenship: nationality,
-              contract: "",
-              // FM/fbref stats not available from TM kader
+              contract,
               fm_pa: null,
               fm_ca: null,
               fmi_pa: null,
@@ -1254,8 +1315,9 @@ async function runScoutAgent() {
     return posText || "";
   }
 
-  // Run the fallback for dead agents
-  const deadAgents = AGENT_IDS.filter((id) => !agentsWithProfiles.has(id) && TM_LEAGUE_URLS[id]);
+  // Run the fallback for agents with few profiles (< 3) that have TM league URLs
+  const MIN_PROFILES_FOR_TM_FALLBACK = 3;
+  const deadAgents = AGENT_IDS.filter((id) => (agentsWithProfiles.get(id) || 0) < MIN_PROFILES_FOR_TM_FALLBACK && TM_LEAGUE_URLS[id]);
   let tmFallbackFound = 0;
   if (deadAgents.length > 0) {
     console.log(`[ScoutAgent] Live TM fallback for ${deadAgents.length} dead agents: ${deadAgents.join(", ")}`);
@@ -1282,8 +1344,8 @@ async function runScoutAgent() {
 
             const agentParams = paramsByAgent[agentId] || {};
 
-            // TM fallback has no fbref minutes/goals/FM data — only HIDDEN_GEM and LOWER_LEAGUE_RISER can match
-            for (const profileType of ["HIDDEN_GEM", "LOWER_LEAGUE_RISER"]) {
+            // TM fallback now parses age, value, contract — enable contract profile type too
+            for (const profileType of ["HIDDEN_GEM", "LOWER_LEAGUE_RISER", "CONTRACT_EXPIRING"]) {
               const profileOverrides = agentParams[profileType] || {};
               if (!matchesProfile(p, profileType, valEuro, ageNum, leagueTier, profileOverrides)) continue;
 
