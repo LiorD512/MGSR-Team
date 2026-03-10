@@ -7,7 +7,7 @@
 set -e
 
 REPO_URL="${SCOUT_REPO_URL:?SCOUT_REPO_URL required}"
-BUILD_CMD="${BUILD_COMMAND:-python build.py}"
+BUILD_CMD="${BUILD_COMMAND:-python3 build.py}"
 DB_FILES="${DB_FILES_TO_COMMIT:-*.db data/*.db}"
 GIT_BRANCH="${GIT_BRANCH:-main}"
 

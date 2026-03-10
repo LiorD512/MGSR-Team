@@ -179,9 +179,16 @@ async function processSuccessfulUpdate(player, data, docRef, feedRef, tmProfile)
     isOnLoan: data.isOnLoan,
     onLoanFromClub: data.onLoanFromClub,
     foot: data.foot || player.foot,
-    agency: data.agency || player.agency,
-    agencyUrl: data.agencyUrl || player.agencyUrl,
+    agency: data.agency || player.agency || null,
+    agencyUrl: data.agencyUrl || player.agencyUrl || null,
   };
+
+  // Strip any remaining undefined values — Firestore Admin SDK rejects them
+  for (const key of Object.keys(updated)) {
+    if (updated[key] === undefined) {
+      delete updated[key];
+    }
+  }
 
   await docRef.set(updated);
 }
@@ -253,17 +260,23 @@ async function main() {
         const result = await updatePlayerByTmProfile(tmProfile);
 
         if (result.success && result.data) {
-          await processSuccessfulUpdate(
-            player,
-            result.data,
-            docRef,
-            feedRef,
-            tmProfile
-          );
-          successCount++;
-          consecutiveBlocks = 0;
-          log(`Updated ${index + 1}/${total}: ${player.fullName}`);
-          succeeded = true;
+          try {
+            await processSuccessfulUpdate(
+              player,
+              result.data,
+              docRef,
+              feedRef,
+              tmProfile
+            );
+            successCount++;
+            consecutiveBlocks = 0;
+            log(`Updated ${index + 1}/${total}: ${player.fullName}`);
+            succeeded = true;
+          } catch (saveErr) {
+            failCount++;
+            log(`Save failed ${index + 1}/${total}: ${player.fullName} — ${saveErr.message}`);
+            break;
+          }
         } else {
           const cause = result.error || "Unknown error";
           if (isRateLimited(cause)) {

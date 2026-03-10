@@ -130,6 +130,20 @@ const LEAGUE_TO_AGENT = {
   "kosovo superleague": "kosovo",
   "superliga e kosoves": "kosovo",
   "superliga kosoves": "kosovo",
+  "cyprus league": "cyprus",
+  "1. division cyprus": "cyprus",
+  "protathlima cyta": "cyprus",
+  "nike liga": "slovakia",
+  "niké liga": "slovakia",
+  "fortuna liga slovakia": "slovakia",
+  "premyer liqa": "azerbaijan",
+  "premyer liqasi": "azerbaijan",
+  "premyer liqası": "azerbaijan",
+  "premier liga kazakhstan": "kazakhstan",
+  "premier liga kazachstan": "kazakhstan",
+  "kazakhstan premier league": "kazakhstan",
+  "challenger pro league": "belgium",
+  "ligue 1": "france",
 };
 
 /** Fallback: league contains country keyword -> agentId. Denmark before Romania to avoid "superliga" clash. */
@@ -138,7 +152,7 @@ const LEAGUE_CONTAINS_AGENT = [
   [["serbia", "serbian", "srbije"], "serbia"],
   [["poland", "polish", "ekstraklasa", "polska"], "poland"],
   [["greece", "greek"], "greece"],
-  [["belgium", "belgian", "jupiler"], "belgium"],
+  [["belgium", "belgian", "jupiler", "challenger"], "belgium"],
   [["netherlands", "dutch", "eredivisie", "eerste divisie"], "netherlands"],
   [["turkey", "turkish"], "turkey"],
   [["austria", "austrian", "admiral"], "austria"],
@@ -169,6 +183,10 @@ const LEAGUE_CONTAINS_AGENT = [
   [["macedonia", "macedonian", "prva makedonska", "makedonien", "primera makedonska"], "macedonia"],
   [["montenegro", "crnogorska"], "montenegro"],
   [["kosovo", "kosovar", "kosoves"], "kosovo"],
+  [["cyprus", "cypriot", "protathlima"], "cyprus"],
+  [["slovakia", "slovak", "niké liga", "nike liga"], "slovakia"],
+  [["azerbaijan", "azerbaijani", "premyer liqa"], "azerbaijan"],
+  [["kazakhstan", "kazakh"], "kazakhstan"],
 ];
 
 const POSITIONS = ["CF", "AM", "CM", "CB", "DM", "LW", "RW", "LB", "RB", "SS"];
@@ -177,6 +195,7 @@ const AGENT_IDS = [
   "sweden", "switzerland", "czech", "denmark", "romania", "bulgaria", "hungary", "ukraine",
   "england", "germany", "italy", "spain", "france", "scotland",
   "croatia", "slovenia", "bosnia", "macedonia", "montenegro", "kosovo",
+  "cyprus", "slovakia", "azerbaijan", "kazakhstan",
   "brazil", "argentina", "colombia", "chile", "uruguay", "ecuador", "peru",
 ];
 

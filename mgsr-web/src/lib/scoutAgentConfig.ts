@@ -32,6 +32,10 @@ export const AGENT_IDS = [
   'macedonia',
   'montenegro',
   'kosovo',
+  'cyprus',
+  'slovakia',
+  'azerbaijan',
+  'kazakhstan',
   'brazil',
   'argentina',
   'colombia',
@@ -68,6 +72,7 @@ const LEAGUE_URLS: Record<string, string> = {
   'super-league-1': 'https://www.transfermarkt.com/super-league-1/startseite/wettbewerb/GR1',
   // Belgium
   'jupiler-pro-league': 'https://www.transfermarkt.com/jupiler-pro-league/startseite/wettbewerb/BE1',
+  'challenger-pro-league': 'https://www.transfermarkt.com/challenger-pro-league/startseite/wettbewerb/BE2',
   // Netherlands
   'eredivisie': 'https://www.transfermarkt.com/eredivisie/startseite/wettbewerb/NL1',
   'eerste-divisie': 'https://www.transfermarkt.com/eerste-divisie/startseite/wettbewerb/NL2',
@@ -101,6 +106,7 @@ const LEAGUE_URLS: Record<string, string> = {
   // Spain
   'laliga2': 'https://www.transfermarkt.com/laliga2/startseite/wettbewerb/ES2',
   // France
+  'ligue-1': 'https://www.transfermarkt.com/ligue-1/startseite/wettbewerb/FR1',
   'ligue-2': 'https://www.transfermarkt.com/ligue-2/startseite/wettbewerb/FR2',
   'championnat-national': 'https://www.transfermarkt.com/championnat-national/startseite/wettbewerb/FR3',
   // Scotland
@@ -119,6 +125,14 @@ const LEAGUE_URLS: Record<string, string> = {
   'prva-crnogorska-liga': 'https://www.transfermarkt.com/prva-crnogorska-liga/startseite/wettbewerb/MON1',
   // Kosovo
   'superliga-kosovo': 'https://www.transfermarkt.com/superliga-e-kosoves/startseite/wettbewerb/KOS1',
+  // Cyprus
+  'cyprus-league': 'https://www.transfermarkt.com/1-division/startseite/wettbewerb/ZYP1',
+  // Slovakia
+  'nike-liga': 'https://www.transfermarkt.com/nike-liga/startseite/wettbewerb/SLO1',
+  // Azerbaijan
+  'premyer-liqa': 'https://www.transfermarkt.com/premyer-liqa/startseite/wettbewerb/AZ1',
+  // Kazakhstan
+  'premier-liga-kaz': 'https://www.transfermarkt.com/premier-liga-kazakhstan/startseite/wettbewerb/KAS1',
   // South America
   'campeonato-brasileiro-serie-a': 'https://www.transfermarkt.com/campeonato-brasileiro-serie-a/startseite/wettbewerb/BRA1',
   'campeonato-brasileiro-serie-b': 'https://www.transfermarkt.com/campeonato-brasileiro-serie-b/startseite/wettbewerb/BRA2',
@@ -168,8 +182,8 @@ export const AGENTS_CONFIG: Record<AgentId, AgentConfig> = {
     name: 'Belgium',
     nameHe: 'בלגיה',
     flag: '🇧🇪',
-    leagueUrls: [LEAGUE_URLS['jupiler-pro-league']],
-    leagueNames: ['Jupiler Pro League'],
+    leagueUrls: [LEAGUE_URLS['jupiler-pro-league'], LEAGUE_URLS['challenger-pro-league']],
+    leagueNames: ['Jupiler Pro League', 'Challenger Pro League'],
   },
   netherlands: {
     id: 'netherlands',
@@ -296,8 +310,8 @@ export const AGENTS_CONFIG: Record<AgentId, AgentConfig> = {
     name: 'France',
     nameHe: 'צרפת',
     flag: '🇫🇷',
-    leagueUrls: [LEAGUE_URLS['ligue-2'], LEAGUE_URLS['championnat-national']],
-    leagueNames: ['Ligue 2', 'Championnat National'],
+    leagueUrls: [LEAGUE_URLS['ligue-1'], LEAGUE_URLS['ligue-2'], LEAGUE_URLS['championnat-national']],
+    leagueNames: ['Ligue 1', 'Ligue 2', 'Championnat National'],
   },
   scotland: {
     id: 'scotland',
@@ -354,6 +368,38 @@ export const AGENTS_CONFIG: Record<AgentId, AgentConfig> = {
     flag: '🇽🇰',
     leagueUrls: [LEAGUE_URLS['superliga-kosovo']],
     leagueNames: ['Superliga Kosovo'],
+  },
+  cyprus: {
+    id: 'cyprus',
+    name: 'Cyprus',
+    nameHe: 'קפריסין',
+    flag: '🇨🇾',
+    leagueUrls: [LEAGUE_URLS['cyprus-league']],
+    leagueNames: ['Cyprus League'],
+  },
+  slovakia: {
+    id: 'slovakia',
+    name: 'Slovakia',
+    nameHe: 'סלובקיה',
+    flag: '🇸🇰',
+    leagueUrls: [LEAGUE_URLS['nike-liga']],
+    leagueNames: ['Niké Liga'],
+  },
+  azerbaijan: {
+    id: 'azerbaijan',
+    name: 'Azerbaijan',
+    nameHe: "אזרבייג'ן",
+    flag: '🇦🇿',
+    leagueUrls: [LEAGUE_URLS['premyer-liqa']],
+    leagueNames: ['Premyer Liqa'],
+  },
+  kazakhstan: {
+    id: 'kazakhstan',
+    name: 'Kazakhstan',
+    nameHe: 'קזחסטן',
+    flag: '🇰🇿',
+    leagueUrls: [LEAGUE_URLS['premier-liga-kaz']],
+    leagueNames: ['Premier Liga'],
   },
   brazil: {
     id: 'brazil',
