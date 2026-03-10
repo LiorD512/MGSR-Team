@@ -13,13 +13,9 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
-messaging.onBackgroundMessage((payload) => {
-  const { title, body, icon } = payload.notification || {};
-  const data = payload.data || {};
-  self.registration.showNotification(title || 'MGSR Team', {
-    body: body || '',
-    icon: icon || '/logo.svg',
-    badge: '/logo.svg',
-    data,
-  });
+// Background notifications are displayed automatically by FCM via the
+// `webpush.notification` payload sent from the Cloud Function.
+// A manual showNotification() call here would cause duplicate notifications.
+messaging.onBackgroundMessage((_payload) => {
+  // Intentionally empty – avoids duplicate OS notifications.
 });
