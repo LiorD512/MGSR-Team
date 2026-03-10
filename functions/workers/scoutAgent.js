@@ -68,7 +68,7 @@ const LEAGUE_TO_AGENT = {
   "nb i ungarn": "hungary",
   "premier liga": "ukraine",
   "championship": "england",
-  "bundesliga": "austria",
+  "bundesliga": "germany",
   "1. bundesliga": "germany",
   "1 bundesliga": "germany",
   "2. bundesliga": "germany",
