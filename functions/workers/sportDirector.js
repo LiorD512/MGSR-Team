@@ -272,9 +272,9 @@ const QUALITY_BARS = {
 
 // Minimum matchScore by league tier
 const MIN_SCORE_BY_TIER = {
-  1: 68,
-  2: 62,
-  3: 58,
+  1: 64,
+  2: 58,
+  3: 54,
 };
 
 // ═══════════════════════════════════════════════════════════════
