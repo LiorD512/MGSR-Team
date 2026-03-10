@@ -990,7 +990,7 @@ async function runScoutAgent() {
   // ═══════════════════════════════════════════════════════════════
   const SMALL_EU_POSITIONS = ["CF", "AM", "CM", "CB", "LW", "RW"];
   const SMALL_EU_VALUE_MAX = 500_000;
-  const SMALL_EU_AGENTS = new Set(["cyprus", "bulgaria", "slovenia", "slovakia", "czech", "bosnia", "macedonia", "montenegro", "kosovo", "azerbaijan", "kazakhstan", "morocco", "norway", "finland", "israel"]);
+  const SMALL_EU_AGENTS = new Set(["cyprus", "bulgaria", "slovenia", "slovakia", "czech", "bosnia", "macedonia", "montenegro", "kosovo", "azerbaijan", "kazakhstan", "morocco", "norway", "finland", "israel", "mexico"]);
   let smallEuFound = 0;
   for (const pos of SMALL_EU_POSITIONS) {
     await sleep(DELAY_BETWEEN_REQUESTS_MS);
