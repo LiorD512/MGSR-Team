@@ -46,6 +46,9 @@ export const AGENT_IDS = [
   'morocco',
   'norway',
   'usa',
+  'finland',
+  'mexico',
+  'israel',
 ] as const;
 
 export type AgentId = (typeof AGENT_IDS)[number];
@@ -145,6 +148,13 @@ const LEAGUE_URLS: Record<string, string> = {
   'liga-auf': 'https://www.transfermarkt.com/liga-auf-apertura/startseite/wettbewerb/URU1',
   'ligapro-serie-a': 'https://www.transfermarkt.com/ligapro-serie-a/startseite/wettbewerb/EC1N',
   'liga-1-peru': 'https://www.transfermarkt.com/liga-1-apertura/startseite/wettbewerb/TDeA',
+  // Finland
+  'veikkausliiga': 'https://www.transfermarkt.com/veikkausliiga/startseite/wettbewerb/FI1',
+  // Mexico
+  'liga-mx': 'https://www.transfermarkt.com/liga-mx/startseite/wettbewerb/MEX1',
+  // Israel
+  'ligat-haal': 'https://www.transfermarkt.com/ligat-haal/startseite/wettbewerb/ISR1',
+  'ligat-leumit': 'https://www.transfermarkt.com/ligat-leumit/startseite/wettbewerb/ISR2',
 };
 
 export const AGENTS_CONFIG: Record<AgentId, AgentConfig> = {
@@ -483,6 +493,30 @@ export const AGENTS_CONFIG: Record<AgentId, AgentConfig> = {
     flag: '🇺🇸',
     leagueUrls: [],
     leagueNames: ['Major League Soccer'],
+  },
+  finland: {
+    id: 'finland',
+    name: 'Finland',
+    nameHe: 'פינלנד',
+    flag: '🇫🇮',
+    leagueUrls: [LEAGUE_URLS['veikkausliiga']],
+    leagueNames: ['Veikkausliiga'],
+  },
+  mexico: {
+    id: 'mexico',
+    name: 'Mexico',
+    nameHe: 'מקסיקו',
+    flag: '🇲🇽',
+    leagueUrls: [LEAGUE_URLS['liga-mx']],
+    leagueNames: ['Liga MX'],
+  },
+  israel: {
+    id: 'israel',
+    name: 'Israel',
+    nameHe: 'ישראל',
+    flag: '🇮🇱',
+    leagueUrls: [LEAGUE_URLS['ligat-haal'], LEAGUE_URLS['ligat-leumit']],
+    leagueNames: ['Ligat Ha\'Al', 'Ligat Leumit'],
   },
 };
 
