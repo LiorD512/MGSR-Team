@@ -1088,6 +1088,269 @@ async function runScoutAgent() {
   }
 
   // ═══════════════════════════════════════════════════════════════
+  // LIVE TM FALLBACK — for agents with 0 profiles after all sweeps,
+  // scrape Transfermarkt league kader (squad) pages directly.
+  // ═══════════════════════════════════════════════════════════════
+  const agentsWithProfiles = new Set();
+  for (const { data } of profilesToWrite) {
+    agentsWithProfiles.add(data.agentId);
+  }
+  // Also count existing Firestore profiles (from previous runs)
+  const existingSnap = await profilesRef.get();
+  for (const doc of existingSnap.docs) {
+    const d = doc.data();
+    if (d.agentId) agentsWithProfiles.add(d.agentId);
+  }
+
+  // League URLs for live TM scraping (from scoutAgentConfig)
+  const TM_LEAGUE_URLS = {
+    czech: ["https://www.transfermarkt.com/chance-liga/startseite/wettbewerb/TS1"],
+    slovakia: ["https://www.transfermarkt.com/nike-liga/startseite/wettbewerb/SLO1"],
+    bosnia: ["https://www.transfermarkt.com/premier-liga-bosne-i-hercegovine/startseite/wettbewerb/BOS1"],
+    macedonia: ["https://www.transfermarkt.com/prva-makedonska-liga/startseite/wettbewerb/MAC1"],
+    montenegro: ["https://www.transfermarkt.com/prva-crnogorska-liga/startseite/wettbewerb/MON1"],
+    kosovo: ["https://www.transfermarkt.com/superliga-e-kosoves/startseite/wettbewerb/KOS1"],
+    azerbaijan: ["https://www.transfermarkt.com/premyer-liqa/startseite/wettbewerb/AZ1"],
+    kazakhstan: ["https://www.transfermarkt.com/premier-liga-kazakhstan/startseite/wettbewerb/KAS1"],
+  };
+
+  const TM_USER_AGENTS = [
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
+  ];
+
+  async function fetchTmHtml(url) {
+    const ua = TM_USER_AGENTS[Math.floor(Math.random() * TM_USER_AGENTS.length)];
+    const res = await fetch(url, {
+      headers: {
+        "User-Agent": ua,
+        Accept: "text/html,application/xhtml+xml",
+        "Accept-Language": "en-US,en;q=0.9",
+      },
+      signal: AbortSignal.timeout(30000),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.text();
+  }
+
+  // Scrape a league's kader pages → array of player objects matching recruitment API shape
+  async function scrapeLeaguePlayers(leagueUrl, agentId) {
+    const cheerio = require("cheerio");
+    const players = [];
+
+    // Step 1: get club kader URLs from startseite
+    const startHtml = await fetchTmHtml(leagueUrl);
+    const $start = cheerio.load(startHtml);
+    const kaderUrls = [];
+    $start('table.items a[href*="/kader/"], a.vereinprofil_tooltip[href*="/startseite/verein/"]').each((_, el) => {
+      let href = $start(el).attr("href") || "";
+      if (!href) return;
+      if (!href.startsWith("http")) href = "https://www.transfermarkt.com" + href;
+      // Convert startseite to kader
+      if (href.includes("/startseite/")) {
+        href = href.replace("/startseite/", "/kader/");
+      }
+      // Normalize: ensure /plus/1 for detailed view
+      if (!href.includes("/plus/")) href += "/plus/1";
+      if (!kaderUrls.includes(href)) kaderUrls.push(href);
+    });
+
+    if (kaderUrls.length === 0) return players;
+
+    // Step 2: scrape up to 6 clubs (rate-limit friendly)
+    const MAX_CLUBS = 6;
+    for (const kaderUrl of kaderUrls.slice(0, MAX_CLUBS)) {
+      await sleep(5000); // Respectful delay for TM
+      try {
+        const html = await fetchTmHtml(kaderUrl);
+        const $ = cheerio.load(html);
+
+        // Extract league name from page
+        const leagueName = $('span.hauptlink a[href*="/wettbewerb/"]').first().text().trim()
+          || $('div.dataName span').first().text().trim()
+          || "";
+        const clubName = $('header h1').text().trim()
+          || $('div.dataName h1').text().trim()
+          || "";
+
+        $("table.items tbody tr.odd, table.items tbody tr.even").each((_, row) => {
+          try {
+            const inlineTable = $(row).find("table.inline-table").first();
+            const nameEl = inlineTable.find("td.hauptlink a").first();
+            const name = nameEl.text().trim();
+            const playerHref = nameEl.attr("href") || "";
+            const playerUrl = playerHref.startsWith("http")
+              ? playerHref
+              : "https://www.transfermarkt.com" + playerHref;
+            const profileImage = (inlineTable.find("img").attr("data-src") || inlineTable.find("img").attr("src") || "")
+              .replace("small", "big")
+              .replace("medium", "big");
+            const posText = inlineTable.find("tr").eq(1).text().trim().replace(/-/g, " ");
+
+            // Age from zentriert columns
+            const zentriert = $(row).find("td.zentriert");
+            let age = "";
+            zentriert.each((_, td) => {
+              const txt = $(td).text().trim();
+              if (/^\d{1,2}$/.test(txt) && parseInt(txt) >= 15 && parseInt(txt) <= 45) {
+                age = txt;
+              }
+            });
+
+            // Market value from rechts column
+            const valueCell = $(row).find("td.rechts a, td.rechts").last();
+            const marketValue = valueCell.text().trim();
+
+            // Nationality from flag image
+            const natImg = $(row).find("img.flaggenrahmen").first();
+            const nationality = natImg.attr("title") || "";
+
+            if (!name || !playerUrl.includes("/profil/")) return;
+
+            players.push({
+              name,
+              url: playerUrl,
+              profile_image: profileImage,
+              position: convertTmPosition(posText),
+              age,
+              market_value: marketValue,
+              club: clubName,
+              league: leagueName || agentId,
+              citizenship: nationality,
+              contract: "",
+              // FM/fbref stats not available from TM kader
+              fm_pa: null,
+              fm_ca: null,
+              fmi_pa: null,
+              fmi_ca: null,
+              fbref_minutes_90s: null,
+              fbref_goals: null,
+              fbref_assists: null,
+            });
+          } catch {
+            // skip row
+          }
+        });
+      } catch (err) {
+        console.error(`[ScoutAgent] TM kader scrape error: ${err.message}`);
+      }
+    }
+    return players;
+  }
+
+  // Convert TM position text (e.g. "Centre Forward", "Left Winger") to short code
+  function convertTmPosition(posText) {
+    const p = (posText || "").toLowerCase();
+    if (p.includes("goalkeeper") || p.includes("torwart")) return "GK";
+    if (p.includes("centre-back") || p.includes("central defender") || p.includes("innenverteidiger")) return "CB";
+    if (p.includes("left-back") || p.includes("left back") || p.includes("linker verteidiger")) return "LB";
+    if (p.includes("right-back") || p.includes("right back") || p.includes("rechter verteidiger")) return "RB";
+    if (p.includes("defensive midfield") || p.includes("defensives mittelfeld")) return "DM";
+    if (p.includes("central midfield") || p.includes("zentrales mittelfeld")) return "CM";
+    if (p.includes("attacking midfield") || p.includes("offensives mittelfeld")) return "AM";
+    if (p.includes("left winger") || p.includes("linksaußen")) return "LW";
+    if (p.includes("right winger") || p.includes("rechtsaußen")) return "RW";
+    if (p.includes("second striker") || p.includes("hängende spitze")) return "SS";
+    if (p.includes("centre-forward") || p.includes("centre forward") || p.includes("mittelstürmer")) return "CF";
+    return posText || "";
+  }
+
+  // Run the fallback for dead agents
+  const deadAgents = AGENT_IDS.filter((id) => !agentsWithProfiles.has(id) && TM_LEAGUE_URLS[id]);
+  let tmFallbackFound = 0;
+  if (deadAgents.length > 0) {
+    console.log(`[ScoutAgent] Live TM fallback for ${deadAgents.length} dead agents: ${deadAgents.join(", ")}`);
+    for (const agentId of deadAgents) {
+      for (const leagueUrl of TM_LEAGUE_URLS[agentId]) {
+        try {
+          const tmPlayers = await scrapeLeaguePlayers(leagueUrl, agentId);
+          console.log(`[ScoutAgent] TM scraped ${tmPlayers.length} players for ${agentId}`);
+
+          for (const p of tmPlayers) {
+            const url = (p.url || "").trim();
+            if (!url) continue;
+            if (excludeUrls.has(normalizePlayerUrl(url))) continue;
+
+            const valEuro = parseMarketValue(p.market_value);
+            if (valEuro > LIGAT_HAAL_VALUE_MAX) continue;
+
+            const ageNum = parseAge(p.age);
+            if (ageNum != null && ageNum > MAX_AGE) continue;
+            const league = (p.league || "").trim();
+            const lc = league.toLowerCase();
+            const leagueTier = lc.includes("national") || lc.includes("3. liga") ? 3
+              : lc.includes("2") || lc.includes("second") ? 2
+              : 1;
+
+            const agentParams = paramsByAgent[agentId] || {};
+
+            for (const profileType of [
+              "HIGH_VALUE_BENCHED", "LOW_VALUE_STARTER", "YOUNG_STRIKER_HOT",
+              "CONTRACT_EXPIRING", "HIDDEN_GEM", "LOWER_LEAGUE_RISER",
+              "BREAKOUT_SEASON", "UNDERVALUED_BY_FM",
+            ]) {
+              const profileOverrides = agentParams[profileType] || {};
+              if (!matchesProfile(p, profileType, valEuro, ageNum, leagueTier, profileOverrides)) continue;
+
+              const urlHash = Buffer.from(url).toString("base64").replace(/[+/=]/g, "_").slice(0, 40);
+              const docId = `${agentId}_${urlHash}_${profileType}`;
+              if (seen.has(docId)) continue;
+              if (rejectedProfileIds.has(docId)) continue;
+              seen.set(docId, true);
+
+              const matchReason = buildMatchReason(p, profileType, valEuro, ageNum);
+              const matchScore = computeMatchScore(p, profileType, valEuro, ageNum);
+              const now = Date.now();
+
+              const fbrefMinutes90s = getMinutes90s(p);
+              const fbrefGoals = getFbrefGoals(p);
+              const fbrefAssists = getFbrefAssists(p);
+              const goalsPer90 = fbrefMinutes90s > 0 ? fbrefGoals / fbrefMinutes90s : 0;
+              const contribPer90 = fbrefMinutes90s > 0 ? (fbrefGoals + fbrefAssists) / fbrefMinutes90s : 0;
+
+              tmFallbackFound++;
+              profilesToWrite.push({
+                docId,
+                data: {
+                  tmProfileUrl: url,
+                  agentId,
+                  profileType,
+                  playerName: (p.name || "").trim() || "Unknown",
+                  profileImage: (p.profile_image || "").trim() || null,
+                  age: ageNum ?? 0,
+                  position: (p.position || "").trim() || "",
+                  marketValue: (p.market_value || "").trim() || "",
+                  marketValueEuro: valEuro,
+                  club: (p.club || "").trim() || "",
+                  league: league || "",
+                  leagueTier,
+                  nationality: (p.citizenship || "").trim() || null,
+                  matchReason,
+                  matchScore,
+                  fmPa: getFmPa(p) ?? null,
+                  fmCa: p.fm_ca ?? p.fmi_ca ?? null,
+                  contractExpires: (p.contract || "").trim() || null,
+                  fbrefMinutes90s,
+                  fbrefGoals,
+                  fbrefAssists,
+                  goalsPer90: Math.round(goalsPer90 * 100) / 100,
+                  contribPer90: Math.round(contribPer90 * 100) / 100,
+                  discoveredAt: now,
+                  lastRefreshedAt: now,
+                },
+              });
+            }
+          }
+        } catch (err) {
+          console.error(`[ScoutAgent] TM fallback error for ${agentId}: ${err.message}`);
+        }
+      }
+    }
+    console.log(`[ScoutAgent] Live TM fallback found ${tmFallbackFound} additional profiles`);
+  }
+
+  // ═══════════════════════════════════════════════════════════════
   // Sport Director Review — quality gate before Firestore
   // ═══════════════════════════════════════════════════════════════
   console.log(`[ScoutAgent] Sending ${profilesToWrite.length} profiles to Sport Director for review...`);
