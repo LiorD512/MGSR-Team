@@ -184,6 +184,7 @@ exports.onNewFeedEvent = onDocumentCreated("FeedEvents/{eventId}", async (event)
         title,
         body,
         icon: "/logo.svg",
+        tag: `feed-${event.params.eventId}`,
       },
       fcmOptions: {
         link: "/dashboard",
@@ -262,6 +263,7 @@ exports.onNewAgentTask = onDocumentCreated(
           title: notifTitle,
           body: notifBody,
           icon: "/logo.svg",
+          tag: `task-${event.params.taskId}`,
         },
         fcmOptions: {
           link: "/tasks",
@@ -486,7 +488,7 @@ exports.onTaskRemindersScheduled = onSchedule(
           },
         },
         webpush: {
-          notification: { title: notifTitle, body: notifBody, icon: "/logo.svg" },
+          notification: { title: notifTitle, body: notifBody, icon: "/logo.svg", tag: `reminder-${taskId}` },
           fcmOptions: { link: "/tasks" },
         },
       };
