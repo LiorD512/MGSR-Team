@@ -1354,6 +1354,19 @@ async function runScoutAgent() {
   const agentReports = directorReview.agentReports;
   console.log(`[ScoutAgent] Sport Director: ${approvedProfiles.length} approved, ${rejectedProfiles.length} rejected`);
 
+  // ═══════════════════════════════════════════════════════════════
+  // Enrich approved profiles with TM images (before Firestore write)
+  // Extract player ID from tmProfileUrl and construct image URL
+  // ═══════════════════════════════════════════════════════════════
+  for (const profile of approvedProfiles) {
+    if (profile.data.profileImage) continue; // Already has image
+    const url = profile.data.tmProfileUrl || "";
+    const idMatch = url.match(/\/profil\/spieler\/(\d+)/);
+    if (idMatch) {
+      profile.data.profileImage = `https://img.a.transfermarkt.technology/portrait/big/${idMatch[1]}.jpg`;
+    }
+  }
+
   // Write ONLY approved profiles to ScoutProfiles
   const batch = db.batch();
   for (const { docId, data } of approvedProfiles) {
