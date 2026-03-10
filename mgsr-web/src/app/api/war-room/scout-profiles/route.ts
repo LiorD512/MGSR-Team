@@ -36,12 +36,12 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = request.nextUrl;
     const agentId = searchParams.get('agentId') as AgentId | null;
-    const limit = Math.min(parseInt(searchParams.get('limit') || '50', 10), 100);
+    const limit = Math.min(parseInt(searchParams.get('limit') || '200', 10), 300);
 
     const snapshot = await db
       .collection('ScoutProfiles')
       .orderBy('lastRefreshedAt', 'desc')
-      .limit(agentId ? 200 : limit)
+      .limit(agentId ? 300 : limit)
       .get();
 
     let docs = snapshot.docs;
