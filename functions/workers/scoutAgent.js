@@ -48,9 +48,12 @@ const LEAGUE_TO_AGENT = {
   "austrian bundesliga": "austria",
   "admiral bundesliga": "austria",
   "2. liga austria": "austria",
+  "bundesliga osterreich": "austria",
+  "bundesliga österreich": "austria",
   "allsvenskan": "sweden",
   "swiss super league": "switzerland",
   "raiffeisen super league": "switzerland",
+  "super league schweiz": "switzerland",
   "chance liga": "czech",
   "fortuna liga": "czech",
   "danish superliga": "denmark",
@@ -59,13 +62,16 @@ const LEAGUE_TO_AGENT = {
   "superliga": "romania",
   "liga 1 romania": "romania",
   "liga 1 rumanien": "romania",
+  "liga 1 rumänien": "romania",
   "romanian superliga": "romania",
   "efbet liga": "bulgaria",
   "parva liga": "bulgaria",
   "parva liga bulgarien": "bulgaria",
+  "first professional league": "bulgaria",
   "nemzeti bajnoksag": "hungary",
   "nb i": "hungary",
   "nb i ungarn": "hungary",
+  "otp bank liga": "hungary",
   "premier liga": "ukraine",
   "championship": "england",
   "bundesliga": "germany",
@@ -81,13 +87,19 @@ const LEAGUE_TO_AGENT = {
   "campeonato brasileiro serie b": "brazil",
   "brasileirão": "brazil",
   "brasileirao": "brazil",
+  "serie a brasilien": "brazil",
+  "serie b brasilien": "brazil",
   "torneo apertura": "argentina",
   "liga profesional": "argentina",
   "primera nacional": "argentina",
+  "primera division argentina": "argentina",
+  "primera división argentina": "argentina",
   "liga dimayor": "colombia",
   "liga dimayor apertura": "colombia",
   "categoría primera a": "colombia",
   "categoria primera a": "colombia",
+  "primera division colombia": "colombia",
+  "primera división colombia": "colombia",
   "liga primera": "chile",
   "liga de primera": "chile",
   "primera división chile": "chile",
@@ -130,6 +142,7 @@ const LEAGUE_TO_AGENT = {
   "kosovo superleague": "kosovo",
   "superliga e kosoves": "kosovo",
   "superliga kosoves": "kosovo",
+  "superliga e kosovës": "kosovo",
   "cyprus league": "cyprus",
   "1. division cyprus": "cyprus",
   "protathlima cyta": "cyprus",
@@ -142,31 +155,39 @@ const LEAGUE_TO_AGENT = {
   "premier liga kazakhstan": "kazakhstan",
   "premier liga kazachstan": "kazakhstan",
   "kazakhstan premier league": "kazakhstan",
+  "premjer liga kasachstan": "kazakhstan",
   "challenger pro league": "belgium",
   "ligue 1": "france",
+  "superliga serbia": "serbia",
+  "superliga serbien": "serbia",
+  "botola pro": "morocco",
+  "eliteserien": "norway",
+  "major league soccer": "usa",
+  "laliga": "spain",
+  "premier league": "england",
 };
 
 /** Fallback: league contains country keyword -> agentId. Denmark before Romania to avoid "superliga" clash. */
 const LEAGUE_CONTAINS_AGENT = [
   [["portugal", "portuguese", "liga portugal"], "portugal"],
-  [["serbia", "serbian", "srbije"], "serbia"],
+  [["serbia", "serbian", "srbije", "serbien"], "serbia"],
   [["poland", "polish", "ekstraklasa", "polska"], "poland"],
   [["greece", "greek"], "greece"],
   [["belgium", "belgian", "jupiler", "challenger"], "belgium"],
   [["netherlands", "dutch", "eredivisie", "eerste divisie"], "netherlands"],
   [["turkey", "turkish"], "turkey"],
-  [["austria", "austrian", "admiral"], "austria"],
+  [["austria", "austrian", "admiral", "osterreich", "österreich"], "austria"],
   [["sweden", "swedish", "allsvenskan"], "sweden"],
-  [["switzerland", "swiss", "super league"], "switzerland"],
+  [["switzerland", "swiss", "schweiz"], "switzerland"],
   [["czech", "chance liga", "fortuna liga"], "czech"],
   [["denmark", "danish", "superligaen"], "denmark"],
-  [["romania", "romanian", "liga 1", "liga i"], "romania"],
-  [["bulgaria", "bulgarian", "efbet"], "bulgaria"],
-  [["hungary", "hungarian", "nemzeti"], "hungary"],
+  [["romania", "romanian", "liga 1", "liga i", "rumanien", "rumänien"], "romania"],
+  [["bulgaria", "bulgarian", "efbet", "bulgarien"], "bulgaria"],
+  [["hungary", "hungarian", "nemzeti", "ungarn"], "hungary"],
   [["ukraine", "ukrainian", "premier liga"], "ukraine"],
   [["england", "english", "championship"], "england"],
   [["germany", "german"], "germany"],
-  [["brazil", "brazilian", "brasileirão", "brasileirao", "campeonato brasileiro"], "brazil"],
+  [["brazil", "brazilian", "brasileirão", "brasileirao", "campeonato brasileiro", "brasilien"], "brazil"],
   [["argentina", "argentine", "argentinian", "liga profesional", "torneo apertura"], "argentina"],
   [["colombia", "colombian", "dimayor", "categoría primera", "categoria primera"], "colombia"],
   [["chile", "chilean", "liga primera chile", "primera división chile"], "chile"],
@@ -190,6 +211,7 @@ const LEAGUE_CONTAINS_AGENT = [
 ];
 
 const POSITIONS = ["CF", "AM", "CM", "CB", "DM", "LW", "RW", "LB", "RB", "SS"];
+const MAX_AGE = 31; // Hard cap — no profiles age 32+
 const AGENT_IDS = [
   "portugal", "serbia", "poland", "greece", "belgium", "netherlands", "turkey", "austria",
   "sweden", "switzerland", "czech", "denmark", "romania", "bulgaria", "hungary", "ukraine",
@@ -450,7 +472,7 @@ const SORT_OPTIONS = ["score", "market_value", "age"];
 async function fetchRecruitment(params) {
   const search = new URLSearchParams(params);
   if (!search.has("value_max")) search.set("value_max", String(LIGAT_HAAL_VALUE_MAX));
-  search.set("limit", "30");
+  search.set("limit", "50");
   search.set("sort_by", params.sort_by || "score");
   search.set("lang", "en");
   search.set("_t", String(Date.now()));
@@ -498,8 +520,8 @@ async function runScoutAgent() {
     }
   }
 
-  // Exclude players already shown in last 7 days (ScoutProfiles + Shortlist)
-  const EXCLUDE_DAYS = 7;
+  // Exclude players already shown in last 4 days (ScoutProfiles + Shortlist)
+  const EXCLUDE_DAYS = 4;
   const cutoff = startTime - EXCLUDE_DAYS * 24 * 60 * 60 * 1000;
   const excludeUrls = new Set();
   const recentProfiles = await profilesRef.where("lastRefreshedAt", ">=", cutoff).get();
@@ -527,8 +549,8 @@ async function runScoutAgent() {
   }
   console.log(`[ScoutAgent] Excluding ${rejectedProfileIds.size} thumbs-downed profiles`);
 
-  // Rotate sort_by across runs for variety
-  const sortBy = SORT_OPTIONS[Math.floor(startTime / (6 * 60 * 60 * 1000)) % SORT_OPTIONS.length];
+  // Randomize sort_by each run for maximum diversity
+  const sortBy = SORT_OPTIONS[Math.floor(Math.random() * SORT_OPTIONS.length)];
   console.log(`[ScoutAgent] Using sort_by=${sortBy}`);
 
   console.log("[ScoutAgent] Starting AI Scout Agent Network run");
@@ -538,7 +560,7 @@ async function runScoutAgent() {
     try {
       const results = await fetchRecruitment({
         position: pos,
-        age_max: "28",
+        age_max: String(MAX_AGE),
         sort_by: sortBy,
       });
       leaguesScanned += 1;
@@ -555,6 +577,7 @@ async function runScoutAgent() {
         if (!agentId || !AGENT_IDS.includes(agentId)) continue;
 
         const ageNum = parseAge(p.age);
+        if (ageNum != null && ageNum > MAX_AGE) continue; // Hard age cap
         const league = (p.league || "").trim();
         const lc = league.toLowerCase();
         const leagueTier = lc.includes("national") || lc.includes("3. liga") ? 3
@@ -662,6 +685,7 @@ async function runScoutAgent() {
         if (!BALKAN_AGENTS.has(agentId)) continue;
 
         const ageNum = parseAge(p.age);
+        if (ageNum != null && ageNum > MAX_AGE) continue; // Hard age cap
         const league = (p.league || "").trim();
         const lc = league.toLowerCase();
         const leagueTier = lc.includes("national") || lc.includes("3. liga") ? 3

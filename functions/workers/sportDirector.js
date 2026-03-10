@@ -364,6 +364,12 @@ function checkPer90Quality(data) {
 function checkAgeValueRationality(data) {
   const issues = [];
 
+  // Hard age cap — no profiles age 32+, period
+  if (data.age >= 32) {
+    issues.push("age_above_cap_critical");
+    return issues;
+  }
+
   // Player 30+ with significant cost and no contract urgency = limited upside
   if (data.age >= 30 && data.profileType !== "CONTRACT_EXPIRING" && data.marketValueEuro > 800_000) {
     issues.push("old_expensive_no_upside");
