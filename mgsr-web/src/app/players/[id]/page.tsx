@@ -662,11 +662,31 @@ export default function PlayerInfoPage() {
   );
 
   const refreshFromTransfermarkt = async () => {
-    if (!player?.tmProfile) return;
+    if (!player?.tmProfile || !id) return;
     setRefreshing(true);
     try {
       const details = await getPlayerDetails(player.tmProfile);
       setLiveData(details);
+      // Persist refreshed data to Firestore
+      const updates: Record<string, unknown> = {};
+      if (details.nationality) updates.nationality = details.nationality;
+      if (details.nationalities?.length) updates.nationalities = details.nationalities;
+      if (details.nationalityFlag) updates.nationalityFlag = details.nationalityFlag;
+      if (details.nationalityFlags?.length) updates.nationalityFlags = details.nationalityFlags;
+      if (details.marketValue) updates.marketValue = details.marketValue;
+      if (details.age) updates.age = details.age;
+      if (details.height) updates.height = details.height;
+      if (details.contractExpires) updates.contractExpired = details.contractExpires;
+      if (details.positions?.length) updates.positions = details.positions;
+      if (details.profileImage) updates.profileImage = details.profileImage;
+      if (details.foot) updates.foot = details.foot;
+      if (details.currentClub) updates.currentClub = details.currentClub;
+      if (details.isOnLoan !== undefined) updates.isOnLoan = details.isOnLoan;
+      if (details.onLoanFromClub) updates.onLoanFromClub = details.onLoanFromClub;
+      updates.lastRefreshedAt = Date.now();
+      if (Object.keys(updates).length > 1) {
+        await updateDoc(doc(db, 'Players', id), updates);
+      }
     } finally {
       setRefreshing(false);
     }
