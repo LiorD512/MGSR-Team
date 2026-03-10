@@ -1359,7 +1359,10 @@ async function runScoutAgent() {
   // TM image URLs now require a timestamp suffix, so we scrape the actual URL
   // ═══════════════════════════════════════════════════════════════
   const ENRICH_CONCURRENCY = 5;
-  const profilesToEnrich = approvedProfiles.filter((p) => !p.data.profileImage);
+  const TM_DEFAULT_IMG = "https://img.a.transfermarkt.technology/portrait/big/default.jpg?lm=1";
+  // Re-enrich profiles that have no image OR have the old broken format (no timestamp suffix)
+  const needsEnrich = (img) => !img || (!img.includes("default.jpg") && !/\d+-\d+\.\w+/.test(img));
+  const profilesToEnrich = approvedProfiles.filter((p) => needsEnrich(p.data.profileImage));
   console.log(`[ScoutAgent] Enriching ${profilesToEnrich.length} profiles with TM images...`);
   for (let i = 0; i < profilesToEnrich.length; i += ENRICH_CONCURRENCY) {
     const chunk = profilesToEnrich.slice(i, i + ENRICH_CONCURRENCY);
@@ -1369,16 +1372,18 @@ async function runScoutAgent() {
           const url = profile.data.tmProfileUrl;
           if (!url) return;
           const html = await fetchTmHtml(url);
-          // Look for portrait image URL with the player ID
+          // Look for portrait image URL with the player ID (.jpg or .png)
           const idMatch = url.match(/\/profil\/spieler\/(\d+)/);
           if (!idMatch) return;
           const pid = idMatch[1];
-          const imgMatch = html.match(new RegExp(`https://img[^"]*?/portrait/(?:big|medium|header)/${pid}-[^"?]+\\.jpg[^"]*`));
+          const imgMatch = html.match(new RegExp(`https://img[^"']*?/portrait/(?:big|medium|header)/${pid}-[^"'?]+\\.(?:jpg|png)[^"']*`));
           if (imgMatch) {
-            let imgUrl = imgMatch[0].split("'")[0]; // Clean trailing attributes
-            // Prefer big size
+            let imgUrl = imgMatch[0];
             imgUrl = imgUrl.replace("/medium/", "/big/").replace("/header/", "/big/");
             profile.data.profileImage = imgUrl;
+          } else {
+            // Player has no personal photo — use TM default placeholder
+            profile.data.profileImage = TM_DEFAULT_IMG;
           }
         } catch {
           // Skip — player will show placeholder
@@ -1400,6 +1405,42 @@ async function runScoutAgent() {
   if (approvedProfiles.length > 0) {
     await batch.commit();
     console.log(`[ScoutAgent] Wrote ${approvedProfiles.length} Sport Director-approved profiles`);
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // Repair existing profiles with broken old-format image URLs
+  // ═══════════════════════════════════════════════════════════════
+  const allExisting = await profilesRef.get();
+  const staleProfiles = allExisting.docs.filter((d) => needsEnrich(d.data().profileImage));
+  if (staleProfiles.length > 0) {
+    console.log(`[ScoutAgent] Repairing ${staleProfiles.length} existing profiles with stale images...`);
+    for (let i = 0; i < staleProfiles.length; i += ENRICH_CONCURRENCY) {
+      const chunk = staleProfiles.slice(i, i + ENRICH_CONCURRENCY);
+      await Promise.all(
+        chunk.map(async (doc) => {
+          try {
+            const d = doc.data();
+            const url = d.tmProfileUrl;
+            if (!url) return;
+            const html = await fetchTmHtml(url);
+            const idMatch = url.match(/\/profil\/spieler\/(\d+)/);
+            if (!idMatch) return;
+            const pid = idMatch[1];
+            const imgMatch = html.match(new RegExp(`https://img[^"']*?/portrait/(?:big|medium|header)/${pid}-[^"'?]+\\.(?:jpg|png)[^"']*`));
+            let newImg;
+            if (imgMatch) {
+              newImg = imgMatch[0].replace("/medium/", "/big/").replace("/header/", "/big/");
+            } else {
+              newImg = TM_DEFAULT_IMG;
+            }
+            await doc.ref.update({ profileImage: newImg });
+          } catch { /* skip */ }
+        })
+      );
+      if (i + ENRICH_CONCURRENCY < staleProfiles.length) await sleep(2000);
+    }
+    const repairedCount = staleProfiles.length;
+    console.log(`[ScoutAgent] Repaired ${repairedCount} existing profiles`);
   }
 
   // ═══════════════════════════════════════════════════════════════

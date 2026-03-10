@@ -83,11 +83,10 @@ function formatTimeAgo(ms: number): string {
 }
 
 /** Derive Transfermarkt portrait URL from profile URL when scout does not return image. */
+const TM_DEFAULT_IMG = 'https://img.a.transfermarkt.technology/portrait/big/default.jpg?lm=1';
 function getPlayerImageUrl(profileImage: string | undefined, transfermarktUrl: string): string {
   if (profileImage?.trim()) return profileImage.trim();
-  const id = extractPlayerIdFromUrl(transfermarktUrl);
-  if (id) return `https://img.a.transfermarkt.technology/portrait/medium/${id}.jpg`;
-  return 'https://img.a.transfermarkt.technology/portrait/medium/0.jpg';
+  return TM_DEFAULT_IMG;
 }
 
 function samePlayer(url1: string, url2: string): boolean {
@@ -738,7 +737,7 @@ export default function WarRoomPage() {
                         alt=""
                         className="w-11 h-11 sm:w-14 sm:h-14 rounded-xl object-cover bg-mgsr-border shrink-0"
                         onError={(e) => {
-                          (e.target as HTMLImageElement).src = 'https://img.a.transfermarkt.technology/portrait/medium/0.jpg';
+                          (e.target as HTMLImageElement).src = TM_DEFAULT_IMG;
                         }}
                       />
                       <div className="flex-1 min-w-0">
@@ -1113,7 +1112,7 @@ export default function WarRoomPage() {
                                     decoding="async"
                                     className="w-full h-full object-cover"
                                     onError={(e) => {
-                                      (e.target as HTMLImageElement).src = 'https://img.a.transfermarkt.technology/portrait/medium/0.jpg';
+                                      (e.target as HTMLImageElement).src = TM_DEFAULT_IMG;
                                     }}
                                   />
                                 </div>
