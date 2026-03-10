@@ -15,7 +15,7 @@ export const dynamic = 'force-dynamic';
 
 export type { ScoutProfileResponse };
 
-const IMAGE_FETCH_CONCURRENCY = 3;
+const IMAGE_FETCH_CONCURRENCY = 5;
 
 function getProfileImage(profileImage: string | null | undefined, tmProfileUrl: string): string {
   if (profileImage?.trim()) return profileImage.trim();
@@ -113,17 +113,31 @@ export async function GET(request: NextRequest) {
       (a, b) => (b.lastRefreshedAt ?? 0) - (a.lastRefreshedAt ?? 0)
     );
 
-    // Enrich first 50 profiles with real images from Transfermarkt (like Discovery)
-    const toEnrich = profiles.slice(0, 50);
-    const imageMap = new Map<string, string>();
+    // Enrich ALL profiles with real images and fresh market values from Transfermarkt
+    const toEnrich = profiles;
+    const enrichMap = new Map<string, { img?: string; mv?: string; mvEuro?: number }>();
     for (let i = 0; i < toEnrich.length; i += IMAGE_FETCH_CONCURRENCY) {
       const chunk = toEnrich.slice(i, i + IMAGE_FETCH_CONCURRENCY);
       await Promise.all(
         chunk.map(async (p) => {
           try {
             const data = await handlePlayer(p.tmProfileUrl);
-            const img = (data as { profileImage?: string })?.profileImage?.trim();
-            if (img) imageMap.set(p.tmProfileUrl, img);
+            const d = data as { profileImage?: string; marketValue?: string };
+            const img = d?.profileImage?.trim();
+            const mvStr = d?.marketValue?.trim();
+            const entry: { img?: string; mv?: string; mvEuro?: number } = {};
+            if (img) entry.img = img;
+            if (mvStr) {
+              entry.mv = mvStr;
+              // Parse TM market value string to euros
+              const s = mvStr.replace(/[€\s]/g, '').toLowerCase();
+              let euro = 0;
+              if (s.includes('k')) euro = (parseFloat(s.replace('k', '')) || 0) * 1000;
+              else if (s.includes('m')) euro = (parseFloat(s.replace('m', '')) || 0) * 1_000_000;
+              else euro = parseFloat(s) || 0;
+              if (euro > 0) entry.mvEuro = euro;
+            }
+            if (entry.img || entry.mv) enrichMap.set(p.tmProfileUrl, entry);
           } catch {
             // ignore
           }
@@ -131,8 +145,15 @@ export async function GET(request: NextRequest) {
       );
     }
     profiles = profiles.map((p) => {
-      const img = imageMap.get(p.tmProfileUrl);
-      return { ...p, profileImage: img || p.profileImage };
+      const enriched = enrichMap.get(p.tmProfileUrl);
+      if (!enriched) return p;
+      const updates: Partial<ScoutProfileResponse> = {};
+      if (enriched.img) updates.profileImage = enriched.img;
+      if (enriched.mvEuro && enriched.mvEuro > 0) {
+        updates.marketValueEuro = enriched.mvEuro;
+        updates.marketValue = formatMarketValue(enriched.mvEuro);
+      }
+      return { ...p, ...updates };
     });
 
     const lastRun = await db

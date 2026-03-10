@@ -43,6 +43,9 @@ export const AGENT_IDS = [
   'uruguay',
   'ecuador',
   'peru',
+  'morocco',
+  'norway',
+  'usa',
 ] as const;
 
 export type AgentId = (typeof AGENT_IDS)[number];
@@ -456,6 +459,30 @@ export const AGENTS_CONFIG: Record<AgentId, AgentConfig> = {
     flag: '🇵🇪',
     leagueUrls: [LEAGUE_URLS['liga-1-peru']],
     leagueNames: ['Liga 1'],
+  },
+  morocco: {
+    id: 'morocco',
+    name: 'Morocco',
+    nameHe: 'מרוקו',
+    flag: '🇲🇦',
+    leagueUrls: [],
+    leagueNames: ['Botola Pro'],
+  },
+  norway: {
+    id: 'norway',
+    name: 'Norway',
+    nameHe: 'נורבגיה',
+    flag: '🇳🇴',
+    leagueUrls: [],
+    leagueNames: ['Eliteserien'],
+  },
+  usa: {
+    id: 'usa',
+    name: 'USA',
+    nameHe: 'ארה"ב',
+    flag: '🇺🇸',
+    leagueUrls: [],
+    leagueNames: ['Major League Soccer'],
   },
 };
 

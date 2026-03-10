@@ -165,6 +165,18 @@ const LEAGUE_TO_AGENT = {
   "major league soccer": "usa",
   "laliga": "spain",
   "premier league": "england",
+  // German-language league names from Transfermarkt
+  "a division cyprus": "cyprus",
+  "a division zypern": "cyprus",
+  "prva liga slowenien": "slovenia",
+  "1. hnl": "croatia",
+  "parva liga bulgarien": "bulgaria",
+  "serie a brasilien": "brazil",
+  "serie b brasilien": "brazil",
+  "campeonato brasileiro serie a": "brazil",
+  "veikkausliiga": "finland",
+  "liga mx": "mexico",
+  "1 lig": "turkey",
 };
 
 /** Fallback: league contains country keyword -> agentId. Denmark before Romania to avoid "superliga" clash. */
@@ -179,14 +191,14 @@ const LEAGUE_CONTAINS_AGENT = [
   [["austria", "austrian", "admiral", "osterreich", "österreich"], "austria"],
   [["sweden", "swedish", "allsvenskan"], "sweden"],
   [["switzerland", "swiss", "schweiz"], "switzerland"],
-  [["czech", "chance liga", "fortuna liga"], "czech"],
-  [["denmark", "danish", "superligaen"], "denmark"],
+  [["czech", "chance liga", "fortuna liga", "tschechien"], "czech"],
+  [["denmark", "danish", "superligaen", "dänemark"], "denmark"],
   [["romania", "romanian", "liga 1", "liga i", "rumanien", "rumänien"], "romania"],
-  [["bulgaria", "bulgarian", "efbet", "bulgarien"], "bulgaria"],
+  [["bulgaria", "bulgarian", "efbet", "bulgarien", "parva liga"], "bulgaria"],
   [["hungary", "hungarian", "nemzeti", "ungarn"], "hungary"],
   [["ukraine", "ukrainian", "premier liga"], "ukraine"],
   [["england", "english", "championship"], "england"],
-  [["germany", "german"], "germany"],
+  [["germany", "german", "bundesliga"], "germany"],
   [["brazil", "brazilian", "brasileirão", "brasileirao", "campeonato brasileiro", "brasilien"], "brazil"],
   [["argentina", "argentine", "argentinian", "liga profesional", "torneo apertura"], "argentina"],
   [["colombia", "colombian", "dimayor", "categoría primera", "categoria primera"], "colombia"],
@@ -199,15 +211,20 @@ const LEAGUE_CONTAINS_AGENT = [
   [["france", "french", "ligue", "championnat national"], "france"],
   [["scotland", "scottish", "premiership"], "scotland"],
   [["croatia", "croatian", "hnl", "prva hnl", "kroatien"], "croatia"],
-  [["slovenia", "slovenian", "prvaliga"], "slovenia"],
+  [["slovenia", "slovenian", "prvaliga", "slowenien"], "slovenia"],
   [["bosnia", "bosnian", "bih", "premier liga bih", "hercegovine"], "bosnia"],
   [["macedonia", "macedonian", "prva makedonska", "makedonien", "primera makedonska"], "macedonia"],
   [["montenegro", "crnogorska"], "montenegro"],
   [["kosovo", "kosovar", "kosoves"], "kosovo"],
-  [["cyprus", "cypriot", "protathlima"], "cyprus"],
+  [["cyprus", "cypriot", "protathlima", "zypern"], "cyprus"],
   [["slovakia", "slovak", "niké liga", "nike liga"], "slovakia"],
   [["azerbaijan", "azerbaijani", "premyer liqa"], "azerbaijan"],
-  [["kazakhstan", "kazakh"], "kazakhstan"],
+  [["kazakhstan", "kazakh", "kasachstan"], "kazakhstan"],
+  [["morocco", "moroccan", "botola"], "morocco"],
+  [["norway", "norwegian", "eliteserien"], "norway"],
+  [["usa", "american", "mls", "major league soccer"], "usa"],
+  [["mexico", "mexican", "liga mx"], "mexico"],
+  [["finland", "finnish", "veikkausliiga"], "finland"],
 ];
 
 const POSITIONS = ["CF", "AM", "CM", "CB", "DM", "LW", "RW", "LB", "RB", "SS"];
@@ -219,6 +236,7 @@ const AGENT_IDS = [
   "croatia", "slovenia", "bosnia", "macedonia", "montenegro", "kosovo",
   "cyprus", "slovakia", "azerbaijan", "kazakhstan",
   "brazil", "argentina", "colombia", "chile", "uruguay", "ecuador", "peru",
+  "morocco", "norway", "usa",
 ];
 
 function sleep(ms) {
@@ -472,7 +490,7 @@ const SORT_OPTIONS = ["score", "market_value", "age"];
 async function fetchRecruitment(params) {
   const search = new URLSearchParams(params);
   if (!search.has("value_max")) search.set("value_max", String(LIGAT_HAAL_VALUE_MAX));
-  search.set("limit", "50");
+  search.set("limit", "80");
   search.set("sort_by", params.sort_by || "score");
   search.set("lang", "en");
   search.set("_t", String(Date.now()));
@@ -756,6 +774,211 @@ async function runScoutAgent() {
   }
   if (balkanFound > 0) {
     console.log(`[ScoutAgent] Balkan sweep found ${balkanFound} additional profiles`);
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // South American sweep — dedicated pass for underrepresented SA markets
+  // Brazil, Chile, Uruguay, Ecuador, Peru barely surface in global top results.
+  // ═══════════════════════════════════════════════════════════════
+  const SA_POSITIONS = ["CF", "AM", "CM", "CB", "LW", "RW", "DM"];
+  const SA_VALUE_MAX = 1_500_000;
+  const SA_AGENTS = new Set(["brazil", "argentina", "colombia", "chile", "uruguay", "ecuador", "peru"]);
+  let saFound = 0;
+  for (const pos of SA_POSITIONS) {
+    await sleep(DELAY_BETWEEN_REQUESTS_MS);
+    try {
+      const results = await fetchRecruitment({
+        position: pos,
+        age_max: "26",
+        sort_by: "score",
+        value_max: String(SA_VALUE_MAX),
+      });
+      for (const p of results) {
+        const url = (p.url || "").trim();
+        if (!url) continue;
+        if (excludeUrls.has(normalizePlayerUrl(url))) continue;
+
+        const valEuro = parseMarketValue(p.market_value);
+        if (valEuro > SA_VALUE_MAX) continue;
+
+        const agentId = leagueToAgent(p.league);
+        if (!agentId) continue;
+        if (!SA_AGENTS.has(agentId)) continue;
+
+        const ageNum = parseAge(p.age);
+        if (ageNum != null && ageNum > MAX_AGE) continue;
+        const league = (p.league || "").trim();
+        const lc = league.toLowerCase();
+        const leagueTier = lc.includes("national") || lc.includes("3. liga") ? 3
+          : lc.includes("2") || lc.includes("second") ? 2
+          : 1;
+
+        const agentParams = paramsByAgent[agentId] || {};
+
+        for (const profileType of [
+          "LOW_VALUE_STARTER", "YOUNG_STRIKER_HOT", "CONTRACT_EXPIRING",
+          "HIDDEN_GEM", "LOWER_LEAGUE_RISER", "BREAKOUT_SEASON", "UNDERVALUED_BY_FM",
+        ]) {
+          const profileOverrides = agentParams[profileType] || {};
+          if (!matchesProfile(p, profileType, valEuro, ageNum, leagueTier, profileOverrides)) continue;
+
+          const urlHash = Buffer.from(url).toString("base64").replace(/[+/=]/g, "_").slice(0, 40);
+          const docId = `${agentId}_${urlHash}_${profileType}`;
+          if (seen.has(docId)) continue;
+          if (rejectedProfileIds.has(docId)) continue;
+          seen.set(docId, true);
+
+          const matchReason = buildMatchReason(p, profileType, valEuro, ageNum);
+          const matchScore = computeMatchScore(p, profileType, valEuro, ageNum);
+          const now = Date.now();
+
+          const fbrefMinutes90s = getMinutes90s(p);
+          const fbrefGoals = getFbrefGoals(p);
+          const fbrefAssists = getFbrefAssists(p);
+          const goalsPer90 = fbrefMinutes90s > 0 ? fbrefGoals / fbrefMinutes90s : 0;
+          const contribPer90 = fbrefMinutes90s > 0 ? (fbrefGoals + fbrefAssists) / fbrefMinutes90s : 0;
+
+          profilesToWrite.push({
+            docId,
+            data: {
+              tmProfileUrl: url,
+              agentId,
+              profileType,
+              playerName: (p.name || "").trim() || "Unknown",
+              profileImage: (p.profile_image || "").trim() || null,
+              age: ageNum ?? 0,
+              position: (p.position || "").trim() || "",
+              marketValue: (p.market_value || "").trim() || "",
+              marketValueEuro: valEuro,
+              club: (p.club || "").trim() || "",
+              league: league || "",
+              leagueTier,
+              nationality: (p.citizenship || "").trim() || null,
+              matchReason,
+              matchScore,
+              fmPa: getFmPa(p) ?? null,
+              fmCa: p.fm_ca ?? p.fmi_ca ?? null,
+              contractExpires: (p.contract || "").trim() || null,
+              fbrefMinutes90s,
+              fbrefGoals,
+              fbrefAssists,
+              goalsPer90: Math.round(goalsPer90 * 100) / 100,
+              contribPer90: Math.round(contribPer90 * 100) / 100,
+              discoveredAt: now,
+              lastRefreshedAt: now,
+            },
+          });
+          saFound++;
+        }
+      }
+    } catch (err) {
+      console.error(`[ScoutAgent] SA sweep error for ${pos}:`, err.message);
+    }
+  }
+  if (saFound > 0) {
+    console.log(`[ScoutAgent] South American sweep found ${saFound} additional profiles`);
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // Small European sweep — low-value pass for Cyprus, Bulgaria, Slovakia, etc.
+  // ═══════════════════════════════════════════════════════════════
+  const SMALL_EU_POSITIONS = ["CF", "AM", "CM", "CB", "LW", "RW"];
+  const SMALL_EU_VALUE_MAX = 500_000;
+  const SMALL_EU_AGENTS = new Set(["cyprus", "bulgaria", "slovenia", "slovakia", "czech", "bosnia", "macedonia", "montenegro", "kosovo", "azerbaijan", "kazakhstan", "morocco", "norway"]);
+  let smallEuFound = 0;
+  for (const pos of SMALL_EU_POSITIONS) {
+    await sleep(DELAY_BETWEEN_REQUESTS_MS);
+    try {
+      const results = await fetchRecruitment({
+        position: pos,
+        age_max: "26",
+        sort_by: "score",
+        value_max: String(SMALL_EU_VALUE_MAX),
+      });
+      for (const p of results) {
+        const url = (p.url || "").trim();
+        if (!url) continue;
+        if (excludeUrls.has(normalizePlayerUrl(url))) continue;
+
+        const valEuro = parseMarketValue(p.market_value);
+        if (valEuro > SMALL_EU_VALUE_MAX) continue;
+
+        const agentId = leagueToAgent(p.league);
+        if (!agentId) continue;
+        if (!SMALL_EU_AGENTS.has(agentId)) continue;
+
+        const ageNum = parseAge(p.age);
+        if (ageNum != null && ageNum > MAX_AGE) continue;
+        const league = (p.league || "").trim();
+        const lc = league.toLowerCase();
+        const leagueTier = lc.includes("national") || lc.includes("3. liga") ? 3
+          : lc.includes("2") || lc.includes("second") ? 2
+          : 1;
+
+        const agentParams = paramsByAgent[agentId] || {};
+
+        for (const profileType of [
+          "LOW_VALUE_STARTER", "YOUNG_STRIKER_HOT", "CONTRACT_EXPIRING",
+          "HIDDEN_GEM", "LOWER_LEAGUE_RISER", "BREAKOUT_SEASON", "UNDERVALUED_BY_FM",
+        ]) {
+          const profileOverrides = agentParams[profileType] || {};
+          if (!matchesProfile(p, profileType, valEuro, ageNum, leagueTier, profileOverrides)) continue;
+
+          const urlHash = Buffer.from(url).toString("base64").replace(/[+/=]/g, "_").slice(0, 40);
+          const docId = `${agentId}_${urlHash}_${profileType}`;
+          if (seen.has(docId)) continue;
+          if (rejectedProfileIds.has(docId)) continue;
+          seen.set(docId, true);
+
+          const matchReason = buildMatchReason(p, profileType, valEuro, ageNum);
+          const matchScore = computeMatchScore(p, profileType, valEuro, ageNum);
+          const now = Date.now();
+
+          const fbrefMinutes90s = getMinutes90s(p);
+          const fbrefGoals = getFbrefGoals(p);
+          const fbrefAssists = getFbrefAssists(p);
+          const goalsPer90 = fbrefMinutes90s > 0 ? fbrefGoals / fbrefMinutes90s : 0;
+          const contribPer90 = fbrefMinutes90s > 0 ? (fbrefGoals + fbrefAssists) / fbrefMinutes90s : 0;
+
+          profilesToWrite.push({
+            docId,
+            data: {
+              tmProfileUrl: url,
+              agentId,
+              profileType,
+              playerName: (p.name || "").trim() || "Unknown",
+              profileImage: (p.profile_image || "").trim() || null,
+              age: ageNum ?? 0,
+              position: (p.position || "").trim() || "",
+              marketValue: (p.market_value || "").trim() || "",
+              marketValueEuro: valEuro,
+              club: (p.club || "").trim() || "",
+              league: league || "",
+              leagueTier,
+              nationality: (p.citizenship || "").trim() || null,
+              matchReason,
+              matchScore,
+              fmPa: getFmPa(p) ?? null,
+              fmCa: p.fm_ca ?? p.fmi_ca ?? null,
+              contractExpires: (p.contract || "").trim() || null,
+              fbrefMinutes90s,
+              fbrefGoals,
+              fbrefAssists,
+              goalsPer90: Math.round(goalsPer90 * 100) / 100,
+              contribPer90: Math.round(contribPer90 * 100) / 100,
+              discoveredAt: now,
+              lastRefreshedAt: now,
+            },
+          });
+          smallEuFound++;
+        }
+      }
+    } catch (err) {
+      console.error(`[ScoutAgent] Small EU sweep error for ${pos}:`, err.message);
+    }
+  }
+  if (smallEuFound > 0) {
+    console.log(`[ScoutAgent] Small European sweep found ${smallEuFound} additional profiles`);
   }
 
   // ═══════════════════════════════════════════════════════════════
