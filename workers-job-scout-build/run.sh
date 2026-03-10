@@ -33,7 +33,7 @@ else
 fi
 
 echo "=== Running build: $BUILD_CMD ==="
-eval "$BUILD_CMD"
+$BUILD_CMD
 
 echo "=== Committing and pushing ==="
 git config user.email "scout-build@mgsr.local"
