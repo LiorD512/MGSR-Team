@@ -68,6 +68,7 @@ interface Player {
   foot?: string;
   agency?: string;
   agencyUrl?: string;
+  createdAt?: number;
   passportDetails?: {
     firstName?: string;
     lastName?: string;
@@ -1433,6 +1434,9 @@ export default function PlayerInfoPage() {
           })()}
           <StatCard label={t('player_info_foot')} value={translateFoot(merged.foot)} />
           <StatCard label={t('player_info_contract')} value={merged.contractExpired} />
+          {player.createdAt && (
+            <StatCard label={isRtl ? 'נוסף בתאריך' : 'Added in'} value={new Date(player.createdAt).toLocaleDateString(isRtl ? 'he-IL' : 'en-US', { day: 'numeric', month: 'short', year: 'numeric' })} />
+          )}
           {/* Salary & Transfer Fee — clickable card */}
           <button
             type="button"

@@ -881,6 +881,11 @@ export default function PlayersPage() {
                     })()}{' '}
                     {p.age && `• ${t(isWomen ? 'players_age_display_women' : 'players_age_display').replace('{age}', p.age)}`}
                   </p>
+                  {platform === 'men' && p.createdAt && (
+                    <p className="text-[11px] text-mgsr-muted/60 mt-0.5">
+                      {isRtl ? 'נוסף' : 'Added'} {new Date(p.createdAt).toLocaleDateString(isRtl ? 'he-IL' : 'en-US', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    </p>
+                  )}
                 </div>
                 <div className={`text-right shrink-0 ${isRtl ? 'text-left' : ''}`}>
                   {isYouth && ('ageGroup' in p) && (p as YouthPlayer).ageGroup ? (
