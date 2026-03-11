@@ -149,6 +149,10 @@ const LEAGUE_TO_AGENT = {
   "nike liga": "slovakia",
   "niké liga": "slovakia",
   "fortuna liga slovakia": "slovakia",
+  "niké liga slowakei": "slovakia",
+  "nike liga slowakei": "slovakia",
+  "2. liga slowakei": "slovakia",
+  "fortuna liga slowakei": "slovakia",
   "premyer liqa": "azerbaijan",
   "premyer liqasi": "azerbaijan",
   "premyer liqası": "azerbaijan",
@@ -177,11 +181,6 @@ const LEAGUE_TO_AGENT = {
   "veikkausliiga": "finland",
   "liga mx": "mexico",
   "1 lig": "turkey",
-  "ligat haal": "israel",
-  "ligat ha'al": "israel",
-  "ligat ha al": "israel",
-  "israeli premier league": "israel",
-  "ligat leumit": "israel",
 };
 
 /** Fallback: league contains country keyword -> agentId. Denmark before Romania to avoid "superliga" clash. */
@@ -222,7 +221,7 @@ const LEAGUE_CONTAINS_AGENT = [
   [["montenegro", "crnogorska"], "montenegro"],
   [["kosovo", "kosovar", "kosoves"], "kosovo"],
   [["cyprus", "cypriot", "protathlima", "zypern"], "cyprus"],
-  [["slovakia", "slovak", "niké liga", "nike liga"], "slovakia"],
+  [["slovakia", "slovak", "slowakei", "niké liga", "nike liga"], "slovakia"],
   [["azerbaijan", "azerbaijani", "premyer liqa"], "azerbaijan"],
   [["kazakhstan", "kazakh", "kasachstan"], "kazakhstan"],
   [["morocco", "moroccan", "botola"], "morocco"],
@@ -230,7 +229,7 @@ const LEAGUE_CONTAINS_AGENT = [
   [["usa", "american", "mls", "major league soccer"], "usa"],
   [["mexico", "mexican", "liga mx"], "mexico"],
   [["finland", "finnish", "veikkausliiga"], "finland"],
-  [["israel", "israeli", "ligat haal", "ligat ha'al", "leumit"], "israel"],
+
 ];
 
 const POSITIONS = ["CF", "AM", "CM", "CB", "DM", "LW", "RW", "LB", "RB", "SS"];
@@ -243,8 +242,22 @@ const AGENT_IDS = [
   "cyprus", "slovakia", "azerbaijan", "kazakhstan",
   "brazil", "argentina", "colombia", "chile", "uruguay", "ecuador", "peru",
   "morocco", "norway", "usa",
-  "finland", "mexico", "israel",
+  "finland", "mexico",
 ];
+
+/** Nationality-based skip filter — applied in ALL sweeps */
+function shouldSkipByNationality(agentId, citizenship) {
+  const cit = (citizenship || "").toLowerCase();
+  // Turkey agent: only non-Turkish players (foreign talent in Turkish leagues)
+  if (agentId === "turkey") {
+    if (cit.includes("turkey") || cit.includes("türkiye") || cit.includes("turkish")) return true;
+  }
+  // Morocco agent: only non-Moroccan African players
+  if (agentId === "morocco") {
+    if (cit.includes("morocco") || cit.includes("moroccan") || cit.includes("maroc")) return true;
+  }
+  return false;
+}
 
 function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms));
@@ -600,18 +613,7 @@ async function runScoutAgent() {
 
         const agentId = leagueToAgent(p.league);
         if (!agentId || !AGENT_IDS.includes(agentId)) continue;
-
-        // Turkey agent: only non-Turkish players (foreign talent in Turkish leagues)
-        if (agentId === "turkey") {
-          const cit = (p.citizenship || "").toLowerCase();
-          if (cit.includes("turkey") || cit.includes("türkiye") || cit.includes("turkish")) continue;
-        }
-
-        // Morocco agent: only non-Moroccan African players
-        if (agentId === "morocco") {
-          const cit = (p.citizenship || "").toLowerCase();
-          if (cit.includes("morocco") || cit.includes("moroccan") || cit.includes("maroc")) continue;
-        }
+        if (shouldSkipByNationality(agentId, p.citizenship)) continue;
 
         const ageNum = parseAge(p.age);
         if (ageNum != null && ageNum > MAX_AGE) continue; // Hard age cap
@@ -715,6 +717,7 @@ async function runScoutAgent() {
 
         const agentId = leagueToAgent(p.league);
         if (!agentId || !AGENT_IDS.includes(agentId)) continue;
+        if (shouldSkipByNationality(agentId, p.citizenship)) continue;
 
         const ageNum = parseAge(p.age);
         if (ageNum != null && ageNum > MAX_AGE) continue;
@@ -1002,7 +1005,7 @@ async function runScoutAgent() {
   // ═══════════════════════════════════════════════════════════════
   const SMALL_EU_POSITIONS = ["CF", "AM", "CM", "CB", "LW", "RW"];
   const SMALL_EU_VALUE_MAX = 500_000;
-  const SMALL_EU_AGENTS = new Set(["cyprus", "bulgaria", "slovenia", "slovakia", "czech", "bosnia", "macedonia", "montenegro", "kosovo", "azerbaijan", "kazakhstan", "morocco", "norway", "finland", "israel", "mexico"]);
+  const SMALL_EU_AGENTS = new Set(["cyprus", "bulgaria", "slovenia", "slovakia", "czech", "bosnia", "macedonia", "montenegro", "kosovo", "azerbaijan", "kazakhstan", "morocco", "norway", "finland", "mexico"]);
   let smallEuFound = 0;
   for (const pos of SMALL_EU_POSITIONS) {
     await sleep(DELAY_BETWEEN_REQUESTS_MS);
@@ -1121,7 +1124,12 @@ async function runScoutAgent() {
     bosnia: ["https://www.transfermarkt.com/premier-liga-bosne-i-hercegovine/startseite/wettbewerb/BOS1"],
     azerbaijan: ["https://www.transfermarkt.com/premyer-liqa/startseite/wettbewerb/AZ1"],
     kazakhstan: ["https://www.transfermarkt.com/premier-liga-kazakhstan/startseite/wettbewerb/KAS1"],
-    // Macedonia (MAC1), Montenegro (MON1), Kosovo (KOS1) — TM redirects these to SPA/competition page, no table.items available
+    kosovo: ["https://www.transfermarkt.com/superliga-e-kosoves/startseite/wettbewerb/KOS1"],
+    slovenia: ["https://www.transfermarkt.com/prvaliga/startseite/wettbewerb/SL1"],
+    cyprus: ["https://www.transfermarkt.com/protathlima-cyta/startseite/wettbewerb/ZYP1"],
+    bulgaria: ["https://www.transfermarkt.com/parva-liga/startseite/wettbewerb/BU1"],
+    hungary: ["https://www.transfermarkt.com/nemzeti-bajnoksag/startseite/wettbewerb/UNG1"],
+    // Macedonia (MAC1), Montenegro (MON1) — TM redirects these to SPA/competition page, no table.items available
   };
 
   const TM_USER_AGENTS = [
@@ -1315,8 +1323,8 @@ async function runScoutAgent() {
     return posText || "";
   }
 
-  // Run the fallback for agents with few profiles (< 3) that have TM league URLs
-  const MIN_PROFILES_FOR_TM_FALLBACK = 3;
+  // Run the fallback for agents with few profiles (< 5) that have TM league URLs
+  const MIN_PROFILES_FOR_TM_FALLBACK = 5;
   const deadAgents = AGENT_IDS.filter((id) => (agentsWithProfiles.get(id) || 0) < MIN_PROFILES_FOR_TM_FALLBACK && TM_LEAGUE_URLS[id]);
   let tmFallbackFound = 0;
   if (deadAgents.length > 0) {
@@ -1332,6 +1340,12 @@ async function runScoutAgent() {
             if (!url) continue;
             if (excludeUrls.has(normalizePlayerUrl(url))) continue;
 
+            // Skip GKs — least important position for our scouting
+            const posCode = (p.position || "").trim().toUpperCase();
+            if (posCode === "GK") continue;
+
+            if (shouldSkipByNationality(agentId, p.citizenship)) continue;
+
             const valEuro = parseMarketValue(p.market_value);
             if (valEuro > LIGAT_HAAL_VALUE_MAX) continue;
 
@@ -1344,8 +1358,8 @@ async function runScoutAgent() {
 
             const agentParams = paramsByAgent[agentId] || {};
 
-            // TM fallback now parses age, value, contract — enable contract profile type too
-            for (const profileType of ["HIDDEN_GEM", "LOWER_LEAGUE_RISER", "CONTRACT_EXPIRING"]) {
+            // TM fallback: expanded profile types to help agents reach 5+ profiles
+            for (const profileType of ["HIDDEN_GEM", "LOWER_LEAGUE_RISER", "CONTRACT_EXPIRING", "LOW_VALUE_STARTER", "BREAKOUT_SEASON"]) {
               const profileOverrides = agentParams[profileType] || {};
               if (!matchesProfile(p, profileType, valEuro, ageNum, leagueTier, profileOverrides)) continue;
 
@@ -1406,6 +1420,17 @@ async function runScoutAgent() {
     console.log(`[ScoutAgent] Live TM fallback found ${tmFallbackFound} additional profiles`);
   }
 
+  // Log agents that are still below target of 5 after all sweeps + fallback
+  const MIN_TARGET = 5;
+  const finalAgentCounts = new Map();
+  for (const { data } of profilesToWrite) {
+    finalAgentCounts.set(data.agentId, (finalAgentCounts.get(data.agentId) || 0) + 1);
+  }
+  const belowTarget = AGENT_IDS.filter((id) => (finalAgentCounts.get(id) || 0) < MIN_TARGET);
+  if (belowTarget.length > 0) {
+    console.log(`[ScoutAgent] BELOW_TARGET (< ${MIN_TARGET} profiles): ${belowTarget.map((id) => `${id}=${finalAgentCounts.get(id) || 0}`).join(", ")}`);
+  }
+
   // ═══════════════════════════════════════════════════════════════
   // Sport Director Review — quality gate before Firestore
   // ═══════════════════════════════════════════════════════════════
@@ -1457,52 +1482,47 @@ async function runScoutAgent() {
   const enrichedCount = profilesToEnrich.filter((p) => p.data.profileImage).length;
   console.log(`[ScoutAgent] Enriched ${enrichedCount}/${profilesToEnrich.length} profiles with images`);
 
-  // Write ONLY approved profiles to ScoutProfiles
-  const batch = db.batch();
-  for (const { docId, data } of approvedProfiles) {
-    const ref = profilesRef.doc(docId);
-    batch.set(ref, data, { merge: true });
-  }
-
-  if (approvedProfiles.length > 0) {
-    await batch.commit();
-    console.log(`[ScoutAgent] Wrote ${approvedProfiles.length} Sport Director-approved profiles`);
-  }
-
   // ═══════════════════════════════════════════════════════════════
-  // Repair existing profiles with broken old-format image URLs
+  // DELETE all old profiles before writing fresh batch
   // ═══════════════════════════════════════════════════════════════
-  const allExisting = await profilesRef.get();
-  const staleProfiles = allExisting.docs.filter((d) => needsEnrich(d.data().profileImage));
-  if (staleProfiles.length > 0) {
-    console.log(`[ScoutAgent] Repairing ${staleProfiles.length} existing profiles with stale images...`);
-    for (let i = 0; i < staleProfiles.length; i += ENRICH_CONCURRENCY) {
-      const chunk = staleProfiles.slice(i, i + ENRICH_CONCURRENCY);
-      await Promise.all(
-        chunk.map(async (doc) => {
-          try {
-            const d = doc.data();
-            const url = d.tmProfileUrl;
-            if (!url) return;
-            const html = await fetchTmHtml(url);
-            const idMatch = url.match(/\/profil\/spieler\/(\d+)/);
-            if (!idMatch) return;
-            const pid = idMatch[1];
-            const imgMatch = html.match(new RegExp(`https://img[^"']*?/portrait/(?:big|medium|header)/${pid}-[^"'?]+\\.(?:jpg|png)[^"']*`));
-            let newImg;
-            if (imgMatch) {
-              newImg = imgMatch[0].replace("/medium/", "/big/").replace("/header/", "/big/");
-            } else {
-              newImg = TM_DEFAULT_IMG;
-            }
-            await doc.ref.update({ profileImage: newImg });
-          } catch { /* skip */ }
-        })
-      );
-      if (i + ENRICH_CONCURRENCY < staleProfiles.length) await sleep(2000);
+  const oldSnap = await profilesRef.get();
+  if (oldSnap.size > 0) {
+    const deleteBatches = [];
+    let delBatch = db.batch();
+    let delCount = 0;
+    for (const doc of oldSnap.docs) {
+      delBatch.delete(doc.ref);
+      delCount++;
+      if (delCount % 450 === 0) {
+        deleteBatches.push(delBatch);
+        delBatch = db.batch();
+      }
     }
-    const repairedCount = staleProfiles.length;
-    console.log(`[ScoutAgent] Repaired ${repairedCount} existing profiles`);
+    deleteBatches.push(delBatch);
+    for (const b of deleteBatches) {
+      await b.commit();
+    }
+    console.log(`[ScoutAgent] Cleared ${oldSnap.size} old profiles from Firestore`);
+  }
+
+  // Write ONLY approved profiles to ScoutProfiles (fresh batch)
+  if (approvedProfiles.length > 0) {
+    const writeBatches = [];
+    let wBatch = db.batch();
+    let wCount = 0;
+    for (const { docId, data } of approvedProfiles) {
+      wBatch.set(profilesRef.doc(docId), data);
+      wCount++;
+      if (wCount % 450 === 0) {
+        writeBatches.push(wBatch);
+        wBatch = db.batch();
+      }
+    }
+    writeBatches.push(wBatch);
+    for (const b of writeBatches) {
+      await b.commit();
+    }
+    console.log(`[ScoutAgent] Wrote ${approvedProfiles.length} Sport Director-approved profiles (replaced all old data)`);
   }
 
   // ═══════════════════════════════════════════════════════════════

@@ -48,7 +48,6 @@ export const AGENT_IDS = [
   'usa',
   'finland',
   'mexico',
-  'israel',
 ] as const;
 
 export type AgentId = (typeof AGENT_IDS)[number];
@@ -509,14 +508,6 @@ export const AGENTS_CONFIG: Record<AgentId, AgentConfig> = {
     flag: '🇲🇽',
     leagueUrls: [LEAGUE_URLS['liga-mx']],
     leagueNames: ['Liga MX'],
-  },
-  israel: {
-    id: 'israel',
-    name: 'Israel',
-    nameHe: 'ישראל',
-    flag: '🇮🇱',
-    leagueUrls: [LEAGUE_URLS['ligat-haal'], LEAGUE_URLS['ligat-leumit']],
-    leagueNames: ['Ligat Ha\'Al', 'Ligat Leumit'],
   },
 };
 
