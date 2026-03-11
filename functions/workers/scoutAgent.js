@@ -15,7 +15,7 @@
 
 const { getFirestore } = require("firebase-admin/firestore");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
-const { reviewProfiles } = require("./sportDirector");
+const { reviewProfiles, fetchTmPerformanceStats } = require("./sportDirector");
 
 function getScoutBaseUrl() {
   const url = process.env.SCOUT_SERVER_URL || "https://football-scout-server-l38w.onrender.com";
@@ -1110,26 +1110,57 @@ async function runScoutAgent() {
   for (const { data } of profilesToWrite) {
     agentsWithProfiles.set(data.agentId, (agentsWithProfiles.get(data.agentId) || 0) + 1);
   }
-  // Also count existing Firestore profiles (from previous runs)
-  const existingSnap = await profilesRef.get();
-  for (const doc of existingSnap.docs) {
-    const d = doc.data();
-    if (d.agentId) agentsWithProfiles.set(d.agentId, (agentsWithProfiles.get(d.agentId) || 0) + 1);
-  }
 
-  // League URLs for live TM scraping (from scoutAgentConfig)
+  // League URLs for live TM scraping — ALL agents covered
   const TM_LEAGUE_URLS = {
-    czech: ["https://www.transfermarkt.com/chance-liga/startseite/wettbewerb/TS1"],
-    slovakia: ["https://www.transfermarkt.com/nike-liga/startseite/wettbewerb/SLO1"],
-    bosnia: ["https://www.transfermarkt.com/premier-liga-bosne-i-hercegovine/startseite/wettbewerb/BOS1"],
-    azerbaijan: ["https://www.transfermarkt.com/premyer-liqa/startseite/wettbewerb/AZ1"],
-    kazakhstan: ["https://www.transfermarkt.com/premier-liga-kazakhstan/startseite/wettbewerb/KAS1"],
-    kosovo: ["https://www.transfermarkt.com/superliga-e-kosoves/startseite/wettbewerb/KOS1"],
+    // Europe — big leagues (2nd divisions for realistic targets)
+    portugal: ["https://www.transfermarkt.com/liga-portugal/startseite/wettbewerb/PO1", "https://www.transfermarkt.com/liga-portugal-2/startseite/wettbewerb/PO2"],
+    serbia: ["https://www.transfermarkt.com/super-liga-srbije/startseite/wettbewerb/SER1"],
+    poland: ["https://www.transfermarkt.com/pko-bp-ekstraklasa/startseite/wettbewerb/PL1"],
+    greece: ["https://www.transfermarkt.com/super-league-1/startseite/wettbewerb/GR1"],
+    belgium: ["https://www.transfermarkt.com/jupiler-pro-league/startseite/wettbewerb/BE1"],
+    netherlands: ["https://www.transfermarkt.com/eredivisie/startseite/wettbewerb/NL1", "https://www.transfermarkt.com/eerste-divisie/startseite/wettbewerb/NL2"],
+    turkey: ["https://www.transfermarkt.com/super-lig/startseite/wettbewerb/TR1", "https://www.transfermarkt.com/1-lig/startseite/wettbewerb/TR2"],
+    austria: ["https://www.transfermarkt.com/bundesliga/startseite/wettbewerb/A1"],
+    sweden: ["https://www.transfermarkt.com/allsvenskan/startseite/wettbewerb/SE1"],
+    switzerland: ["https://www.transfermarkt.com/super-league/startseite/wettbewerb/C1"],
+    denmark: ["https://www.transfermarkt.com/superliga/startseite/wettbewerb/DK1"],
+    romania: ["https://www.transfermarkt.com/superliga/startseite/wettbewerb/RO1"],
+    ukraine: ["https://www.transfermarkt.com/premier-liga/startseite/wettbewerb/UKR1"],
+    england: ["https://www.transfermarkt.com/championship/startseite/wettbewerb/GB2"],
+    germany: ["https://www.transfermarkt.com/2-bundesliga/startseite/wettbewerb/L2"],
+    italy: ["https://www.transfermarkt.com/serie-b/startseite/wettbewerb/IT2"],
+    spain: ["https://www.transfermarkt.com/laliga2/startseite/wettbewerb/ES2"],
+    france: ["https://www.transfermarkt.com/ligue-2/startseite/wettbewerb/FR2"],
+    scotland: ["https://www.transfermarkt.com/scottish-premiership/startseite/wettbewerb/SC1"],
+    // Balkans & Eastern Europe
+    croatia: ["https://www.transfermarkt.com/hnl/startseite/wettbewerb/KR1"],
     slovenia: ["https://www.transfermarkt.com/prvaliga/startseite/wettbewerb/SL1"],
+    bosnia: ["https://www.transfermarkt.com/premier-liga-bosne-i-hercegovine/startseite/wettbewerb/BOS1"],
+    macedonia: ["https://www.transfermarkt.com/prva-makedonska-fudbalska-liga/startseite/wettbewerb/MAC1"],
+    montenegro: ["https://www.transfermarkt.com/meridianbet-1-cfl/startseite/wettbewerb/MON1"],
+    kosovo: ["https://www.transfermarkt.com/superliga-e-kosoves/startseite/wettbewerb/KOS1"],
     cyprus: ["https://www.transfermarkt.com/protathlima-cyta/startseite/wettbewerb/ZYP1"],
+    slovakia: ["https://www.transfermarkt.com/nike-liga/startseite/wettbewerb/SLO1"],
+    czech: ["https://www.transfermarkt.com/chance-liga/startseite/wettbewerb/TS1"],
     bulgaria: ["https://www.transfermarkt.com/parva-liga/startseite/wettbewerb/BU1"],
     hungary: ["https://www.transfermarkt.com/nemzeti-bajnoksag/startseite/wettbewerb/UNG1"],
-    // Macedonia (MAC1), Montenegro (MON1) — TM redirects these to SPA/competition page, no table.items available
+    azerbaijan: ["https://www.transfermarkt.com/premyer-liqa/startseite/wettbewerb/AZ1"],
+    kazakhstan: ["https://www.transfermarkt.com/premier-liga-kazakhstan/startseite/wettbewerb/KAS1"],
+    // South America
+    brazil: ["https://www.transfermarkt.com/campeonato-brasileiro-serie-a/startseite/wettbewerb/BRA1", "https://www.transfermarkt.com/campeonato-brasileiro-serie-b/startseite/wettbewerb/BRA2"],
+    argentina: ["https://www.transfermarkt.com/superliga/startseite/wettbewerb/AR1N"],
+    colombia: ["https://www.transfermarkt.com/liga-betplay-dimayor/startseite/wettbewerb/COLP"],
+    chile: ["https://www.transfermarkt.com/campeonato-nacional/startseite/wettbewerb/CLPD"],
+    uruguay: ["https://www.transfermarkt.com/primera-division/startseite/wettbewerb/URU1"],
+    ecuador: ["https://www.transfermarkt.com/liga-pro-serie-a/startseite/wettbewerb/EC1N"],
+    peru: ["https://www.transfermarkt.com/liga-1/startseite/wettbewerb/TDeA"],
+    // Africa, Nordics, North America
+    morocco: ["https://www.transfermarkt.com/botola-pro-inwi/startseite/wettbewerb/MAR1"],
+    norway: ["https://www.transfermarkt.com/eliteserien/startseite/wettbewerb/NO1"],
+    usa: ["https://www.transfermarkt.com/major-league-soccer/startseite/wettbewerb/MLS1"],
+    finland: ["https://www.transfermarkt.com/veikkausliiga/startseite/wettbewerb/FI1"],
+    mexico: ["https://www.transfermarkt.com/liga-mx/startseite/wettbewerb/MEX1"],
   };
 
   const TM_USER_AGENTS = [
@@ -1177,8 +1208,8 @@ async function runScoutAgent() {
 
     if (kaderUrls.length === 0) return players;
 
-    // Step 2: scrape up to 10 clubs (more coverage for small leagues)
-    const MAX_CLUBS = 10;
+    // Step 2: scrape up to 16 clubs (full coverage for small/medium leagues)
+    const MAX_CLUBS = 16;
     for (const kaderUrl of kaderUrls.slice(0, MAX_CLUBS)) {
       await sleep(5000); // Respectful delay for TM
       try {
@@ -1328,37 +1359,79 @@ async function runScoutAgent() {
   const deadAgents = AGENT_IDS.filter((id) => (agentsWithProfiles.get(id) || 0) < MIN_PROFILES_FOR_TM_FALLBACK && TM_LEAGUE_URLS[id]);
   let tmFallbackFound = 0;
   if (deadAgents.length > 0) {
-    console.log(`[ScoutAgent] Live TM fallback for ${deadAgents.length} dead agents: ${deadAgents.join(", ")}`);
+    console.log(`[ScoutAgent] Live TM fallback for ${deadAgents.length} agents below target: ${deadAgents.join(", ")}`);
+
+    // Enrich TM-scraped players with real season stats from their leistungsdaten page.
+    // Batched: 5 concurrent fetches, 1.5s between batches (same as Sport Director).
+    async function enrichWithTmStats(players) {
+      const ENRICH_BATCH = 5;
+      const ENRICH_DELAY = 1500;
+      let enriched = 0;
+      for (let i = 0; i < players.length; i += ENRICH_BATCH) {
+        if (i > 0) await sleep(ENRICH_DELAY);
+        const batch = players.slice(i, i + ENRICH_BATCH);
+        const results = await Promise.allSettled(
+          batch.map(async (p) => {
+            try {
+              const stats = await fetchTmPerformanceStats(p.url);
+              if (stats && stats.minutes > 0) {
+                p.fbref_minutes_90s = stats.minutes / 90;
+                p.fbref_goals = stats.goals;
+                p.fbref_assists = stats.assists;
+                p._tmEnriched = true;
+                enriched++;
+              }
+            } catch { /* skip — stats unavailable */ }
+          })
+        );
+      }
+      return enriched;
+    }
+
     for (const agentId of deadAgents) {
+      const currentCount = agentsWithProfiles.get(agentId) || 0;
+      const needed = MIN_PROFILES_FOR_TM_FALLBACK - currentCount;
+
       for (const leagueUrl of TM_LEAGUE_URLS[agentId]) {
         try {
           const tmPlayers = await scrapeLeaguePlayers(leagueUrl, agentId);
           console.log(`[ScoutAgent] TM scraped ${tmPlayers.length} players for ${agentId}`);
 
+          // Pre-filter candidates before enrichment (saves time)
+          const candidates = [];
           for (const p of tmPlayers) {
             const url = (p.url || "").trim();
             if (!url) continue;
             if (excludeUrls.has(normalizePlayerUrl(url))) continue;
-
-            // Skip GKs — least important position for our scouting
             const posCode = (p.position || "").trim().toUpperCase();
             if (posCode === "GK") continue;
-
             if (shouldSkipByNationality(agentId, p.citizenship)) continue;
-
             const valEuro = parseMarketValue(p.market_value);
             if (valEuro > LIGAT_HAAL_VALUE_MAX) continue;
-
             const ageNum = parseAge(p.age);
             if (ageNum != null && ageNum > MAX_AGE) continue;
-            const league = (p.league || "").trim();
-            // TM fallback leagues are small-market top divisions — treat as tier 2
-            // so they qualify for LOWER_LEAGUE_RISER profile type
-            const leagueTier = 2;
+            // Attach parsed values for reuse
+            p._valEuro = valEuro;
+            p._ageNum = ageNum;
+            candidates.push(p);
+          }
 
+          if (candidates.length === 0) continue;
+
+          // Enrich top candidates with real season stats from TM performance pages
+          // Limit to 40 per league to keep runtime reasonable (~60s per league)
+          const toEnrich = candidates.slice(0, 40);
+          const enrichCount = await enrichWithTmStats(toEnrich);
+          console.log(`[ScoutAgent] TM enriched ${enrichCount}/${toEnrich.length} players with season stats for ${agentId}`);
+
+          for (const p of candidates) {
+            const url = (p.url || "").trim();
+            const valEuro = p._valEuro;
+            const ageNum = p._ageNum;
+            const league = (p.league || "").trim();
+            const leagueTier = 2;
             const agentParams = paramsByAgent[agentId] || {};
 
-            // TM fallback: expanded profile types to help agents reach 5+ profiles
             for (const profileType of ["HIDDEN_GEM", "LOWER_LEAGUE_RISER", "CONTRACT_EXPIRING", "LOW_VALUE_STARTER", "BREAKOUT_SEASON"]) {
               const profileOverrides = agentParams[profileType] || {};
               if (!matchesProfile(p, profileType, valEuro, ageNum, leagueTier, profileOverrides)) continue;
@@ -1406,6 +1479,7 @@ async function runScoutAgent() {
                   fbrefAssists,
                   goalsPer90: Math.round(goalsPer90 * 100) / 100,
                   contribPer90: Math.round(contribPer90 * 100) / 100,
+                  source: p._tmEnriched ? "tm_enriched" : "tm_fallback",
                   discoveredAt: now,
                   lastRefreshedAt: now,
                 },

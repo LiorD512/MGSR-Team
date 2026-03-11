@@ -367,12 +367,13 @@ exports.scoutAgentScheduled = onSchedule(
 
 /**
  * Handles scout agent work. Triggered by Pub/Sub (from scoutAgentScheduled).
- * 9 min timeout — scout server calls can be slow (cold start).
+ * 30 min timeout — TM fallback scrapes all 44 leagues with stats enrichment.
  */
 exports.scoutAgentWorker = onMessagePublished(
   {
     topic: SCOUT_AGENT_TOPIC,
-    timeoutSeconds: 540,
+    timeoutSeconds: 1800,
+    memory: "512MiB",
     retry: true,
   },
   async () => {

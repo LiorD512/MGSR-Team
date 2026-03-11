@@ -314,8 +314,9 @@ function checkCompleteness(data) {
     issues.push("missing_contract_critical");
   }
 
-  // FM data is critical for FM-dependent profiles
-  if ((data.profileType === "HIDDEN_GEM" || data.profileType === "UNDERVALUED_BY_FM") && data.fmPa == null) {
+  // FM data is critical for FM-dependent profiles — but not for TM-sourced profiles (TM can't provide FM data)
+  const isTmSource = data.source === "tm_enriched" || data.source === "tm_fallback";
+  if ((data.profileType === "HIDDEN_GEM" || data.profileType === "UNDERVALUED_BY_FM") && data.fmPa == null && !isTmSource) {
     issues.push("missing_fm_critical");
   }
 
@@ -331,8 +332,9 @@ function checkPer90Quality(data) {
   const minutes90s = data.fbrefMinutes90s || 0;
 
   if (minutes90s <= 0) {
-    // No minutes = can't validate performance (except CONTRACT_EXPIRING)
-    if (data.profileType !== "CONTRACT_EXPIRING" && data.profileType !== "HIGH_VALUE_BENCHED") {
+    // No minutes = can't validate performance (except CONTRACT_EXPIRING, HIGH_VALUE_BENCHED, or TM-enriched)
+    const isTmSource = data.source === "tm_enriched" || data.source === "tm_fallback";
+    if (data.profileType !== "CONTRACT_EXPIRING" && data.profileType !== "HIGH_VALUE_BENCHED" && !isTmSource) {
       issues.push("no_minutes_data");
     }
     return issues;
@@ -402,7 +404,10 @@ function checkAgeValueRationality(data) {
 // Check 4: Minimum score by league tier
 // ═══════════════════════════════════════════════════════════════
 function checkScoreThreshold(data) {
-  const minScore = MIN_SCORE_BY_TIER[data.leagueTier] || 65;
+  const isTmSource = data.source === "tm_enriched" || data.source === "tm_fallback";
+  // TM-sourced profiles get a lower threshold (missing FM data depresses scores)
+  const tierThresholds = isTmSource ? { 1: 55, 2: 48, 3: 44 } : MIN_SCORE_BY_TIER;
+  const minScore = tierThresholds[data.leagueTier] || 65;
   if (data.matchScore < minScore) {
     return [`below_tier_threshold:${data.matchScore}<${minScore}`];
   }
@@ -1252,4 +1257,4 @@ async function reviewProfiles(profilesToWrite) {
   return { approved, rejected, agentReports };
 }
 
-module.exports = { reviewProfiles };
+module.exports = { reviewProfiles, fetchTmPerformanceStats };
