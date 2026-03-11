@@ -14,6 +14,7 @@
  */
 
 const { getFirestore } = require("firebase-admin/firestore");
+const crypto = require("crypto");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const { reviewProfiles, fetchTmPerformanceStats } = require("./sportDirector");
 
@@ -530,6 +531,11 @@ function normalizePlayerUrl(url) {
   return url.trim().toLowerCase().replace(/\/$/, "");
 }
 
+/** SHA-256 based URL hash — avoids base64 prefix collisions for same-domain URLs. */
+function hashPlayerUrl(url) {
+  return crypto.createHash("sha256").update(url).digest("base64url").slice(0, 40);
+}
+
 /**
  * Run the AI Scout Agent Network.
  * Fetches players from recruitment API, assigns to agents, matches profiles, writes to Firestore.
@@ -586,11 +592,13 @@ async function runScoutAgent() {
       const f = typeof val === "object" && val?.feedback ? val.feedback : val;
       if (f === "down") {
         rejectedProfileIds.add(profileId);
-        // Extract the 40-char URL hash from the docId to block ALL profile types for this player
+        // Extract URL hash from docId (format: agentId_urlHash_profileType)
+        // to block ALL profile types for the same player URL.
         const firstUnderscore = profileId.indexOf("_");
-        if (firstUnderscore >= 0) {
-          const hash = profileId.substring(firstUnderscore + 1, firstUnderscore + 41);
-          if (hash.length === 40) rejectedUrlHashes.add(hash);
+        const lastUnderscore = profileId.lastIndexOf("_");
+        if (firstUnderscore >= 0 && lastUnderscore > firstUnderscore) {
+          const hash = profileId.substring(firstUnderscore + 1, lastUnderscore);
+          if (hash.length >= 20) rejectedUrlHashes.add(hash);
         }
       }
     }
@@ -648,7 +656,7 @@ async function runScoutAgent() {
           const profileOverrides = agentParams[profileType] || {};
           if (!matchesProfile(p, profileType, valEuro, ageNum, leagueTier, profileOverrides)) continue;
 
-          const urlHash = Buffer.from(url).toString("base64").replace(/[+/=]/g, "_").slice(0, 40);
+          const urlHash = hashPlayerUrl(url);
           if (rejectedUrlHashes.has(urlHash)) continue;
           const docId = `${agentId}_${urlHash}_${profileType}`;
           if (seen.has(docId)) continue;
@@ -748,7 +756,7 @@ async function runScoutAgent() {
           const profileOverrides = agentParams[profileType] || {};
           if (!matchesProfile(p, profileType, valEuro, ageNum, leagueTier, profileOverrides)) continue;
 
-          const urlHash = Buffer.from(url).toString("base64").replace(/[+/=]/g, "_").slice(0, 40);
+          const urlHash = hashPlayerUrl(url);
           if (rejectedUrlHashes.has(urlHash)) continue;
           const docId = `${agentId}_${urlHash}_${profileType}`;
           if (seen.has(docId)) continue;
@@ -852,7 +860,7 @@ async function runScoutAgent() {
           const profileOverrides = agentParams[profileType] || {};
           if (!matchesProfile(p, profileType, valEuro, ageNum, leagueTier, profileOverrides)) continue;
 
-          const urlHash = Buffer.from(url).toString("base64").replace(/[+/=]/g, "_").slice(0, 40);
+          const urlHash = hashPlayerUrl(url);
           if (rejectedUrlHashes.has(urlHash)) continue;
           const docId = `${agentId}_${urlHash}_${profileType}`;
           if (seen.has(docId)) continue;
@@ -956,7 +964,7 @@ async function runScoutAgent() {
           const profileOverrides = agentParams[profileType] || {};
           if (!matchesProfile(p, profileType, valEuro, ageNum, leagueTier, profileOverrides)) continue;
 
-          const urlHash = Buffer.from(url).toString("base64").replace(/[+/=]/g, "_").slice(0, 40);
+          const urlHash = hashPlayerUrl(url);
           if (rejectedUrlHashes.has(urlHash)) continue;
           const docId = `${agentId}_${urlHash}_${profileType}`;
           if (seen.has(docId)) continue;
@@ -1059,7 +1067,7 @@ async function runScoutAgent() {
           const profileOverrides = agentParams[profileType] || {};
           if (!matchesProfile(p, profileType, valEuro, ageNum, leagueTier, profileOverrides)) continue;
 
-          const urlHash = Buffer.from(url).toString("base64").replace(/[+/=]/g, "_").slice(0, 40);
+          const urlHash = hashPlayerUrl(url);
           if (rejectedUrlHashes.has(urlHash)) continue;
           const docId = `${agentId}_${urlHash}_${profileType}`;
           if (seen.has(docId)) continue;
@@ -1440,7 +1448,6 @@ async function runScoutAgent() {
             p._ageNum = ageNum;
             candidates.push(p);
           }
-
           if (candidates.length === 0) continue;
 
           // Enrich top candidates with real season stats from TM performance pages
@@ -1449,6 +1456,7 @@ async function runScoutAgent() {
           const enrichCount = await enrichWithTmStats(toEnrich);
           console.log(`[ScoutAgent] TM enriched ${enrichCount}/${toEnrich.length} players with season stats for ${agentId}`);
 
+          let agentFound = 0;
           for (const p of candidates) {
             const url = (p.url || "").trim();
             const valEuro = p._valEuro;
@@ -1461,7 +1469,7 @@ async function runScoutAgent() {
               const profileOverrides = agentParams[profileType] || {};
               if (!matchesProfile(p, profileType, valEuro, ageNum, leagueTier, profileOverrides)) continue;
 
-              const urlHash = Buffer.from(url).toString("base64").replace(/[+/=]/g, "_").slice(0, 40);
+              const urlHash = hashPlayerUrl(url);
               if (rejectedUrlHashes.has(urlHash)) continue;
               const docId = `${agentId}_${urlHash}_${profileType}`;
               if (seen.has(docId)) continue;
@@ -1479,6 +1487,7 @@ async function runScoutAgent() {
               const contribPer90 = fbrefMinutes90s > 0 ? (fbrefGoals + fbrefAssists) / fbrefMinutes90s : 0;
 
               tmFallbackFound++;
+              agentFound++;
               profilesToWrite.push({
                 docId,
                 data: {
@@ -1511,6 +1520,10 @@ async function runScoutAgent() {
                 },
               });
             }
+          }
+          if (agentFound === 0 && candidates.length > 0) {
+            const s = candidates[0];
+            console.log(`[ScoutAgent] TM ${agentId}: ${candidates.length} candidates but 0 matched — sample: age=${s._ageNum} val=${s._valEuro} pos=${s.position} minutes90s=${getMinutes90s(s)} contract=${s.contract}`);
           }
         } catch (err) {
           console.error(`[ScoutAgent] TM fallback error for ${agentId}: ${err.message}`);
@@ -1614,29 +1627,33 @@ async function runScoutAgent() {
 
   // ═══════════════════════════════════════════════════════════════
   // DELETE all old profiles before writing fresh batch
+  // SAFETY: Only clear when we have new profiles to write — prevents
+  // empty Firestore when external APIs are down
   // ═══════════════════════════════════════════════════════════════
-  const oldSnap = await profilesRef.get();
-  if (oldSnap.size > 0) {
-    const deleteBatches = [];
-    let delBatch = db.batch();
-    let delCount = 0;
-    for (const doc of oldSnap.docs) {
-      delBatch.delete(doc.ref);
-      delCount++;
-      if (delCount % 450 === 0) {
-        deleteBatches.push(delBatch);
-        delBatch = db.batch();
+  if (approvedProfiles.length === 0) {
+    console.log(`[ScoutAgent] ⚠ No approved profiles — keeping existing Firestore data intact`);
+  } else {
+    const oldSnap = await profilesRef.get();
+    if (oldSnap.size > 0) {
+      const deleteBatches = [];
+      let delBatch = db.batch();
+      let delCount = 0;
+      for (const doc of oldSnap.docs) {
+        delBatch.delete(doc.ref);
+        delCount++;
+        if (delCount % 450 === 0) {
+          deleteBatches.push(delBatch);
+          delBatch = db.batch();
+        }
       }
+      deleteBatches.push(delBatch);
+      for (const b of deleteBatches) {
+        await b.commit();
+      }
+      console.log(`[ScoutAgent] Cleared ${oldSnap.size} old profiles from Firestore`);
     }
-    deleteBatches.push(delBatch);
-    for (const b of deleteBatches) {
-      await b.commit();
-    }
-    console.log(`[ScoutAgent] Cleared ${oldSnap.size} old profiles from Firestore`);
-  }
 
-  // Write ONLY approved profiles to ScoutProfiles (fresh batch)
-  if (approvedProfiles.length > 0) {
+    // Write approved profiles to ScoutProfiles (fresh batch)
     const writeBatches = [];
     let wBatch = db.batch();
     let wCount = 0;
