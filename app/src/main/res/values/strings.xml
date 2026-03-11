@@ -1100,7 +1100,21 @@
     <string name="highlights_empty_title">No highlights yet</string>
     <string name="highlights_empty_subtitle">Search for highlight of %1$s (last 2 years)</string>
     <string name="highlights_results_count">%1$d videos</string>
+    <string name="highlights_pinned_count">%1$d pinned</string>
     <string name="highlights_video_content_desc">Open %1$s on %2$s</string>
+    <string name="highlights_replace_videos">Replace videos</string>
+    <string name="highlights_disclaimer">Highlights are fetched from YouTube &amp; Scorebat. Results may not always be accurate.</string>
+    <string name="highlights_select_up_to">Select up to 2 videos to pin on the player profile</string>
+    <string name="highlights_compilations">Compilations</string>
+    <string name="highlights_recent_matches">Recent Matches</string>
+    <string name="highlights_confirm_selection">Confirm Selection</string>
+    <string name="highlights_confirm_replacement">Confirm Replacement</string>
+    <string name="highlights_cancel">Cancel</string>
+    <string name="highlights_error">Failed to load highlights</string>
+
+    <!-- Share -->
+    <string name="player_info_share_include_player_contact">Include player contact</string>
+    <string name="player_info_share_include_agency_contact">Include agency contact</string>
 
     <!-- Player Info Accessibility -->
     <string name="player_info_cd_go_back">Go back</string>

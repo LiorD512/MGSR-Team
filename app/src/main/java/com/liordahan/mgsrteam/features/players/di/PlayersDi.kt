@@ -47,6 +47,7 @@ import com.liordahan.mgsrteam.features.players.filters.usecases.SetSortOptionUse
 import com.liordahan.mgsrteam.features.players.playerinfo.IPlayerInfoViewModel
 import com.liordahan.mgsrteam.features.players.playerinfo.PlayerInfoViewModel
 import com.liordahan.mgsrteam.features.players.playerinfo.ai.AiHelperService
+import com.liordahan.mgsrteam.features.players.playerinfo.highlights.HighlightsApiClient
 import com.liordahan.mgsrteam.features.players.playerinfo.documents.CloudVisionOcrProvider
 import com.liordahan.mgsrteam.features.players.playerinfo.documents.DocumentDetectionService
 import com.liordahan.mgsrteam.features.players.playerinfo.documents.GeminiPassportOcrProvider
@@ -92,7 +93,8 @@ val playersModule = module {
     single { GeminiPassportOcrProvider() }
     single { DocumentDetectionService(get<Context>(), get<CloudVisionOcrProvider>(), get<GeminiPassportOcrProvider>()) }
     single { PlayerOffersRepository(get()) } bind IPlayerOffersRepository::class
-    viewModel<IPlayerInfoViewModel> { PlayerInfoViewModel(get<Context>(), get(), get(), get(), get(), get(), get(), get(), get()) }
+    single { HighlightsApiClient() }
+    viewModel<IPlayerInfoViewModel> { PlayerInfoViewModel(get<Context>(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
     viewModel { GenerateMandateViewModel() }
 
     factory<IAddPositionFilterUseCase> {

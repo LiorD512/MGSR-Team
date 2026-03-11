@@ -94,7 +94,16 @@ abstract class IPlayerInfoViewModel : ViewModel() {
     abstract fun togglePlayerTaskCompleted(task: com.liordahan.mgsrteam.features.home.models.AgentTask)
     abstract fun updateClubFeedback(offerId: String, clubFeedback: String?)
     abstract fun updateHistorySummary(offerId: String, summary: String?)
-    abstract suspend fun createShareUrl(player: Player, playerDocId: String, documents: List<PlayerDocument>, scoutReport: String?, lang: String): Result<String>
+    abstract suspend fun createShareUrl(player: Player, playerDocId: String, documents: List<PlayerDocument>, scoutReport: String?, lang: String, includePlayerContact: Boolean = false, includeAgencyContact: Boolean = false): Result<String>
+
+    // ── Highlights ─────────────────────────────────────────────────
+    abstract val highlightVideosFlow: StateFlow<List<com.liordahan.mgsrteam.features.players.playerinfo.highlights.HighlightVideo>>
+    abstract val isHighlightsLoading: StateFlow<Boolean>
+    abstract val highlightsError: StateFlow<String?>
+    abstract val highlightsHasFetched: StateFlow<Boolean>
+    abstract val isHighlightsSaving: StateFlow<Boolean>
+    abstract fun searchHighlights(player: Player, refresh: Boolean = false)
+    abstract fun savePinnedHighlights(videos: List<com.liordahan.mgsrteam.features.players.playerinfo.highlights.HighlightVideo>)
 }
 
 
@@ -110,6 +119,7 @@ class PlayerInfoViewModel(
     private val requestsRepository: IRequestsRepository,
     private val offersRepository: IPlayerOffersRepository,
     private val platformManager: PlatformManager,
+    private val highlightsApiClient: com.liordahan.mgsrteam.features.players.playerinfo.highlights.HighlightsApiClient = com.liordahan.mgsrteam.features.players.playerinfo.highlights.HighlightsApiClient(),
 ) : IPlayerInfoViewModel() {
 
     private val _playerInfoFlow = MutableStateFlow<Player?>(null)
@@ -169,6 +179,22 @@ class PlayerInfoViewModel(
 
     private val _isScoutReportLoading = MutableStateFlow(false)
     override val isScoutReportLoading: StateFlow<Boolean> = _isScoutReportLoading
+
+    // ── Highlights ──────────────────────────────────────────────────
+    private val _highlightVideosFlow = MutableStateFlow<List<com.liordahan.mgsrteam.features.players.playerinfo.highlights.HighlightVideo>>(emptyList())
+    override val highlightVideosFlow: StateFlow<List<com.liordahan.mgsrteam.features.players.playerinfo.highlights.HighlightVideo>> = _highlightVideosFlow
+
+    private val _isHighlightsLoading = MutableStateFlow(false)
+    override val isHighlightsLoading: StateFlow<Boolean> = _isHighlightsLoading
+
+    private val _highlightsError = MutableStateFlow<String?>(null)
+    override val highlightsError: StateFlow<String?> = _highlightsError
+
+    private val _highlightsHasFetched = MutableStateFlow(false)
+    override val highlightsHasFetched: StateFlow<Boolean> = _highlightsHasFetched
+
+    private val _isHighlightsSaving = MutableStateFlow(false)
+    override val isHighlightsSaving: StateFlow<Boolean> = _isHighlightsSaving
 
     @OptIn(ExperimentalCoroutinesApi::class)
     override val matchingRequestsFlow: StateFlow<List<MatchingRequestUiState>> = combine(
@@ -876,12 +902,63 @@ class PlayerInfoViewModel(
         }
     }
 
+    // ── Highlights search & pin ─────────────────────────────────────────
+
+    override fun searchHighlights(player: Player, refresh: Boolean) {
+        val name = player.fullName ?: return
+        viewModelScope.launch {
+            _isHighlightsLoading.value = true
+            _highlightsError.value = null
+            try {
+                val response = highlightsApiClient.searchHighlights(
+                    playerName = name,
+                    teamName = player.currentClub?.clubName,
+                    position = player.positions?.firstOrNull(),
+                    refresh = refresh,
+                    parentClub = if (player.isOnLoan) player.onLoanFromClub else null,
+                    nationality = player.nationality,
+                    fullNameHe = player.fullNameHe,
+                    clubCountry = player.currentClub?.clubCountry
+                )
+                _highlightVideosFlow.value = response.videos
+                if (response.error != null) _highlightsError.value = response.error
+            } catch (e: Exception) {
+                Log.e(TAG, "searchHighlights failed", e)
+                _highlightsError.value = e.message
+            } finally {
+                _isHighlightsLoading.value = false
+                _highlightsHasFetched.value = true
+            }
+        }
+    }
+
+    override fun savePinnedHighlights(videos: List<com.liordahan.mgsrteam.features.players.playerinfo.highlights.HighlightVideo>) {
+        val docId = _playerDocumentIdFlow.value ?: return
+        viewModelScope.launch {
+            _isHighlightsSaving.value = true
+            try {
+                highlightsApiClient.savePinnedHighlights(
+                    playerId = docId,
+                    videos = videos,
+                    collection = firebaseHandler.playersTable
+                )
+                // Update local state — Firestore listener will update pinnedHighlights on the model
+            } catch (e: Exception) {
+                Log.e(TAG, "savePinnedHighlights failed", e)
+            } finally {
+                _isHighlightsSaving.value = false
+            }
+        }
+    }
+
     override suspend fun createShareUrl(
         player: Player,
         playerDocId: String,
         documents: List<PlayerDocument>,
         scoutReport: String?,
-        lang: String
+        lang: String,
+        includePlayerContact: Boolean,
+        includeAgencyContact: Boolean
     ): Result<String> = withContext(Dispatchers.IO) {
         try {
             val mandateDoc = documents
@@ -899,9 +976,7 @@ class PlayerInfoViewModel(
                 ?: player.getAgentPhoneNumber()
             val sharerName = currentAccount?.getDisplayName(appContext)?.takeIf { it.isNotBlank() }
 
-            val shareData = hashMapOf<String, Any?>(
-                "playerId" to playerDocId,
-                "player" to hashMapOf(
+            val playerMap = hashMapOf<String, Any?>(
                     "fullName" to player.fullName,
                     "fullNameHe" to player.fullNameHe,
                     "profileImage" to player.profileImage,
@@ -919,7 +994,21 @@ class PlayerInfoViewModel(
                     "nationality" to player.nationality,
                     "contractExpired" to player.contractExpired,
                     "tmProfile" to player.tmProfile
-                ),
+                )
+            if (includePlayerContact) {
+                val playerPhone = player.playerAdditionalInfoModel?.playerNumber?.takeIf { it.isNotBlank() }
+                    ?: player.playerPhoneNumber?.takeIf { it.isNotBlank() }
+                if (playerPhone != null) playerMap["playerPhoneNumber"] = playerPhone
+            }
+            if (includeAgencyContact) {
+                val agentPhone = player.playerAdditionalInfoModel?.agentNumber?.takeIf { it.isNotBlank() }
+                    ?: player.agentPhoneNumber?.takeIf { it.isNotBlank() }
+                if (agentPhone != null) playerMap["agentPhoneNumber"] = agentPhone
+            }
+
+            val shareData = hashMapOf<String, Any?>(
+                "playerId" to playerDocId,
+                "player" to playerMap,
                 "mandateInfo" to hashMapOf(
                     "hasMandate" to hasValidMandate,
                     "expiresAt" to mandateExpiry

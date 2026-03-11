@@ -1032,7 +1032,21 @@
     <string name="highlights_empty_title">אין היילייטס עדיין</string>
     <string name="highlights_empty_subtitle">חפש היילייטס של %1$s (שנתיים אחרונות)</string>
     <string name="highlights_results_count">%1$d סרטונים</string>
+    <string name="highlights_pinned_count">%1$d מוצמדים</string>
     <string name="highlights_video_content_desc">פתח %1$s ב-%2$s</string>
+    <string name="highlights_replace_videos">החלף סרטונים</string>
+    <string name="highlights_disclaimer">היילייטס נטענים מ-YouTube ו-Scorebat. התוצאות לא תמיד מדויקות.</string>
+    <string name="highlights_select_up_to">בחר עד 2 סרטונים להצמדה בפרופיל השחקן</string>
+    <string name="highlights_compilations">קומפילציות</string>
+    <string name="highlights_recent_matches">משחקים אחרונים</string>
+    <string name="highlights_confirm_selection">אשר בחירה</string>
+    <string name="highlights_confirm_replacement">אשר החלפה</string>
+    <string name="highlights_cancel">ביטול</string>
+    <string name="highlights_error">שגיאה בטעינת היילייטס</string>
+
+    <!-- Share -->
+    <string name="player_info_share_include_player_contact">כלול טלפון שחקן</string>
+    <string name="player_info_share_include_agency_contact">כלול טלפון סוכן</string>
 
     <!-- AI Scout -->
     <string name="quick_action_ai_scout">AI Scout</string>

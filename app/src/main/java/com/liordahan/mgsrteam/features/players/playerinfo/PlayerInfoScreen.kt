@@ -173,6 +173,7 @@ import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.koinInject
 import com.liordahan.mgsrteam.features.platform.Platform
 import com.liordahan.mgsrteam.features.platform.PlatformManager
+import com.liordahan.mgsrteam.features.players.playerinfo.highlights.PlayerHighlightsSection
 import com.liordahan.mgsrteam.utils.EuCountries
 import com.liordahan.mgsrteam.ui.components.WomenGlowPhotoRing
 import com.liordahan.mgsrteam.ui.components.WomenSectionHeader
@@ -287,6 +288,8 @@ fun PlayerInfoScreen(
     var showDeleteDialog by remember { mutableStateOf(false) }
     var showSalaryTransferFeeSheet by remember { mutableStateOf(false) }
     var showShareLanguageSheet by remember { mutableStateOf(false) }
+    var includePlayerContact by remember { mutableStateOf(false) }
+    var includeAgencyContact by remember { mutableStateOf(false) }
     var showAddNoteSheet by remember { mutableStateOf(false) }
     var showAllNotes by remember { mutableStateOf(false) }
     var showAddPlayerTaskSheet by remember { mutableStateOf(false) }
@@ -295,6 +298,11 @@ fun PlayerInfoScreen(
     var allAccounts by remember { mutableStateOf<List<com.liordahan.mgsrteam.features.login.models.Account>>(emptyList()) }
     var documentsList by remember { mutableStateOf<List<PlayerDocument>>(emptyList()) }
     val scoutReport by viewModel.scoutReportFlow.collectAsState()
+    val highlightVideos by viewModel.highlightVideosFlow.collectAsState()
+    val isHighlightsLoading by viewModel.isHighlightsLoading.collectAsState()
+    val highlightsError by viewModel.highlightsError.collectAsState()
+    val highlightsHasFetched by viewModel.highlightsHasFetched.collectAsState()
+    val isHighlightsSaving by viewModel.isHighlightsSaving.collectAsState()
     val scope = rememberCoroutineScope()
     var docToDelete by remember { mutableStateOf<PlayerDocument?>(null) }
     var isUploadingDocument by remember { mutableStateOf(false) }
@@ -483,10 +491,19 @@ fun PlayerInfoScreen(
             val docId = playerDocumentId
             if (player == null || docId == null) return
             scope.launch {
-                viewModel.createShareUrl(player, docId, documentsList, scoutReport, lang)
+                viewModel.createShareUrl(player, docId, documentsList, scoutReport, lang, includePlayerContact, includeAgencyContact)
                     .onSuccess { url ->
                         showShareLanguageSheet = false
-                        val shareText = "${player.fullName ?: ""}\n$url"
+                        val displayName = if (lang == "he") {
+                            player.fullNameHe ?: player.fullName ?: ""
+                        } else {
+                            player.fullName ?: player.fullNameHe ?: ""
+                        }
+                        val shareText = if (lang == "he") {
+                            "פרופיל חדש נשלח אלייך מ - MGSR.\n$displayName\n$url"
+                        } else {
+                            "A new profile sent to you by MGSR.\n$displayName\n$url"
+                        }
                         val intent = Intent(Intent.ACTION_SEND).apply {
                             type = "text/plain"
                             putExtra(Intent.EXTRA_TEXT, shareText)
@@ -500,8 +517,22 @@ fun PlayerInfoScreen(
             }
         }
         if (showShareLanguageSheet) {
+            val hasPlayerPhone = (playerToPresent?.playerAdditionalInfoModel?.playerNumber?.takeIf { it.isNotBlank() }
+                ?: playerToPresent?.playerPhoneNumber?.takeIf { it.isNotBlank() }) != null
+            val hasAgentPhone = (playerToPresent?.playerAdditionalInfoModel?.agentNumber?.takeIf { it.isNotBlank() }
+                ?: playerToPresent?.agentPhoneNumber?.takeIf { it.isNotBlank() }) != null
             ShareLanguageBottomSheet(
-                onDismiss = { showShareLanguageSheet = false },
+                hasPlayerPhone = hasPlayerPhone,
+                hasAgentPhone = hasAgentPhone,
+                includePlayerContact = includePlayerContact,
+                includeAgencyContact = includeAgencyContact,
+                onIncludePlayerContactChanged = { includePlayerContact = it },
+                onIncludeAgencyContactChanged = { includeAgencyContact = it },
+                onDismiss = {
+                    showShareLanguageSheet = false
+                    includePlayerContact = false
+                    includeAgencyContact = false
+                },
                 onLangSelected = { performShare(it) }
             )
         }
@@ -607,6 +638,23 @@ fun PlayerInfoScreen(
                     PlayerInfoAiHelperSection(
                         player = player,
                         viewModel = viewModel
+                    )
+                }
+            }
+
+            // Section: Highlights (men only)
+            if (currentPlatform == Platform.MEN) {
+                playerToPresent?.let { player ->
+                    PlayerInfoSectionHeader(stringResource(R.string.player_info_highlights))
+                    PlayerHighlightsSection(
+                        pinnedHighlights = player.pinnedHighlights ?: emptyList(),
+                        videos = highlightVideos,
+                        isLoading = isHighlightsLoading,
+                        error = highlightsError,
+                        hasFetched = highlightsHasFetched,
+                        onSearch = { refresh -> viewModel.searchHighlights(player, refresh) },
+                        onSavePinned = { videos -> viewModel.savePinnedHighlights(videos) },
+                        isSaving = isHighlightsSaving
                     )
                 }
             }
@@ -931,6 +979,12 @@ fun PlayerInfoScreen(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ShareLanguageBottomSheet(
+    hasPlayerPhone: Boolean,
+    hasAgentPhone: Boolean,
+    includePlayerContact: Boolean,
+    includeAgencyContact: Boolean,
+    onIncludePlayerContactChanged: (Boolean) -> Unit,
+    onIncludeAgencyContactChanged: (Boolean) -> Unit,
     onDismiss: () -> Unit,
     onLangSelected: (lang: String) -> Unit
 ) {
@@ -962,8 +1016,53 @@ private fun ShareLanguageBottomSheet(
             Text(
                 text = stringResource(R.string.player_info_share_language_subtitle),
                 style = regularTextStyle(PlatformColors.palette.textSecondary, 14.sp),
-                modifier = Modifier.padding(bottom = 20.dp)
+                modifier = Modifier.padding(bottom = 16.dp)
             )
+
+            // Contact inclusion checkboxes
+            if (hasPlayerPhone || hasAgentPhone) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(bottom = 16.dp)) {
+                    if (hasPlayerPhone) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.clickable { onIncludePlayerContactChanged(!includePlayerContact) }
+                        ) {
+                            Checkbox(
+                                checked = includePlayerContact,
+                                onCheckedChange = { onIncludePlayerContactChanged(it) },
+                                colors = CheckboxDefaults.colors(
+                                    checkedColor = PlatformColors.palette.accent,
+                                    uncheckedColor = PlatformColors.palette.textSecondary
+                                )
+                            )
+                            Text(
+                                text = stringResource(R.string.player_info_share_include_player_contact),
+                                style = regularTextStyle(PlatformColors.palette.textPrimary, 14.sp)
+                            )
+                        }
+                    }
+                    if (hasAgentPhone) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.clickable { onIncludeAgencyContactChanged(!includeAgencyContact) }
+                        ) {
+                            Checkbox(
+                                checked = includeAgencyContact,
+                                onCheckedChange = { onIncludeAgencyContactChanged(it) },
+                                colors = CheckboxDefaults.colors(
+                                    checkedColor = PlatformColors.palette.accent,
+                                    uncheckedColor = PlatformColors.palette.textSecondary
+                                )
+                            )
+                            Text(
+                                text = stringResource(R.string.player_info_share_include_agency_contact),
+                                style = regularTextStyle(PlatformColors.palette.textPrimary, 14.sp)
+                            )
+                        }
+                    }
+                }
+            }
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
