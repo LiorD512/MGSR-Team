@@ -974,6 +974,8 @@
     <string name="back">Back</string>
     <string name="player_info_previously">Previously: %1$s (%2$s)</string>
     <string name="player_info_added_by">Added by — %s</string>
+    <string name="player_info_added_on">Added %s</string>
+    <string name="player_info_date_added">Date Added</string>
     <string name="player_info_contract">Contract %s</string>
     <string name="player_info_mandate">Mandate</string>
     <string name="player_info_mandate_expires">Mandate expires %s</string>

@@ -892,6 +892,8 @@
     <string name="back">חזור</string>
     <string name="player_info_previously">קודם: %1$s (%2$s)</string>
     <string name="player_info_added_by">נוסף על ידי — %s</string>
+    <string name="player_info_added_on">נוסף %s</string>
+    <string name="player_info_date_added">תאריך הוספה</string>
     <string name="player_info_contract">חוזה %s</string>
     <string name="player_info_mandate">מנדט</string>
     <string name="player_info_mandate_expires">תוקף מנדט: %s</string>

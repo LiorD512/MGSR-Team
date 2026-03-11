@@ -1819,6 +1819,19 @@ private fun PlayerCardVariantA(
                             contentColor = PlatformColors.palette.accent
                         )
                     }
+
+                    // Date added badge — men only
+                    if (platform == Platform.MEN && (player.createdAt ?: 0L) > 0L) {
+                        PlayerBadge(
+                            icon = Icons.Filled.CalendarMonth,
+                            text = stringResource(
+                                R.string.player_info_added_on,
+                                java.text.SimpleDateFormat("dd MMM yyyy", java.util.Locale.getDefault()).format(java.util.Date(player.createdAt!!))
+                            ),
+                            backgroundColor = Color.White.copy(alpha = 0.05f),
+                            contentColor = PlatformColors.palette.textSecondary
+                        )
+                    }
                 }
         }
         }

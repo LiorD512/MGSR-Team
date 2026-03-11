@@ -793,6 +793,28 @@ fun PlayerInfoScreen(
                         } else null
                     )
 
+                    // Date added row — men only
+                    if (currentPlatform == Platform.MEN && (playerToPresent?.createdAt ?: 0L) > 0L) {
+                        HorizontalDivider(
+                            color = dividerColor,
+                            thickness = 0.5.dp,
+                            modifier = Modifier.padding(vertical = 8.dp)
+                        )
+                        InfoRow(
+                            stringResource(R.string.player_info_date_added),
+                            java.text.SimpleDateFormat("dd MMM yyyy", java.util.Locale.getDefault()).format(java.util.Date(playerToPresent!!.createdAt!!)),
+                            darkTheme = true,
+                            icon = {
+                                Icon(
+                                    modifier = Modifier.size(24.dp),
+                                    imageVector = Icons.Default.CalendarMonth,
+                                    contentDescription = null,
+                                    tint = PlatformColors.palette.textSecondary
+                                )
+                            }
+                        )
+                    }
+
                     HorizontalDivider(
                         color = dividerColor,
                         thickness = 0.5.dp,
@@ -1255,6 +1277,16 @@ private fun PlayerInfoHeroCard(
                 text = stringResource(R.string.player_info_added_by, player.agentInChargeName ?: "—"),
                 style = regularTextStyle(PlatformColors.palette.textSecondary.copy(alpha = 0.8f), 11.sp)
             )
+            if (currentPlatform == Platform.MEN && (player.createdAt ?: 0L) > 0L) {
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    text = stringResource(
+                        R.string.player_info_added_on,
+                        java.text.SimpleDateFormat("dd MMM yyyy", java.util.Locale.getDefault()).format(java.util.Date(player.createdAt!!))
+                    ),
+                    style = regularTextStyle(PlatformColors.palette.textSecondary.copy(alpha = 0.6f), 11.sp)
+                )
+            }
             player.lastRefreshedAt?.takeIf { it > 0 }?.let { ts ->
                 Spacer(Modifier.height(4.dp))
                 Text(
