@@ -575,17 +575,27 @@ async function runScoutAgent() {
   }
   console.log(`[ScoutAgent] Excluding ${excludeUrls.size} already-shown URLs`);
 
-  // Exclude profiles thumbs-downed by users
+  // Exclude profiles thumbs-downed by users — block the ENTIRE player (all profile types)
+  // DocId format: agentId_<40-char-urlHash>_profileType — agentIds have no underscores
   const rejectedProfileIds = new Set();
+  const rejectedUrlHashes = new Set();
   const feedbackSnap = await db.collection("ScoutProfileFeedback").get();
   for (const doc of feedbackSnap.docs) {
     const fb = doc.data().feedback || {};
     for (const [profileId, val] of Object.entries(fb)) {
       const f = typeof val === "object" && val?.feedback ? val.feedback : val;
-      if (f === "down") rejectedProfileIds.add(profileId);
+      if (f === "down") {
+        rejectedProfileIds.add(profileId);
+        // Extract the 40-char URL hash from the docId to block ALL profile types for this player
+        const firstUnderscore = profileId.indexOf("_");
+        if (firstUnderscore >= 0) {
+          const hash = profileId.substring(firstUnderscore + 1, firstUnderscore + 41);
+          if (hash.length === 40) rejectedUrlHashes.add(hash);
+        }
+      }
     }
   }
-  console.log(`[ScoutAgent] Excluding ${rejectedProfileIds.size} thumbs-downed profiles`);
+  console.log(`[ScoutAgent] Excluding ${rejectedProfileIds.size} thumbs-downed profiles (${rejectedUrlHashes.size} unique player URL hashes)`);
 
   // Randomize sort_by each run for maximum diversity
   const sortBy = SORT_OPTIONS[Math.floor(Math.random() * SORT_OPTIONS.length)];
@@ -639,6 +649,7 @@ async function runScoutAgent() {
           if (!matchesProfile(p, profileType, valEuro, ageNum, leagueTier, profileOverrides)) continue;
 
           const urlHash = Buffer.from(url).toString("base64").replace(/[+/=]/g, "_").slice(0, 40);
+          if (rejectedUrlHashes.has(urlHash)) continue;
           const docId = `${agentId}_${urlHash}_${profileType}`;
           if (seen.has(docId)) continue;
           if (rejectedProfileIds.has(docId)) continue;
@@ -738,6 +749,7 @@ async function runScoutAgent() {
           if (!matchesProfile(p, profileType, valEuro, ageNum, leagueTier, profileOverrides)) continue;
 
           const urlHash = Buffer.from(url).toString("base64").replace(/[+/=]/g, "_").slice(0, 40);
+          if (rejectedUrlHashes.has(urlHash)) continue;
           const docId = `${agentId}_${urlHash}_${profileType}`;
           if (seen.has(docId)) continue;
           if (rejectedProfileIds.has(docId)) continue;
@@ -841,6 +853,7 @@ async function runScoutAgent() {
           if (!matchesProfile(p, profileType, valEuro, ageNum, leagueTier, profileOverrides)) continue;
 
           const urlHash = Buffer.from(url).toString("base64").replace(/[+/=]/g, "_").slice(0, 40);
+          if (rejectedUrlHashes.has(urlHash)) continue;
           const docId = `${agentId}_${urlHash}_${profileType}`;
           if (seen.has(docId)) continue;
           if (rejectedProfileIds.has(docId)) continue;
@@ -944,6 +957,7 @@ async function runScoutAgent() {
           if (!matchesProfile(p, profileType, valEuro, ageNum, leagueTier, profileOverrides)) continue;
 
           const urlHash = Buffer.from(url).toString("base64").replace(/[+/=]/g, "_").slice(0, 40);
+          if (rejectedUrlHashes.has(urlHash)) continue;
           const docId = `${agentId}_${urlHash}_${profileType}`;
           if (seen.has(docId)) continue;
           if (rejectedProfileIds.has(docId)) continue;
@@ -1046,6 +1060,7 @@ async function runScoutAgent() {
           if (!matchesProfile(p, profileType, valEuro, ageNum, leagueTier, profileOverrides)) continue;
 
           const urlHash = Buffer.from(url).toString("base64").replace(/[+/=]/g, "_").slice(0, 40);
+          if (rejectedUrlHashes.has(urlHash)) continue;
           const docId = `${agentId}_${urlHash}_${profileType}`;
           if (seen.has(docId)) continue;
           if (rejectedProfileIds.has(docId)) continue;
@@ -1447,6 +1462,7 @@ async function runScoutAgent() {
               if (!matchesProfile(p, profileType, valEuro, ageNum, leagueTier, profileOverrides)) continue;
 
               const urlHash = Buffer.from(url).toString("base64").replace(/[+/=]/g, "_").slice(0, 40);
+              if (rejectedUrlHashes.has(urlHash)) continue;
               const docId = `${agentId}_${urlHash}_${profileType}`;
               if (seen.has(docId)) continue;
               if (rejectedProfileIds.has(docId)) continue;
@@ -1521,6 +1537,29 @@ async function runScoutAgent() {
   if (belowTarget.length > 0) {
     console.log(`[ScoutAgent] BELOW_TARGET (< ${MIN_TARGET} profiles): ${belowTarget.map((id) => `${id}=${finalAgentCounts.get(id) || 0}`).join(", ")}`);
   }
+
+  // ═══════════════════════════════════════════════════════════════
+  // Club Diversity — max 2 players per club per agent, shuffle first
+  // ═══════════════════════════════════════════════════════════════
+  // Shuffle to randomize which players survive the cap
+  for (let i = profilesToWrite.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [profilesToWrite[i], profilesToWrite[j]] = [profilesToWrite[j], profilesToWrite[i]];
+  }
+  const MAX_PER_CLUB_PER_AGENT = 2;
+  const clubCountByAgent = new Map();
+  const diverseProfiles = [];
+  for (const profile of profilesToWrite) {
+    const key = `${profile.data.agentId}::${(profile.data.club || "").toLowerCase()}`;
+    const count = clubCountByAgent.get(key) || 0;
+    if (count >= MAX_PER_CLUB_PER_AGENT) continue;
+    clubCountByAgent.set(key, count + 1);
+    diverseProfiles.push(profile);
+  }
+  const clubCulled = profilesToWrite.length - diverseProfiles.length;
+  if (clubCulled > 0) console.log(`[ScoutAgent] Club diversity: removed ${clubCulled} same-club duplicates`);
+  profilesToWrite.length = 0;
+  profilesToWrite.push(...diverseProfiles);
 
   // ═══════════════════════════════════════════════════════════════
   // Sport Director Review — quality gate before Firestore
