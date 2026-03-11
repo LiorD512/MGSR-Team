@@ -1266,6 +1266,15 @@
     <string name="war_room_agent_uruguay">אורוגוואי</string>
     <string name="war_room_agent_ecuador">אקוואדור</string>
     <string name="war_room_agent_peru">פרו</string>
+    <string name="war_room_agent_cyprus">קפריסין</string>
+    <string name="war_room_agent_slovakia">סלובקיה</string>
+    <string name="war_room_agent_azerbaijan">אזרבייג\'ן</string>
+    <string name="war_room_agent_kazakhstan">קזחסטן</string>
+    <string name="war_room_agent_morocco">מרוקו</string>
+    <string name="war_room_agent_norway">נורווגיה</string>
+    <string name="war_room_agent_usa">ארה\"ב</string>
+    <string name="war_room_agent_finland">פינלנד</string>
+    <string name="war_room_agent_mexico">מקסיקו</string>
 
     <!-- Platform Switcher -->
     <string name="platform_men">גברים</string>

@@ -1144,13 +1144,20 @@ private fun AgentsTab(state: WarRoomUiState, viewModel: IWarRoomViewModel, navCo
     }
     val groupedProfiles = filteredScoutProfiles.groupBy { it.agentId to it.agentName }
     val uniqueAgents = groupedProfiles.keys.toList()
+    val isHebrew = Locale.getDefault().language.let { it == "iw" || it == "he" }
 
-    val agentDisplayNames = remember(uniqueAgents, state.scoutProfiles) {
+    val agentDisplayNames = remember(uniqueAgents, state.scoutProfiles, isHebrew) {
         uniqueAgents.associate { (agentId, agentName) ->
             val key = agentId to agentName
-            val resKey = "war_room_agent_${agentName.lowercase().replace(" ", "_")}"
-            val resId = context.resources.getIdentifier(resKey, "string", context.packageName)
-            val displayName = if (resId != 0) context.getString(resId) else agentName
+            // Prefer agentNameHe from the API when in Hebrew (always up-to-date with backend)
+            val hebrewName = if (isHebrew) {
+                groupedProfiles[key]?.firstOrNull()?.agentNameHe?.takeIf { it.isNotBlank() }
+            } else null
+            val displayName = hebrewName ?: run {
+                val resKey = "war_room_agent_${agentName.lowercase().replace(" ", "_")}"
+                val resId = context.resources.getIdentifier(resKey, "string", context.packageName)
+                if (resId != 0) context.getString(resId) else agentName
+            }
             key to displayName
         }
     }

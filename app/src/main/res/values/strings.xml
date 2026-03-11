@@ -1353,6 +1353,15 @@
     <string name="war_room_agent_uruguay">Uruguay</string>
     <string name="war_room_agent_ecuador">Ecuador</string>
     <string name="war_room_agent_peru">Peru</string>
+    <string name="war_room_agent_cyprus">Cyprus</string>
+    <string name="war_room_agent_slovakia">Slovakia</string>
+    <string name="war_room_agent_azerbaijan">Azerbaijan</string>
+    <string name="war_room_agent_kazakhstan">Kazakhstan</string>
+    <string name="war_room_agent_morocco">Morocco</string>
+    <string name="war_room_agent_norway">Norway</string>
+    <string name="war_room_agent_usa">USA</string>
+    <string name="war_room_agent_finland">Finland</string>
+    <string name="war_room_agent_mexico">Mexico</string>
 
     <!-- EU National -->
     <string name="eu_nat_badge">EU</string>
