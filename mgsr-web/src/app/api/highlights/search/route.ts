@@ -23,6 +23,7 @@ import YouTube from 'youtube-sr';
 import ytsr from '@distube/ytsr';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 60; // seconds — extend Vercel function timeout for YouTube scraping
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                             */
@@ -285,11 +286,11 @@ async function youtubeSrSearch(query: string): Promise<HighlightVideo[]> {
   
   for (const q of attempts) {
     try {
-      // Race against a 12s timeout to prevent hanging
+      // Race against an 8s timeout to prevent hanging
       const result = await Promise.race([
         YouTube.search(q, { limit: 15, type: 'video' }),
         new Promise<null>((_, reject) =>
-          setTimeout(() => reject(new Error('youtube-sr timeout')), 12000)
+          setTimeout(() => reject(new Error('youtube-sr timeout')), 8000)
         ),
       ]);
       
@@ -349,7 +350,7 @@ async function ytsrSearch(query: string, hl?: string): Promise<HighlightVideo[]>
         hl: hl || 'en',
       }),
       new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('ytsr timeout')), 12000)
+        setTimeout(() => reject(new Error('ytsr timeout')), 8000)
       ),
     ]);
     const items = (result as { items?: Array<{ id?: string; name?: string; thumbnail?: string; views?: number; duration?: string; author?: { name?: string } }> }).items || [];
@@ -829,39 +830,73 @@ async function searchYouTube(
       cleanTeam ? `${playerName} ${cleanTeam} highlights ${posLabel}` : `${playerName} highlights ${posLabel}`,
       `${playerName} highlights`,
     ];
-    for (const q of apiQueries) {
-      const raw = await youtubeApiPrimary(q, relLang);
-      if (raw.length > 0) {
-        const filtered = filterHighlightVideos(raw, playerName, filterTeam);
+    // Run API queries in parallel
+    const apiResults = await Promise.allSettled(apiQueries.map(q => youtubeApiPrimary(q, relLang)));
+    for (const r of apiResults) {
+      if (r.status === 'fulfilled' && r.value.length > 0) {
+        const filtered = filterHighlightVideos(r.value, playerName, filterTeam);
         allResults = dedupeVideos([...allResults, ...filtered]);
-        if (allResults.length >= TARGET_RESULTS) break;
       }
     }
   }
 
-  // --- Phase A: team-specific tiers (scraper) ---
-  for (const tier of teamTiers) {
-    if (allResults.length >= TARGET_RESULTS) break;
-    try {
-      const raw = await scraperSearch(tier.query, hl);
-      if (raw.length > 0) scraperWorked = true;
-      const filtered = filterHighlightVideos(raw, playerName, filterTeam);
-      allResults = dedupeVideos([...allResults, ...filtered]);
-    } catch (err) {
-      console.error(`[highlights] ${tier.label} error:`, err);
+  // --- Phase A: team-specific tiers (scraper) — run top 3 in parallel ---
+  if (allResults.length < TARGET_RESULTS && teamTiers.length > 0) {
+    const batch = teamTiers.slice(0, 3);
+    const results = await Promise.allSettled(
+      batch.map(tier => scraperSearch(tier.query, hl).catch(err => {
+        console.error(`[highlights] ${tier.label} error:`, err);
+        return [] as HighlightVideo[];
+      }))
+    );
+    for (const r of results) {
+      if (r.status === 'fulfilled' && r.value.length > 0) {
+        scraperWorked = true;
+        const filtered = filterHighlightVideos(r.value, playerName, filterTeam);
+        allResults = dedupeVideos([...allResults, ...filtered]);
+      }
+    }
+    // Run remaining team tiers only if still not enough
+    for (const tier of teamTiers.slice(3)) {
+      if (allResults.length >= TARGET_RESULTS) break;
+      try {
+        const raw = await scraperSearch(tier.query, hl);
+        if (raw.length > 0) scraperWorked = true;
+        const filtered = filterHighlightVideos(raw, playerName, filterTeam);
+        allResults = dedupeVideos([...allResults, ...filtered]);
+      } catch (err) {
+        console.error(`[highlights] ${tier.label} error:`, err);
+      }
     }
   }
 
-  // --- Phase B: broader tiers — stop when enough, skip if we have MIN_ACCEPTABLE_RESULTS from Phase A ---
-  for (const tier of broadTiers) {
-    if (allResults.length >= TARGET_RESULTS) break;
-    try {
-      const raw = await scraperSearch(tier.query, hl);
-      if (raw.length > 0) scraperWorked = true;
-      const filtered = filterHighlightVideos(raw, playerName, filterTeam);
-      allResults = dedupeVideos([...allResults, ...filtered]);
-    } catch (err) {
-      console.error(`[highlights] ${tier.label} error:`, err);
+  // --- Phase B: broader tiers — run top 3 in parallel, stop early if enough ---
+  if (allResults.length < TARGET_RESULTS) {
+    const batch = broadTiers.slice(0, 3);
+    const results = await Promise.allSettled(
+      batch.map(tier => scraperSearch(tier.query, hl).catch(err => {
+        console.error(`[highlights] ${tier.label} error:`, err);
+        return [] as HighlightVideo[];
+      }))
+    );
+    for (const r of results) {
+      if (r.status === 'fulfilled' && r.value.length > 0) {
+        scraperWorked = true;
+        const filtered = filterHighlightVideos(r.value, playerName, filterTeam);
+        allResults = dedupeVideos([...allResults, ...filtered]);
+      }
+    }
+    // Run remaining broad tiers only if still not enough
+    for (const tier of broadTiers.slice(3)) {
+      if (allResults.length >= TARGET_RESULTS) break;
+      try {
+        const raw = await scraperSearch(tier.query, hl);
+        if (raw.length > 0) scraperWorked = true;
+        const filtered = filterHighlightVideos(raw, playerName, filterTeam);
+        allResults = dedupeVideos([...allResults, ...filtered]);
+      } catch (err) {
+        console.error(`[highlights] ${tier.label} error:`, err);
+      }
     }
   }
 
@@ -873,16 +908,15 @@ async function searchYouTube(
       `${playerName} highlights`,
       cleanParentClub ? `${playerName} ${cleanParentClub} highlights` : null,
     ].filter(Boolean) as string[];
-    for (const fallbackQuery of fallbackQueries) {
-      try {
-        const raw = await youtubeApiFallback(fallbackQuery);
-        if (raw.length > 0) {
-          const filtered = filterHighlightVideos(raw, playerName, filterTeam);
-          allResults = dedupeVideos([...allResults, ...filtered]);
-          break;
-        }
-      } catch (err) {
-        console.error('[highlights] YouTube API fallback failed:', fallbackQuery, err);
+    // Run fallback queries in parallel
+    const fallbackResults = await Promise.allSettled(
+      fallbackQueries.map(q => youtubeApiFallback(q))
+    );
+    for (const r of fallbackResults) {
+      if (r.status === 'fulfilled' && r.value.length > 0) {
+        const filtered = filterHighlightVideos(r.value, playerName, filterTeam);
+        allResults = dedupeVideos([...allResults, ...filtered]);
+        if (allResults.length >= MIN_ACCEPTABLE_RESULTS) break;
       }
     }
   }
@@ -999,19 +1033,33 @@ export async function GET(request: NextRequest) {
       console.log(`[highlights] Force refresh for: ${playerName}`);
     }
 
-    // 2. Fetch from both sources in parallel
-    const [youtubeVideos, scorebatVideos] = await Promise.all([
-      searchYouTube(
-        playerName,
-        position || undefined,
-        teamName || undefined,
-        parentClub || undefined,
-        nationality || undefined,
-        fullNameHe || undefined,
-        clubCountry || undefined,
-      ),
-      searchScorebat(teamName),
-    ]);
+    // 2. Fetch from both sources with a 45s overall timeout
+    //    This ensures we return partial results rather than timing out entirely.
+    let youtubeVideos: HighlightVideo[] = [];
+    let scorebatVideos: HighlightVideo[] = [];
+    try {
+      const searchResult = await Promise.race([
+        Promise.all([
+          searchYouTube(
+            playerName,
+            position || undefined,
+            teamName || undefined,
+            parentClub || undefined,
+            nationality || undefined,
+            fullNameHe || undefined,
+            clubCountry || undefined,
+          ),
+          searchScorebat(teamName),
+        ]),
+        new Promise<[HighlightVideo[], HighlightVideo[]]>((_, reject) =>
+          setTimeout(() => reject(new Error('overall-timeout')), 45000)
+        ),
+      ]);
+      [youtubeVideos, scorebatVideos] = searchResult;
+    } catch (timeoutErr) {
+      console.warn('[highlights] Overall search timed out for:', playerName);
+      // Return empty result on timeout — will retry on next request
+    }
 
     const sources: string[] = [];
     if (youtubeVideos.length > 0) sources.push('youtube');
