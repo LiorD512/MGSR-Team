@@ -174,6 +174,7 @@ import org.koin.compose.koinInject
 import com.liordahan.mgsrteam.features.platform.Platform
 import com.liordahan.mgsrteam.features.platform.PlatformManager
 import com.liordahan.mgsrteam.features.players.playerinfo.highlights.PlayerHighlightsSection
+import com.liordahan.mgsrteam.features.players.playerinfo.fmintelligence.FmIntelligenceSection
 import com.liordahan.mgsrteam.utils.EuCountries
 import com.liordahan.mgsrteam.ui.components.WomenGlowPhotoRing
 import com.liordahan.mgsrteam.ui.components.WomenSectionHeader
@@ -303,6 +304,9 @@ fun PlayerInfoScreen(
     val highlightsError by viewModel.highlightsError.collectAsState()
     val highlightsHasFetched by viewModel.highlightsHasFetched.collectAsState()
     val isHighlightsSaving by viewModel.isHighlightsSaving.collectAsState()
+    val fmIntelligenceData by viewModel.fmIntelligenceFlow.collectAsState()
+    val isFmIntelligenceLoading by viewModel.isFmIntelligenceLoading.collectAsState()
+    val fmIntelligenceError by viewModel.fmIntelligenceError.collectAsState()
     val scope = rememberCoroutineScope()
     var docToDelete by remember { mutableStateOf<PlayerDocument?>(null) }
     var isUploadingDocument by remember { mutableStateOf(false) }
@@ -655,6 +659,20 @@ fun PlayerInfoScreen(
                         onSearch = { refresh -> viewModel.searchHighlights(player, refresh) },
                         onSavePinned = { videos -> viewModel.savePinnedHighlights(videos) },
                         isSaving = isHighlightsSaving
+                    )
+                }
+            }
+
+            // Section: FM Intelligence (men only)
+            if (currentPlatform == Platform.MEN) {
+                playerToPresent?.let { player ->
+                    LaunchedEffect(player.fullName) {
+                        viewModel.fetchFmIntelligence(player)
+                    }
+                    FmIntelligenceSection(
+                        data = fmIntelligenceData,
+                        isLoading = isFmIntelligenceLoading,
+                        error = fmIntelligenceError
                     )
                 }
             }

@@ -144,6 +144,30 @@ class ScoutApiClient(private val baseUrl: String = DEFAULT_BASE_URL) {
 
     // ── private helpers ──
 
+    /**
+     * Fetch FM Intelligence data for a player.
+     * Calls /fm_intelligence?player_name=...&club=...&age=...
+     * Returns null if no data is found.
+     */
+    suspend fun getFmIntelligence(
+        playerName: String,
+        club: String? = null,
+        age: String? = null
+    ): JSONObject? = try {
+        val params = buildList {
+            add("player_name=${encode(playerName)}")
+            club?.takeIf { it.isNotBlank() }?.let { add("club=${encode(it)}") }
+            age?.takeIf { it.isNotBlank() }?.let { add("age=${encode(it)}") }
+        }
+        val url = "$baseUrl/fm_intelligence?${params.joinToString("&")}"
+        Log.d(TAG, "getFmIntelligence: $url")
+        val json = fetch(url)
+        if (json.has("error")) null else json
+    } catch (e: Exception) {
+        Log.e(TAG, "getFmIntelligence failed for $playerName", e)
+        null
+    }
+
     private suspend fun fetch(url: String): JSONObject {
         val html = executeRequest(url)
         return JSONObject(html)

@@ -104,6 +104,12 @@ abstract class IPlayerInfoViewModel : ViewModel() {
     abstract val isHighlightsSaving: StateFlow<Boolean>
     abstract fun searchHighlights(player: Player, refresh: Boolean = false)
     abstract fun savePinnedHighlights(videos: List<com.liordahan.mgsrteam.features.players.playerinfo.highlights.HighlightVideo>)
+
+    // ── FM Intelligence ────────────────────────────────────────────
+    abstract val fmIntelligenceFlow: StateFlow<com.liordahan.mgsrteam.features.players.playerinfo.fmintelligence.FmIntelligenceData?>
+    abstract val isFmIntelligenceLoading: StateFlow<Boolean>
+    abstract val fmIntelligenceError: StateFlow<String?>
+    abstract fun fetchFmIntelligence(player: Player)
 }
 
 
@@ -120,6 +126,7 @@ class PlayerInfoViewModel(
     private val offersRepository: IPlayerOffersRepository,
     private val platformManager: PlatformManager,
     private val highlightsApiClient: com.liordahan.mgsrteam.features.players.playerinfo.highlights.HighlightsApiClient = com.liordahan.mgsrteam.features.players.playerinfo.highlights.HighlightsApiClient(),
+    private val scoutApiClient: com.liordahan.mgsrteam.features.scouting.ScoutApiClient,
 ) : IPlayerInfoViewModel() {
 
     private val _playerInfoFlow = MutableStateFlow<Player?>(null)
@@ -195,6 +202,16 @@ class PlayerInfoViewModel(
 
     private val _isHighlightsSaving = MutableStateFlow(false)
     override val isHighlightsSaving: StateFlow<Boolean> = _isHighlightsSaving
+
+    // ── FM Intelligence ──────────────────────────────────────────────
+    private val _fmIntelligenceFlow = MutableStateFlow<com.liordahan.mgsrteam.features.players.playerinfo.fmintelligence.FmIntelligenceData?>(null)
+    override val fmIntelligenceFlow: StateFlow<com.liordahan.mgsrteam.features.players.playerinfo.fmintelligence.FmIntelligenceData?> = _fmIntelligenceFlow
+
+    private val _isFmIntelligenceLoading = MutableStateFlow(false)
+    override val isFmIntelligenceLoading: StateFlow<Boolean> = _isFmIntelligenceLoading
+
+    private val _fmIntelligenceError = MutableStateFlow<String?>(null)
+    override val fmIntelligenceError: StateFlow<String?> = _fmIntelligenceError
 
     @OptIn(ExperimentalCoroutinesApi::class)
     override val matchingRequestsFlow: StateFlow<List<MatchingRequestUiState>> = combine(
@@ -947,6 +964,36 @@ class PlayerInfoViewModel(
                 Log.e(TAG, "savePinnedHighlights failed", e)
             } finally {
                 _isHighlightsSaving.value = false
+            }
+        }
+    }
+
+    // ── FM Intelligence ─────────────────────────────────────────────────
+
+    override fun fetchFmIntelligence(player: Player) {
+        val name = player.fullName ?: return
+        if (_fmIntelligenceFlow.value != null) return // already fetched
+        viewModelScope.launch {
+            _isFmIntelligenceLoading.value = true
+            _fmIntelligenceError.value = null
+            try {
+                val json = withContext(Dispatchers.IO) {
+                    scoutApiClient.getFmIntelligence(
+                        playerName = name,
+                        club = player.currentClub?.clubName,
+                        age = player.age?.toString()
+                    )
+                }
+                if (json != null) {
+                    _fmIntelligenceFlow.value = com.liordahan.mgsrteam.features.players.playerinfo.fmintelligence.parseFmIntelligenceData(json)
+                } else {
+                    _fmIntelligenceError.value = "FM data not available"
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "fetchFmIntelligence failed", e)
+                _fmIntelligenceError.value = e.message
+            } finally {
+                _isFmIntelligenceLoading.value = false
             }
         }
     }

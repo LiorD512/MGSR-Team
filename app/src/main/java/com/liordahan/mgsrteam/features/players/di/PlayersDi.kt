@@ -94,7 +94,7 @@ val playersModule = module {
     single { DocumentDetectionService(get<Context>(), get<CloudVisionOcrProvider>(), get<GeminiPassportOcrProvider>()) }
     single { PlayerOffersRepository(get()) } bind IPlayerOffersRepository::class
     single { HighlightsApiClient() }
-    viewModel<IPlayerInfoViewModel> { PlayerInfoViewModel(get<Context>(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
+    viewModel<IPlayerInfoViewModel> { PlayerInfoViewModel(get<Context>(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get<ScoutApiClient>()) }
     viewModel { GenerateMandateViewModel() }
 
     factory<IAddPositionFilterUseCase> {
