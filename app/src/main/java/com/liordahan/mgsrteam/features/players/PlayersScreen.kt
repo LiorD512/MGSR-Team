@@ -1312,6 +1312,14 @@ private fun MandatePlayerRow(pwm: PlayerWithMandateExpiry, onClick: () -> Unit) 
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
+                if (pwm.validLeagues.isNotEmpty()) {
+                    Text(
+                        text = pwm.validLeagues.joinToString(", "),
+                        style = regularTextStyle(PlatformColors.palette.blue, 10.sp),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
             }
             if (expiryStr != null) {
                 Box(

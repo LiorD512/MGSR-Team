@@ -14,7 +14,8 @@ data class PlayerDocument(
     val uploadedAt: Long? = null,
     val expiresAt: Long? = null,
     val expired: Boolean = false,
-    val uploadedBy: String? = null      // agent name who uploaded (for mandate: who marked it)
+    val uploadedBy: String? = null,      // agent name who uploaded (for mandate: who marked it)
+    val validLeagues: List<String>? = null
 ) {
     val documentType: DocumentType
         get() = DocumentType.fromString(type)

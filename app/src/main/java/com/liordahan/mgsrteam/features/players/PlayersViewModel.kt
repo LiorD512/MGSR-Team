@@ -47,7 +47,9 @@ import java.time.format.DateTimeParseException
 import java.util.Locale
 
 
-data class PlayerWithMandateExpiry(val player: Player, val mandateExpiryAt: Long?)
+data class MandateInfo(val expiryAt: Long, val validLeagues: List<String>)
+
+data class PlayerWithMandateExpiry(val player: Player, val mandateExpiryAt: Long?, val validLeagues: List<String> = emptyList())
 
 data class PlayersUiState(
     val playersList: List<Player> = emptyList(),
@@ -125,7 +127,7 @@ class PlayersViewModel(
 
     private val _inputState = MutableStateFlow(PlayersUiState())
     private val _searchQuery = MutableStateFlow("")
-    private val _mandateExpiryByPlayer = MutableStateFlow<Map<String, Long>>(emptyMap())
+    private val _mandateInfoByPlayer = MutableStateFlow<Map<String, MandateInfo>>(emptyMap())
     private val _quickFilterEuNational = MutableStateFlow(false)
     private val _quickFilterOfferedNoFeedback = MutableStateFlow(false)
     private val _offeredNoFeedbackTmProfiles = MutableStateFlow<Set<String>>(emptySet())
@@ -134,10 +136,10 @@ class PlayersViewModel(
     override val playersFlow: StateFlow<PlayersUiState> = combine(
         _inputState,
         _searchQuery.debounce(300L),
-        _mandateExpiryByPlayer,
+        _mandateInfoByPlayer,
         _quickFilterEuNational,
         combine(_quickFilterOfferedNoFeedback, _offeredNoFeedbackTmProfiles) { a, b -> a to b }
-    ) { state, debouncedQuery, mandateMap, euNational, (offeredNoFb, offeredNoFbProfiles) ->
+    ) { state, debouncedQuery, mandateInfoMap, euNational, (offeredNoFb, offeredNoFbProfiles) ->
         computeUiState(
             state.copy(
                 quickFilterEuNational = euNational,
@@ -145,7 +147,7 @@ class PlayersViewModel(
                 offeredNoFeedbackTmProfiles = offeredNoFbProfiles
             ),
             debouncedQuery,
-            mandateMap
+            mandateInfoMap
         )
     }
         .flowOn(Dispatchers.Default)
@@ -199,8 +201,9 @@ class PlayersViewModel(
     private fun computeUiState(
         state: PlayersUiState,
         query: String,
-        mandateMap: Map<String, Long>
+        mandateInfoMap: Map<String, MandateInfo>
     ): PlayersUiState {
+        val mandateMap = mandateInfoMap.mapValues { (_, info) -> info.expiryAt }
         val visible = state.playersList
             .filterPlayersByPosition(state.selectedPositions)
             ?.filterPlayersByAgent(state.selectedAccounts)
@@ -230,9 +233,11 @@ class PlayersViewModel(
                 player.haveMandate || (player.tmProfile != null && player.tmProfile in mandateMap)
             }
             .map { player ->
+                val info = player.tmProfile?.let { mandateInfoMap[it] }
                 PlayerWithMandateExpiry(
                     player = player,
-                    mandateExpiryAt = player.tmProfile?.let { mandateMap[it] }
+                    mandateExpiryAt = info?.expiryAt,
+                    validLeagues = info?.validLeagues ?: emptyList()
                 )
             }
             .sortedBy { it.mandateExpiryAt ?: Long.MAX_VALUE }
@@ -574,8 +579,12 @@ class PlayersViewModel(
                         .filter { it.playerTmProfile != null && it.expiresAt != null && !it.expired }
                         .filter { it.expiresAt!! >= System.currentTimeMillis() }
                         .groupBy { it.playerTmProfile!! }
-                        .mapValues { (_, list) -> list.maxOf { it.expiresAt!! } }
-                    _mandateExpiryByPlayer.value = map
+                        .mapValues { (_, list) ->
+                            val maxExpiry = list.maxOf { it.expiresAt!! }
+                            val leagues = list.flatMap { it.validLeagues ?: emptyList() }.distinct()
+                            MandateInfo(expiryAt = maxExpiry, validLeagues = leagues)
+                        }
+                    _mandateInfoByPlayer.value = map
                 }
             }
         listenerRegistrations.add(reg)

@@ -6,7 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { usePlatform } from '@/contexts/PlatformContext';
 import { getScreenCache, setScreenCache } from '@/lib/screenCache';
-import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { getCurrentAccountForShortlist, getAllAccounts, type AccountForShortlist } from '@/lib/accounts';
 import { subscribePlayersWomen, type WomanPlayer } from '@/lib/playersWomen';
@@ -121,6 +121,8 @@ export default function PlayersPage() {
   const [euNationalOnly, setEuNationalOnly] = useState(cached?.euNationalOnly ?? false);
   const [offeredNoFeedback, setOfferedNoFeedback] = useState(cached?.offeredNoFeedback ?? false);
   const [offeredNoFeedbackProfiles, setOfferedNoFeedbackProfiles] = useState<Set<string>>(new Set());
+  const [mandateDataByProfile, setMandateDataByProfile] = useState<Map<string, { expiryAt: number; validLeagues: string[] }>>(new Map());
+  const [mandateExpanded, setMandateExpanded] = useState(false);
   const [currentAccountName, setCurrentAccountName] = useState<string | null>(null);
   const [allAccounts, setAllAccounts] = useState<AccountForShortlist[]>([]);
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
@@ -169,6 +171,38 @@ export default function PlayersPage() {
     const unsub = subscribePlayersYouth((list) => {
       setYouthPlayers(list);
       setYouthLoading(false);
+    });
+    return () => unsub();
+  }, []);
+
+  useEffect(() => {
+    const mandateQuery = query(
+      collection(db, 'PlayerDocuments'),
+      where('type', '==', 'MANDATE')
+    );
+    const unsub = onSnapshot(mandateQuery, (snap) => {
+      const now = Date.now();
+      const grouped = new Map<string, { expiryAt: number; validLeagues: string[] }>();
+      snap.docs.forEach((doc) => {
+        const d = doc.data();
+        const profile = d.playerTmProfile as string | undefined;
+        const expiresAt = d.expiresAt as number | undefined;
+        const expired = d.expired as boolean | undefined;
+        if (!profile || !expiresAt || expired || expiresAt < now) return;
+        const leagues = (d.validLeagues as string[] | undefined) ?? [];
+        const existing = grouped.get(profile);
+        if (!existing || expiresAt > existing.expiryAt) {
+          grouped.set(profile, {
+            expiryAt: expiresAt,
+            validLeagues: existing
+              ? Array.from(new Set([...existing.validLeagues, ...leagues]))
+              : leagues,
+          });
+        } else if (leagues.length > 0) {
+          existing.validLeagues = Array.from(new Set([...existing.validLeagues, ...leagues]));
+        }
+      });
+      setMandateDataByProfile(grouped);
     });
     return () => unsub();
   }, []);
@@ -401,6 +435,17 @@ export default function PlayersPage() {
     setEuNationalOnly(false);
     setOfferedNoFeedback(false);
   }, []);
+
+  const playersWithMandate = useMemo(() => {
+    if (platform !== 'men') return [];
+    return players
+      .filter((p) => p.haveMandate || (p.tmProfile && mandateDataByProfile.has(p.tmProfile)))
+      .map((p) => {
+        const info = p.tmProfile ? mandateDataByProfile.get(p.tmProfile) : undefined;
+        return { player: p, expiryAt: info?.expiryAt ?? null, validLeagues: info?.validLeagues ?? [] };
+      })
+      .sort((a, b) => (a.expiryAt ?? Infinity) - (b.expiryAt ?? Infinity));
+  }, [players, mandateDataByProfile, platform]);
 
   const displayList = filtered;
   const isLoading = platform === 'youth' ? youthLoading : platform === 'women' ? womenLoading : playersLoading;
@@ -753,6 +798,64 @@ export default function PlayersPage() {
             </button>
           )}
         </FilterBottomSheet>
+        )}
+
+        {/* Mandate section — men only */}
+        {platform === 'men' && playersWithMandate.length > 0 && (
+          <div className="mb-6">
+            <button
+              onClick={() => setMandateExpanded((v) => !v)}
+              className="w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl bg-blue-500/10 border border-blue-500/25 hover:border-blue-500/40 transition"
+            >
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-500/20 text-blue-400 text-xs font-bold">
+                  {playersWithMandate.length}
+                </span>
+                <span className="text-blue-400 font-semibold text-sm">
+                  {t('players_with_mandate_title')}
+                </span>
+              </div>
+              <svg
+                className={`w-4 h-4 text-blue-400 transition-transform ${mandateExpanded ? 'rotate-180' : ''}`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                strokeWidth={2}
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            {mandateExpanded && (
+              <div className="mt-2 rounded-xl bg-mgsr-card border border-mgsr-border divide-y divide-mgsr-border overflow-hidden">
+                {playersWithMandate.map((pwm) => (
+                  <Link
+                    key={pwm.player.id}
+                    href={`/players/${pwm.player.id}?from=/players`}
+                    className="flex items-center gap-3 px-4 py-3 hover:bg-mgsr-dark/40 transition"
+                  >
+                    <img
+                      src={pwm.player.profileImage || '/placeholder-player.png'}
+                      alt=""
+                      className="w-9 h-9 rounded-full object-cover bg-mgsr-dark ring-1 ring-mgsr-border"
+                      onError={(e) => { (e.target as HTMLImageElement).src = 'https://via.placeholder.com/36?text=?'; }}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-mgsr-text truncate">{pwm.player.fullName || 'Unknown'}</p>
+                      <p className="text-xs text-mgsr-muted truncate">{pwm.player.currentClub?.clubName || '—'}</p>
+                      {pwm.validLeagues.length > 0 && (
+                        <p className="text-xs text-blue-400 truncate">{pwm.validLeagues.join(', ')}</p>
+                      )}
+                    </div>
+                    {pwm.expiryAt && (
+                      <span className="shrink-0 px-2 py-1 rounded-lg bg-blue-500/12 text-blue-400 text-[11px] font-semibold">
+                        {t('players_mandate_expires_label')} {new Date(pwm.expiryAt).toLocaleDateString(isRtl ? 'he-IL' : 'en-US', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                      </span>
+                    )}
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
         )}
 
         {isLoading ? (

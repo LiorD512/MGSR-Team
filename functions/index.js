@@ -11,6 +11,7 @@ const { initializeApp } = require("firebase-admin/app");
 const { getMessaging } = require("firebase-admin/messaging");
 const { getFirestore, FieldValue } = require("firebase-admin/firestore");
 const { runMandateExpiry } = require("./workers/mandateExpiry");
+const { runBackfillMandateLeagues } = require("./workers/backfillMandateLeagues");
 const { runReleasesRefresh } = require("./workers/releasesRefresh");
 const { runScoutAgent } = require("./workers/scoutAgent");
 const { runScoutSkillLearning } = require("./workers/scoutSkillLearner");
@@ -560,5 +561,25 @@ exports.dailyDigestWorker = onMessagePublished(
     }
     await runDailyDigest(gmailUser, gmailAppPassword);
     console.log("[dailyDigestWorker] Completed");
+  }
+);
+
+/**
+ * One-time callable function to backfill validLeagues on existing mandate documents.
+ * Downloads each mandate PDF from Storage, uses Gemini to extract the leagues section,
+ * and writes validLeagues back to Firestore. Safe to re-run (skips already-filled docs).
+ *
+ * Call via: firebase functions:call backfillMandateLeagues --project=mgsr-64e4b
+ */
+exports.backfillMandateLeagues = onCall(
+  {
+    timeoutSeconds: 540,
+    memory: "512MiB",
+  },
+  async () => {
+    console.log("[backfillMandateLeagues] Started");
+    const result = await runBackfillMandateLeagues();
+    console.log("[backfillMandateLeagues] Completed", JSON.stringify(result));
+    return result;
   }
 );

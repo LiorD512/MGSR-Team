@@ -99,6 +99,7 @@ interface PlayerDocument {
   expiresAt?: number;
   expired?: boolean;
   uploadedBy?: string;
+  validLeagues?: string[];
 }
 
 function StatCard({
@@ -496,6 +497,7 @@ export default function PlayerInfoPage() {
         let suggestedName = file.name;
         let passportInfo: { firstName: string; lastName: string; dateOfBirth?: string; passportNumber?: string; nationality?: string } | undefined;
         let mandateExpiresAt: number | undefined;
+        let validLeagues: string[] | undefined;
 
         if (detectRes.ok) {
           const detection = (await detectRes.json()) as {
@@ -503,11 +505,13 @@ export default function PlayerInfoPage() {
             suggestedName?: string;
             passportInfo?: { firstName: string; lastName: string; dateOfBirth?: string; passportNumber?: string; nationality?: string };
             mandateExpiresAt?: number;
+            validLeagues?: string[];
           };
           docType = detection.documentType ?? 'OTHER';
           suggestedName = detection.suggestedName ?? file.name;
           passportInfo = detection.passportInfo;
           mandateExpiresAt = detection.mandateExpiresAt;
+          validLeagues = detection.validLeagues;
         }
 
         // Ensure mandate has a proper filename (player signs on PDF, may upload with generic/empty name)
@@ -568,6 +572,7 @@ export default function PlayerInfoPage() {
           uploadedAt: Date.now(),
         };
         if (mandateExpiresAt != null) data.expiresAt = mandateExpiresAt;
+        if (validLeagues?.length) data.validLeagues = validLeagues;
         if (docType === 'MANDATE' && uploadedBy) data.uploadedBy = uploadedBy;
 
         await addDoc(collection(db, 'PlayerDocuments'), data);
@@ -1754,13 +1759,23 @@ export default function PlayerInfoPage() {
                         (d.expiresAt == null || d.expiresAt >= Date.now())
                     );
                     const maxExp = Math.max(0, ...valid.map((d) => d.expiresAt ?? 0));
-                    if (maxExp <= 0) return null;
-                    const d = new Date(maxExp);
-                    const str = `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+                    const leagues = Array.from(new Set(valid.flatMap((d) => d.validLeagues ?? [])));
+                    if (maxExp <= 0 && leagues.length === 0) return null;
+                    const d = maxExp > 0 ? new Date(maxExp) : null;
+                    const str = d ? `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}` : '';
                     return (
-                      <p className="text-xs text-mgsr-muted mt-0.5" dir="ltr">
-                        {t('player_info_mandate_expires').replace('%s', str)}
-                      </p>
+                      <>
+                        {str && (
+                          <p className="text-xs text-mgsr-muted mt-0.5" dir="ltr">
+                            {t('player_info_mandate_expires').replace('%s', str)}
+                          </p>
+                        )}
+                        {leagues.length > 0 && (
+                          <p className="text-xs text-mgsr-teal/70 mt-0.5" dir="ltr">
+                            {leagues.join(', ')}
+                          </p>
+                        )}
+                      </>
                     );
                   })()}
                 </div>

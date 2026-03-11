@@ -48,7 +48,8 @@ class PlayerDocumentsRepository(
         name: String,
         bytes: ByteArray,
         expiresAt: Long?,
-        uploadedBy: String? = null
+        uploadedBy: String? = null,
+        validLeagues: List<String>? = null
     ): Result<PlayerDocument> {
         return try {
             val safeProfile = playerTmProfile.hashCode().toString().replace("-", "x")
@@ -69,6 +70,9 @@ class PlayerDocumentsRepository(
             if (uploadedBy != null) {
                 data["uploadedBy"] = uploadedBy
             }
+            if (!validLeagues.isNullOrEmpty()) {
+                data["validLeagues"] = validLeagues
+            }
             store.collection(firebaseHandler.playerDocumentsTable).add(data).await()
             val doc = PlayerDocument(
                 playerTmProfile = playerTmProfile,
@@ -77,7 +81,8 @@ class PlayerDocumentsRepository(
                 storageUrl = url,
                 uploadedAt = System.currentTimeMillis(),
                 expiresAt = expiresAt,
-                uploadedBy = uploadedBy
+                uploadedBy = uploadedBy,
+                validLeagues = validLeagues
             )
             Result.success(doc.copy(id = null))
         } catch (e: Exception) {

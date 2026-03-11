@@ -779,7 +779,8 @@ class PlayerInfoViewModel(
                     detection.suggestedName,
                     bytesToUpload,
                     docExpiresAt,
-                    uploadedBy = uploadedBy
+                    uploadedBy = uploadedBy,
+                    validLeagues = detection.validLeagues.takeIf { it.isNotEmpty() }
                 )
                 if (result.isSuccess && detection.documentType == DocumentType.MANDATE) {
                     val feedRef = firebaseHandler.firebaseStore.collection(firebaseHandler.feedEventsTable)

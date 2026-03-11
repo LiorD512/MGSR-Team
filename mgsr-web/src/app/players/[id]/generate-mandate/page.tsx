@@ -150,10 +150,13 @@ export default function GenerateMandatePage() {
         throw new Error(err.error || 'Generation failed');
       }
       const blob = await res.blob();
+
+      // Download locally
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `Mandate_${[player.passportDetails.firstName, player.passportDetails.lastName].filter(Boolean).join('_') || 'player'}.pdf`;
+      const pdfName = `Mandate_${[player.passportDetails.firstName, player.passportDetails.lastName].filter(Boolean).join('_') || 'player'}.pdf`;
+      a.download = pdfName;
       a.click();
       URL.revokeObjectURL(url);
 
@@ -163,7 +166,7 @@ export default function GenerateMandatePage() {
     } finally {
       setGenerating(false);
     }
-  }, [player, selectedAgent, expiryDate, validLeagues, id, router]);
+  }, [player, selectedAgent, expiryDate, validLeagues, id, router, currentUser]);
 
   const openModal = () => {
     setModalOpen(true);

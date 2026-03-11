@@ -64,7 +64,8 @@ class DocumentDetectionService(
         val documentType: DocumentType,
         val suggestedName: String,
         val passportInfo: PassportInfo? = null,
-        val mandateExpiresAt: Long? = null
+        val mandateExpiresAt: Long? = null,
+        val validLeagues: List<String> = emptyList()
     )
 
     /**
@@ -121,10 +122,23 @@ class DocumentDetectionService(
             // ──────────────────────────────────────────────────────
             var mandateResult = parseForMandate(text, originalFileName, playerName)
             if (mandateResult != null) {
-                if (mandateResult.mandateExpiresAt == null && isPdfMimeType(mimeType)) {
-                    val expiryFromPdf = extractMandateExpiryFromPdf(bytes)
-                    if (expiryFromPdf != null) {
-                        mandateResult = mandateResult.copy(mandateExpiresAt = expiryFromPdf)
+                if ((mandateResult.mandateExpiresAt == null || mandateResult.validLeagues.isEmpty()) && isPdfMimeType(mimeType)) {
+                    val pdfBoxText = extractTextFromPdfWithPdfBox(bytes)
+                    if (pdfBoxText != null) {
+                        if (mandateResult.mandateExpiresAt == null) {
+                            val expiryFromPdf = extractMandateExpiryFromText(pdfBoxText)
+                                ?: extractMandateExpiryFromText(String(bytes, Charsets.UTF_8))
+                                ?: extractMandateExpiryFromText(String(bytes, Charsets.ISO_8859_1))
+                            if (expiryFromPdf != null) {
+                                mandateResult = mandateResult.copy(mandateExpiresAt = expiryFromPdf)
+                            }
+                        }
+                        if (mandateResult.validLeagues.isEmpty()) {
+                            val leaguesFromPdf = extractValidLeaguesFromText(pdfBoxText)
+                            if (leaguesFromPdf.isNotEmpty()) {
+                                mandateResult = mandateResult.copy(validLeagues = leaguesFromPdf)
+                            }
+                        }
                     }
                 }
                 return@withContext mandateResult
@@ -384,11 +398,13 @@ class DocumentDetectionService(
 
         val suggestedName = "Mandate_${sanitizeFileName(playerName ?: extractNameFromMandateFilename(originalFileName) ?: "player")}"
         val expiresAt = extractMandateExpiryFromText(text)
+        val leagues = extractValidLeaguesFromText(text)
         return DetectionResult(
             documentType = DocumentType.MANDATE,
             suggestedName = suggestedName,
             passportInfo = null,
-            mandateExpiresAt = expiresAt
+            mandateExpiresAt = expiresAt,
+            validLeagues = leagues
         )
     }
 
@@ -492,6 +508,36 @@ class DocumentDetectionService(
         }
 
         return null
+    }
+
+    /**
+     * Parses the "Valid Leagues for this mandate:" section from text.
+     * Returns a list of league/country names, e.g. ["Israel", "Portugal"].
+     */
+    private fun extractValidLeaguesFromText(text: String): List<String> {
+        val marker = "Valid Leagues for this mandate:"
+        val idx = text.indexOf(marker, ignoreCase = true)
+        if (idx == -1) return emptyList()
+
+        val afterMarker = text.substring(idx + marker.length)
+        val lines = afterMarker.split("\n")
+        val leagues = mutableListOf<String>()
+
+        for (line in lines) {
+            val trimmed = line.trim()
+            if (trimmed.startsWith("- ") || trimmed.startsWith("• ")) {
+                leagues.add(trimmed.substring(2).trim())
+            } else if (trimmed.startsWith("•")) {
+                leagues.add(trimmed.substring(1).trim())
+            } else if (trimmed.isEmpty()) {
+                continue
+            } else if (leagues.isNotEmpty()) {
+                break
+            } else if (trimmed.length > 2 && trimmed.length < 100 && !trimmed.contains(".")) {
+                leagues.add(trimmed)
+            }
+        }
+        return leagues.filter { it.isNotBlank() }
     }
 
     /**

@@ -21,6 +21,7 @@ export interface DocumentDetectionResult {
     nationality?: string;
   };
   mandateExpiresAt?: number;
+  validLeagues?: string[];
 }
 
 const PASSPORT_PROMPT = `You are a world-class ICAO 9303 passport document analyst. Extract identity fields from passport images of ANY country.
@@ -54,9 +55,9 @@ async function detectWithGemini(
 
   const prompt = `${PASSPORT_PROMPT}
 
-Also detect: Is this a FOOTBALL AGENT MANDATE document? If yes, set isMandate: true and extract mandateExpiresAt (Unix ms) from "ends on DD/MM/YYYY" in the text.
+Also detect: Is this a FOOTBALL AGENT MANDATE document? If yes, set isMandate: true and extract mandateExpiresAt (Unix ms) from "ends on DD/MM/YYYY" in the text. Also extract validLeagues: look for a section titled "Valid Leagues for this mandate:" followed by a list of country/league names (bullet points). Return the list of league names as an array of strings.
 
-Return JSON with: isPassport, isMandate, firstName, lastName, dateOfBirth, passportNumber, nationality, mandateExpiresAt.`;
+Return JSON with: isPassport, isMandate, firstName, lastName, dateOfBirth, passportNumber, nationality, mandateExpiresAt, validLeagues.`;
 
   const part: { inlineData: { mimeType: string; data: string } } | { text: string } = {
     inlineData: {
@@ -93,10 +94,14 @@ Return JSON with: isPassport, isMandate, firstName, lastName, dateOfBirth, passp
     const ext = (originalFileName.match(/\.([a-zA-Z0-9]+)$/) || [])[1]?.toLowerCase();
     const extMap: Record<string, string> = { pdf: '.pdf', png: '.png', jpg: '.jpg', jpeg: '.jpg' };
     const suffix = ext && extMap[ext] ? extMap[ext] : '.pdf';
+    const validLeagues = Array.isArray(obj.validLeagues)
+      ? (obj.validLeagues as string[]).map(s => String(s).trim()).filter(Boolean)
+      : undefined;
     return {
       documentType: 'MANDATE',
       suggestedName: base.endsWith(suffix) ? base : `${base}${suffix}`,
       mandateExpiresAt: expiresAt,
+      validLeagues: validLeagues?.length ? validLeagues : undefined,
     };
   }
 

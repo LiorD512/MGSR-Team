@@ -594,13 +594,18 @@ fun PlayerInfoScreen(
                     ) {
             // Hero Card
             playerToPresent?.let { player ->
-                val mandateExpiry = documentsList
+                val mandateDocs = documentsList
                     .filter { it.documentType == DocumentType.MANDATE }
+                val mandateExpiry = mandateDocs
                     .mapNotNull { it.expiresAt }
                     .maxOrNull()
+                val mandateLeagues = mandateDocs
+                    .flatMap { it.validLeagues.orEmpty() }
+                    .distinct()
                 PlayerInfoHeroCard(
                     player = player,
                     mandateExpiryAt = mandateExpiry,
+                    mandateValidLeagues = mandateLeagues,
                     currentPlatform = currentPlatform,
                     onMandateChanged = { viewModel.updateHaveMandate(it) },
                     onSalaryTransferFeeClicked = { showSalaryTransferFeeSheet = true },
@@ -1238,6 +1243,7 @@ private fun SalaryTransferFeeBottomSheet(
 private fun PlayerInfoHeroCard(
     player: Player,
     mandateExpiryAt: Long? = null,
+    mandateValidLeagues: List<String> = emptyList(),
     currentPlatform: Platform = Platform.MEN,
     onMandateChanged: (Boolean) -> Unit,
     onSalaryTransferFeeClicked: () -> Unit = {},
@@ -1519,6 +1525,17 @@ private fun PlayerInfoHeroCard(
                                     if (isMandateOn) PlatformColors.palette.blue else PlatformColors.palette.textSecondary,
                                     11.sp
                                 )
+                            )
+                        }
+                        if (isMandateOn && mandateValidLeagues.isNotEmpty()) {
+                            Text(
+                                text = mandateValidLeagues.joinToString(", "),
+                                style = regularTextStyle(
+                                    PlatformColors.palette.blue.copy(alpha = 0.7f),
+                                    10.sp
+                                ),
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis
                             )
                         }
                     }
