@@ -1,0 +1,1385 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MGSR — Global Football Agency</title>
+<meta name="description" content="MGSR is a professional global football players agency representing men, women, and youth athletes. Player representation, transfer negotiation, contract management and career development.">
+<meta name="keywords" content="football agency, player representation, transfer negotiation, sports management, MGSR">
+
+<!-- Open Graph -->
+<meta property="og:title" content="MGSR — Global Football Agency">
+<meta property="og:description" content="A professional football players agency representing men, women, and youth athletes across the global football landscape.">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="en_US">
+<meta property="og:locale:alternate" content="he_IL">
+
+<!-- Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Outfit:wght@300;400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+
+<style>
+/* ══════════════════════════════════════════════
+   DESIGN TOKENS
+   ══════════════════════════════════════════════ */
+:root {
+  --bg-primary: #0A1018;
+  --bg-secondary: #0F1923;
+  --bg-card: #1A2736;
+  --bg-card-hover: #1F3044;
+  --border: #253545;
+  --border-light: #2E4358;
+
+  --teal: #4DB6AC;
+  --teal-glow: rgba(77,182,172,0.25);
+  --teal-soft: rgba(77,182,172,0.08);
+  --green-accent: #39D164;
+
+  --orchid: #B24BF3;
+  --orchid-glow: rgba(178,75,243,0.2);
+
+  --cyan: #00D4FF;
+  --cyan-glow: rgba(0,212,255,0.2);
+
+  --text-primary: #E8EAED;
+  --text-secondary: #B0B8C1;
+  --text-muted: #6B7B8D;
+
+  --font-display: 'Syne', sans-serif;
+  --font-body: 'Outfit', sans-serif;
+  --font-serif: 'Instrument Serif', serif;
+
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* ══════════════════════════════════════════════
+   RESET & BASE
+   ══════════════════════════════════════════════ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; overflow-x: hidden; }
+body {
+  font-family: var(--font-body);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  line-height: 1.6;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: inherit; text-decoration: none; }
+img { max-width: 100%; display: block; }
+
+/* ══════════════════════════════════════════════
+   RTL
+   ══════════════════════════════════════════════ */
+[dir="rtl"] { font-family: var(--font-body); }
+[dir="rtl"] .section-label { letter-spacing: 0.05em; }
+[dir="rtl"] .hero-tagline { letter-spacing: 0; }
+
+/* ══════════════════════════════════════════════
+   SCROLL REVEAL
+   ══════════════════════════════════════════════ */
+.reveal {
+  opacity: 0;
+  transform: translateY(40px);
+  transition: opacity 0.8s var(--ease-out-expo), transform 0.8s var(--ease-out-expo);
+}
+.reveal.visible { opacity: 1; transform: translateY(0); }
+.reveal-delay-1 { transition-delay: 0.1s; }
+.reveal-delay-2 { transition-delay: 0.2s; }
+.reveal-delay-3 { transition-delay: 0.3s; }
+.reveal-delay-4 { transition-delay: 0.4s; }
+.reveal-delay-5 { transition-delay: 0.5s; }
+
+/* ══════════════════════════════════════════════
+   NAVIGATION
+   ══════════════════════════════════════════════ */
+.nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 100;
+  padding: 1.25rem 2.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transition: background 0.4s, backdrop-filter 0.4s, box-shadow 0.4s;
+}
+.nav.scrolled {
+  background: rgba(10,16,24,0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: 0 1px 0 var(--border);
+}
+.nav-logo { display: flex; align-items: center; gap: 0.75rem; }
+.nav-logo svg { width: 42px; height: 42px; }
+.nav-logo-text {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 1.35rem;
+  letter-spacing: -0.02em;
+  background: linear-gradient(135deg, var(--teal), var(--green-accent));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+  list-style: none;
+}
+.nav-links a {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  transition: color 0.3s;
+  position: relative;
+}
+.nav-links a::after {
+  content: '';
+  position: absolute;
+  bottom: -4px;
+  left: 0; right: 0;
+  height: 2px;
+  background: var(--teal);
+  transform: scaleX(0);
+  transition: transform 0.3s var(--ease-out-expo);
+  transform-origin: center;
+}
+.nav-links a:hover { color: var(--text-primary); }
+.nav-links a:hover::after { transform: scaleX(1); }
+.lang-toggle {
+  display: flex;
+  align-items: center;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 100px;
+  padding: 4px;
+  gap: 0;
+}
+.lang-btn {
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 100px;
+  cursor: pointer;
+  transition: all 0.3s var(--ease-out-expo);
+}
+.lang-btn.active {
+  background: var(--teal);
+  color: var(--bg-primary);
+}
+
+/* ══════════════════════════════════════════════
+   MOBILE NAV HAMBURGER
+   ══════════════════════════════════════════════ */
+.nav-hamburger {
+  display: none;
+  flex-direction: column;
+  gap: 5px;
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 4px;
+}
+.nav-hamburger span {
+  width: 24px;
+  height: 2px;
+  background: var(--text-muted);
+  border-radius: 2px;
+  transition: transform 0.3s, opacity 0.3s;
+}
+.nav-hamburger.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+.nav-hamburger.open span:nth-child(2) { opacity: 0; }
+.nav-hamburger.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+.mobile-menu {
+  display: none;
+  position: fixed;
+  top: 70px; left: 0; right: 0;
+  background: rgba(10,16,24,0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  padding: 1.5rem 2rem;
+  border-bottom: 1px solid var(--border);
+  z-index: 99;
+}
+.mobile-menu.open { display: flex; flex-direction: column; gap: 1rem; }
+.mobile-menu a {
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  padding: 0.5rem 0;
+  transition: color 0.3s;
+}
+.mobile-menu a:hover { color: var(--teal); }
+
+/* ══════════════════════════════════════════════
+   HERO
+   ══════════════════════════════════════════════ */
+.hero {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+  padding: 2rem;
+}
+.hero-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(77,182,172,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(77,182,172,0.04) 1px, transparent 1px);
+  background-size: 60px 60px;
+  animation: gridPulse 8s ease-in-out infinite;
+}
+@keyframes gridPulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+.hero-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  animation: orbFloat 12s ease-in-out infinite;
+}
+.hero-orb-1 {
+  width: 500px; height: 500px;
+  background: radial-gradient(circle, var(--teal-glow), transparent);
+  top: -10%; right: -10%;
+}
+.hero-orb-2 {
+  width: 400px; height: 400px;
+  background: radial-gradient(circle, var(--orchid-glow), transparent);
+  bottom: -5%; left: -5%;
+  animation-delay: -4s;
+}
+.hero-orb-3 {
+  width: 300px; height: 300px;
+  background: radial-gradient(circle, var(--cyan-glow), transparent);
+  top: 30%; left: 50%;
+  animation-delay: -8s;
+}
+@keyframes orbFloat {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(30px, -40px) scale(1.1); }
+  66% { transform: translate(-20px, 20px) scale(0.9); }
+}
+.hero-lines {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  opacity: 0.12;
+}
+.hero-lines::before,
+.hero-lines::after {
+  content: '';
+  position: absolute;
+  width: 200%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--teal), transparent);
+}
+.hero-lines::before {
+  top: 35%; left: -50%;
+  transform: rotate(-15deg);
+  animation: lineSweep 6s ease-in-out infinite;
+}
+.hero-lines::after {
+  top: 65%; left: -50%;
+  transform: rotate(-15deg);
+  animation: lineSweep 6s ease-in-out infinite reverse;
+}
+@keyframes lineSweep {
+  0%, 100% { opacity: 0.3; transform: rotate(-15deg) translateX(0); }
+  50% { opacity: 1; transform: rotate(-15deg) translateX(100px); }
+}
+.hero-content { position: relative; z-index: 2; max-width: 900px; }
+.hero-logo {
+  width: 120px; height: 120px;
+  margin: 0 auto 2.5rem;
+  animation: logoReveal 1.2s var(--ease-out-expo) forwards;
+  opacity: 0;
+  transform: scale(0.7);
+}
+@keyframes logoReveal { to { opacity: 1; transform: scale(1); } }
+.hero-label {
+  font-family: var(--font-display);
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: var(--teal);
+  margin-bottom: 1.25rem;
+  animation: fadeUp 0.8s 0.3s var(--ease-out-expo) forwards;
+  opacity: 0;
+  transform: translateY(20px);
+}
+.hero-title {
+  font-family: var(--font-display);
+  font-size: clamp(2.8rem, 6vw, 5rem);
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+  margin-bottom: 1.5rem;
+  animation: fadeUp 0.8s 0.5s var(--ease-out-expo) forwards;
+  opacity: 0;
+  transform: translateY(20px);
+}
+.hero-title .gradient-text {
+  background: linear-gradient(135deg, var(--teal), var(--green-accent), var(--cyan));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.hero-subtitle {
+  font-size: 1.25rem;
+  font-weight: 300;
+  color: var(--text-secondary);
+  max-width: 600px;
+  margin: 0 auto 2.5rem;
+  animation: fadeUp 0.8s 0.7s var(--ease-out-expo) forwards;
+  opacity: 0;
+  transform: translateY(20px);
+}
+@keyframes fadeUp { to { opacity: 1; transform: translateY(0); } }
+.scroll-indicator {
+  position: absolute;
+  bottom: 2.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  animation: fadeUp 0.8s 1.2s var(--ease-out-expo) forwards;
+  opacity: 0;
+}
+.scroll-indicator span {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.scroll-line {
+  width: 1px;
+  height: 40px;
+  background: linear-gradient(to bottom, var(--teal), transparent);
+  animation: scrollPulse 2s ease-in-out infinite;
+}
+@keyframes scrollPulse {
+  0%, 100% { opacity: 0.3; transform: scaleY(1); }
+  50% { opacity: 1; transform: scaleY(1.3); }
+}
+
+/* ══════════════════════════════════════════════
+   SECTIONS COMMON
+   ══════════════════════════════════════════════ */
+.section {
+  padding: 7rem 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+  position: relative;
+}
+.section-label {
+  font-family: var(--font-display);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--teal);
+  margin-bottom: 1rem;
+}
+.section-title {
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 4vw, 3rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  margin-bottom: 1.25rem;
+}
+.section-desc {
+  font-size: 1.1rem;
+  color: var(--text-secondary);
+  max-width: 600px;
+  font-weight: 300;
+}
+.section-divider {
+  width: 100%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--border), transparent);
+}
+
+/* ══════════════════════════════════════════════
+   ABOUT
+   ══════════════════════════════════════════════ */
+.about-grid {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 4rem;
+  align-items: center;
+  margin-top: 3rem;
+}
+.about-text p {
+  font-size: 1.05rem;
+  color: var(--text-secondary);
+  margin-bottom: 1.5rem;
+  font-weight: 300;
+  line-height: 1.8;
+}
+.about-highlight {
+  font-family: var(--font-serif);
+  font-size: 1.6rem;
+  font-style: italic;
+  color: var(--text-primary);
+  border-left: 3px solid var(--teal);
+  padding-left: 1.5rem;
+  margin: 2rem 0;
+  line-height: 1.5;
+}
+[dir="rtl"] .about-highlight {
+  border-left: none;
+  border-right: 3px solid var(--teal);
+  padding-left: 0;
+  padding-right: 1.5rem;
+}
+.stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+}
+.stat-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 2rem 1.5rem;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.4s var(--ease-out-expo), border-color 0.4s;
+}
+.stat-card:hover {
+  transform: translateY(-4px);
+  border-color: var(--teal);
+}
+.stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--teal), var(--green-accent));
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.stat-card:hover::before { opacity: 1; }
+.stat-number {
+  font-family: var(--font-display);
+  font-size: 2.8rem;
+  font-weight: 800;
+  color: var(--teal);
+  line-height: 1;
+  margin-bottom: 0.5rem;
+}
+.stat-label {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+/* ══════════════════════════════════════════════
+   SERVICES
+   ══════════════════════════════════════════════ */
+.services-section {
+  background: var(--bg-secondary);
+  padding: 7rem 0;
+}
+.services-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 2rem;
+}
+.services-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
+  margin-top: 3.5rem;
+}
+.service-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 2.25rem;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.4s var(--ease-out-expo), border-color 0.4s, box-shadow 0.4s;
+}
+.service-card:hover {
+  transform: translateY(-6px);
+  border-color: rgba(77,182,172,0.4);
+  box-shadow: 0 20px 60px rgba(0,0,0,0.3), 0 0 40px var(--teal-soft);
+}
+.service-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  margin-bottom: 1.5rem;
+  background: var(--teal-soft);
+  border: 1px solid rgba(77,182,172,0.15);
+  transition: transform 0.4s var(--ease-spring);
+}
+.service-card:hover .service-icon {
+  transform: scale(1.1) rotate(-5deg);
+}
+.service-card h3 {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin-bottom: 0.75rem;
+  letter-spacing: -0.01em;
+}
+.service-card p {
+  font-size: 0.92rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+/* ══════════════════════════════════════════════
+   PLATFORMS
+   ══════════════════════════════════════════════ */
+.platforms-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
+  margin-top: 3.5rem;
+}
+.platform-card {
+  border-radius: 20px;
+  padding: 2.5rem;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.5s var(--ease-out-expo);
+  min-height: 320px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+.platform-card:hover { transform: translateY(-8px); }
+.platform-men {
+  background: linear-gradient(160deg, #1A2736, #0F2A2E);
+  border: 1px solid rgba(77,182,172,0.25);
+}
+.platform-men .platform-glow {
+  position: absolute;
+  top: -40%; right: -30%;
+  width: 300px; height: 300px;
+  background: radial-gradient(circle, var(--teal-glow), transparent);
+  border-radius: 50%;
+  filter: blur(60px);
+  transition: transform 0.6s;
+}
+.platform-men:hover .platform-glow { transform: scale(1.3); }
+.platform-men .platform-accent { color: var(--teal); }
+.platform-women {
+  background: linear-gradient(160deg, #1F1A36, #2A1340);
+  border: 1px solid rgba(178,75,243,0.25);
+}
+.platform-women .platform-glow {
+  position: absolute;
+  top: -40%; right: -30%;
+  width: 300px; height: 300px;
+  background: radial-gradient(circle, var(--orchid-glow), transparent);
+  border-radius: 50%;
+  filter: blur(60px);
+  transition: transform 0.6s;
+}
+.platform-women:hover .platform-glow { transform: scale(1.3); }
+.platform-women .platform-accent { color: var(--orchid); }
+.platform-youth {
+  background: linear-gradient(160deg, #0A1A2E, #0A2035);
+  border: 1px solid rgba(0,212,255,0.25);
+}
+.platform-youth .platform-glow {
+  position: absolute;
+  top: -40%; right: -30%;
+  width: 300px; height: 300px;
+  background: radial-gradient(circle, var(--cyan-glow), transparent);
+  border-radius: 50%;
+  filter: blur(60px);
+  transition: transform 0.6s;
+}
+.platform-youth:hover .platform-glow { transform: scale(1.3); }
+.platform-youth .platform-accent { color: var(--cyan); }
+.platform-badge {
+  display: inline-block;
+  font-family: var(--font-display);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  padding: 6px 14px;
+  border-radius: 100px;
+  margin-bottom: 1.25rem;
+  position: relative;
+  z-index: 2;
+  width: fit-content;
+}
+.platform-men .platform-badge { background: rgba(77,182,172,0.15); color: var(--teal); }
+.platform-women .platform-badge { background: rgba(178,75,243,0.15); color: var(--orchid); }
+.platform-youth .platform-badge { background: rgba(0,212,255,0.15); color: var(--cyan); }
+.platform-card h3 {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 800;
+  margin-bottom: 0.75rem;
+  position: relative;
+  z-index: 2;
+}
+.platform-card p {
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  position: relative;
+  z-index: 2;
+}
+.platform-emoji {
+  font-size: 2.5rem;
+  position: absolute;
+  top: 2rem;
+  right: 2rem;
+  opacity: 0.15;
+  z-index: 1;
+}
+[dir="rtl"] .platform-emoji { right: auto; left: 2rem; }
+
+/* ══════════════════════════════════════════════
+   TEAM
+   ══════════════════════════════════════════════ */
+.team-section {
+  background: var(--bg-secondary);
+  padding: 7rem 0;
+}
+.team-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 2rem;
+}
+.team-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1.5rem;
+  margin-top: 3.5rem;
+}
+.team-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 2.5rem 1.5rem;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.5s var(--ease-out-expo), border-color 0.4s, box-shadow 0.4s;
+}
+.team-card:hover {
+  transform: translateY(-8px);
+  border-color: var(--teal);
+  box-shadow: 0 25px 60px rgba(0,0,0,0.3);
+}
+.team-card::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--teal), var(--green-accent));
+  transform: scaleX(0);
+  transition: transform 0.4s var(--ease-out-expo);
+}
+.team-card:hover::after { transform: scaleX(1); }
+.team-avatar {
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  margin: 0 auto 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: var(--bg-primary);
+  background: linear-gradient(135deg, var(--teal), var(--green-accent));
+  position: relative;
+  transition: transform 0.5s var(--ease-spring);
+}
+.team-card:hover .team-avatar { transform: scale(1.08); }
+.team-avatar::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  border: 2px solid rgba(77,182,172,0.2);
+  transition: border-color 0.3s;
+}
+.team-card:hover .team-avatar::after { border-color: rgba(77,182,172,0.5); }
+.team-card h3 {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin-bottom: 0.4rem;
+}
+.team-card .team-role {
+  font-size: 0.85rem;
+  color: var(--teal);
+  font-weight: 500;
+}
+
+/* ══════════════════════════════════════════════
+   CONTACT
+   ══════════════════════════════════════════════ */
+.contact-section { position: relative; overflow: hidden; }
+.contact-section::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--teal), transparent);
+}
+.contact-grid {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 4rem;
+  align-items: start;
+  margin-top: 3rem;
+}
+.contact-info-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+.contact-item {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  padding: 1.25rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  transition: border-color 0.3s;
+}
+.contact-item:hover { border-color: var(--teal); }
+.contact-item .icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  background: var(--teal-soft);
+  flex-shrink: 0;
+}
+.contact-item .info h4 {
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin-bottom: 0.2rem;
+}
+.contact-item .info p { font-size: 0.9rem; color: var(--text-muted); }
+.contact-item .info a {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  transition: color 0.3s;
+}
+.contact-item .info a:hover { color: var(--teal); }
+.social-links {
+  display: flex;
+  gap: 1rem;
+  margin-top: 2rem;
+}
+.social-link {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  transition: all 0.3s var(--ease-out-expo);
+  color: var(--text-muted);
+}
+.social-link:hover {
+  border-color: var(--teal);
+  background: var(--teal-soft);
+  transform: translateY(-3px);
+  color: var(--teal);
+}
+.contact-map {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  height: 320px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+.contact-map::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 30% 40%, var(--teal-glow), transparent 60%),
+    radial-gradient(circle at 70% 60%, var(--orchid-glow), transparent 60%);
+  opacity: 0.3;
+}
+.contact-map .globe-emoji {
+  font-size: 5rem;
+  opacity: 0.3;
+  position: relative;
+  z-index: 2;
+}
+
+/* ══════════════════════════════════════════════
+   FOOTER
+   ══════════════════════════════════════════════ */
+.footer {
+  padding: 2.5rem;
+  text-align: center;
+  border-top: 1px solid var(--border);
+}
+.footer p {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+.footer a {
+  color: var(--teal);
+  transition: opacity 0.3s;
+}
+.footer a:hover { opacity: 0.7; }
+
+/* ══════════════════════════════════════════════
+   RESPONSIVE
+   ══════════════════════════════════════════════ */
+@media (max-width: 1024px) {
+  .about-grid { grid-template-columns: 1fr; gap: 2.5rem; }
+  .services-grid { grid-template-columns: repeat(2, 1fr); }
+  .platforms-grid { grid-template-columns: repeat(2, 1fr); }
+  .team-grid { grid-template-columns: repeat(2, 1fr); }
+  .contact-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 768px) {
+  .nav { padding: 1rem 1.5rem; }
+  .nav-links { display: none; }
+  .nav-hamburger { display: flex; }
+  .hero-title { font-size: 2.4rem; }
+  .services-grid { grid-template-columns: 1fr; }
+  .platforms-grid { grid-template-columns: 1fr; }
+  .team-grid { grid-template-columns: 1fr 1fr; }
+  .section { padding: 5rem 1.5rem; }
+  .services-section, .team-section { padding: 5rem 0; }
+  .services-inner, .team-inner { padding: 0 1.5rem; }
+}
+@media (max-width: 480px) {
+  .team-grid { grid-template-columns: 1fr; }
+  .stats-grid { grid-template-columns: 1fr; }
+  .hero { padding: 2rem 1rem; }
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════ NAVIGATION ═══════ -->
+<nav class="nav" id="mainNav">
+  <div class="nav-logo">
+    <svg viewBox="0 0 1765 1765" width="42" height="42">
+      <path fill="#0F1923" d="M882.5,0A882.5,882.5 0,0 1,1765 882.5A882.5,882.5 0,0 1,882.5 1765A882.5,882.5 0,0 1,0 882.5A882.5,882.5 0,0 1,882.5 0z"/>
+      <path fill="#39D164" d="M1362.6,1115.7C1358.3,1115.7 1355.6,1110.9 1357.8,1107.2L1391.6,1050.9C1394.5,1046.1 1401.9,1048.2 1401.9,1053.8V1110.1C1401.9,1113.2 1399.4,1115.7 1396.4,1115.7H1362.6Z"/>
+      <path fill="#39D164" d="M1420.1,1115.7C1416.6,1115.7 1414.5,1111.8 1416.4,1108.8L1483.6,1005.3C1486,1001.6 1491.8,1003.3 1491.8,1007.8V1111.2C1491.8,1113.7 1489.8,1115.7 1487.3,1115.7H1420.1Z"/>
+      <path fill="#39D164" d="M1509.6,1115.7C1506.2,1115.7 1504,1111.9 1505.8,1108.9L1604.8,945C1607.1,941.1 1613,942.8 1613,947.3V1111.2C1613,1113.7 1611,1115.7 1608.6,1115.7H1509.6Z"/>
+      <path fill="#ffffff" d="M172.7,957.9C168.7,957.9 165.4,954.6 165.4,950.6V639.9C165.4,635.9 168.7,632.6 172.7,632.6H225C227.5,632.6 229.9,634 231.2,636.1L340.6,814.2C343.6,819.1 340.1,825.4 334.3,825.3L318.7,825.1C313,825.1 309.6,818.8 312.6,814L423.4,636.1C424.8,633.9 427.1,632.6 429.6,632.6H479.2C483.2,632.6 486.4,635.9 486.4,639.9V950.6C486.4,954.6 483.2,957.9 479.2,957.9H425.4C421.4,957.9 418.2,954.6 418.2,950.6V846.4C418.2,818.5 418.8,793.4 420,771.1C421.1,755.7 422.6,740.3 424.6,725.1C425.3,719.5 432.8,718.7 434.8,723.9C435.4,725.5 435.2,727.4 434.3,728.8L342.7,870.9C341.4,873 339.1,874.2 336.6,874.2H313.9C311.4,874.2 309.1,873 307.8,870.9L217.9,729.6C217,728.2 216.8,726.5 217.4,724.9C219.2,719.6 226.8,720.3 227.5,725.9C229.3,739.9 230.6,754.2 231.4,768.8C232.9,790.5 233.7,816.3 233.7,846.4V950.6C233.7,954.6 230.4,957.9 226.4,957.9H172.7Z"/>
+      <path fill="#ffffff" d="M720.2,962.5C695.1,962.5 672,958.3 650.9,950C630.2,941.3 612.2,929.4 597,914.2C581.9,899 570.1,881.2 561.7,860.8C553.7,840.3 549.7,818.2 549.7,794.3C549.7,770.5 553.8,748.5 562.2,728.4C570.9,707.9 583,690.3 598.4,675.4C614.2,660.2 632.7,648.4 653.7,640.1C674.8,631.7 697.9,627.5 723,627.5C740.3,627.5 756.9,629.9 772.7,634.5C788.5,639.2 802.9,645.5 815.9,653.6C826.8,660.3 836.3,668 844.2,676.6C846.7,679.3 846.5,683.4 844,686.1L810.2,721.6C807.5,724.6 802.8,724.7 799.8,722C793.4,716.4 786.9,711.6 780.1,707.5C771.4,701.9 762.1,697.7 752.2,694.9C742.6,691.8 732.7,690.3 722.5,690.3C707.9,690.3 694.5,692.9 682.1,698.2C670,703.4 659.3,710.7 650,720C640.7,729.3 633.4,740.3 628.2,753C623.2,765.7 620.7,779.5 620.7,794.3C620.7,808.9 623.4,822.7 628.6,835.7C634.2,848.4 641.6,859.5 650.9,869.1C660.5,878.4 671.7,885.9 684.4,891.4C697.1,896.7 710.7,899.3 725.3,899.3C735.8,899.3 745.6,897.8 754.5,894.7C763.8,891.6 771.9,887.3 778.7,881.7C785.8,875.8 791.3,869 795,861.2C799,853.5 801,845.3 801,836.6V835.3C801,832.2 804.9,831 806.7,833.5C808.2,835.6 806.7,838.5 804.2,838.5H724.7C720.6,838.5 717.4,835.2 717.4,831.2V787.7C717.4,783.7 720.6,780.4 724.7,780.4H861.3C865,780.4 868.2,783.3 868.4,787C868.6,788.9 868.7,790.8 868.8,792.9C869.5,797.9 869.8,802.8 869.8,807.8C870.1,812.5 870.2,816.2 870.2,819C870.2,840 866.4,859.4 858.6,877C851.2,894.7 840.7,909.9 827,922.6C813.7,935.3 797.9,945.2 779.6,952.3C761.4,959.1 741.5,962.5 720.2,962.5Z"/>
+      <path fill="#ffffff" d="M1037.7,962.5C1017.5,962.5 999.1,960 982.4,955.1C966,950.1 951.2,942.9 938.2,933.3C927,924.8 916.8,914.7 907.5,903.1C905.3,900.4 905.5,896.5 907.8,894L941.5,855.6C944.6,852 950.1,852.3 953,856C966.3,873.1 979.5,885.1 992.6,891.9C1007.8,899.3 1024.2,903.1 1041.8,903.1C1051.4,903.1 1060,901.7 1067.4,898.9C1075.1,896.1 1081.2,892.4 1085.5,887.7C1089.8,882.8 1092,876.9 1092,870.1C1092,865.1 1090.9,860.6 1088.8,856.6C1086.6,852.3 1083.5,848.5 1079.5,845.4C1075.4,842 1070.6,839.1 1065.1,836.6C1059.5,833.8 1053.3,831.5 1046.5,829.6C1039.7,827.5 1032.2,825.8 1024.2,824.5C1006.8,820.5 991.7,815.7 978.6,810.1C965.6,804.2 954.8,797.1 946.1,788.8C937.5,780.1 931,770.3 926.6,759.5C922.6,748.6 920.6,736.4 920.6,722.8C920.6,708.8 923.7,696 929.9,684.2C936.1,672.1 944.6,661.8 955.4,653.1C966.6,644.4 979.3,637.8 993.5,633.1C1008.1,628.5 1023.4,626.1 1039.5,626.1C1059.3,626.1 1076.7,628.3 1091.6,632.7C1106.4,637 1119.3,643.5 1130.1,652.2C1139.7,659.4 1147.9,668 1154.8,677.9C1156.7,680.7 1156.2,684.5 1153.8,686.9L1119.8,719.8C1116.6,722.9 1111.5,722.5 1108.7,719.1C1103.6,713.2 1098.2,708.1 1092.5,703.7C1085,697.8 1076.8,693.5 1067.8,690.7C1059.2,687.6 1050.2,686.1 1040.9,686.1C1030.7,686.1 1021.9,687.5 1014.4,690.3C1007,692.7 1001.1,696.6 996.8,701.9C992.7,706.8 990.7,712.7 990.7,719.5C990.7,725.1 992.1,730.1 994.9,734.4C997.7,738.7 1001.7,742.6 1007,746C1012.3,749.1 1018.6,751.9 1026,754.4C1033.5,756.9 1041.7,759 1050.7,760.9C1067.7,764.3 1083,768.8 1096.7,774.4C1110.3,779.9 1121.9,786.7 1131.5,794.8C1141.4,802.5 1149,811.8 1154.3,822.7C1159.5,833.2 1162.2,845.1 1162.2,858.4C1162.2,880.4 1156.9,899.2 1146.4,914.7C1135.8,930.2 1121.3,942.1 1102.7,950.4C1084.1,958.5 1062.4,962.5 1037.7,962.5Z"/>
+      <path fill="#ffffff" d="M1232.6,957.9C1228.6,957.9 1225.3,954.6 1225.3,950.6V639.9C1225.3,635.9 1228.6,632.6 1232.6,632.6H1369.3C1389.4,632.6 1407.7,637.3 1424.1,646.6C1440.6,655.6 1453.4,667.8 1462.7,683.3C1472.3,698.8 1477.1,716.4 1477.1,736.3C1477.1,755.8 1472.3,773.6 1462.7,789.7C1453.4,805.5 1440.6,818 1424.1,827.3C1407.7,836.6 1389.4,841.3 1369.3,841.3H1299.9C1295.9,841.3 1292.7,844.5 1292.7,848.5V950.6C1292.7,954.6 1289.4,957.9 1285.4,957.9H1232.6ZM1414,957.9C1411.3,957.9 1408.9,956.5 1407.7,954.2L1332.2,820.1C1329.7,815.7 1332.3,810.2 1337.3,809.4L1393.6,800.2C1396.6,799.8 1399.6,801.2 1401.1,803.8L1484.2,947.3C1487,952.2 1483.5,958.3 1477.9,958.3L1414,957.9ZM1292.7,777.3C1292.7,781.3 1295.9,784.6 1299.9,784.6H1366.1C1374.4,784.6 1381.7,782.7 1387.9,779C1394.4,775 1399.4,769.6 1402.8,762.7C1406.2,755.6 1407.9,747.7 1407.9,739C1407.9,729.8 1405.9,721.7 1401.8,714.9C1397.8,708.1 1391.9,702.8 1384.2,699.1C1376.4,695.1 1367.5,693 1357.2,693H1299.9C1295.9,693 1292.7,696.3 1292.7,700.3V777.3Z"/>
+    </svg>
+    <span class="nav-logo-text">MGSR</span>
+  </div>
+
+  <ul class="nav-links" id="navLinks">
+    <li><a href="#about" data-i18n="nav_about">About</a></li>
+    <li><a href="#services" data-i18n="nav_services">Services</a></li>
+    <li><a href="#platforms" data-i18n="nav_platforms">Platforms</a></li>
+    <li><a href="#team" data-i18n="nav_team">Team</a></li>
+    <li><a href="#contact" data-i18n="nav_contact">Contact</a></li>
+  </ul>
+
+  <div style="display:flex;align-items:center;gap:1rem;">
+    <button class="nav-hamburger" id="hamburger" aria-label="Menu">
+      <span></span><span></span><span></span>
+    </button>
+    <div class="lang-toggle">
+      <button class="lang-btn active" id="btnEN" onclick="setLang('en')">EN</button>
+      <button class="lang-btn" id="btnHE" onclick="setLang('he')">עב</button>
+    </div>
+  </div>
+</nav>
+
+<!-- Mobile menu -->
+<div class="mobile-menu" id="mobileMenu">
+  <a href="#about" data-i18n="nav_about">About</a>
+  <a href="#services" data-i18n="nav_services">Services</a>
+  <a href="#platforms" data-i18n="nav_platforms">Platforms</a>
+  <a href="#team" data-i18n="nav_team">Team</a>
+  <a href="#contact" data-i18n="nav_contact">Contact</a>
+</div>
+
+<!-- ═══════ HERO ═══════ -->
+<section class="hero" id="hero">
+  <div class="hero-grid"></div>
+  <div class="hero-orb hero-orb-1"></div>
+  <div class="hero-orb hero-orb-2"></div>
+  <div class="hero-orb hero-orb-3"></div>
+  <div class="hero-lines"></div>
+
+  <div class="hero-content">
+    <div class="hero-logo">
+      <svg viewBox="0 0 1765 1765" width="120" height="120">
+        <path fill="#0F1923" d="M882.5,0A882.5,882.5 0,0 1,1765 882.5A882.5,882.5 0,0 1,882.5 1765A882.5,882.5 0,0 1,0 882.5A882.5,882.5 0,0 1,882.5 0z"/>
+        <path fill="#39D164" d="M1362.6,1115.7C1358.3,1115.7 1355.6,1110.9 1357.8,1107.2L1391.6,1050.9C1394.5,1046.1 1401.9,1048.2 1401.9,1053.8V1110.1C1401.9,1113.2 1399.4,1115.7 1396.4,1115.7H1362.6Z"/>
+        <path fill="#39D164" d="M1420.1,1115.7C1416.6,1115.7 1414.5,1111.8 1416.4,1108.8L1483.6,1005.3C1486,1001.6 1491.8,1003.3 1491.8,1007.8V1111.2C1491.8,1113.7 1489.8,1115.7 1487.3,1115.7H1420.1Z"/>
+        <path fill="#39D164" d="M1509.6,1115.7C1506.2,1115.7 1504,1111.9 1505.8,1108.9L1604.8,945C1607.1,941.1 1613,942.8 1613,947.3V1111.2C1613,1113.7 1611,1115.7 1608.6,1115.7H1509.6Z"/>
+        <path fill="#ffffff" d="M172.7,957.9C168.7,957.9 165.4,954.6 165.4,950.6V639.9C165.4,635.9 168.7,632.6 172.7,632.6H225C227.5,632.6 229.9,634 231.2,636.1L340.6,814.2C343.6,819.1 340.1,825.4 334.3,825.3L318.7,825.1C313,825.1 309.6,818.8 312.6,814L423.4,636.1C424.8,633.9 427.1,632.6 429.6,632.6H479.2C483.2,632.6 486.4,635.9 486.4,639.9V950.6C486.4,954.6 483.2,957.9 479.2,957.9H425.4C421.4,957.9 418.2,954.6 418.2,950.6V846.4C418.2,818.5 418.8,793.4 420,771.1C421.1,755.7 422.6,740.3 424.6,725.1C425.3,719.5 432.8,718.7 434.8,723.9C435.4,725.5 435.2,727.4 434.3,728.8L342.7,870.9C341.4,873 339.1,874.2 336.6,874.2H313.9C311.4,874.2 309.1,873 307.8,870.9L217.9,729.6C217,728.2 216.8,726.5 217.4,724.9C219.2,719.6 226.8,720.3 227.5,725.9C229.3,739.9 230.6,754.2 231.4,768.8C232.9,790.5 233.7,816.3 233.7,846.4V950.6C233.7,954.6 230.4,957.9 226.4,957.9H172.7Z"/>
+        <path fill="#ffffff" d="M720.2,962.5C695.1,962.5 672,958.3 650.9,950C630.2,941.3 612.2,929.4 597,914.2C581.9,899 570.1,881.2 561.7,860.8C553.7,840.3 549.7,818.2 549.7,794.3C549.7,770.5 553.8,748.5 562.2,728.4C570.9,707.9 583,690.3 598.4,675.4C614.2,660.2 632.7,648.4 653.7,640.1C674.8,631.7 697.9,627.5 723,627.5C740.3,627.5 756.9,629.9 772.7,634.5C788.5,639.2 802.9,645.5 815.9,653.6C826.8,660.3 836.3,668 844.2,676.6C846.7,679.3 846.5,683.4 844,686.1L810.2,721.6C807.5,724.6 802.8,724.7 799.8,722C793.4,716.4 786.9,711.6 780.1,707.5C771.4,701.9 762.1,697.7 752.2,694.9C742.6,691.8 732.7,690.3 722.5,690.3C707.9,690.3 694.5,692.9 682.1,698.2C670,703.4 659.3,710.7 650,720C640.7,729.3 633.4,740.3 628.2,753C623.2,765.7 620.7,779.5 620.7,794.3C620.7,808.9 623.4,822.7 628.6,835.7C634.2,848.4 641.6,859.5 650.9,869.1C660.5,878.4 671.7,885.9 684.4,891.4C697.1,896.7 710.7,899.3 725.3,899.3C735.8,899.3 745.6,897.8 754.5,894.7C763.8,891.6 771.9,887.3 778.7,881.7C785.8,875.8 791.3,869 795,861.2C799,853.5 801,845.3 801,836.6V835.3C801,832.2 804.9,831 806.7,833.5C808.2,835.6 806.7,838.5 804.2,838.5H724.7C720.6,838.5 717.4,835.2 717.4,831.2V787.7C717.4,783.7 720.6,780.4 724.7,780.4H861.3C865,780.4 868.2,783.3 868.4,787C868.6,788.9 868.7,790.8 868.8,792.9C869.5,797.9 869.8,802.8 869.8,807.8C870.1,812.5 870.2,816.2 870.2,819C870.2,840 866.4,859.4 858.6,877C851.2,894.7 840.7,909.9 827,922.6C813.7,935.3 797.9,945.2 779.6,952.3C761.4,959.1 741.5,962.5 720.2,962.5Z"/>
+        <path fill="#ffffff" d="M1037.7,962.5C1017.5,962.5 999.1,960 982.4,955.1C966,950.1 951.2,942.9 938.2,933.3C927,924.8 916.8,914.7 907.5,903.1C905.3,900.4 905.5,896.5 907.8,894L941.5,855.6C944.6,852 950.1,852.3 953,856C966.3,873.1 979.5,885.1 992.6,891.9C1007.8,899.3 1024.2,903.1 1041.8,903.1C1051.4,903.1 1060,901.7 1067.4,898.9C1075.1,896.1 1081.2,892.4 1085.5,887.7C1089.8,882.8 1092,876.9 1092,870.1C1092,865.1 1090.9,860.6 1088.8,856.6C1086.6,852.3 1083.5,848.5 1079.5,845.4C1075.4,842 1070.6,839.1 1065.1,836.6C1059.5,833.8 1053.3,831.5 1046.5,829.6C1039.7,827.5 1032.2,825.8 1024.2,824.5C1006.8,820.5 991.7,815.7 978.6,810.1C965.6,804.2 954.8,797.1 946.1,788.8C937.5,780.1 931,770.3 926.6,759.5C922.6,748.6 920.6,736.4 920.6,722.8C920.6,708.8 923.7,696 929.9,684.2C936.1,672.1 944.6,661.8 955.4,653.1C966.6,644.4 979.3,637.8 993.5,633.1C1008.1,628.5 1023.4,626.1 1039.5,626.1C1059.3,626.1 1076.7,628.3 1091.6,632.7C1106.4,637 1119.3,643.5 1130.1,652.2C1139.7,659.4 1147.9,668 1154.8,677.9C1156.7,680.7 1156.2,684.5 1153.8,686.9L1119.8,719.8C1116.6,722.9 1111.5,722.5 1108.7,719.1C1103.6,713.2 1098.2,708.1 1092.5,703.7C1085,697.8 1076.8,693.5 1067.8,690.7C1059.2,687.6 1050.2,686.1 1040.9,686.1C1030.7,686.1 1021.9,687.5 1014.4,690.3C1007,692.7 1001.1,696.6 996.8,701.9C992.7,706.8 990.7,712.7 990.7,719.5C990.7,725.1 992.1,730.1 994.9,734.4C997.7,738.7 1001.7,742.6 1007,746C1012.3,749.1 1018.6,751.9 1026,754.4C1033.5,756.9 1041.7,759 1050.7,760.9C1067.7,764.3 1083,768.8 1096.7,774.4C1110.3,779.9 1121.9,786.7 1131.5,794.8C1141.4,802.5 1149,811.8 1154.3,822.7C1159.5,833.2 1162.2,845.1 1162.2,858.4C1162.2,880.4 1156.9,899.2 1146.4,914.7C1135.8,930.2 1121.3,942.1 1102.7,950.4C1084.1,958.5 1062.4,962.5 1037.7,962.5Z"/>
+        <path fill="#ffffff" d="M1232.6,957.9C1228.6,957.9 1225.3,954.6 1225.3,950.6V639.9C1225.3,635.9 1228.6,632.6 1232.6,632.6H1369.3C1389.4,632.6 1407.7,637.3 1424.1,646.6C1440.6,655.6 1453.4,667.8 1462.7,683.3C1472.3,698.8 1477.1,716.4 1477.1,736.3C1477.1,755.8 1472.3,773.6 1462.7,789.7C1453.4,805.5 1440.6,818 1424.1,827.3C1407.7,836.6 1389.4,841.3 1369.3,841.3H1299.9C1295.9,841.3 1292.7,844.5 1292.7,848.5V950.6C1292.7,954.6 1289.4,957.9 1285.4,957.9H1232.6ZM1414,957.9C1411.3,957.9 1408.9,956.5 1407.7,954.2L1332.2,820.1C1329.7,815.7 1332.3,810.2 1337.3,809.4L1393.6,800.2C1396.6,799.8 1399.6,801.2 1401.1,803.8L1484.2,947.3C1487,952.2 1483.5,958.3 1477.9,958.3L1414,957.9ZM1292.7,777.3C1292.7,781.3 1295.9,784.6 1299.9,784.6H1366.1C1374.4,784.6 1381.7,782.7 1387.9,779C1394.4,775 1399.4,769.6 1402.8,762.7C1406.2,755.6 1407.9,747.7 1407.9,739C1407.9,729.8 1405.9,721.7 1401.8,714.9C1397.8,708.1 1391.9,702.8 1384.2,699.1C1376.4,695.1 1367.5,693 1357.2,693H1299.9C1295.9,693 1292.7,696.3 1292.7,700.3V777.3Z"/>
+      </svg>
+    </div>
+    <p class="hero-label" data-i18n="hero_label">Global Football Agency</p>
+    <h1 class="hero-title">
+      <span data-i18n="hero_title_1">Connecting Talent</span><br>
+      <span class="gradient-text" data-i18n="hero_title_2">Across The World</span>
+    </h1>
+    <p class="hero-subtitle" data-i18n="hero_subtitle">A professional football players agency representing men, women, and youth athletes across the global football landscape.</p>
+  </div>
+  <div class="scroll-indicator">
+    <span data-i18n="hero_scroll">Scroll</span>
+    <div class="scroll-line"></div>
+  </div>
+</section>
+
+<!-- ═══════ ABOUT ═══════ -->
+<div class="section-divider"></div>
+<section class="section" id="about">
+  <p class="section-label reveal" data-i18n="about_label">Who We Are</p>
+  <h2 class="section-title reveal reveal-delay-1" data-i18n="about_title">Built on Relationships,<br>Driven by Results</h2>
+  <div class="about-grid">
+    <div class="about-text">
+      <p class="reveal reveal-delay-2" data-i18n="about_p1">MGSR is a global football players agency dedicated to representing and advancing the careers of professional athletes. We work across the entire spectrum of the beautiful game — men's, women's, and youth football — with a commitment to integrity, transparency, and excellence.</p>
+      <div class="about-highlight reveal reveal-delay-3" data-i18n="about_quote">"We don't just manage careers — we build them. Every player deserves a partner who sees their full potential."</div>
+      <p class="reveal reveal-delay-4" data-i18n="about_p2">From contract negotiations and transfer management to career planning and market intelligence, our team leverages deep industry knowledge and cutting-edge technology to deliver unmatched service for our clients.</p>
+    </div>
+    <div class="stats-grid">
+      <div class="stat-card reveal reveal-delay-2">
+        <div class="stat-number" data-count="15">0</div>
+        <div class="stat-label" data-i18n="stat_countries">Countries</div>
+      </div>
+      <div class="stat-card reveal reveal-delay-3">
+        <div class="stat-number" data-count="80">0</div>
+        <div class="stat-label" data-i18n="stat_players">Players</div>
+      </div>
+      <div class="stat-card reveal reveal-delay-4">
+        <div class="stat-number" data-count="120">0</div>
+        <div class="stat-label" data-i18n="stat_transfers">Transfers</div>
+      </div>
+      <div class="stat-card reveal reveal-delay-5">
+        <div class="stat-number" data-count="10">0</div>
+        <div class="stat-label" data-i18n="stat_years">Years</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════ SERVICES ═══════ -->
+<div class="section-divider"></div>
+<section class="services-section" id="services">
+  <div class="services-inner">
+    <p class="section-label reveal" data-i18n="services_label">What We Do</p>
+    <h2 class="section-title reveal reveal-delay-1" data-i18n="services_title">Full-Service Player<br>Representation</h2>
+    <p class="section-desc reveal reveal-delay-2" data-i18n="services_desc">End-to-end support for every stage of a player's career, powered by expertise and innovation.</p>
+    <div class="services-grid">
+      <div class="service-card reveal reveal-delay-1">
+        <div class="service-icon">⚽</div>
+        <h3 data-i18n="svc_1_title">Player Representation</h3>
+        <p data-i18n="svc_1_desc">Comprehensive career management and personal advocacy. We stand beside our players at every milestone, ensuring their voice is heard and their interests protected.</p>
+      </div>
+      <div class="service-card reveal reveal-delay-2">
+        <div class="service-icon">🤝</div>
+        <h3 data-i18n="svc_2_title">Transfer Negotiation</h3>
+        <p data-i18n="svc_2_desc">Strategic deal-making backed by real-time market data. We negotiate terms that maximize value for all parties while keeping our players' ambitions at the center.</p>
+      </div>
+      <div class="service-card reveal reveal-delay-3">
+        <div class="service-icon">📋</div>
+        <h3 data-i18n="svc_3_title">Contract Management</h3>
+        <p data-i18n="svc_3_desc">Proactive contract tracking with automated expiry alerts, renewal strategy, and term optimization — so no opportunity is ever missed.</p>
+      </div>
+      <div class="service-card reveal reveal-delay-4">
+        <div class="service-icon">📈</div>
+        <h3 data-i18n="svc_4_title">Career Development</h3>
+        <p data-i18n="svc_4_desc">Long-term planning that goes beyond the next transfer. We map career trajectories, identify opportunities for growth, and prepare players for every chapter.</p>
+      </div>
+      <div class="service-card reveal reveal-delay-5">
+        <div class="service-icon">🔍</div>
+        <h3 data-i18n="svc_5_title">Market Intelligence</h3>
+        <p data-i18n="svc_5_desc">AI-powered scouting and analytics tools that monitor the global market 24/7, surfacing opportunities and insights that others miss.</p>
+      </div>
+      <div class="service-card reveal reveal-delay-5">
+        <div class="service-icon">🌱</div>
+        <h3 data-i18n="svc_6_title">Youth Development</h3>
+        <p data-i18n="svc_6_desc">Dedicated programs for young talent — bridging the gap between potential and professional career with mentorship, exposure, and the right connections.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════ PLATFORMS ═══════ -->
+<div class="section-divider"></div>
+<section class="section" id="platforms">
+  <p class="section-label reveal" data-i18n="platforms_label">Our Reach</p>
+  <h2 class="section-title reveal reveal-delay-1" data-i18n="platforms_title">Three Divisions,<br>One Vision</h2>
+  <p class="section-desc reveal reveal-delay-2" data-i18n="platforms_desc">We operate across every level of the game, with specialized teams and technology for each division.</p>
+  <div class="platforms-grid">
+    <div class="platform-card platform-men reveal reveal-delay-2">
+      <div class="platform-glow"></div>
+      <div class="platform-emoji">⚔️</div>
+      <span class="platform-badge" data-i18n="plat_men_badge">Professional</span>
+      <h3 class="platform-accent" data-i18n="plat_men_title">Men's Football</h3>
+      <p data-i18n="plat_men_desc">Elite representation across top European leagues and international competitions. From first-team veterans to emerging professionals, we drive careers forward at the highest level.</p>
+    </div>
+    <div class="platform-card platform-women reveal reveal-delay-3">
+      <div class="platform-glow"></div>
+      <div class="platform-emoji">👑</div>
+      <span class="platform-badge" data-i18n="plat_women_badge">Women's Game</span>
+      <h3 class="platform-accent" data-i18n="plat_women_title">Women's Football</h3>
+      <p data-i18n="plat_women_desc">Championing the growth of women's football with dedicated scouting, representation, and career management. We believe in equality on and off the pitch.</p>
+    </div>
+    <div class="platform-card platform-youth reveal reveal-delay-4">
+      <div class="platform-glow"></div>
+      <div class="platform-emoji">⚡</div>
+      <span class="platform-badge" data-i18n="plat_youth_badge">Academy</span>
+      <h3 class="platform-accent" data-i18n="plat_youth_title">Youth Football</h3>
+      <p data-i18n="plat_youth_desc">Nurturing the next generation of football stars. We support young athletes from academy to first-team with guidance, exposure, and the connections that matter.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════ TEAM ═══════ -->
+<div class="section-divider"></div>
+<section class="team-section" id="team">
+  <div class="team-inner">
+    <p class="section-label reveal" data-i18n="team_label">Our People</p>
+    <h2 class="section-title reveal reveal-delay-1" data-i18n="team_title">The Team Behind<br>The Talent</h2>
+    <p class="section-desc reveal reveal-delay-2" data-i18n="team_desc">Experienced professionals who live and breathe football.</p>
+    <div class="team-grid">
+      <div class="team-card reveal reveal-delay-2">
+        <div class="team-avatar">LD</div>
+        <h3 data-i18n="team_1_name">Lior Dahan</h3>
+        <p class="team-role" data-i18n="team_1_role">Owner</p>
+      </div>
+      <div class="team-card reveal reveal-delay-3">
+        <div class="team-avatar">RS</div>
+        <h3 data-i18n="team_2_name">Roy Shpitalnik</h3>
+        <p class="team-role" data-i18n="team_2_role">Owner</p>
+      </div>
+      <div class="team-card reveal reveal-delay-4">
+        <div class="team-avatar">LD</div>
+        <h3 data-i18n="team_3_name">Lior Dadon</h3>
+        <p class="team-role" data-i18n="team_3_role">Executive Director</p>
+      </div>
+      <div class="team-card reveal reveal-delay-5">
+        <div class="team-avatar">RE</div>
+        <h3 data-i18n="team_4_name">Roy Elgrably</h3>
+        <p class="team-role" data-i18n="team_4_role">Chief Scout</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════ CONTACT ═══════ -->
+<div class="section-divider"></div>
+<section class="section contact-section" id="contact">
+  <p class="section-label reveal" data-i18n="contact_label">Get In Touch</p>
+  <h2 class="section-title reveal reveal-delay-1" data-i18n="contact_title">Let's Talk Football</h2>
+  <p class="section-desc reveal reveal-delay-2" data-i18n="contact_desc">Whether you're a player, a club, or a partner — we're always open to new conversations.</p>
+  <div class="contact-grid" style="margin-top:3rem;">
+    <div>
+      <div class="contact-info-list">
+        <div class="contact-item reveal reveal-delay-2">
+          <div class="icon">📧</div>
+          <div class="info">
+            <h4 data-i18n="contact_email_label">Email</h4>
+            <p><a href="mailto:info@mgsr-agency.com">info@mgsr-agency.com</a></p>
+          </div>
+        </div>
+        <div class="contact-item reveal reveal-delay-3">
+          <div class="icon">📱</div>
+          <div class="info">
+            <h4 data-i18n="contact_phone_label">Phone</h4>
+            <p dir="ltr">+972-XXX-XXX-XXXX</p>
+          </div>
+        </div>
+        <div class="contact-item reveal reveal-delay-4">
+          <div class="icon">📍</div>
+          <div class="info">
+            <h4 data-i18n="contact_location_label">Location</h4>
+            <p data-i18n="contact_location_value">Israel &amp; Worldwide</p>
+          </div>
+        </div>
+      </div>
+      <div class="social-links reveal reveal-delay-5">
+        <a href="https://linkedin.com/company/mgsr" target="_blank" rel="noopener noreferrer" class="social-link" aria-label="LinkedIn" title="LinkedIn">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+        </a>
+        <a href="https://instagram.com/mgsr_agency" target="_blank" rel="noopener noreferrer" class="social-link" aria-label="Instagram" title="Instagram">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>
+        </a>
+        <a href="https://facebook.com/mgsragency" target="_blank" rel="noopener noreferrer" class="social-link" aria-label="Facebook" title="Facebook">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+        </a>
+      </div>
+    </div>
+    <div class="contact-map reveal reveal-delay-3">
+      <div class="globe-emoji">🌍</div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════ FOOTER ═══════ -->
+<footer class="footer">
+  <p data-i18n="footer_text">&copy; 2026 MGSR Agency. All rights reserved. | <a href="#">Privacy Policy</a></p>
+</footer>
+
+<!-- ═══════ JAVASCRIPT ═══════ -->
+<script>
+const T = {
+  en: {
+    nav_about: "About",
+    nav_services: "Services",
+    nav_platforms: "Platforms",
+    nav_team: "Team",
+    nav_contact: "Contact",
+    hero_label: "Global Football Agency",
+    hero_title_1: "Connecting Talent",
+    hero_title_2: "Across The World",
+    hero_subtitle: "A professional football players agency representing men, women, and youth athletes across the global football landscape.",
+    hero_scroll: "Scroll",
+    about_label: "Who We Are",
+    about_title: "Built on Relationships,<br>Driven by Results",
+    about_p1: "MGSR is a global football players agency dedicated to representing and advancing the careers of professional athletes. We work across the entire spectrum of the beautiful game \u2014 men\u2019s, women\u2019s, and youth football \u2014 with a commitment to integrity, transparency, and excellence.",
+    about_quote: "\u201CWe don\u2019t just manage careers \u2014 we build them. Every player deserves a partner who sees their full potential.\u201D",
+    about_p2: "From contract negotiations and transfer management to career planning and market intelligence, our team leverages deep industry knowledge and cutting-edge technology to deliver unmatched service for our clients.",
+    stat_countries: "Countries",
+    stat_players: "Players",
+    stat_transfers: "Transfers",
+    stat_years: "Years",
+    services_label: "What We Do",
+    services_title: "Full-Service Player<br>Representation",
+    services_desc: "End-to-end support for every stage of a player\u2019s career, powered by expertise and innovation.",
+    svc_1_title: "Player Representation",
+    svc_1_desc: "Comprehensive career management and personal advocacy. We stand beside our players at every milestone, ensuring their voice is heard and their interests protected.",
+    svc_2_title: "Transfer Negotiation",
+    svc_2_desc: "Strategic deal-making backed by real-time market data. We negotiate terms that maximize value for all parties while keeping our players\u2019 ambitions at the center.",
+    svc_3_title: "Contract Management",
+    svc_3_desc: "Proactive contract tracking with automated expiry alerts, renewal strategy, and term optimization \u2014 so no opportunity is ever missed.",
+    svc_4_title: "Career Development",
+    svc_4_desc: "Long-term planning that goes beyond the next transfer. We map career trajectories, identify opportunities for growth, and prepare players for every chapter.",
+    svc_5_title: "Market Intelligence",
+    svc_5_desc: "AI-powered scouting and analytics tools that monitor the global market 24/7, surfacing opportunities and insights that others miss.",
+    svc_6_title: "Youth Development",
+    svc_6_desc: "Dedicated programs for young talent \u2014 bridging the gap between potential and professional career with mentorship, exposure, and the right connections.",
+    platforms_label: "Our Reach",
+    platforms_title: "Three Divisions,<br>One Vision",
+    platforms_desc: "We operate across every level of the game, with specialized teams and technology for each division.",
+    plat_men_badge: "Professional",
+    plat_men_title: "Men\u2019s Football",
+    plat_men_desc: "Elite representation across top European leagues and international competitions. From first-team veterans to emerging professionals, we drive careers forward at the highest level.",
+    plat_women_badge: "Women\u2019s Game",
+    plat_women_title: "Women\u2019s Football",
+    plat_women_desc: "Championing the growth of women\u2019s football with dedicated scouting, representation, and career management. We believe in equality on and off the pitch.",
+    plat_youth_badge: "Academy",
+    plat_youth_title: "Youth Football",
+    plat_youth_desc: "Nurturing the next generation of football stars. We support young athletes from academy to first-team with guidance, exposure, and the connections that matter.",
+    team_label: "Our People",
+    team_title: "The Team Behind<br>The Talent",
+    team_desc: "Experienced professionals who live and breathe football.",
+    team_1_name: "Lior Dahan",
+    team_1_role: "Owner",
+    team_2_name: "Roy Shpitalnik",
+    team_2_role: "Owner",
+    team_3_name: "Lior Dadon",
+    team_3_role: "Executive Director",
+    team_4_name: "Roy Elgrably",
+    team_4_role: "Chief Scout",
+    contact_label: "Get In Touch",
+    contact_title: "Let\u2019s Talk Football",
+    contact_desc: "Whether you\u2019re a player, a club, or a partner \u2014 we\u2019re always open to new conversations.",
+    contact_email_label: "Email",
+    contact_phone_label: "Phone",
+    contact_location_label: "Location",
+    contact_location_value: "Israel & Worldwide",
+    footer_text: "\u00A9 2026 MGSR Agency. All rights reserved. | <a href=\"#\">Privacy Policy</a>"
+  },
+  he: {
+    nav_about: "\u05D0\u05D5\u05D3\u05D5\u05EA",
+    nav_services: "\u05E9\u05D9\u05E8\u05D5\u05EA\u05D9\u05DD",
+    nav_platforms: "\u05D7\u05D8\u05D9\u05D1\u05D5\u05EA",
+    nav_team: "\u05D4\u05E6\u05D5\u05D5\u05EA",
+    nav_contact: "\u05E6\u05D5\u05E8 \u05E7\u05E9\u05E8",
+    hero_label: "\u05E1\u05D5\u05DB\u05E0\u05D5\u05EA \u05DB\u05D3\u05D5\u05E8\u05D2\u05DC \u05D1\u05D9\u05E0\u05DC\u05D0\u05D5\u05DE\u05D9\u05EA",
+    hero_title_1: "\u05DE\u05D7\u05D1\u05E8\u05D9\u05DD \u05DB\u05D9\u05E9\u05E8\u05D5\u05DF",
+    hero_title_2: "\u05D1\u05E8\u05D7\u05D1\u05D9 \u05D4\u05E2\u05D5\u05DC\u05DD",
+    hero_subtitle: "\u05E1\u05D5\u05DB\u05E0\u05D5\u05EA \u05E9\u05D7\u05E7\u05E0\u05D9 \u05DB\u05D3\u05D5\u05E8\u05D2\u05DC \u05DE\u05E7\u05E6\u05D5\u05E2\u05D9\u05EA \u05D4\u05DE\u05D9\u05D9\u05E6\u05D2\u05EA \u05E1\u05E4\u05D5\u05E8\u05D8\u05D0\u05D9\u05DD \u2014 \u05D2\u05D1\u05E8\u05D9\u05DD, \u05E0\u05E9\u05D9\u05DD \u05D5\u05E6\u05E2\u05D9\u05E8\u05D9\u05DD \u2014 \u05D1\u05D6\u05D9\u05E8\u05D4 \u05D4\u05D1\u05D9\u05E0\u05DC\u05D0\u05D5\u05DE\u05D9\u05EA.",
+    hero_scroll: "\u05D2\u05DC\u05D5\u05DC",
+    about_label: "\u05DE\u05D9 \u05D0\u05E0\u05D7\u05E0\u05D5",
+    about_title: "\u05D1\u05E0\u05D5\u05D9\u05D9\u05DD \u05E2\u05DC \u05D9\u05D7\u05E1\u05D9\u05DD,<br>\u05DE\u05D5\u05E0\u05E2\u05D9\u05DD \u05DE\u05EA\u05D5\u05E6\u05D0\u05D5\u05EA",
+    about_p1: "MGSR \u05D4\u05D9\u05D0 \u05E1\u05D5\u05DB\u05E0\u05D5\u05EA \u05E9\u05D7\u05E7\u05E0\u05D9 \u05DB\u05D3\u05D5\u05E8\u05D2\u05DC \u05D1\u05D9\u05E0\u05DC\u05D0\u05D5\u05DE\u05D9\u05EA \u05D4\u05DE\u05D5\u05E7\u05D3\u05E9\u05EA \u05DC\u05D9\u05D9\u05E6\u05D5\u05D2 \u05D5\u05E7\u05D9\u05D3\u05D5\u05DD \u05D4\u05E7\u05E8\u05D9\u05D9\u05E8\u05D4 \u05E9\u05DC \u05E1\u05E4\u05D5\u05E8\u05D8\u05D0\u05D9\u05DD \u05DE\u05E7\u05E6\u05D5\u05E2\u05D9\u05D9\u05DD. \u05D0\u05E0\u05D5 \u05E4\u05D5\u05E2\u05DC\u05D9\u05DD \u05D1\u05DB\u05DC \u05E8\u05D7\u05D1\u05D9 \u05D4\u05DE\u05E9\u05D7\u05E7 \u05D4\u05D9\u05E4\u05D4 \u2014 \u05DB\u05D3\u05D5\u05E8\u05D2\u05DC \u05D2\u05D1\u05E8\u05D9\u05DD, \u05E0\u05E9\u05D9\u05DD \u05D5\u05E6\u05E2\u05D9\u05E8\u05D9\u05DD \u2014 \u05E2\u05DD \u05DE\u05D7\u05D5\u05D9\u05D1\u05D5\u05EA \u05DC\u05D9\u05D5\u05E9\u05E8\u05D4, \u05E9\u05E7\u05D9\u05E4\u05D5\u05EA \u05D5\u05DE\u05E6\u05D5\u05D9\u05E0\u05D5\u05EA.",
+    about_quote: "\u201C\u05D0\u05E0\u05D7\u05E0\u05D5 \u05DC\u05D0 \u05E8\u05E7 \u05DE\u05E0\u05D4\u05DC\u05D9\u05DD \u05E7\u05E8\u05D9\u05D9\u05E8\u05D5\u05EA \u2014 \u05D0\u05E0\u05D7\u05E0\u05D5 \u05D1\u05D5\u05E0\u05D9\u05DD \u05D0\u05D5\u05EA\u05DF. \u05DB\u05DC \u05E9\u05D7\u05E7\u05DF \u05E8\u05D0\u05D5\u05D9 \u05DC\u05E9\u05D5\u05EA\u05E3 \u05E9\u05E8\u05D5\u05D0\u05D4 \u05D0\u05EA \u05DE\u05DC\u05D5\u05D0 \u05D4\u05E4\u05D5\u05D8\u05E0\u05E6\u05D9\u05D0\u05DC \u05E9\u05DC\u05D5.\u201D",
+    about_p2: "\u05DE\u05DE\u05E9\u05D0 \u05D5\u05DE\u05EA\u05DF \u05E2\u05DC \u05D7\u05D5\u05D6\u05D9\u05DD \u05D5\u05E0\u05D9\u05D4\u05D5\u05DC \u05D4\u05E2\u05D1\u05E8\u05D5\u05EA \u05D5\u05E2\u05D3 \u05EA\u05DB\u05E0\u05D5\u05DF \u05E7\u05E8\u05D9\u05D9\u05E8\u05D4 \u05D5\u05DE\u05D5\u05D3\u05D9\u05E2\u05D9\u05DF \u05E9\u05D5\u05E7, \u05D4\u05E6\u05D5\u05D5\u05EA \u05E9\u05DC\u05E0\u05D5 \u05DE\u05DE\u05E0\u05E3 \u05D9\u05D3\u05E2 \u05DE\u05E2\u05DE\u05D9\u05E7 \u05D1\u05EA\u05E2\u05E9\u05D9\u05D9\u05D4 \u05D5\u05D8\u05DB\u05E0\u05D5\u05DC\u05D5\u05D2\u05D9\u05D4 \u05D7\u05D3\u05E9\u05E0\u05D9\u05EA \u05DB\u05D3\u05D9 \u05DC\u05E1\u05E4\u05E7 \u05E9\u05D9\u05E8\u05D5\u05EA \u05DC\u05DC\u05D0 \u05EA\u05D7\u05E8\u05D5\u05EA \u05DC\u05DC\u05E7\u05D5\u05D7\u05D5\u05EA\u05D9\u05E0\u05D5.",
+    stat_countries: "\u05DE\u05D3\u05D9\u05E0\u05D5\u05EA",
+    stat_players: "\u05E9\u05D7\u05E7\u05E0\u05D9\u05DD",
+    stat_transfers: "\u05D4\u05E2\u05D1\u05E8\u05D5\u05EA",
+    stat_years: "\u05E9\u05E0\u05D5\u05EA \u05E0\u05D9\u05E1\u05D9\u05D5\u05DF",
+    services_label: "\u05DE\u05D4 \u05D0\u05E0\u05D7\u05E0\u05D5 \u05E2\u05D5\u05E9\u05D9\u05DD",
+    services_title: "\u05D9\u05D9\u05E6\u05D5\u05D2 \u05E9\u05D7\u05E7\u05E0\u05D9\u05DD<br>\u05DE\u05E7\u05D9\u05E3 \u05D5\u05DE\u05DC\u05D0",
+    services_desc: "\u05EA\u05DE\u05D9\u05DB\u05D4 \u05DE\u05E7\u05E6\u05D4 \u05DC\u05E7\u05E6\u05D4 \u05D1\u05DB\u05DC \u05E9\u05DC\u05D1 \u05D1\u05E7\u05E8\u05D9\u05D9\u05E8\u05D4 \u05E9\u05DC \u05D4\u05E9\u05D7\u05E7\u05DF, \u05DE\u05D5\u05E0\u05E2\u05EA \u05E2\u05DC \u05D9\u05D3\u05D9 \u05DE\u05D5\u05DE\u05D7\u05D9\u05D5\u05EA \u05D5\u05D7\u05D3\u05E9\u05E0\u05D5\u05EA.",
+    svc_1_title: "\u05D9\u05D9\u05E6\u05D5\u05D2 \u05E9\u05D7\u05E7\u05E0\u05D9\u05DD",
+    svc_1_desc: "\u05E0\u05D9\u05D4\u05D5\u05DC \u05E7\u05E8\u05D9\u05D9\u05E8\u05D4 \u05DE\u05E7\u05D9\u05E3 \u05D5\u05E1\u05E0\u05D2\u05D5\u05E8 \u05D0\u05D9\u05E9\u05D9. \u05D0\u05E0\u05D7\u05E0\u05D5 \u05E2\u05D5\u05DE\u05D3\u05D9\u05DD \u05DC\u05E6\u05D3 \u05D4\u05E9\u05D7\u05E7\u05E0\u05D9\u05DD \u05E9\u05DC\u05E0\u05D5 \u05D1\u05DB\u05DC \u05D0\u05D1\u05DF \u05D3\u05E8\u05DA, \u05D5\u05DE\u05D5\u05D5\u05D3\u05D0\u05D9\u05DD \u05E9\u05E7\u05D5\u05DC\u05DD \u05E0\u05E9\u05DE\u05E2 \u05D5\u05E9\u05D4\u05D0\u05D9\u05E0\u05D8\u05E8\u05E1\u05D9\u05DD \u05E9\u05DC\u05D4\u05DD \u05DE\u05D5\u05D2\u05E0\u05D9\u05DD.",
+    svc_2_title: "\u05DE\u05E9\u05D0 \u05D5\u05DE\u05EA\u05DF \u05DC\u05D4\u05E2\u05D1\u05E8\u05D5\u05EA",
+    svc_2_desc: "\u05E2\u05E1\u05E7\u05D0\u05D5\u05EA \u05D0\u05E1\u05D8\u05E8\u05D8\u05D2\u05D9\u05D5\u05EA \u05D4\u05DE\u05D2\u05D5\u05D1\u05D5\u05EA \u05D1\u05E0\u05EA\u05D5\u05E0\u05D9 \u05E9\u05D5\u05E7 \u05D1\u05D6\u05DE\u05DF \u05D0\u05DE\u05EA. \u05D0\u05E0\u05D5 \u05DE\u05E0\u05D4\u05DC\u05D9\u05DD \u05DE\u05E9\u05D0 \u05D5\u05DE\u05EA\u05DF \u05E2\u05DC \u05EA\u05E0\u05D0\u05D9\u05DD \u05E9\u05DE\u05DE\u05E7\u05E1\u05DE\u05D9\u05DD \u05E2\u05E8\u05DA \u05EA\u05D5\u05DA \u05E9\u05DE\u05D9\u05E8\u05D4 \u05E2\u05DC \u05D4\u05E9\u05D0\u05D9\u05E4\u05D5\u05EA \u05E9\u05DC \u05D4\u05E9\u05D7\u05E7\u05E0\u05D9\u05DD \u05D1\u05DE\u05E8\u05DB\u05D6.",
+    svc_3_title: "\u05E0\u05D9\u05D4\u05D5\u05DC \u05D7\u05D5\u05D6\u05D9\u05DD",
+    svc_3_desc: "\u05DE\u05E2\u05E7\u05D1 \u05D9\u05D6\u05D5\u05DD \u05D0\u05D7\u05E8 \u05D7\u05D5\u05D6\u05D9\u05DD \u05E2\u05DD \u05D4\u05EA\u05E8\u05D0\u05D5\u05EA \u05D0\u05D5\u05D8\u05D5\u05DE\u05D8\u05D9\u05D5\u05EA, \u05D0\u05E1\u05D8\u05E8\u05D8\u05D2\u05D9\u05D9\u05EA \u05D7\u05D9\u05D3\u05D5\u05E9 \u05D5\u05DE\u05D9\u05D8\u05D5\u05D1 \u05EA\u05E0\u05D0\u05D9\u05DD \u2014 \u05DB\u05D3\u05D9 \u05E9\u05D0\u05E3 \u05D4\u05D6\u05D3\u05DE\u05E0\u05D5\u05EA \u05DC\u05D0 \u05EA\u05D5\u05D7\u05DE\u05E6.",
+    svc_4_title: "\u05E4\u05D9\u05EA\u05D5\u05D7 \u05E7\u05E8\u05D9\u05D9\u05E8\u05D4",
+    svc_4_desc: "\u05EA\u05DB\u05E0\u05D5\u05DF \u05DC\u05D8\u05D5\u05D5\u05D7 \u05D0\u05E8\u05D5\u05DA \u05E9\u05D7\u05D5\u05E8\u05D2 \u05DE\u05D4\u05D4\u05E2\u05D1\u05E8\u05D4 \u05D4\u05D1\u05D0\u05D4. \u05D0\u05E0\u05D5 \u05DE\u05DE\u05E4\u05D9\u05DD \u05DE\u05E1\u05DC\u05D5\u05DC\u05D9 \u05E7\u05E8\u05D9\u05D9\u05E8\u05D4, \u05DE\u05D6\u05D4\u05D9\u05DD \u05D4\u05D6\u05D3\u05DE\u05E0\u05D5\u05D9\u05D5\u05EA \u05DC\u05E6\u05DE\u05D9\u05D7\u05D4 \u05D5\u05DE\u05DB\u05D9\u05E0\u05D9\u05DD \u05E9\u05D7\u05E7\u05E0\u05D9\u05DD \u05DC\u05DB\u05DC \u05E4\u05E8\u05E7.",
+    svc_5_title: "\u05DE\u05D5\u05D3\u05D9\u05E2\u05D9\u05DF \u05E9\u05D5\u05E7",
+    svc_5_desc: "\u05DB\u05DC\u05D9 \u05E1\u05E7\u05D0\u05D5\u05D8\u05D9\u05E0\u05D2 \u05D5\u05D0\u05E0\u05DC\u05D9\u05D8\u05D9\u05E7\u05D4 \u05DE\u05D1\u05D5\u05E1\u05E1\u05D9 \u05D1\u05D9\u05E0\u05D4 \u05DE\u05DC\u05D0\u05DB\u05D5\u05EA\u05D9\u05EA \u05E9\u05DE\u05E0\u05D8\u05E8\u05D9\u05DD \u05D0\u05EA \u05D4\u05E9\u05D5\u05E7 \u05D4\u05D2\u05DC\u05D5\u05D1\u05DC\u05D9 24/7, \u05D5\u05DE\u05E2\u05DC\u05D9\u05DD \u05D4\u05D6\u05D3\u05DE\u05E0\u05D5\u05D9\u05D5\u05EA \u05D5\u05EA\u05D5\u05D1\u05E0\u05D5\u05EA \u05E9\u05D0\u05D7\u05E8\u05D9\u05DD \u05DE\u05E4\u05E1\u05E4\u05E1\u05D9\u05DD.",
+    svc_6_title: "\u05E4\u05D9\u05EA\u05D5\u05D7 \u05E6\u05E2\u05D9\u05E8\u05D9\u05DD",
+    svc_6_desc: "\u05EA\u05D5\u05DB\u05E0\u05D9\u05D5\u05EA \u05D9\u05D9\u05E2\u05D5\u05D3\u05D9\u05D5\u05EA \u05DC\u05DB\u05D9\u05E9\u05E8\u05D5\u05E0\u05D5\u05EA \u05E6\u05E2\u05D9\u05E8\u05D9\u05DD \u2014 \u05D2\u05D9\u05E9\u05D5\u05E8 \u05E2\u05DC \u05D4\u05E4\u05E2\u05E8 \u05D1\u05D9\u05DF \u05E4\u05D5\u05D8\u05E0\u05E6\u05D9\u05D0\u05DC \u05DC\u05E7\u05E8\u05D9\u05D9\u05E8\u05D4 \u05DE\u05E7\u05E6\u05D5\u05E2\u05D9\u05EA \u05E2\u05DD \u05D7\u05D5\u05E0\u05DB\u05D5\u05EA, \u05D7\u05E9\u05D9\u05E4\u05D4 \u05D5\u05D4\u05E7\u05E9\u05E8\u05D9\u05DD \u05D4\u05E0\u05DB\u05D5\u05E0\u05D9\u05DD.",
+    platforms_label: "\u05D4\u05D4\u05D9\u05E9\u05D2 \u05E9\u05DC\u05E0\u05D5",
+    platforms_title: "\u05E9\u05DC\u05D5\u05E9 \u05D7\u05D8\u05D9\u05D1\u05D5\u05EA,<br>\u05D7\u05D6\u05D5\u05DF \u05D0\u05D7\u05D3",
+    platforms_desc: "\u05D0\u05E0\u05D5 \u05E4\u05D5\u05E2\u05DC\u05D9\u05DD \u05D1\u05DB\u05DC \u05E8\u05DE\u05D5\u05EA \u05D4\u05DE\u05E9\u05D7\u05E7, \u05E2\u05DD \u05E6\u05D5\u05D5\u05EA\u05D9\u05DD \u05D5\u05D8\u05DB\u05E0\u05D5\u05DC\u05D5\u05D2\u05D9\u05D4 \u05DE\u05EA\u05DE\u05D7\u05D9\u05DD \u05DC\u05DB\u05DC \u05D7\u05D8\u05D9\u05D1\u05D4.",
+    plat_men_badge: "\u05DE\u05E7\u05E6\u05D5\u05E2\u05E0\u05D9",
+    plat_men_title: "\u05DB\u05D3\u05D5\u05E8\u05D2\u05DC \u05D2\u05D1\u05E8\u05D9\u05DD",
+    plat_men_desc: "\u05D9\u05D9\u05E6\u05D5\u05D2 \u05DE\u05D5\u05D1\u05D7\u05E8 \u05D1\u05DC\u05D9\u05D2\u05D5\u05EA \u05D4\u05DE\u05D5\u05D1\u05D9\u05DC\u05D5\u05EA \u05D1\u05D0\u05D9\u05E8\u05D5\u05E4\u05D4 \u05D5\u05D1\u05EA\u05D7\u05E8\u05D5\u05D9\u05D5\u05EA \u05D1\u05D9\u05E0\u05DC\u05D0\u05D5\u05DE\u05D9\u05D5\u05EA. \u05DE\u05DE\u05D5\u05EA\u05D2\u05D9 \u05D4\u05E8\u05DB\u05D1 \u05D4\u05E8\u05D0\u05E9\u05D5\u05DF \u05D5\u05E2\u05D3 \u05DE\u05E7\u05E6\u05D5\u05E2\u05E0\u05D9\u05DD \u05DE\u05EA\u05E4\u05EA\u05D7\u05D9\u05DD, \u05D0\u05E0\u05D5 \u05DE\u05E7\u05D3\u05DE\u05D9\u05DD \u05E7\u05E8\u05D9\u05D9\u05E8\u05D5\u05EA \u05D1\u05E8\u05DE\u05D4 \u05D4\u05D2\u05D1\u05D5\u05D4\u05D4 \u05D1\u05D9\u05D5\u05EA\u05E8.",
+    plat_women_badge: "\u05DB\u05D3\u05D5\u05E8\u05D2\u05DC \u05E0\u05E9\u05D9\u05DD",
+    plat_women_title: "\u05DB\u05D3\u05D5\u05E8\u05D2\u05DC \u05E0\u05E9\u05D9\u05DD",
+    plat_women_desc: "\u05DE\u05D5\u05D1\u05D9\u05DC\u05D9\u05DD \u05D0\u05EA \u05D4\u05E6\u05DE\u05D9\u05D7\u05D4 \u05E9\u05DC \u05DB\u05D3\u05D5\u05E8\u05D2\u05DC \u05E0\u05E9\u05D9\u05DD \u05E2\u05DD \u05E1\u05E7\u05D0\u05D5\u05D8\u05D9\u05E0\u05D2, \u05D9\u05D9\u05E6\u05D5\u05D2 \u05D5\u05E0\u05D9\u05D4\u05D5\u05DC \u05E7\u05E8\u05D9\u05D9\u05E8\u05D4 \u05D9\u05D9\u05E2\u05D5\u05D3\u05D9\u05D9\u05DD. \u05D0\u05E0\u05D7\u05E0\u05D5 \u05DE\u05D0\u05DE\u05D9\u05E0\u05D9\u05DD \u05D1\u05E9\u05D5\u05D5\u05D9\u05D5\u05DF \u05D1\u05DE\u05D2\u05E8\u05E9 \u05D5\u05DE\u05D7\u05D5\u05E6\u05D4 \u05DC\u05D5.",
+    plat_youth_badge: "\u05D0\u05E7\u05D3\u05DE\u05D9\u05D4",
+    plat_youth_title: "\u05DB\u05D3\u05D5\u05E8\u05D2\u05DC \u05E0\u05D5\u05E2\u05E8",
+    plat_youth_desc: "\u05DE\u05D8\u05E4\u05D7\u05D9\u05DD \u05D0\u05EA \u05D4\u05D3\u05D5\u05E8 \u05D4\u05D1\u05D0 \u05E9\u05DC \u05DB\u05D5\u05DB\u05D1\u05D9 \u05D4\u05DB\u05D3\u05D5\u05E8\u05D2\u05DC. \u05D0\u05E0\u05D5 \u05EA\u05D5\u05DE\u05DB\u05D9\u05DD \u05D1\u05E1\u05E4\u05D5\u05E8\u05D8\u05D0\u05D9\u05DD \u05E6\u05E2\u05D9\u05E8\u05D9\u05DD \u05DE\u05D4\u05D0\u05E7\u05D3\u05DE\u05D9\u05D4 \u05D5\u05E2\u05D3 \u05D4\u05D4\u05E8\u05DB\u05D1 \u05D4\u05E8\u05D0\u05E9\u05D5\u05DF \u05E2\u05DD \u05D4\u05D3\u05E8\u05DB\u05D4, \u05D7\u05E9\u05D9\u05E4\u05D4 \u05D5\u05D4\u05E7\u05E9\u05E8\u05D9\u05DD \u05E9\u05D7\u05E9\u05D5\u05D1\u05D9\u05DD.",
+    team_label: "\u05D4\u05D0\u05E0\u05E9\u05D9\u05DD \u05E9\u05DC\u05E0\u05D5",
+    team_title: "\u05D4\u05E6\u05D5\u05D5\u05EA \u05DE\u05D0\u05D7\u05D5\u05E8\u05D9<br>\u05D4\u05DB\u05D9\u05E9\u05E8\u05D5\u05DF",
+    team_desc: "\u05D0\u05E0\u05E9\u05D9 \u05DE\u05E7\u05E6\u05D5\u05E2 \u05DE\u05E0\u05D5\u05E1\u05D9\u05DD \u05E9\u05D7\u05D9\u05D9\u05DD \u05D5\u05E0\u05D5\u05E9\u05DE\u05D9\u05DD \u05DB\u05D3\u05D5\u05E8\u05D2\u05DC.",
+    team_1_name: "\u05DC\u05D9\u05D0\u05D5\u05E8 \u05D3\u05D4\u05DF",
+    team_1_role: "\u05D1\u05E2\u05DC\u05D9\u05DD",
+    team_2_name: "\u05E8\u05D5\u05E2\u05D9 \u05E9\u05E4\u05D9\u05D8\u05DC\u05E0\u05D9\u05E7",
+    team_2_role: "\u05D1\u05E2\u05DC\u05D9\u05DD",
+    team_3_name: "\u05DC\u05D9\u05D0\u05D5\u05E8 \u05D3\u05D3\u05D5\u05DF",
+    team_3_role: "\u05DE\u05E0\u05D4\u05DC \u05D1\u05D9\u05E6\u05D5\u05E2",
+    team_4_name: "\u05E8\u05D5\u05E2\u05D9 \u05D0\u05DC\u05D2\u05E8\u05D1\u05DC\u05D9",
+    team_4_role: "\u05E1\u05E7\u05D0\u05D5\u05D8 \u05E8\u05D0\u05E9\u05D9",
+    contact_label: "\u05E6\u05D5\u05E8 \u05E7\u05E9\u05E8",
+    contact_title: "\u05D1\u05D5\u05D0\u05D5 \u05E0\u05D3\u05D1\u05E8 \u05DB\u05D3\u05D5\u05E8\u05D2\u05DC",
+    contact_desc: "\u05D1\u05D9\u05DF \u05D0\u05DD \u05D0\u05EA\u05D4 \u05E9\u05D7\u05E7\u05DF, \u05DE\u05D5\u05E2\u05D3\u05D5\u05DF \u05D0\u05D5 \u05E9\u05D5\u05EA\u05E3 \u2014 \u05D0\u05E0\u05D7\u05E0\u05D5 \u05EA\u05DE\u05D9\u05D3 \u05E4\u05EA\u05D5\u05D7\u05D9\u05DD \u05DC\u05E9\u05D9\u05D7\u05D5\u05EA \u05D7\u05D3\u05E9\u05D5\u05EA.",
+    contact_email_label: "\u05D0\u05D9\u05DE\u05D9\u05D9\u05DC",
+    contact_phone_label: "\u05D8\u05DC\u05E4\u05D5\u05DF",
+    contact_location_label: "\u05DE\u05D9\u05E7\u05D5\u05DD",
+    contact_location_value: "\u05D9\u05E9\u05E8\u05D0\u05DC \u05D5\u05D4\u05E2\u05D5\u05DC\u05DD",
+    footer_text: "\u00A9 2026 \u05E1\u05D5\u05DB\u05E0\u05D5\u05EA MGSR. \u05DB\u05DC \u05D4\u05D6\u05DB\u05D5\u05D9\u05D5\u05EA \u05E9\u05DE\u05D5\u05E8\u05D5\u05EA. | <a href=\"#\">\u05DE\u05D3\u05D9\u05E0\u05D9\u05D5\u05EA \u05E4\u05E8\u05D8\u05D9\u05D5\u05EA</a>"
+  }
+};
+
+let currentLang = 'en';
+
+function setLang(lang) {
+  currentLang = lang;
+  const dir = lang === 'he' ? 'rtl' : 'ltr';
+  document.documentElement.setAttribute('dir', dir);
+  document.documentElement.setAttribute('lang', lang);
+  document.getElementById('btnEN').classList.toggle('active', lang === 'en');
+  document.getElementById('btnHE').classList.toggle('active', lang === 'he');
+  document.querySelectorAll('[data-i18n]').forEach(function(el) {
+    var key = el.getAttribute('data-i18n');
+    if (T[lang] && T[lang][key]) {
+      el.innerHTML = T[lang][key];
+    }
+  });
+}
+
+// Scroll reveal
+var observer = new IntersectionObserver(function(entries) {
+  entries.forEach(function(entry) {
+    if (entry.isIntersecting) entry.target.classList.add('visible');
+  });
+}, { threshold: 0.1, rootMargin: '0px 0px -50px 0px' });
+document.querySelectorAll('.reveal').forEach(function(el) { observer.observe(el); });
+
+// Nav scroll effect
+window.addEventListener('scroll', function() {
+  document.getElementById('mainNav').classList.toggle('scrolled', window.scrollY > 60);
+}, { passive: true });
+
+// Stat counter animation
+var counterObserver = new IntersectionObserver(function(entries) {
+  entries.forEach(function(entry) {
+    if (entry.isIntersecting) {
+      var el = entry.target;
+      var target = parseInt(el.getAttribute('data-count'));
+      if (!target) return;
+      var current = 0;
+      var duration = 2000;
+      var step = target / (duration / 16);
+      var timer = setInterval(function() {
+        current += step;
+        if (current >= target) { current = target; clearInterval(timer); }
+        el.textContent = Math.round(current) + '+';
+      }, 16);
+      counterObserver.unobserve(el);
+    }
+  });
+}, { threshold: 0.5 });
+document.querySelectorAll('.stat-number[data-count]').forEach(function(el) { counterObserver.observe(el); });
+
+// Smooth scroll for nav links
+document.querySelectorAll('.nav-links a, .mobile-menu a').forEach(function(link) {
+  link.addEventListener('click', function(e) {
+    e.preventDefault();
+    var target = document.querySelector(link.getAttribute('href'));
+    if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    // Close mobile menu
+    document.getElementById('mobileMenu').classList.remove('open');
+    document.getElementById('hamburger').classList.remove('open');
+  });
+});
+
+// Hamburger toggle
+document.getElementById('hamburger').addEventListener('click', function() {
+  this.classList.toggle('open');
+  document.getElementById('mobileMenu').classList.toggle('open');
+});
+</script>
+</body>
+</html>
