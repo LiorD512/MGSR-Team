@@ -1137,9 +1137,9 @@ async function runScoutAgent() {
     croatia: ["https://www.transfermarkt.com/hnl/startseite/wettbewerb/KR1"],
     slovenia: ["https://www.transfermarkt.com/prvaliga/startseite/wettbewerb/SL1"],
     bosnia: ["https://www.transfermarkt.com/premier-liga-bosne-i-hercegovine/startseite/wettbewerb/BOS1"],
-    macedonia: ["https://www.transfermarkt.com/prva-makedonska-fudbalska-liga/startseite/wettbewerb/MAC1"],
-    montenegro: ["https://www.transfermarkt.com/meridianbet-1-cfl/startseite/wettbewerb/MON1"],
-    kosovo: ["https://www.transfermarkt.com/superliga-e-kosoves/startseite/wettbewerb/KOS1"],
+    macedonia: ["https://www.transfermarkt.com/prva-makedonska-fudbalska-liga/startseite/wettbewerb/MAZ1"],
+    montenegro: ["https://www.transfermarkt.com/meridianbet-1-cfl/startseite/wettbewerb/MNE1"],
+    kosovo: ["https://www.transfermarkt.com/superliga-e-kosoves/startseite/wettbewerb/KO1"],
     cyprus: ["https://www.transfermarkt.com/protathlima-cyta/startseite/wettbewerb/ZYP1"],
     slovakia: ["https://www.transfermarkt.com/nike-liga/startseite/wettbewerb/SLO1"],
     czech: ["https://www.transfermarkt.com/chance-liga/startseite/wettbewerb/TS1"],
@@ -1193,25 +1193,32 @@ async function runScoutAgent() {
     const $start = cheerio.load(startHtml);
     const kaderUrls = [];
     // TM uses multiple link patterns for clubs — try all of them
+    const seenVereinIds = new Set();
     $start('a[href*="/verein/"]').each((_, el) => {
       let href = $start(el).attr("href") || "";
       if (!href) return;
       // Only club links (startseite or kader)
       if (!href.includes("/startseite/") && !href.includes("/kader/")) return;
-      // Skip season-specific links (duplicates with saison_id)
-      if (href.includes("saison_id")) return;
+      // Extract verein ID for deduplication
+      const vereinMatch = href.match(/\/verein\/(\d+)/);
+      if (!vereinMatch) return;
+      const vereinId = vereinMatch[1];
+      if (seenVereinIds.has(vereinId)) return;
+      seenVereinIds.add(vereinId);
+      // Strip saison_id and normalize to kader URL
       if (!href.startsWith("http")) href = "https://www.transfermarkt.com" + href;
+      href = href.replace(/\/saison_id\/\d+/, "");
       href = href.replace("/startseite/", "/kader/");
       if (!href.includes("/plus/")) href += "/plus/1";
-      if (!kaderUrls.includes(href)) kaderUrls.push(href);
+      kaderUrls.push(href);
     });
 
     if (kaderUrls.length === 0) return players;
 
-    // Step 2: scrape up to 16 clubs (full coverage for small/medium leagues)
-    const MAX_CLUBS = 16;
+    // Step 2: scrape up to 10 clubs (sufficient for candidate pool)
+    const MAX_CLUBS = 10;
     for (const kaderUrl of kaderUrls.slice(0, MAX_CLUBS)) {
-      await sleep(5000); // Respectful delay for TM
+      await sleep(2000); // Respectful delay for TM
       try {
         const html = await fetchTmHtml(kaderUrl);
         const $ = cheerio.load(html);
@@ -1357,6 +1364,8 @@ async function runScoutAgent() {
   // Run the fallback for agents with few profiles (< 5) that have TM league URLs
   const MIN_PROFILES_FOR_TM_FALLBACK = 5;
   const deadAgents = AGENT_IDS.filter((id) => (agentsWithProfiles.get(id) || 0) < MIN_PROFILES_FOR_TM_FALLBACK && TM_LEAGUE_URLS[id]);
+  // Sort by proximity to target (agents needing fewest extra profiles first)
+  deadAgents.sort((a, b) => (agentsWithProfiles.get(b) || 0) - (agentsWithProfiles.get(a) || 0));
   let tmFallbackFound = 0;
   if (deadAgents.length > 0) {
     console.log(`[ScoutAgent] Live TM fallback for ${deadAgents.length} agents below target: ${deadAgents.join(", ")}`);
@@ -1388,7 +1397,8 @@ async function runScoutAgent() {
       return enriched;
     }
 
-    for (const agentId of deadAgents) {
+    // Process a single agent's TM fallback
+    async function processAgentTmFallback(agentId) {
       const currentCount = agentsWithProfiles.get(agentId) || 0;
       const needed = MIN_PROFILES_FOR_TM_FALLBACK - currentCount;
 
@@ -1419,8 +1429,8 @@ async function runScoutAgent() {
           if (candidates.length === 0) continue;
 
           // Enrich top candidates with real season stats from TM performance pages
-          // Limit to 40 per league to keep runtime reasonable (~60s per league)
-          const toEnrich = candidates.slice(0, 40);
+          // Limit to 25 per league to keep runtime reasonable
+          const toEnrich = candidates.slice(0, 25);
           const enrichCount = await enrichWithTmStats(toEnrich);
           console.log(`[ScoutAgent] TM enriched ${enrichCount}/${toEnrich.length} players with season stats for ${agentId}`);
 
@@ -1490,6 +1500,13 @@ async function runScoutAgent() {
           console.error(`[ScoutAgent] TM fallback error for ${agentId}: ${err.message}`);
         }
       }
+    }
+
+    // Process agents in parallel batches of 3 for speed
+    const TM_PARALLEL = 3;
+    for (let i = 0; i < deadAgents.length; i += TM_PARALLEL) {
+      const batch = deadAgents.slice(i, i + TM_PARALLEL);
+      await Promise.allSettled(batch.map((id) => processAgentTmFallback(id)));
     }
     console.log(`[ScoutAgent] Live TM fallback found ${tmFallbackFound} additional profiles`);
   }
