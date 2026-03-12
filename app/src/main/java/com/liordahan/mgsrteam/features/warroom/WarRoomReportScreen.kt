@@ -28,6 +28,9 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -77,24 +80,60 @@ fun WarRoomReportScreen(
         viewModel.loadReport(transfermarktUrl, playerName)
     }
 
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxSize()
             .background(HomeDarkBackground)
+            .drawBehind {
+                // Ambient purple glow — top-center
+                drawRect(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            ReportPurple.copy(alpha = 0.07f),
+                            Color.Transparent
+                        ),
+                        center = Offset(size.width * 0.5f, 0f),
+                        radius = size.width * 0.8f
+                    )
+                )
+                // Subtle side glow
+                drawRect(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            ReportPurple.copy(alpha = 0.03f),
+                            Color.Transparent
+                        ),
+                        center = Offset(size.width * 0.9f, size.height * 0.3f),
+                        radius = size.width * 0.5f
+                    )
+                )
+                // Bottom depth fade
+                drawRect(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(
+                            Color.Transparent,
+                            Color(0xFF0D1117).copy(alpha = 0.6f)
+                        ),
+                        startY = size.height * 0.75f,
+                        endY = size.height
+                    )
+                )
+            }
     ) {
-        // Top bar
-        ReportTopBar(
-            playerName = playerName,
-            onBack = { navController.popBackStack() }
-        )
+        Column(modifier = Modifier.fillMaxSize()) {
+            // Top bar
+            ReportTopBar(
+                playerName = playerName,
+                onBack = { navController.popBackStack() }
+            )
 
-        when {
-            state.reportLoading -> {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            when {
+                state.reportLoading -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         CircularProgressIndicator(color = ReportPurple, strokeWidth = 3.dp)
                         Spacer(Modifier.height(16.dp))
                         Text(
@@ -133,6 +172,7 @@ fun WarRoomReportScreen(
                 )
             }
         }
+        }
     }
 }
 
@@ -145,7 +185,29 @@ private fun ReportTopBar(playerName: String, onBack: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(HomeDarkCard)
+            .drawBehind {
+                val gradient = Brush.verticalGradient(
+                    colors = listOf(
+                        ReportPurple.copy(alpha = 0.18f),
+                        HomeDarkCard
+                    )
+                )
+                drawRect(gradient)
+                // Glowing bottom edge
+                drawLine(
+                    brush = Brush.horizontalGradient(
+                        listOf(
+                            Color.Transparent,
+                            ReportPurple.copy(alpha = 0.25f),
+                            ReportPurple.copy(alpha = 0.12f),
+                            Color.Transparent
+                        )
+                    ),
+                    start = Offset(0f, size.height),
+                    end = Offset(size.width, size.height),
+                    strokeWidth = 1.dp.toPx()
+                )
+            }
             .padding(horizontal = 8.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -159,7 +221,8 @@ private fun ReportTopBar(playerName: String, onBack: () -> Unit) {
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = stringResource(R.string.war_room_scouting_report),
-                style = boldTextStyle(HomeTextPrimary, 15.sp),
+                style = boldTextStyle(HomeTextPrimary, 16.sp),
+                letterSpacing = (-0.2).sp,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth()
             )
@@ -197,19 +260,42 @@ private fun FullReportContent(
                 modifier = Modifier
                     .padding(16.dp, 16.dp, 16.dp, 8.dp)
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(HomeDarkCard)
-                    .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(16.dp))
-                    .padding(16.dp)
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(
+                        Brush.linearGradient(
+                            colors = listOf(
+                                ReportPurple.copy(alpha = 0.10f),
+                                HomeDarkCard,
+                                HomeDarkCard
+                            )
+                        )
+                    )
+                    .drawBehind {
+                        // Decorative glow behind avatar
+                        drawCircle(
+                            color = ReportPurple.copy(alpha = 0.05f),
+                            radius = size.width * 0.4f,
+                            center = Offset(size.width * 0.15f, size.height * 0.4f)
+                        )
+                    }
+                    .border(1.dp, ReportPurple.copy(alpha = 0.20f), RoundedCornerShape(20.dp))
+                    .padding(18.dp)
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     // Avatar
                     Box(
                         modifier = Modifier
-                            .size(64.dp)
+                            .size(68.dp)
                             .clip(CircleShape)
-                            .background(ReportPurpleBg)
-                            .border(2.dp, ReportPurple, CircleShape),
+                            .background(
+                                Brush.radialGradient(
+                                    listOf(
+                                        ReportPurple.copy(alpha = 0.20f),
+                                        ReportPurpleBg
+                                    )
+                                )
+                            )
+                            .border(2.dp, ReportPurple.copy(alpha = 0.5f), CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
@@ -221,7 +307,11 @@ private fun FullReportContent(
                     Spacer(Modifier.width(16.dp))
 
                     Column(modifier = Modifier.weight(1f)) {
-                        Text(playerName, style = boldTextStyle(HomeTextPrimary, 20.sp))
+                        Text(
+                            playerName,
+                            style = boldTextStyle(HomeTextPrimary, 21.sp),
+                            letterSpacing = (-0.3).sp
+                        )
                         Spacer(Modifier.height(4.dp))
                         Text(
                             text = stringResource(R.string.war_room_full_scouting_report),
@@ -420,34 +510,55 @@ private fun RecommendationCard(recommendation: String, confidence: Int) {
         modifier = Modifier
             .padding(horizontal = 16.dp, vertical = 6.dp)
             .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
-            .background(bgColor)
-            .border(1.dp, borderColor, RoundedCornerShape(14.dp))
-            .padding(16.dp),
+            .clip(RoundedCornerShape(16.dp))
+            .background(
+                Brush.horizontalGradient(
+                    listOf(
+                        bgColor,
+                        textColor.copy(alpha = 0.06f)
+                    )
+                )
+            )
+            .drawBehind {
+                drawRect(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            textColor.copy(alpha = 0.08f),
+                            Color.Transparent
+                        ),
+                        center = Offset(0f, size.height / 2),
+                        radius = size.width * 0.5f
+                    )
+                )
+            }
+            .border(1.dp, borderColor, RoundedCornerShape(16.dp))
+            .padding(18.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Column {
             Text(
                 text = stringResource(R.string.war_room_recommendation),
-                style = regularTextStyle(textColor, 11.sp),
-                letterSpacing = 1.sp
+                style = regularTextStyle(textColor, 10.sp),
+                letterSpacing = 1.5.sp
             )
             Text(
                 text = recommendation.uppercase(),
-                style = boldTextStyle(textColor, 28.sp)
+                style = boldTextStyle(textColor, 30.sp),
+                letterSpacing = (-0.5).sp
             )
         }
 
         Column(horizontalAlignment = Alignment.End) {
             Text(
                 text = stringResource(R.string.war_room_confidence),
-                style = regularTextStyle(textColor, 11.sp),
-                letterSpacing = 1.sp
+                style = regularTextStyle(textColor, 10.sp),
+                letterSpacing = 1.5.sp
             )
             Text(
                 text = "${confidence}%",
-                style = boldTextStyle(textColor, 28.sp)
+                style = boldTextStyle(textColor, 30.sp),
+                letterSpacing = (-0.5).sp
             )
         }
     }
@@ -464,9 +575,21 @@ private fun ReportSectionCard(
         modifier = Modifier
             .padding(horizontal = 16.dp, vertical = 6.dp)
             .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
+            .clip(RoundedCornerShape(16.dp))
             .background(HomeDarkCard)
-            .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(14.dp))
+            .drawBehind {
+                // Subtle accent tinted glow at top
+                drawRect(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(
+                            accentColor.copy(alpha = 0.06f),
+                            Color.Transparent
+                        ),
+                        endY = size.height * 0.3f
+                    )
+                )
+            }
+            .border(1.dp, accentColor.copy(alpha = 0.12f), RoundedCornerShape(16.dp))
     ) {
         // Left accent strip + header
         Row(
@@ -476,8 +599,13 @@ private fun ReportSectionCard(
             Box(
                 modifier = Modifier
                     .width(4.dp)
-                    .height(40.dp)
-                    .background(accentColor, RoundedCornerShape(topStart = 14.dp))
+                    .height(44.dp)
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(accentColor, accentColor.copy(alpha = 0.3f))
+                        ),
+                        RoundedCornerShape(topStart = 16.dp)
+                    )
             )
 
             Text(
@@ -490,7 +618,7 @@ private fun ReportSectionCard(
             )
         }
 
-        Column(modifier = Modifier.padding(16.dp, 0.dp, 16.dp, 16.dp)) {
+        Column(modifier = Modifier.padding(16.dp, 4.dp, 16.dp, 16.dp)) {
             content()
         }
     }

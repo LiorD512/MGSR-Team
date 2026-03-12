@@ -529,159 +529,164 @@ function buildInterpretation(
   parsed: ParsedScoutParams,
   lang: 'en' | 'he'
 ): string {
-  const parts: string[] = [];
+  const posNames: Record<string, { en: string; he: string }> = {
+    CF: { en: 'Strikers', he: 'חלוצים' },
+    ST: { en: 'Strikers', he: 'חלוצים' },
+    LW: { en: 'Left Wingers', he: 'כנפי שמאל' },
+    RW: { en: 'Right Wingers', he: 'כנפי ימין' },
+    CM: { en: 'Midfielders', he: 'קשרים' },
+    AM: { en: 'Att. Midfielders', he: 'קשרים התקפיים' },
+    DM: { en: 'Def. Midfielders', he: 'קשרים הגנתיים' },
+    CB: { en: 'Defenders', he: 'בלמים' },
+    LB: { en: 'Left Backs', he: 'מגני שמאל' },
+    RB: { en: 'Right Backs', he: 'מגני ימין' },
+    GK: { en: 'Goalkeepers', he: 'שוערים' },
+  };
+
+  const footNames: Record<string, { en: string; he: string }> = {
+    right: { en: 'Right foot', he: 'רגל ימין' },
+    left: { en: 'Left foot', he: 'רגל שמאל' },
+    both: { en: 'Two-footed', he: 'דו-רגלי' },
+  };
+
+  const natDisplay: Record<string, { en: string; he: string }> = {
+    african: { en: 'African', he: 'אפריקאי' },
+    south_american: { en: 'South American', he: 'דרום אמריקאי' },
+    european: { en: 'European', he: 'אירופאי' },
+    scandinavian: { en: 'Scandinavian', he: 'סקנדינבי' },
+    balkan: { en: 'Balkan', he: 'בלקני' },
+    north_american: { en: 'North American', he: 'צפון אמריקאי' },
+    central_american: { en: 'Central American', he: 'מרכז אמריקאי' },
+    asian: { en: 'Asian', he: 'אסיאתי' },
+    brazil: { en: 'Brazilian', he: 'ברזילאי' },
+    argentina: { en: 'Argentine', he: 'ארגנטינאי' },
+    uruguay: { en: 'Uruguayan', he: 'אורוגוואי' },
+    colombia: { en: 'Colombian', he: 'קולומביאני' },
+    chile: { en: 'Chilean', he: 'צ\'ילאני' },
+    paraguay: { en: 'Paraguayan', he: 'פרגוואי' },
+    peru: { en: 'Peruvian', he: 'פרואני' },
+    ecuador: { en: 'Ecuadorian', he: 'אקוואדורי' },
+    nigeria: { en: 'Nigerian', he: 'ניגרי' },
+    ghana: { en: 'Ghanaian', he: 'גאני' },
+    senegal: { en: 'Senegalese', he: 'סנגלי' },
+    cameroon: { en: 'Cameroonian', he: 'קמרוני' },
+    egypt: { en: 'Egyptian', he: 'מצרי' },
+    morocco: { en: 'Moroccan', he: 'מרוקאי' },
+    algeria: { en: 'Algerian', he: 'אלג\'ירי' },
+    tunisia: { en: 'Tunisian', he: 'טוניסאי' },
+    "cote d'ivoire": { en: 'Ivorian', he: 'חוף השנהב' },
+    mali: { en: 'Malian', he: 'מאלי' },
+    guinea: { en: 'Guinean', he: 'גיניאני' },
+    congo: { en: 'Congolese', he: 'קונגולזי' },
+    'south africa': { en: 'South African', he: 'דרום אפריקאי' },
+    france: { en: 'French', he: 'צרפתי' },
+    portugal: { en: 'Portuguese', he: 'פורטוגלי' },
+    spain: { en: 'Spanish', he: 'ספרדי' },
+    germany: { en: 'German', he: 'גרמני' },
+    netherlands: { en: 'Dutch', he: 'הולנדי' },
+    belgium: { en: 'Belgian', he: 'בלגי' },
+    italy: { en: 'Italian', he: 'איטלקי' },
+    switzerland: { en: 'Swiss', he: 'שוויצרי' },
+    austria: { en: 'Austrian', he: 'אוסטרי' },
+    england: { en: 'English', he: 'אנגלי' },
+    scotland: { en: 'Scottish', he: 'סקוטי' },
+    wales: { en: 'Welsh', he: 'וולשי' },
+    ireland: { en: 'Irish', he: 'אירי' },
+    denmark: { en: 'Danish', he: 'דני' },
+    norway: { en: 'Norwegian', he: 'נורבגי' },
+    sweden: { en: 'Swedish', he: 'שוודי' },
+    finland: { en: 'Finnish', he: 'פיני' },
+    iceland: { en: 'Icelandic', he: 'איסלנדי' },
+    croatia: { en: 'Croatian', he: 'קרואטי' },
+    serbia: { en: 'Serbian', he: 'סרבי' },
+    'bosnia-herzegovina': { en: 'Bosnian', he: 'בוסני' },
+    albania: { en: 'Albanian', he: 'אלבני' },
+    kosovo: { en: 'Kosovar', he: 'קוסובי' },
+    montenegro: { en: 'Montenegrin', he: 'מונטנגרי' },
+    'north macedonia': { en: 'North Macedonian', he: 'מקדוני' },
+    slovenia: { en: 'Slovenian', he: 'סלובני' },
+    greece: { en: 'Greek', he: 'יווני' },
+    romania: { en: 'Romanian', he: 'רומני' },
+    bulgaria: { en: 'Bulgarian', he: 'בולגרי' },
+    poland: { en: 'Polish', he: 'פולני' },
+    'czech republic': { en: 'Czech', he: 'צ\'כי' },
+    slovakia: { en: 'Slovak', he: 'סלובקי' },
+    hungary: { en: 'Hungarian', he: 'הונגרי' },
+    ukraine: { en: 'Ukrainian', he: 'אוקראיני' },
+    russia: { en: 'Russian', he: 'רוסי' },
+    georgia: { en: 'Georgian', he: 'גאורגי' },
+    turkey: { en: 'Turkish', he: 'טורקי' },
+    mexico: { en: 'Mexican', he: 'מקסיקני' },
+    'united states': { en: 'American', he: 'אמריקני' },
+    canada: { en: 'Canadian', he: 'קנדי' },
+    jamaica: { en: 'Jamaican', he: 'ג\'מייקני' },
+    'costa rica': { en: 'Costa Rican', he: 'קוסטה ריקני' },
+    japan: { en: 'Japanese', he: 'יפני' },
+    korea: { en: 'Korean', he: 'קוריאני' },
+    australia: { en: 'Australian', he: 'אוסטרלי' },
+    iran: { en: 'Iranian', he: 'איראני' },
+    kurdistan: { en: 'Kurdish', he: 'כורדי' },
+  };
+
+  const fmtValue = (v: number) => v >= 1_000_000
+    ? `€${(v / 1_000_000).toFixed(v % 1_000_000 === 0 ? 0 : 1)}M`
+    : `€${Math.round(v / 1_000)}K`;
+
+  // Build structured lines: each is an icon + label + value
+  const lines: string[] = [];
+
+  // Position
   if (parsed.position) {
-    const posNames: Record<string, { en: string; he: string }> = {
-      CF: { en: 'strikers', he: 'חלוצים' },
-      LW: { en: 'left wingers', he: 'כנפי שמאל' },
-      RW: { en: 'right wingers', he: 'כנפי ימין' },
-      CM: { en: 'midfielders', he: 'קשרים' },
-      AM: { en: 'att. midfielders', he: 'קשרים התקפיים' },
-      DM: { en: 'def. midfielders', he: 'קשרים הגנתיים' },
-      CB: { en: 'defenders', he: 'בלמים' },
-      LB: { en: 'left backs', he: 'מגני שמאל' },
-      RB: { en: 'right backs', he: 'מגני ימין' },
-      GK: { en: 'goalkeepers', he: 'שוערים' },
-    };
     const p = posNames[parsed.position] || { en: parsed.position, he: parsed.position };
-    parts.push(lang === 'he' ? p.he : p.en);
+    lines.push(lang === 'he' ? `⚽ עמדה: ${p.he}` : `⚽ Position: ${p.en}`);
   }
-  // Age: show range if both present
+  // Age
   if (parsed.ageMin != null && parsed.ageMax != null) {
-    parts.push(lang === 'he' ? `גילאי ${parsed.ageMin}-${parsed.ageMax}` : `ages ${parsed.ageMin}-${parsed.ageMax}`);
-  } else {
-    if (parsed.ageMax != null) {
-      parts.push(lang === 'he' ? `עד גיל ${parsed.ageMax}` : `up to age ${parsed.ageMax}`);
-    }
-    if (parsed.ageMin != null) {
-      parts.push(lang === 'he' ? `מעל גיל ${parsed.ageMin}` : `over age ${parsed.ageMin}`);
-    }
+    lines.push(lang === 'he' ? `📅 גיל: ${parsed.ageMin}–${parsed.ageMax}` : `📅 Age: ${parsed.ageMin}–${parsed.ageMax}`);
+  } else if (parsed.ageMax != null) {
+    lines.push(lang === 'he' ? `📅 גיל: עד ${parsed.ageMax}` : `📅 Age: up to ${parsed.ageMax}`);
+  } else if (parsed.ageMin != null) {
+    lines.push(lang === 'he' ? `📅 גיל: ${parsed.ageMin}+` : `📅 Age: ${parsed.ageMin}+`);
   }
+  // Foot
   if (parsed.foot) {
-    const footNames: Record<string, { en: string; he: string }> = {
-      right: { en: 'right foot', he: 'רגל ימין' },
-      left: { en: 'left foot', he: 'רגל שמאל' },
-      both: { en: 'two-footed', he: 'דו-רגלי' },
-    };
     const f = footNames[parsed.foot] || { en: parsed.foot, he: parsed.foot };
-    parts.push(lang === 'he' ? f.he : f.en);
+    lines.push(lang === 'he' ? `🦶 רגל: ${f.he}` : `🦶 Foot: ${f.en}`);
   }
-  if (parsed.freeAgent) {
-    parts.push(lang === 'he' ? 'שחקנים חופשיים' : 'free agents');
-  }
+  // Nationality
   if (parsed.nationality) {
-    // Map internal codes to display names (superset)
-    const natDisplay: Record<string, { en: string; he: string }> = {
-      african: { en: 'African', he: 'אפריקאי' },
-      south_american: { en: 'South American', he: 'דרום אמריקאי' },
-      european: { en: 'European', he: 'אירופאי' },
-      scandinavian: { en: 'Scandinavian', he: 'סקנדינבי' },
-      balkan: { en: 'Balkan', he: 'בלקני' },
-      north_american: { en: 'North American', he: 'צפון אמריקאי' },
-      central_american: { en: 'Central American', he: 'מרכז אמריקאי' },
-      asian: { en: 'Asian', he: 'אסיאתי' },
-      brazil: { en: 'Brazilian', he: 'ברזילאי' },
-      argentina: { en: 'Argentine', he: 'ארגנטינאי' },
-      uruguay: { en: 'Uruguayan', he: 'אורוגוואי' },
-      colombia: { en: 'Colombian', he: 'קולומביאני' },
-      chile: { en: 'Chilean', he: 'צ\'ילאני' },
-      paraguay: { en: 'Paraguayan', he: 'פרגוואי' },
-      peru: { en: 'Peruvian', he: 'פרואני' },
-      ecuador: { en: 'Ecuadorian', he: 'אקוואדורי' },
-      nigeria: { en: 'Nigerian', he: 'ניגרי' },
-      ghana: { en: 'Ghanaian', he: 'גאני' },
-      senegal: { en: 'Senegalese', he: 'סנגלי' },
-      cameroon: { en: 'Cameroonian', he: 'קמרוני' },
-      egypt: { en: 'Egyptian', he: 'מצרי' },
-      morocco: { en: 'Moroccan', he: 'מרוקאי' },
-      algeria: { en: 'Algerian', he: 'אלג\'ירי' },
-      tunisia: { en: 'Tunisian', he: 'טוניסאי' },
-      "cote d'ivoire": { en: 'Ivorian', he: 'חוף השנהב' },
-      mali: { en: 'Malian', he: 'מאלי' },
-      guinea: { en: 'Guinean', he: 'גיניאני' },
-      congo: { en: 'Congolese', he: 'קונגולזי' },
-      'south africa': { en: 'South African', he: 'דרום אפריקאי' },
-      france: { en: 'French', he: 'צרפתי' },
-      portugal: { en: 'Portuguese', he: 'פורטוגלי' },
-      spain: { en: 'Spanish', he: 'ספרדי' },
-      germany: { en: 'German', he: 'גרמני' },
-      netherlands: { en: 'Dutch', he: 'הולנדי' },
-      belgium: { en: 'Belgian', he: 'בלגי' },
-      italy: { en: 'Italian', he: 'איטלקי' },
-      switzerland: { en: 'Swiss', he: 'שוויצרי' },
-      austria: { en: 'Austrian', he: 'אוסטרי' },
-      england: { en: 'English', he: 'אנגלי' },
-      scotland: { en: 'Scottish', he: 'סקוטי' },
-      wales: { en: 'Welsh', he: 'וולשי' },
-      ireland: { en: 'Irish', he: 'אירי' },
-      denmark: { en: 'Danish', he: 'דני' },
-      norway: { en: 'Norwegian', he: 'נורבגי' },
-      sweden: { en: 'Swedish', he: 'שוודי' },
-      finland: { en: 'Finnish', he: 'פיני' },
-      iceland: { en: 'Icelandic', he: 'איסלנדי' },
-      croatia: { en: 'Croatian', he: 'קרואטי' },
-      serbia: { en: 'Serbian', he: 'סרבי' },
-      'bosnia-herzegovina': { en: 'Bosnian', he: 'בוסני' },
-      albania: { en: 'Albanian', he: 'אלבני' },
-      kosovo: { en: 'Kosovar', he: 'קוסובי' },
-      montenegro: { en: 'Montenegrin', he: 'מונטנגרי' },
-      'north macedonia': { en: 'North Macedonian', he: 'מקדוני' },
-      slovenia: { en: 'Slovenian', he: 'סלובני' },
-      greece: { en: 'Greek', he: 'יווני' },
-      romania: { en: 'Romanian', he: 'רומני' },
-      bulgaria: { en: 'Bulgarian', he: 'בולגרי' },
-      poland: { en: 'Polish', he: 'פולני' },
-      'czech republic': { en: 'Czech', he: 'צ\'כי' },
-      slovakia: { en: 'Slovak', he: 'סלובקי' },
-      hungary: { en: 'Hungarian', he: 'הונגרי' },
-      ukraine: { en: 'Ukrainian', he: 'אוקראיני' },
-      russia: { en: 'Russian', he: 'רוסי' },
-      georgia: { en: 'Georgian', he: 'גאורגי' },
-      turkey: { en: 'Turkish', he: 'טורקי' },
-      mexico: { en: 'Mexican', he: 'מקסיקני' },
-      'united states': { en: 'American', he: 'אמריקני' },
-      canada: { en: 'Canadian', he: 'קנדי' },
-      jamaica: { en: 'Jamaican', he: 'ג\'מייקני' },
-      'costa rica': { en: 'Costa Rican', he: 'קוסטה ריקני' },
-      japan: { en: 'Japanese', he: 'יפני' },
-      korea: { en: 'Korean', he: 'קוריאני' },
-      australia: { en: 'Australian', he: 'אוסטרלי' },
-      iran: { en: 'Iranian', he: 'איראני' },
-      kurdistan: { en: 'Kurdish', he: 'כורדי' },
-    };
     const n = natDisplay[parsed.nationality] || { en: parsed.nationality, he: parsed.nationality };
-    parts.push(lang === 'he' ? n.he : n.en);
+    lines.push(lang === 'he' ? `🌍 לאום: ${n.he}` : `🌍 Nationality: ${n.en}`);
   }
-  if (parsed.transferFee || parsed.valueMax || parsed.valueMin) {
-    const fmtValue = (v: number) => v >= 1_000_000
-      ? `€${(v / 1_000_000).toFixed(v % 1_000_000 === 0 ? 0 : 1)}M`
-      : `€${Math.round(v / 1_000)}k`;
-    if (parsed.valueMin && parsed.valueMax) {
-      // Around / approximate: show range
-      parts.push(lang === 'he'
-        ? `שווי שוק ~${fmtValue(Math.round((parsed.valueMin + parsed.valueMax) / 2))} (${fmtValue(parsed.valueMin)}-${fmtValue(parsed.valueMax)})`
-        : `market value ~${fmtValue(Math.round((parsed.valueMin + parsed.valueMax) / 2))} (${fmtValue(parsed.valueMin)}-${fmtValue(parsed.valueMax)})`);
-    } else if (parsed.valueMax) {
-      parts.push(lang === 'he' ? `שווי שוק עד ${fmtValue(parsed.valueMax)}` : `market value up to ${fmtValue(parsed.valueMax)}`);
-    } else if (parsed.valueMin) {
-      parts.push(lang === 'he' ? `שווי שוק מעל ${fmtValue(parsed.valueMin)}` : `market value above ${fmtValue(parsed.valueMin)}`);
-    } else if (parsed.transferFee) {
-      parts.push(lang === 'he' ? `תקציב: ${parsed.transferFee}` : `budget: ${parsed.transferFee}`);
-    }
+  // Free agent
+  if (parsed.freeAgent) {
+    lines.push(lang === 'he' ? `🆓 סטטוס: שחקן חופשי` : `🆓 Status: Free agent`);
   }
+  // Value
+  if (parsed.valueMin && parsed.valueMax) {
+    lines.push(lang === 'he'
+      ? `💰 שווי שוק: ${fmtValue(parsed.valueMin)}–${fmtValue(parsed.valueMax)}`
+      : `💰 Value: ${fmtValue(parsed.valueMin)}–${fmtValue(parsed.valueMax)}`);
+  } else if (parsed.valueMax) {
+    lines.push(lang === 'he' ? `💰 שווי שוק: עד ${fmtValue(parsed.valueMax)}` : `💰 Value: up to ${fmtValue(parsed.valueMax)}`);
+  } else if (parsed.valueMin) {
+    lines.push(lang === 'he' ? `💰 שווי שוק: מעל ${fmtValue(parsed.valueMin)}` : `💰 Value: above ${fmtValue(parsed.valueMin)}`);
+  } else if (parsed.transferFee) {
+    lines.push(lang === 'he' ? `💰 תקציב: ${parsed.transferFee}` : `💰 Budget: ${parsed.transferFee}`);
+  }
+  // Notes / style
   if (parsed.notes) {
-    parts.push(parsed.notes);
+    lines.push(lang === 'he' ? `🎯 סגנון: ${parsed.notes}` : `🎯 Style: ${parsed.notes}`);
   }
+  // Limit
   if (parsed.limit != null) {
-    parts.push(lang === 'he' ? `${parsed.limit} שחקנים` : `${parsed.limit} players`);
+    lines.push(lang === 'he' ? `📊 כמות: ${parsed.limit} שחקנים` : `📊 Limit: ${parsed.limit} players`);
   }
 
-  if (parts.length === 0) {
-    return lang === 'he' ? 'חיפוש כללי במאגר.' : 'General search in the database.';
+  if (lines.length === 0) {
+    return lang === 'he' ? '🔍 חיפוש כללי במאגר' : '🔍 General search in database';
   }
-  return lang === 'he'
-    ? `חיפוש: ${parts.join(', ')}.`
-    : `Search: ${parts.join(', ')}.`;
+  return lines.join('\n');
 }
 
 /**

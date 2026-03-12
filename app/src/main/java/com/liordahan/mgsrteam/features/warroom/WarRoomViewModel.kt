@@ -172,7 +172,6 @@ class WarRoomViewModel(
 
     override fun setAgentFilter(agentId: String?) {
         _uiState.update { it.copy(selectedAgentFilter = agentId, agentRotationPage = 0) }
-        loadScoutProfiles(agentId)
     }
 
     override fun rotateAgentProfiles() {

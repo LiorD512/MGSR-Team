@@ -222,14 +222,43 @@ fun WarRoomScreen(
             containerColor = WrSurface,
             contentColor = HomeTextPrimary,
             dragHandle = {
-                Box(
-                    Modifier
-                        .padding(top = 12.dp, bottom = 8.dp)
-                        .width(40.dp)
-                        .height(4.dp)
-                        .clip(RoundedCornerShape(2.dp))
-                        .background(WrSurfaceBorder)
-                )
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Box(
+                        Modifier
+                            .padding(top = 12.dp, bottom = 4.dp)
+                            .width(40.dp)
+                            .height(4.dp)
+                            .clip(RoundedCornerShape(2.dp))
+                            .background(
+                                Brush.horizontalGradient(
+                                    listOf(
+                                        WrIndigo.copy(alpha = 0.4f),
+                                        WrIndigoLight.copy(alpha = 0.6f),
+                                        WrIndigo.copy(alpha = 0.4f)
+                                    )
+                                )
+                            )
+                    )
+                    // Subtle glow line under handle
+                    Box(
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(top = 8.dp)
+                            .height(1.dp)
+                            .background(
+                                Brush.horizontalGradient(
+                                    listOf(
+                                        Color.Transparent,
+                                        WrIndigo.copy(alpha = 0.15f),
+                                        Color.Transparent
+                                    )
+                                )
+                            )
+                    )
+                }
             }
         ) {
             ReportBottomSheetContent(
@@ -246,47 +275,84 @@ fun WarRoomScreen(
         }
     }
 
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxSize()
             .background(HomeDarkBackground)
+            .drawBehind {
+                // Ambient purple glow — top-left (like web hero gradient)
+                drawRect(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            WrIndigo.copy(alpha = 0.08f),
+                            Color.Transparent
+                        ),
+                        center = Offset(size.width * 0.2f, 0f),
+                        radius = size.width * 0.9f
+                    )
+                )
+                // Subtle indigo glow — top-right
+                drawRect(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            WrIndigoDim.copy(alpha = 0.05f),
+                            Color.Transparent
+                        ),
+                        center = Offset(size.width * 0.85f, size.height * 0.15f),
+                        radius = size.width * 0.6f
+                    )
+                )
+                // Deep bottom fade for depth
+                drawRect(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(
+                            Color.Transparent,
+                            WrSurface.copy(alpha = 0.5f)
+                        ),
+                        startY = size.height * 0.7f,
+                        endY = size.height
+                    )
+                )
+            }
             .navigationBarsPadding()
     ) {
-        // Command Center Header
-        CommandHeader(
-            selectedTab = state.selectedTab,
-            onBack = {
-                if (!navController.popBackStack(Screens.DashboardScreen.route, false)) {
-                    navController.popBackStack()
-                }
-            },
-            onTabSelected = { tab ->
-                coroutineScope.launch { pagerState.animateScrollToPage(tab.ordinal) }
-            }
-        )
-
-        // Swipeable pager content
-        HorizontalPager(
-            state = pagerState,
-            modifier = Modifier.fillMaxSize(),
-            beyondViewportPageCount = 1
-        ) { page ->
-            when (page) {
-                0 -> DiscoveryTab(
-                    state = state,
-                    viewModel = viewModel,
-                    navController = navController,
-                    onShowReport = { candidate ->
-                        reportSheetCandidate = candidate
-                        if (!state.candidateReports.containsKey(candidate.transfermarktUrl) &&
-                            !state.loadingReportUrls.contains(candidate.transfermarktUrl)
-                        ) {
-                            viewModel.toggleCandidateExpanded(candidate.transfermarktUrl)
-                        }
+        Column(modifier = Modifier.fillMaxSize()) {
+            // Command Center Header
+            CommandHeader(
+                selectedTab = state.selectedTab,
+                onBack = {
+                    if (!navController.popBackStack(Screens.DashboardScreen.route, false)) {
+                        navController.popBackStack()
                     }
-                )
-                1 -> AgentsTab(state = state, viewModel = viewModel, navController = navController)
-                2 -> AiScoutContentBody(navController = navController, showTopBar = false)
+                },
+                onTabSelected = { tab ->
+                    coroutineScope.launch { pagerState.animateScrollToPage(tab.ordinal) }
+                }
+            )
+
+            // Swipeable pager content
+            HorizontalPager(
+                state = pagerState,
+                modifier = Modifier.fillMaxSize(),
+                beyondViewportPageCount = 1
+            ) { page ->
+                when (page) {
+                    0 -> DiscoveryTab(
+                        state = state,
+                        viewModel = viewModel,
+                        navController = navController,
+                        onShowReport = { candidate ->
+                            reportSheetCandidate = candidate
+                            if (!state.candidateReports.containsKey(candidate.transfermarktUrl) &&
+                                !state.loadingReportUrls.contains(candidate.transfermarktUrl)
+                            ) {
+                                viewModel.toggleCandidateExpanded(candidate.transfermarktUrl)
+                            }
+                        }
+                    )
+                    1 -> AgentsTab(state = state, viewModel = viewModel, navController = navController)
+                    2 -> AiScoutContentBody(navController = navController, showTopBar = false)
+                }
             }
         }
     }
@@ -508,6 +574,76 @@ private fun DiscoveryTab(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(bottom = 32.dp)
     ) {
+        // ── Hero section: AI discovery intelligence banner ──
+        item {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(
+                        Brush.linearGradient(
+                            colors = listOf(
+                                WrIndigo.copy(alpha = 0.12f),
+                                WrIndigoDim.copy(alpha = 0.06f),
+                                WrSurfaceElevated
+                            )
+                        )
+                    )
+                    .drawBehind {
+                        // Decorative radial glow — mimics web radar decoration
+                        drawCircle(
+                            color = WrIndigo.copy(alpha = 0.04f),
+                            radius = size.width * 0.5f,
+                            center = Offset(size.width * 0.8f, size.height * 0.2f)
+                        )
+                        drawCircle(
+                            color = WrIndigo.copy(alpha = 0.02f),
+                            radius = size.width * 0.3f,
+                            center = Offset(size.width * 0.8f, size.height * 0.2f)
+                        )
+                    }
+                    .border(1.dp, WrIndigoBorder.copy(alpha = 0.5f), RoundedCornerShape(20.dp))
+                    .padding(16.dp)
+            ) {
+                Column {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(
+                                    Brush.linearGradient(
+                                        listOf(
+                                            WrIndigo.copy(alpha = 0.25f),
+                                            WrIndigoDim.copy(alpha = 0.15f)
+                                        )
+                                    )
+                                )
+                                .border(1.dp, WrIndigoBorder, RoundedCornerShape(10.dp)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text("⚡", style = boldTextStyle(WrIndigoLight, 16.sp))
+                        }
+                        Spacer(Modifier.width(12.dp))
+                        Column {
+                            Text(
+                                stringResource(R.string.war_room_discovery_title),
+                                style = boldTextStyle(HomeTextPrimary, 16.sp),
+                                letterSpacing = (-0.2).sp
+                            )
+                            Text(
+                                stringResource(R.string.war_room_discovery_subtitle),
+                                style = regularTextStyle(HomeTextSecondary, 12.sp),
+                                maxLines = 2,
+                                lineHeight = 16.sp
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
         // Status bar
         item {
             DiscoveryStatusBar(
@@ -603,20 +739,24 @@ private fun DiscoveryStatusBar(count: Int, updatedAt: String, onRefresh: () -> U
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 10.dp),
+            .padding(horizontal = 16.dp, vertical = 6.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(WrSurfaceElevated.copy(alpha = 0.6f))
+            .border(1.dp, WrSurfaceBorder.copy(alpha = 0.4f), RoundedCornerShape(14.dp))
+            .padding(horizontal = 14.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         // Player count badge
         Row(
             modifier = Modifier
-                .clip(RoundedCornerShape(10.dp))
+                .clip(RoundedCornerShape(12.dp))
                 .background(
                     Brush.horizontalGradient(
-                        listOf(WrIndigoBg, WrIndigo.copy(alpha = 0.05f))
+                        listOf(WrIndigoBg, WrIndigo.copy(alpha = 0.04f))
                     )
                 )
-                .border(1.dp, WrIndigoBorder, RoundedCornerShape(10.dp))
-                .padding(horizontal = 12.dp, vertical = 6.dp),
+                .border(1.dp, WrIndigoBorder.copy(alpha = 0.8f), RoundedCornerShape(12.dp))
+                .padding(horizontal = 14.dp, vertical = 7.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text("$count", style = boldTextStyle(WrIndigoLight, 14.sp))
@@ -651,11 +791,31 @@ private fun DiscoveryStatusBar(count: Int, updatedAt: String, onRefresh: () -> U
 
 @Composable
 private fun DiscoveryFilters(selected: String, onSelect: (String) -> Unit) {
-    LazyRow(
-        contentPadding = PaddingValues(horizontal = 16.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = Modifier.padding(bottom = 8.dp)
-    ) {
+    Column(modifier = Modifier.padding(bottom = 4.dp)) {
+        // Subtle section divider line
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 32.dp, vertical = 4.dp)
+                .height(1.dp)
+                .background(
+                    Brush.horizontalGradient(
+                        listOf(
+                            Color.Transparent,
+                            WrSurfaceBorder.copy(alpha = 0.4f),
+                            WrIndigo.copy(alpha = 0.15f),
+                            WrSurfaceBorder.copy(alpha = 0.4f),
+                            Color.Transparent
+                        )
+                    )
+                )
+        )
+
+        LazyRow(
+            contentPadding = PaddingValues(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.padding(vertical = 6.dp)
+        ) {
         val filters = listOf(
             "all" to R.string.war_room_filter_all,
             "request_match" to R.string.war_room_filter_requests,
@@ -682,14 +842,33 @@ private fun DiscoveryFilters(selected: String, onSelect: (String) -> Unit) {
             Text(
                 text = stringResource(labelRes),
                 style = boldTextStyle(displayText, 12.sp),
+                letterSpacing = 0.2.sp,
                 modifier = Modifier
-                    .clip(RoundedCornerShape(20.dp))
+                    .clip(RoundedCornerShape(22.dp))
                     .background(displayBg)
-                    .border(1.dp, displayBorder, RoundedCornerShape(20.dp))
+                    .border(1.dp, displayBorder, RoundedCornerShape(22.dp))
                     .clickable { onSelect(key) }
-                    .padding(horizontal = 16.dp, vertical = 9.dp)
+                    .padding(horizontal = 18.dp, vertical = 10.dp)
             )
         }
+        }
+
+        // Section divider before player cards
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 32.dp, vertical = 2.dp)
+                .height(1.dp)
+                .background(
+                    Brush.horizontalGradient(
+                        listOf(
+                            Color.Transparent,
+                            WrSurfaceBorder.copy(alpha = 0.3f),
+                            Color.Transparent
+                        )
+                    )
+                )
+        )
     }
 }
 
@@ -1106,15 +1285,15 @@ private fun ReportBottomSheetContent(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(14.dp))
+                        .clip(RoundedCornerShape(16.dp))
                         .background(
                             Brush.horizontalGradient(
-                                listOf(WrIndigo.copy(alpha = 0.3f), WrIndigoDim.copy(alpha = 0.2f))
+                                listOf(WrIndigo.copy(alpha = 0.35f), WrIndigoDim.copy(alpha = 0.18f))
                             )
                         )
-                        .border(1.dp, WrIndigoBorder, RoundedCornerShape(14.dp))
+                        .border(1.dp, WrIndigoBorder, RoundedCornerShape(16.dp))
                         .clickable { onFullReport() }
-                        .padding(vertical = 14.dp),
+                        .padding(vertical = 15.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
@@ -1148,13 +1327,20 @@ private fun ReportRecommendationBar(rec: String, confidence: Int) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
-            .background(bgColor.copy(alpha = 0.08f))
+            .clip(RoundedCornerShape(16.dp))
+            .background(
+                Brush.horizontalGradient(
+                    listOf(
+                        bgColor.copy(alpha = 0.10f),
+                        textColor.copy(alpha = 0.05f)
+                    )
+                )
+            )
             .drawBehind {
                 drawRect(
                     brush = Brush.radialGradient(
                         colors = listOf(
-                            bgColor.copy(alpha = 0.08f),
+                            bgColor.copy(alpha = 0.10f),
                             Color.Transparent
                         ),
                         center = Offset(0f, size.height / 2),
@@ -1162,7 +1348,7 @@ private fun ReportRecommendationBar(rec: String, confidence: Int) {
                     )
                 )
             }
-            .border(1.dp, bgColor.copy(alpha = 0.2f), RoundedCornerShape(14.dp))
+            .border(1.dp, bgColor.copy(alpha = 0.25f), RoundedCornerShape(16.dp))
             .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
@@ -1196,7 +1382,19 @@ private fun ReportSection(icon: String, title: String, accentColor: Color, conte
             .fillMaxWidth()
             .clip(RoundedCornerShape(14.dp))
             .background(WrSurfaceElevated)
-            .border(1.dp, accentColor.copy(alpha = 0.12f), RoundedCornerShape(14.dp))
+            .drawBehind {
+                // Subtle accent glow
+                drawRect(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(
+                            accentColor.copy(alpha = 0.04f),
+                            Color.Transparent
+                        ),
+                        endY = size.height * 0.4f
+                    )
+                )
+            }
+            .border(1.dp, accentColor.copy(alpha = 0.10f), RoundedCornerShape(14.dp))
     ) {
         Row(
             modifier = Modifier
@@ -1257,28 +1455,13 @@ private fun AgentsTab(state: WarRoomUiState, viewModel: IWarRoomViewModel, navCo
         }
     }
     val groupedProfiles = filteredScoutProfiles.groupBy { it.agentId to it.agentName }
-    val uniqueAgents = groupedProfiles.keys.sortedBy { it.first }
-
-    val maxProfilesPerAgent = 10
-    val rotationPage = state.agentRotationPage
-    // Slice each agent's profiles based on rotation page (wrapping)
-    val paginatedProfiles = remember(groupedProfiles, rotationPage) {
-        groupedProfiles.mapValues { (_, profiles) ->
-            if (profiles.size <= maxProfilesPerAgent) profiles
-            else {
-                val totalPages = (profiles.size + maxProfilesPerAgent - 1) / maxProfilesPerAgent
-                val page = rotationPage % totalPages
-                val start = page * maxProfilesPerAgent
-                profiles.subList(start, minOf(start + maxProfilesPerAgent, profiles.size))
-            }
-        }
-    }
     val isHebrew = Locale.getDefault().language.let { it == "iw" || it == "he" }
+    val sortLocale = if (isHebrew) Locale("he") else Locale.getDefault()
 
-    val agentDisplayNames = remember(uniqueAgents, state.scoutProfiles, isHebrew) {
-        uniqueAgents.associate { (agentId, agentName) ->
+    // Compute display names first so we can sort by them
+    val agentDisplayNames = remember(groupedProfiles.keys.toSet(), state.scoutProfiles, isHebrew) {
+        groupedProfiles.keys.associate { (agentId, agentName) ->
             val key = agentId to agentName
-            // Prefer agentNameHe from the API when in Hebrew (always up-to-date with backend)
             val hebrewName = if (isHebrew) {
                 groupedProfiles[key]?.firstOrNull()?.agentNameHe?.takeIf { it.isNotBlank() }
             } else null
@@ -1291,19 +1474,131 @@ private fun AgentsTab(state: WarRoomUiState, viewModel: IWarRoomViewModel, navCo
         }
     }
 
+    // Sort agents alphabetically by display name (locale-aware)
+    val uniqueAgents = remember(groupedProfiles.keys.toSet(), agentDisplayNames, sortLocale) {
+        groupedProfiles.keys.sortedWith(compareBy(java.text.Collator.getInstance(sortLocale)) {
+            agentDisplayNames[it] ?: it.second
+        })
+    }
+
+    // Visible profiles based on agent filter (client-side)
+    val visibleGroupedProfiles = if (state.selectedAgentFilter == null) {
+        groupedProfiles
+    } else {
+        groupedProfiles.filter { (key, _) -> key.first == state.selectedAgentFilter }
+    }
+
+    val maxProfilesPerAgent = 10
+    val rotationPage = state.agentRotationPage
+    // Slice each agent's profiles based on rotation page (wrapping)
+    val paginatedProfiles = remember(visibleGroupedProfiles, rotationPage) {
+        visibleGroupedProfiles.mapValues { (_, profiles) ->
+            if (profiles.size <= maxProfilesPerAgent) profiles
+            else {
+                val totalPages = (profiles.size + maxProfilesPerAgent - 1) / maxProfilesPerAgent
+                val page = rotationPage % totalPages
+                val start = page * maxProfilesPerAgent
+                profiles.subList(start, minOf(start + maxProfilesPerAgent, profiles.size))
+            }
+        }
+    }
+
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(bottom = 32.dp)
     ) {
+        // ── Hero section: Agent Network intelligence banner ──
+        item {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(
+                        Brush.linearGradient(
+                            colors = listOf(
+                                WrAgent.copy(alpha = 0.10f),
+                                WrSurfaceElevated,
+                                WrMatch.copy(alpha = 0.04f)
+                            )
+                        )
+                    )
+                    .drawBehind {
+                        // Decorative concentric rings (radar feel)
+                        val cx = size.width * 0.85f
+                        val cy = size.height * 0.3f
+                        drawCircle(
+                            color = WrAgent.copy(alpha = 0.03f),
+                            radius = size.width * 0.35f,
+                            center = Offset(cx, cy),
+                            style = Stroke(width = 1f)
+                        )
+                        drawCircle(
+                            color = WrAgent.copy(alpha = 0.02f),
+                            radius = size.width * 0.22f,
+                            center = Offset(cx, cy),
+                            style = Stroke(width = 0.8f)
+                        )
+                        drawCircle(
+                            color = WrAgent.copy(alpha = 0.04f),
+                            radius = size.width * 0.10f,
+                            center = Offset(cx, cy)
+                        )
+                    }
+                    .border(1.dp, WrAgent.copy(alpha = 0.20f), RoundedCornerShape(20.dp))
+                    .padding(16.dp)
+            ) {
+                Column {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(
+                                    Brush.linearGradient(
+                                        listOf(
+                                            WrAgent.copy(alpha = 0.25f),
+                                            WrMatch.copy(alpha = 0.10f)
+                                        )
+                                    )
+                                )
+                                .border(1.dp, WrAgent.copy(alpha = 0.3f), RoundedCornerShape(10.dp)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text("🌐", style = boldTextStyle(WrAgent, 16.sp))
+                        }
+                        Spacer(Modifier.width(12.dp))
+                        Column {
+                            Text(
+                                stringResource(R.string.war_room_agent_network_title),
+                                style = boldTextStyle(HomeTextPrimary, 16.sp),
+                                letterSpacing = (-0.2).sp
+                            )
+                            Text(
+                                stringResource(R.string.war_room_agent_network_desc),
+                                style = regularTextStyle(HomeTextSecondary, 12.sp),
+                                maxLines = 2,
+                                lineHeight = 16.sp
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
         // Status bar
         item {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                    .padding(horizontal = 16.dp, vertical = 6.dp)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(WrSurfaceElevated.copy(alpha = 0.6f))
+                    .border(1.dp, WrSurfaceBorder.copy(alpha = 0.4f), RoundedCornerShape(14.dp))
+                    .padding(horizontal = 14.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-    // Agent profiles count badge
+                // Agent profiles count badge
                 Row(
                     modifier = Modifier
                         .clip(RoundedCornerShape(10.dp))
@@ -1333,14 +1628,62 @@ private fun AgentsTab(state: WarRoomUiState, viewModel: IWarRoomViewModel, navCo
         }
 
         // Agent filter carousel
+        // Agent filter carousel
         item {
+            // Section divider
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 32.dp, vertical = 4.dp)
+                    .height(1.dp)
+                    .background(
+                        Brush.horizontalGradient(
+                            listOf(
+                                Color.Transparent,
+                                WrSurfaceBorder.copy(alpha = 0.4f),
+                                WrAgent.copy(alpha = 0.15f),
+                                WrSurfaceBorder.copy(alpha = 0.4f),
+                                Color.Transparent
+                            )
+                        )
+                    )
+            )
+
             AgentFilterCarousel(
                 agents = uniqueAgents,
                 agentDisplayNames = agentDisplayNames,
                 selectedAgentId = state.selectedAgentFilter,
                 onSelect = { viewModel.setAgentFilter(it) }
             )
-            Spacer(Modifier.height(8.dp))
+
+            // Divider after filters
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 32.dp, vertical = 4.dp)
+                    .height(1.dp)
+                    .background(
+                        Brush.horizontalGradient(
+                            listOf(
+                                Color.Transparent,
+                                WrSurfaceBorder.copy(alpha = 0.3f),
+                                Color.Transparent
+                            )
+                        )
+                    )
+            )
+        }
+
+        // Rotation hint disclaimer
+        item {
+            Text(
+                text = stringResource(R.string.war_room_agent_rotation_hint),
+                style = regularTextStyle(HomeTextSecondary.copy(alpha = 0.6f), 11.sp),
+                lineHeight = 15.sp,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 4.dp)
+            )
         }
 
         // Loading
@@ -1354,9 +1697,11 @@ private fun AgentsTab(state: WarRoomUiState, viewModel: IWarRoomViewModel, navCo
         }
 
         // Agent sections (alphabetical)
-        paginatedProfiles.entries.sortedBy { it.key.first }.forEach { (key, profiles) ->
+        paginatedProfiles.entries.sortedWith(compareBy(java.text.Collator.getInstance(sortLocale)) {
+            agentDisplayNames[it.key] ?: it.key.second
+        }).forEach { (key, profiles) ->
             val (agentId, agentName) = key
-            val totalForAgent = groupedProfiles[key]?.size ?: profiles.size
+            val totalForAgent = visibleGroupedProfiles[key]?.size ?: profiles.size
             val totalPages = (totalForAgent + maxProfilesPerAgent - 1) / maxProfilesPerAgent
             val currentPage = if (totalForAgent <= maxProfilesPerAgent) 0 else rotationPage % totalPages
 
@@ -1861,15 +2206,16 @@ private fun PositionChip(position: String) {
     Text(
         text = position,
         style = boldTextStyle(WrIndigoLight, 11.sp),
+        letterSpacing = 0.3.sp,
         modifier = Modifier
             .clip(RoundedCornerShape(8.dp))
             .background(
                 Brush.horizontalGradient(
-                    listOf(WrIndigoBg, WrIndigo.copy(alpha = 0.05f))
+                    listOf(WrIndigoBg, WrIndigo.copy(alpha = 0.08f))
                 )
             )
             .border(1.dp, WrIndigoBorder, RoundedCornerShape(8.dp))
-            .padding(horizontal = 9.dp, vertical = 4.dp)
+            .padding(horizontal = 10.dp, vertical = 4.dp)
     )
 }
 
@@ -1938,12 +2284,12 @@ private fun ActionPill(
 ) {
     Row(
         modifier = Modifier
-            .height(40.dp)
-            .clip(RoundedCornerShape(12.dp))
+            .height(42.dp)
+            .clip(RoundedCornerShape(14.dp))
             .background(WrSurface)
-            .border(1.dp, WrSurfaceBorder, RoundedCornerShape(12.dp))
+            .border(1.dp, WrSurfaceBorder.copy(alpha = 0.7f), RoundedCornerShape(14.dp))
             .clickable { onClick() }
-            .padding(horizontal = 12.dp),
+            .padding(horizontal = 14.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         icon()

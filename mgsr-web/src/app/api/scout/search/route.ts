@@ -503,57 +503,71 @@ export async function POST(request: NextRequest) {
           : undefined;
 
       // ═══════════════════════════════════════════════════════════════════
-      // Build interpretation — rich, insightful, scout-like
+      // Build interpretation — structured, clean, one line per criterion
       // ═══════════════════════════════════════════════════════════════════
-      let interpretation = '';
+      const iLines: string[] = [];
 
-      // Use Gemini interpretation if available (richer understanding)
+      // Use Gemini interpretation as the top summary line if available
       if (geminiEnrichment?.interpretation) {
-        interpretation = geminiEnrichment.interpretation;
+        iLines.push(`🧠 ${geminiEnrichment.interpretation}`);
+      }
+
+      // Parsed criteria (each as its own line from buildInterpretation)
+      const parsedInterp = parsed.interpretation || '';
+      if (parsedInterp) {
+        // parsedInterp is already newline-separated lines from buildInterpretation
+        for (const line of parsedInterp.split('\n')) {
+          const trimmed = line.trim();
+          if (trimmed && !iLines.some(existing => existing.includes(trimmed))) {
+            iLines.push(trimmed);
+          }
+        }
+      }
+
+      // Result count
+      if (results.length > 0) {
+        iLines.push(lang === 'he'
+          ? `✅ נמצאו ${results.length} שחקנים תואמים`
+          : `✅ Found ${results.length} matching players`);
       } else {
-        interpretation = parsed.interpretation || '';
+        iLines.push(lang === 'he'
+          ? `⚠️ לא נמצאו שחקנים תואמים`
+          : `⚠️ No matching players found`);
       }
 
-      // Add search metadata
-      if (!interpretation) {
-        interpretation = lang === 'he'
-          ? `מצאתי ${results.length} שחקנים תואמים מתוך מאגר של 17,000+ שחקנים.`
-          : `Found ${results.length} matching players from a database of 17,000+ players.`;
+      // Partial results note
+      if (results.length < requestedTotal && results.length > 0 && requestedTotal > 0) {
+        if (hasMore) {
+          iLines.push(lang === 'he'
+            ? `📌 ביקשת ${requestedTotal} — הרחב לחיפוש מלא`
+            : `📌 You asked for ${requestedTotal} — expand for full search`);
+        }
       }
 
+      // Translation note
       if (translatedQuery) {
-        interpretation += lang === 'he'
-          ? `\n🔄 תרגום: "${translatedQuery.slice(0, 100)}"`
-          : '';
+        iLines.push(lang === 'he'
+          ? `🔄 תרגום: "${translatedQuery.slice(0, 80)}"`
+          : `🔄 Translation: "${translatedQuery.slice(0, 80)}"`);
       }
 
-      if (results.length < requestedTotal && requestedTotal > 0) {
-        interpretation += lang === 'he'
-          ? ` (ביקשת ${requestedTotal}, נמצאו ${results.length} תואמים${hasMore ? ' – הרחב לחיפוש מלא' : ''})`
-          : ` (you asked for ${requestedTotal}, found ${results.length} matching${hasMore ? ' – expand for full search' : ''})`;
-      }
-
-      if (results.length === 0) {
-        interpretation += lang === 'he'
-          ? ' חיפוש בוצע במאגר השחקנים.'
-          : ' Search was performed in the player database.';
-      }
-
-      // Market cap indicator — let the user know we filtered for realism
+      // Market cap indicator
       if (marketCap != null && marketCap > 0) {
         const capStr = marketCap >= 1_000_000
           ? `€${(marketCap / 1_000_000).toFixed(1)}M`
           : `€${(marketCap / 1_000).toFixed(0)}K`;
         const leagueName = targetLeague ? (LEAGUE_NAMES[targetLeague] || targetLeague) : '';
-        interpretation += lang === 'he'
-          ? `\n💰 סינון ריאלי ל${leagueName ? leagueName : 'שוק יעד'} — שווי שוק עד ${capStr}`
-          : `\n💰 Realistic filter for ${leagueName || 'target market'} — value up to ${capStr}`;
+        iLines.push(lang === 'he'
+          ? `💰 סינון שווי שוק: עד ${capStr}${leagueName ? ` (${leagueName})` : ''}`
+          : `💰 Value cap: up to ${capStr}${leagueName ? ` (${leagueName})` : ''}`);
       }
 
       // Append free agent fallback note if no free agents were found
       if (freeAgentFallbackNote) {
-        interpretation += freeAgentFallbackNote;
+        iLines.push(freeAgentFallbackNote.trim());
       }
+
+      const interpretation = iLines.join('\n');
 
       // Add search method indicator
       const searchMethod = geminiEnrichment ? 'hybrid' : 'rule-based';

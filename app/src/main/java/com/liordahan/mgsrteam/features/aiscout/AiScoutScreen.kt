@@ -3,6 +3,7 @@ package com.liordahan.mgsrteam.features.aiscout
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
@@ -45,10 +46,6 @@ import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkAdd
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
-import androidx.compose.material3.TabRowDefaults
-import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.TextButton
@@ -88,16 +85,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.liordahan.mgsrteam.R
-import com.liordahan.mgsrteam.ui.theme.HomeDarkBackground
-import com.liordahan.mgsrteam.ui.theme.HomeDarkCard
-import com.liordahan.mgsrteam.ui.theme.HomeDarkCardBorder
-import com.liordahan.mgsrteam.ui.theme.HomeTealAccent
-import com.liordahan.mgsrteam.ui.theme.HomePurpleAccent
-import com.liordahan.mgsrteam.ui.theme.HomeTextPrimary
-import com.liordahan.mgsrteam.ui.theme.HomeTextSecondary
-import com.liordahan.mgsrteam.ui.theme.HomeBlueAccent
-import com.liordahan.mgsrteam.ui.theme.HomeGreenAccent
-import com.liordahan.mgsrteam.ui.theme.HomeOrangeAccent
+
 import com.liordahan.mgsrteam.ui.utils.boldTextStyle
 import com.liordahan.mgsrteam.ui.utils.regularTextStyle
 import com.liordahan.mgsrteam.features.shortlist.ShortlistRepository
@@ -125,6 +113,23 @@ import org.koin.compose.koinInject
 
 private val SyneFamily = FontFamily(Font(R.font.takeaway_sans_bold, FontWeight.Bold))
 
+// ═══════════════════════════════════════════════════════════════════════════════
+//  COLOR SYSTEM — matches web mgsr-web/tailwind.config.ts exactly
+// ═══════════════════════════════════════════════════════════════════════════════
+
+private val WDark = Color(0xFF0F1923)       // mgsr-dark
+private val WCard = Color(0xFF1A2736)       // mgsr-card
+private val WBorder = Color(0xFF253545)     // mgsr-border
+private val WTeal = Color(0xFF4DB6AC)       // mgsr-teal
+private val WText = Color(0xFFE8EAED)       // mgsr-text
+private val WMuted = Color(0xFF8C999B)      // mgsr-muted
+private val WAmber = Color(0xFFF59E0B)      // amber-500
+private val WPurple = Color(0xFFA855F7)     // purple-500
+private val WIndigo = Color(0xFF6366F1)     // indigo-500
+private val WGreen = Color(0xFF22C55E)      // green-500
+private val WRed = Color(0xFFE53935)        // mgsr-red
+
+
 private enum class AiScoutTab { SCOUT, FIND_NEXT }
 
 /**
@@ -144,7 +149,7 @@ fun AiScoutContentBody(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(HomeDarkBackground)
+            .background(WDark)
     ) {
         if (showTopBar) {
             AiScoutTopBar(onBack = onBack ?: { navController.popBackStack(); kotlin.Unit })
@@ -191,47 +196,49 @@ fun AiScoutScreen(
 
 @Composable
 private fun AiScoutTabBar(selectedTab: AiScoutTab, onTabSelected: (AiScoutTab) -> Unit) {
-    TabRow(
-        selectedTabIndex = if (selectedTab == AiScoutTab.SCOUT) 0 else 1,
-        containerColor = HomeDarkCard,
-        contentColor = HomeTealAccent,
-        indicator = { tabPositions ->
-            TabRowDefaults.SecondaryIndicator(
-                modifier = Modifier.tabIndicatorOffset(tabPositions[if (selectedTab == AiScoutTab.SCOUT) 0 else 1]),
-                color = HomeTealAccent,
-                height = 3.dp
-            )
-        },
-        divider = {
-            Box(Modifier.fillMaxWidth().height(1.dp).background(HomeDarkCardBorder))
-        }
+    val tabs = listOf(
+        AiScoutTab.SCOUT to R.string.ai_scout_tab_scout,
+        AiScoutTab.FIND_NEXT to R.string.ai_scout_tab_find_next
+    )
+
+    // Matches web: flex gap-1 p-1 rounded-xl bg-mgsr-card border border-mgsr-border
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(WCard)
+            .border(1.dp, WBorder, RoundedCornerShape(12.dp))
+            .padding(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
     ) {
-        Tab(
-            selected = selectedTab == AiScoutTab.SCOUT,
-            onClick = { onTabSelected(AiScoutTab.SCOUT) },
-            text = {
+        tabs.forEach { (tab, labelRes) ->
+            val isSelected = selectedTab == tab
+            val accentColor = if (tab == AiScoutTab.SCOUT) WTeal else WPurple
+
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(8.dp))
+                    .then(
+                        if (isSelected) Modifier
+                            .background(accentColor.copy(alpha = 0.20f))
+                            .border(1.dp, accentColor.copy(alpha = 0.30f), RoundedCornerShape(8.dp))
+                        else Modifier
+                    )
+                    .clickable { onTabSelected(tab) }
+                    .padding(vertical = 10.dp),
+                contentAlignment = Alignment.Center
+            ) {
                 Text(
-                    stringResource(R.string.ai_scout_tab_scout),
+                    text = stringResource(labelRes),
                     style = boldTextStyle(
-                        if (selectedTab == AiScoutTab.SCOUT) HomeTealAccent else HomeTextSecondary,
+                        if (isSelected) accentColor else WMuted,
                         14.sp
                     )
                 )
             }
-        )
-        Tab(
-            selected = selectedTab == AiScoutTab.FIND_NEXT,
-            onClick = { onTabSelected(AiScoutTab.FIND_NEXT) },
-            text = {
-                Text(
-                    stringResource(R.string.ai_scout_tab_find_next),
-                    style = boldTextStyle(
-                        if (selectedTab == AiScoutTab.FIND_NEXT) HomePurpleAccent else HomeTextSecondary,
-                        14.sp
-                    )
-                )
-            }
-        )
+        }
     }
 }
 
@@ -284,14 +291,14 @@ private fun FindNextTabContent(state: FindNextUiState, viewModel: IAiScoutViewMo
                         .background(
                             Brush.linearGradient(
                                 listOf(
-                                    HomePurpleAccent.copy(alpha = 0.3f),
-                                    HomeTealAccent.copy(alpha = 0.2f)
+                                    WPurple.copy(alpha = 0.3f),
+                                    WTeal.copy(alpha = 0.2f)
                                 )
                             )
                         )
                         .border(
                             1.dp,
-                            HomePurpleAccent.copy(alpha = 0.3f),
+                            WPurple.copy(alpha = 0.3f),
                             RoundedCornerShape(12.dp)
                         ),
                     contentAlignment = Alignment.Center
@@ -302,12 +309,12 @@ private fun FindNextTabContent(state: FindNextUiState, viewModel: IAiScoutViewMo
                 Column {
                     Text(
                         text = stringResource(R.string.ai_scout_find_next_hero_title),
-                        style = boldTextStyle(HomeTextPrimary, 18.sp)
+                        style = boldTextStyle(WText, 18.sp)
                     )
                     Spacer(Modifier.height(2.dp))
                     Text(
                         text = stringResource(R.string.ai_scout_find_next_hero_subtitle),
-                        style = regularTextStyle(HomeTextSecondary, 12.sp),
+                        style = regularTextStyle(WMuted, 12.sp),
                         maxLines = 2,
                         lineHeight = 16.sp
                     )
@@ -321,13 +328,9 @@ private fun FindNextTabContent(state: FindNextUiState, viewModel: IAiScoutViewMo
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp)
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(
-                        Brush.verticalGradient(
-                            listOf(HomeDarkCard, HomeDarkCard.copy(alpha = 0.85f))
-                        )
-                    )
-                    .border(1.dp, HomePurpleAccent.copy(alpha = 0.12f), RoundedCornerShape(20.dp))
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(WCard)
+                    .border(1.dp, WBorder, RoundedCornerShape(16.dp))
                     .padding(16.dp)
             ) {
                 // Section label
@@ -336,7 +339,7 @@ private fun FindNextTabContent(state: FindNextUiState, viewModel: IAiScoutViewMo
                     Spacer(Modifier.width(6.dp))
                     Text(
                         text = stringResource(R.string.ai_scout_find_next_player_label),
-                        style = boldTextStyle(HomeTextPrimary, 13.sp)
+                        style = boldTextStyle(WText, 13.sp)
                     )
                 }
                 Spacer(Modifier.height(10.dp))
@@ -349,10 +352,10 @@ private fun FindNextTabContent(state: FindNextUiState, viewModel: IAiScoutViewMo
                         .fillMaxWidth()
                         .height(50.dp)
                         .clip(RoundedCornerShape(14.dp))
-                        .background(HomeDarkBackground.copy(alpha = 0.6f))
-                        .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(14.dp))
+                        .background(WDark.copy(alpha = 0.6f))
+                        .border(1.dp, WBorder, RoundedCornerShape(14.dp))
                         .padding(horizontal = 14.dp),
-                    textStyle = regularTextStyle(HomeTextPrimary, 15.sp),
+                    textStyle = regularTextStyle(WText, 15.sp),
                     singleLine = true,
                     decorationBox = { inner ->
                         Row(
@@ -362,7 +365,7 @@ private fun FindNextTabContent(state: FindNextUiState, viewModel: IAiScoutViewMo
                             Icon(
                                 Icons.Default.Search,
                                 contentDescription = null,
-                                tint = HomeTextSecondary.copy(alpha = 0.4f),
+                                tint = WMuted.copy(alpha = 0.4f),
                                 modifier = Modifier.size(18.dp)
                             )
                             Spacer(Modifier.width(10.dp))
@@ -370,7 +373,7 @@ private fun FindNextTabContent(state: FindNextUiState, viewModel: IAiScoutViewMo
                                 if (state.playerName.isEmpty()) {
                                     Text(
                                         stringResource(R.string.ai_scout_find_next_placeholder),
-                                        style = regularTextStyle(HomeTextSecondary.copy(alpha = 0.5f), 14.sp)
+                                        style = regularTextStyle(WMuted.copy(alpha = 0.5f), 14.sp)
                                     )
                                 }
                                 inner()
@@ -379,7 +382,7 @@ private fun FindNextTabContent(state: FindNextUiState, viewModel: IAiScoutViewMo
                                 Icon(
                                     Icons.Default.Clear,
                                     contentDescription = null,
-                                    tint = HomeTextSecondary.copy(alpha = 0.5f),
+                                    tint = WMuted.copy(alpha = 0.5f),
                                     modifier = Modifier
                                         .size(18.dp)
                                         .clickable { viewModel.updateFindNextPlayerName("") }
@@ -400,12 +403,12 @@ private fun FindNextTabContent(state: FindNextUiState, viewModel: IAiScoutViewMo
                             modifier = Modifier
                                 .clip(RoundedCornerShape(20.dp))
                                 .background(
-                                    if (isSelected) HomePurpleAccent.copy(alpha = 0.2f)
-                                    else HomeDarkBackground.copy(alpha = 0.5f)
+                                    if (isSelected) WPurple.copy(alpha = 0.2f)
+                                    else WDark.copy(alpha = 0.5f)
                                 )
                                 .border(
                                     1.dp,
-                                    if (isSelected) HomePurpleAccent.copy(alpha = 0.4f)
+                                    if (isSelected) WPurple.copy(alpha = 0.4f)
                                     else Color.Transparent,
                                     RoundedCornerShape(20.dp)
                                 )
@@ -416,7 +419,7 @@ private fun FindNextTabContent(state: FindNextUiState, viewModel: IAiScoutViewMo
                             Text(
                                 name,
                                 style = boldTextStyle(
-                                    if (isSelected) HomePurpleAccent else HomeTextSecondary,
+                                    if (isSelected) WPurple else WMuted,
                                     12.sp
                                 ),
                                 maxLines = 1
@@ -435,13 +438,9 @@ private fun FindNextTabContent(state: FindNextUiState, viewModel: IAiScoutViewMo
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp)
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(
-                        Brush.verticalGradient(
-                            listOf(HomeDarkCard, HomeDarkCard.copy(alpha = 0.85f))
-                        )
-                    )
-                    .border(1.dp, HomeTealAccent.copy(alpha = 0.08f), RoundedCornerShape(20.dp))
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(WCard)
+                    .border(1.dp, WBorder, RoundedCornerShape(16.dp))
                     .padding(16.dp)
             ) {
                 // Age section
@@ -455,19 +454,19 @@ private fun FindNextTabContent(state: FindNextUiState, viewModel: IAiScoutViewMo
                         Spacer(Modifier.width(6.dp))
                         Text(
                             text = stringResource(R.string.ai_scout_find_next_age_max, state.ageMax),
-                            style = regularTextStyle(HomeTextSecondary, 12.sp)
+                            style = regularTextStyle(WMuted, 12.sp)
                         )
                     }
                     // Age badge
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(8.dp))
-                            .background(HomePurpleAccent.copy(alpha = 0.15f))
+                            .background(WPurple.copy(alpha = 0.15f))
                             .padding(horizontal = 10.dp, vertical = 4.dp)
                     ) {
                         Text(
                             text = "≤ ${state.ageMax}",
-                            style = boldTextStyle(HomePurpleAccent, 13.sp)
+                            style = boldTextStyle(WPurple, 13.sp)
                         )
                     }
                 }
@@ -477,9 +476,9 @@ private fun FindNextTabContent(state: FindNextUiState, viewModel: IAiScoutViewMo
                     valueRange = 17f..27f,
                     steps = 9,
                     colors = SliderDefaults.colors(
-                        thumbColor = HomePurpleAccent,
-                        activeTrackColor = HomePurpleAccent.copy(alpha = 0.6f),
-                        inactiveTrackColor = HomeDarkCardBorder
+                        thumbColor = WPurple,
+                        activeTrackColor = WPurple.copy(alpha = 0.6f),
+                        inactiveTrackColor = WBorder
                     )
                 )
 
@@ -489,7 +488,7 @@ private fun FindNextTabContent(state: FindNextUiState, viewModel: IAiScoutViewMo
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(1.dp)
-                        .background(HomeDarkCardBorder.copy(alpha = 0.5f))
+                        .background(WBorder.copy(alpha = 0.5f))
                 )
                 Spacer(Modifier.height(14.dp))
 
@@ -499,7 +498,7 @@ private fun FindNextTabContent(state: FindNextUiState, viewModel: IAiScoutViewMo
                     Spacer(Modifier.width(6.dp))
                     Text(
                         text = stringResource(R.string.ai_scout_find_next_value_max),
-                        style = regularTextStyle(HomeTextSecondary, 12.sp)
+                        style = regularTextStyle(WMuted, 12.sp)
                     )
                 }
                 Spacer(Modifier.height(10.dp))
@@ -514,12 +513,12 @@ private fun FindNextTabContent(state: FindNextUiState, viewModel: IAiScoutViewMo
                             modifier = Modifier
                                 .clip(RoundedCornerShape(12.dp))
                                 .background(
-                                    if (isSelected) HomePurpleAccent.copy(alpha = 0.2f)
-                                    else HomeDarkBackground.copy(alpha = 0.5f)
+                                    if (isSelected) WPurple.copy(alpha = 0.2f)
+                                    else WDark.copy(alpha = 0.5f)
                                 )
                                 .border(
                                     1.dp,
-                                    if (isSelected) HomePurpleAccent.copy(alpha = 0.5f)
+                                    if (isSelected) WPurple.copy(alpha = 0.5f)
                                     else Color.Transparent,
                                     RoundedCornerShape(12.dp)
                                 )
@@ -529,7 +528,7 @@ private fun FindNextTabContent(state: FindNextUiState, viewModel: IAiScoutViewMo
                             Text(
                                 if (value == 0) stringResource(R.string.ai_scout_find_next_no_limit) else label,
                                 style = boldTextStyle(
-                                    if (isSelected) HomePurpleAccent else HomeTextPrimary,
+                                    if (isSelected) WPurple else WText,
                                     12.sp
                                 )
                             )
@@ -550,16 +549,8 @@ private fun FindNextTabContent(state: FindNextUiState, viewModel: IAiScoutViewMo
                     .height(52.dp)
                     .clip(RoundedCornerShape(16.dp))
                     .background(
-                        if (!state.isSearching && state.playerName.isNotBlank())
-                            Brush.horizontalGradient(
-                                listOf(HomePurpleAccent, HomePurpleAccent.copy(alpha = 0.8f))
-                            )
-                        else Brush.horizontalGradient(
-                            listOf(
-                                HomePurpleAccent.copy(alpha = 0.3f),
-                                HomePurpleAccent.copy(alpha = 0.2f)
-                            )
-                        )
+                        if (!state.isSearching && state.playerName.isNotBlank()) WPurple
+                        else WPurple.copy(alpha = 0.3f)
                     )
                     .clickable(enabled = !state.isSearching && state.playerName.isNotBlank()) {
                         viewModel.findNextSearch()
@@ -570,21 +561,21 @@ private fun FindNextTabContent(state: FindNextUiState, viewModel: IAiScoutViewMo
                     if (state.isSearching) {
                         CircularProgressIndicator(
                             modifier = Modifier.size(18.dp),
-                            color = HomeDarkBackground,
+                            color = WDark,
                             strokeWidth = 2.dp
                         )
                     } else {
                         Icon(
                             Icons.Default.Search,
                             contentDescription = null,
-                            tint = HomeDarkBackground,
+                            tint = WDark,
                             modifier = Modifier.size(18.dp)
                         )
                     }
                     Spacer(Modifier.width(8.dp))
                     Text(
                         text = stringResource(R.string.ai_scout_find_next_search_button),
-                        style = boldTextStyle(HomeDarkBackground, 15.sp)
+                        style = boldTextStyle(WDark, 15.sp)
                     )
                 }
             }
@@ -608,24 +599,24 @@ private fun FindNextTabContent(state: FindNextUiState, viewModel: IAiScoutViewMo
                     modifier = Modifier
                         .padding(16.dp)
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(HomePurpleAccent.copy(alpha = 0.1f))
-                        .border(1.dp, HomePurpleAccent.copy(alpha = 0.3f), RoundedCornerShape(12.dp))
-                        .padding(12.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(WPurple.copy(alpha = 0.10f))
+                        .border(1.dp, WPurple.copy(alpha = 0.25f), RoundedCornerShape(16.dp))
+                        .padding(14.dp)
                 ) {
                     Text("⭐", fontSize = 14.sp)
                     Spacer(Modifier.height(4.dp))
-                    Text(ref.name, style = boldTextStyle(HomeTextPrimary, 16.sp))
+                    Text(ref.name, style = boldTextStyle(WText, 16.sp))
                     Text(
                         "${shortenPosition(ref.position)} · ${ref.age} · ${ref.marketValue}",
-                        style = regularTextStyle(HomeTextSecondary, 13.sp)
+                        style = regularTextStyle(WMuted, 13.sp)
                     )
                     state.response?.let { r ->
                         if (r.resultCount > 0) {
                             Spacer(Modifier.height(4.dp))
                             Text(
                                 stringResource(R.string.ai_scout_find_next_found_count, r.resultCount, r.totalCandidatesScanned ?: 0),
-                                style = regularTextStyle(HomeTextSecondary, 12.sp)
+                                style = regularTextStyle(WMuted, 12.sp)
                             )
                         }
                     }
@@ -683,13 +674,70 @@ private fun FindNextTabContent(state: FindNextUiState, viewModel: IAiScoutViewMo
             item {
                 Text(
                     text = stringResource(R.string.ai_scout_find_next_no_results),
-                    style = regularTextStyle(HomeTextSecondary, 14.sp),
+                    style = regularTextStyle(WMuted, 14.sp),
                     modifier = Modifier.padding(24.dp),
                     textAlign = TextAlign.Center
                 )
             }
         }
     }
+}
+
+/* ── Structured explanation parser ─────────────────────── */
+private data class ExplanationSections(
+    val stats: List<String> = emptyList(),
+    val physical: List<String> = emptyList(),
+    val strengths: List<String> = emptyList(),
+    val fmAttrs: List<String> = emptyList(),
+    val insights: List<String> = emptyList()
+)
+
+private fun parseExplanationSections(text: String): ExplanationSections {
+    val lines = text.split("\n").map { it.trim() }.filter { it.isNotBlank() }
+    val stats = mutableListOf<String>()
+    val physical = mutableListOf<String>()
+    val strengths = mutableListOf<String>()
+    val fmAttrs = mutableListOf<String>()
+    val insights = mutableListOf<String>()
+
+    for (line in lines) {
+        // Skip bio line (redundant with card header)
+        if (line.startsWith("Age ", true) || line.startsWith("גיל ")) continue
+
+        // Strengths line (he/en)
+        if (line.startsWith("Strengths:", true) || line.startsWith("חוזקות:")) {
+            val content = line.replaceFirst(Regex("^(Strengths:|חוזקות:)\\s*", RegexOption.IGNORE_CASE), "")
+            strengths.addAll(content.split("|").map { it.trim() }.filter { it.isNotBlank() })
+            continue
+        }
+
+        // FM line
+        if (line.startsWith("FM:", true)) {
+            val content = line.replaceFirst(Regex("^FM:\\s*", RegexOption.IGNORE_CASE), "")
+            val cleaned = content.replace(Regex("\\(CA\\s*\\d+\\s*[←→➝]\\s*PA\\s*\\d+\\s*\\)"), "").trim()
+            fmAttrs.addAll(cleaned.split("|").map { it.trim() }.filter { it.isNotBlank() })
+            continue
+        }
+
+        // Stats line: has key: number pairs separated by |
+        if (Regex("\\w+:\\s*[\\d.,]+").containsMatchIn(line) && "|" in line) {
+            val items = line.split("|").map { it.trim() }.filter { it.isNotBlank() }
+            for (item in items) {
+                if (item.contains("height", true) || item.contains("גובה") ||
+                    item.contains("foot", true) || item.contains("רגל")) {
+                    physical.add(item)
+                } else {
+                    stats.add(item)
+                }
+            }
+            continue
+        }
+
+        // Remaining → insights
+        insights.addAll(line.split("|").map { it.trim() }.filter { it.isNotBlank() })
+    }
+
+    return ExplanationSections(stats, physical, strengths, fmAttrs, insights)
 }
 
 private fun shortenPosition(pos: String): String {
@@ -724,18 +772,18 @@ private fun FindNextPlayerCard(
         modifier = Modifier
             .padding(horizontal = 16.dp, vertical = 6.dp)
             .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
-            .background(HomeDarkCard)
-            .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(14.dp))
-            .padding(14.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(WCard)
+            .border(1.dp, WBorder, RoundedCornerShape(16.dp))
+            .padding(16.dp)
     ) {
         Row(verticalAlignment = Alignment.Top) {
-            MatchPercentRing(percent = player.findNextScore, size = 50)
+            MatchPercentRing(percent = player.findNextScore, size = 48)
             Spacer(Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = player.name,
-                    style = boldTextStyle(HomeTextPrimary, 16.sp),
+                    style = boldTextStyle(WText, 16.sp),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -750,7 +798,7 @@ private fun FindNextPlayerCard(
                         append(" · ")
                         append(player.club ?: player.league)
                     },
-                    style = regularTextStyle(HomeTextSecondary, 13.sp),
+                    style = regularTextStyle(WMuted, 13.sp),
                     maxLines = 2
                 )
                 player.scoutNarrative?.let { narrative ->
@@ -758,17 +806,109 @@ private fun FindNextPlayerCard(
                         Spacer(Modifier.height(6.dp))
                         Text(
                             text = narrative,
-                            style = regularTextStyle(HomeTextPrimary, 12.sp),
+                            style = regularTextStyle(WText, 12.sp),
                             lineHeight = 18.sp
                         )
                     }
                 } ?: player.explanation.takeIf { it.isNotBlank() }?.let { exp ->
-                    Spacer(Modifier.height(6.dp))
-                    Text(
-                        text = exp,
-                        style = regularTextStyle(HomeTextSecondary, 12.sp),
-                        lineHeight = 18.sp
-                    )
+                    val sec = parseExplanationSections(exp)
+                    val hasAnything = sec.stats.isNotEmpty() || sec.strengths.isNotEmpty() || sec.fmAttrs.isNotEmpty() || sec.insights.isNotEmpty()
+                    if (hasAnything) {
+                        Spacer(Modifier.height(6.dp))
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            // Season Stats
+                            if (sec.stats.isNotEmpty()) {
+                                Text("📊 Stats", style = regularTextStyle(WMuted.copy(alpha = 0.5f), 9.sp))
+                                FlowRow(
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                    verticalArrangement = Arrangement.spacedBy(3.dp)
+                                ) {
+                                    sec.stats.forEach { st ->
+                                        Box(
+                                            modifier = Modifier
+                                                .clip(RoundedCornerShape(4.dp))
+                                                .background(WTeal.copy(alpha = 0.1f))
+                                                .border(0.5.dp, WTeal.copy(alpha = 0.2f), RoundedCornerShape(4.dp))
+                                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                                        ) {
+                                            Text(st, style = regularTextStyle(WTeal.copy(alpha = 0.8f), 10.sp), maxLines = 1)
+                                        }
+                                    }
+                                    sec.physical.forEach { ph ->
+                                        Box(
+                                            modifier = Modifier
+                                                .clip(RoundedCornerShape(4.dp))
+                                                .background(WDark.copy(alpha = 0.6f))
+                                                .border(0.5.dp, WBorder.copy(alpha = 0.4f), RoundedCornerShape(4.dp))
+                                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                                        ) {
+                                            Text(ph, style = regularTextStyle(WMuted.copy(alpha = 0.7f), 10.sp), maxLines = 1)
+                                        }
+                                    }
+                                }
+                            }
+                            // Key Strengths
+                            if (sec.strengths.isNotEmpty()) {
+                                Text("💪 Strengths", style = regularTextStyle(WMuted.copy(alpha = 0.5f), 9.sp))
+                                FlowRow(
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                    verticalArrangement = Arrangement.spacedBy(3.dp)
+                                ) {
+                                    sec.strengths.forEach { st ->
+                                        val isTop = "✓" in st
+                                        Box(
+                                            modifier = Modifier
+                                                .clip(RoundedCornerShape(4.dp))
+                                                .background(WGreen.copy(alpha = if (isTop) 0.15f else 0.1f))
+                                                .border(0.5.dp, WGreen.copy(alpha = if (isTop) 0.3f else 0.2f), RoundedCornerShape(4.dp))
+                                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                                        ) {
+                                            Text(st, style = regularTextStyle(WGreen.copy(alpha = 0.8f), 10.sp), maxLines = 1)
+                                        }
+                                    }
+                                }
+                            }
+                            // FM Attributes
+                            if (sec.fmAttrs.isNotEmpty()) {
+                                Text("🎮 FM", style = regularTextStyle(WMuted.copy(alpha = 0.5f), 9.sp))
+                                FlowRow(
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                    verticalArrangement = Arrangement.spacedBy(3.dp)
+                                ) {
+                                    sec.fmAttrs.forEach { attr ->
+                                        Box(
+                                            modifier = Modifier
+                                                .clip(RoundedCornerShape(4.dp))
+                                                .background(WPurple.copy(alpha = 0.1f))
+                                                .border(0.5.dp, WPurple.copy(alpha = 0.2f), RoundedCornerShape(4.dp))
+                                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                                        ) {
+                                            Text(attr, style = regularTextStyle(WPurple.copy(alpha = 0.8f), 10.sp), maxLines = 1)
+                                        }
+                                    }
+                                }
+                            }
+                            // Market Insights
+                            if (sec.insights.isNotEmpty()) {
+                                FlowRow(
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                    verticalArrangement = Arrangement.spacedBy(3.dp)
+                                ) {
+                                    sec.insights.forEach { ins ->
+                                        Box(
+                                            modifier = Modifier
+                                                .clip(RoundedCornerShape(4.dp))
+                                                .background(WAmber.copy(alpha = 0.1f))
+                                                .border(0.5.dp, WAmber.copy(alpha = 0.2f), RoundedCornerShape(4.dp))
+                                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                                        ) {
+                                            Text("💡 $ins", style = regularTextStyle(WAmber.copy(alpha = 0.8f), 10.sp), maxLines = 1)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
 
                 // Action buttons: Add to shortlist + Open Transfermarkt
@@ -787,7 +927,7 @@ private fun FindNextPlayerCard(
                                 Icon(
                                     imageVector = if (isInShortlist) Icons.Default.Bookmark else Icons.Default.BookmarkAdd,
                                     contentDescription = if (isInShortlist) stringResource(R.string.shortlist_in_shortlist) else stringResource(R.string.shortlist_add_to_shortlist),
-                                    tint = if (isInShortlist) HomeGreenAccent else HomeTextSecondary
+                                    tint = if (isInShortlist) WGreen else WMuted
                                 )
                             }
                         }
@@ -798,18 +938,18 @@ private fun FindNextPlayerCard(
                                 },
                                 modifier = Modifier.height(36.dp),
                                 contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
-                                colors = ButtonDefaults.textButtonColors(contentColor = HomeTealAccent)
+                                colors = ButtonDefaults.textButtonColors(contentColor = WTeal)
                             ) {
                                 Icon(
                                     Icons.Default.Link,
                                     contentDescription = null,
-                                    tint = HomeTealAccent,
+                                    tint = WTeal,
                                     modifier = Modifier.size(16.dp)
                                 )
                                 Spacer(Modifier.width(6.dp))
                                 Text(
                                     text = stringResource(R.string.shortlist_open_tm),
-                                    style = regularTextStyle(HomeTealAccent, 13.sp)
+                                    style = regularTextStyle(WTeal, 13.sp)
                                 )
                             }
                         }
@@ -829,7 +969,7 @@ private fun AiScoutTopBar(onBack: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(HomeDarkCard)
+            .background(WDark)
             .padding(horizontal = 8.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -837,16 +977,16 @@ private fun AiScoutTopBar(onBack: () -> Unit) {
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                 contentDescription = stringResource(R.string.player_info_cd_collapse),
-                tint = HomeTealAccent
+                tint = WText
             )
         }
         Text(
             text = stringResource(R.string.ai_scout_title),
-            style = boldTextStyle(HomeTextPrimary, 18.sp),
+            style = boldTextStyle(WText, 18.sp),
             modifier = Modifier.weight(1f),
             textAlign = TextAlign.Center
         )
-        Spacer(Modifier.width(48.dp)) // Balance the back button
+        Spacer(Modifier.width(48.dp))
     }
 }
 
@@ -860,48 +1000,29 @@ private fun AiScoutEmptyState(state: AiScoutUiState, viewModel: IAiScoutViewMode
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(bottom = 32.dp)
     ) {
-        // Hero
+        // Hero — left-aligned like web
         item {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+                    .padding(horizontal = 16.dp)
+                    .padding(top = 24.dp, bottom = 16.dp)
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(64.dp)
-                        .clip(RoundedCornerShape(20.dp))
-                        .background(
-                            Brush.linearGradient(
-                                colors = listOf(
-                                    HomeTealAccent.copy(alpha = 0.2f),
-                                    HomePurpleAccent.copy(alpha = 0.15f)
-                                )
-                            )
-                        )
-                        .border(1.dp, HomeTealAccent.copy(alpha = 0.3f), RoundedCornerShape(20.dp)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text("🔍", fontSize = 28.sp)
-                }
-                Spacer(Modifier.height(16.dp))
                 Text(
                     text = stringResource(R.string.ai_scout_hero_title),
-                    style = boldTextStyle(HomeTextPrimary, 24.sp),
-                    textAlign = TextAlign.Center
+                    style = boldTextStyle(WText, 26.sp),
+                    letterSpacing = (-0.3).sp
                 )
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(4.dp))
                 Text(
                     text = stringResource(R.string.ai_scout_hero_subtitle),
-                    style = regularTextStyle(HomeTextSecondary, 14.sp),
-                    textAlign = TextAlign.Center,
+                    style = regularTextStyle(WMuted, 14.sp),
                     lineHeight = 20.sp
                 )
             }
         }
 
-        // Search Box
+        // Unified search card — textarea + examples + search button (like web)
         item {
             SearchInputBox(state = state, viewModel = viewModel)
         }
@@ -915,16 +1036,6 @@ private fun AiScoutEmptyState(state: AiScoutUiState, viewModel: IAiScoutViewMode
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                 )
             }
-        }
-
-        // Example Chips
-        item {
-            ExampleChipsSection(viewModel = viewModel)
-        }
-
-        // Radar illustration
-        item {
-            RadarIllustration()
         }
     }
 }
@@ -1028,53 +1139,29 @@ private fun SearchInputBox(state: AiScoutUiState, viewModel: IAiScoutViewModel) 
             .padding(horizontal = 16.dp)
             .fillMaxWidth()
             .clip(RoundedCornerShape(20.dp))
-            .background(
-                Brush.verticalGradient(
-                    listOf(HomeDarkCard, HomeDarkCard.copy(alpha = 0.9f))
-                )
-            )
-            .border(1.5.dp, HomeTealAccent.copy(alpha = 0.15f), RoundedCornerShape(20.dp))
+            .background(WCard)
+            .border(1.dp, WBorder, RoundedCornerShape(20.dp))
             .padding(16.dp)
     ) {
-        // Search label
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                Icons.Default.Search,
-                contentDescription = null,
-                tint = HomeTealAccent.copy(alpha = 0.6f),
-                modifier = Modifier.size(16.dp)
-            )
-            Spacer(Modifier.width(6.dp))
-            Text(
-                text = stringResource(R.string.ai_scout_search_hint).split(":").firstOrNull() ?: "",
-                style = regularTextStyle(HomeTealAccent.copy(alpha = 0.6f), 11.sp),
-                letterSpacing = 0.5.sp
-            )
-        }
-
-        Spacer(Modifier.height(8.dp))
-
+        // Textarea — multi-line input like web
         BasicTextField(
             value = state.query,
             onValueChange = { viewModel.updateQuery(it) },
             modifier = Modifier
                 .fillMaxWidth()
-                .height(72.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .background(HomeDarkBackground.copy(alpha = 0.5f))
-                .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(12.dp))
-                .padding(12.dp),
-            textStyle = regularTextStyle(HomeTextPrimary, 15.sp),
+                .height(100.dp)
+                .clip(RoundedCornerShape(14.dp))
+                .background(WDark.copy(alpha = 0.6f))
+                .border(1.dp, WBorder, RoundedCornerShape(14.dp))
+                .padding(14.dp),
+            textStyle = regularTextStyle(WText, 15.sp),
             decorationBox = { innerTextField ->
                 Row(modifier = Modifier.fillMaxSize(), verticalAlignment = Alignment.Top) {
                     Box(modifier = Modifier.weight(1f)) {
                         if (state.query.isEmpty()) {
                             Text(
                                 text = stringResource(R.string.ai_scout_search_hint),
-                                style = regularTextStyle(HomeTextSecondary.copy(alpha = 0.6f), 14.sp)
+                                style = regularTextStyle(WMuted.copy(alpha = 0.5f), 14.sp)
                             )
                         }
                         innerTextField()
@@ -1087,7 +1174,7 @@ private fun SearchInputBox(state: AiScoutUiState, viewModel: IAiScoutViewModel) 
                             Icon(
                                 Icons.Default.Mic,
                                 contentDescription = stringResource(R.string.ai_scout_voice_hint),
-                                tint = HomeTextSecondary,
+                                tint = WMuted.copy(alpha = 0.5f),
                                 modifier = Modifier.size(20.dp)
                             )
                         }
@@ -1096,7 +1183,7 @@ private fun SearchInputBox(state: AiScoutUiState, viewModel: IAiScoutViewModel) 
             }
         )
 
-        // Recording panel (same as add-note)
+        // Recording panel
         if (isRecording) {
             Spacer(Modifier.height(12.dp))
             ScoutRecordingContent(
@@ -1105,53 +1192,58 @@ private fun SearchInputBox(state: AiScoutUiState, viewModel: IAiScoutViewModel) 
             )
         }
 
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(14.dp))
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Character count
-            Text(
-                text = "${state.query.length}/500",
-                style = regularTextStyle(HomeTextSecondary.copy(alpha = 0.5f), 11.sp)
-            )
+        // Example chips + Search button row (like web: chips on left, button on right)
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            // Example chips — wrapping horizontally like web
+            ExampleChipsInlineSection(viewModel = viewModel)
 
-            // Search button
+            // Bottom row: char count on left, search button on right
             Row(
-                modifier = Modifier
-                    .height(40.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(
-                        if (!state.isLoading && state.query.isNotBlank()) HomeTealAccent
-                        else HomeTealAccent.copy(alpha = 0.4f)
-                    )
-                    .clickable(enabled = !state.isLoading && state.query.isNotBlank()) {
-                        viewModel.search()
-                    }
-                    .padding(horizontal = 20.dp),
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                if (state.isLoading) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(16.dp),
-                        color = HomeDarkBackground,
-                        strokeWidth = 2.dp
-                    )
-                } else {
-                    Icon(
-                        imageVector = Icons.Default.Search,
-                        contentDescription = null,
-                        tint = HomeDarkBackground,
-                        modifier = Modifier.size(16.dp)
+                Text(
+                    text = "${state.query.length}/500",
+                    style = regularTextStyle(WMuted.copy(alpha = 0.4f), 11.sp)
+                )
+
+                Row(
+                    modifier = Modifier
+                        .height(42.dp)
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(
+                            if (!state.isLoading && state.query.isNotBlank()) WTeal
+                            else WTeal.copy(alpha = 0.35f)
+                        )
+                        .clickable(enabled = !state.isLoading && state.query.isNotBlank()) {
+                            viewModel.search()
+                        }
+                        .padding(horizontal = 22.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (state.isLoading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(16.dp),
+                            color = WDark,
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Default.Search,
+                            contentDescription = null,
+                            tint = WDark,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        text = stringResource(R.string.ai_scout_search_button),
+                        style = boldTextStyle(WDark, 14.sp)
                     )
                 }
-                Spacer(Modifier.width(6.dp))
-                Text(
-                    text = stringResource(R.string.ai_scout_search_button),
-                    style = boldTextStyle(HomeDarkBackground, 14.sp)
-                )
             }
         }
     }
@@ -1176,26 +1268,26 @@ private fun ScoutRecordingContent(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
-            .background(HomeTealAccent.copy(alpha = 0.08f))
-            .border(1.dp, HomeTealAccent.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
+            .background(WTeal.copy(alpha = 0.08f))
+            .border(1.dp, WTeal.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
             text = stringResource(R.string.player_info_recording),
-            style = regularTextStyle(HomeTealAccent, 16.sp),
+            style = regularTextStyle(WTeal, 16.sp),
             modifier = Modifier.padding(bottom = 16.dp)
         )
         RecordingWaveform(
             barCount = 10,
-            color = HomeTealAccent,
+            color = WTeal,
             barWidth = 6.dp,
             barHeight = 12.dp,
             modifier = Modifier.padding(vertical = 16.dp)
         )
         Text(
             text = "%d:%02d".format(durationSeconds / 60, durationSeconds % 60),
-            style = boldTextStyle(HomeTextPrimary, 24.sp),
+            style = boldTextStyle(WText, 24.sp),
             modifier = Modifier.padding(vertical = 8.dp)
         )
         Box(
@@ -1217,18 +1309,18 @@ private fun ScoutRecordingContent(
         Spacer(Modifier.height(8.dp))
         Text(
             text = stringResource(R.string.requests_tap_to_stop),
-            style = regularTextStyle(HomeTextSecondary, 14.sp)
+            style = regularTextStyle(WMuted, 14.sp)
         )
     }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-//  EXAMPLE CHIPS
+//  EXAMPLE CHIPS (inline — wrapping, inside the search card like web)
 // ═══════════════════════════════════════════════════════════════════════════════
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun ExampleChipsSection(viewModel: IAiScoutViewModel) {
-    // All possible examples with emojis
+private fun ExampleChipsInlineSection(viewModel: IAiScoutViewModel) {
     val allExamples = listOf(
         "⚡" to R.string.ai_scout_example_1,
         "🎯" to R.string.ai_scout_example_2,
@@ -1243,101 +1335,32 @@ private fun ExampleChipsSection(viewModel: IAiScoutViewModel) {
         "🔄" to R.string.ai_scout_example_11,
         "🛡️" to R.string.ai_scout_example_12
     )
-
-    // Pick 4 random examples each time this screen is composed
     val selectedExamples = remember { allExamples.shuffled().take(4) }
 
-    Column(modifier = Modifier.padding(top = 20.dp)) {
-        Text(
-            text = stringResource(R.string.ai_scout_try_examples),
-            style = regularTextStyle(HomeTextSecondary, 12.sp),
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 0.dp),
-            letterSpacing = 0.5.sp
-        )
-        Spacer(Modifier.height(10.dp))
-        LazyRow(
-            contentPadding = PaddingValues(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            items(selectedExamples) { (emoji, resId) ->
-                val text = stringResource(resId)
-                Row(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(HomeDarkCard)
-                        .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(10.dp))
-                        .clickable { viewModel.useExample(text) }
-                        .padding(horizontal = 14.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(emoji, fontSize = 14.sp)
-                    Spacer(Modifier.width(4.dp))
-                    Text(text, style = regularTextStyle(HomeTextPrimary, 13.sp), maxLines = 1)
-                }
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        selectedExamples.forEach { (emoji, resId) ->
+            val text = stringResource(resId)
+            Row(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(WDark.copy(alpha = 0.5f))
+                    .border(1.dp, WBorder, RoundedCornerShape(10.dp))
+                    .clickable { viewModel.useExample(text) }
+                    .padding(horizontal = 12.dp, vertical = 7.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(emoji, fontSize = 12.sp)
+                Spacer(Modifier.width(4.dp))
+                Text(
+                    text,
+                    style = regularTextStyle(WMuted, 12.sp),
+                    maxLines = 1
+                )
             }
         }
-    }
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-//  RADAR ILLUSTRATION
-// ═══════════════════════════════════════════════════════════════════════════════
-
-@Composable
-private fun RadarIllustration() {
-    val infiniteTransition = rememberInfiniteTransition(label = "radar")
-    val sweepAngle by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 360f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(3000, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "sweep"
-    )
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(32.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Box(
-            modifier = Modifier
-                .size(100.dp)
-                .drawBehind {
-                    val center = Offset(size.width / 2, size.height / 2)
-                    val tealAlpha = HomeTealAccent.copy(alpha = 0.15f)
-
-                    // Radar circles
-                    drawCircle(tealAlpha, radius = size.minDimension / 2, style = Stroke(1.dp.toPx()))
-                    drawCircle(tealAlpha, radius = size.minDimension / 3, style = Stroke(1.dp.toPx()))
-                    drawCircle(tealAlpha, radius = size.minDimension / 6, style = Stroke(1.dp.toPx()))
-
-                    // Sweep line
-                    val sweepRad = Math.toRadians(sweepAngle.toDouble())
-                    val lineEnd = Offset(
-                        center.x + (size.minDimension / 2) * kotlin.math.cos(sweepRad).toFloat(),
-                        center.y + (size.minDimension / 2) * kotlin.math.sin(sweepRad).toFloat()
-                    )
-                    drawLine(HomeTealAccent.copy(alpha = 0.4f), center, lineEnd, strokeWidth = 1.5.dp.toPx())
-                }
-        )
-
-        Spacer(Modifier.height(16.dp))
-
-        Text(
-            text = stringResource(R.string.ai_scout_powered_title),
-            style = boldTextStyle(HomeTextPrimary, 14.sp),
-            textAlign = TextAlign.Center
-        )
-        Spacer(Modifier.height(4.dp))
-        Text(
-            text = stringResource(R.string.ai_scout_powered_subtitle),
-            style = regularTextStyle(HomeTextSecondary, 13.sp),
-            textAlign = TextAlign.Center,
-            lineHeight = 18.sp
-        )
     }
 }
 
@@ -1391,34 +1414,78 @@ private fun AiScoutResultsState(state: AiScoutUiState, viewModel: IAiScoutViewMo
                 ) {
                     Text(
                         text = "🔍",
-                        style = regularTextStyle(HomeTextSecondary, 40.sp)
+                        style = regularTextStyle(WMuted, 40.sp)
                     )
                     Text(
                         text = stringResource(R.string.ai_scout_no_results),
-                        style = regularTextStyle(HomeTextSecondary, 15.sp),
+                        style = regularTextStyle(WMuted, 15.sp),
                         textAlign = TextAlign.Center
                     )
                     ActionButton(
                         text = stringResource(R.string.ai_scout_search_again),
                         icon = "🔄",
-                        bgColor = HomePurpleAccent.copy(alpha = 0.1f),
-                        borderColor = HomePurpleAccent.copy(alpha = 0.25f),
-                        textColor = HomePurpleAccent,
+                        bgColor = WPurple.copy(alpha = 0.1f),
+                        borderColor = WPurple.copy(alpha = 0.25f),
+                        textColor = WPurple,
                         onClick = { viewModel.clearSearch() }
                     )
                 }
             }
         } else {
+            // Web-style results header: count on left, buttons on right, border-bottom
             item {
-                Row(
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween
+                        .padding(horizontal = 16.dp)
+                        .padding(top = 8.dp)
                 ) {
-                    Text(
-                        text = stringResource(R.string.ai_scout_showing_results, state.results.size, state.requestedTotal),
-                        style = regularTextStyle(HomeTextSecondary, 13.sp)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = stringResource(R.string.ai_scout_showing_results, state.results.size, state.requestedTotal),
+                            style = boldTextStyle(WText, 14.sp)
+                        )
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            if (state.hasMore) {
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(WTeal.copy(alpha = 0.15f))
+                                        .border(1.dp, WTeal.copy(alpha = 0.40f), RoundedCornerShape(8.dp))
+                                        .clickable { viewModel.loadMore() }
+                                        .padding(horizontal = 12.dp, vertical = 8.dp)
+                                ) {
+                                    Text(
+                                        text = stringResource(R.string.ai_scout_load_all, state.requestedTotal),
+                                        style = regularTextStyle(WTeal, 12.sp)
+                                    )
+                                }
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(WAmber.copy(alpha = 0.20f))
+                                    .clickable { viewModel.clearSearch() }
+                                    .padding(horizontal = 12.dp, vertical = 8.dp)
+                            ) {
+                                Text(
+                                    text = stringResource(R.string.ai_scout_search_again),
+                                    style = regularTextStyle(WAmber, 12.sp)
+                                )
+                            }
+                        }
+                    }
+                    Spacer(Modifier.height(12.dp))
+                    // Border-bottom like web
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(1.dp)
+                            .background(WBorder)
                     )
                 }
             }
@@ -1447,36 +1514,7 @@ private fun AiScoutResultsState(state: AiScoutUiState, viewModel: IAiScoutViewMo
                         .padding(24.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    CircularProgressIndicator(color = HomeTealAccent, strokeWidth = 3.dp)
-                }
-            }
-        }
-
-        // Load more / Search again buttons
-        if (!state.isLoading && state.results.isNotEmpty()) {
-            item {
-                Column(
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    if (state.hasMore) {
-                        ActionButton(
-                            text = stringResource(R.string.ai_scout_load_all, state.requestedTotal),
-                            icon = "📋",
-                            bgColor = HomeTealAccent.copy(alpha = 0.15f),
-                            borderColor = HomeTealAccent.copy(alpha = 0.3f),
-                            textColor = HomeTealAccent,
-                            onClick = { viewModel.loadMore() }
-                        )
-                    }
-                    ActionButton(
-                        text = stringResource(R.string.ai_scout_search_again),
-                        icon = "🔄",
-                        bgColor = HomePurpleAccent.copy(alpha = 0.1f),
-                        borderColor = HomePurpleAccent.copy(alpha = 0.25f),
-                        textColor = HomePurpleAccent,
-                        onClick = { viewModel.clearSearch() }
-                    )
+                    CircularProgressIndicator(color = WTeal, strokeWidth = 3.dp)
                 }
             }
         }
@@ -1486,7 +1524,7 @@ private fun AiScoutResultsState(state: AiScoutUiState, viewModel: IAiScoutViewMo
             item {
                 Text(
                     text = state.errorMessage,
-                    style = regularTextStyle(Color(0xFFE53935), 13.sp),
+                    style = regularTextStyle(WRed, 13.sp),
                     modifier = Modifier.padding(16.dp)
                 )
             }
@@ -1500,27 +1538,28 @@ private fun AiScoutResultsState(state: AiScoutUiState, viewModel: IAiScoutViewMo
 
 @Composable
 private fun CollapsedSearchBar(query: String, onEdit: () -> Unit) {
+    // Clean card matching web: rounded-2xl border border-mgsr-border bg-mgsr-card
     Row(
         modifier = Modifier
-            .padding(horizontal = 16.dp, vertical = 12.dp)
+            .padding(horizontal = 16.dp, vertical = 10.dp)
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
-            .background(HomeDarkCard)
-            .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(12.dp))
+            .background(WCard)
+            .border(1.dp, WBorder, RoundedCornerShape(12.dp))
             .clickable { onEdit() }
-            .padding(12.dp),
+            .padding(14.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(Icons.Default.Search, null, tint = HomeTealAccent, modifier = Modifier.size(16.dp))
+        Icon(Icons.Default.Search, null, tint = WTeal, modifier = Modifier.size(16.dp))
         Spacer(Modifier.width(10.dp))
         Text(
             text = query,
-            style = regularTextStyle(HomeTextPrimary, 14.sp),
-            maxLines = 1,
+            style = regularTextStyle(WText, 14.sp),
+            maxLines = 2,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f)
         )
-        Icon(Icons.Default.Edit, null, tint = HomeTealAccent, modifier = Modifier.size(16.dp))
+        Icon(Icons.Default.Edit, null, tint = WMuted, modifier = Modifier.size(16.dp))
     }
 }
 
@@ -1530,27 +1569,122 @@ private fun CollapsedSearchBar(query: String, onEdit: () -> Unit) {
 
 @Composable
 private fun InterpretationBanner(text: String) {
+    // Parse interpretation into structured sections for clear display
+    val sections = parseInterpretationSections(text)
+
     Column(
         modifier = Modifier
-            .padding(horizontal = 16.dp)
+            .padding(horizontal = 16.dp, vertical = 4.dp)
             .fillMaxWidth()
-            .clip(RoundedCornerShape(10.dp))
-            .background(HomeOrangeAccent.copy(alpha = 0.08f))
-            .border(1.dp, HomeOrangeAccent.copy(alpha = 0.2f), RoundedCornerShape(10.dp))
-            .padding(10.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(WCard)
+            .border(1.dp, WBorder, RoundedCornerShape(12.dp))
+            .padding(14.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
+        // Header
         Text(
             text = stringResource(R.string.ai_scout_interpretation),
-            style = boldTextStyle(HomeOrangeAccent, 11.sp),
-            letterSpacing = 0.5.sp
+            style = boldTextStyle(WTeal, 13.sp)
         )
-        Spacer(Modifier.height(4.dp))
-        Text(
-            text = text,
-            style = regularTextStyle(HomeTextPrimary, 13.sp),
-            lineHeight = 18.sp
-        )
+
+        // Search query line
+        if (sections.searchQuery.isNotBlank()) {
+            Text(
+                text = "\uD83D\uDD0D  ${sections.searchQuery}",
+                style = regularTextStyle(WText, 13.sp),
+                lineHeight = 20.sp
+            )
+        }
+
+        // Translation line
+        if (sections.translation.isNotBlank()) {
+            Text(
+                text = "\uD83D\uDCDD  ${sections.translation}",
+                style = regularTextStyle(WMuted, 13.sp),
+                lineHeight = 20.sp
+            )
+        }
+
+        // Results count line
+        if (sections.resultsInfo.isNotBlank()) {
+            Text(
+                text = "\uD83D\uDCCA  ${sections.resultsInfo}",
+                style = regularTextStyle(WMuted, 13.sp),
+                lineHeight = 20.sp
+            )
+        }
+
+        // Market filter line
+        if (sections.marketFilter.isNotBlank()) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(WAmber.copy(alpha = 0.10f))
+                    .border(1.dp, WAmber.copy(alpha = 0.20f), RoundedCornerShape(8.dp))
+                    .padding(horizontal = 10.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("\uD83D\uDCB0", fontSize = 12.sp)
+                Spacer(Modifier.width(6.dp))
+                Text(
+                    text = sections.marketFilter,
+                    style = regularTextStyle(WAmber, 12.sp),
+                    lineHeight = 18.sp
+                )
+            }
+        }
+
+        // Any remaining lines
+        sections.other.forEach { line ->
+            Text(
+                text = line,
+                style = regularTextStyle(WText, 13.sp),
+                lineHeight = 20.sp
+            )
+        }
     }
+}
+
+/** Parses the AI interpretation text into structured sections for clean display */
+private data class InterpretationSections(
+    val searchQuery: String = "",
+    val translation: String = "",
+    val resultsInfo: String = "",
+    val marketFilter: String = "",
+    val other: List<String> = emptyList()
+)
+
+private fun parseInterpretationSections(text: String): InterpretationSections {
+    val lines = text.split("\n").map { it.trim() }.filter { it.isNotBlank() }
+    var searchQuery = ""
+    var translation = ""
+    var resultsInfo = ""
+    var marketFilter = ""
+    val other = mutableListOf<String>()
+
+    for (line in lines) {
+        val cleaned = line
+            .replace(Regex("^[\\uD83D\\uDD0D\\uD83C\\uDFAF\\uD83D\\uDCCA\\uD83D\\uDCB0🔍🎯📊💰📝]\\s*"), "")
+            .trim()
+        when {
+            line.contains("חיפוש:") || line.contains("Search:", true) ->
+                searchQuery = cleaned.removePrefix("חיפוש:").removePrefix("Search:").trim()
+            line.contains("תרגום:") || line.contains("Translation:", true) ||
+                line.contains("box-to-box", true) || line.contains("Query:", true) ->
+                translation = cleaned.removePrefix("תרגום:").removePrefix("Translation:").removePrefix("Query:").trim()
+            line.contains("נמצאו") || line.contains("Found", true) ||
+                line.contains("תואמים") || line.contains("matches", true) ->
+                resultsInfo = cleaned
+            line.contains("סינון") || line.contains("Filter", true) ||
+                line.contains("שווי שוק") || line.contains("market", true) ||
+                line.contains("€") ->
+                marketFilter = cleaned
+            else -> other.add(cleaned)
+        }
+    }
+    return InterpretationSections(searchQuery, translation, resultsInfo, marketFilter, other)
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -1559,28 +1693,28 @@ private fun InterpretationBanner(text: String) {
 
 @Composable
 private fun LeagueInfoBanner(info: LeagueInfo) {
-    Row(
+    // Matches web: rounded-xl bg-amber-500/15 border-2 border-amber-500/50
+    Column(
         modifier = Modifier
-            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .padding(horizontal = 16.dp, vertical = 6.dp)
             .fillMaxWidth()
-            .clip(RoundedCornerShape(10.dp))
-            .background(HomeTealAccent.copy(alpha = 0.08f))
-            .border(1.dp, HomeTealAccent.copy(alpha = 0.2f), RoundedCornerShape(10.dp))
-            .padding(10.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .clip(RoundedCornerShape(12.dp))
+            .background(WAmber.copy(alpha = 0.15f))
+            .border(2.dp, WAmber.copy(alpha = 0.50f), RoundedCornerShape(12.dp))
+            .padding(14.dp)
     ) {
-        Text("🏟️", fontSize = 14.sp)
-        Spacer(Modifier.width(8.dp))
-        Column {
-            Text(info.name, style = boldTextStyle(HomeTealAccent, 12.sp))
-            val details = buildString {
-                info.avgValue?.let { append("Avg $it") }
-                info.minValue?.let { append(" · Min $it") }
-                info.maxValue?.let { append(" · Max $it") }
-            }
-            if (details.isNotBlank()) {
-                Text(details, style = regularTextStyle(HomeTextSecondary, 12.sp))
-            }
+        Text(
+            text = info.name,
+            style = boldTextStyle(WAmber, 14.sp)
+        )
+        Spacer(Modifier.height(4.dp))
+        val details = buildString {
+            info.avgValue?.let { append("Avg $it") }
+            info.minValue?.let { append(" · Min $it") }
+            info.maxValue?.let { append(" · Max $it") }
+        }
+        if (details.isNotBlank()) {
+            Text(details, style = regularTextStyle(WText, 13.sp))
         }
     }
 }
@@ -1787,28 +1921,25 @@ private fun PlayerResultCard(
 
     Column(
         modifier = Modifier
-            .padding(horizontal = 16.dp, vertical = 6.dp)
+            .padding(horizontal = 16.dp, vertical = 4.dp)
             .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
-            .background(HomeDarkCard)
-            .border(1.dp, HomeDarkCardBorder, RoundedCornerShape(14.dp))
-            .padding(14.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(WCard)
+            .border(1.dp, WBorder, RoundedCornerShape(16.dp))
+            .padding(16.dp)
     ) {
-        // Circle first in reading order: left in LTR, right in RTL; then name
+        // Match ring + name row (like web: flex items-start gap-5)
         val layoutDir = LocalLayoutDirection.current
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // First child = start = left in LTR, right in RTL → circle is first in reading order
-            MatchPercentRing(percent = player.matchPercent, size = 50)
-            Spacer(Modifier.width(10.dp))
+            MatchPercentRing(percent = player.matchPercent, size = 48)
+            Spacer(Modifier.width(12.dp))
             Text(
                 text = player.name,
-                // Use layout-direction-aware alignment so the name sits close to the
-                // score circle even when the text content is LTR in an RTL layout.
                 style = boldTextStyle(
-                    HomeTextPrimary, 16.sp,
+                    WText, 16.sp,
                     textAlign = if (layoutDir == LayoutDirection.Rtl) TextAlign.Right else TextAlign.Left
                 ),
                 maxLines = 1,
@@ -1817,7 +1948,7 @@ private fun PlayerResultCard(
             )
         }
 
-        Spacer(Modifier.height(6.dp))
+        Spacer(Modifier.height(4.dp))
 
         Column(modifier = Modifier.fillMaxWidth()) {
                 // Meta row: age · position · value · club · nationality (like web)
@@ -1837,7 +1968,7 @@ private fun PlayerResultCard(
                             append(player.nationality)
                         }
                     },
-                    style = regularTextStyle(HomeTextSecondary, 13.sp),
+                    style = regularTextStyle(WMuted, 13.sp),
                     maxLines = 2
                 )
 
@@ -1893,7 +2024,7 @@ private fun PlayerResultCard(
                             Icon(
                                 imageVector = if (isInShortlist) Icons.Default.Bookmark else Icons.Default.BookmarkAdd,
                                 contentDescription = if (isInShortlist) stringResource(R.string.shortlist_in_shortlist) else stringResource(R.string.shortlist_add_to_shortlist),
-                                tint = if (isInShortlist) HomeGreenAccent else HomeTextSecondary
+                                tint = if (isInShortlist) WGreen else WMuted
                             )
                         }
                         TextButton(
@@ -1902,18 +2033,18 @@ private fun PlayerResultCard(
                             },
                             modifier = Modifier.height(36.dp),
                             contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
-                            colors = ButtonDefaults.textButtonColors(contentColor = HomeTealAccent)
+                            colors = ButtonDefaults.textButtonColors(contentColor = WTeal)
                         ) {
                             Icon(
                                 Icons.Default.Link,
                                 contentDescription = null,
-                                tint = HomeTealAccent,
+                                tint = WTeal,
                                 modifier = Modifier.size(16.dp)
                             )
                             Spacer(Modifier.width(6.dp))
                             Text(
                                 text = stringResource(R.string.shortlist_open_tm),
-                                style = regularTextStyle(HomeTealAccent, 13.sp)
+                                style = regularTextStyle(WTeal, 13.sp)
                             )
                         }
                     }
@@ -1927,7 +2058,7 @@ private fun PlayerResultCard(
                 Modifier
                     .fillMaxWidth()
                     .height(1.dp)
-                    .background(HomeDarkCardBorder.copy(alpha = 0.6f))
+                    .background(WBorder)
             )
             Spacer(Modifier.height(8.dp))
             val parsed = parseScoutAnalysisStructured(player.scoutAnalysis)
@@ -1937,7 +2068,7 @@ private fun PlayerResultCard(
                     Text(
                         text = "• $item",
                         style = regularTextStyle(
-                            HomeTextPrimary,
+                            WText.copy(alpha = 0.85f),
                             13.sp,
                             direction = TextDirection.Content
                         ),
@@ -1958,16 +2089,17 @@ private fun PlayerResultCard(
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(8.dp))
+                            .clip(RoundedCornerShape(10.dp))
                             .background(Color(0xFF4FC3F7).copy(alpha = 0.06f))
-                            .padding(horizontal = 10.dp, vertical = 6.dp),
+                            .border(1.dp, Color(0xFF4FC3F7).copy(alpha = 0.12f), RoundedCornerShape(10.dp))
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
                         verticalArrangement = Arrangement.spacedBy(3.dp)
                     ) {
                         parsed.realStats.forEach { item ->
                             Text(
                                 text = "▸ $item",
                                 style = regularTextStyle(
-                                    HomeTextPrimary,
+                                    WText,
                                     12.sp,
                                     direction = TextDirection.Content
                                 ),
@@ -1983,23 +2115,22 @@ private fun PlayerResultCard(
                     Spacer(Modifier.height(8.dp))
                     Text(
                         text = "🎮  " + stringResource(R.string.ai_scout_fm_stats),
-                        style = boldTextStyle(HomeTealAccent, 13.sp),
+                        style = boldTextStyle(WTeal, 13.sp),
                         modifier = Modifier.fillMaxWidth()
                     )
                     Spacer(Modifier.height(4.dp))
 
-                    // Separate stats with numeric values (grid) from text-only (bullets)
                     val gridStats = parsed.fmStats.filter { it.value != null }
                     val textStats = parsed.fmStats.filter { it.value == null }
 
                     if (gridStats.isNotEmpty()) {
-                        // 2-column grid for label:value FM stats
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(HomeTealAccent.copy(alpha = 0.06f))
-                                .padding(horizontal = 10.dp, vertical = 6.dp),
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(WTeal.copy(alpha = 0.06f))
+                                .border(1.dp, WTeal.copy(alpha = 0.12f), RoundedCornerShape(10.dp))
+                                .padding(horizontal = 12.dp, vertical = 8.dp),
                             verticalArrangement = Arrangement.spacedBy(2.dp)
                         ) {
                             gridStats.chunked(2).forEach { row ->
@@ -2014,7 +2145,7 @@ private fun PlayerResultCard(
                                         ) {
                                             Text(
                                                 text = stat.label,
-                                                style = regularTextStyle(HomeTextSecondary, 12.sp),
+                                                style = regularTextStyle(WMuted, 12.sp),
                                                 modifier = Modifier.weight(1f)
                                             )
                                             Text(
@@ -2027,7 +2158,6 @@ private fun PlayerResultCard(
                                             )
                                         }
                                     }
-                                    // Pad empty cell if odd number
                                     if (row.size == 1) {
                                         Spacer(Modifier.weight(1f))
                                     }
@@ -2036,12 +2166,11 @@ private fun PlayerResultCard(
                         }
                     }
 
-                    // Text-only FM items (CA/PA lines, complex entries)
                     textStats.forEach { item ->
                         Text(
                             text = "• ${item.raw}",
                             style = regularTextStyle(
-                                HomeTextPrimary,
+                                WText,
                                 12.sp,
                                 direction = TextDirection.Content
                             ),
@@ -2058,11 +2187,11 @@ private fun PlayerResultCard(
 /** Color-code FM stat values: red <50, meh 50-64, decent 65-74, good 75-84, great 85+ */
 @Composable
 private fun fmStatColor(value: Int): Color = when {
-    value >= 85 -> HomeTealAccent       // Elite
-    value >= 75 -> HomeGreenAccent      // Good
-    value >= 65 -> Color(0xFFFFC107)    // Decent (amber)
-    value >= 50 -> HomeOrangeAccent     // Average
-    else -> Color(0xFFE57373)           // Weak (red-ish)
+    value >= 85 -> WTeal               // Elite
+    value >= 75 -> WGreen              // Good
+    value >= 65 -> WAmber              // Decent
+    value >= 50 -> Color(0xFFF97316)   // Average (orange-500)
+    else -> Color(0xFFE57373)          // Weak (red-ish)
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -2072,9 +2201,9 @@ private fun fmStatColor(value: Int): Color = when {
 @Composable
 private fun MatchPercentRing(percent: Int, size: Int = 50) {
     val ringColor = when {
-        percent >= 85 -> HomeTealAccent
-        percent >= 70 -> HomeOrangeAccent
-        else -> HomeTextSecondary
+        percent >= 85 -> WTeal
+        percent >= 70 -> WAmber
+        else -> WMuted
     }
 
     Box(
@@ -2084,9 +2213,15 @@ private fun MatchPercentRing(percent: Int, size: Int = 50) {
                 val strokeWidth = 4.dp.toPx()
                 val radius = (this.size.minDimension - strokeWidth) / 2
 
-                // Background circle
+                // Outer glow ring
                 drawCircle(
-                    color = HomeDarkCardBorder,
+                    color = ringColor.copy(alpha = 0.08f),
+                    radius = radius + 4.dp.toPx(),
+                )
+
+                // Background circle track
+                drawCircle(
+                    color = WBorder,
                     radius = radius,
                     style = Stroke(strokeWidth)
                 )
@@ -2118,25 +2253,25 @@ private fun MatchPercentRing(percent: Int, size: Int = 50) {
 fun FmBadge(ca: Int?, pa: Int?, tier: String?) {
     Row(
         modifier = Modifier
-            .clip(RoundedCornerShape(6.dp))
-            .background(HomePurpleAccent.copy(alpha = 0.12f))
-            .border(1.dp, HomePurpleAccent.copy(alpha = 0.25f), RoundedCornerShape(6.dp))
+            .clip(RoundedCornerShape(8.dp))
+            .background(WPurple.copy(alpha = 0.10f))
+            .border(1.dp, WPurple.copy(alpha = 0.25f), RoundedCornerShape(8.dp))
             .padding(horizontal = 8.dp, vertical = 3.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text("FM", style = boldTextStyle(HomePurpleAccent, 11.sp))
+        Text("FM", style = boldTextStyle(WPurple, 11.sp))
         Spacer(Modifier.width(4.dp))
-        ca?.let { Text("$it", style = regularTextStyle(HomeTextSecondary, 11.sp)) }
+        ca?.let { Text("$it", style = regularTextStyle(WMuted, 11.sp)) }
         if (ca != null && pa != null) {
-            Text("\u200E→\u200E", style = regularTextStyle(HomePurpleAccent, 11.sp))
+            Text("\u200E→\u200E", style = regularTextStyle(WPurple, 11.sp))
         }
-        pa?.let { Text("$it", style = boldTextStyle(HomeTextPrimary, 11.sp)) }
+        pa?.let { Text("$it", style = boldTextStyle(WText, 11.sp)) }
 
         tier?.let { tierStr ->
             Spacer(Modifier.width(6.dp))
             val (tierBg, tierColor) = when (tierStr.lowercase()) {
-                "gold" -> HomeOrangeAccent.copy(alpha = 0.2f) to HomeOrangeAccent
-                else -> HomeTextSecondary.copy(alpha = 0.2f) to HomeTextSecondary
+                "gold" -> WAmber.copy(alpha = 0.2f) to WAmber
+                else -> WMuted.copy(alpha = 0.2f) to WMuted
             }
             Text(
                 text = tierStr,
@@ -2166,11 +2301,11 @@ private fun ActionButton(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(14.dp))
             .background(bgColor)
-            .border(1.dp, borderColor, RoundedCornerShape(12.dp))
+            .border(1.dp, borderColor, RoundedCornerShape(14.dp))
             .clickable { onClick() }
-            .padding(12.dp),
+            .padding(14.dp),
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically
     ) {
