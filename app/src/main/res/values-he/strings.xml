@@ -907,7 +907,7 @@
     <string name="war_room_agent_network_title">רשת סוכני סקאוטינג</string>
     <string name="war_room_agent_network_desc">סוכני AI מנטרים ליגות ושחקנים ברציפות על פי הקריטריונים שלך.</string>
     <string name="war_room_profiles">פרופילים</string>
-    <string name="war_room_agent_rotation_hint">💡 כל סוכן מציג 10 פרופילים בכל פעם. לחץ על רענון כדי לראות אחרים.</string>
+    <string name="war_room_agent_rotation_hint">💡 כל סוכן מציג 5 פרופילים בכל פעם. לחץ על רענון כדי לראות אחרים.</string>
     <string name="war_room_players_count">%1$d שחקנים</string>
     <string name="war_room_updated">עודכן %1$s</string>
     <string name="war_room_source_request_match">תואם %1$s</string>

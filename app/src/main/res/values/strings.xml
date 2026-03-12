@@ -1299,7 +1299,7 @@
     <string name="war_room_agent_network_title">Scout Agent Network</string>
     <string name="war_room_agent_network_desc">AI agents continuously monitoring leagues and players based on your criteria.</string>
     <string name="war_room_profiles">profiles</string>
-    <string name="war_room_agent_rotation_hint">💡 Each agent shows 10 profiles at a time. Tap refresh to see different ones.</string>
+    <string name="war_room_agent_rotation_hint">💡 Each agent shows 5 profiles at a time. Tap refresh to see different ones.</string>
     <string name="war_room_players_count">%1$d players</string>
     <string name="war_room_updated">Updated %1$s</string>
     <string name="war_room_source_request_match">Matches %1$s</string>
