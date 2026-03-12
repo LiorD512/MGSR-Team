@@ -69,7 +69,8 @@ async function fetchFreesearch(
 
     // Apply market value cap — freesearch server doesn't filter by value
     const FREESEARCH_CAPS: Record<string, number> = { ISR1: 2_500_000, PL1: 5_000_000, GR1: 5_000_000, BE1: 10_000_000 };
-    const fsCap = targetLeague ? FREESEARCH_CAPS[targetLeague] : undefined;
+    const FS_GLOBAL_DEFAULT_CAP = 4_000_000;
+    const fsCap = targetLeague ? FREESEARCH_CAPS[targetLeague] : FS_GLOBAL_DEFAULT_CAP;
     if (fsCap != null && fsCap > 0) {
       const before = results.length;
       results = results.filter((p) => {
@@ -273,12 +274,16 @@ export async function POST(request: NextRequest) {
       };
 
       const targetLeague = getTargetLeagueCode(query);
-      const marketCap = targetLeague ? MARKET_VALUE_CAPS[targetLeague] : undefined;
+      const leagueMarketCap = targetLeague ? MARKET_VALUE_CAPS[targetLeague] : undefined;
+
+      // Global default cap — an agent working mid-tier markets has no use for €17M players
+      const GLOBAL_DEFAULT_CAP = 4_000_000;
+      const marketCap = leagueMarketCap ?? (parsed.valueMax == null ? GLOBAL_DEFAULT_CAP : undefined);
 
       // Force value_max if market detected and user didn't set their own
       if (marketCap && parsed.valueMax == null) {
         parsed.valueMax = marketCap;
-        console.log(`[AI Scout] Market cap applied: ${targetLeague} → value_max €${marketCap.toLocaleString()}`);
+        console.log(`[AI Scout] Market cap applied: ${targetLeague ?? 'global'} → value_max €${marketCap.toLocaleString()}`);
       }
 
       // Progressive loading settings
