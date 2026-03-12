@@ -14,7 +14,7 @@ import Link from 'next/link';
 import { toWhatsAppUrl } from '@/lib/whatsapp';
 import { createShare } from '@/lib/shareApi';
 import type { HighlightVideo } from '@/lib/highlightsApi';
-import { parseMarketValue } from '@/lib/releases';
+import { parseMarketValue, formatMarketValue } from '@/lib/releases';
 import { extractSalaryRange, extractFreeTransfer, type NoteModel } from '@/lib/noteParser';
 import { flattenPdf } from '@/lib/pdfFlatten';
 import FmIntelligencePanel from '@/components/FmIntelligencePanel';
@@ -34,6 +34,7 @@ import {
   ResponsiveContainer,
   Area,
   AreaChart,
+  ReferenceLine,
 } from 'recharts';
 
 interface Player {
@@ -1254,6 +1255,17 @@ export default function PlayerInfoPage() {
     return points;
   }, [player?.marketValueHistory, player?.marketValue, merged.marketValue, isRtl]);
 
+  const valueChartStats = useMemo(() => {
+    if (valueChartData.length === 0) return null;
+    const peak = valueChartData.reduce((m, p) => p.valueNum > m.valueNum ? p : m, valueChartData[0]);
+    const low = valueChartData.reduce((m, p) => p.valueNum < m.valueNum ? p : m, valueChartData[0]);
+    const first = valueChartData[0].valueNum;
+    const last = valueChartData[valueChartData.length - 1].valueNum;
+    const change = last - first;
+    const changePct = first > 0 ? (change / first) * 100 : 0;
+    return { peak, low, change, changePct, isUp: change >= 0, current: valueChartData[valueChartData.length - 1] };
+  }, [valueChartData]);
+
   if (loading || !user) {
     return (
       <div className="min-h-screen bg-mgsr-dark flex items-center justify-center">
@@ -1993,34 +2005,75 @@ export default function PlayerInfoPage() {
             )}
 
             {/* Market value trend */}
-            {valueChartData.length > 0 && (
-              <div className="p-5 rounded-xl bg-mgsr-card border border-mgsr-border">
-                <h2 className="text-lg font-display font-semibold text-mgsr-text mb-4">
-                  {t('player_info_value_history')}
-                </h2>
-                <div className="h-48 md:h-56">
+            {valueChartData.length > 0 && valueChartStats && (
+              <div className="rounded-2xl bg-gradient-to-br from-mgsr-card via-mgsr-card to-[#1E3040] border border-mgsr-border/60 overflow-hidden shadow-lg shadow-black/20">
+                {/* --- Header with current value + trend --- */}
+                <div className="px-6 pt-5 pb-3 flex items-start justify-between">
+                  <div>
+                    <h2 className="text-[11px] font-medium uppercase tracking-[0.15em] text-mgsr-muted mb-1.5">
+                      {t('player_info_value_history')}
+                    </h2>
+                    <div className="flex items-baseline gap-3">
+                      <span className="text-3xl font-display font-bold text-mgsr-text">
+                        {valueChartStats.current.value}
+                      </span>
+                      {valueChartData.length > 1 && (
+                        <span className={`inline-flex items-center gap-1 text-sm font-semibold px-2 py-0.5 rounded-full ${valueChartStats.isUp ? 'text-emerald-400 bg-emerald-400/10' : 'text-rose-400 bg-rose-400/10'}`}>
+                          <svg className="w-3 h-3" viewBox="0 0 12 12" fill="currentColor">
+                            {valueChartStats.isUp
+                              ? <path d="M6 2L10 7H2L6 2Z" />
+                              : <path d="M6 10L2 5H10L6 10Z" />
+                            }
+                          </svg>
+                          {Math.abs(valueChartStats.changePct).toFixed(1)}%
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  {/* Peak badge */}
+                  <div className="text-right">
+                    <div className="text-[10px] uppercase tracking-[0.15em] text-mgsr-muted/70 mb-0.5">{t('player_info_value_peak')}</div>
+                    <div className="text-sm font-semibold text-amber-400/90">{valueChartStats.peak.value}</div>
+                    <div className="text-[10px] text-mgsr-muted">{valueChartStats.peak.dateLabel}</div>
+                  </div>
+                </div>
+
+                {/* --- Chart --- */}
+                <div className="h-56 md:h-64 px-2">
                   <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={valueChartData} margin={{ left: 8, right: 8, top: 8, bottom: 24 }}>
+                    <AreaChart data={valueChartData} margin={{ left: 4, right: 4, top: 12, bottom: 20 }}>
                       <defs>
-                        <linearGradient id="valueGradient" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#4DB6AC" stopOpacity={0.35} />
-                          <stop offset="95%" stopColor="#4DB6AC" stopOpacity={0} />
+                        <linearGradient id="mvGrad" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor={valueChartStats.isUp ? '#34D399' : '#FB7185'} stopOpacity={0.35} />
+                          <stop offset="50%" stopColor={valueChartStats.isUp ? '#34D399' : '#FB7185'} stopOpacity={0.1} />
+                          <stop offset="100%" stopColor={valueChartStats.isUp ? '#34D399' : '#FB7185'} stopOpacity={0} />
                         </linearGradient>
                       </defs>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#253545" vertical={false} />
+                      <CartesianGrid strokeDasharray="3 3" stroke="#253545" strokeOpacity={0.5} vertical={false} />
+                      {valueChartData.length > 1 && (
+                        <ReferenceLine
+                          y={valueChartStats.peak.valueNum}
+                          stroke="#FBBF24"
+                          strokeDasharray="6 4"
+                          strokeOpacity={0.35}
+                        />
+                      )}
                       <XAxis
                         dataKey="dateLabel"
                         stroke="#8C999B"
-                        fontSize={11}
+                        fontSize={10}
                         tickLine={false}
                         axisLine={false}
-                        tick={{ fill: '#E8EAED' }}
+                        tick={{ fill: '#8C999B' }}
+                        dy={8}
                       />
                       <YAxis
                         stroke="#8C999B"
-                        fontSize={11}
+                        fontSize={10}
                         tickLine={false}
                         axisLine={false}
+                        width={52}
+                        tick={{ fill: '#8C999B' }}
                         tickFormatter={(v) => {
                           if (v >= 1_000_000) return `€${(v / 1_000_000).toFixed(1)}m`;
                           if (v >= 1_000) return `€${(v / 1_000).toFixed(0)}k`;
@@ -2029,30 +2082,61 @@ export default function PlayerInfoPage() {
                       />
                       <Tooltip
                         contentStyle={{
-                          backgroundColor: '#1A2736',
-                          border: '1px solid #253545',
-                          borderRadius: '12px',
-                          padding: '10px 14px',
+                          backgroundColor: 'rgba(15, 25, 35, 0.95)',
+                          border: '1px solid rgba(77, 182, 172, 0.3)',
+                          borderRadius: '14px',
+                          padding: '10px 16px',
+                          boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+                          backdropFilter: 'blur(12px)',
                         }}
                         formatter={(value: number | undefined, _name: unknown, props: unknown) => {
                           const payload = (props as { payload?: { value?: string } })?.payload;
-                          const display = payload?.value ?? (value != null
-                            ? (value >= 1_000_000 ? `€${(value / 1_000_000).toFixed(1)}m` : value >= 1_000 ? `€${(value / 1_000).toFixed(0)}k` : `€${value}`)
-                            : '—');
+                          const display = payload?.value ?? (value != null ? formatMarketValue(value) : '—');
                           return [display, t('players_value')];
                         }}
                         labelFormatter={(label) => label}
+                        cursor={{ stroke: 'rgba(77, 182, 172, 0.25)', strokeWidth: 1 }}
                       />
                       <Area
                         type="monotone"
                         dataKey="valueNum"
-                        stroke="#4DB6AC"
-                        strokeWidth={2}
-                        fill="url(#valueGradient)"
+                        stroke={valueChartStats.isUp ? '#34D399' : '#FB7185'}
+                        strokeWidth={2.5}
+                        fill="url(#mvGrad)"
+                        activeDot={{
+                          r: 6,
+                          stroke: valueChartStats.isUp ? '#34D399' : '#FB7185',
+                          strokeWidth: 2,
+                          fill: '#0F1923',
+                          filter: 'drop-shadow(0 0 6px rgba(52, 211, 153, 0.5))',
+                        }}
+                        dot={false}
                       />
                     </AreaChart>
                   </ResponsiveContainer>
                 </div>
+
+                {/* --- Bottom stats strip --- */}
+                {valueChartData.length > 1 && (
+                  <div className="px-6 py-3 border-t border-mgsr-border/30 flex items-center justify-around bg-mgsr-dark/30">
+                    <div className="text-center">
+                      <div className="text-[10px] uppercase tracking-[0.12em] text-mgsr-muted/60 mb-0.5">{t('player_info_value_low')}</div>
+                      <div className="text-xs font-medium text-mgsr-text">{valueChartStats.low.value}</div>
+                    </div>
+                    <div className="w-px h-6 bg-mgsr-border/30" />
+                    <div className="text-center">
+                      <div className="text-[10px] uppercase tracking-[0.12em] text-mgsr-muted/60 mb-0.5">{t('player_info_value_points')}</div>
+                      <div className="text-xs font-medium text-mgsr-text">{valueChartData.length}</div>
+                    </div>
+                    <div className="w-px h-6 bg-mgsr-border/30" />
+                    <div className="text-center">
+                      <div className="text-[10px] uppercase tracking-[0.12em] text-mgsr-muted/60 mb-0.5">{t('player_info_value_change')}</div>
+                      <div className={`text-xs font-medium ${valueChartStats.isUp ? 'text-emerald-400' : 'text-rose-400'}`}>
+                        {valueChartStats.isUp ? '+' : '-'}{formatMarketValue(Math.abs(valueChartStats.change))}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 

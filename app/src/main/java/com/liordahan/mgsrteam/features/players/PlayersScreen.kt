@@ -87,7 +87,9 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
@@ -1743,13 +1745,6 @@ private fun PlayerCardVariantA(
                 }
             }
 
-            // ── Value change sparkline ─────────────────────────────────
-            MarketValueSparkline(
-                history = player.marketValueHistory,
-                valueTrend = valueTrend,
-                modifier = Modifier.padding(top = 4.dp)
-            )
-
             // ── Bottom Row: Badges (aligned with content: avatar 52 + spacer 10 = 62 from row start) ──
             FlowRow(
                 modifier = Modifier
@@ -1884,15 +1879,20 @@ private fun MarketValueSparkline(
     valueTrend: Int,
     modifier: Modifier = Modifier
 ) {
+    data class MvPoint(val value: Double, val label: String)
+
     val sorted = remember(history) {
         history?.filter { it.value != null && it.date != null }
             ?.sortedBy { it.date }
-            ?.mapNotNull { it.value?.toMarketValueDouble() }
+            ?.mapNotNull { entry ->
+                val d = entry.value?.toMarketValueDouble() ?: return@mapNotNull null
+                MvPoint(d, entry.value!!)
+            }
             ?: emptyList()
     }
 
     if (sorted.size < 2) return
-    if (sorted.distinct().size < 2) return
+    if (sorted.map { it.value }.distinct().size < 2) return
 
     val lineColor = when {
         valueTrend > 0 -> PlatformColors.palette.green
@@ -1900,54 +1900,132 @@ private fun MarketValueSparkline(
         else -> PlatformColors.palette.accent
     }
 
-    val minVal = sorted.minOrNull() ?: 0.0
-    val maxVal = sorted.maxOrNull() ?: 1.0
+    val values = sorted.map { it.value }
+    val minVal = values.minOrNull() ?: 0.0
+    val maxVal = values.maxOrNull() ?: 1.0
     val range = (maxVal - minVal).coerceAtLeast(1.0)
-    val padding = 4.dp
+    val firstLabel = sorted.first().label
+    val lastLabel = sorted.last().label
 
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(32.dp)
-            .padding(horizontal = 14.dp, vertical = 4.dp)
-            .clip(RoundedCornerShape(8.dp))
-            .background(lineColor.copy(alpha = 0.06f))
-    ) {
-        Canvas(modifier = Modifier.matchParentSize()) {
-            val w = size.width - padding.toPx() * 2
-            val h = size.height - padding.toPx() * 2
-            val pts = sorted.mapIndexed { i, v ->
-                val x = padding.toPx() + (i.toFloat() / (sorted.size - 1).coerceAtLeast(1)) * w
-                val y = padding.toPx() + h - ((v - minVal) / range * h).toFloat()
-                Offset(x, y)
-            }
+    Column(modifier = modifier.padding(horizontal = 14.dp)) {
+        // --- Chart ---
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(52.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .background(lineColor.copy(alpha = 0.06f))
+                .border(0.5.dp, lineColor.copy(alpha = 0.12f), RoundedCornerShape(10.dp))
+        ) {
+            val pad = 6.dp
+            Canvas(modifier = Modifier.matchParentSize().padding(pad)) {
+                val w = size.width
+                val h = size.height
+                val pts = values.mapIndexed { i, v ->
+                    val x = (i.toFloat() / (values.size - 1).coerceAtLeast(1)) * w
+                    val y = h - ((v - minVal) / range * h).toFloat()
+                    Offset(x, y)
+                }
 
-            // Fill under the line
-            val fillPath = Path().apply {
-                if (pts.isNotEmpty()) {
-                    moveTo(pts.first().x, size.height - padding.toPx())
-                    pts.forEach { lineTo(it.x, it.y) }
-                    lineTo(pts.last().x, size.height - padding.toPx())
+                // Peak dashed reference line
+                val peakY = h - ((maxVal - minVal) / range * h).toFloat()
+                drawLine(
+                    color = lineColor.copy(alpha = 0.18f),
+                    start = Offset(0f, peakY),
+                    end = Offset(w, peakY),
+                    strokeWidth = 1f,
+                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(6f, 4f))
+                )
+
+                // Gradient fill under curve
+                val fillPath = Path().apply {
+                    moveTo(pts.first().x, h)
+                    for (idx in pts.indices) {
+                        if (idx == 0) {
+                            lineTo(pts[idx].x, pts[idx].y)
+                        } else {
+                            val prev = pts[idx - 1]
+                            val cur = pts[idx]
+                            val cx = (prev.x + cur.x) / 2f
+                            cubicTo(cx, prev.y, cx, cur.y, cur.x, cur.y)
+                        }
+                    }
+                    lineTo(pts.last().x, h)
                     close()
                 }
-            }
-            drawPath(
-                path = fillPath,
-                color = lineColor.copy(alpha = 0.2f)
-            )
-
-            // Line
-            if (pts.size >= 2) {
-                val linePath = Path().apply {
-                    moveTo(pts.first().x, pts.first().y)
-                    pts.drop(1).forEach { lineTo(it.x, it.y) }
-                }
                 drawPath(
-                    path = linePath,
+                    path = fillPath,
+                    brush = Brush.verticalGradient(
+                        colors = listOf(
+                            lineColor.copy(alpha = 0.30f),
+                            lineColor.copy(alpha = 0.08f),
+                            lineColor.copy(alpha = 0.0f)
+                        ),
+                        startY = pts.minOf { it.y },
+                        endY = h
+                    )
+                )
+
+                // Smooth curve line
+                if (pts.size >= 2) {
+                    val linePath = Path().apply {
+                        moveTo(pts.first().x, pts.first().y)
+                        for (idx in 1 until pts.size) {
+                            val prev = pts[idx - 1]
+                            val cur = pts[idx]
+                            val cx = (prev.x + cur.x) / 2f
+                            cubicTo(cx, prev.y, cx, cur.y, cur.x, cur.y)
+                        }
+                    }
+                    drawPath(
+                        path = linePath,
+                        color = lineColor,
+                        style = Stroke(
+                            width = 2.5.dp.toPx(),
+                            cap = StrokeCap.Round,
+                            join = StrokeJoin.Round
+                        )
+                    )
+                }
+
+                // Endpoint glow dot
+                val last = pts.last()
+                drawCircle(
+                    color = lineColor.copy(alpha = 0.20f),
+                    radius = 6.dp.toPx(),
+                    center = last
+                )
+                drawCircle(
                     color = lineColor,
-                    style = Stroke(width = 1.5.dp.toPx(), cap = StrokeCap.Round)
+                    radius = 3.5.dp.toPx(),
+                    center = last
+                )
+                drawCircle(
+                    color = Color.White,
+                    radius = 1.5.dp.toPx(),
+                    center = last
                 )
             }
+        }
+
+        // --- Value labels: first → last ---
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 3.dp, start = 2.dp, end = 2.dp),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = firstLabel,
+                style = regularTextStyle(
+                    PlatformColors.palette.textSecondary.copy(alpha = 0.6f),
+                    8.sp
+                )
+            )
+            Text(
+                text = lastLabel,
+                style = boldTextStyle(lineColor, 8.sp)
+            )
         }
     }
 }
