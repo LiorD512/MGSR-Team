@@ -1488,7 +1488,7 @@ private fun AgentsTab(state: WarRoomUiState, viewModel: IWarRoomViewModel, navCo
         groupedProfiles.filter { (key, _) -> key.first == state.selectedAgentFilter }
     }
 
-    val maxProfilesPerAgent = 10
+    val maxProfilesPerAgent = 5
     val rotationPage = state.agentRotationPage
     // Slice each agent's profiles based on rotation page (wrapping)
     val paginatedProfiles = remember(visibleGroupedProfiles, rotationPage) {
