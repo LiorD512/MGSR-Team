@@ -934,6 +934,9 @@ const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     highlights_cancel: 'Cancel',
     highlights_pinned_count: '{n} pinned',
     // FM Intelligence Panel
+    fm_section_title: 'FM Intelligence',
+    fm_empty_title: 'Not in the FM database',
+    fm_empty_subtitle: 'This player doesn\'t have Football Manager attributes yet. FM Intelligence becomes available when the player is included in the FM database.',
     fm_tab_intelligence: 'FM Intelligence',
     fm_tab_position_fit: 'Position Fit',
     fm_loading: 'Loading FM Intelligence...',
@@ -1984,6 +1987,9 @@ const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     highlights_cancel: 'ביטול',
     highlights_pinned_count: '{n} קבועים',
     // FM Intelligence Panel
+    fm_section_title: 'תובנות FM',
+    fm_empty_title: 'לא במסד הנתונים של FM',
+    fm_empty_subtitle: 'לשחקן הזה אין נתוני Football Manager עדיין. תובנות FM יהפכו לזמינות ברגע שהשחקן יופיע במסד הנתונים של FM.',
     fm_tab_intelligence: 'תובנות FM',
     fm_tab_position_fit: 'התאמת עמדה',
     fm_loading: 'טוען תובנות FM...',

@@ -179,6 +179,31 @@ function PositionDot({
 }
 
 /* ------------------------------------------------------------------ */
+/*  FM Badge                                                          */
+/* ------------------------------------------------------------------ */
+function FmBadge({ size = 32, muted = false }: { size?: number; muted?: boolean }) {
+  const opacity = muted ? 0.25 : 1;
+  return (
+    <svg width={size} height={size} viewBox="0 0 32 32" fill="none" style={{ opacity, flexShrink: 0 }}>
+      <defs>
+        <linearGradient id="fmBadgeGrad" x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse">
+          <stop stopColor="#42A5F5" />
+          <stop offset="1" stopColor="#B388FF" />
+        </linearGradient>
+      </defs>
+      <rect width="32" height="32" rx="8" fill="url(#fmBadgeGrad)" />
+      <rect x="1.5" y="1.5" width="29" height="29" rx="6" fill="rgba(0,0,0,0.18)" />
+      <text
+        x="16" y="17" textAnchor="middle" dominantBaseline="central"
+        fill="white" fontSize="13" fontWeight="800" letterSpacing="0.5"
+      >
+        FM
+      </text>
+    </svg>
+  );
+}
+
+/* ------------------------------------------------------------------ */
 /*  Main Component                                                    */
 /* ------------------------------------------------------------------ */
 
@@ -231,17 +256,32 @@ export default function FmIntelligencePanel({ playerName, club, age }: FmIntelli
 
   if (loading) {
     return (
-      <div className="p-5 rounded-xl bg-mgsr-card border border-mgsr-border">
-        <div className="flex items-center gap-3">
-          <div className="w-5 h-5 border-2 border-mgsr-teal border-t-transparent rounded-full animate-spin" />
-          <span className="text-sm text-mgsr-muted">{t('fm_loading')}</span>
+      <div className="rounded-xl bg-mgsr-card border border-mgsr-border overflow-hidden" dir={isRtl ? 'rtl' : 'ltr'}>
+        <div className="flex items-center gap-3 px-4 py-3 bg-gradient-to-r from-blue-500/[0.08] via-purple-500/[0.06] to-transparent">
+          <div className="relative">
+            <div className="absolute inset-y-0 start-0 w-[3px] rounded-e bg-gradient-to-b from-blue-400 via-purple-400 to-yellow-400 -ms-4" />
+            <FmBadge />
+          </div>
+          <span className="text-sm font-semibold text-mgsr-text">{t('fm_section_title')}</span>
+          <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
+          <span className="text-xs text-mgsr-muted">{t('fm_loading')}</span>
         </div>
       </div>
     );
   }
 
   if (error || !data) {
-    return null; // Silently hide if no FM data
+    return (
+      <div className="rounded-xl bg-mgsr-card border border-mgsr-border overflow-hidden" dir={isRtl ? 'rtl' : 'ltr'}>
+        <div className="flex flex-col items-center py-8 px-5 bg-gradient-to-r from-blue-500/[0.08] via-purple-500/[0.06] to-transparent">
+          <FmBadge size={48} muted />
+          <p className="mt-3 text-sm font-semibold text-mgsr-muted">{t('fm_empty_title')}</p>
+          <p className="mt-1.5 text-xs text-mgsr-muted/60 text-center max-w-[280px] leading-relaxed">
+            {t('fm_empty_subtitle')}
+          </p>
+        </div>
+      </div>
+    );
   }
 
   const tc = tierColor(data.tier);
@@ -249,8 +289,14 @@ export default function FmIntelligencePanel({ playerName, club, age }: FmIntelli
 
   return (
     <div className="rounded-xl bg-mgsr-card border border-mgsr-border overflow-hidden" dir={isRtl ? 'rtl' : 'ltr'}>
-      {/* Gradient top bar */}
-      <div className="h-1 bg-gradient-to-r from-teal-400 via-blue-400 via-purple-400 to-yellow-400" />
+      {/* Header with FM badge */}
+      <div className="flex items-center gap-3 px-4 py-3 border-b border-mgsr-border bg-gradient-to-r from-blue-500/[0.08] via-purple-500/[0.06] to-transparent">
+        <div className="relative">
+          <div className="absolute inset-y-0 start-0 w-[3px] rounded-e bg-gradient-to-b from-blue-400 via-purple-400 to-yellow-400 -ms-4" />
+          <FmBadge />
+        </div>
+        <span className="text-sm font-semibold text-mgsr-text">{t('fm_section_title')}</span>
+      </div>
 
       {/* Toggle: Overview / Position Fit */}
       <div className="flex border-b border-mgsr-border">

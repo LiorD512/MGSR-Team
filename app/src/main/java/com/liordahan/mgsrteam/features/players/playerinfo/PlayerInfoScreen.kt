@@ -674,6 +674,7 @@ fun PlayerInfoScreen(
                     LaunchedEffect(player.fullName) {
                         viewModel.fetchFmIntelligence(player)
                     }
+                    PlayerInfoSectionHeader(stringResource(R.string.fm_section_title))
                     FmIntelligenceSection(
                         data = fmIntelligenceData,
                         isLoading = isFmIntelligenceLoading,

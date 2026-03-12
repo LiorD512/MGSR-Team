@@ -2,6 +2,8 @@ package com.liordahan.mgsrteam.features.players.playerinfo.fmintelligence
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.Canvas
@@ -35,6 +37,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
@@ -42,7 +45,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -165,6 +171,23 @@ private fun posLabel(pos: String): String = when (pos) {
     else -> pos
 }
 
+/* ─── FM Badge gradient ──────────────────────────────────────── */
+
+private val FmBadgeGradient = Brush.linearGradient(
+    colors = listOf(Color(0xFF42A5F5), Color(0xFFB388FF)),
+    start = Offset(0f, 0f),
+    end = Offset(100f, 100f)
+)
+
+private val FmHeaderGlow = Brush.horizontalGradient(
+    listOf(
+        Color(0xFF42A5F5).copy(alpha = 0.08f),
+        Color(0xFFB388FF).copy(alpha = 0.06f),
+        Color(0xFFFFD700).copy(alpha = 0.04f),
+        Color.Transparent
+    )
+)
+
 /* ═══════════════════════════════════════════════════════════════════
    Main Section
    ═══════════════════════════════════════════════════════════════════ */
@@ -175,9 +198,18 @@ fun FmIntelligenceSection(
     isLoading: Boolean,
     error: String?
 ) {
-    if (!isLoading && data == null && error == null) return // silently hide
+    // Empty state — player not in FM database
+    if (!isLoading && data == null && error == null) {
+        FmEmptyState()
+        return
+    }
 
     var expanded by remember { mutableStateOf(false) }
+    val chevronRotation by animateFloatAsState(
+        targetValue = if (expanded) 180f else 0f,
+        animationSpec = tween(250),
+        label = "chevron"
+    )
 
     Card(
         modifier = Modifier
@@ -188,61 +220,111 @@ fun FmIntelligenceSection(
         shape = RoundedCornerShape(16.dp),
         border = androidx.compose.foundation.BorderStroke(0.5.dp, PlatformColors.palette.cardBorder)
     ) {
-        // Gradient top bar
+        // ── Header row with gradient glow ──────────────────────────
         Box(
             Modifier
                 .fillMaxWidth()
-                .height(3.dp)
-                .background(
-                    Brush.horizontalGradient(
-                        listOf(
-                            Color(0xFF4DB6AC),
-                            Color(0xFF42A5F5),
-                            Color(0xFFB388FF),
-                            Color(0xFFFFD700)
+                .background(FmHeaderGlow)
+                .clickable { expanded = !expanded }
+        ) {
+            // Accent line at left edge
+            Box(
+                Modifier
+                    .align(Alignment.CenterStart)
+                    .width(3.dp)
+                    .height(48.dp)
+                    .clip(RoundedCornerShape(topEnd = 4.dp, bottomEnd = 4.dp))
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(Color(0xFF42A5F5), Color(0xFFB388FF), Color(0xFFFFD700))
                         )
                     )
-                )
-        )
-
-        // Header row  
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable { expanded = !expanded }
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "⚽",
-                fontSize = 18.sp
             )
-            Spacer(Modifier.width(12.dp))
-            Column(Modifier.weight(1f)) {
-                Text(
-                    text = stringResource(R.string.fm_section_title),
-                    style = boldTextStyle(PlatformColors.palette.textPrimary, 15.sp)
-                )
-                if (!expanded && data != null) {
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 14.dp, end = 16.dp, top = 12.dp, bottom = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // FM badge
+                FmBadge()
+                Spacer(Modifier.width(12.dp))
+
+                Column(Modifier.weight(1f)) {
                     Text(
-                        text = tierLabel(data.tier) + " · CA ${data.ca}",
-                        style = regularTextStyle(PlatformColors.palette.textSecondary, 12.sp)
+                        text = stringResource(R.string.fm_section_title),
+                        style = boldTextStyle(PlatformColors.palette.textPrimary, 14.sp)
+                    )
+
+                    if (!expanded && data != null) {
+                        Spacer(Modifier.height(3.dp))
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            // Tier chip
+                            val tc = tierColor(data.tier)
+                            Box(
+                                modifier = Modifier
+                                    .background(tc.copy(alpha = 0.15f), RoundedCornerShape(6.dp))
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                Text(
+                                    text = tierLabel(data.tier),
+                                    style = boldTextStyle(tc, 10.sp)
+                                )
+                            }
+                            // CA pill
+                            Box(
+                                modifier = Modifier
+                                    .background(
+                                        Color(0xFF42A5F5).copy(alpha = 0.12f),
+                                        RoundedCornerShape(6.dp)
+                                    )
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                Text(
+                                    text = "CA ${data.ca}",
+                                    style = boldTextStyle(Color(0xFF42A5F5), 10.sp)
+                                )
+                            }
+                            // PA pill (if gap)
+                            if (data.potentialGap > 0) {
+                                Box(
+                                    modifier = Modifier
+                                        .background(
+                                            Color(0xFF66BB6A).copy(alpha = 0.12f),
+                                            RoundedCornerShape(6.dp)
+                                        )
+                                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                                ) {
+                                    Text(
+                                        text = "+${data.potentialGap}",
+                                        style = boldTextStyle(Color(0xFF66BB6A), 10.sp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(18.dp),
+                        strokeWidth = 2.dp,
+                        color = Color(0xFF42A5F5)
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Default.ExpandMore,
+                        contentDescription = null,
+                        tint = PlatformColors.palette.textSecondary.copy(alpha = 0.6f),
+                        modifier = Modifier
+                            .size(20.dp)
+                            .rotate(chevronRotation)
                     )
                 }
-            }
-            if (isLoading) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(20.dp),
-                    strokeWidth = 2.dp,
-                    color = PlatformColors.palette.accent
-                )
-            } else {
-                Icon(
-                    imageVector = Icons.Default.ExpandMore,
-                    contentDescription = null,
-                    tint = PlatformColors.palette.textSecondary,
-                    modifier = Modifier.rotate(if (expanded) 180f else 0f)
-                )
             }
         }
 
@@ -263,7 +345,7 @@ fun FmIntelligenceSection(
                             CircularProgressIndicator(
                                 modifier = Modifier.size(28.dp),
                                 strokeWidth = 2.dp,
-                                color = PlatformColors.palette.accent
+                                color = Color(0xFF42A5F5)
                             )
                             Spacer(Modifier.height(8.dp))
                             Text(
@@ -290,7 +372,9 @@ fun FmIntelligenceSection(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(horizontal = 16.dp, vertical = 8.dp),
-                            style = regularTextStyle(PlatformColors.palette.textSecondary.copy(alpha = 0.5f), 10.sp),
+                            style = regularTextStyle(
+                                PlatformColors.palette.textSecondary.copy(alpha = 0.5f), 10.sp
+                            ),
                             textAlign = TextAlign.Center
                         )
                     }
@@ -571,6 +655,121 @@ private fun InfoRow(label: String, value: String) {
         Text(
             text = value,
             style = boldTextStyle(PlatformColors.palette.textPrimary, 12.sp)
+        )
+    }
+}
+
+/* ─── Empty State ──────────────────────────────────────────────── */
+
+@Composable
+private fun FmEmptyState() {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        colors = CardDefaults.cardColors(containerColor = PlatformColors.palette.card),
+        shape = RoundedCornerShape(16.dp),
+        border = androidx.compose.foundation.BorderStroke(0.5.dp, PlatformColors.palette.cardBorder)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(FmHeaderGlow)
+                .padding(20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            // Dimmed FM badge (larger, desaturated)
+            Box(contentAlignment = Alignment.Center) {
+                Canvas(modifier = Modifier.size(48.dp)) {
+                    val w = size.width
+                    val h = size.height
+                    drawRoundRect(
+                        brush = Brush.linearGradient(
+                            colors = listOf(
+                                Color(0xFF42A5F5).copy(alpha = 0.25f),
+                                Color(0xFFB388FF).copy(alpha = 0.25f)
+                            )
+                        ),
+                        cornerRadius = CornerRadius(12.dp.toPx(), 12.dp.toPx()),
+                        size = Size(w, h)
+                    )
+                    // Dashed circle outline
+                    drawCircle(
+                        color = Color(0xFF42A5F5).copy(alpha = 0.2f),
+                        radius = w * 0.36f,
+                        style = Stroke(width = 1.5.dp.toPx(), cap = StrokeCap.Round)
+                    )
+                }
+                Text(
+                    text = "FM",
+                    style = boldTextStyle(
+                        PlatformColors.palette.textSecondary.copy(alpha = 0.4f), 16.sp
+                    ).copy(letterSpacing = 0.5.sp)
+                )
+            }
+
+            Spacer(Modifier.height(12.dp))
+
+            Text(
+                text = stringResource(R.string.fm_empty_title),
+                style = boldTextStyle(PlatformColors.palette.textSecondary, 13.sp)
+            )
+
+            Spacer(Modifier.height(6.dp))
+
+            Text(
+                text = stringResource(R.string.fm_empty_subtitle),
+                style = regularTextStyle(
+                    PlatformColors.palette.textSecondary.copy(alpha = 0.6f), 11.sp
+                ),
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth(0.85f)
+            )
+        }
+    }
+}
+
+/* ─── FM Monogram Badge ────────────────────────────────────────── */
+
+@Composable
+private fun FmBadge() {
+    val textMeasurer = rememberTextMeasurer()
+    Canvas(modifier = Modifier.size(32.dp)) {
+        val w = size.width
+        val h = size.height
+
+        // Gradient rounded-square background
+        drawRoundRect(
+            brush = FmBadgeGradient,
+            cornerRadius = CornerRadius(8.dp.toPx(), 8.dp.toPx()),
+            size = Size(w, h)
+        )
+
+        // Inner subtle darker inset
+        val inset = 1.5.dp.toPx()
+        drawRoundRect(
+            color = Color.Black.copy(alpha = 0.18f),
+            cornerRadius = CornerRadius(6.dp.toPx(), 6.dp.toPx()),
+            topLeft = Offset(inset, inset),
+            size = Size(w - inset * 2, h - inset * 2)
+        )
+
+        // "FM" text
+        val textLayout = textMeasurer.measure(
+            text = "FM",
+            style = TextStyle(
+                color = Color.White,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.ExtraBold,
+                letterSpacing = 0.5.sp
+            )
+        )
+        drawText(
+            textLayoutResult = textLayout,
+            topLeft = Offset(
+                (w - textLayout.size.width) / 2f,
+                (h - textLayout.size.height) / 2f
+            )
         )
     }
 }

@@ -1045,7 +1045,7 @@
     <string name="highlights_error">שגיאה בטעינת היילייטס</string>
 
     <!-- FM Intelligence -->
-    <string name="fm_section_title">FM Intelligence</string>
+    <string name="fm_section_title">תובנות FM</string>
     <string name="fm_tab_intelligence">FM Intelligence</string>
     <string name="fm_tab_position_fit">התאמת עמדה</string>
     <string name="fm_loading">מנתח מסד נתוני FM…</string>
@@ -1061,6 +1061,8 @@
     <string name="fm_no_weaknesses">אין חולשות משמעותיות</string>
     <string name="fm_position_rankings">דירוג עמדות</string>
     <string name="fm_fit">התאמה</string>
+    <string name="fm_empty_title">לא במסד הנתונים של FM</string>
+    <string name="fm_empty_subtitle">לשחקן הזה אין נתוני Football Manager עדיין. FM Intelligence יהפוך לזמין ברגע שהשחקן יופיע במסד הנתונים של FM.</string>
     <string name="fm_footer">הנתונים מבוססים על מסד הנתונים של Football Manager. הערכים הם הערכות.</string>
     <string name="fm_left_foot">רגל שמאל</string>
     <string name="fm_right_foot">רגל ימין</string>

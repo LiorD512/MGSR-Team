@@ -1129,6 +1129,8 @@
     <string name="fm_no_weaknesses">No significant weaknesses</string>
     <string name="fm_position_rankings">POSITION RANKINGS</string>
     <string name="fm_fit">Fit</string>
+    <string name="fm_empty_title">Not in the FM database</string>
+    <string name="fm_empty_subtitle">This player doesn\'t have Football Manager attributes yet. FM Intelligence becomes available when the player is included in the FM database.</string>
     <string name="fm_footer">Data sourced from Football Manager database. Values are estimates.</string>
     <string name="fm_left_foot">Left foot</string>
     <string name="fm_right_foot">Right foot</string>
