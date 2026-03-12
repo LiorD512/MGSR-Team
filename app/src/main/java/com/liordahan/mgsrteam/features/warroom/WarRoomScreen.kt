@@ -701,8 +701,10 @@ private fun DiscoveryTab(
                                     marketValue = candidate.marketValue,
                                     playerImage = candidate.imageUrl
                                 )) {
-                                    is ShortlistRepository.AddToShortlistResult.Added ->
+                                    is ShortlistRepository.AddToShortlistResult.Added -> {
                                         justAddedUrls = justAddedUrls + tmUrl
+                                        ToastManager.showSuccess(context.getString(R.string.shortlist_player_added_toast, candidate.name))
+                                    }
                                     is ShortlistRepository.AddToShortlistResult.AlreadyInShortlist ->
                                         ToastManager.showInfo(context.getString(R.string.add_player_already_in_shortlist))
                                     is ShortlistRepository.AddToShortlistResult.AlreadyInRoster ->
@@ -1747,8 +1749,10 @@ private fun AgentsTab(state: WarRoomUiState, viewModel: IWarRoomViewModel, navCo
                                         marketValue = profile.marketValue,
                                         playerImage = profile.imageUrl
                                     )) {
-                                        is ShortlistRepository.AddToShortlistResult.Added ->
+                                        is ShortlistRepository.AddToShortlistResult.Added -> {
                                             justAddedUrls = justAddedUrls + tmUrl
+                                            ToastManager.showSuccess(context.getString(R.string.shortlist_player_added_toast, profile.name))
+                                        }
                                         is ShortlistRepository.AddToShortlistResult.AlreadyInShortlist ->
                                             ToastManager.showInfo(context.getString(R.string.add_player_already_in_shortlist))
                                         is ShortlistRepository.AddToShortlistResult.AlreadyInRoster ->

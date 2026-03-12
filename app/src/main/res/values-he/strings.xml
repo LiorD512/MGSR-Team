@@ -646,6 +646,7 @@
     <string name="add_player_tap_to_select">לחץ לבחירה</string>
     <string name="add_player_already_in_shortlist">השחקן כבר ברשימת המעקב שלך</string>
     <string name="add_player_already_in_roster">השחקן כבר בסגל</string>
+    <string name="shortlist_player_added_toast">%s נוסף לרשימת המעקב</string>
 
     <!-- Player Info Screen -->
     <string name="player_info_title">פרטי שחקן</string>
@@ -871,8 +872,8 @@
     <string name="ai_scout_fm_tier">FM %1$s</string>
     <string name="ai_scout_fm_stats">סטטיסטיקות FM</string>
     <string name="ai_scout_real_stats">נתונים אמיתיים</string>
-    <string name="ai_scout_tab_scout">🔍 AI Scout</string>
-    <string name="ai_scout_tab_find_next">🧠 מצא את הבא</string>
+    <string name="ai_scout_tab_scout">AI Scout</string>
+    <string name="ai_scout_tab_find_next">מצא את הבא</string>
     <string name="ai_scout_find_next_hero_title">מצא לי את הבא…</string>
     <string name="ai_scout_find_next_hero_subtitle">חפש שחקנים צעירים וזולים שמראים סימנים סטטיסטיים דומים לכוכבים גדולים</string>
     <string name="ai_scout_find_next_player_label">שם השחקן לחיפוש</string>

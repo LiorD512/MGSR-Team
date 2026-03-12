@@ -858,6 +858,7 @@
     <string name="add_player_tap_to_select">Tap to select</string>
     <string name="add_player_already_in_shortlist">Player is already in your shortlist</string>
     <string name="add_player_already_in_roster">Player is already in roster</string>
+    <string name="shortlist_player_added_toast">%s added to shortlist</string>
 
     <!-- Player Info Screen -->
     <string name="player_info_title">Player Info</string>
@@ -1263,8 +1264,8 @@
     <string name="ai_scout_fm_tier">FM %1$s</string>
     <string name="ai_scout_fm_stats">FM Stats</string>
     <string name="ai_scout_real_stats">Real Stats</string>
-    <string name="ai_scout_tab_scout">🔍 AI Scout</string>
-    <string name="ai_scout_tab_find_next">🧠 Find The Next</string>
+    <string name="ai_scout_tab_scout">AI Scout</string>
+    <string name="ai_scout_tab_find_next">Find The Next</string>
     <string name="ai_scout_find_next_hero_title">Find Me The Next…</string>
     <string name="ai_scout_find_next_hero_subtitle">Find young, affordable players showing early statistical signs of star potential</string>
     <string name="ai_scout_find_next_player_label">Reference player name</string>

@@ -5,14 +5,19 @@ import android.net.Uri
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -110,6 +115,9 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.koinInject
+import kotlin.math.PI
+import kotlin.math.cos
+import kotlin.math.sin
 
 private val SyneFamily = FontFamily(Font(R.font.takeaway_sans_bold, FontWeight.Bold))
 
@@ -128,6 +136,7 @@ private val WPurple = Color(0xFFA855F7)     // purple-500
 private val WIndigo = Color(0xFF6366F1)     // indigo-500
 private val WGreen = Color(0xFF22C55E)      // green-500
 private val WRed = Color(0xFFE53935)        // mgsr-red
+private val WCyan = Color(0xFF22D3EE)       // cyan-400
 
 
 private enum class AiScoutTab { SCOUT, FIND_NEXT }
@@ -191,7 +200,7 @@ fun AiScoutScreen(
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-//  TAB BAR
+//  TAB BAR — Sliding indicator segmented control
 // ═══════════════════════════════════════════════════════════════════════════════
 
 @Composable
@@ -201,49 +210,237 @@ private fun AiScoutTabBar(selectedTab: AiScoutTab, onTabSelected: (AiScoutTab) -
         AiScoutTab.FIND_NEXT to R.string.ai_scout_tab_find_next
     )
 
-    // Matches web: flex gap-1 p-1 rounded-xl bg-mgsr-card border border-mgsr-border
-    Row(
+    // Spring-physics sliding indicator
+    val indicatorProgress by animateFloatAsState(
+        targetValue = if (selectedTab == AiScoutTab.SCOUT) 0f else 1f,
+        animationSpec = spring(dampingRatio = 0.65f, stiffness = Spring.StiffnessMediumLow),
+        label = "tab_slide"
+    )
+
+    val accentColor by animateColorAsState(
+        targetValue = if (selectedTab == AiScoutTab.SCOUT) WTeal else WPurple,
+        animationSpec = tween(400),
+        label = "accent_color"
+    )
+    val secondaryColor by animateColorAsState(
+        targetValue = if (selectedTab == AiScoutTab.SCOUT) WCyan else WIndigo,
+        animationSpec = tween(400),
+        label = "secondary_color"
+    )
+
+    // Animated icon phases
+    val iconTransition = rememberInfiniteTransition(label = "tab_icons")
+    val radarAngle by iconTransition.animateFloat(
+        initialValue = 0f, targetValue = 360f,
+        animationSpec = infiniteRepeatable(tween(3000, easing = LinearEasing), RepeatMode.Restart),
+        label = "radar_icon"
+    )
+    val neuralPulse by iconTransition.animateFloat(
+        initialValue = 0f, targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(2000, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+        label = "neural_icon"
+    )
+
+    Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .background(WCard)
-            .border(1.dp, WBorder, RoundedCornerShape(12.dp))
-            .padding(4.dp),
-        horizontalArrangement = Arrangement.spacedBy(4.dp)
+            .padding(horizontal = 20.dp, vertical = 10.dp)
     ) {
-        tabs.forEach { (tab, labelRes) ->
-            val isSelected = selectedTab == tab
-            val accentColor = if (tab == AiScoutTab.SCOUT) WTeal else WPurple
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(16.dp))
+                .background(WCard.copy(alpha = 0.5f))
+                .border(1.dp, WBorder.copy(alpha = 0.15f), RoundedCornerShape(16.dp))
+                .drawBehind {
+                    val tabW = size.width / tabs.size
+                    val pillPadH = 4.dp.toPx()
+                    val pillPadV = 4.dp.toPx()
+                    val pillW = tabW - pillPadH * 2
+                    val pillH = size.height - pillPadV * 2
+                    val pillX = tabW * indicatorProgress + pillPadH
+                    val pillY = pillPadV
+                    val cornerR = 12.dp.toPx()
 
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .clip(RoundedCornerShape(8.dp))
-                    .then(
-                        if (isSelected) Modifier
-                            .background(accentColor.copy(alpha = 0.20f))
-                            .border(1.dp, accentColor.copy(alpha = 0.30f), RoundedCornerShape(8.dp))
-                        else Modifier
+                    // Filled pill background — solid & opaque
+                    drawRoundRect(
+                        brush = Brush.linearGradient(
+                            colors = listOf(
+                                accentColor.copy(alpha = 0.45f),
+                                secondaryColor.copy(alpha = 0.25f)
+                            ),
+                            start = Offset(pillX, pillY),
+                            end = Offset(pillX + pillW, pillY + pillH)
+                        ),
+                        topLeft = Offset(pillX, pillY),
+                        size = androidx.compose.ui.geometry.Size(pillW, pillH),
+                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(cornerR)
                     )
-                    .clickable { onTabSelected(tab) }
-                    .padding(vertical = 10.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = stringResource(labelRes),
-                    style = boldTextStyle(
-                        if (isSelected) accentColor else WMuted,
-                        14.sp
+
+                    // Pill glow border — bright
+                    drawRoundRect(
+                        brush = Brush.linearGradient(
+                            colors = listOf(accentColor.copy(alpha = 0.85f), secondaryColor.copy(alpha = 0.55f)),
+                            start = Offset(pillX, pillY),
+                            end = Offset(pillX + pillW, pillY + pillH)
+                        ),
+                        topLeft = Offset(pillX, pillY),
+                        size = androidx.compose.ui.geometry.Size(pillW, pillH),
+                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(cornerR),
+                        style = Stroke(1.5.dp.toPx())
                     )
+
+                    // Bottom glow accent line — bright
+                    val lineY = size.height - 2.dp.toPx()
+                    val lineSX = pillX + pillW * 0.10f
+                    val lineEX = pillX + pillW * 0.90f
+                    drawLine(
+                        brush = Brush.horizontalGradient(
+                            colors = listOf(Color.Transparent, accentColor.copy(alpha = 0.95f), Color.Transparent),
+                            startX = lineSX,
+                            endX = lineEX
+                        ),
+                        start = Offset(lineSX, lineY),
+                        end = Offset(lineEX, lineY),
+                        strokeWidth = 3f,
+                        cap = StrokeCap.Round
+                    )
+                }
+                .padding(vertical = 4.dp)
+        ) {
+            tabs.forEach { (tab, labelRes) ->
+                val isSelected = selectedTab == tab
+                val tabAccent = if (tab == AiScoutTab.SCOUT) WTeal else WPurple
+                val textAlpha by animateFloatAsState(
+                    targetValue = if (isSelected) 1f else 0.22f,
+                    animationSpec = tween(300),
+                    label = "text_alpha_${tab.name}"
                 )
+
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable { onTabSelected(tab) }
+                        .padding(vertical = 14.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        // Custom Canvas icon per tab
+                        val iconColor = tabAccent.copy(alpha = textAlpha)
+                        val iconColorSecondary = (if (tab == AiScoutTab.SCOUT) WCyan else WIndigo).copy(alpha = textAlpha * 0.6f)
+                        Canvas(
+                            modifier = Modifier
+                                .size(22.dp)
+                                .graphicsLayer { alpha = textAlpha }
+                        ) {
+                            val cx = size.width / 2
+                            val cy = size.height / 2
+                            val r = size.minDimension / 2
+
+                            if (tab == AiScoutTab.SCOUT) {
+                                // ── Mini Radar Icon ──
+                                // Outer ring
+                                drawCircle(iconColor, r * 0.95f, Offset(cx, cy), style = Stroke(1.5f))
+                                // Inner ring
+                                drawCircle(iconColor.copy(alpha = textAlpha * 0.4f), r * 0.55f, Offset(cx, cy), style = Stroke(1f))
+                                // Sweep line
+                                val sweepRad = Math.toRadians(radarAngle.toDouble())
+                                drawLine(
+                                    brush = Brush.linearGradient(
+                                        listOf(iconColor, iconColorSecondary.copy(alpha = 0f)),
+                                        start = Offset(cx, cy),
+                                        end = Offset(cx + r * 0.9f * cos(sweepRad).toFloat(), cy + r * 0.9f * sin(sweepRad).toFloat())
+                                    ),
+                                    start = Offset(cx, cy),
+                                    end = Offset(cx + r * 0.9f * cos(sweepRad).toFloat(), cy + r * 0.9f * sin(sweepRad).toFloat()),
+                                    strokeWidth = 2f,
+                                    cap = StrokeCap.Round
+                                )
+                                // Sweep arc trail
+                                drawArc(
+                                    brush = Brush.sweepGradient(
+                                        0f to Color.Transparent,
+                                        0.75f to Color.Transparent,
+                                        0.95f to iconColor.copy(alpha = textAlpha * 0.25f),
+                                        1f to Color.Transparent
+                                    ),
+                                    startAngle = radarAngle - 50f,
+                                    sweepAngle = 50f,
+                                    useCenter = true,
+                                    topLeft = Offset(cx - r * 0.9f, cy - r * 0.9f),
+                                    size = androidx.compose.ui.geometry.Size(r * 1.8f, r * 1.8f)
+                                )
+                                // Blip dots
+                                val blip1Rad = Math.toRadians((radarAngle * 0.4 + 120) % 360)
+                                val blip2Rad = Math.toRadians((radarAngle * 0.3 + 240) % 360)
+                                drawCircle(iconColorSecondary, 2.5f, Offset(cx + r * 0.6f * cos(blip1Rad).toFloat(), cy + r * 0.6f * sin(blip1Rad).toFloat()))
+                                drawCircle(iconColor.copy(alpha = textAlpha * 0.7f), 2f, Offset(cx + r * 0.35f * cos(blip2Rad).toFloat(), cy + r * 0.35f * sin(blip2Rad).toFloat()))
+                                // Center dot
+                                drawCircle(iconColor, 2.5f, Offset(cx, cy))
+                            } else {
+                                // ── Mini Neural/DNA Icon ──
+                                // Outer glow ring (pulsing)
+                                drawCircle(
+                                    iconColor.copy(alpha = textAlpha * (0.15f + neuralPulse * 0.2f)),
+                                    r * (0.85f + neuralPulse * 0.15f),
+                                    Offset(cx, cy)
+                                )
+                                // 4 orbiting nodes with connections
+                                val nodeCount = 4
+                                for (i in 0 until nodeCount) {
+                                    val angle = (2 * PI * i / nodeCount + neuralPulse * PI * 0.3).toFloat()
+                                    val nodeR = r * 0.60f
+                                    val nx = cx + nodeR * cos(angle)
+                                    val ny = cy + nodeR * sin(angle) * 0.7f
+                                    // Connection to center
+                                    drawLine(
+                                        color = iconColor.copy(alpha = textAlpha * (0.25f + neuralPulse * 0.15f)),
+                                        start = Offset(cx, cy),
+                                        end = Offset(nx, ny),
+                                        strokeWidth = 1f
+                                    )
+                                    // Connection to next node
+                                    val nextAngle = (2 * PI * ((i + 1) % nodeCount) / nodeCount + neuralPulse * PI * 0.3).toFloat()
+                                    val nnx = cx + nodeR * cos(nextAngle)
+                                    val nny = cy + nodeR * sin(nextAngle) * 0.7f
+                                    drawLine(
+                                        color = iconColorSecondary.copy(alpha = textAlpha * 0.2f),
+                                        start = Offset(nx, ny),
+                                        end = Offset(nnx, nny),
+                                        strokeWidth = 0.8f
+                                    )
+                                    // Node glow + core
+                                    drawCircle(iconColor.copy(alpha = textAlpha * 0.35f), 5f, Offset(nx, ny))
+                                    drawCircle(iconColor.copy(alpha = textAlpha * 0.9f), 2.5f, Offset(nx, ny))
+                                }
+                                // Center pulsing core
+                                drawCircle(
+                                    brush = Brush.radialGradient(
+                                        listOf(iconColor, iconColorSecondary, Color.Transparent),
+                                        center = Offset(cx, cy),
+                                        radius = r * 0.4f
+                                    ),
+                                    radius = r * (0.25f + neuralPulse * 0.15f),
+                                    center = Offset(cx, cy)
+                                )
+                                drawCircle(iconColor, 3f, Offset(cx, cy))
+                            }
+                        }
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            text = stringResource(labelRes),
+                            style = boldTextStyle(tabAccent.copy(alpha = textAlpha), 15.sp),
+                            letterSpacing = 0.3.sp
+                        )
+                    }
+                }
             }
         }
     }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-//  FIND NEXT TAB
+//  FIND NEXT TAB — Premium "Neural Match" Experience
 // ═══════════════════════════════════════════════════════════════════════════════
 
 private val FIND_NEXT_EXAMPLE_PLAYERS = listOf(
@@ -272,89 +469,255 @@ private fun FindNextTabContent(state: FindNextUiState, viewModel: IAiScoutViewMo
         .collectAsState(initial = emptySet())
     val coroutineScope = rememberCoroutineScope()
 
+    val infiniteTransition = rememberInfiniteTransition(label = "find_next_bg")
+    val bgPhase by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(4000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "bg_phase"
+    )
+    val orbPulse by infiniteTransition.animateFloat(
+        initialValue = 0.4f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2000, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "orb_pulse"
+    )
+
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(bottom = 32.dp)
     ) {
-        // Compact hero
+        // ── Neural Match Hero ──
         item {
-            Row(
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(44.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(
-                            Brush.linearGradient(
+                    .height(280.dp)
+                    .drawBehind {
+                        val cx = size.width / 2
+                        val cy = size.height * 0.36f
+
+                        // Ambient gradient mesh — vivid
+                        drawCircle(
+                            brush = Brush.radialGradient(
+                                colors = listOf(
+                                    WPurple.copy(alpha = orbPulse * 0.22f),
+                                    WIndigo.copy(alpha = orbPulse * 0.10f),
+                                    Color.Transparent
+                                ),
+                                center = Offset(cx, cy),
+                                radius = size.maxDimension * 0.55f
+                            ),
+                            radius = size.maxDimension * 0.55f,
+                            center = Offset(cx, cy)
+                        )
+
+                        // Outer ring accents
+                        for (ring in 1..3) {
+                            drawCircle(
+                                color = WPurple.copy(alpha = 0.06f + orbPulse * 0.04f),
+                                radius = size.minDimension * 0.15f * ring,
+                                center = Offset(cx, cy),
+                                style = Stroke(0.8f)
+                            )
+                        }
+
+                        // Orbiting constellation nodes — larger
+                        val orbitR = size.minDimension * 0.36f
+                        val nodeCount = 8
+                        for (i in 0 until nodeCount) {
+                            val angle = (2 * PI * i / nodeCount + bgPhase * 2 * PI).toFloat()
+                            // Slight elliptical distortion for depth
+                            val nx = cx + orbitR * cos(angle) * (1f + 0.15f * sin(angle * 2))
+                            val ny = cy + orbitR * sin(angle) * 0.55f
+                            val nodeAlpha = 0.22f + orbPulse * 0.28f * if (i % 2 == 0) 1f else 0.7f
+
+                            // Connection line to center with gradient fade
+                            drawLine(
+                                brush = Brush.linearGradient(
+                                    listOf(
+                                        WPurple.copy(alpha = nodeAlpha * 0.8f),
+                                        WPurple.copy(alpha = 0.02f)
+                                    ),
+                                    start = Offset(cx, cy),
+                                    end = Offset(nx, ny)
+                                ),
+                                start = Offset(cx, cy),
+                                end = Offset(nx, ny),
+                                strokeWidth = 2f
+                            )
+
+                            // Connections between adjacent nodes
+                            if (i > 0) {
+                                val prevAngle = (2 * PI * (i - 1) / nodeCount + bgPhase * 2 * PI).toFloat()
+                                val px = cx + orbitR * cos(prevAngle) * (1f + 0.15f * sin(prevAngle * 2))
+                                val py = cy + orbitR * sin(prevAngle) * 0.55f
+                                drawLine(
+                                    color = WPurple.copy(alpha = nodeAlpha * 0.15f),
+                                    start = Offset(px, py),
+                                    end = Offset(nx, ny),
+                                    strokeWidth = 0.5f
+                                )
+                            }
+
+                            // Node glow halo
+                            drawCircle(WPurple.copy(alpha = nodeAlpha * 0.50f), 22f, Offset(nx, ny))
+                            // Node core
+                            drawCircle(WPurple.copy(alpha = nodeAlpha * 0.95f), 6f, Offset(nx, ny))
+                        }
+
+                        // Central pulsing orb — intense
+                        drawCircle(
+                            brush = Brush.radialGradient(
                                 listOf(
-                                    WPurple.copy(alpha = 0.3f),
-                                    WTeal.copy(alpha = 0.2f)
+                                    WPurple.copy(alpha = orbPulse * 0.55f),
+                                    WIndigo.copy(alpha = orbPulse * 0.22f),
+                                    Color.Transparent
+                                ),
+                                center = Offset(cx, cy),
+                                radius = orbitR * 0.6f
+                            ),
+                            radius = orbitR * 0.6f,
+                            center = Offset(cx, cy)
+                        )
+                        // Inner ring accent
+                        drawCircle(
+                            color = WPurple.copy(alpha = orbPulse * 0.35f),
+                            radius = orbitR * 0.20f,
+                            center = Offset(cx, cy),
+                            style = Stroke(1.5f)
+                        )
+                        drawCircle(
+                            color = WPurple.copy(alpha = 0.7f + orbPulse * 0.3f),
+                            radius = 7f,
+                            center = Offset(cx, cy)
+                        )
+                    }
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 28.dp),
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    // Icon with double glow rings
+                    Box(
+                        modifier = Modifier
+                            .size(80.dp)
+                            .drawBehind {
+                                drawCircle(
+                                    color = WPurple.copy(alpha = orbPulse * 0.30f),
+                                    radius = size.minDimension / 2 + 14.dp.toPx()
+                                )
+                                drawCircle(
+                                    color = WPurple.copy(alpha = orbPulse * 0.12f),
+                                    radius = size.minDimension / 2 + 28.dp.toPx()
+                                )
+                            }
+                            .clip(RoundedCornerShape(24.dp))
+                            .background(
+                                Brush.linearGradient(
+                                    listOf(
+                                        WPurple.copy(alpha = 0.28f),
+                                        WIndigo.copy(alpha = 0.14f)
+                                    )
                                 )
                             )
-                        )
-                        .border(
-                            1.dp,
-                            WPurple.copy(alpha = 0.3f),
-                            RoundedCornerShape(12.dp)
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text("🧠", fontSize = 22.sp)
-                }
-                Spacer(Modifier.width(14.dp))
-                Column {
+                            .border(
+                                1.5.dp,
+                                Brush.linearGradient(
+                                    listOf(
+                                        WPurple.copy(alpha = 0.45f),
+                                        WIndigo.copy(alpha = 0.25f)
+                                    )
+                                ),
+                                RoundedCornerShape(24.dp)
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("🧠", fontSize = 36.sp)
+                    }
+
+                    Spacer(Modifier.height(18.dp))
+
                     Text(
                         text = stringResource(R.string.ai_scout_find_next_hero_title),
-                        style = boldTextStyle(WText, 18.sp)
+                        style = boldTextStyle(WText, 30.sp).copy(fontFamily = SyneFamily),
+                        letterSpacing = (-0.5).sp
                     )
-                    Spacer(Modifier.height(2.dp))
+                    Spacer(Modifier.height(8.dp))
                     Text(
                         text = stringResource(R.string.ai_scout_find_next_hero_subtitle),
-                        style = regularTextStyle(WMuted, 12.sp),
-                        maxLines = 2,
-                        lineHeight = 16.sp
+                        style = regularTextStyle(WMuted, 15.sp),
+                        textAlign = TextAlign.Center,
+                        lineHeight = 22.sp
                     )
                 }
             }
         }
 
-        // Player name input section
+        // ── Player Name Input Card ──
         item {
+            val borderTransition = rememberInfiniteTransition(label = "input_border")
+            val borderPhase by borderTransition.animateFloat(
+                initialValue = 0f,
+                targetValue = 1f,
+                animationSpec = infiniteRepeatable(
+                    animation = tween(3000, easing = LinearEasing),
+                    repeatMode = RepeatMode.Restart
+                ),
+                label = "border_sweep"
+            )
+            val hasFocus = state.playerName.isNotBlank()
+
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(WCard)
-                    .border(1.dp, WBorder, RoundedCornerShape(16.dp))
-                    .padding(16.dp)
+                    .clip(RoundedCornerShape(22.dp))
+                    .background(WCard.copy(alpha = 0.75f))
+                    .border(
+                        1.dp,
+                        if (hasFocus) Brush.sweepGradient(
+                            0f to WPurple.copy(alpha = 0.40f),
+                            borderPhase to WIndigo.copy(alpha = 0.50f),
+                            1f to WPurple.copy(alpha = 0.40f)
+                        ) else Brush.linearGradient(
+                            listOf(WBorder.copy(alpha = 0.25f), WBorder.copy(alpha = 0.15f))
+                        ),
+                        RoundedCornerShape(22.dp)
+                    )
+                    .padding(20.dp)
             ) {
                 // Section label
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("⚽", fontSize = 13.sp)
-                    Spacer(Modifier.width(6.dp))
-                    Text(
-                        text = stringResource(R.string.ai_scout_find_next_player_label),
-                        style = boldTextStyle(WText, 13.sp)
-                    )
-                }
-                Spacer(Modifier.height(10.dp))
+                Text(
+                    text = stringResource(R.string.ai_scout_find_next_player_label),
+                    style = boldTextStyle(WText, 14.sp)
+                )
+                Spacer(Modifier.height(14.dp))
 
-                // Text field with search icon
+                // Text field — taller with better proportions
                 BasicTextField(
                     value = state.playerName,
                     onValueChange = { viewModel.updateFindNextPlayerName(it) },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(50.dp)
+                        .height(54.dp)
                         .clip(RoundedCornerShape(14.dp))
                         .background(WDark.copy(alpha = 0.6f))
-                        .border(1.dp, WBorder, RoundedCornerShape(14.dp))
-                        .padding(horizontal = 14.dp),
+                        .border(
+                            1.dp,
+                            if (hasFocus) WPurple.copy(alpha = 0.25f) else WBorder.copy(alpha = 0.2f),
+                            RoundedCornerShape(14.dp)
+                        )
+                        .padding(horizontal = 16.dp),
                     textStyle = regularTextStyle(WText, 15.sp),
                     singleLine = true,
                     decorationBox = { inner ->
@@ -365,15 +728,15 @@ private fun FindNextTabContent(state: FindNextUiState, viewModel: IAiScoutViewMo
                             Icon(
                                 Icons.Default.Search,
                                 contentDescription = null,
-                                tint = WMuted.copy(alpha = 0.4f),
-                                modifier = Modifier.size(18.dp)
+                                tint = if (hasFocus) WPurple.copy(alpha = 0.6f) else WMuted.copy(alpha = 0.35f),
+                                modifier = Modifier.size(20.dp)
                             )
-                            Spacer(Modifier.width(10.dp))
+                            Spacer(Modifier.width(12.dp))
                             Box(modifier = Modifier.weight(1f)) {
                                 if (state.playerName.isEmpty()) {
                                     Text(
                                         stringResource(R.string.ai_scout_find_next_placeholder),
-                                        style = regularTextStyle(WMuted.copy(alpha = 0.5f), 14.sp)
+                                        style = regularTextStyle(WMuted.copy(alpha = 0.45f), 14.sp)
                                     )
                                 }
                                 inner()
@@ -382,9 +745,9 @@ private fun FindNextTabContent(state: FindNextUiState, viewModel: IAiScoutViewMo
                                 Icon(
                                     Icons.Default.Clear,
                                     contentDescription = null,
-                                    tint = WMuted.copy(alpha = 0.5f),
+                                    tint = WMuted.copy(alpha = 0.45f),
                                     modifier = Modifier
-                                        .size(18.dp)
+                                        .size(20.dp)
                                         .clickable { viewModel.updateFindNextPlayerName("") }
                                 )
                             }
@@ -392,29 +755,27 @@ private fun FindNextTabContent(state: FindNextUiState, viewModel: IAiScoutViewMo
                     }
                 )
 
-                // Example players as horizontal scroll
-                Spacer(Modifier.height(10.dp))
+                // Example player pills
+                Spacer(Modifier.height(14.dp))
                 LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     items(FIND_NEXT_EXAMPLE_PLAYERS) { name ->
                         val isSelected = state.playerName == name
-                        Row(
+                        Box(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(20.dp))
                                 .background(
-                                    if (isSelected) WPurple.copy(alpha = 0.2f)
-                                    else WDark.copy(alpha = 0.5f)
+                                    if (isSelected) WPurple.copy(alpha = 0.18f)
+                                    else WDark.copy(alpha = 0.45f)
                                 )
                                 .border(
                                     1.dp,
-                                    if (isSelected) WPurple.copy(alpha = 0.4f)
-                                    else Color.Transparent,
+                                    if (isSelected) WPurple.copy(alpha = 0.4f) else WBorder.copy(alpha = 0.15f),
                                     RoundedCornerShape(20.dp)
                                 )
                                 .clickable { viewModel.updateFindNextPlayerName(name) }
-                                .padding(horizontal = 12.dp, vertical = 7.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                                .padding(horizontal = 16.dp, vertical = 10.dp)
                         ) {
                             Text(
                                 name,
@@ -430,18 +791,30 @@ private fun FindNextTabContent(state: FindNextUiState, viewModel: IAiScoutViewMo
             }
         }
 
-        item { Spacer(Modifier.height(12.dp)) }
+        item { Spacer(Modifier.height(14.dp)) }
 
-        // Filters section (age + value)
+        // ── Filters Panel ──
         item {
+            // Shimmer for CTA button
+            val shimmerTransition = rememberInfiniteTransition(label = "cta_shimmer")
+            val ctaShimmer by shimmerTransition.animateFloat(
+                initialValue = -0.3f,
+                targetValue = 1.3f,
+                animationSpec = infiniteRepeatable(
+                    animation = tween(2200, easing = LinearEasing),
+                    repeatMode = RepeatMode.Restart
+                ),
+                label = "cta_shimmer_phase"
+            )
+
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(WCard)
-                    .border(1.dp, WBorder, RoundedCornerShape(16.dp))
-                    .padding(16.dp)
+                    .clip(RoundedCornerShape(22.dp))
+                    .background(WCard.copy(alpha = 0.75f))
+                    .border(1.dp, WBorder.copy(alpha = 0.25f), RoundedCornerShape(22.dp))
+                    .padding(20.dp)
             ) {
                 // Age section
                 Row(
@@ -449,24 +822,21 @@ private fun FindNextTabContent(state: FindNextUiState, viewModel: IAiScoutViewMo
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("📅", fontSize = 13.sp)
-                        Spacer(Modifier.width(6.dp))
-                        Text(
-                            text = stringResource(R.string.ai_scout_find_next_age_max, state.ageMax),
-                            style = regularTextStyle(WMuted, 12.sp)
-                        )
-                    }
+                    Text(
+                        text = stringResource(R.string.ai_scout_find_next_age_max, state.ageMax),
+                        style = regularTextStyle(WMuted, 13.sp)
+                    )
                     // Age badge
                     Box(
                         modifier = Modifier
-                            .clip(RoundedCornerShape(8.dp))
+                            .clip(RoundedCornerShape(10.dp))
                             .background(WPurple.copy(alpha = 0.15f))
-                            .padding(horizontal = 10.dp, vertical = 4.dp)
+                            .border(1.dp, WPurple.copy(alpha = 0.25f), RoundedCornerShape(10.dp))
+                            .padding(horizontal = 14.dp, vertical = 6.dp)
                     ) {
                         Text(
                             text = "≤ ${state.ageMax}",
-                            style = boldTextStyle(WPurple, 13.sp)
+                            style = boldTextStyle(WPurple, 14.sp)
                         )
                     }
                 }
@@ -483,28 +853,28 @@ private fun FindNextTabContent(state: FindNextUiState, viewModel: IAiScoutViewMo
                 )
 
                 // Divider
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(10.dp))
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(1.dp)
-                        .background(WBorder.copy(alpha = 0.5f))
+                        .background(
+                            Brush.horizontalGradient(
+                                listOf(Color.Transparent, WBorder.copy(alpha = 0.3f), Color.Transparent)
+                            )
+                        )
                 )
-                Spacer(Modifier.height(14.dp))
+                Spacer(Modifier.height(16.dp))
 
                 // Value section
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("💰", fontSize = 13.sp)
-                    Spacer(Modifier.width(6.dp))
-                    Text(
-                        text = stringResource(R.string.ai_scout_find_next_value_max),
-                        style = regularTextStyle(WMuted, 12.sp)
-                    )
-                }
-                Spacer(Modifier.height(10.dp))
+                Text(
+                    text = stringResource(R.string.ai_scout_find_next_value_max),
+                    style = regularTextStyle(WMuted, 13.sp)
+                )
+                Spacer(Modifier.height(12.dp))
                 FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     VALUE_PRESETS.forEach { (value, label) ->
@@ -513,70 +883,97 @@ private fun FindNextTabContent(state: FindNextUiState, viewModel: IAiScoutViewMo
                             modifier = Modifier
                                 .clip(RoundedCornerShape(12.dp))
                                 .background(
-                                    if (isSelected) WPurple.copy(alpha = 0.2f)
-                                    else WDark.copy(alpha = 0.5f)
+                                    if (isSelected) WPurple.copy(alpha = 0.18f)
+                                    else WDark.copy(alpha = 0.45f)
                                 )
                                 .border(
                                     1.dp,
-                                    if (isSelected) WPurple.copy(alpha = 0.5f)
-                                    else Color.Transparent,
+                                    if (isSelected) WPurple.copy(alpha = 0.45f) else WBorder.copy(alpha = 0.15f),
                                     RoundedCornerShape(12.dp)
                                 )
                                 .clickable { viewModel.updateFindNextValueMax(value) }
-                                .padding(horizontal = 14.dp, vertical = 8.dp)
+                                .padding(horizontal = 16.dp, vertical = 10.dp)
                         ) {
                             Text(
                                 if (value == 0) stringResource(R.string.ai_scout_find_next_no_limit) else label,
                                 style = boldTextStyle(
                                     if (isSelected) WPurple else WText,
-                                    12.sp
+                                    13.sp
                                 )
                             )
                         }
                     }
                 }
-            }
-        }
 
-        item { Spacer(Modifier.height(16.dp)) }
+                Spacer(Modifier.height(24.dp))
 
-        // Search button — full width
-        item {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
-                    .height(52.dp)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(
-                        if (!state.isSearching && state.playerName.isNotBlank()) WPurple
-                        else WPurple.copy(alpha = 0.3f)
-                    )
-                    .clickable(enabled = !state.isSearching && state.playerName.isNotBlank()) {
-                        viewModel.findNextSearch()
-                    },
-                contentAlignment = Alignment.Center
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    if (state.isSearching) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(18.dp),
-                            color = WDark,
-                            strokeWidth = 2.dp
+                // ── Search CTA — Inline with shimmer sweep ──
+                val isEnabled = !state.isSearching && state.playerName.isNotBlank()
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp)
+                        .then(
+                            if (isEnabled) Modifier.drawBehind {
+                                // Glow shadow
+                                drawRoundRect(
+                                    brush = Brush.horizontalGradient(
+                                        listOf(WPurple.copy(alpha = 0.25f), WIndigo.copy(alpha = 0.15f))
+                                    ),
+                                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(16.dp.toPx()),
+                                    size = size.copy(height = size.height + 10.dp.toPx()),
+                                    topLeft = Offset(0f, 5.dp.toPx()),
+                                    alpha = orbPulse * 0.5f
+                                )
+                                // Shimmer sweep
+                                val shimmerCenter = ctaShimmer * size.width
+                                val shimmerW = size.width * 0.25f
+                                drawRoundRect(
+                                    brush = Brush.horizontalGradient(
+                                        colors = listOf(
+                                            Color.Transparent,
+                                            Color.White.copy(alpha = 0.10f),
+                                            Color.Transparent
+                                        ),
+                                        startX = shimmerCenter - shimmerW,
+                                        endX = shimmerCenter + shimmerW
+                                    ),
+                                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(16.dp.toPx())
+                                )
+                            } else Modifier
                         )
-                    } else {
-                        Icon(
-                            Icons.Default.Search,
-                            contentDescription = null,
-                            tint = WDark,
-                            modifier = Modifier.size(18.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(
+                            if (isEnabled)
+                                Brush.linearGradient(listOf(WPurple, WIndigo, WPurple.copy(alpha = 0.9f)))
+                            else
+                                Brush.linearGradient(listOf(WPurple.copy(alpha = 0.20f), WIndigo.copy(alpha = 0.10f)))
+                        )
+                        .clickable(enabled = isEnabled) { viewModel.findNextSearch() },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (state.isSearching) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(20.dp),
+                                color = Color.White,
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            Icon(
+                                Icons.Default.Search,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                        Spacer(Modifier.width(10.dp))
+                        Text(
+                            text = stringResource(R.string.ai_scout_find_next_search_button),
+                            style = boldTextStyle(Color.White, 16.sp),
+                            letterSpacing = 0.5.sp
                         )
                     }
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        text = stringResource(R.string.ai_scout_find_next_search_button),
-                        style = boldTextStyle(WDark, 15.sp)
-                    )
                 }
             }
         }
@@ -592,31 +989,50 @@ private fun FindNextTabContent(state: FindNextUiState, viewModel: IAiScoutViewMo
             }
         }
 
-        // Reference player
+        // Reference player — premium card
         state.response?.referencePlayer?.let { ref ->
             item {
                 Column(
                     modifier = Modifier
                         .padding(16.dp)
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(WPurple.copy(alpha = 0.10f))
-                        .border(1.dp, WPurple.copy(alpha = 0.25f), RoundedCornerShape(16.dp))
-                        .padding(14.dp)
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(
+                            Brush.linearGradient(
+                                listOf(
+                                    WPurple.copy(alpha = 0.12f),
+                                    WIndigo.copy(alpha = 0.06f)
+                                )
+                            )
+                        )
+                        .border(
+                            1.dp,
+                            Brush.linearGradient(
+                                listOf(
+                                    WPurple.copy(alpha = 0.35f),
+                                    WIndigo.copy(alpha = 0.20f)
+                                )
+                            ),
+                            RoundedCornerShape(20.dp)
+                        )
+                        .padding(16.dp)
                 ) {
-                    Text("⭐", fontSize = 14.sp)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("⭐", fontSize = 16.sp)
+                        Spacer(Modifier.width(8.dp))
+                        Text(ref.name, style = boldTextStyle(WText, 17.sp))
+                    }
                     Spacer(Modifier.height(4.dp))
-                    Text(ref.name, style = boldTextStyle(WText, 16.sp))
                     Text(
                         "${shortenPosition(ref.position)} · ${ref.age} · ${ref.marketValue}",
                         style = regularTextStyle(WMuted, 13.sp)
                     )
                     state.response?.let { r ->
                         if (r.resultCount > 0) {
-                            Spacer(Modifier.height(4.dp))
+                            Spacer(Modifier.height(6.dp))
                             Text(
                                 stringResource(R.string.ai_scout_find_next_found_count, r.resultCount, r.totalCandidatesScanned ?: 0),
-                                style = regularTextStyle(WMuted, 12.sp)
+                                style = regularTextStyle(WPurple.copy(alpha = 0.8f), 12.sp)
                             )
                         }
                     }
@@ -654,8 +1070,10 @@ private fun FindNextTabContent(state: FindNextUiState, viewModel: IAiScoutViewMo
                                         marketValue = player.marketValue,
                                         playerImage = null
                                     )) {
-                                        is ShortlistRepository.AddToShortlistResult.Added ->
+                                        is ShortlistRepository.AddToShortlistResult.Added -> {
                                             justAddedUrls = justAddedUrls + tmUrl
+                                            ToastManager.showSuccess(context.getString(R.string.shortlist_player_added_toast, player.name))
+                                        }
                                         is ShortlistRepository.AddToShortlistResult.AlreadyInShortlist ->
                                             ToastManager.showInfo(context.getString(R.string.add_player_already_in_shortlist))
                                         is ShortlistRepository.AddToShortlistResult.AlreadyInRoster ->
@@ -991,38 +1409,213 @@ private fun AiScoutTopBar(onBack: () -> Unit) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-//  EMPTY STATE
+//  EMPTY STATE — Sonar Command Center
 // ═══════════════════════════════════════════════════════════════════════════════
 
 @Composable
 private fun AiScoutEmptyState(state: AiScoutUiState, viewModel: IAiScoutViewModel) {
+    val infiniteTransition = rememberInfiniteTransition(label = "scout_radar")
+    val radarSweep by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 360f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(4000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "radar_sweep"
+    )
+    val glowPulse by infiniteTransition.animateFloat(
+        initialValue = 0.3f,
+        targetValue = 0.8f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2000, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "glow_pulse"
+    )
+    // Staggered pulse rings (3 phases)
+    val pulseRing0 by infiniteTransition.animateFloat(
+        initialValue = 0f, targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(3000, easing = LinearEasing), RepeatMode.Restart),
+        label = "ring0"
+    )
+    val pulseRing1 by infiniteTransition.animateFloat(
+        initialValue = 0f, targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(3000, delayMillis = 1000, easing = LinearEasing), RepeatMode.Restart),
+        label = "ring1"
+    )
+    val pulseRing2 by infiniteTransition.animateFloat(
+        initialValue = 0f, targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(3000, delayMillis = 2000, easing = LinearEasing), RepeatMode.Restart),
+        label = "ring2"
+    )
+
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(bottom = 32.dp)
     ) {
-        // Hero — left-aligned like web
+        // ── Animated Sonar Hero ──
         item {
-            Column(
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
-                    .padding(top = 24.dp, bottom = 16.dp)
+                    .height(330.dp)
+                    .drawBehind {
+                        val cx = size.width / 2
+                        val cy = size.height * 0.35f
+                        val maxR = size.minDimension * 0.44f
+
+                        // Grid rings — bold
+                        for (i in 1..5) {
+                            drawCircle(
+                                color = WTeal.copy(alpha = 0.12f - i * 0.015f),
+                                radius = maxR * i / 5f,
+                                center = Offset(cx, cy),
+                                style = Stroke(1f)
+                            )
+                        }
+
+                        // Crosshair
+                        val crossLen = maxR * 1.1f
+                        drawLine(WTeal.copy(alpha = 0.12f), Offset(cx - crossLen, cy), Offset(cx + crossLen, cy), 0.8f)
+                        drawLine(WTeal.copy(alpha = 0.12f), Offset(cx, cy - crossLen), Offset(cx, cy + crossLen), 0.8f)
+
+                        // Hexagonal overlay frame
+                        val hexR = maxR * 0.85f
+                        val hexRotRad = Math.toRadians(radarSweep.toDouble() * 0.3)
+                        for (hi in 0 until 6) {
+                            val a1 = 2 * PI * hi / 6 + hexRotRad
+                            val a2 = 2 * PI * (hi + 1) / 6 + hexRotRad
+                            drawLine(
+                                color = WTeal.copy(alpha = 0.08f),
+                                start = Offset(cx + hexR * cos(a1).toFloat(), cy + hexR * sin(a1).toFloat()),
+                                end = Offset(cx + hexR * cos(a2).toFloat(), cy + hexR * sin(a2).toFloat()),
+                                strokeWidth = 1f
+                            )
+                        }
+
+                        // Expanding pulse rings — bold & visible
+                        listOf(pulseRing0, pulseRing1, pulseRing2).forEach { phase ->
+                            val ringR = maxR * 0.12f + maxR * 0.95f * phase
+                            val ringAlpha = (1f - phase) * 0.40f
+                            val ringWidth = 3f + (1f - phase) * 3.5f
+                            drawCircle(
+                                color = WTeal.copy(alpha = ringAlpha),
+                                radius = ringR,
+                                center = Offset(cx, cy),
+                                style = Stroke(width = ringWidth)
+                            )
+                        }
+
+                        // Radar sweep line — bright
+                        val sweepRad = Math.toRadians(radarSweep.toDouble())
+                        val sweepX = cx + maxR * cos(sweepRad).toFloat()
+                        val sweepY = cy + maxR * sin(sweepRad).toFloat()
+                        drawLine(
+                            brush = Brush.linearGradient(
+                                listOf(WTeal.copy(alpha = 0.85f), WCyan.copy(alpha = 0.3f), WTeal.copy(alpha = 0f)),
+                                start = Offset(cx, cy),
+                                end = Offset(sweepX, sweepY)
+                            ),
+                            start = Offset(cx, cy),
+                            end = Offset(sweepX, sweepY),
+                            strokeWidth = 3f,
+                            cap = StrokeCap.Round
+                        )
+
+                        // Trailing sweep arc — wider
+                        drawArc(
+                            brush = Brush.sweepGradient(
+                                0f to Color.Transparent,
+                                0.70f to Color.Transparent,
+                                0.88f to WTeal.copy(alpha = 0.22f),
+                                1f to WTeal.copy(alpha = 0.05f)
+                            ),
+                            startAngle = radarSweep - 60f,
+                            sweepAngle = 60f,
+                            useCenter = true,
+                            topLeft = Offset(cx - maxR, cy - maxR),
+                            size = androidx.compose.ui.geometry.Size(maxR * 2, maxR * 2)
+                        )
+
+                        // Signal blips that flare when sweep passes
+                        val blips = listOf(
+                            Triple(-0.4f, -0.3f, 0.7f),
+                            Triple(0.6f, -0.15f, 0.55f),
+                            Triple(0.2f, 0.5f, 0.65f),
+                            Triple(-0.55f, 0.35f, 0.5f),
+                            Triple(0.45f, 0.25f, 0.6f),
+                            Triple(-0.2f, 0.6f, 0.45f),
+                        )
+                        blips.forEach { (xf, yf, brightness) ->
+                            val bx = cx + maxR * xf
+                            val by = cy + maxR * yf
+                            val blipAngle = Math.toDegrees(
+                                kotlin.math.atan2((by - cy).toDouble(), (bx - cx).toDouble())
+                            ).let { if (it < 0) it + 360 else it }
+                            val angleDiff = ((radarSweep - blipAngle + 360) % 360)
+                            val blipAlpha = if (angleDiff in 0.0..90.0) {
+                                (1f - angleDiff.toFloat() / 90f) * brightness
+                            } else 0.06f
+
+                            // Glow halo
+                            drawCircle(WTeal.copy(alpha = blipAlpha * 0.55f), 20f, Offset(bx, by))
+                            // Core dot
+                            drawCircle(WTeal.copy(alpha = blipAlpha), 6f, Offset(bx, by))
+                        }
+
+                        // Center glow — intense
+                        drawCircle(
+                            brush = Brush.radialGradient(
+                                colors = listOf(
+                                    WTeal.copy(alpha = glowPulse * 0.50f),
+                                    WCyan.copy(alpha = glowPulse * 0.18f),
+                                    Color.Transparent
+                                ),
+                                center = Offset(cx, cy),
+                                radius = maxR * 0.55f
+                            ),
+                            radius = maxR * 0.55f,
+                            center = Offset(cx, cy)
+                        )
+                        // Inner accent ring
+                        drawCircle(
+                            color = WTeal.copy(alpha = glowPulse * 0.30f),
+                            radius = maxR * 0.18f,
+                            center = Offset(cx, cy),
+                            style = Stroke(1.5f)
+                        )
+                        // Center bright dot
+                        drawCircle(WTeal.copy(alpha = 0.85f + glowPulse * 0.15f), 9f, Offset(cx, cy))
+                    }
             ) {
-                Text(
-                    text = stringResource(R.string.ai_scout_hero_title),
-                    style = boldTextStyle(WText, 26.sp),
-                    letterSpacing = (-0.3).sp
-                )
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    text = stringResource(R.string.ai_scout_hero_subtitle),
-                    style = regularTextStyle(WMuted, 14.sp),
-                    lineHeight = 20.sp
-                )
+                // Title overlaid below the radar
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 24.dp)
+                        .padding(top = 240.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = stringResource(R.string.ai_scout_hero_title),
+                        style = boldTextStyle(WText, 32.sp).copy(fontFamily = SyneFamily),
+                        letterSpacing = (-0.7).sp
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        text = stringResource(R.string.ai_scout_hero_subtitle),
+                        style = regularTextStyle(WMuted, 15.sp),
+                        textAlign = TextAlign.Center,
+                        lineHeight = 22.sp
+                    )
+                }
             }
         }
 
-        // Unified search card — textarea + examples + search button (like web)
+        item { Spacer(Modifier.height(12.dp)) }
+
+        // ── Premium Search Card ──
         item {
             SearchInputBox(state = state, viewModel = viewModel)
         }
@@ -1041,7 +1634,7 @@ private fun AiScoutEmptyState(state: AiScoutUiState, viewModel: IAiScoutViewMode
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-//  SEARCH INPUT BOX
+//  SEARCH INPUT BOX — Premium Glass Terminal
 // ═══════════════════════════════════════════════════════════════════════════════
 
 private fun appendToQuery(current: String, addition: String): String {
@@ -1058,6 +1651,28 @@ private fun SearchInputBox(state: AiScoutUiState, viewModel: IAiScoutViewModel) 
     var isRecording by remember { mutableStateOf(false) }
     var recordingDuration by remember { mutableStateOf(0) }
     val speechRecognizer = remember { VoiceNoteRecorder.createSpeechRecognizer(context) }
+
+    val infiniteTransition = rememberInfiniteTransition(label = "search_glow")
+    val borderPhase by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(3000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "border_phase"
+    )
+    val glowAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.2f,
+        targetValue = 0.5f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2000, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "glow"
+    )
+
+    val hasText = state.query.isNotBlank()
 
     LaunchedEffect(isRecording) {
         if (!isRecording) return@LaunchedEffect
@@ -1134,26 +1749,66 @@ private fun SearchInputBox(state: AiScoutUiState, viewModel: IAiScoutViewModel) 
         }
     }
 
+    // Shimmer sweep for the search button
+    val shimmerPhase by infiniteTransition.animateFloat(
+        initialValue = -0.3f,
+        targetValue = 1.3f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2500, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "shimmer_sweep"
+    )
+
     Column(
         modifier = Modifier
             .padding(horizontal = 16.dp)
             .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
-            .background(WCard)
-            .border(1.dp, WBorder, RoundedCornerShape(20.dp))
-            .padding(16.dp)
+            .clip(RoundedCornerShape(24.dp))
+            .background(WCard.copy(alpha = 0.80f))
+            .border(
+                1.dp,
+                if (hasText) Brush.sweepGradient(
+                    0f to WTeal.copy(alpha = 0.35f),
+                    borderPhase to WCyan.copy(alpha = 0.45f),
+                    1f to WTeal.copy(alpha = 0.35f)
+                ) else Brush.linearGradient(
+                    listOf(WBorder.copy(alpha = 0.3f), WBorder.copy(alpha = 0.15f))
+                ),
+                RoundedCornerShape(24.dp)
+            )
+            .then(
+                if (hasText) Modifier.drawBehind {
+                    drawRoundRect(
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                WTeal.copy(alpha = glowAlpha * 0.08f),
+                                Color.Transparent
+                            ),
+                            center = Offset(size.width / 2, size.height / 2),
+                            radius = size.maxDimension
+                        ),
+                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(24.dp.toPx())
+                    )
+                } else Modifier
+            )
+            .padding(20.dp)
     ) {
-        // Textarea — multi-line input like web
+        // Text area with larger height
         BasicTextField(
             value = state.query,
             onValueChange = { viewModel.updateQuery(it) },
             modifier = Modifier
                 .fillMaxWidth()
-                .height(100.dp)
-                .clip(RoundedCornerShape(14.dp))
-                .background(WDark.copy(alpha = 0.6f))
-                .border(1.dp, WBorder, RoundedCornerShape(14.dp))
-                .padding(14.dp),
+                .height(150.dp)
+                .clip(RoundedCornerShape(18.dp))
+                .background(WDark.copy(alpha = 0.65f))
+                .border(
+                    1.dp,
+                    if (hasText) WTeal.copy(alpha = 0.30f) else WBorder.copy(alpha = 0.25f),
+                    RoundedCornerShape(18.dp)
+                )
+                .padding(18.dp),
             textStyle = regularTextStyle(WText, 15.sp),
             decorationBox = { innerTextField ->
                 Row(modifier = Modifier.fillMaxSize(), verticalAlignment = Alignment.Top) {
@@ -1161,20 +1816,38 @@ private fun SearchInputBox(state: AiScoutUiState, viewModel: IAiScoutViewModel) 
                         if (state.query.isEmpty()) {
                             Text(
                                 text = stringResource(R.string.ai_scout_search_hint),
-                                style = regularTextStyle(WMuted.copy(alpha = 0.5f), 14.sp)
+                                style = regularTextStyle(WMuted.copy(alpha = 0.45f), 14.sp)
                             )
                         }
                         innerTextField()
                     }
                     if (!isRecording) {
-                        IconButton(
-                            onClick = { onRecordClick() },
-                            modifier = Modifier.size(36.dp)
+                        // Mic button — larger with animated glow ring
+                        Box(
+                            modifier = Modifier
+                                .size(44.dp)
+                                .drawBehind {
+                                    // Pulsing outer ring
+                                    drawCircle(
+                                        color = WTeal.copy(alpha = glowAlpha * 0.15f),
+                                        radius = size.minDimension / 2 + 6.dp.toPx()
+                                    )
+                                    // Static accent ring
+                                    drawCircle(
+                                        color = WTeal.copy(alpha = 0.15f),
+                                        radius = size.minDimension / 2,
+                                        style = Stroke(1.dp.toPx())
+                                    )
+                                }
+                                .clip(CircleShape)
+                                .background(WTeal.copy(alpha = 0.10f))
+                                .clickable { onRecordClick() },
+                            contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 Icons.Default.Mic,
                                 contentDescription = stringResource(R.string.ai_scout_voice_hint),
-                                tint = WMuted.copy(alpha = 0.5f),
+                                tint = WTeal.copy(alpha = 0.7f),
                                 modifier = Modifier.size(20.dp)
                             )
                         }
@@ -1192,56 +1865,87 @@ private fun SearchInputBox(state: AiScoutUiState, viewModel: IAiScoutViewModel) 
             )
         }
 
-        Spacer(Modifier.height(14.dp))
+        Spacer(Modifier.height(16.dp))
 
-        // Example chips + Search button row (like web: chips on left, button on right)
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            // Example chips — wrapping horizontally like web
+        // Example chips + Search button
+        Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
             ExampleChipsInlineSection(viewModel = viewModel)
 
-            // Bottom row: char count on left, search button on right
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "${state.query.length}/500",
-                    style = regularTextStyle(WMuted.copy(alpha = 0.4f), 11.sp)
-                )
+            // Character counter
+            Text(
+                text = "${state.query.length}/500",
+                style = regularTextStyle(WMuted.copy(alpha = 0.35f), 11.sp)
+            )
 
-                Row(
-                    modifier = Modifier
-                        .height(42.dp)
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(
-                            if (!state.isLoading && state.query.isNotBlank()) WTeal
-                            else WTeal.copy(alpha = 0.35f)
-                        )
-                        .clickable(enabled = !state.isLoading && state.query.isNotBlank()) {
-                            viewModel.search()
-                        }
-                        .padding(horizontal = 22.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
+            Spacer(Modifier.height(14.dp))
+
+            // Full-width Search CTA
+            val isEnabled = !state.isLoading && state.query.isNotBlank()
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp)
+                    .then(
+                        if (isEnabled) Modifier.drawBehind {
+                            // Glow shadow
+                            drawRoundRect(
+                                brush = Brush.horizontalGradient(
+                                    listOf(WTeal.copy(alpha = 0.30f), WCyan.copy(alpha = 0.18f))
+                                ),
+                                cornerRadius = androidx.compose.ui.geometry.CornerRadius(16.dp.toPx()),
+                                size = size.copy(height = size.height + 12.dp.toPx()),
+                                topLeft = Offset(0f, 6.dp.toPx()),
+                                alpha = glowAlpha
+                            )
+                            // Shimmer sweep
+                            val shimmerCenter = shimmerPhase * size.width
+                            val shimmerW = size.width * 0.25f
+                            drawRoundRect(
+                                brush = Brush.horizontalGradient(
+                                    colors = listOf(
+                                        Color.Transparent,
+                                        Color.White.copy(alpha = 0.14f),
+                                        Color.Transparent
+                                    ),
+                                    startX = shimmerCenter - shimmerW,
+                                    endX = shimmerCenter + shimmerW
+                                ),
+                                cornerRadius = androidx.compose.ui.geometry.CornerRadius(16.dp.toPx())
+                            )
+                        } else Modifier
+                    )
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(
+                        if (isEnabled)
+                            Brush.linearGradient(listOf(WTeal, WCyan.copy(alpha = 0.85f), WTeal))
+                        else
+                            Brush.linearGradient(listOf(WTeal.copy(alpha = 0.20f), WTeal.copy(alpha = 0.10f)))
+                    )
+                    .clickable(enabled = isEnabled) {
+                        viewModel.search()
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
                     if (state.isLoading) {
                         CircularProgressIndicator(
-                            modifier = Modifier.size(16.dp),
+                            modifier = Modifier.size(22.dp),
                             color = WDark,
-                            strokeWidth = 2.dp
+                            strokeWidth = 2.5.dp
                         )
                     } else {
                         Icon(
                             imageVector = Icons.Default.Search,
                             contentDescription = null,
                             tint = WDark,
-                            modifier = Modifier.size(16.dp)
+                            modifier = Modifier.size(22.dp)
                         )
                     }
-                    Spacer(Modifier.width(8.dp))
+                    Spacer(Modifier.width(10.dp))
                     Text(
                         text = stringResource(R.string.ai_scout_search_button),
-                        style = boldTextStyle(WDark, 14.sp)
+                        style = boldTextStyle(WDark, 16.sp),
+                        letterSpacing = 0.5.sp
                     )
                 }
             }
@@ -1315,10 +2019,9 @@ private fun ScoutRecordingContent(
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-//  EXAMPLE CHIPS (inline — wrapping, inside the search card like web)
+//  EXAMPLE CHIPS — Horizontal scrollable cards
 // ═══════════════════════════════════════════════════════════════════════════════
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun ExampleChipsInlineSection(viewModel: IAiScoutViewModel) {
     val allExamples = listOf(
@@ -1335,33 +2038,44 @@ private fun ExampleChipsInlineSection(viewModel: IAiScoutViewModel) {
         "🔄" to R.string.ai_scout_example_11,
         "🛡️" to R.string.ai_scout_example_12
     )
-    val selectedExamples = remember { allExamples.shuffled().take(4) }
+    val selectedExamples = remember { allExamples.shuffled().take(5) }
 
-    FlowRow(
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        selectedExamples.forEach { (emoji, resId) ->
-            val text = stringResource(resId)
             Row(
                 modifier = Modifier
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(WDark.copy(alpha = 0.5f))
-                    .border(1.dp, WBorder, RoundedCornerShape(10.dp))
-                    .clickable { viewModel.useExample(text) }
-                    .padding(horizontal = 12.dp, vertical = 7.dp),
-                verticalAlignment = Alignment.CenterVertically
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                Text(emoji, fontSize = 12.sp)
-                Spacer(Modifier.width(4.dp))
-                Text(
-                    text,
-                    style = regularTextStyle(WMuted, 12.sp),
-                    maxLines = 1
-                )
+                selectedExamples.forEach { (emoji, resId) ->
+                    val text = stringResource(resId)
+                    Row(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(
+                                Brush.linearGradient(
+                                    listOf(WCard.copy(alpha = 0.7f), WDark.copy(alpha = 0.5f))
+                                )
+                            )
+                            .border(
+                                1.dp,
+                                Brush.linearGradient(
+                                    listOf(WTeal.copy(alpha = 0.20f), WBorder.copy(alpha = 0.12f))
+                                ),
+                                RoundedCornerShape(16.dp)
+                            )
+                            .clickable { viewModel.useExample(text) }
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(emoji, fontSize = 16.sp)
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            text,
+                            style = regularTextStyle(WText.copy(alpha = 0.7f), 13.sp),
+                            maxLines = 1
+                        )
+                    }
+                }
             }
-        }
-    }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -2009,8 +2723,10 @@ private fun PlayerResultCard(
                                             marketValue = player.marketValue,
                                             playerImage = player.imageUrl
                                         )) {
-                                            is ShortlistRepository.AddToShortlistResult.Added ->
+                                            is ShortlistRepository.AddToShortlistResult.Added -> {
                                                 onJustAdded(tmUrl)
+                                                ToastManager.showSuccess(context.getString(R.string.shortlist_player_added_toast, player.name))
+                                            }
                                             is ShortlistRepository.AddToShortlistResult.AlreadyInShortlist ->
                                                 ToastManager.showInfo(context.getString(R.string.add_player_already_in_shortlist))
                                             is ShortlistRepository.AddToShortlistResult.AlreadyInRoster ->
