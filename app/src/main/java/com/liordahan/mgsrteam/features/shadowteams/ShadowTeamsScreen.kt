@@ -176,7 +176,7 @@ fun ShadowTeamsScreen(
                 contentPadding = PaddingValues(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                items(state.accounts) { account ->
+                items(state.accounts, key = { it.id ?: it.hashCode() }) { account ->
                     val isSelected = account.id == state.selectedAccountId
                     val isYou = account.id == state.currentAccountId
                     val displayName = if (isHebrew) {
@@ -274,7 +274,7 @@ fun ShadowTeamsScreen(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        items(FORMATIONS) { formation ->
+                        items(FORMATIONS, key = { it }) { formation ->
                             val isSelected = formation == state.formationId
                             Box(
                                 modifier = Modifier

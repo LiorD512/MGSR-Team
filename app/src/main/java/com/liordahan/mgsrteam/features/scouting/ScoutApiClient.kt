@@ -33,6 +33,7 @@ class ScoutApiClient(private val baseUrl: String = DEFAULT_BASE_URL) {
         .connectionPool(ConnectionPool(5, 1, TimeUnit.MINUTES))
         .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(60, TimeUnit.SECONDS)
+        .addInterceptor(com.liordahan.mgsrteam.utils.ResponseSizeLimitInterceptor())
         .build()
 
     // ── Similar players (for PlayerInfo screen) ──

@@ -2573,7 +2573,7 @@ private fun Step1ClubContentAdd(
                             .padding(vertical = 8.dp),
                         verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        items(clubSearchResults) { clubItem ->
+                        items(clubSearchResults, key = { it.clubTmProfile ?: it.hashCode() }) { clubItem ->
                             ClubSearchResultRow(
                                 club = clubItem,
                                 onClick = { onSelectClub(clubItem) }
@@ -2680,7 +2680,7 @@ private fun Step1ClubContent(
                     .padding(vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                items(clubSearchResults) { clubItem ->
+                items(clubSearchResults, key = { it.clubTmProfile ?: it.hashCode() }) { clubItem ->
                     ClubSearchResultRow(
                         club = clubItem,
                         onClick = { onSelectClub(clubItem) }

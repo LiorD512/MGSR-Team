@@ -53,6 +53,7 @@ class HighlightsApiClient(
         .connectTimeout(20, TimeUnit.SECONDS)
         .readTimeout(60, TimeUnit.SECONDS)
         .writeTimeout(30, TimeUnit.SECONDS)
+        .addInterceptor(com.liordahan.mgsrteam.utils.ResponseSizeLimitInterceptor())
         .build()
 
     suspend fun searchHighlights(

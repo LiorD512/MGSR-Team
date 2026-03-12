@@ -2,6 +2,7 @@ package com.liordahan.mgsrteam.ui.components
 
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -12,6 +13,7 @@ import kotlinx.coroutines.launch
 object ToastManager {
 
     private val scope = CoroutineScope(Dispatchers.Main.immediate + SupervisorJob())
+    private var dismissJob: Job? = null
 
     private val _toastFlow = MutableStateFlow<ToastMessage?>(null)
     val toastFlow: StateFlow<ToastMessage?> = _toastFlow.asStateFlow()
@@ -24,8 +26,9 @@ object ToastManager {
             else -> 3000L
         }
     ) {
-        scope.launch {
-            _toastFlow.value = ToastMessage(message = message, type = type, durationMs = durationMs)
+        dismissJob?.cancel()
+        _toastFlow.value = ToastMessage(message = message, type = type, durationMs = durationMs)
+        dismissJob = scope.launch {
             delay(durationMs)
             _toastFlow.value = null
         }

@@ -137,6 +137,7 @@ class HomeScreenViewModel(
     override val dashboardState: StateFlow<HomeDashboardState> = _state
 
     /** Must be declared before init{} so the JVM field is initialised before any coroutine reads it. */
+    @Volatile
     private var _currentPlayers: List<Player> = emptyList()
 
     private val listenerRegistrations = mutableListOf<ListenerRegistration>()

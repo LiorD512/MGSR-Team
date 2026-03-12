@@ -219,7 +219,7 @@ fun AddPlayerTaskBottomSheet(
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier.height(140.dp)
                 ) {
-                    items(PLAYER_TASK_TEMPLATES) { template ->
+                    items(PLAYER_TASK_TEMPLATES, key = { it.id }) { template ->
                         val selected = selectedTemplate?.id == template.id
                         val bgColor by animateColorAsState(
                             if (selected) HomeTealAccent.copy(alpha = 0.2f) else HomeDarkBackground,

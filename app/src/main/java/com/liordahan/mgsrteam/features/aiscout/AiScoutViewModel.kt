@@ -4,11 +4,13 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.liordahan.mgsrteam.localization.LocaleManager
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeout
 
 // ── UI State ────────────────────────────────────────────────────────────────
 
@@ -90,37 +92,45 @@ class AiScoutViewModel(
         }
 
         viewModelScope.launch {
-            val request = AiScoutSearchRequest(
-                query = currentQuery,
-                lang = lang,
-                initial = true
-            )
+            try {
+                withTimeout(30_000L) {
+                    val request = AiScoutSearchRequest(
+                        query = currentQuery,
+                        lang = lang,
+                        initial = true
+                    )
 
-            apiClient.searchPlayers(request)
-                .onSuccess { response ->
-                    Log.d(TAG, "Search returned ${response.results.size} results")
-                    _uiState.update {
-                        it.copy(
-                            isLoading = false,
-                            results = response.results,
-                            interpretation = response.interpretation,
-                            leagueInfo = response.leagueInfo,
-                            hasMore = response.hasMore,
-                            requestedTotal = response.requestedTotal,
-                            searchMethod = response.searchMethod,
-                            excludeUrls = response.results.map { r -> r.transfermarktUrl }
-                        )
-                    }
+                    apiClient.searchPlayers(request)
+                        .onSuccess { response ->
+                            Log.d(TAG, "Search returned ${response.results.size} results")
+                            _uiState.update {
+                                it.copy(
+                                    isLoading = false,
+                                    results = response.results,
+                                    interpretation = response.interpretation,
+                                    leagueInfo = response.leagueInfo,
+                                    hasMore = response.hasMore,
+                                    requestedTotal = response.requestedTotal,
+                                    searchMethod = response.searchMethod,
+                                    excludeUrls = response.results.map { r -> r.transfermarktUrl }
+                                )
+                            }
+                        }
+                        .onFailure { e ->
+                            Log.e(TAG, "Search failed", e)
+                            _uiState.update {
+                                it.copy(
+                                    isLoading = false,
+                                    errorMessage = e.message ?: "Search failed"
+                                )
+                            }
+                        }
                 }
-                .onFailure { e ->
-                    Log.e(TAG, "Search failed", e)
-                    _uiState.update {
-                        it.copy(
-                            isLoading = false,
-                            errorMessage = e.message ?: "Search failed"
-                        )
-                    }
+            } catch (e: TimeoutCancellationException) {
+                _uiState.update {
+                    it.copy(isLoading = false, errorMessage = "Search timed out. Please try again.")
                 }
+            }
         }
     }
 
@@ -131,34 +141,42 @@ class AiScoutViewModel(
         _uiState.update { it.copy(isLoading = true, errorMessage = null) }
 
         viewModelScope.launch {
-            val request = AiScoutSearchRequest(
-                query = currentState.query.trim(),
-                lang = lang,
-                initial = false,
-                excludeUrls = currentState.excludeUrls
-            )
+            try {
+                withTimeout(30_000L) {
+                    val request = AiScoutSearchRequest(
+                        query = currentState.query.trim(),
+                        lang = lang,
+                        initial = false,
+                        excludeUrls = currentState.excludeUrls
+                    )
 
-            apiClient.searchPlayers(request)
-                .onSuccess { response ->
-                    _uiState.update {
-                        it.copy(
-                            isLoading = false,
-                            results = it.results + response.results,
-                            hasMore = response.hasMore,
-                            requestedTotal = response.requestedTotal,
-                            excludeUrls = it.excludeUrls + response.results.map { r -> r.transfermarktUrl }
-                        )
-                    }
+                    apiClient.searchPlayers(request)
+                        .onSuccess { response ->
+                            _uiState.update {
+                                it.copy(
+                                    isLoading = false,
+                                    results = it.results + response.results,
+                                    hasMore = response.hasMore,
+                                    requestedTotal = response.requestedTotal,
+                                    excludeUrls = it.excludeUrls + response.results.map { r -> r.transfermarktUrl }
+                                )
+                            }
+                        }
+                        .onFailure { e ->
+                            Log.e(TAG, "Load more failed", e)
+                            _uiState.update {
+                                it.copy(
+                                    isLoading = false,
+                                    errorMessage = e.message ?: "Failed to load more"
+                                )
+                            }
+                        }
                 }
-                .onFailure { e ->
-                    Log.e(TAG, "Load more failed", e)
-                    _uiState.update {
-                        it.copy(
-                            isLoading = false,
-                            errorMessage = e.message ?: "Failed to load more"
-                        )
-                    }
+            } catch (e: TimeoutCancellationException) {
+                _uiState.update {
+                    it.copy(isLoading = false, errorMessage = "Request timed out. Please try again.")
                 }
+            }
         }
     }
 
@@ -192,33 +210,41 @@ class AiScoutViewModel(
         }
 
         viewModelScope.launch {
-            val request = FindNextRequest(
-                playerName = name,
-                ageMax = _findNextState.value.ageMax,
-                valueMax = _findNextState.value.valueMax,
-                lang = lang
-            )
+            try {
+                withTimeout(30_000L) {
+                    val request = FindNextRequest(
+                        playerName = name,
+                        ageMax = _findNextState.value.ageMax,
+                        valueMax = _findNextState.value.valueMax,
+                        lang = lang
+                    )
 
-            apiClient.findNext(request)
-                .onSuccess { response ->
-                    Log.d(TAG, "Find Next returned ${response.results.size} results")
-                    _findNextState.update {
-                        it.copy(
-                            isSearching = false,
-                            response = response,
-                            errorMessage = response.error
-                        )
-                    }
+                    apiClient.findNext(request)
+                        .onSuccess { response ->
+                            Log.d(TAG, "Find Next returned ${response.results.size} results")
+                            _findNextState.update {
+                                it.copy(
+                                    isSearching = false,
+                                    response = response,
+                                    errorMessage = response.error
+                                )
+                            }
+                        }
+                        .onFailure { e ->
+                            Log.e(TAG, "Find Next failed", e)
+                            _findNextState.update {
+                                it.copy(
+                                    isSearching = false,
+                                    errorMessage = e.message ?: "Find Next failed"
+                                )
+                            }
+                        }
                 }
-                .onFailure { e ->
-                    Log.e(TAG, "Find Next failed", e)
-                    _findNextState.update {
-                        it.copy(
-                            isSearching = false,
-                            errorMessage = e.message ?: "Find Next failed"
-                        )
-                    }
+            } catch (e: TimeoutCancellationException) {
+                _findNextState.update {
+                    it.copy(isSearching = false, errorMessage = "Search timed out. Please try again.")
                 }
+            }
         }
     }
 }

@@ -823,7 +823,7 @@ private fun DiscoveryFilters(selected: String, onSelect: (String) -> Unit) {
             "request_match" to R.string.war_room_filter_requests,
             "hidden_gem" to R.string.war_room_filter_gems
         )
-        items(filters) { (key, labelRes) ->
+        items(filters, key = { it.first }) { (key, labelRes) ->
             val isActive = selected == key
             val (accentColor, bgColor) = when (key) {
                 "request_match" -> WrMatch to WrMatchBg
@@ -1794,7 +1794,7 @@ private fun AgentFilterCarousel(
             )
         }
 
-        items(agents) { (agentId, agentName) ->
+        items(agents, key = { it.first }) { (agentId, agentName) ->
             val displayName = agentDisplayNames[agentId to agentName] ?: agentName
             AgentAvatar(
                 name = displayName,

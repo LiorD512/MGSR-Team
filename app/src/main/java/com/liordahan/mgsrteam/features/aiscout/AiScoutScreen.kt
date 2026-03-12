@@ -470,15 +470,6 @@ private fun FindNextTabContent(state: FindNextUiState, viewModel: IAiScoutViewMo
     val coroutineScope = rememberCoroutineScope()
 
     val infiniteTransition = rememberInfiniteTransition(label = "find_next_bg")
-    val bgPhase by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(4000, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "bg_phase"
-    )
     val orbPulse by infiniteTransition.animateFloat(
         initialValue = 0.4f,
         targetValue = 1f,
@@ -493,173 +484,27 @@ private fun FindNextTabContent(state: FindNextUiState, viewModel: IAiScoutViewMo
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(bottom = 32.dp)
     ) {
-        // ── Neural Match Hero ──
+        // ── Header ──
         item {
-            Box(
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(280.dp)
-                    .drawBehind {
-                        val cx = size.width / 2
-                        val cy = size.height * 0.36f
-
-                        // Ambient gradient mesh — vivid
-                        drawCircle(
-                            brush = Brush.radialGradient(
-                                colors = listOf(
-                                    WPurple.copy(alpha = orbPulse * 0.22f),
-                                    WIndigo.copy(alpha = orbPulse * 0.10f),
-                                    Color.Transparent
-                                ),
-                                center = Offset(cx, cy),
-                                radius = size.maxDimension * 0.55f
-                            ),
-                            radius = size.maxDimension * 0.55f,
-                            center = Offset(cx, cy)
-                        )
-
-                        // Outer ring accents
-                        for (ring in 1..3) {
-                            drawCircle(
-                                color = WPurple.copy(alpha = 0.06f + orbPulse * 0.04f),
-                                radius = size.minDimension * 0.15f * ring,
-                                center = Offset(cx, cy),
-                                style = Stroke(0.8f)
-                            )
-                        }
-
-                        // Orbiting constellation nodes — larger
-                        val orbitR = size.minDimension * 0.36f
-                        val nodeCount = 8
-                        for (i in 0 until nodeCount) {
-                            val angle = (2 * PI * i / nodeCount + bgPhase * 2 * PI).toFloat()
-                            // Slight elliptical distortion for depth
-                            val nx = cx + orbitR * cos(angle) * (1f + 0.15f * sin(angle * 2))
-                            val ny = cy + orbitR * sin(angle) * 0.55f
-                            val nodeAlpha = 0.22f + orbPulse * 0.28f * if (i % 2 == 0) 1f else 0.7f
-
-                            // Connection line to center with gradient fade
-                            drawLine(
-                                brush = Brush.linearGradient(
-                                    listOf(
-                                        WPurple.copy(alpha = nodeAlpha * 0.8f),
-                                        WPurple.copy(alpha = 0.02f)
-                                    ),
-                                    start = Offset(cx, cy),
-                                    end = Offset(nx, ny)
-                                ),
-                                start = Offset(cx, cy),
-                                end = Offset(nx, ny),
-                                strokeWidth = 2f
-                            )
-
-                            // Connections between adjacent nodes
-                            if (i > 0) {
-                                val prevAngle = (2 * PI * (i - 1) / nodeCount + bgPhase * 2 * PI).toFloat()
-                                val px = cx + orbitR * cos(prevAngle) * (1f + 0.15f * sin(prevAngle * 2))
-                                val py = cy + orbitR * sin(prevAngle) * 0.55f
-                                drawLine(
-                                    color = WPurple.copy(alpha = nodeAlpha * 0.15f),
-                                    start = Offset(px, py),
-                                    end = Offset(nx, ny),
-                                    strokeWidth = 0.5f
-                                )
-                            }
-
-                            // Node glow halo
-                            drawCircle(WPurple.copy(alpha = nodeAlpha * 0.50f), 22f, Offset(nx, ny))
-                            // Node core
-                            drawCircle(WPurple.copy(alpha = nodeAlpha * 0.95f), 6f, Offset(nx, ny))
-                        }
-
-                        // Central pulsing orb — intense
-                        drawCircle(
-                            brush = Brush.radialGradient(
-                                listOf(
-                                    WPurple.copy(alpha = orbPulse * 0.55f),
-                                    WIndigo.copy(alpha = orbPulse * 0.22f),
-                                    Color.Transparent
-                                ),
-                                center = Offset(cx, cy),
-                                radius = orbitR * 0.6f
-                            ),
-                            radius = orbitR * 0.6f,
-                            center = Offset(cx, cy)
-                        )
-                        // Inner ring accent
-                        drawCircle(
-                            color = WPurple.copy(alpha = orbPulse * 0.35f),
-                            radius = orbitR * 0.20f,
-                            center = Offset(cx, cy),
-                            style = Stroke(1.5f)
-                        )
-                        drawCircle(
-                            color = WPurple.copy(alpha = 0.7f + orbPulse * 0.3f),
-                            radius = 7f,
-                            center = Offset(cx, cy)
-                        )
-                    }
+                    .padding(horizontal = 24.dp)
+                    .padding(top = 28.dp, bottom = 8.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 28.dp),
-                    verticalArrangement = Arrangement.Center,
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    // Icon with double glow rings
-                    Box(
-                        modifier = Modifier
-                            .size(80.dp)
-                            .drawBehind {
-                                drawCircle(
-                                    color = WPurple.copy(alpha = orbPulse * 0.30f),
-                                    radius = size.minDimension / 2 + 14.dp.toPx()
-                                )
-                                drawCircle(
-                                    color = WPurple.copy(alpha = orbPulse * 0.12f),
-                                    radius = size.minDimension / 2 + 28.dp.toPx()
-                                )
-                            }
-                            .clip(RoundedCornerShape(24.dp))
-                            .background(
-                                Brush.linearGradient(
-                                    listOf(
-                                        WPurple.copy(alpha = 0.28f),
-                                        WIndigo.copy(alpha = 0.14f)
-                                    )
-                                )
-                            )
-                            .border(
-                                1.5.dp,
-                                Brush.linearGradient(
-                                    listOf(
-                                        WPurple.copy(alpha = 0.45f),
-                                        WIndigo.copy(alpha = 0.25f)
-                                    )
-                                ),
-                                RoundedCornerShape(24.dp)
-                            ),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text("🧠", fontSize = 36.sp)
-                    }
-
-                    Spacer(Modifier.height(18.dp))
-
-                    Text(
-                        text = stringResource(R.string.ai_scout_find_next_hero_title),
-                        style = boldTextStyle(WText, 30.sp).copy(fontFamily = SyneFamily),
-                        letterSpacing = (-0.5).sp
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    Text(
-                        text = stringResource(R.string.ai_scout_find_next_hero_subtitle),
-                        style = regularTextStyle(WMuted, 15.sp),
-                        textAlign = TextAlign.Center,
-                        lineHeight = 22.sp
-                    )
-                }
+                Text(
+                    text = stringResource(R.string.ai_scout_find_next_hero_title),
+                    style = boldTextStyle(WText, 28.sp).copy(fontFamily = SyneFamily),
+                    letterSpacing = (-0.5).sp
+                )
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    text = stringResource(R.string.ai_scout_find_next_hero_subtitle),
+                    style = regularTextStyle(WMuted, 14.sp),
+                    textAlign = TextAlign.Center,
+                    lineHeight = 20.sp
+                )
             }
         }
 
@@ -760,7 +605,7 @@ private fun FindNextTabContent(state: FindNextUiState, viewModel: IAiScoutViewMo
                 LazyRow(
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    items(FIND_NEXT_EXAMPLE_PLAYERS) { name ->
+                    items(FIND_NEXT_EXAMPLE_PLAYERS, key = { it }) { name ->
                         val isSelected = state.playerName == name
                         Box(
                             modifier = Modifier
@@ -975,6 +820,13 @@ private fun FindNextTabContent(state: FindNextUiState, viewModel: IAiScoutViewMo
                         )
                     }
                 }
+            }
+        }
+
+        // ── Neural searching animation ──
+        if (state.isSearching) {
+            item {
+                ScoutSonarSearchingAnimation(color = WPurple, accentColor = WIndigo)
             }
         }
 
@@ -1414,202 +1266,31 @@ private fun AiScoutTopBar(onBack: () -> Unit) {
 
 @Composable
 private fun AiScoutEmptyState(state: AiScoutUiState, viewModel: IAiScoutViewModel) {
-    val infiniteTransition = rememberInfiniteTransition(label = "scout_radar")
-    val radarSweep by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 360f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(4000, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "radar_sweep"
-    )
-    val glowPulse by infiniteTransition.animateFloat(
-        initialValue = 0.3f,
-        targetValue = 0.8f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(2000, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "glow_pulse"
-    )
-    // Staggered pulse rings (3 phases)
-    val pulseRing0 by infiniteTransition.animateFloat(
-        initialValue = 0f, targetValue = 1f,
-        animationSpec = infiniteRepeatable(tween(3000, easing = LinearEasing), RepeatMode.Restart),
-        label = "ring0"
-    )
-    val pulseRing1 by infiniteTransition.animateFloat(
-        initialValue = 0f, targetValue = 1f,
-        animationSpec = infiniteRepeatable(tween(3000, delayMillis = 1000, easing = LinearEasing), RepeatMode.Restart),
-        label = "ring1"
-    )
-    val pulseRing2 by infiniteTransition.animateFloat(
-        initialValue = 0f, targetValue = 1f,
-        animationSpec = infiniteRepeatable(tween(3000, delayMillis = 2000, easing = LinearEasing), RepeatMode.Restart),
-        label = "ring2"
-    )
-
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(bottom = 32.dp)
     ) {
-        // ── Animated Sonar Hero ──
+        // ── Header ──
         item {
-            Box(
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(330.dp)
-                    .drawBehind {
-                        val cx = size.width / 2
-                        val cy = size.height * 0.35f
-                        val maxR = size.minDimension * 0.44f
-
-                        // Grid rings — bold
-                        for (i in 1..5) {
-                            drawCircle(
-                                color = WTeal.copy(alpha = 0.12f - i * 0.015f),
-                                radius = maxR * i / 5f,
-                                center = Offset(cx, cy),
-                                style = Stroke(1f)
-                            )
-                        }
-
-                        // Crosshair
-                        val crossLen = maxR * 1.1f
-                        drawLine(WTeal.copy(alpha = 0.12f), Offset(cx - crossLen, cy), Offset(cx + crossLen, cy), 0.8f)
-                        drawLine(WTeal.copy(alpha = 0.12f), Offset(cx, cy - crossLen), Offset(cx, cy + crossLen), 0.8f)
-
-                        // Hexagonal overlay frame
-                        val hexR = maxR * 0.85f
-                        val hexRotRad = Math.toRadians(radarSweep.toDouble() * 0.3)
-                        for (hi in 0 until 6) {
-                            val a1 = 2 * PI * hi / 6 + hexRotRad
-                            val a2 = 2 * PI * (hi + 1) / 6 + hexRotRad
-                            drawLine(
-                                color = WTeal.copy(alpha = 0.08f),
-                                start = Offset(cx + hexR * cos(a1).toFloat(), cy + hexR * sin(a1).toFloat()),
-                                end = Offset(cx + hexR * cos(a2).toFloat(), cy + hexR * sin(a2).toFloat()),
-                                strokeWidth = 1f
-                            )
-                        }
-
-                        // Expanding pulse rings — bold & visible
-                        listOf(pulseRing0, pulseRing1, pulseRing2).forEach { phase ->
-                            val ringR = maxR * 0.12f + maxR * 0.95f * phase
-                            val ringAlpha = (1f - phase) * 0.40f
-                            val ringWidth = 3f + (1f - phase) * 3.5f
-                            drawCircle(
-                                color = WTeal.copy(alpha = ringAlpha),
-                                radius = ringR,
-                                center = Offset(cx, cy),
-                                style = Stroke(width = ringWidth)
-                            )
-                        }
-
-                        // Radar sweep line — bright
-                        val sweepRad = Math.toRadians(radarSweep.toDouble())
-                        val sweepX = cx + maxR * cos(sweepRad).toFloat()
-                        val sweepY = cy + maxR * sin(sweepRad).toFloat()
-                        drawLine(
-                            brush = Brush.linearGradient(
-                                listOf(WTeal.copy(alpha = 0.85f), WCyan.copy(alpha = 0.3f), WTeal.copy(alpha = 0f)),
-                                start = Offset(cx, cy),
-                                end = Offset(sweepX, sweepY)
-                            ),
-                            start = Offset(cx, cy),
-                            end = Offset(sweepX, sweepY),
-                            strokeWidth = 3f,
-                            cap = StrokeCap.Round
-                        )
-
-                        // Trailing sweep arc — wider
-                        drawArc(
-                            brush = Brush.sweepGradient(
-                                0f to Color.Transparent,
-                                0.70f to Color.Transparent,
-                                0.88f to WTeal.copy(alpha = 0.22f),
-                                1f to WTeal.copy(alpha = 0.05f)
-                            ),
-                            startAngle = radarSweep - 60f,
-                            sweepAngle = 60f,
-                            useCenter = true,
-                            topLeft = Offset(cx - maxR, cy - maxR),
-                            size = androidx.compose.ui.geometry.Size(maxR * 2, maxR * 2)
-                        )
-
-                        // Signal blips that flare when sweep passes
-                        val blips = listOf(
-                            Triple(-0.4f, -0.3f, 0.7f),
-                            Triple(0.6f, -0.15f, 0.55f),
-                            Triple(0.2f, 0.5f, 0.65f),
-                            Triple(-0.55f, 0.35f, 0.5f),
-                            Triple(0.45f, 0.25f, 0.6f),
-                            Triple(-0.2f, 0.6f, 0.45f),
-                        )
-                        blips.forEach { (xf, yf, brightness) ->
-                            val bx = cx + maxR * xf
-                            val by = cy + maxR * yf
-                            val blipAngle = Math.toDegrees(
-                                kotlin.math.atan2((by - cy).toDouble(), (bx - cx).toDouble())
-                            ).let { if (it < 0) it + 360 else it }
-                            val angleDiff = ((radarSweep - blipAngle + 360) % 360)
-                            val blipAlpha = if (angleDiff in 0.0..90.0) {
-                                (1f - angleDiff.toFloat() / 90f) * brightness
-                            } else 0.06f
-
-                            // Glow halo
-                            drawCircle(WTeal.copy(alpha = blipAlpha * 0.55f), 20f, Offset(bx, by))
-                            // Core dot
-                            drawCircle(WTeal.copy(alpha = blipAlpha), 6f, Offset(bx, by))
-                        }
-
-                        // Center glow — intense
-                        drawCircle(
-                            brush = Brush.radialGradient(
-                                colors = listOf(
-                                    WTeal.copy(alpha = glowPulse * 0.50f),
-                                    WCyan.copy(alpha = glowPulse * 0.18f),
-                                    Color.Transparent
-                                ),
-                                center = Offset(cx, cy),
-                                radius = maxR * 0.55f
-                            ),
-                            radius = maxR * 0.55f,
-                            center = Offset(cx, cy)
-                        )
-                        // Inner accent ring
-                        drawCircle(
-                            color = WTeal.copy(alpha = glowPulse * 0.30f),
-                            radius = maxR * 0.18f,
-                            center = Offset(cx, cy),
-                            style = Stroke(1.5f)
-                        )
-                        // Center bright dot
-                        drawCircle(WTeal.copy(alpha = 0.85f + glowPulse * 0.15f), 9f, Offset(cx, cy))
-                    }
+                    .padding(horizontal = 24.dp)
+                    .padding(top = 28.dp, bottom = 8.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Title overlaid below the radar
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 24.dp)
-                        .padding(top = 240.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        text = stringResource(R.string.ai_scout_hero_title),
-                        style = boldTextStyle(WText, 32.sp).copy(fontFamily = SyneFamily),
-                        letterSpacing = (-0.7).sp
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    Text(
-                        text = stringResource(R.string.ai_scout_hero_subtitle),
-                        style = regularTextStyle(WMuted, 15.sp),
-                        textAlign = TextAlign.Center,
-                        lineHeight = 22.sp
-                    )
-                }
+                Text(
+                    text = stringResource(R.string.ai_scout_hero_title),
+                    style = boldTextStyle(WText, 28.sp).copy(fontFamily = SyneFamily),
+                    letterSpacing = (-0.5).sp
+                )
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    text = stringResource(R.string.ai_scout_hero_subtitle),
+                    style = regularTextStyle(WMuted, 14.sp),
+                    textAlign = TextAlign.Center,
+                    lineHeight = 20.sp
+                )
             }
         }
 
@@ -1618,6 +1299,13 @@ private fun AiScoutEmptyState(state: AiScoutUiState, viewModel: IAiScoutViewMode
         // ── Premium Search Card ──
         item {
             SearchInputBox(state = state, viewModel = viewModel)
+        }
+
+        // ── Sonar searching animation ──
+        if (state.isLoading) {
+            item {
+                ScoutSonarSearchingAnimation(color = WTeal, accentColor = WCyan)
+            }
         }
 
         // Error message
@@ -1636,6 +1324,87 @@ private fun AiScoutEmptyState(state: AiScoutUiState, viewModel: IAiScoutViewMode
 // ═══════════════════════════════════════════════════════════════════════════════
 //  SEARCH INPUT BOX — Premium Glass Terminal
 // ═══════════════════════════════════════════════════════════════════════════════
+
+@Composable
+private fun ScoutSonarSearchingAnimation(color: Color, accentColor: Color) {
+    val infiniteTransition = rememberInfiniteTransition(label = "search_anim")
+    val sweep by infiniteTransition.animateFloat(
+        initialValue = 0f, targetValue = 360f,
+        animationSpec = infiniteRepeatable(tween(3000, easing = LinearEasing), RepeatMode.Restart),
+        label = "sweep"
+    )
+    val pulse by infiniteTransition.animateFloat(
+        initialValue = 0.3f, targetValue = 0.8f,
+        animationSpec = infiniteRepeatable(tween(1800, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+        label = "pulse"
+    )
+    val ring0 by infiniteTransition.animateFloat(
+        initialValue = 0f, targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(2500, easing = LinearEasing), RepeatMode.Restart),
+        label = "r0"
+    )
+    val ring1 by infiniteTransition.animateFloat(
+        initialValue = 0f, targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(2500, delayMillis = 800, easing = LinearEasing), RepeatMode.Restart),
+        label = "r1"
+    )
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 20.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Canvas(modifier = Modifier.size(120.dp)) {
+            val cx = size.width / 2
+            val cy = size.height / 2
+            val maxR = size.minDimension / 2
+
+            for (i in 1..3) {
+                drawCircle(
+                    color = color.copy(alpha = 0.10f - i * 0.02f),
+                    radius = maxR * i / 3f,
+                    center = Offset(cx, cy),
+                    style = Stroke(0.8f)
+                )
+            }
+
+            listOf(ring0, ring1).forEach { phase ->
+                val ringR = maxR * 0.15f + maxR * 0.85f * phase
+                drawCircle(
+                    color = color.copy(alpha = (1f - phase) * 0.30f),
+                    radius = ringR,
+                    center = Offset(cx, cy),
+                    style = Stroke(width = 2f + (1f - phase) * 2f)
+                )
+            }
+
+            val sweepRad = Math.toRadians(sweep.toDouble())
+            drawLine(
+                brush = Brush.linearGradient(
+                    listOf(color.copy(alpha = 0.7f), accentColor.copy(alpha = 0.2f), Color.Transparent),
+                    start = Offset(cx, cy),
+                    end = Offset(cx + maxR * cos(sweepRad).toFloat(), cy + maxR * sin(sweepRad).toFloat())
+                ),
+                start = Offset(cx, cy),
+                end = Offset(cx + maxR * cos(sweepRad).toFloat(), cy + maxR * sin(sweepRad).toFloat()),
+                strokeWidth = 2f,
+                cap = StrokeCap.Round
+            )
+
+            drawCircle(
+                brush = Brush.radialGradient(
+                    listOf(color.copy(alpha = pulse * 0.40f), accentColor.copy(alpha = pulse * 0.12f), Color.Transparent),
+                    center = Offset(cx, cy),
+                    radius = maxR * 0.45f
+                ),
+                radius = maxR * 0.45f,
+                center = Offset(cx, cy)
+            )
+            drawCircle(color.copy(alpha = 0.7f + pulse * 0.3f), 4f, Offset(cx, cy))
+        }
+    }
+}
 
 private fun appendToQuery(current: String, addition: String): String {
     val trimmed = addition.trim()
@@ -2222,14 +1991,7 @@ private fun AiScoutResultsState(state: AiScoutUiState, viewModel: IAiScoutViewMo
         // Loading indicator
         if (state.isLoading) {
             item {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(24.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator(color = WTeal, strokeWidth = 3.dp)
-                }
+                ScoutSonarSearchingAnimation(color = WTeal, accentColor = WCyan)
             }
         }
 

@@ -32,8 +32,8 @@ internal object TransfermarktHttp {
     private const val READ_TIMEOUT_SECONDS = 10L
 
     private val client = OkHttpClient.Builder()
-        .dispatcher(Dispatcher().apply { maxRequestsPerHost = 20 })
-        .connectionPool(ConnectionPool(15, 2, TimeUnit.MINUTES))
+        .dispatcher(Dispatcher().apply { maxRequestsPerHost = 8 })
+        .connectionPool(ConnectionPool(8, 1, TimeUnit.MINUTES))
         .connectTimeout(CONNECT_TIMEOUT_SECONDS, TimeUnit.SECONDS)
         .readTimeout(READ_TIMEOUT_SECONDS, TimeUnit.SECONDS)
         .followRedirects(true)

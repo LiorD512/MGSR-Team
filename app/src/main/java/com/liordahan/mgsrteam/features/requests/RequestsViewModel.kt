@@ -95,7 +95,7 @@ class RequestsViewModel(
     override val positions: StateFlow<List<Position>> = _positions.asStateFlow()
 
     /** URLs of players already shown — excluded on refresh so user gets fresh results */
-    private var _excludedOnlineUrls = mutableSetOf<String>()
+    private val _excludedOnlineUrls: MutableSet<String> = java.util.concurrent.ConcurrentHashMap.newKeySet()
 
     private val _addRequestMessage = MutableStateFlow<String?>(null)
     private val _addRequestError = MutableStateFlow<String?>(null)

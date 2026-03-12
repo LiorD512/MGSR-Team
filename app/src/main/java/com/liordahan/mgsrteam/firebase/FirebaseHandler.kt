@@ -3,8 +3,10 @@ package com.liordahan.mgsrteam.firebase
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
+import com.liordahan.mgsrteam.features.login.models.Account
 import com.liordahan.mgsrteam.features.platform.Platform
 import com.liordahan.mgsrteam.features.platform.PlatformManager
+import kotlinx.coroutines.tasks.await
 
 /**
  * Central Firestore accessor.
@@ -53,4 +55,27 @@ class FirebaseHandler(
     val medicalsDir = "medicals"
     val releaseDocs = "releaseDocs"
     val repDocsDir = "representationDocs"
+
+    // ── Cached account lookup (replaces N+1 full-collection fetches) ─
+    @Volatile
+    private var cachedAccountName: String? = null
+    @Volatile
+    private var cachedAccountEmail: String? = null
+
+    suspend fun getCurrentUserAccountName(): String? {
+        val email = firebaseAuth.currentUser?.email ?: return null
+        // Return cached value if same user
+        if (email.equals(cachedAccountEmail, ignoreCase = true) && cachedAccountName != null) {
+            return cachedAccountName
+        }
+        val snapshot = firebaseStore.collection(accountsTable)
+            .whereEqualTo("email", email)
+            .limit(1)
+            .get()
+            .await()
+        val account = snapshot.toObjects(Account::class.java).firstOrNull()
+        cachedAccountName = account?.name
+        cachedAccountEmail = email
+        return cachedAccountName
+    }
 }

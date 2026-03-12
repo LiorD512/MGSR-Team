@@ -104,7 +104,7 @@ class ReleasesViewModel(
             viewModelScope.launch(Dispatchers.IO) {
                 when (val result = latestReleases.getLatestReleases(range.first, range.last)) {
                     is TransfermarktResult.Success -> releaseFlowsMap[range]?.value = result.data.filterNotNull()
-                    is TransfermarktResult.Failed -> fetchFailedErrorFlow.update { it }
+                    is TransfermarktResult.Failed -> fetchFailedErrorFlow.value = result.cause
                 }
                 fetchedCount.value += 1
             }

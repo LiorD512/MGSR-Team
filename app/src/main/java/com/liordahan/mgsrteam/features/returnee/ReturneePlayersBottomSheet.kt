@@ -235,7 +235,7 @@ fun ReturneePlayersBottomSheet(
                     }
                 }
 
-                items(visibleReturneeList) {
+                items(visibleReturneeList, key = { it.playerUrl ?: it.hashCode() }) {
                     ReleaseListItem(
                         context = context,
                         release = it,

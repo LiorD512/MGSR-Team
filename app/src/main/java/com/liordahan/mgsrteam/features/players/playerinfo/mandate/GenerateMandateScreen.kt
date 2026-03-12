@@ -1181,7 +1181,7 @@ private fun AddLeagueBottomSheet(
                         .heightIn(max = 300.dp),
                     verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    items(filteredCountries.take(50)) { country ->
+                    items(filteredCountries.take(50), key = { it }) { country ->
                         Card(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -1313,7 +1313,7 @@ private fun AddLeagueBottomSheet(
                                 .padding(vertical = 8.dp),
                             verticalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
-                            items(filteredClubResults) { club ->
+                            items(filteredClubResults, key = { it.clubTmProfile ?: it.hashCode() }) { club ->
                                 ClubRow(
                                     club = club,
                                     onClick = {

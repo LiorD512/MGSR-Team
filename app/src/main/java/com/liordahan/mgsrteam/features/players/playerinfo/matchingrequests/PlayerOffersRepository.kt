@@ -103,13 +103,8 @@ class PlayerOffersRepository(
             .await()
     }
 
-    private suspend fun getCurrentUserAccountName(): String? {
-        val email = FirebaseAuth.getInstance().currentUser?.email ?: return null
-        val snapshot = firebaseHandler.firebaseStore.collection(firebaseHandler.accountsTable).get().await()
-        return snapshot.toObjects(Account::class.java)
-            .firstOrNull { it.email?.equals(email, ignoreCase = true) == true }
-            ?.name
-    }
+    private suspend fun getCurrentUserAccountName(): String? =
+        firebaseHandler.getCurrentUserAccountName()
 
     private fun writeFeedEventPlayerOffered(
         playerName: String?,

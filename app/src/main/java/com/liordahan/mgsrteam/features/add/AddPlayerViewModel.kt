@@ -331,16 +331,12 @@ class AddPlayerViewModel(
      */
     private suspend fun fetchIfaProfileDirect(playerId: String): Map<String, String> {
         val url = "https://www.football.org.il/players/player/?player_id=$playerId&season_id="
-        val directClient = okhttp3.OkHttpClient.Builder()
-            .connectTimeout(8, java.util.concurrent.TimeUnit.SECONDS)
-            .readTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
-            .build()
         val req = okhttp3.Request.Builder()
             .url(url)
             .header("User-Agent", "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36")
             .header("Accept-Language", "he-IL,he;q=0.9,en-US;q=0.8,en;q=0.7")
             .get().build()
-        val resp = directClient.newCall(req).execute()
+        val resp = httpClient.newCall(req).execute()
         if (!resp.isSuccessful) return emptyMap()
         val html = resp.body?.string() ?: return emptyMap()
         val result = mutableMapOf<String, String>()
@@ -1191,5 +1187,11 @@ class AddPlayerViewModel(
                 womenSearchResults = emptyList()
             )
         }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        httpClient.dispatcher.executorService.shutdown()
+        httpClient.connectionPool.evictAll()
     }
 }

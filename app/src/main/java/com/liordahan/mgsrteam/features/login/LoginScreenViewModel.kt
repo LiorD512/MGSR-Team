@@ -44,6 +44,9 @@ class LoginScreenViewModel(
                             _userLoginFlow.update { UiResult.Failed("Your account is not allowed") }
                         }
                     }
+                    .addOnFailureListener {
+                        _userLoginFlow.update { UiResult.Failed("Login failed. Please try again.") }
+                    }
             }
             .addOnFailureListener { e ->
                 val message = when {

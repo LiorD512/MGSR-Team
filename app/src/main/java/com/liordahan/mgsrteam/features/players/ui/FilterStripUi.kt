@@ -47,7 +47,7 @@ fun FilterStripUi(
         horizontalArrangement = Arrangement.spacedBy(24.dp)
     ) {
 
-        items(positions) { position ->
+        items(positions, key = { it.name ?: it.hashCode() }) { position ->
 
             val count = playerList.count { player -> player.playerPosition?.equals(position.name) == true }
 
@@ -131,7 +131,7 @@ fun FilterByAgentStripUi(
         horizontalArrangement = Arrangement.SpaceEvenly
     ) {
 
-        itemsIndexed(accounts) { _, account ->
+        itemsIndexed(accounts, key = { _, account -> account.id ?: account.hashCode() }) { _, account ->
             val accountPlayersCount = getCountForAccount(account)
             AccountFilterTypeItemUi(
                 account = account,

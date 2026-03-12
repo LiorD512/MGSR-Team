@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.ListenerRegistration
 import com.liordahan.mgsrteam.features.aiscout.MgsrWebApiClient
 import com.liordahan.mgsrteam.localization.LocaleManager
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -87,6 +88,7 @@ class WarRoomViewModel(
         get() = LocaleManager.getSavedLanguage(context)
 
     private val store = FirebaseFirestore.getInstance()
+    private var feedbackListenerRegistration: ListenerRegistration? = null
 
     init {
         loadDiscovery()
@@ -272,7 +274,8 @@ class WarRoomViewModel(
 
     private fun loadScoutFeedback() {
         val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
-        store.collection("ScoutProfileFeedback").document(uid)
+        feedbackListenerRegistration?.remove()
+        feedbackListenerRegistration = store.collection("ScoutProfileFeedback").document(uid)
             .addSnapshotListener { snap, error ->
                 if (error != null || snap == null || !snap.exists()) return@addSnapshotListener
                 val feedbackMap = snap.get("feedback") as? Map<*, *> ?: return@addSnapshotListener
@@ -286,6 +289,11 @@ class WarRoomViewModel(
                 }
                 _uiState.update { it.copy(scoutFeedback = flat) }
             }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        feedbackListenerRegistration?.remove()
     }
 
     override fun setProfileFeedback(profileId: String, feedback: String, agentId: String) {

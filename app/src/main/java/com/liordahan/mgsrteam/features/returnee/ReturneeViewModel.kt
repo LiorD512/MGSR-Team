@@ -24,7 +24,8 @@ data class ReturneeUiState(
     val leaguesList: List<Leagues> = emptyList(),
     val isLoading: Boolean = false,
     val loadedLeaguesCount: Int = 0,
-    val totalLeaguesCount: Int = 0
+    val totalLeaguesCount: Int = 0,
+    val errorMessage: String? = null
 )
 
 abstract class IReturneeViewModel : ViewModel() {
@@ -77,7 +78,7 @@ class ReturneeViewModel(
 
             when (val result = returnees.fetchReturnees(leagueUrl)) {
                 is TransfermarktResult.Failed -> {
-                    _returneeFlow.update { it.copy(isLoading = false) }
+                    _returneeFlow.update { it.copy(isLoading = false, errorMessage = result.cause) }
                 }
                 is TransfermarktResult.Success -> {
                     val current = _returneeFlow.value.returneeList

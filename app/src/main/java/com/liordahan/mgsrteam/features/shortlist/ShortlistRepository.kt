@@ -8,7 +8,9 @@ import com.liordahan.mgsrteam.features.login.models.Account
 import com.liordahan.mgsrteam.features.platform.PlatformManager
 import com.liordahan.mgsrteam.firebase.FirebaseHandler
 import com.liordahan.mgsrteam.transfermarket.LatestTransferModel
+import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -202,14 +204,20 @@ class ShortlistRepository(
         val url = release.playerUrl ?: return AddToShortlistResult.AlreadyInShortlist
         _shortlistPendingUrls.value = _shortlistPendingUrls.value + url
         return try {
-            val rosterSnapshot = firebaseHandler.firebaseStore.collection(firebaseHandler.playersTable)
-                .whereEqualTo("tmProfile", url)
-                .get()
-                .await()
+            val (rosterSnapshot, existing) = coroutineScope {
+                val rosterDeferred = async {
+                    firebaseHandler.firebaseStore.collection(firebaseHandler.playersTable)
+                        .whereEqualTo("tmProfile", url)
+                        .get()
+                        .await()
+                }
+                val shortlistDeferred = async {
+                    shortlistCollection()
+                        .whereEqualTo("tmProfileUrl", url).get().await()
+                }
+                rosterDeferred.await() to shortlistDeferred.await()
+            }
             if (!rosterSnapshot.isEmpty) return AddToShortlistResult.AlreadyInRoster
-
-            val existing = shortlistCollection()
-                .whereEqualTo("tmProfileUrl", url).get().await()
             if (!existing.isEmpty) return AddToShortlistResult.AlreadyInShortlist
 
             val entryMap = mutableMapOf<String, Any>(
@@ -253,14 +261,20 @@ class ShortlistRepository(
         if (!url.contains("transfermarkt", ignoreCase = true)) return AddToShortlistResult.AlreadyInShortlist
         _shortlistPendingUrls.value = _shortlistPendingUrls.value + url
         return try {
-            val rosterSnapshot = firebaseHandler.firebaseStore.collection(firebaseHandler.playersTable)
-                .whereEqualTo("tmProfile", url)
-                .get()
-                .await()
+            val (rosterSnapshot, existing) = coroutineScope {
+                val rosterDeferred = async {
+                    firebaseHandler.firebaseStore.collection(firebaseHandler.playersTable)
+                        .whereEqualTo("tmProfile", url)
+                        .get()
+                        .await()
+                }
+                val shortlistDeferred = async {
+                    shortlistCollection()
+                        .whereEqualTo("tmProfileUrl", url).get().await()
+                }
+                rosterDeferred.await() to shortlistDeferred.await()
+            }
             if (!rosterSnapshot.isEmpty) return AddToShortlistResult.AlreadyInRoster
-
-            val existing = shortlistCollection()
-                .whereEqualTo("tmProfileUrl", url).get().await()
             if (!existing.isEmpty) return AddToShortlistResult.AlreadyInShortlist
 
             val urlEntryMap = mutableMapOf<String, Any>(
@@ -359,15 +373,18 @@ class ShortlistRepository(
         }
     }
 
-    private suspend fun getCurrentUserAccount(): Account? {
-        val email = FirebaseAuth.getInstance().currentUser?.email ?: return null
-        val snapshot = firebaseHandler.firebaseStore.collection(firebaseHandler.accountsTable).get().await()
-        return snapshot.toObjects(Account::class.java)
-            .firstOrNull { it.email?.equals(email, ignoreCase = true) == true }
-    }
-
     private suspend fun getCurrentUserAccountName(): String? =
-        getCurrentUserAccount()?.name
+        firebaseHandler.getCurrentUserAccountName()
+
+    private suspend fun getCurrentUserAccount(): Account? {
+        val email = firebaseHandler.firebaseAuth.currentUser?.email ?: return null
+        val snapshot = firebaseHandler.firebaseStore.collection(firebaseHandler.accountsTable)
+            .whereEqualTo("email", email)
+            .limit(1)
+            .get()
+            .await()
+        return snapshot.toObjects(Account::class.java).firstOrNull()
+    }
 
     private fun writeFeedEventShortlist(
         playerName: String?,

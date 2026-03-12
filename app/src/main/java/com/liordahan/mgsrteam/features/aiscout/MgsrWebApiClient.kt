@@ -56,6 +56,7 @@ class MgsrWebApiClient(
         .connectionPool(ConnectionPool(5, 1, TimeUnit.MINUTES))
         .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(120, TimeUnit.SECONDS)   // AI calls can be slow
+        .addInterceptor(com.liordahan.mgsrteam.utils.ResponseSizeLimitInterceptor())
         .dns(object : okhttp3.Dns {
             private val system = okhttp3.Dns.SYSTEM
             override fun lookup(hostname: String): List<java.net.InetAddress> {
