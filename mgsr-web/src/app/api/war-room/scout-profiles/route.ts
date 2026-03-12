@@ -33,22 +33,22 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = request.nextUrl;
     const agentId = searchParams.get('agentId') as AgentId | null;
-    const limit = Math.min(parseInt(searchParams.get('limit') || '200', 10), 300);
+    const limit = Math.min(parseInt(searchParams.get('limit') || '1500', 10), 2000);
 
-    const snapshot = await db
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let query: any = db
       .collection('ScoutProfiles')
-      .orderBy('lastRefreshedAt', 'desc')
-      .limit(agentId ? 300 : limit)
-      .get();
+      .orderBy('lastRefreshedAt', 'desc');
 
-    let docs = snapshot.docs;
     if (agentId && AGENTS_CONFIG[agentId]) {
-      docs = docs.filter((d) => d.data().agentId === agentId).slice(0, limit);
-    } else {
-      docs = docs.slice(0, limit);
+      query = query.where('agentId', '==', agentId);
     }
 
-    let profiles: ScoutProfileResponse[] = docs.map((doc) => {
+    const snapshot = await query.limit(limit).get();
+    const docs = snapshot.docs;
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let profiles: ScoutProfileResponse[] = docs.map((doc: any) => {
       const d = doc.data();
       const agentCfg = AGENTS_CONFIG[(d.agentId as AgentId) || 'portugal'];
       const profileCfg = SCOUT_PROFILES[(d.profileType as keyof typeof SCOUT_PROFILES) || 'HIDDEN_GEM'];
