@@ -26,6 +26,8 @@ import org.json.JSONArray
 import org.json.JSONObject
 import com.liordahan.mgsrteam.localization.LocaleManager
 import java.io.IOException
+import java.net.UnknownHostException
+import java.net.SocketTimeoutException
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 import kotlin.coroutines.resume
@@ -54,13 +56,47 @@ class MgsrWebApiClient(
         .connectionPool(ConnectionPool(5, 1, TimeUnit.MINUTES))
         .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(120, TimeUnit.SECONDS)   // AI calls can be slow
+        .dns(object : okhttp3.Dns {
+            private val system = okhttp3.Dns.SYSTEM
+            override fun lookup(hostname: String): List<java.net.InetAddress> {
+                return try {
+                    system.lookup(hostname)
+                } catch (e: UnknownHostException) {
+                    // Fallback: resolve via Google DNS-over-HTTPS style hardcoded addresses
+                    Log.w(TAG, "System DNS failed for $hostname, retrying with InetAddress directly")
+                    val addresses = java.net.InetAddress.getAllByName(hostname).toList()
+                    if (addresses.isEmpty()) throw e
+                    addresses
+                }
+            }
+        })
         .build()
+
+    /** Retry a network call up to [maxRetries] times on DNS / socket errors */
+    private suspend fun <T> retryOnNetworkError(maxRetries: Int = 2, block: suspend () -> T): T {
+        var lastException: Exception? = null
+        for (attempt in 0..maxRetries) {
+            try {
+                return block()
+            } catch (e: UnknownHostException) {
+                lastException = e
+                Log.w(TAG, "DNS error (attempt ${attempt + 1}/${maxRetries + 1}): ${e.message}")
+                if (attempt < maxRetries) kotlinx.coroutines.delay(1000L * (attempt + 1))
+            } catch (e: SocketTimeoutException) {
+                lastException = e
+                Log.w(TAG, "Timeout (attempt ${attempt + 1}/${maxRetries + 1}): ${e.message}")
+                if (attempt < maxRetries) kotlinx.coroutines.delay(1000L * (attempt + 1))
+            }
+        }
+        throw lastException!!
+    }
 
     // ─── AI Scout Search ───────────────────────────────────────────────────
 
     suspend fun searchPlayers(request: AiScoutSearchRequest): Result<AiScoutSearchResponse> =
         withContext(Dispatchers.IO) {
             runCatching {
+                retryOnNetworkError {
                 val json = JSONObject().apply {
                     put("query", request.query)
                     put("lang", request.lang)
@@ -86,14 +122,16 @@ class MgsrWebApiClient(
                 }
 
                 parseScoutSearchResponse(responseBody)
+                } // end retryOnNetworkError
             }
         }
 
-    // ─── Find Next (Find Me The Next...) ────────────────────────────────────
+    // ─── Find Next (Find Me The Next...) ────────────────────────────────────────
 
     suspend fun findNext(request: FindNextRequest): Result<FindNextResponse> =
         withContext(Dispatchers.IO) {
             runCatching {
+                retryOnNetworkError {
                 val params = buildString {
                     append("player_name=${java.net.URLEncoder.encode(request.playerName, "UTF-8")}")
                     append("&age_max=${request.ageMax}")
@@ -119,6 +157,7 @@ class MgsrWebApiClient(
                 }
 
                 parseFindNextResponse(responseBody)
+                } // end retryOnNetworkError
             }
         }
 
@@ -127,6 +166,7 @@ class MgsrWebApiClient(
     suspend fun getDiscovery(): Result<DiscoveryResponse> =
         withContext(Dispatchers.IO) {
             runCatching {
+                retryOnNetworkError {
                 val httpRequest = Request.Builder()
                     .url("$baseUrl/api/war-room/discovery")
                     .get()
@@ -142,6 +182,7 @@ class MgsrWebApiClient(
                 }
 
                 parseDiscoveryResponse(responseBody)
+                } // end retryOnNetworkError
             }
         }
 
@@ -150,6 +191,7 @@ class MgsrWebApiClient(
     suspend fun getScoutProfiles(agentId: String? = null): Result<ScoutProfilesResponse> =
         withContext(Dispatchers.IO) {
             runCatching {
+                retryOnNetworkError {
                 val url = buildString {
                     append("$baseUrl/api/war-room/scout-profiles")
                     if (!agentId.isNullOrBlank()) append("?agentId=$agentId")
@@ -170,6 +212,7 @@ class MgsrWebApiClient(
                 }
 
                 parseScoutProfilesResponse(responseBody)
+                } // end retryOnNetworkError
             }
         }
 
@@ -178,6 +221,7 @@ class MgsrWebApiClient(
     suspend fun getReport(request: WarRoomReportRequest): Result<WarRoomReportResponse> =
         withContext(Dispatchers.IO) {
             runCatching {
+                retryOnNetworkError {
                 val json = JSONObject().apply {
                     put("player_url", request.playerUrl)
                     request.playerName?.let { put("player_name", it) }
@@ -200,6 +244,7 @@ class MgsrWebApiClient(
                 }
 
                 parseReportResponse(responseBody)
+                } // end retryOnNetworkError
             }
         }
 
