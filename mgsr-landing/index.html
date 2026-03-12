@@ -1537,10 +1537,26 @@ img { max-width: 100%; display: block; }
       </div>
       <div class="team-member reveal reveal-delay-5">
         <span class="team-member-number">04</span>
-        <div class="team-avatar">RE</div>
+        <div class="avatar-wrap">
+          <div class="team-avatar has-photo">
+            <img src="roy-elgrabli.jpeg" alt="Roy Elgrabli" onerror="this.remove();this.parentElement.classList.remove('has-photo');this.parentElement.textContent='RE';" />
+          </div>
+          <div class="avatar-tooltip">
+            <div class="tooltip-label">Contact</div>
+            <div class="tooltip-row">
+              <svg viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+              <a href="https://wa.me/972507174707" target="_blank" rel="noopener">+972 50-7174707</a>
+            </div>
+            <div class="tooltip-row">
+              <svg viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+              <a href="mailto:Royfcmn@gmail.com">Royfcmn@gmail.com</a>
+            </div>
+          </div>
+        </div>
         <div class="team-info">
-          <h3 data-i18n="team_4_name">Roy Elgrably</h3>
+          <h3 data-i18n="team_4_name">Roy Elgrabli</h3>
           <p class="team-role" data-i18n="team_4_role">Chief Scout</p>
+          <p class="team-bio" data-i18n="team_4_bio">As our Chief Scout, Roy is responsible for leading the agency’s scouting operations and overseeing its network of scouts. Roy specializes in identifying emerging talent and evaluating players across multiple markets, ensuring the agency stays ahead in discovering the next generation of footballers.</p>
         </div>
       </div>
     </div>
@@ -1669,8 +1685,9 @@ const T = {
     team_3_name: "Lior Dadon",
     team_3_role: "Partner & Executive Director",
     team_3_bio: "Responsible for identifying and recruiting foreign talent for the agency. Lior specializes in building international connections and locating high-potential players across global markets, playing a key role in expanding the agency\u2019s reach and opportunities.",
-    team_4_name: "Roy Elgrably",
+    team_4_name: "Roy Elgrabli",
     team_4_role: "Chief Scout",
+    team_4_bio: "As our Chief Scout, Roy is responsible for leading the agency\u2019s scouting operations and overseeing its network of scouts. Roy specializes in identifying emerging talent and evaluating players across multiple markets, ensuring the agency stays ahead in discovering the next generation of footballers.",
     contact_label: "Get In Touch",
     contact_title: "Let\u2019s Talk Football",
     contact_desc: "Whether you\u2019re a player, a club, or a partner \u2014 we\u2019re always open to new conversations.",
@@ -1741,6 +1758,7 @@ const T = {
     team_3_bio: "\u05D0\u05D7\u05E8\u05D0\u05D9 \u05E2\u05DC \u05D0\u05D9\u05EA\u05D5\u05E8 \u05D5\u05D2\u05D9\u05D5\u05E1 \u05DB\u05D9\u05E9\u05E8\u05D5\u05E0\u05D5\u05EA \u05D6\u05E8\u05D9\u05DD \u05DC\u05E1\u05D5\u05DB\u05E0\u05D5\u05EA. \u05DC\u05D9\u05D0\u05D5\u05E8 \u05DE\u05EA\u05DE\u05D7\u05D4 \u05D1\u05D1\u05E0\u05D9\u05D9\u05EA \u05E7\u05E9\u05E8\u05D9\u05DD \u05D1\u05D9\u05E0\u05DC\u05D0\u05D5\u05DE\u05D9\u05D9\u05DD \u05D5\u05D0\u05D9\u05EA\u05D5\u05E8 \u05E9\u05D7\u05E7\u05E0\u05D9\u05DD \u05D1\u05E2\u05DC\u05D9 \u05E4\u05D5\u05D8\u05E0\u05E6\u05D9\u05D0\u05DC \u05D2\u05D1\u05D5\u05D4 \u05D1\u05E9\u05D5\u05D5\u05E7\u05D9\u05DD \u05D4\u05D2\u05DC\u05D5\u05D1\u05DC\u05D9\u05D9\u05DD, \u05D5\u05DE\u05DE\u05DC\u05D0 \u05EA\u05E4\u05E7\u05D9\u05D3 \u05DE\u05E8\u05DB\u05D6\u05D9 \u05D1\u05D4\u05E8\u05D7\u05D1\u05EA \u05D4\u05D9\u05E7\u05E3 \u05D5\u05D4\u05D4\u05D6\u05D3\u05DE\u05E0\u05D5\u05D9\u05D5\u05EA \u05E9\u05DC \u05D4\u05E1\u05D5\u05DB\u05E0\u05D5\u05EA.",
     team_4_name: "\u05E8\u05D5\u05E2\u05D9 \u05D0\u05DC\u05D2\u05E8\u05D1\u05DC\u05D9",
     team_4_role: "\u05E1\u05E7\u05D0\u05D5\u05D8 \u05E8\u05D0\u05E9\u05D9",
+    team_4_bio: "\u05D1\u05EA\u05E4\u05E7\u05D9\u05D3\u05D5 \u05DB\u05E1\u05E7\u05D0\u05D5\u05D8 \u05D4\u05E8\u05D0\u05E9\u05D9 \u05E9\u05DC\u05E0\u05D5, \u05E8\u05D5\u05E2\u05D9 \u05D0\u05D7\u05E8\u05D0\u05D9 \u05E2\u05DC \u05D4\u05D5\u05D1\u05DC\u05EA \u05DE\u05E2\u05E8\u05DA \u05D4\u05E1\u05E7\u05D0\u05D5\u05D8\u05D9\u05E0\u05D2 \u05E9\u05DC \u05D4\u05E1\u05D5\u05DB\u05E0\u05D5\u05EA \u05D5\u05E4\u05D9\u05E7\u05D5\u05D7 \u05E2\u05DC \u05E8\u05E9\u05EA \u05D4\u05E1\u05E7\u05D0\u05D5\u05D8\u05E8\u05D9\u05DD. \u05E8\u05D5\u05E2\u05D9 \u05DE\u05EA\u05DE\u05D7\u05D4 \u05D1\u05D0\u05D9\u05EA\u05D5\u05E8 \u05DB\u05D9\u05E9\u05E8\u05D5\u05E0\u05D5\u05EA \u05E6\u05E2\u05D9\u05E8\u05D9\u05DD \u05D5\u05D4\u05E2\u05E8\u05DB\u05EA \u05E9\u05D7\u05E7\u05E0\u05D9\u05DD \u05D1\u05E9\u05D5\u05D5\u05E7\u05D9\u05DD \u05DE\u05E8\u05D5\u05D1\u05D9\u05DD, \u05D5\u05DE\u05D1\u05D8\u05D9\u05D7 \u05E9\u05D4\u05E1\u05D5\u05DB\u05E0\u05D5\u05EA \u05EA\u05D9\u05E9\u05D0\u05E8 \u05D1\u05D7\u05D6\u05D9\u05EA \u05D2\u05D9\u05DC\u05D5\u05D9 \u05D4\u05D3\u05D5\u05E8 \u05D4\u05D1\u05D0 \u05E9\u05DC \u05D4\u05DB\u05D3\u05D5\u05E8\u05D2\u05DC.",
     contact_label: "\u05E6\u05D5\u05E8 \u05E7\u05E9\u05E8",
     contact_title: "\u05D1\u05D5\u05D0\u05D5 \u05E0\u05D3\u05D1\u05E8 \u05DB\u05D3\u05D5\u05E8\u05D2\u05DC",
     contact_desc: "\u05D1\u05D9\u05DF \u05D0\u05DD \u05D0\u05EA\u05D4 \u05E9\u05D7\u05E7\u05DF, \u05DE\u05D5\u05E2\u05D3\u05D5\u05DF \u05D0\u05D5 \u05E9\u05D5\u05EA\u05E3 \u2014 \u05D0\u05E0\u05D7\u05E0\u05D5 \u05EA\u05DE\u05D9\u05D3 \u05E4\u05EA\u05D5\u05D7\u05D9\u05DD \u05DC\u05E9\u05D9\u05D7\u05D5\u05EA \u05D7\u05D3\u05E9\u05D5\u05EA.",
