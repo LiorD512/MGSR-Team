@@ -1167,8 +1167,8 @@ export default function WarRoomPage() {
                 </div>
                 <p className="text-xs text-mgsr-muted/70 mt-2">
                   {isHe
-                    ? '💡 כל סוכן מציג 10 פרופילים בכל פעם. לחץ על ״רענן״ כדי לראות 10 פרופילים שונים.'
-                    : '💡 Each agent shows 10 profiles at a time. Click "Refresh" to see 10 different ones.'}
+                    ? '💡 כל סוכן מציג 5 פרופילים בכל פעם. לחץ על ״רענן״ כדי לראות 5 פרופילים שונים.'
+                    : '💡 Each agent shows 5 profiles at a time. Click "Refresh" to see 5 different ones.'}
                 </p>
                 </div>
               </div>
@@ -1279,7 +1279,7 @@ export default function WarRoomPage() {
                     return nameA.localeCompare(nameB, isHe ? 'he' : 'en');
                   }).map(([agentId, allProfiles]) => {
                     const cfg = AGENTS_CONFIG[agentId as AgentId];
-                    const maxPerAgent = 10;
+                    const maxPerAgent = 5;
                     const totalPages = Math.max(1, Math.ceil(allProfiles.length / maxPerAgent));
                     const page = allProfiles.length <= maxPerAgent ? 0 : scoutRotationPage % totalPages;
                     const profiles = allProfiles.slice(page * maxPerAgent, (page + 1) * maxPerAgent);
