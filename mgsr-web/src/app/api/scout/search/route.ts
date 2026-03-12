@@ -286,6 +286,13 @@ export async function POST(request: NextRequest) {
         console.log(`[AI Scout] Market cap applied: ${targetLeague ?? 'global'} → value_max €${marketCap.toLocaleString()}`);
       }
 
+      // Default age cap — mid-tier agent doesn't need 35-year-olds
+      const GLOBAL_DEFAULT_AGE_MAX = 31;
+      if (parsed.ageMax == null) {
+        parsed.ageMax = GLOBAL_DEFAULT_AGE_MAX;
+        console.log(`[AI Scout] Age cap applied: default → age_max ${GLOBAL_DEFAULT_AGE_MAX}`);
+      }
+
       // Progressive loading settings
       const requestedTotal = parsed.limit ?? 15;
       const fetchLimit = initial ? Math.min(5, requestedTotal) : requestedTotal;

@@ -8,8 +8,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getScoutBaseUrl } from '@/lib/scoutServerUrl';
 import { handlePlayer, getLastTransferFee } from '@/lib/transfermarkt';
 const IMAGE_FETCH_CONCURRENCY = 3;
-const LIGAT_HAAL_VALUE_MAX = 2_500_000;
-const LIGAT_HAAL_LAST_TRANSFER_MAX = 2_500_000;
+const LIGAT_HAAL_VALUE_MAX = 4_000_000;
+const LIGAT_HAAL_LAST_TRANSFER_MAX = 4_000_000;
+const DISCOVERY_AGE_MAX = 31;
 const HIDDEN_GEM_VALUE_MAX = 1_500_000; // Very low market value
 const HIDDEN_GEM_AGE_MAX = 24;
 const HIDDEN_GEM_FM_PA_MIN = 130; // Impressive PA
@@ -250,6 +251,10 @@ export async function GET(request: NextRequest) {
           const d = doc.data();
           const url = d.tmProfileUrl || '';
           if (!url || seen.has(url)) continue;
+          const pickAge = typeof d.age === 'number' ? d.age : parseAge(String(d.age ?? ''));
+          if (pickAge != null && pickAge > DISCOVERY_AGE_MAX) continue;
+          const pickVal = parseMarketValueToEuro(d.marketValue);
+          if (pickVal > LIGAT_HAAL_VALUE_MAX) continue;
           seen.add(url);
           const id = extractPlayerId(url);
           const derivedImage = id ? `https://img.a.transfermarkt.technology/portrait/medium/${id}.jpg` : undefined;
@@ -322,7 +327,8 @@ export async function GET(request: NextRequest) {
         lang: 'en',
       };
       if (req.minAge != null) params.age_min = String(req.minAge);
-      if (req.maxAge != null) params.age_max = String(req.maxAge);
+      if (req.maxAge != null) params.age_max = String(Math.min(req.maxAge, DISCOVERY_AGE_MAX));
+      else params.age_max = String(DISCOVERY_AGE_MAX);
       if (req.dominateFoot?.trim() && req.dominateFoot !== 'any') params.foot = req.dominateFoot.trim();
       if (req.transferFee?.trim()) params.transfer_fee = req.transferFee.trim();
 
@@ -333,6 +339,8 @@ export async function GET(request: NextRequest) {
         seen.add(url);
         const val = parseMarketValueToEuro(p.market_value as string);
         if (val > LIGAT_HAAL_VALUE_MAX) continue;
+        const ageN = parseAge(p.age as string);
+        if (ageN != null && ageN > DISCOVERY_AGE_MAX) continue;
         candidates.push(
           toCandidate(p, 'request_match', `Matches ${req.clubName || 'request'}`.slice(0, 40), req.id, req.clubName)
         );
@@ -341,7 +349,7 @@ export async function GET(request: NextRequest) {
 
     // 3. Varied discovery — mixed ages for All tab; only players passing strict criteria appear in Hidden Gems tab
     const shuffledPositions = shuffle(ALL_POSITIONS);
-    const ageMax = 24 + Math.floor(Math.random() * 6); // 24–29 for variety in All tab
+    const ageMax = Math.min(DISCOVERY_AGE_MAX, 24 + Math.floor(Math.random() * 6)); // 24–29 for variety, capped at 31
     let debugLogged = false;
     for (const pos of shuffledPositions) {
       if (candidates.length >= 25) break;
@@ -362,6 +370,7 @@ export async function GET(request: NextRequest) {
         if (val > LIGAT_HAAL_VALUE_MAX) continue;
         seen.add(url);
         const ageNum = parseAge(p.age as string);
+        if (ageNum != null && ageNum > DISCOVERY_AGE_MAX) continue;
         const isHg = isRealHiddenGem(p, val, ageNum);
         const stats = getStatsScore(p);
         const source: DiscoveryCandidate['source'] = isHg ? 'hidden_gem' : 'general';
