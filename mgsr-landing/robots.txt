@@ -1,3 +1,3 @@
 User-agent: *
 Allow: /
-Sitemap: https://mgsr-landing.vercel.app/sitemap.xml
+Sitemap: https://mgsr-agency.com/sitemap.xml
