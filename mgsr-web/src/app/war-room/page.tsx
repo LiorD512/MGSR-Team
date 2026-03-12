@@ -74,6 +74,60 @@ function shortenPosition(pos: string | undefined): string {
   return p.split(' - ').pop() || p;
 }
 
+/* ── Structured explanation parser ──────────────────────────── */
+interface ExplanationSections {
+  stats: string[];
+  physical: string[];
+  strengths: string[];
+  fmAttrs: string[];
+  insights: string[];
+}
+
+function parseExplanationSections(text: string): ExplanationSections {
+  const lines = text.split(/\n+/).map(l => l.trim()).filter(Boolean);
+  const sec: ExplanationSections = { stats: [], physical: [], strengths: [], fmAttrs: [], insights: [] };
+
+  for (const line of lines) {
+    // Skip bio / overview line (redundant with card header)
+    if (/^(Age\s|גיל\s)/i.test(line)) continue;
+
+    // Strengths line (he: חוזקות, en: Strengths)
+    if (/^(Strengths:|חוזקות:)/i.test(line)) {
+      const content = line.replace(/^(Strengths:|חוזקות:)\s*/i, '');
+      sec.strengths = content.split('|').map(s => s.trim()).filter(Boolean);
+      continue;
+    }
+
+    // FM attributes line
+    if (/^FM:/i.test(line)) {
+      const content = line.replace(/^FM:\s*/i, '');
+      // Strip (CA X ← PA Y) or (CA X → PA Y) since badge shows it
+      const cleaned = content.replace(/\(CA\s*\d+\s*[←→➝]\s*PA\s*\d+\s*\)/g, '').trim();
+      sec.fmAttrs = cleaned.split('|').map(s => s.trim()).filter(Boolean);
+      continue;
+    }
+
+    // Stats line: has "key: number" pairs separated by |
+    if (/\w+:\s*[\d.,]+/.test(line) && line.includes('|')) {
+      const items = line.split('|').map(s => s.trim()).filter(Boolean);
+      for (const item of items) {
+        if (/height|גובה|foot|רגל/i.test(item)) {
+          sec.physical.push(item);
+        } else {
+          sec.stats.push(item);
+        }
+      }
+      continue;
+    }
+
+    // Everything else → insights
+    const items = line.split('|').map(s => s.trim()).filter(Boolean);
+    sec.insights.push(...items);
+  }
+
+  return sec;
+}
+
 function formatTimeAgo(ms: number): string {
   const sec = Math.floor((Date.now() - ms) / 1000);
   if (sec < 60) return 'Just now';
@@ -1124,7 +1178,7 @@ export default function WarRoomPage() {
                 >
                   {isHe ? 'כל הסוכנים' : 'All agents'}
                 </button>
-                {(Object.keys(AGENTS_CONFIG) as AgentId[]).map((aid) => (
+                {(Object.keys(AGENTS_CONFIG) as AgentId[]).sort((a, b) => a.localeCompare(b)).map((aid) => (
                   <button
                     key={aid}
                     onClick={() => setScoutAgentFilter(aid)}
@@ -1425,11 +1479,15 @@ export default function WarRoomPage() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                     </svg>
                   </div>
-                  <div>
-                    <p className="text-[10px] font-bold text-cyan-400 uppercase tracking-wider mb-0.5">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[10px] font-bold text-cyan-400 uppercase tracking-wider mb-1.5">
                       {isHe ? 'פרשנות AI' : 'AI Interpretation'}
                     </p>
-                    <p className="text-sm text-mgsr-text leading-relaxed">{scoutInterpretation}</p>
+                    <div className="space-y-1">
+                      {scoutInterpretation.split('\n').filter(l => l.trim()).map((line, i) => (
+                        <p key={i} className="text-sm text-mgsr-text leading-snug">{line.trim()}</p>
+                      ))}
+                    </div>
                   </div>
                 </div>
               )}
@@ -1622,12 +1680,63 @@ export default function WarRoomPage() {
                                   </div>
                                 )}
 
-                                {/* Scout analysis text */}
-                                {s.scoutAnalysis && (
-                                  <div className="text-xs text-mgsr-muted mt-2 line-clamp-2" dir={isRtl ? 'rtl' : 'ltr'}>
-                                    {s.scoutAnalysis}
-                                  </div>
-                                )}
+                                {/* Scout analysis — structured sections */}
+                                {s.scoutAnalysis && (() => {
+                                  const sec = parseExplanationSections(s.scoutAnalysis);
+                                  const hasAnything = sec.stats.length + sec.strengths.length + sec.fmAttrs.length + sec.insights.length > 0;
+                                  if (!hasAnything) return null;
+                                  return (
+                                    <div className="space-y-1.5 mt-2" dir="ltr">
+                                      {/* Season Stats */}
+                                      {sec.stats.length > 0 && (
+                                        <div>
+                                          <span className="text-[9px] font-semibold text-mgsr-muted/50 uppercase tracking-wider">{isHe ? '📊 נתוני עונה' : '📊 Season'}</span>
+                                          <div className="flex flex-wrap gap-1 mt-0.5">
+                                            {sec.stats.map((st, i) => (
+                                              <span key={i} className="px-1.5 py-0.5 rounded text-[10px] text-cyan-300/80 bg-cyan-500/10 border border-cyan-500/20">{st}</span>
+                                            ))}
+                                            {sec.physical.map((ph, i) => (
+                                              <span key={`p${i}`} className="px-1.5 py-0.5 rounded text-[10px] text-mgsr-muted/70 bg-mgsr-dark/60 border border-mgsr-border/40">{ph}</span>
+                                            ))}
+                                          </div>
+                                        </div>
+                                      )}
+
+                                      {/* Key Strengths */}
+                                      {sec.strengths.length > 0 && (
+                                        <div>
+                                          <span className="text-[9px] font-semibold text-mgsr-muted/50 uppercase tracking-wider">{isHe ? '💪 חוזקות' : '💪 Strengths'}</span>
+                                          <div className="flex flex-wrap gap-1 mt-0.5">
+                                            {sec.strengths.map((st, i) => (
+                                              <span key={i} className={`px-1.5 py-0.5 rounded text-[10px] border ${st.includes('✓') ? 'text-emerald-300 bg-emerald-500/15 border-emerald-500/30 font-medium' : 'text-green-300/80 bg-green-500/10 border-green-500/20'}`}>{st}</span>
+                                            ))}
+                                          </div>
+                                        </div>
+                                      )}
+
+                                      {/* FM Attributes */}
+                                      {sec.fmAttrs.length > 0 && (
+                                        <div>
+                                          <span className="text-[9px] font-semibold text-mgsr-muted/50 uppercase tracking-wider">🎮 FM</span>
+                                          <div className="flex flex-wrap gap-1 mt-0.5">
+                                            {sec.fmAttrs.map((attr, i) => (
+                                              <span key={i} className="px-1.5 py-0.5 rounded text-[10px] text-indigo-300/80 bg-indigo-500/10 border border-indigo-500/20">{attr}</span>
+                                            ))}
+                                          </div>
+                                        </div>
+                                      )}
+
+                                      {/* Market Insights */}
+                                      {sec.insights.length > 0 && (
+                                        <div className="flex flex-wrap gap-1">
+                                          {sec.insights.map((ins, i) => (
+                                            <span key={i} className="px-1.5 py-0.5 rounded text-[10px] text-amber-300/80 bg-amber-500/10 border border-amber-500/20">💡 {ins}</span>
+                                          ))}
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })()}
 
                                 {/* Status badges + actions */}
                                 <div className="flex flex-wrap gap-1.5 mt-2 items-center" onClick={(e) => e.stopPropagation()}>
