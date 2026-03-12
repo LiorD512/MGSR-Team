@@ -1165,6 +1165,11 @@ export default function WarRoomPage() {
                     {loadingScoutProfiles ? (isHe ? 'מרענן...' : 'Refreshing...') : isHe ? 'רענן' : 'Refresh'}
                   </button>
                 </div>
+                <p className="text-xs text-mgsr-muted/70 mt-2">
+                  {isHe
+                    ? '💡 כל סוכן מציג 10 פרופילים בכל פעם. לחץ על ״רענן״ כדי לראות 10 פרופילים שונים.'
+                    : '💡 Each agent shows 10 profiles at a time. Click "Refresh" to see 10 different ones.'}
+                </p>
                 </div>
               </div>
 
@@ -1179,7 +1184,11 @@ export default function WarRoomPage() {
                 >
                   {isHe ? 'כל הסוכנים' : 'All agents'}
                 </button>
-                {(Object.keys(AGENTS_CONFIG) as AgentId[]).sort((a, b) => a.localeCompare(b)).map((aid) => (
+                {(Object.keys(AGENTS_CONFIG) as AgentId[]).sort((a, b) => {
+                  const nameA = isHe ? AGENTS_CONFIG[a].nameHe : AGENTS_CONFIG[a].name;
+                  const nameB = isHe ? AGENTS_CONFIG[b].nameHe : AGENTS_CONFIG[b].name;
+                  return nameA.localeCompare(nameB, isHe ? 'he' : 'en');
+                }).map((aid) => (
                   <button
                     key={aid}
                     onClick={() => { setScoutAgentFilter(aid); setScoutRotationPage(0); }}
@@ -1264,7 +1273,11 @@ export default function WarRoomPage() {
                       (acc[p.agentId] = acc[p.agentId] || []).push(p);
                       return acc;
                     }, {})
-                  ).sort(([a], [b]) => a.localeCompare(b)).map(([agentId, allProfiles]) => {
+                  ).sort(([a], [b]) => {
+                    const nameA = isHe ? AGENTS_CONFIG[a as AgentId]?.nameHe || a : AGENTS_CONFIG[a as AgentId]?.name || a;
+                    const nameB = isHe ? AGENTS_CONFIG[b as AgentId]?.nameHe || b : AGENTS_CONFIG[b as AgentId]?.name || b;
+                    return nameA.localeCompare(nameB, isHe ? 'he' : 'en');
+                  }).map(([agentId, allProfiles]) => {
                     const cfg = AGENTS_CONFIG[agentId as AgentId];
                     const maxPerAgent = 10;
                     const totalPages = Math.max(1, Math.ceil(allProfiles.length / maxPerAgent));
