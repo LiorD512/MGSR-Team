@@ -231,4 +231,51 @@ class GeminiPassportOcrProvider {
         options.inJustDecodeBounds = false
         return BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options)
     }
+
+    /**
+     * Extracts valid leagues from a mandate document image using Gemini vision.
+     * Fallback when PdfBox text extraction fails (e.g. pdf-lib generated PDFs).
+     * Returns list of league/country names, or empty list on failure.
+     */
+    suspend fun extractLeaguesFromMandate(bitmap: Bitmap): List<String> =
+        withContext(Dispatchers.IO) {
+            try {
+                val prompt = """
+                    Look at this Football Agent Mandate document image.
+                    Find the section titled "Valid Leagues for this mandate:" and extract ALL league/country names listed there.
+                    Return ONLY a JSON object like: {"validLeagues": ["Israel", "Portugal"]}
+                    If there is no such section or no leagues listed, return: {"validLeagues": []}
+                    Return ONLY valid JSON. No markdown, no explanation.
+                """.trimIndent()
+
+                val content = Content.Builder()
+                    .image(bitmap)
+                    .text(prompt)
+                    .build()
+
+                val jsonSchema = Schema.obj(
+                    mapOf(
+                        "validLeagues" to Schema.array(Schema.string())
+                    )
+                )
+
+                val model = FirebaseAI.getInstance(backend = GenerativeBackend.googleAI()).generativeModel(
+                    modelName = MODEL_NAME,
+                    generationConfig = generationConfig {
+                        responseMimeType = "application/json"
+                        responseSchema = jsonSchema
+                    }
+                )
+
+                val response = model.generateContent(listOf(content))
+                val text = response.text ?: return@withContext emptyList()
+                val json = extractJsonFromResponse(text) ?: return@withContext emptyList()
+                val obj = JSONObject(json)
+                val arr = obj.optJSONArray("validLeagues") ?: return@withContext emptyList()
+                (0 until arr.length()).mapNotNull { arr.optString(it)?.trim()?.takeIf { s -> s.isNotBlank() } }
+            } catch (e: Exception) {
+                Log.w(TAG, "Gemini mandate league extraction failed", e)
+                emptyList()
+            }
+        }
 }

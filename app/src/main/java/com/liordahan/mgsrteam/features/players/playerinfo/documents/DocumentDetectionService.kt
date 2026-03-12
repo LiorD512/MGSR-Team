@@ -141,6 +141,22 @@ class DocumentDetectionService(
                         }
                     }
                 }
+                // Gemini vision fallback for leagues when text extraction fails
+                if (mandateResult.validLeagues.isEmpty() && geminiPassportOcr != null) {
+                    Log.i(TAG, "Mandate leagues empty after text extraction, trying Gemini vision fallback")
+                    val bitmap = if (isPdfMimeType(mimeType)) extractFirstPageAsBitmap(bytes) else decodeImage(bytes)
+                    if (bitmap != null) {
+                        try {
+                            val geminiLeagues = geminiPassportOcr.extractLeaguesFromMandate(bitmap)
+                            if (geminiLeagues.isNotEmpty()) {
+                                Log.i(TAG, "Gemini extracted mandate leagues: $geminiLeagues")
+                                mandateResult = mandateResult.copy(validLeagues = geminiLeagues)
+                            }
+                        } finally {
+                            bitmap.recycle()
+                        }
+                    }
+                }
                 return@withContext mandateResult
             }
 
