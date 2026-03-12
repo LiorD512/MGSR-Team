@@ -35,13 +35,15 @@ export async function GET(request: NextRequest) {
     const agentId = searchParams.get('agentId') as AgentId | null;
     const limit = Math.min(parseInt(searchParams.get('limit') || '1500', 10), 2000);
 
+    // Per-agent: simple where() without orderBy (no composite index needed).
+    // All agents: orderBy only, fetch all profiles.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let query: any = db
-      .collection('ScoutProfiles')
-      .orderBy('lastRefreshedAt', 'desc');
+    let query: any = db.collection('ScoutProfiles');
 
     if (agentId && AGENTS_CONFIG[agentId]) {
       query = query.where('agentId', '==', agentId);
+    } else {
+      query = query.orderBy('lastRefreshedAt', 'desc');
     }
 
     const snapshot = await query.limit(limit).get();
