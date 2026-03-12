@@ -35,6 +35,7 @@ data class WarRoomUiState(
     val scoutProfilesTotal: Int = 0,
     val selectedAgentFilter: String? = null,            // null = All
     val agentsError: String? = null,
+    val agentRotationPage: Int = 0,                       // rotation page for 10-per-agent display
 
     // Report (full detail)
     val reportLoading: Boolean = false,
@@ -65,6 +66,7 @@ abstract class IWarRoomViewModel : ViewModel() {
     abstract fun loadReport(playerUrl: String, playerName: String?)
     abstract fun clearReport()
     abstract fun setProfileFeedback(profileId: String, feedback: String, agentId: String)
+    abstract fun rotateAgentProfiles()
 }
 
 // ── Implementation ──────────────────────────────────────────────────────────
@@ -169,8 +171,12 @@ class WarRoomViewModel(
     }
 
     override fun setAgentFilter(agentId: String?) {
-        _uiState.update { it.copy(selectedAgentFilter = agentId) }
+        _uiState.update { it.copy(selectedAgentFilter = agentId, agentRotationPage = 0) }
         loadScoutProfiles(agentId)
+    }
+
+    override fun rotateAgentProfiles() {
+        _uiState.update { it.copy(agentRotationPage = it.agentRotationPage + 1) }
     }
 
     override fun toggleCandidateExpanded(transfermarktUrl: String) {

@@ -174,6 +174,7 @@ export default function WarRoomPage() {
   const [scoutLastRunAt, setScoutLastRunAt] = useState<number | null>(null);
   const [scoutAgentFilter, setScoutAgentFilter] = useState<AgentId | 'all'>('all');
   const [scoutFeedback, setScoutFeedback] = useState<Record<string, 'up' | 'down'>>({});
+  const [scoutRotationPage, setScoutRotationPage] = useState(0);
 
   // AI Scout Search state
   const [scoutQuery, setScoutQuery] = useState('');
@@ -1157,7 +1158,7 @@ export default function WarRoomPage() {
                     {scoutProfiles.length} {isHe ? 'פרופילים' : 'profiles'}
                   </span>
                   <button
-                    onClick={fetchScoutProfiles}
+                    onClick={() => setScoutRotationPage((p) => p + 1)}
                     disabled={loadingScoutProfiles}
                     className="px-2 py-1 rounded text-xs font-medium border border-mgsr-border text-mgsr-muted hover:text-mgsr-teal hover:border-mgsr-teal/50 transition disabled:opacity-50"
                   >
@@ -1169,7 +1170,7 @@ export default function WarRoomPage() {
 
               <div className="flex gap-1 p-1.5 rounded-2xl bg-mgsr-card/80 backdrop-blur-md border border-mgsr-border/80 overflow-x-auto" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
                 <button
-                  onClick={() => setScoutAgentFilter('all')}
+                  onClick={() => { setScoutAgentFilter('all'); setScoutRotationPage(0); }}
                   className={`shrink-0 px-3 py-2 rounded-xl text-sm font-medium transition-all duration-200 whitespace-nowrap min-h-[40px] ${
                     scoutAgentFilter === 'all'
                       ? 'bg-gradient-to-r from-mgsr-teal/20 to-emerald-500/15 text-mgsr-teal border border-mgsr-teal/30 shadow-sm shadow-mgsr-teal/5'
@@ -1181,7 +1182,7 @@ export default function WarRoomPage() {
                 {(Object.keys(AGENTS_CONFIG) as AgentId[]).sort((a, b) => a.localeCompare(b)).map((aid) => (
                   <button
                     key={aid}
-                    onClick={() => setScoutAgentFilter(aid)}
+                    onClick={() => { setScoutAgentFilter(aid); setScoutRotationPage(0); }}
                     className={`shrink-0 px-3 py-2 rounded-xl text-sm font-medium transition-all duration-200 flex items-center gap-1.5 whitespace-nowrap min-h-[40px] ${
                       scoutAgentFilter === aid
                         ? 'bg-gradient-to-r from-mgsr-teal/20 to-emerald-500/15 text-mgsr-teal border border-mgsr-teal/30 shadow-sm shadow-mgsr-teal/5'
@@ -1263,8 +1264,12 @@ export default function WarRoomPage() {
                       (acc[p.agentId] = acc[p.agentId] || []).push(p);
                       return acc;
                     }, {})
-                  ).map(([agentId, profiles]) => {
+                  ).sort(([a], [b]) => a.localeCompare(b)).map(([agentId, allProfiles]) => {
                     const cfg = AGENTS_CONFIG[agentId as AgentId];
+                    const maxPerAgent = 10;
+                    const totalPages = Math.max(1, Math.ceil(allProfiles.length / maxPerAgent));
+                    const page = allProfiles.length <= maxPerAgent ? 0 : scoutRotationPage % totalPages;
+                    const profiles = allProfiles.slice(page * maxPerAgent, (page + 1) * maxPerAgent);
                     return (
                       <section
                         key={agentId}
@@ -1278,9 +1283,12 @@ export default function WarRoomPage() {
                             </h3>
                           </div>
                           <div className="flex items-center gap-1.5">
+                            {totalPages > 1 && (
+                              <span className="text-[10px] text-mgsr-muted mr-1">{page + 1}/{totalPages}</span>
+                            )}
                             <div className="w-1.5 h-1.5 rounded-full bg-mgsr-teal war-live-dot" />
                             <span className="text-xs font-semibold text-mgsr-teal">
-                              {profiles.length}
+                              {profiles.length}/{allProfiles.length}
                             </span>
                           </div>
                         </div>

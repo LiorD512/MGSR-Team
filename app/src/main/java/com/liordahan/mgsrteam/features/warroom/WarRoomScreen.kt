@@ -114,17 +114,17 @@ import java.util.Locale
 // ═══════════════════════════════════════════════════════════════════════════════
 
 private val WrIndigo = Color(0xFF6366F1)
-private val WrIndigoLight = Color(0xFF818CF8)
+private val WrIndigoLight = Color(0xFF93A0FF)
 private val WrIndigoDim = Color(0xFF4F46E5)
 private val WrIndigoBg = Color(0x1A6366F1)
 private val WrIndigoBorder = Color(0x406366F1)
 
-private val WrSurface = Color(0xFF141C2B)
-private val WrSurfaceElevated = Color(0xFF1C2640)
-private val WrSurfaceBorder = Color(0xFF2A3654)
+private val WrSurface = Color(0xFF111827)
+private val WrSurfaceElevated = Color(0xFF1A2235)
+private val WrSurfaceBorder = Color(0xFF283044)
 
-private val WrGem = Color(0xFFD97706)
-private val WrGemBg = Color(0x1AD97706)
+private val WrGem = Color(0xFFF59E0B)
+private val WrGemBg = Color(0x1AF59E0B)
 private val WrMatch = Color(0xFF10B981)
 private val WrMatchBg = Color(0x1A10B981)
 private val WrAgent = Color(0xFF8B5CF6)
@@ -133,6 +133,7 @@ private val WrAgentBg = Color(0x1A8B5CF6)
 private val WrScoreExcellent = Color(0xFF10B981)
 private val WrScoreGood = Color(0xFF3B82F6)
 private val WrScoreMedium = Color(0xFFF59E0B)
+private val WrScoreLow = Color(0xFFEF4444)
 
 private const val TM_IMAGE_BASE = "https://img.a.transfermarkt.technology/portrait/medium/"
 private const val TM_DEFAULT_IMAGE = "${TM_IMAGE_BASE}0.jpg"
@@ -171,7 +172,8 @@ private fun extractPlayerIdFromUrl(url: String): String? {
 private fun scoreColor(score: Int): Color = when {
     score >= 80 -> WrScoreExcellent
     score >= 60 -> WrScoreGood
-    else -> WrScoreMedium
+    score >= 40 -> WrScoreMedium
+    else -> WrScoreLow
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -317,11 +319,26 @@ private fun CommandHeader(
             .drawBehind {
                 val gradient = Brush.verticalGradient(
                     colors = listOf(
-                        WrIndigoDim.copy(alpha = 0.25f),
+                        WrIndigoDim.copy(alpha = 0.30f),
+                        WrIndigo.copy(alpha = 0.08f),
                         HomeDarkBackground
                     )
                 )
                 drawRect(gradient)
+                // Glowing bottom edge line
+                drawLine(
+                    brush = Brush.horizontalGradient(
+                        listOf(
+                            Color.Transparent,
+                            WrIndigo.copy(alpha = 0.35f),
+                            WrIndigoLight.copy(alpha = 0.20f),
+                            Color.Transparent
+                        )
+                    ),
+                    start = Offset(0f, size.height),
+                    end = Offset(size.width, size.height),
+                    strokeWidth = 1.5.dp.toPx()
+                )
             }
     ) {
         // Top row: back + title + live indicator
@@ -345,26 +362,38 @@ private fun CommandHeader(
 
             Text(
                 text = stringResource(R.string.war_room_title),
-                style = boldTextStyle(HomeTextPrimary, 20.sp),
+                style = boldTextStyle(HomeTextPrimary, 22.sp),
+                letterSpacing = (-0.3).sp
             )
 
             Spacer(Modifier.weight(1f))
 
             // Live pulse dot
             Box(contentAlignment = Alignment.Center) {
-                Canvas(modifier = Modifier.size(10.dp)) {
+                Canvas(modifier = Modifier.size(12.dp)) {
+                    // Outer glow ring
                     drawCircle(
-                        color = WrScoreExcellent.copy(alpha = pulseAlpha),
+                        color = WrScoreExcellent.copy(alpha = pulseAlpha * 0.3f),
                         radius = size.minDimension / 2
                     )
+                    // Mid ring
+                    drawCircle(
+                        color = WrScoreExcellent.copy(alpha = pulseAlpha * 0.6f),
+                        radius = size.minDimension / 3f
+                    )
+                    // Core dot
                     drawCircle(
                         color = WrScoreExcellent,
-                        radius = size.minDimension / 3.5f
+                        radius = size.minDimension / 5f
                     )
                 }
             }
             Spacer(Modifier.width(6.dp))
-            Text("LIVE", style = boldTextStyle(WrScoreExcellent, 10.sp), letterSpacing = 1.sp)
+            Text(
+                "LIVE",
+                style = boldTextStyle(WrScoreExcellent, 10.sp),
+                letterSpacing = 1.5.sp
+            )
         }
 
         // Segmented tab selector
@@ -390,42 +419,48 @@ private fun SegmentedTabBar(selectedTab: WarRoomTab, onTabSelected: (WarRoomTab)
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 6.dp)
-            .clip(RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(14.dp))
             .background(WrSurface)
-            .border(1.dp, WrSurfaceBorder, RoundedCornerShape(12.dp))
+            .border(1.dp, WrSurfaceBorder.copy(alpha = 0.6f), RoundedCornerShape(14.dp))
             .padding(4.dp),
         horizontalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         tabs.forEach { (tab, labelRes) ->
             val isSelected = selectedTab == tab
             val bgColor by animateColorAsState(
-                targetValue = if (isSelected) WrIndigo.copy(alpha = 0.25f) else Color.Transparent,
+                targetValue = if (isSelected) WrIndigo.copy(alpha = 0.30f) else Color.Transparent,
                 label = "tab_bg"
             )
             val textColor by animateColorAsState(
-                targetValue = if (isSelected) WrIndigoLight else HomeTextSecondary,
+                targetValue = if (isSelected) WrIndigoLight else HomeTextSecondary.copy(alpha = 0.7f),
                 label = "tab_text"
             )
 
             Box(
                 modifier = Modifier
                     .weight(1f)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(bgColor)
+                    .clip(RoundedCornerShape(11.dp))
                     .then(
-                        if (isSelected) Modifier.border(
-                            1.dp,
-                            WrIndigoBorder,
-                            RoundedCornerShape(10.dp)
-                        ) else Modifier
+                        if (isSelected) Modifier
+                            .background(
+                                Brush.verticalGradient(
+                                    listOf(
+                                        WrIndigo.copy(alpha = 0.25f),
+                                        WrIndigo.copy(alpha = 0.12f)
+                                    )
+                                )
+                            )
+                            .border(1.dp, WrIndigoBorder, RoundedCornerShape(11.dp))
+                        else Modifier.background(bgColor)
                     )
                     .clickable { onTabSelected(tab) }
-                    .padding(vertical = 10.dp),
+                    .padding(vertical = 11.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = stringResource(labelRes),
-                    style = boldTextStyle(textColor, 13.sp)
+                    style = boldTextStyle(textColor, 13.sp),
+                    letterSpacing = if (isSelected) 0.3.sp else 0.sp
                 )
             }
         }
@@ -695,34 +730,47 @@ private fun DiscoveryPlayerCard(
         modifier = Modifier
             .padding(horizontal = 16.dp, vertical = 6.dp)
             .fillMaxWidth()
-            .clip(RoundedCornerShape(18.dp))
+            .clip(RoundedCornerShape(20.dp))
             .background(WrSurfaceElevated)
             .drawBehind {
                 // Radial glow from source accent at top-left
                 drawRect(
                     brush = Brush.radialGradient(
                         colors = listOf(
-                            sourceAccent.copy(alpha = 0.07f),
+                            sourceAccent.copy(alpha = 0.09f),
                             Color.Transparent
                         ),
                         center = Offset(0f, 0f),
                         radius = size.width * 0.7f
                     )
                 )
+                // Subtle bottom edge highlight
+                drawRect(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(
+                            Color.Transparent,
+                            WrSurfaceBorder.copy(alpha = 0.15f)
+                        ),
+                        startY = size.height * 0.85f,
+                        endY = size.height
+                    )
+                )
             }
-            .border(1.dp, sourceAccent.copy(alpha = 0.12f), RoundedCornerShape(18.dp))
+            .border(1.dp, sourceAccent.copy(alpha = 0.15f), RoundedCornerShape(20.dp))
     ) {
         // Source accent strip at top — gradient fade
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(3.dp)
+                .height(3.5.dp)
+                .clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp))
                 .background(
                     Brush.horizontalGradient(
                         listOf(
                             sourceAccent,
-                            sourceAccent.copy(alpha = 0.5f),
-                            sourceAccent.copy(alpha = 0.1f)
+                            sourceAccent.copy(alpha = 0.6f),
+                            sourceAccent.copy(alpha = 0.15f),
+                            Color.Transparent
                         )
                     )
                 )
@@ -734,18 +782,18 @@ private fun DiscoveryPlayerCard(
                 Box(contentAlignment = Alignment.Center) {
                     if (matchScore > 0) {
                         val ringColor = scoreColor(matchScore)
-                        Canvas(modifier = Modifier.size(74.dp)) {
+                        Canvas(modifier = Modifier.size(76.dp)) {
                             // Outer glow ring
                             drawArc(
-                                color = ringColor.copy(alpha = 0.06f),
+                                color = ringColor.copy(alpha = 0.08f),
                                 startAngle = 0f,
                                 sweepAngle = 360f,
                                 useCenter = false,
-                                style = Stroke(width = 10.dp.toPx())
+                                style = Stroke(width = 12.dp.toPx())
                             )
                             // Background track
                             drawArc(
-                                color = ringColor.copy(alpha = 0.1f),
+                                color = ringColor.copy(alpha = 0.08f),
                                 startAngle = -90f,
                                 sweepAngle = 360f,
                                 useCenter = false,
@@ -796,11 +844,12 @@ private fun DiscoveryPlayerCard(
                     Text(
                         text = candidate.name,
                         style = boldTextStyle(HomeTextPrimary, 17.sp),
+                        letterSpacing = (-0.2).sp,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
 
-                    Spacer(Modifier.height(5.dp))
+                    Spacer(Modifier.height(6.dp))
 
                     // Position + Age + Value
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -861,21 +910,16 @@ private fun DiscoveryPlayerCard(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(WrGemBg)
-                        .drawBehind {
-                            drawRect(
-                                brush = Brush.radialGradient(
-                                    colors = listOf(
-                                        WrGem.copy(alpha = 0.08f),
-                                        Color.Transparent
-                                    ),
-                                    center = Offset(0f, size.height / 2),
-                                    radius = size.width * 0.5f
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(
+                            Brush.horizontalGradient(
+                                listOf(
+                                    WrGem.copy(alpha = 0.10f),
+                                    WrGem.copy(alpha = 0.04f)
                                 )
                             )
-                        }
-                        .border(1.dp, WrGem.copy(alpha = 0.25f), RoundedCornerShape(12.dp))
+                        )
+                        .border(1.dp, WrGem.copy(alpha = 0.20f), RoundedCornerShape(14.dp))
                         .padding(12.dp),
                     verticalAlignment = Alignment.Top
                 ) {
@@ -935,15 +979,15 @@ private fun DiscoveryPlayerCard(
                 // Report button — prominent gradient CTA
                 Box(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(12.dp))
+                        .clip(RoundedCornerShape(14.dp))
                         .background(
                             Brush.horizontalGradient(
-                                listOf(WrIndigo.copy(alpha = 0.35f), WrIndigoDim.copy(alpha = 0.2f))
+                                listOf(WrIndigo.copy(alpha = 0.40f), WrIndigoDim.copy(alpha = 0.22f))
                             )
                         )
-                        .border(1.dp, WrIndigoBorder, RoundedCornerShape(12.dp))
+                        .border(1.dp, WrIndigoBorder, RoundedCornerShape(14.dp))
                         .clickable { onShowReport() }
-                        .padding(horizontal = 18.dp, vertical = 10.dp)
+                        .padding(horizontal = 20.dp, vertical = 11.dp)
                 ) {
                     Text(
                         "🧠 ${stringResource(R.string.war_room_view_report)}",
@@ -1214,6 +1258,21 @@ private fun AgentsTab(state: WarRoomUiState, viewModel: IWarRoomViewModel, navCo
     }
     val groupedProfiles = filteredScoutProfiles.groupBy { it.agentId to it.agentName }
     val uniqueAgents = groupedProfiles.keys.sortedBy { it.first }
+
+    val maxProfilesPerAgent = 10
+    val rotationPage = state.agentRotationPage
+    // Slice each agent's profiles based on rotation page (wrapping)
+    val paginatedProfiles = remember(groupedProfiles, rotationPage) {
+        groupedProfiles.mapValues { (_, profiles) ->
+            if (profiles.size <= maxProfilesPerAgent) profiles
+            else {
+                val totalPages = (profiles.size + maxProfilesPerAgent - 1) / maxProfilesPerAgent
+                val page = rotationPage % totalPages
+                val start = page * maxProfilesPerAgent
+                profiles.subList(start, minOf(start + maxProfilesPerAgent, profiles.size))
+            }
+        }
+    }
     val isHebrew = Locale.getDefault().language.let { it == "iw" || it == "he" }
 
     val agentDisplayNames = remember(uniqueAgents, state.scoutProfiles, isHebrew) {
@@ -1265,7 +1324,7 @@ private fun AgentsTab(state: WarRoomUiState, viewModel: IWarRoomViewModel, navCo
                 Spacer(Modifier.weight(1f))
 
                 IconButton(
-                    onClick = { viewModel.loadScoutProfiles(state.selectedAgentFilter) },
+                    onClick = { viewModel.rotateAgentProfiles() },
                     modifier = Modifier.size(40.dp)
                 ) {
                     Icon(Icons.Default.Refresh, null, tint = HomeTextSecondary, modifier = Modifier.size(20.dp))
@@ -1295,13 +1354,19 @@ private fun AgentsTab(state: WarRoomUiState, viewModel: IWarRoomViewModel, navCo
         }
 
         // Agent sections (alphabetical)
-        groupedProfiles.entries.sortedBy { it.key.first }.forEach { (key, profiles) ->
+        paginatedProfiles.entries.sortedBy { it.key.first }.forEach { (key, profiles) ->
             val (agentId, agentName) = key
+            val totalForAgent = groupedProfiles[key]?.size ?: profiles.size
+            val totalPages = (totalForAgent + maxProfilesPerAgent - 1) / maxProfilesPerAgent
+            val currentPage = if (totalForAgent <= maxProfilesPerAgent) 0 else rotationPage % totalPages
 
             item(key = "header_$agentId") {
                 AgentSectionHeader(
                     name = agentDisplayNames[agentId to agentName] ?: agentName,
-                    count = profiles.size
+                    count = profiles.size,
+                    totalCount = totalForAgent,
+                    page = currentPage + 1,
+                    totalPages = totalPages
                 )
             }
 
@@ -1413,9 +1478,15 @@ private fun AgentAvatar(
     ) {
         Box(
             modifier = Modifier
-                .size(50.dp)
+                .size(52.dp)
                 .clip(CircleShape)
-                .background(if (isSelected) accentColor.copy(alpha = 0.15f) else WrSurface)
+                .background(
+                    if (isSelected)
+                        Brush.radialGradient(
+                            listOf(accentColor.copy(alpha = 0.20f), accentColor.copy(alpha = 0.08f))
+                        )
+                    else Brush.linearGradient(listOf(WrSurface, WrSurface))
+                )
                 .border(2.dp, borderColor, CircleShape),
             contentAlignment = Alignment.Center
         ) {
@@ -1446,40 +1517,72 @@ private fun AgentAvatar(
 // ═══════════════════════════════════════════════════════════════════════════════
 
 @Composable
-private fun AgentSectionHeader(name: String, count: Int) {
-    Row(
+private fun AgentSectionHeader(name: String, count: Int, totalCount: Int = count, page: Int = 1, totalPages: Int = 1) {
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .padding(horizontal = 16.dp, vertical = 12.dp)
     ) {
-        // Animated glow dot
-        val infiniteTransition = rememberInfiniteTransition(label = "agent_dot")
-        val dotAlpha by infiniteTransition.animateFloat(
-            initialValue = 0.5f,
-            targetValue = 1f,
-            animationSpec = infiniteRepeatable(
-                animation = tween(1500, easing = FastOutSlowInEasing),
-                repeatMode = RepeatMode.Reverse
-            ),
-            label = "dot_alpha"
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Animated glow dot
+            val infiniteTransition = rememberInfiniteTransition(label = "agent_dot")
+            val dotAlpha by infiniteTransition.animateFloat(
+                initialValue = 0.5f,
+                targetValue = 1f,
+                animationSpec = infiniteRepeatable(
+                    animation = tween(1500, easing = FastOutSlowInEasing),
+                    repeatMode = RepeatMode.Reverse
+                ),
+                label = "dot_alpha"
+            )
+            Box(
+                modifier = Modifier
+                    .size(8.dp)
+                    .clip(CircleShape)
+                    .background(WrAgent.copy(alpha = dotAlpha))
+            )
+            Spacer(Modifier.width(10.dp))
+            Text(
+                name,
+                style = boldTextStyle(HomeTextPrimary, 16.sp),
+                letterSpacing = (-0.2).sp,
+                modifier = Modifier.weight(1f)
+            )
+            if (totalPages > 1) {
+                Text(
+                    text = "$page/$totalPages",
+                    style = regularTextStyle(HomeTextSecondary, 10.sp),
+                    modifier = Modifier.padding(end = 6.dp)
+                )
+            }
+            Text(
+                text = "$count/$totalCount",
+                style = boldTextStyle(WrAgent, 12.sp),
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(WrAgentBg)
+                    .border(1.dp, WrAgent.copy(alpha = 0.25f), RoundedCornerShape(8.dp))
+                    .padding(horizontal = 10.dp, vertical = 4.dp)
+            )
+        }
+        Spacer(Modifier.height(8.dp))
+        // Gradient underline
         Box(
             modifier = Modifier
-                .size(8.dp)
-                .clip(CircleShape)
-                .background(WrAgent.copy(alpha = dotAlpha))
-        )
-        Spacer(Modifier.width(10.dp))
-        Text(name, style = boldTextStyle(HomeTextPrimary, 15.sp), modifier = Modifier.weight(1f))
-        Text(
-            text = "$count",
-            style = boldTextStyle(WrAgent, 12.sp),
-            modifier = Modifier
-                .clip(RoundedCornerShape(8.dp))
-                .background(WrAgentBg)
-                .border(1.dp, WrAgent.copy(alpha = 0.2f), RoundedCornerShape(8.dp))
-                .padding(horizontal = 8.dp, vertical = 3.dp)
+                .fillMaxWidth()
+                .height(1.dp)
+                .background(
+                    Brush.horizontalGradient(
+                        listOf(
+                            WrAgent.copy(alpha = 0.30f),
+                            WrAgent.copy(alpha = 0.08f),
+                            Color.Transparent
+                        )
+                    )
+                )
         )
     }
 }
@@ -1517,22 +1620,33 @@ private fun AgentProfileCard(
         modifier = Modifier
             .padding(horizontal = 16.dp, vertical = 5.dp)
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(20.dp))
             .background(WrSurfaceElevated)
             .drawBehind {
                 // Subtle radial glow from top-right (agent accent)
                 drawRect(
                     brush = Brush.radialGradient(
                         colors = listOf(
-                            WrAgent.copy(alpha = 0.05f),
+                            WrAgent.copy(alpha = 0.06f),
                             Color.Transparent
                         ),
                         center = Offset(size.width, 0f),
                         radius = size.width * 0.6f
                     )
                 )
+                // Subtle bottom edge highlight
+                drawRect(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(
+                            Color.Transparent,
+                            WrSurfaceBorder.copy(alpha = 0.12f)
+                        ),
+                        startY = size.height * 0.85f,
+                        endY = size.height
+                    )
+                )
             }
-            .border(1.dp, WrAgent.copy(alpha = 0.1f), RoundedCornerShape(16.dp))
+            .border(1.dp, WrAgent.copy(alpha = 0.12f), RoundedCornerShape(20.dp))
             .padding(14.dp)
     ) {
         Row(verticalAlignment = Alignment.Top) {
@@ -1876,9 +1990,9 @@ private fun LoadingState(color: Color) {
                 modifier = Modifier
                     .padding(horizontal = 16.dp, vertical = 6.dp)
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(18.dp))
+                    .clip(RoundedCornerShape(20.dp))
                     .background(WrSurfaceElevated)
-                    .border(1.dp, color.copy(alpha = 0.08f), RoundedCornerShape(18.dp))
+                    .border(1.dp, color.copy(alpha = 0.06f), RoundedCornerShape(20.dp))
             ) {
                 // Top accent shimmer strip
                 Box(
