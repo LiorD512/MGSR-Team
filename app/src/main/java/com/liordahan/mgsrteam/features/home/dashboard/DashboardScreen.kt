@@ -323,7 +323,8 @@ fun DashboardScreen(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 6.dp),
+                .padding(horizontal = 16.dp)
+                .padding(top = 16.dp, bottom = 6.dp),
             contentAlignment = Alignment.Center
         ) {
             PlatformSwitcher(
@@ -354,7 +355,7 @@ fun DashboardScreen(
                     shape = RoundedCornerShape(1.dp)
                 )
         )
-        Spacer(Modifier.height(6.dp))
+        Spacer(Modifier.height(16.dp))
 
         // ── All content below switcher (one cohesive animated transition) ──
         AnimatedContent(
@@ -791,7 +792,7 @@ private fun GreetingHeader(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(start = 20.dp, end = 20.dp, top = 48.dp, bottom = 8.dp)
+            .padding(start = 20.dp, end = 20.dp, top = 24.dp, bottom = 8.dp)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),

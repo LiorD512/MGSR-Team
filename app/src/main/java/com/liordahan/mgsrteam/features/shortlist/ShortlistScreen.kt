@@ -618,7 +618,7 @@ private fun ShortlistHeader(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(start = 20.dp, end = 12.dp, top = 48.dp, bottom = 4.dp),
+            .padding(start = 20.dp, end = 12.dp, top = 24.dp, bottom = 4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(

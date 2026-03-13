@@ -1,5 +1,7 @@
 package com.liordahan.mgsrteam.features.warroom
 
+import com.liordahan.mgsrteam.ui.components.ShortlistPillButton
+import com.liordahan.mgsrteam.ui.components.shortlistPillState
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.animation.animateColorAsState
@@ -411,7 +413,7 @@ private fun CommandHeader(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 4.dp, end = 16.dp, top = 48.dp, bottom = 4.dp),
+                .padding(start = 4.dp, end = 16.dp, top = 24.dp, bottom = 4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             IconButton(
@@ -1133,16 +1135,9 @@ private fun DiscoveryPlayerCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 onAddToShortlist?.let { onAdd ->
-                    ActionPill(
-                        icon = {
-                            Icon(
-                                imageVector = if (isInShortlist) Icons.Default.Bookmark else Icons.Default.BookmarkAdd,
-                                contentDescription = if (isInShortlist) stringResource(R.string.shortlist_in_shortlist) else stringResource(R.string.shortlist_add_to_shortlist),
-                                tint = if (isInShortlist) HomeGreenAccent else HomeTextSecondary,
-                                modifier = Modifier.size(18.dp)
-                            )
-                        },
-                        onClick = { if (!isShortlistPending) onAdd() }
+                    ShortlistPillButton(
+                        state = shortlistPillState(isInShortlist, isShortlistPending),
+                        onClick = { onAdd() },
                     )
                 }
 
@@ -2144,16 +2139,9 @@ private fun AgentProfileCard(
             verticalAlignment = Alignment.CenterVertically
         ) {
             onAddToShortlist?.let { onAdd ->
-                ActionPill(
-                    icon = {
-                        Icon(
-                            imageVector = if (isInShortlist) Icons.Default.Bookmark else Icons.Default.BookmarkAdd,
-                            contentDescription = if (isInShortlist) stringResource(R.string.shortlist_in_shortlist) else stringResource(R.string.shortlist_add_to_shortlist),
-                            tint = if (isInShortlist) HomeGreenAccent else HomeTextSecondary,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    },
-                    onClick = { if (!isShortlistPending) onAdd() }
+                ShortlistPillButton(
+                    state = shortlistPillState(isInShortlist, isShortlistPending),
+                    onClick = { onAdd() },
                 )
             }
             ActionPill(

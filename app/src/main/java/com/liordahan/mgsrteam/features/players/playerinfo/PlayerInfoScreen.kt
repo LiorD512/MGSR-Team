@@ -1,5 +1,7 @@
 package com.liordahan.mgsrteam.features.players.playerinfo
 
+import com.liordahan.mgsrteam.ui.components.ShortlistPillButton
+import com.liordahan.mgsrteam.ui.components.shortlistPillState
 import android.Manifest
 import android.content.Context
 import android.content.Intent
@@ -2694,16 +2696,10 @@ private fun SimilarPlayerSuggestionRow(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         onAddToShortlistClick?.let { onAdd ->
-                            IconButton(
+                            ShortlistPillButton(
+                                state = shortlistPillState(isInShortlist, isShortlistPending),
                                 onClick = { onAdd() },
-                                modifier = Modifier.size(36.dp)
-                            ) {
-                                Icon(
-                                    imageVector = if (isInShortlist) Icons.Default.Bookmark else Icons.Default.BookmarkAdd,
-                                    contentDescription = if (isInShortlist) stringResource(R.string.shortlist_in_shortlist) else stringResource(R.string.shortlist_add_to_shortlist),
-                                    tint = if (isInShortlist) PlatformColors.palette.green else PlatformColors.palette.textSecondary
-                                )
-                            }
+                            )
                         }
                         TextButton(
                             onClick = { onTmLinkClick() },
@@ -3328,7 +3324,7 @@ fun PlayerInfoHeader(onBackClicked: () -> Unit, currentPlatform: Platform = Plat
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(start = 20.dp, end = 20.dp, top = 48.dp, bottom = 4.dp)
+            .padding(start = 20.dp, end = 20.dp, top = 24.dp, bottom = 4.dp)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),

@@ -91,7 +91,7 @@
 
     <!-- Shortlist Screen -->
     <string name="shortlist_title">Shortlist</string>
-    <string name="shortlist_subtitle">Saved profiles from Releases &amp; Returnees — add to agency when ready</string>
+    <string name="shortlist_subtitle">Profiles to follow - add to agency when ready</string>
     <string name="women_shortlist_subtitle">Players to follow in the coming weeks</string>
     <string name="youth_shortlist_subtitle">Profiles to follow in the near future</string>
     <string name="women_player_info_title">Player Info</string>
@@ -645,6 +645,9 @@
     <string name="releases_roster_teammates_tap">Roster teammates</string>
     <string name="shortlist_in_shortlist">In shortlist</string>
     <string name="shortlist_add_to_shortlist">Add to shortlist</string>
+    <string name="shortlist_pill_idle">Shortlist</string>
+    <string name="shortlist_pill_adding">Adding…</string>
+    <string name="shortlist_pill_done">Shortlisted</string>
 
     <!-- Returnee Screen -->
     <string name="returnee_title">Returnees</string>

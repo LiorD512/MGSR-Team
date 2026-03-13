@@ -92,7 +92,7 @@
 
     <!-- Shortlist Screen -->
     <string name="shortlist_title">רשימת מעקב</string>
-    <string name="shortlist_subtitle">פרופילים שמורים משחרורים וחזרו מהשאלה — הוסף לסוכנות כשמוכן</string>
+    <string name="shortlist_subtitle">פרופילים למעקב — הוסף לסוכנות כשמוכן</string>
     <string name="shortlist_add_player">הוסף שחקן</string>
     <string name="shortlist_stat_this_week">השבוע</string>
     <string name="shortlist_could_not_load">לא ניתן לטעון את השחקן. ייתכן שהוא כבר במאגר שלך.</string>
@@ -426,6 +426,9 @@
     <string name="releases_roster_teammates_tap">שחקנים מהמאגר ששיחקו איתו</string>
     <string name="shortlist_in_shortlist">ברשימת מעקב</string>
     <string name="shortlist_add_to_shortlist">הוסף לרשימת מעקב</string>
+    <string name="shortlist_pill_idle">מעקב</string>
+    <string name="shortlist_pill_adding">מוסיף…</string>
+    <string name="shortlist_pill_done">ברשימה</string>
 
     <!-- Returnee Screen -->
     <string name="returnee_title">חזרו מהשאלה</string>

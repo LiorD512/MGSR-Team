@@ -1,5 +1,7 @@
 package com.liordahan.mgsrteam.features.releases
 
+import com.liordahan.mgsrteam.ui.components.ShortlistPillButton
+import com.liordahan.mgsrteam.ui.components.shortlistPillState
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -452,7 +454,7 @@ private fun ReleasesHeader(onBackClicked: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(start = 20.dp, end = 12.dp, top = 48.dp, bottom = 4.dp),
+            .padding(start = 20.dp, end = 12.dp, top = 24.dp, bottom = 4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
 
@@ -891,20 +893,17 @@ fun ReleaseListItem(
                     )
                 }
 
-                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     onAddToShortlistClicked?.let { onAdd ->
                         val url = release.playerUrl
                         val isAdded = url != null && (isInShortlist?.invoke(url) == true)
-                        IconButton(
+                        ShortlistPillButton(
+                            state = shortlistPillState(isAdded, isShortlistPending),
                             onClick = { onAdd(release) },
-                            modifier = Modifier.size(36.dp)
-                        ) {
-                            Icon(
-                                imageVector = if (isAdded) Icons.Default.Bookmark else Icons.Default.BookmarkAdd,
-                                contentDescription = if (isAdded) stringResource(R.string.shortlist_in_shortlist) else stringResource(R.string.shortlist_add_to_shortlist),
-                                tint = if (isAdded) HomeGreenAccent else HomeTextSecondary
-                            )
-                        }
+                        )
                     }
                     onAddToAgencyClicked?.let { onAdd ->
                         IconButton(

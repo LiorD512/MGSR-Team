@@ -1915,7 +1915,7 @@ fun AddPlayerHeader(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(start = 20.dp, end = 20.dp, top = 48.dp, bottom = 4.dp)
+            .padding(start = 20.dp, end = 20.dp, top = 24.dp, bottom = 4.dp)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),

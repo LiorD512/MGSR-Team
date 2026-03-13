@@ -1,6 +1,8 @@
 package com.liordahan.mgsrteam.ui.utils
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.CircularProgressIndicator
@@ -30,6 +32,18 @@ fun Modifier.clickWithNoRipple(onClick: () -> Unit) =
         enabled = true,
         onClick = { onClick() }
     )
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+fun Modifier.combinedClickWithNoRipple(
+    onClick: () -> Unit,
+    onLongClick: (() -> Unit)? = null
+) = this.combinedClickable(
+    interactionSource = remember { MutableInteractionSource() },
+    indication = null,
+    onClick = onClick,
+    onLongClick = onLongClick
+)
 
 fun boldTextStyle(
     color: Color,

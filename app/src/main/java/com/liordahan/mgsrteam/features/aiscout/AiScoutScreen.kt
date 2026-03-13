@@ -1,5 +1,7 @@
 package com.liordahan.mgsrteam.features.aiscout
 
+import com.liordahan.mgsrteam.ui.components.ShortlistPillButton
+import com.liordahan.mgsrteam.ui.components.shortlistPillState
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.animation.AnimatedVisibility
@@ -1210,16 +1212,10 @@ private fun FindNextPlayerCard(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         onAddToShortlistClick?.let { onAdd ->
-                            IconButton(
+                            ShortlistPillButton(
+                                state = shortlistPillState(isInShortlist, isShortlistPending),
                                 onClick = { onAdd() },
-                                modifier = Modifier.size(36.dp)
-                            ) {
-                                Icon(
-                                    imageVector = if (isInShortlist) Icons.Default.Bookmark else Icons.Default.BookmarkAdd,
-                                    contentDescription = if (isInShortlist) stringResource(R.string.shortlist_in_shortlist) else stringResource(R.string.shortlist_add_to_shortlist),
-                                    tint = if (isInShortlist) WGreen else WMuted
-                                )
-                            }
+                            )
                         }
                         if (profileUrl.isNotBlank()) {
                             TextButton(
@@ -2501,9 +2497,10 @@ private fun PlayerResultCard(
                         horizontalArrangement = Arrangement.spacedBy(4.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        IconButton(
+                        ShortlistPillButton(
+                            state = shortlistPillState(isInShortlist, isShortlistPending),
                             onClick = {
-                                if (isShortlistPending) return@IconButton
+                                if (isShortlistPending) return@ShortlistPillButton
                                 coroutineScope.launch {
                                     val inList = tmUrl in shortlistUrls || tmUrl in justAddedUrls
                                     if (inList) {
@@ -2532,14 +2529,7 @@ private fun PlayerResultCard(
                                     }
                                 }
                             },
-                            modifier = Modifier.size(36.dp)
-                        ) {
-                            Icon(
-                                imageVector = if (isInShortlist) Icons.Default.Bookmark else Icons.Default.BookmarkAdd,
-                                contentDescription = if (isInShortlist) stringResource(R.string.shortlist_in_shortlist) else stringResource(R.string.shortlist_add_to_shortlist),
-                                tint = if (isInShortlist) WGreen else WMuted
-                            )
-                        }
+                        )
                         TextButton(
                             onClick = {
                                 context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(tmUrl)))

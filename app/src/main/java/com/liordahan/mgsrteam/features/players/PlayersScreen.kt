@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -136,6 +137,12 @@ import com.liordahan.mgsrteam.features.platform.PlatformManager
 import com.liordahan.mgsrteam.transfermarket.SoccerDonnaSearch
 import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.koinInject
+import android.view.HapticFeedbackConstants
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.text.style.TextAlign
+import com.liordahan.mgsrteam.features.players.models.NotesModel
+import com.liordahan.mgsrteam.ui.utils.combinedClickWithNoRipple
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  PLAYERS SCREEN — Variant A (Enhanced Roster View)
@@ -163,6 +170,9 @@ fun PlayersScreen(
     var searchQuery by remember { mutableStateOf(viewModel.playersFlow.value.searchQuery) }
     var showAddPlayerBottomSheet by remember { mutableStateOf(false) }
     var addPlayerTmUrl by remember { mutableStateOf<String?>(null) }
+
+    // Notes preview bottom sheet
+    var notesPreviewPlayer by remember { mutableStateOf<Player?>(null) }
 
     val addPlayerState = addPlayerViewModel.playerSearchStateFlow.collectAsState()
     val selectedPlayer by addPlayerViewModel.selectedPlayerFlow.collectAsState()
@@ -375,6 +385,7 @@ fun PlayersScreen(
                                     val encodedId = Uri.encode(rawId) ?: return@PlayerCardVariantA
                                     navController.navigate("${Screens.PlayerInfoScreen.route}/$encodedId")
                                 },
+                                onNotesLongPress = { notesPreviewPlayer = player },
                                 platform = currentPlatform
                             )
                         }
@@ -418,6 +429,20 @@ fun PlayersScreen(
                 .padding(bottom = 16.dp)
         ) { data ->
             SnakeBarMessage(message = data.visuals.message)
+        }
+
+        // ── Notes Preview Bottom Sheet (long-press on card) ─────────────
+        notesPreviewPlayer?.let { player ->
+            NotesPreviewBottomSheet(
+                player = player,
+                onDismiss = { notesPreviewPlayer = null },
+                onViewAllNotes = {
+                    notesPreviewPlayer = null
+                    val rawId = if (currentPlatform == Platform.MEN) player.tmProfile else player.id
+                    val encodedId = Uri.encode(rawId) ?: return@NotesPreviewBottomSheet
+                    navController.navigate("${Screens.PlayerInfoScreen.route}/$encodedId")
+                }
+            )
         }
 
         // ── Add Player bottom sheet (from Share/View intent) ───────────────
@@ -489,7 +514,7 @@ private fun PlayersHeader(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(start = 20.dp, end = 20.dp, top = 48.dp, bottom = 4.dp),
+            .padding(start = 20.dp, end = 20.dp, top = 24.dp, bottom = 4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
@@ -1402,17 +1427,231 @@ private fun ExpiringPlayerRow(player: Player, onClick: () -> Unit) {
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
+//  NOTES PREVIEW BOTTOM SHEET (long-press on player card)
+// ═════════════════════════════════════════════════════════════════════════════
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun NotesPreviewBottomSheet(
+    player: Player,
+    onDismiss: () -> Unit,
+    onViewAllNotes: () -> Unit
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val sdf = remember { java.text.SimpleDateFormat("dd MMM yyyy", java.util.Locale.getDefault()) }
+
+    val allNotes = remember(player.notes, player.noteList) {
+        val list = mutableListOf<NotesModel>()
+        player.noteList?.let { list.addAll(it) }
+        if (list.isEmpty() && !player.notes.isNullOrEmpty()) {
+            list.add(NotesModel(notes = player.notes, createBy = null, createdAt = player.createdAt ?: 0L))
+        }
+        list.sortedByDescending { it.createdAt ?: 0L }
+    }
+    val previewNotes = allNotes.take(3)
+    val totalCount = allNotes.size
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        containerColor = PlatformColors.palette.card,
+        dragHandle = {
+            Box(
+                modifier = Modifier
+                    .padding(vertical = 12.dp)
+                    .width(32.dp)
+                    .height(4.dp)
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(PlatformColors.palette.textSecondary.copy(alpha = 0.4f))
+            )
+        }
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp)
+                .padding(bottom = 28.dp)
+        ) {
+            // ── Player header row ────────────────────────────────────
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 16.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .background(
+                            Brush.linearGradient(
+                                colors = listOf(
+                                    PlatformColors.palette.accent,
+                                    PlatformColors.palette.accentSecondary
+                                )
+                            )
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (!player.profileImage.isNullOrBlank()) {
+                        AsyncImage(
+                            model = player.profileImage,
+                            contentDescription = null,
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(CircleShape),
+                            contentScale = ContentScale.Crop
+                        )
+                    } else {
+                        Text(
+                            text = player.fullName
+                                ?.split(" ")
+                                ?.mapNotNull { it.firstOrNull()?.uppercase() }
+                                ?.take(2)
+                                ?.joinToString("") ?: "?",
+                            style = boldTextStyle(Color.White, 15.sp)
+                        )
+                    }
+                }
+
+                Spacer(Modifier.width(10.dp))
+
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = player.fullName ?: "",
+                        style = boldTextStyle(PlatformColors.palette.textPrimary, 15.sp),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        text = buildString {
+                            player.currentClub?.clubName?.let { append(it) }
+                            player.positions?.filterNotNull()?.firstOrNull()?.let {
+                                if (isNotEmpty()) append(" · ")
+                                append(it)
+                            }
+                        },
+                        style = regularTextStyle(PlatformColors.palette.textSecondary, 12.sp),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(PlatformColors.palette.purple.copy(alpha = 0.12f))
+                        .padding(horizontal = 10.dp, vertical = 5.dp)
+                ) {
+                    Text(
+                        text = "$totalCount ${stringResource(R.string.player_info_notes).lowercase()}",
+                        style = boldTextStyle(PlatformColors.palette.purple, 11.sp)
+                    )
+                }
+            }
+
+            // ── Divider ──────────────────────────────────────────────
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(1.dp)
+                    .background(PlatformColors.palette.cardBorder)
+            )
+
+            Spacer(Modifier.height(14.dp))
+
+            // ── Note cards ───────────────────────────────────────────
+            previewNotes.forEach { note ->
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 8.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = PlatformColors.palette.cardBorder.copy(alpha = 0.5f)
+                    )
+                ) {
+                    Row(modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
+                        // Purple accent bar
+                        Box(
+                            modifier = Modifier
+                                .width(3.dp)
+                                .fillMaxHeight()
+                                .background(PlatformColors.palette.purple)
+                        )
+                        Column(modifier = Modifier.padding(14.dp)) {
+                            Text(
+                                text = note.notes ?: "",
+                                style = regularTextStyle(PlatformColors.palette.textPrimary, 13.sp),
+                                maxLines = 3,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Spacer(Modifier.height(8.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                if (!note.createBy.isNullOrBlank()) {
+                                    Icon(
+                                        imageVector = Icons.Filled.Person,
+                                        contentDescription = null,
+                                        tint = PlatformColors.palette.textSecondary,
+                                        modifier = Modifier.size(12.dp)
+                                    )
+                                    Spacer(Modifier.width(3.dp))
+                                    Text(
+                                        text = note.createBy,
+                                        style = regularTextStyle(PlatformColors.palette.textSecondary, 11.sp),
+                                        modifier = Modifier.weight(1f, fill = false)
+                                    )
+                                    Spacer(Modifier.width(8.dp))
+                                }
+                                note.createdAt?.takeIf { it > 0 }?.let {
+                                    Text(
+                                        text = sdf.format(java.util.Date(it)),
+                                        style = regularTextStyle(PlatformColors.palette.textSecondary, 11.sp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // ── "Open profile" link ────────────────────────────────
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = if (totalCount > 3) stringResource(R.string.player_info_view_all_notes, totalCount)
+                       else stringResource(R.string.player_info_notes) + " →",
+                style = boldTextStyle(
+                    if (totalCount > 3) PlatformColors.palette.purple else PlatformColors.palette.accent,
+                    13.sp
+                ),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickWithNoRipple { onViewAllNotes() }
+                    .padding(vertical = 10.dp),
+                textAlign = TextAlign.Center
+            )
+        }
+    }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
 //  PLAYER CARD — Variant A
 // ═════════════════════════════════════════════════════════════════════════════
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun PlayerCardVariantA(
     player: Player,
     allAccounts: List<com.liordahan.mgsrteam.features.login.models.Account>,
     onPlayerClick: () -> Unit,
+    onNotesLongPress: (() -> Unit)? = null,
     platform: Platform = Platform.MEN
 ) {
     val context = LocalContext.current
+    val view = LocalView.current
     val isFreeAgent = player.isFreeAgent
     val isExpiring = remember(player.contractExpired) {
         isContractExpiringSoon(player.contractExpired)
@@ -1438,7 +1677,16 @@ private fun PlayerCardVariantA(
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickWithNoRipple { onPlayerClick() },
+                .combinedClickWithNoRipple(
+                    onClick = { onPlayerClick() },
+                    onLongClick = {
+                        val playerHasNotes = !player.notes.isNullOrEmpty() || !player.noteList.isNullOrEmpty()
+                        if (playerHasNotes) {
+                            view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                            onNotesLongPress?.invoke()
+                        }
+                    }
+                ),
             shape = RoundedCornerShape(16.dp),
             colors = CardDefaults.cardColors(containerColor = PlatformColors.palette.card)
         ) {

@@ -1,5 +1,7 @@
 package com.liordahan.mgsrteam.features.requests
 
+import com.liordahan.mgsrteam.ui.components.ShortlistPillButton
+import com.liordahan.mgsrteam.ui.components.shortlistPillState
 import android.Manifest
 import android.content.Context
 import android.content.Intent
@@ -522,7 +524,7 @@ private fun RequestsHeader(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(start = 20.dp, end = 12.dp, top = 48.dp, bottom = 4.dp),
+            .padding(start = 20.dp, end = 12.dp, top = 24.dp, bottom = 4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
@@ -1693,16 +1695,10 @@ private fun OnlinePlayerSuggestionRow(
                             horizontalArrangement = Arrangement.spacedBy(4.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            IconButton(
+                            ShortlistPillButton(
+                                state = shortlistPillState(isInShortlist, isShortlistPending),
                                 onClick = { onToggleShortlist() },
-                                modifier = Modifier.size(36.dp)
-                            ) {
-                                Icon(
-                                    imageVector = if (isInShortlist) Icons.Default.Bookmark else Icons.Default.BookmarkAdd,
-                                    contentDescription = if (isInShortlist) stringResource(R.string.shortlist_in_shortlist) else stringResource(R.string.shortlist_add_to_shortlist),
-                                    tint = if (isInShortlist) PlatformColors.palette.green else PlatformColors.palette.textSecondary
-                                )
-                            }
+                            )
                             TextButton(
                                 onClick = { onClick() },
                                 modifier = Modifier.height(36.dp),
