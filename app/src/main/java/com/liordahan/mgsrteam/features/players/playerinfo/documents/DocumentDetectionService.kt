@@ -141,16 +141,20 @@ class DocumentDetectionService(
                         }
                     }
                 }
-                // Gemini vision fallback for leagues when text extraction fails
-                if (mandateResult.validLeagues.isEmpty() && geminiPassportOcr != null) {
-                    Log.i(TAG, "Mandate leagues empty after text extraction, trying Gemini vision fallback")
+                // Gemini vision fallback for expiry AND leagues when text extraction fails
+                if ((mandateResult.mandateExpiresAt == null || mandateResult.validLeagues.isEmpty()) && geminiPassportOcr != null) {
+                    Log.i(TAG, "Mandate data incomplete after text extraction (expiry=${mandateResult.mandateExpiresAt != null}, leagues=${mandateResult.validLeagues.size}), trying Gemini vision fallback")
                     val bitmap = if (isPdfMimeType(mimeType)) extractFirstPageAsBitmap(bytes) else decodeImage(bytes)
                     if (bitmap != null) {
                         try {
-                            val geminiLeagues = geminiPassportOcr.extractLeaguesFromMandate(bitmap)
-                            if (geminiLeagues.isNotEmpty()) {
-                                Log.i(TAG, "Gemini extracted mandate leagues: $geminiLeagues")
-                                mandateResult = mandateResult.copy(validLeagues = geminiLeagues)
+                            val geminiResult = geminiPassportOcr.extractMandateDataFromImage(bitmap)
+                            if (mandateResult.mandateExpiresAt == null && geminiResult.mandateExpiresAt != null) {
+                                Log.i(TAG, "Gemini extracted mandate expiry: ${geminiResult.mandateExpiresAt}")
+                                mandateResult = mandateResult.copy(mandateExpiresAt = geminiResult.mandateExpiresAt)
+                            }
+                            if (mandateResult.validLeagues.isEmpty() && geminiResult.validLeagues.isNotEmpty()) {
+                                Log.i(TAG, "Gemini extracted mandate leagues: ${geminiResult.validLeagues}")
+                                mandateResult = mandateResult.copy(validLeagues = geminiResult.validLeagues)
                             }
                         } finally {
                             bitmap.recycle()

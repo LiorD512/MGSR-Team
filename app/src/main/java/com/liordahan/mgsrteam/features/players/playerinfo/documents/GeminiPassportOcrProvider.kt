@@ -240,11 +240,49 @@ class GeminiPassportOcrProvider {
     suspend fun extractLeaguesFromMandate(bitmap: Bitmap): List<String> =
         withContext(Dispatchers.IO) {
             try {
+                val result = extractMandateDataFromImage(bitmap)
+                result.validLeagues
+            } catch (e: Exception) {
+                Log.w(TAG, "Gemini mandate league extraction failed", e)
+                emptyList()
+            }
+        }
+
+    /**
+     * Result of combined mandate data extraction via Gemini vision.
+     */
+    data class MandateExtractionResult(
+        val mandateExpiresAt: Long? = null,
+        val validLeagues: List<String> = emptyList()
+    )
+
+    /**
+     * Extracts both expiry date and valid leagues from a mandate document image
+     * using Gemini vision in a single API call.
+     * Fallback when PdfBox/OCR text extraction fails (e.g. pdf-lib generated PDFs).
+     */
+    suspend fun extractMandateDataFromImage(bitmap: Bitmap): MandateExtractionResult =
+        withContext(Dispatchers.IO) {
+            try {
                 val prompt = """
                     Look at this Football Agent Mandate document image.
-                    Find the section titled "Valid Leagues for this mandate:" and extract ALL league/country names listed there.
-                    Return ONLY a JSON object like: {"validLeagues": ["Israel", "Portugal"]}
-                    If there is no such section or no leagues listed, return: {"validLeagues": []}
+                    
+                    Extract TWO things:
+                    
+                    1. EXPIRY DATE: Find the Term section that says "starts on DD/MM/YYYY and ends on DD/MM/YYYY".
+                       Extract the END date (the expiry/end date of the mandate).
+                       Return it as "mandateExpiresAt" in DD/MM/YYYY format.
+                       Also look for patterns like "valid from ... until DD/MM/YYYY" or "ends on DD/MM/YYYY".
+                    
+                    2. VALID LEAGUES: Find the section titled "Valid Leagues for this mandate:" 
+                       and extract ALL league/country names listed there.
+                       Return them as "validLeagues" array.
+                    
+                    Return ONLY a JSON object like:
+                    {"mandateExpiresAt": "15/06/2026", "validLeagues": ["Israel", "Portugal"]}
+                    
+                    If expiry date is not found, use null for mandateExpiresAt.
+                    If no leagues section exists, use empty array for validLeagues.
                     Return ONLY valid JSON. No markdown, no explanation.
                 """.trimIndent()
 
@@ -255,8 +293,10 @@ class GeminiPassportOcrProvider {
 
                 val jsonSchema = Schema.obj(
                     mapOf(
+                        "mandateExpiresAt" to Schema.string(),
                         "validLeagues" to Schema.array(Schema.string())
-                    )
+                    ),
+                    optionalProperties = listOf("mandateExpiresAt")
                 )
 
                 val model = FirebaseAI.getInstance(backend = GenerativeBackend.googleAI()).generativeModel(
@@ -268,14 +308,47 @@ class GeminiPassportOcrProvider {
                 )
 
                 val response = model.generateContent(listOf(content))
-                val text = response.text ?: return@withContext emptyList()
-                val json = extractJsonFromResponse(text) ?: return@withContext emptyList()
+                val text = response.text ?: return@withContext MandateExtractionResult()
+                val json = extractJsonFromResponse(text) ?: return@withContext MandateExtractionResult()
                 val obj = JSONObject(json)
-                val arr = obj.optJSONArray("validLeagues") ?: return@withContext emptyList()
-                (0 until arr.length()).mapNotNull { arr.optString(it)?.trim()?.takeIf { s -> s.isNotBlank() } }
+
+                // Parse expiry date
+                val expiryRaw = obj.optString("mandateExpiresAt", "").trim()
+                val expiresAt = parseMandateExpiryDate(expiryRaw)
+
+                // Parse leagues
+                val arr = obj.optJSONArray("validLeagues")
+                val leagues = if (arr != null) {
+                    (0 until arr.length()).mapNotNull { arr.optString(it)?.trim()?.takeIf { s -> s.isNotBlank() } }
+                } else emptyList()
+
+                Log.i(TAG, "Gemini mandate extraction - expiry: $expiresAt, leagues: $leagues")
+                MandateExtractionResult(mandateExpiresAt = expiresAt, validLeagues = leagues)
             } catch (e: Exception) {
-                Log.w(TAG, "Gemini mandate league extraction failed", e)
-                emptyList()
+                Log.w(TAG, "Gemini mandate data extraction failed", e)
+                MandateExtractionResult()
             }
         }
+
+    /**
+     * Parses a date string (DD/MM/YYYY, DD-MM-YYYY, DD.MM.YYYY) to millis at end of day.
+     */
+    private fun parseMandateExpiryDate(raw: String): Long? {
+        if (raw.isBlank()) return null
+        val match = Regex("(\\d{1,2})[/\\-\\.](\\d{1,2})[/\\-\\.](\\d{4})").find(raw) ?: return null
+        val (dd, mm, yy) = match.destructured
+        return try {
+            java.util.Calendar.getInstance().apply {
+                set(java.util.Calendar.YEAR, yy.toInt())
+                set(java.util.Calendar.MONTH, mm.toInt() - 1)
+                set(java.util.Calendar.DAY_OF_MONTH, dd.toInt())
+                set(java.util.Calendar.HOUR_OF_DAY, 23)
+                set(java.util.Calendar.MINUTE, 59)
+                set(java.util.Calendar.SECOND, 59)
+                set(java.util.Calendar.MILLISECOND, 999)
+            }.timeInMillis
+        } catch (_: Exception) {
+            null
+        }
+    }
 }
