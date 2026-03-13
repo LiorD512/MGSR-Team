@@ -51,6 +51,13 @@ import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
+import org.json.JSONArray
+import org.json.JSONObject
+import java.util.concurrent.TimeUnit
 
 
 abstract class IPlayerInfoViewModel : ViewModel() {
@@ -1062,6 +1069,7 @@ class PlayerInfoViewModel(
                     "expiresAt" to mandateExpiry
                 ),
                 "scoutReport" to (scoutReport?.takeIf { it.isNotBlank() }
+                    ?: fetchShareScoutReport(player, lang)
                     ?: buildScoutSummary(player)),
                 "createdAt" to System.currentTimeMillis(),
                 "lang" to (lang.takeIf { it in listOf("he", "en") } ?: "en"),
@@ -1092,6 +1100,72 @@ class PlayerInfoViewModel(
         } catch (e: Exception) {
             Log.e(TAG, "createShareUrl failed", e)
             Result.failure(e)
+        }
+    }
+
+    private val shareHttpClient by lazy {
+        OkHttpClient.Builder()
+            .connectTimeout(15, TimeUnit.SECONDS)
+            .readTimeout(60, TimeUnit.SECONDS)
+            .build()
+    }
+
+    /**
+     * Calls the web API to generate a full AI scout report for sharing.
+     * Returns the report text, or null on failure (caller falls back to buildScoutSummary).
+     */
+    private fun fetchShareScoutReport(player: Player, lang: String): String? {
+        return try {
+            val platform = when (platformManager.current.value) {
+                Platform.WOMEN -> "women"
+                Platform.YOUTH -> "youth"
+                else -> "men"
+            }
+            val playerJson = JSONObject().apply {
+                put("fullName", player.fullName ?: "")
+                put("fullNameHe", player.fullNameHe ?: "")
+                put("profileImage", player.profileImage ?: "")
+                put("positions", JSONArray(player.positions?.filterNotNull() ?: emptyList<String>()))
+                put("marketValue", player.marketValue ?: "")
+                player.currentClub?.let { c ->
+                    put("currentClub", JSONObject().apply {
+                        put("clubName", c.clubName ?: "")
+                        put("clubLogo", c.clubLogo ?: "")
+                        put("clubCountry", c.clubCountry ?: "")
+                    })
+                }
+                put("age", player.age?.toString() ?: "")
+                put("height", player.height ?: "")
+                put("nationality", player.nationality ?: "")
+                put("contractExpired", player.contractExpired ?: "")
+                put("foot", player.foot ?: "")
+                put("tmProfile", player.tmProfile ?: "")
+            }
+            val body = JSONObject().apply {
+                put("player", playerJson)
+                put("lang", lang)
+                put("platform", platform)
+            }
+            val baseUrl = com.liordahan.mgsrteam.BuildConfig.MGSR_WEB_URL.trimEnd('/')
+            val request = Request.Builder()
+                .url("$baseUrl/api/share/generate-scout-report")
+                .post(body.toString().toRequestBody("application/json".toMediaType()))
+                .build()
+            val response = shareHttpClient.newCall(request).execute()
+            if (!response.isSuccessful) {
+                Log.w(TAG, "Share scout report API returned ${response.code}")
+                return null
+            }
+            val responseBody = response.body?.string() ?: return null
+            val json = JSONObject(responseBody)
+            val report = json.optString("scoutReport", "").trim()
+            if (report.isNotBlank()) {
+                Log.i(TAG, "Generated share scout report (${report.length} chars)")
+                report
+            } else null
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to generate share scout report, falling back to summary", e)
+            null
         }
     }
 

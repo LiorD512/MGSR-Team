@@ -144,6 +144,16 @@
     <string name="shortlist_notes_save">שמור</string>
     <string name="shortlist_notes_placeholder">כתוב את ההערה שלך כאן…</string>
     <string name="shortlist_notes_days_ago">לפני %d ימים</string>
+
+    <!-- Shortlist: Sort & Filter -->
+    <string name="shortlist_sort_options">אפשרויות מיון</string>
+    <string name="shortlist_filter_with_notes">עם הערות</string>
+    <string name="shortlist_filter_position_all">הכל</string>
+    <string name="shortlist_filter_position_gk">שוערים</string>
+    <string name="shortlist_filter_position_def">הגנה</string>
+    <string name="shortlist_filter_position_mid">קישור</string>
+    <string name="shortlist_filter_position_fwd">התקפה</string>
+
     <string name="contacts_screen_search_hint">חפש לפי שם, מועדון או מדינה</string>
     <string name="contacts_filter_all">הכל</string>
     <string name="add_player_screen_hint">חיפוש</string>
@@ -801,6 +811,7 @@
     <string name="player_info_share_language_subtitle">בחר את שפת הדף המשותף</string>
     <string name="player_info_share_language_hebrew">עברית</string>
     <string name="player_info_share_language_english">English</string>
+    <string name="player_info_share_preparing">מכין דף שיתוף…</string>
     <string name="player_info_generate_mandate">יצירת מנדט</string>
 
     <!-- Generate Mandate Wizard -->

@@ -139,6 +139,15 @@
     <string name="shortlist_notes_placeholder">Write your note here…</string>
     <string name="shortlist_notes_days_ago">%d days ago</string>
 
+    <!-- Shortlist: Sort & Filter -->
+    <string name="shortlist_sort_options">Sort options</string>
+    <string name="shortlist_filter_with_notes">With Notes</string>
+    <string name="shortlist_filter_position_all">All</string>
+    <string name="shortlist_filter_position_gk">GK</string>
+    <string name="shortlist_filter_position_def">DEF</string>
+    <string name="shortlist_filter_position_mid">MID</string>
+    <string name="shortlist_filter_position_fwd">FWD</string>
+
     <string name="contacts_screen_search_hint">Search by name, club or country</string>
     <string name="contacts_filter_all">All</string>
     <string name="add_player_screen_hint">Search</string>
@@ -871,6 +880,7 @@
     <string name="player_info_share_language_subtitle">Choose the language for the shared page</string>
     <string name="player_info_share_language_hebrew">עברית</string>
     <string name="player_info_share_language_english">English</string>
+    <string name="player_info_share_preparing">Preparing share page…</string>
     <string name="player_info_generate_mandate">Generate mandate</string>
 
     <!-- Generate Mandate Wizard -->

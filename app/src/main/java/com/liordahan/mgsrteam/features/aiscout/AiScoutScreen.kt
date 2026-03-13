@@ -94,6 +94,8 @@ import com.liordahan.mgsrteam.R
 import com.liordahan.mgsrteam.ui.utils.boldTextStyle
 import com.liordahan.mgsrteam.ui.utils.regularTextStyle
 import com.liordahan.mgsrteam.features.shortlist.ShortlistRepository
+import com.liordahan.mgsrteam.features.players.repository.IPlayersRepository
+import com.liordahan.mgsrteam.utils.extractPlayerIdFromUrl
 import com.liordahan.mgsrteam.ui.components.ToastManager
 import android.Manifest
 import android.content.pm.PackageManager
@@ -462,8 +464,16 @@ private val VALUE_PRESETS = listOf(
 private fun FindNextTabContent(state: FindNextUiState, viewModel: IAiScoutViewModel) {
     val context = LocalContext.current
     val shortlistRepository: ShortlistRepository = koinInject()
+    val playersRepository: IPlayersRepository = koinInject()
     val shortlistEntries by shortlistRepository.getShortlistFlow().collectAsState(initial = emptyList())
     val shortlistUrls = remember(shortlistEntries) { shortlistEntries.map { it.tmProfileUrl }.toSet() }
+    val rosterPlayers by playersRepository.playersFlow().collectAsState(initial = emptyList())
+    val rosterIds = remember(rosterPlayers) {
+        rosterPlayers.mapNotNull { extractPlayerIdFromUrl(it.tmProfile) }.toSet()
+    }
+    val shortlistIds = remember(shortlistUrls) {
+        shortlistUrls.mapNotNull { extractPlayerIdFromUrl(it) }.toSet()
+    }
     var justAddedUrls by remember { mutableStateOf<Set<String>>(emptySet()) }
     val shortlistPendingUrls by shortlistRepository.getShortlistPendingUrlsFlow()
         .collectAsState(initial = emptySet())
@@ -892,9 +902,13 @@ private fun FindNextTabContent(state: FindNextUiState, viewModel: IAiScoutViewMo
             }
         }
 
-        // Results
+        // Results (filter out players already in shortlist or roster)
         state.response?.results?.let { results ->
-            items(results, key = { it.url.ifBlank { it.name } }) { player ->
+            val filteredResults = results.filter { player ->
+                val id = extractPlayerIdFromUrl(player.transfermarktUrl.ifBlank { player.url })
+                id == null || (id !in rosterIds && id !in shortlistIds)
+            }
+            items(filteredResults, key = { it.url.ifBlank { it.name } }) { player ->
                 val tmUrl = player.transfermarktUrl
                 val profileUrl = tmUrl.ifBlank { player.url }
                 FindNextPlayerCard(
@@ -940,7 +954,13 @@ private fun FindNextTabContent(state: FindNextUiState, viewModel: IAiScoutViewMo
         }
 
         // No results
-        if (state.response != null && state.response!!.results.isEmpty() && state.errorMessage == null) {
+        val allFilteredOut = state.response?.results?.let { results ->
+            results.isNotEmpty() && results.all { player ->
+                val id = extractPlayerIdFromUrl(player.transfermarktUrl.ifBlank { player.url })
+                id != null && (id in rosterIds || id in shortlistIds)
+            }
+        } == true
+        if (state.response != null && (state.response!!.results.isEmpty() || allFilteredOut) && state.errorMessage == null) {
             item {
                 Text(
                     text = stringResource(R.string.ai_scout_find_next_no_results),
@@ -1855,12 +1875,27 @@ private fun ExampleChipsInlineSection(viewModel: IAiScoutViewModel) {
 private fun AiScoutResultsState(state: AiScoutUiState, viewModel: IAiScoutViewModel) {
     val context = LocalContext.current
     val shortlistRepository: ShortlistRepository = koinInject()
+    val playersRepository: IPlayersRepository = koinInject()
     val shortlistEntries by shortlistRepository.getShortlistFlow().collectAsState(initial = emptyList())
     val shortlistUrls = remember(shortlistEntries) { shortlistEntries.map { it.tmProfileUrl }.toSet() }
+    val rosterPlayers by playersRepository.playersFlow().collectAsState(initial = emptyList())
+    val rosterIds = remember(rosterPlayers) {
+        rosterPlayers.mapNotNull { extractPlayerIdFromUrl(it.tmProfile) }.toSet()
+    }
+    val shortlistIds = remember(shortlistUrls) {
+        shortlistUrls.mapNotNull { extractPlayerIdFromUrl(it) }.toSet()
+    }
     var justAddedUrls by remember { mutableStateOf<Set<String>>(emptySet()) }
     val shortlistPendingUrls by shortlistRepository.getShortlistPendingUrlsFlow()
         .collectAsState(initial = emptySet())
     val coroutineScope = rememberCoroutineScope()
+
+    val filteredResults = remember(state.results, rosterIds, shortlistIds) {
+        state.results.filter { player ->
+            val id = extractPlayerIdFromUrl(player.transfermarktUrl)
+            id == null || (id !in rosterIds && id !in shortlistIds)
+        }
+    }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -1974,8 +2009,8 @@ private fun AiScoutResultsState(state: AiScoutUiState, viewModel: IAiScoutViewMo
             }
         }
 
-        // Player result cards
-        items(state.results, key = { it.transfermarktUrl.ifBlank { it.name } }) { player ->
+        // Player result cards (filter out players already in shortlist or roster)
+        items(filteredResults, key = { it.transfermarktUrl.ifBlank { it.name } }) { player ->
             val tmUrl = player.transfermarktUrl
             PlayerResultCard(
                 player = player,

@@ -7,6 +7,7 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -24,7 +25,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -38,6 +42,7 @@ import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PersonAdd
+import androidx.compose.material.icons.filled.SwapVert
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -45,6 +50,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -96,6 +102,7 @@ import com.liordahan.mgsrteam.features.add.SnakeBarMessage
 import com.liordahan.mgsrteam.features.add.showSnakeBarMessage
 import com.liordahan.mgsrteam.features.players.models.Player
 import com.liordahan.mgsrteam.features.players.repository.IPlayersRepository
+import com.liordahan.mgsrteam.features.players.sort.SortOption
 import com.liordahan.mgsrteam.features.releases.RosterTeammateMatch
 import com.liordahan.mgsrteam.navigation.Screens
 import com.liordahan.mgsrteam.transfermarket.TeammatesFetcher
@@ -119,6 +126,14 @@ import com.liordahan.mgsrteam.features.platform.PlatformManager
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.koinInject
+
+/** Maps position chip labels to both short codes and long-form TM position strings. */
+private val shortlistPositionCodes = mapOf(
+    "GK"  to setOf("GK", "GOALKEEPER"),
+    "DEF" to setOf("CB", "RB", "LB", "CENTRE-BACK", "LEFT-BACK", "RIGHT-BACK", "BACK"),
+    "MID" to setOf("CM", "DM", "AM", "MIDFIELD", "DEFENSIVE MIDFIELD", "CENTRAL MIDFIELD", "ATTACKING MIDFIELD", "LEFT MIDFIELD", "RIGHT MIDFIELD"),
+    "FWD" to setOf("ST", "CF", "LW", "RW", "SS", "FORWARD", "CENTRE-FORWARD", "LEFT WINGER", "RIGHT WINGER", "SECOND STRIKER", "WINGER", "STRIKER")
+)
 
 private fun formatShortlistProfileDisplay(entry: ShortlistEntry): String {
     entry.playerName?.takeIf { it.isNotBlank() }?.let { return it }
@@ -192,11 +207,16 @@ fun ShortlistScreen(
     var loadingPlayerUrl by remember { mutableStateOf<String?>(null) }
 
     // My Players filter
-    var myPlayersOnly by remember { mutableStateOf(false) }
-    var selectedAgentFilter by remember { mutableStateOf<String?>(null) }
     var currentUserName by remember { mutableStateOf<String?>(null) }
     var allAccounts by remember { mutableStateOf<List<Account>>(emptyList()) }
     val firebaseHandler: FirebaseHandler = koinInject()
+
+    // Sort & filter state (from ViewModel — survives navigation)
+    val sortOption = state.sortOption
+    val selectedPosition = state.selectedPosition
+    val withNotesOnly = state.withNotesOnly
+    val myPlayersOnly = state.myPlayersOnly
+    val selectedAgentFilter = state.selectedAgentFilter
 
     LaunchedEffect(Unit) {
         val email = FirebaseAuth.getInstance().currentUser?.email ?: return@LaunchedEffect
@@ -208,14 +228,42 @@ fun ShortlistScreen(
         } catch (_: Exception) { }
     }
 
-    val filteredEntries = remember(state.entries, myPlayersOnly, selectedAgentFilter, currentUserName) {
-        when {
+    val filteredEntries = remember(state.entries, myPlayersOnly, selectedAgentFilter, currentUserName, selectedPosition, withNotesOnly, sortOption) {
+        var result = when {
             myPlayersOnly && !currentUserName.isNullOrBlank() ->
                 state.entries.filter { it.addedByAgentName.equals(currentUserName, ignoreCase = true) }
             selectedAgentFilter != null ->
                 state.entries.filter { it.addedByAgentName.equals(selectedAgentFilter, ignoreCase = true) }
             else -> state.entries
         }
+
+        // Position filter (supports both short codes like "CB"/"ST" and long-form like "Centre-Back")
+        val posFilter = selectedPosition
+        if (posFilter != null) {
+            val codes = shortlistPositionCodes[posFilter.uppercase()] ?: emptySet()
+            result = result.filter { entry ->
+                val pos = entry.playerPosition?.uppercase()?.trim() ?: ""
+                codes.any { code -> pos == code || pos.contains(code) }
+            }
+        }
+
+        // With notes filter
+        if (withNotesOnly) {
+            result = result.filter { it.notes.isNotEmpty() }
+        }
+
+        // Sort
+        when (sortOption) {
+            SortOption.NAME -> result.sortedBy { it.playerName?.lowercase() ?: "" }
+            SortOption.AGE -> result.sortedBy { it.playerAge?.replace(Regex("[^0-9]"), "")?.toIntOrNull() ?: 99 }
+            SortOption.MARKET_VALUE -> result.sortedByDescending { parseShortlistMarketValue(it.marketValue) }
+            else -> result // default: by addedAt (already ordered from repo)
+        }
+    }
+
+    val listState = rememberLazyListState()
+    LaunchedEffect(sortOption, selectedPosition, withNotesOnly) {
+        listState.animateScrollToItem(0)
     }
 
     val addPlayerState = addPlayerViewModel.playerSearchStateFlow.collectAsState()
@@ -297,15 +345,21 @@ fun ShortlistScreen(
             )
         }
     ) { paddingValues ->
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(bottom = paddingValues.calculateBottomPadding())
         ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+        ) {
             ShortlistHeader(
                 isWomen = isWomen,
                 isYouth = currentPlatform == Platform.YOUTH,
-                onAddClick = { navController.navigate(Screens.addToShortlistRoute()) },
+                sortOption = sortOption,
+                onSortOptionSelected = { viewModel.setSortOption(it) },
+                onResetSort = { viewModel.setSortOption(SortOption.DEFAULT) },
                 onBackClicked = {
                     if (!navController.popBackStack(Screens.DashboardScreen.route, false)) {
                         navController.popBackStack()
@@ -318,36 +372,47 @@ fun ShortlistScreen(
                 thisWeek = thisWeekCount
             )
 
-            // My Players / Agent filter chips (MEN only)
-            if (currentPlatform == Platform.MEN) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 4.dp),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    val myBgColor = if (myPlayersOnly) PlatformColors.palette.accent else Color.Transparent
-                    val myTextColor = if (myPlayersOnly) PlatformColors.palette.background else PlatformColors.palette.textSecondary
-                    val myBorderColor = if (myPlayersOnly) PlatformColors.palette.accent else PlatformColors.palette.cardBorder
-                    Text(
-                        text = stringResource(R.string.shortlist_filter_my_players),
-                        style = boldTextStyle(myTextColor, 11.sp),
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(20.dp))
-                            .background(myBgColor)
-                            .border(1.dp, myBorderColor, RoundedCornerShape(20.dp))
-                            .clickWithNoRipple { myPlayersOnly = !myPlayersOnly; if (myPlayersOnly) selectedAgentFilter = null }
-                            .padding(horizontal = 14.dp, vertical = 5.dp)
+            // ── Position filter chips ─────────────────────────────────
+            ShortlistPositionFilterChips(
+                selectedPosition = selectedPosition,
+                onChipClick = { pos ->
+                    viewModel.setSelectedPosition(if (pos == "All" || pos == selectedPosition) null else pos)
+                }
+            )
+
+            // ── Quick filter chips ────────────────────────────────────
+            LazyRow(
+                contentPadding = PaddingValues(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                modifier = Modifier.padding(vertical = 4.dp)
+            ) {
+                if (currentPlatform == Platform.MEN) {
+                    item(key = "my_players") {
+                        ShortlistQuickFilterChip(
+                            label = stringResource(R.string.shortlist_filter_my_players),
+                            isSelected = myPlayersOnly,
+                            onClick = { viewModel.setMyPlayersOnly(!myPlayersOnly) }
+                        )
+                    }
+                }
+                item(key = "with_notes") {
+                    ShortlistQuickFilterChip(
+                        label = stringResource(R.string.shortlist_filter_with_notes),
+                        isSelected = withNotesOnly,
+                        onClick = { viewModel.setWithNotesOnly(!withNotesOnly) }
                     )
-                    ShortlistAgentFilterChip(
-                        selectedAgentFilter = selectedAgentFilter,
-                        allAccounts = allAccounts,
-                        currentUserName = currentUserName,
-                        onAgentSelected = { agent ->
-                            selectedAgentFilter = agent
-                            if (agent != null) myPlayersOnly = false
-                        }
-                    )
+                }
+                if (currentPlatform == Platform.MEN) {
+                    item(key = "agent_filter") {
+                        ShortlistAgentFilterChip(
+                            selectedAgentFilter = selectedAgentFilter,
+                            allAccounts = allAccounts,
+                            currentUserName = currentUserName,
+                            onAgentSelected = { agent ->
+                                viewModel.setSelectedAgentFilter(agent)
+                            }
+                        )
+                    }
                 }
             }
 
@@ -363,6 +428,7 @@ fun ShortlistScreen(
                 }
                 else -> {
                     LazyColumn(
+                        state = listState,
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(16.dp, 4.dp, 16.dp, 100.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -430,7 +496,26 @@ fun ShortlistScreen(
                     }
                 }
             }
+        } // end Column
+
+        // ── FAB ──────────────────────────────────────────────────────────
+        FloatingActionButton(
+            onClick = { navController.navigate(Screens.addToShortlistRoute()) },
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(end = 20.dp, bottom = 56.dp),
+            shape = RoundedCornerShape(18.dp),
+            containerColor = currentPlatform.accent,
+            contentColor = PlatformColors.palette.background
+        ) {
+            Icon(
+                imageVector = Icons.Filled.PersonAdd,
+                contentDescription = stringResource(R.string.shortlist_add_player),
+                modifier = Modifier.size(24.dp),
+                tint = Color.White
+            )
         }
+        } // end Box
 
         if (showAddPlayerBottomSheet) {
             val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -522,9 +607,14 @@ fun ShortlistScreen(
 private fun ShortlistHeader(
     isWomen: Boolean = false,
     isYouth: Boolean = false,
-    onAddClick: () -> Unit,
+    sortOption: SortOption = SortOption.DEFAULT,
+    onSortOptionSelected: (SortOption) -> Unit = {},
+    onResetSort: () -> Unit = {},
     onBackClicked: () -> Unit
 ) {
+    var sortMenuExpanded by remember { mutableStateOf(false) }
+    val platformAccent = PlatformColors.palette.accent
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -557,15 +647,84 @@ private fun ShortlistHeader(
                 modifier = Modifier.padding(top = 4.dp)
             )
         }
-        IconButton(
-            onClick = onAddClick,
-            modifier = Modifier.size(40.dp)
+        // Sort button
+        Box(
+            modifier = Modifier
+                .clip(RoundedCornerShape(8.dp))
+                .background(PlatformColors.palette.card.copy(alpha = 0.8f))
+                .clickWithNoRipple { sortMenuExpanded = true }
+                .padding(12.dp)
         ) {
             Icon(
-                imageVector = Icons.Rounded.Add,
-                contentDescription = stringResource(R.string.shortlist_add_player),
-                tint = PlatformColors.palette.accent
+                imageVector = Icons.Filled.SwapVert,
+                contentDescription = stringResource(R.string.shortlist_sort_options),
+                tint = platformAccent,
+                modifier = Modifier.size(24.dp)
             )
+            DropdownMenu(
+                expanded = sortMenuExpanded,
+                onDismissRequest = { sortMenuExpanded = false },
+                modifier = Modifier.background(PlatformColors.palette.card),
+                containerColor = PlatformColors.palette.card
+            ) {
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            text = stringResource(R.string.players_reset),
+                            style = regularTextStyle(PlatformColors.palette.textPrimary, 13.sp)
+                        )
+                    },
+                    onClick = {
+                        onResetSort()
+                        sortMenuExpanded = false
+                    }
+                )
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            text = stringResource(R.string.players_sort_market_value),
+                            style = regularTextStyle(
+                                if (sortOption == SortOption.MARKET_VALUE) platformAccent else PlatformColors.palette.textPrimary,
+                                13.sp
+                            )
+                        )
+                    },
+                    onClick = {
+                        onSortOptionSelected(SortOption.MARKET_VALUE)
+                        sortMenuExpanded = false
+                    }
+                )
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            text = stringResource(R.string.players_sort_name),
+                            style = regularTextStyle(
+                                if (sortOption == SortOption.NAME) platformAccent else PlatformColors.palette.textPrimary,
+                                13.sp
+                            )
+                        )
+                    },
+                    onClick = {
+                        onSortOptionSelected(SortOption.NAME)
+                        sortMenuExpanded = false
+                    }
+                )
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            text = stringResource(R.string.players_sort_age),
+                            style = regularTextStyle(
+                                if (sortOption == SortOption.AGE) platformAccent else PlatformColors.palette.textPrimary,
+                                13.sp
+                            )
+                        )
+                    },
+                    onClick = {
+                        onSortOptionSelected(SortOption.AGE)
+                        sortMenuExpanded = false
+                    }
+                )
+            }
         }
     }
 }
@@ -642,6 +801,101 @@ private fun ShortlistStatsStripDivider() {
             .padding(vertical = 4.dp)
             .background(PlatformColors.palette.cardBorder)
     )
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+//  POSITION FILTER CHIPS
+// ═════════════════════════════════════════════════════════════════════════════
+
+@Composable
+private fun ShortlistPositionFilterChips(
+    selectedPosition: String?,
+    onChipClick: (String) -> Unit
+) {
+    val positions = listOf("All", "GK", "DEF", "MID", "FWD")
+    val scrollState = rememberScrollState()
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 4.dp)
+            .horizontalScroll(scrollState),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        positions.forEach { position ->
+            val isSelected = if (position == "All") selectedPosition == null
+            else position == selectedPosition
+
+            val bgColor by animateColorAsState(
+                targetValue = if (isSelected) PlatformColors.palette.accent else Color.Transparent,
+                label = "chipBg"
+            )
+            val textColor = if (isSelected) PlatformColors.palette.background else PlatformColors.palette.textSecondary
+            val borderColor = if (isSelected) PlatformColors.palette.accent else PlatformColors.palette.cardBorder
+
+            Text(
+                text = when (position) {
+                    "All" -> stringResource(R.string.shortlist_filter_position_all)
+                    "GK" -> stringResource(R.string.shortlist_filter_position_gk)
+                    "DEF" -> stringResource(R.string.shortlist_filter_position_def)
+                    "MID" -> stringResource(R.string.shortlist_filter_position_mid)
+                    "FWD" -> stringResource(R.string.shortlist_filter_position_fwd)
+                    else -> position
+                },
+                style = boldTextStyle(textColor, 11.sp),
+                modifier = Modifier
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(bgColor)
+                    .border(1.dp, borderColor, RoundedCornerShape(20.dp))
+                    .clickWithNoRipple { onChipClick(position) }
+                    .padding(horizontal = 14.dp, vertical = 5.dp)
+            )
+        }
+    }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+//  QUICK FILTER CHIP
+// ═════════════════════════════════════════════════════════════════════════════
+
+@Composable
+private fun ShortlistQuickFilterChip(
+    label: String,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
+    val bgColor by animateColorAsState(
+        targetValue = if (isSelected) PlatformColors.palette.accent else Color.Transparent,
+        label = "quickChipBg"
+    )
+    val textColor = if (isSelected) PlatformColors.palette.background else PlatformColors.palette.textSecondary
+    val borderColor = if (isSelected) PlatformColors.palette.accent else PlatformColors.palette.cardBorder
+
+    Text(
+        text = label,
+        style = boldTextStyle(textColor, 11.sp),
+        modifier = Modifier
+            .clip(RoundedCornerShape(20.dp))
+            .background(bgColor)
+            .border(1.dp, borderColor, RoundedCornerShape(20.dp))
+            .clickWithNoRipple { onClick() }
+            .padding(horizontal = 14.dp, vertical = 5.dp)
+    )
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+//  MARKET VALUE PARSER (for sorting)
+// ═════════════════════════════════════════════════════════════════════════════
+
+private fun parseShortlistMarketValue(s: String?): Long {
+    if (s.isNullOrBlank() || (s.contains("-") && !s.contains("€"))) return 0L
+    val cleaned = s.replace("€", "").replace(",", "").trim()
+    return when {
+        cleaned.contains("m", true) -> ((cleaned.substringBefore("m").substringBefore("M").trim().toDoubleOrNull() ?: 0.0) * 1_000_000).toLong()
+        cleaned.contains("k", true) -> ((cleaned.substringBefore("k").substringBefore("K").trim().toDoubleOrNull() ?: 0.0) * 1_000).toLong()
+        else -> cleaned.toLongOrNull() ?: 0L
+    }
 }
 
 // ═════════════════════════════════════════════════════════════════════════════

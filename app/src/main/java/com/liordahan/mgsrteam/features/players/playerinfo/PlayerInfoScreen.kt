@@ -289,6 +289,7 @@ fun PlayerInfoScreen(
     var showDeleteDialog by remember { mutableStateOf(false) }
     var showSalaryTransferFeeSheet by remember { mutableStateOf(false) }
     var showShareLanguageSheet by remember { mutableStateOf(false) }
+    var isPreparingShare by remember { mutableStateOf(false) }
     var includePlayerContact by remember { mutableStateOf(false) }
     var includeAgencyContact by remember { mutableStateOf(false) }
     var showAddNoteSheet by remember { mutableStateOf(false) }
@@ -494,10 +495,12 @@ fun PlayerInfoScreen(
             val player = playerToPresent
             val docId = playerDocumentId
             if (player == null || docId == null) return
+            showShareLanguageSheet = false
+            isPreparingShare = true
             scope.launch {
                 viewModel.createShareUrl(player, docId, documentsList, scoutReport, lang, includePlayerContact, includeAgencyContact)
                     .onSuccess { url ->
-                        showShareLanguageSheet = false
+                        isPreparingShare = false
                         val displayName = if (lang == "he") {
                             player.fullNameHe ?: player.fullName ?: ""
                         } else {
@@ -515,9 +518,37 @@ fun PlayerInfoScreen(
                         context.startActivity(Intent.createChooser(intent, context.getString(R.string.player_info_share_with)))
                     }
                     .onFailure {
-                        showShareLanguageSheet = false
+                        isPreparingShare = false
                         ToastManager.showError(context.getString(R.string.player_info_share_error))
                     }
+            }
+        }
+        if (isPreparingShare) {
+            Dialog(onDismissRequest = { /* non-dismissable while preparing */ }) {
+                Card(
+                    shape = RoundedCornerShape(16.dp),
+                    elevation = CardDefaults.cardElevation(8.dp),
+                    colors = CardDefaults.cardColors(containerColor = PlatformColors.palette.card),
+                    border = BorderStroke(1.dp, PlatformColors.palette.cardBorder)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(40.dp),
+                            color = PlatformColors.palette.accent,
+                            strokeWidth = 3.dp
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            text = stringResource(R.string.player_info_share_preparing),
+                            style = boldTextStyle(PlatformColors.palette.textPrimary, 14.sp),
+                        )
+                    }
+                }
             }
         }
         if (showShareLanguageSheet) {

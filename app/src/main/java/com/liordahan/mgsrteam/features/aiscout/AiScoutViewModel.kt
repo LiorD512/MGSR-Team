@@ -211,7 +211,7 @@ class AiScoutViewModel(
 
         viewModelScope.launch {
             try {
-                withTimeout(30_000L) {
+                withTimeout(120_000L) {
                     val request = FindNextRequest(
                         playerName = name,
                         ageMax = _findNextState.value.ageMax,
