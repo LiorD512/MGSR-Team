@@ -17,6 +17,7 @@ import { subscribePlayersYouth, type YouthPlayer } from '@/lib/playersYouth';
 import { matchingRequestsForPlayer, type ClubRequest } from '@/lib/requestMatcher';
 import {
   computeContactScore,
+  parseMarketValueToEuros,
   computeValueChangePercent,
   isFreeAgent,
   monthsUntilContractExpiry,
@@ -181,11 +182,13 @@ export default function ShortlistPage() {
   const [performanceCache, setPerformanceCache] = useState<Record<string, { appearances: number; goals: number; assists: number; minutes: number; season: string }>>({});
   const [loadingPerformanceUrl, setLoadingPerformanceUrl] = useState<string | null>(null);
   const [refreshingUrl, setRefreshingUrl] = useState<string | null>(null);
-  const [sortBy, setSortBy] = useState<'contact_score' | 'added' | 'market_value' | 'matches'>('contact_score');
+  const [sortBy, setSortBy] = useState<'contact_score' | 'added' | 'market_value' | 'matches' | 'name' | 'age'>('contact_score');
   const [filterBy, setFilterBy] = useState<'all' | 'action_today' | 'has_matches' | 'contract_expiring' | 'free_agent' | 'my_players'>('all');
   const [agentFilter, setAgentFilter] = useState<string | null>(null);
   const [currentAccountId, setCurrentAccountId] = useState<string | null>(null);
   const [allAccounts, setAllAccounts] = useState<AccountForShortlist[]>([]);
+  const [positionFilter, setPositionFilter] = useState<string | null>(null); // null = All
+  const [withNotesOnly, setWithNotesOnly] = useState(false);
 
   // ── Notes state ──
   const [noteModalEntry, setNoteModalEntry] = useState<ShortlistEntry | null>(null);
@@ -679,15 +682,39 @@ export default function ShortlistPage() {
       const matchAccount = allAccounts.find((a) => a.name === agentFilter);
       if (matchAccount) list = list.filter((e) => e.addedByAgentId === matchAccount.id || e.addedByAgentName?.toLowerCase() === agentFilter.toLowerCase());
     }
+    // Position filter
+    if (positionFilter) {
+      const positionCodes: Record<string, Set<string>> = {
+        GK: new Set(['GK', 'GOALKEEPER']),
+        DEF: new Set(['CB', 'RB', 'LB', 'CENTRE-BACK', 'LEFT-BACK', 'RIGHT-BACK', 'BACK']),
+        MID: new Set(['CM', 'DM', 'AM', 'MIDFIELD', 'DEFENSIVE MIDFIELD', 'CENTRAL MIDFIELD', 'ATTACKING MIDFIELD', 'LEFT MIDFIELD', 'RIGHT MIDFIELD']),
+        FWD: new Set(['ST', 'CF', 'LW', 'RW', 'SS', 'FORWARD', 'CENTRE-FORWARD', 'LEFT WINGER', 'RIGHT WINGER', 'SECOND STRIKER', 'WINGER', 'STRIKER']),
+      };
+      const codes = positionCodes[positionFilter];
+      if (codes) {
+        list = list.filter((e) => {
+          const positions = e.positions ?? (e.playerPosition ? [e.playerPosition] : []);
+          return positions.some((p) => {
+            const upper = p.toUpperCase().trim();
+            return Array.from(codes).some((code) => upper === code || upper.includes(code));
+          });
+        });
+      }
+    }
+    // With notes filter
+    if (withNotesOnly) {
+      list = list.filter((e) => e.notes && e.notes.length > 0);
+    }
     if (sortBy === 'contact_score') list.sort((a, b) => (entryIntelligence.get(b.tmProfileUrl)?.contactScore ?? 0) - (entryIntelligence.get(a.tmProfileUrl)?.contactScore ?? 0));
     else if (sortBy === 'added') list.sort((a, b) => (b.addedAt || 0) - (a.addedAt || 0));
     else if (sortBy === 'matches') list.sort((a, b) => (entryIntelligence.get(b.tmProfileUrl)?.matchCount ?? 0) - (entryIntelligence.get(a.tmProfileUrl)?.matchCount ?? 0));
+    else if (sortBy === 'name') list.sort((a, b) => (a.playerName ?? '').localeCompare(b.playerName ?? ''));
+    else if (sortBy === 'age') list.sort((a, b) => (parseInt(a.playerAge ?? '99') || 99) - (parseInt(b.playerAge ?? '99') || 99));
     else if (sortBy === 'market_value') {
-      const toNum = (v: string | undefined) => (v?.includes('m') ? parseFloat(v) * 1000 : parseFloat(v || '0') || 0);
-      list.sort((a, b) => toNum(b.marketValue) - toNum(a.marketValue));
+      list.sort((a, b) => parseMarketValueToEuros(b.marketValue) - parseMarketValueToEuros(a.marketValue));
     } else list.sort((a, b) => (b.addedAt || 0) - (a.addedAt || 0));
     return list;
-  }, [entries, filterBy, sortBy, entryIntelligence, currentAccountId, agentFilter, allAccounts]);
+  }, [entries, filterBy, sortBy, entryIntelligence, currentAccountId, agentFilter, allAccounts, positionFilter, withNotesOnly]);
 
   const formatAddedDate = (addedAt?: number) => {
     if (!addedAt) return '';
@@ -744,7 +771,7 @@ export default function ShortlistPage() {
 
   const showingCount = sorted.length;
   const totalCount = entries.length;
-  const isFiltered = platform === 'men' && filterBy !== 'all' && showingCount < totalCount;
+  const isFiltered = platform === 'men' && (filterBy !== 'all' || positionFilter !== null || withNotesOnly || agentFilter !== null) && showingCount < totalCount;
 
   return (
     <AppLayout>
@@ -805,22 +832,50 @@ export default function ShortlistPage() {
           <>
             {/* Sort & Filter bar — men only, always visible when we have entries */}
             {platform === 'men' && entries.length > 0 && (
-              <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6 mb-6 p-4 rounded-2xl bg-mgsr-card/80 border border-mgsr-border">
-                <div className="flex items-center gap-3">
-                  <span className="text-xs font-semibold uppercase tracking-wider text-mgsr-muted shrink-0">
-                    {isRtl ? 'מיון' : 'Sort'}
-                  </span>
-                  <select
-                    value={sortBy}
-                    onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
-                    className="rounded-xl px-4 py-2.5 text-sm font-medium bg-mgsr-dark border border-mgsr-border text-mgsr-text focus:outline-none focus:ring-2 focus:ring-mgsr-teal/50 hover:border-mgsr-teal/50 transition"
-                  >
-                    <option value="contact_score">{t('shortlist_sort_contact_score')}</option>
-                    <option value="added">{t('shortlist_sort_added')}</option>
-                    <option value="market_value">{t('shortlist_sort_market_value')}</option>
-                    <option value="matches">{t('shortlist_sort_matches')}</option>
-                  </select>
+              <div className="flex flex-col gap-4 mb-6 p-4 rounded-2xl bg-mgsr-card/80 border border-mgsr-border">
+                {/* Row 1: Sort + Position chips */}
+                <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6">
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs font-semibold uppercase tracking-wider text-mgsr-muted shrink-0">
+                      {isRtl ? 'מיון' : 'Sort'}
+                    </span>
+                    <select
+                      value={sortBy}
+                      onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+                      className="rounded-xl px-4 py-2.5 text-sm font-medium bg-mgsr-dark border border-mgsr-border text-mgsr-text focus:outline-none focus:ring-2 focus:ring-mgsr-teal/50 hover:border-mgsr-teal/50 transition"
+                    >
+                      <option value="contact_score">{t('shortlist_sort_contact_score')}</option>
+                      <option value="added">{t('shortlist_sort_added')}</option>
+                      <option value="market_value">{t('shortlist_sort_market_value')}</option>
+                      <option value="name">{t('shortlist_sort_name')}</option>
+                      <option value="age">{t('shortlist_sort_age')}</option>
+                      <option value="matches">{t('shortlist_sort_matches')}</option>
+                    </select>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold uppercase tracking-wider text-mgsr-muted shrink-0">
+                      {isRtl ? 'עמדה' : 'Position'}
+                    </span>
+                    {(['All', 'GK', 'DEF', 'MID', 'FWD'] as const).map((pos) => {
+                      const isSelected = pos === 'All' ? positionFilter === null : positionFilter === pos;
+                      return (
+                        <button
+                          key={pos}
+                          type="button"
+                          onClick={() => setPositionFilter(pos === 'All' || positionFilter === pos ? null : pos)}
+                          className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+                            isSelected
+                              ? 'bg-mgsr-teal text-mgsr-dark shadow-lg shadow-mgsr-teal/20'
+                              : 'bg-mgsr-dark/60 border border-mgsr-border text-mgsr-muted hover:text-mgsr-text hover:border-mgsr-teal/40'
+                          }`}
+                        >
+                          {t(`shortlist_filter_position_${pos.toLowerCase()}`)}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
+                {/* Row 2: Quick filters */}
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="text-xs font-semibold uppercase tracking-wider text-mgsr-muted shrink-0 w-full sm:w-auto">
                     {isRtl ? 'סינון' : 'Filter'}
@@ -839,6 +894,17 @@ export default function ShortlistPage() {
                       {t(`shortlist_filter_${f}`)}
                     </button>
                   ))}
+                  <button
+                    type="button"
+                    onClick={() => setWithNotesOnly((prev) => !prev)}
+                    className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+                      withNotesOnly
+                        ? 'bg-mgsr-teal text-mgsr-dark shadow-lg shadow-mgsr-teal/20'
+                        : 'bg-mgsr-dark/60 border border-mgsr-border text-mgsr-muted hover:text-mgsr-text hover:border-mgsr-teal/40'
+                    }`}
+                  >
+                    {t('shortlist_filter_with_notes')}
+                  </button>
                   <select
                     value={agentFilter ?? ''}
                     onChange={(e) => { setAgentFilter(e.target.value || null); if (e.target.value) setFilterBy('all'); }}
@@ -860,13 +926,13 @@ export default function ShortlistPage() {
             )}
 
             {sorted.length === 0 ? (
-              entries.length > 0 && platform === 'men' && (filterBy !== 'all' || agentFilter) ? (
+              entries.length > 0 && platform === 'men' && (filterBy !== 'all' || agentFilter || positionFilter || withNotesOnly) ? (
             <div className="py-20 px-6 rounded-2xl bg-mgsr-card/50 border border-mgsr-border text-center">
               <p className="text-mgsr-text text-lg font-medium mb-2">{t('shortlist_filter_empty')}</p>
               <p className="text-mgsr-muted text-sm mb-6 max-w-sm mx-auto">{t('shortlist_filter_empty_hint').replace('{n}', String(entries.length))}</p>
               <button
                 type="button"
-                onClick={() => { setFilterBy('all'); setAgentFilter(null); }}
+                onClick={() => { setFilterBy('all'); setAgentFilter(null); setPositionFilter(null); setWithNotesOnly(false); }}
                 className="px-6 py-3 rounded-xl bg-mgsr-teal text-mgsr-dark font-semibold hover:bg-mgsr-teal/90 transition shadow-lg shadow-mgsr-teal/20"
               >
                 {t('shortlist_filter_clear')}
