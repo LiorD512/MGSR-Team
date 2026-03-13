@@ -108,6 +108,19 @@ async function runScoutSkillLearning(runResult, runId) {
       const currentSkill = (skillDoc.data()?.skillMarkdown || "").trim();
       const currentParams = (skillDoc.data()?.paramsJson || "{}").trim();
       const version = skillDoc.data()?.version || 0;
+      const lastStats = skillDoc.data()?.lastRunStats || {};
+
+      // Skip Gemini if no new feedback since last learning (cost optimization)
+      if (version > 0) {
+        const sameFeedback =
+          shortlistAdds === (lastStats.shortlistAdds || 0) &&
+          fb.up === (lastStats.feedbackUp || 0) &&
+          fb.down === (lastStats.feedbackDown || 0);
+        if (sameFeedback) {
+          console.log(`[ScoutSkillLearner] No new feedback for ${agentId} — skipping Gemini call (v${version})`);
+          continue;
+        }
+      }
 
       const prompt = `You are the ${agentId.toUpperCase()} AI Scout Agent — league specialist.
 

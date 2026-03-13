@@ -352,13 +352,13 @@ exports.releasesRefreshWorker = onMessagePublished(
 );
 
 /**
- * Runs every 6 hours (00:00, 06:00, 12:00, 18:00 Israel time). Publishes to Pub/Sub and returns
+ * Runs once daily at 00:00 Israel time. Publishes to Pub/Sub and returns
  * immediately so Cloud Scheduler never times out. The actual work runs in scoutAgentWorker.
  */
 exports.scoutAgentScheduled = onSchedule(
-  { schedule: "0 */6 * * *", timeZone: "Asia/Jerusalem" },
+  { schedule: "0 0 * * *", timeZone: "Asia/Jerusalem" },
   async () => {
-    console.log("[scoutAgentScheduled] Triggered (every 6h) — publishing to Pub/Sub");
+    console.log("[scoutAgentScheduled] Triggered (daily 00:00) — publishing to Pub/Sub");
     const { PubSub } = require("@google-cloud/pubsub");
     const pubsub = new PubSub();
     await pubsub.topic(SCOUT_AGENT_TOPIC).publishMessage({ data: Buffer.from("{}") });

@@ -870,12 +870,69 @@ async function generateDirectorVerdicts(approvedProfiles, agentReports) {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey?.trim()) return { verdictMap: {}, intelMap: {} };
 
-  // Only evaluate top 20 profiles (cost-efficient)
+  // Only evaluate top 10 profiles (cost-efficient)
   const topProfiles = approvedProfiles
     .sort((a, b) => b.data.matchScore - a.data.matchScore)
-    .slice(0, 20);
+    .slice(0, 10);
 
   if (topProfiles.length === 0) return { verdictMap: {}, intelMap: {} };
+
+  // ═══ VERDICT CACHE — reuse verdicts from recent ScoutProfiles (last 7 days) ═══
+  const db = getFirestore();
+  const cachedVerdictMap = {};
+  const cachedIntelMap = {};
+  try {
+    const now = Date.now();
+    const cutoff7d = now - 7 * 24 * 60 * 60 * 1000;
+    const recentSnap = await db.collection("ScoutProfiles")
+      .where("discoveredAt", ">=", cutoff7d)
+      .get();
+    for (const doc of recentSnap.docs) {
+      const d = doc.data();
+      if (!d.directorVerdict) continue;
+      const url = (d.tmProfileUrl || "").trim().toLowerCase().replace(/\/$/, "");
+      if (!url || !d.directorVerdict) continue;
+      cachedVerdictMap[url] = {
+        verdict: d.directorVerdict,
+        action: d.directorAction || "MONITOR",
+        valueArc: d.directorValueArc || null,
+        dataFlags: Array.isArray(d.directorDataFlags) ? d.directorDataFlags : [],
+        fitScore: typeof d.directorFitScore === "number" ? d.directorFitScore : null,
+      };
+      // Cache intel fields too
+      if (d.intelSources?.length > 0) {
+        const name = (d.playerName || "").toLowerCase().trim();
+        if (name) cachedIntelMap[name] = { sources: d.intelSources };
+      }
+    }
+    if (Object.keys(cachedVerdictMap).length > 0) {
+      console.log(`[SportDirector] Loaded ${Object.keys(cachedVerdictMap).length} cached verdicts from last 7 days`);
+    }
+  } catch (cacheErr) {
+    console.warn("[SportDirector] Verdict cache load failed (non-fatal):", cacheErr.message);
+  }
+
+  // Split into cached (reuse) vs new (need Gemini)
+  const newProfiles = [];
+  const reusedVerdictMap = {};
+  const reusedIntelMap = { ...cachedIntelMap };
+  for (const pw of topProfiles) {
+    const url = (pw.data.tmProfileUrl || "").trim().toLowerCase().replace(/\/$/, "");
+    if (cachedVerdictMap[url]) {
+      const name = pw.data.playerName.toLowerCase().trim();
+      reusedVerdictMap[name] = cachedVerdictMap[url];
+      console.log(`[SportDirector] Using cached verdict for ${pw.data.playerName}`);
+    } else {
+      newProfiles.push(pw);
+    }
+  }
+
+  if (newProfiles.length === 0) {
+    console.log("[SportDirector] All top profiles have cached verdicts — skipping Gemini");
+    return { verdictMap: reusedVerdictMap, intelMap: reusedIntelMap };
+  }
+
+  console.log(`[SportDirector] ${newProfiles.length} new profiles need Gemini evaluation (${topProfiles.length - newProfiles.length} cached)`);
 
   try {
     const genAI = new GoogleGenerativeAI(apiKey);
@@ -933,12 +990,11 @@ For each player output:
 - fitScore: 1-10 how well this player fits the Israeli market`,
     });
 
-    // ═══ INTELLIGENCE ENRICHMENT ═══
-    // Gather FBref + FotMob + ClubElo for top candidates before Gemini
-    const intelMap = {};
+    // ═══ INTELLIGENCE ENRICHMENT (only for new profiles) ═══
+    const intelMap = { ...reusedIntelMap };
     const INTEL_BATCH = 5;
-    for (let i = 0; i < topProfiles.length; i += INTEL_BATCH) {
-      const batch = topProfiles.slice(i, i + INTEL_BATCH);
+    for (let i = 0; i < newProfiles.length; i += INTEL_BATCH) {
+      const batch = newProfiles.slice(i, i + INTEL_BATCH);
       const results = await Promise.allSettled(
         batch.map(pw => gatherQuickIntel(pw.data.playerName, pw.data.club))
       );
@@ -949,16 +1005,16 @@ For each player output:
         }
       }
       // Rate limit between batches
-      if (i + INTEL_BATCH < topProfiles.length) {
+      if (i + INTEL_BATCH < newProfiles.length) {
         await new Promise(r => setTimeout(r, 1200));
       }
     }
-    const intelCount = Object.keys(intelMap).length;
+    const intelCount = Object.keys(intelMap).length - Object.keys(reusedIntelMap).length;
     if (intelCount > 0) {
-      console.log(`[SportDirector] Intelligence gathered for ${intelCount}/${topProfiles.length} players`);
+      console.log(`[SportDirector] Intelligence gathered for ${intelCount}/${newProfiles.length} new players`);
     }
 
-    const playerLines = topProfiles.map((pw, i) => {
+    const playerLines = newProfiles.map((pw, i) => {
       const d = pw.data;
       const per90 = d.fbrefMinutes90s > 0
         ? `G/90: ${d.goalsPer90.toFixed(2)}, (G+A)/90: ${d.contribPer90.toFixed(2)}`
@@ -980,7 +1036,7 @@ For each player output:
       .map(([id, r]) => `${id}: Grade ${r.overallGrade}, ${r.approvalRate}% approved, ${r.freshnessGrade}`)
       .join(" | ");
 
-    const prompt = `Evaluate these ${topProfiles.length} profiles from my AI agents.
+    const prompt = `Evaluate these ${newProfiles.length} profiles from my AI agents.
 Your job: verify data accuracy, check Israeli market realism, assess the VALUE ARC (Monchi method), and validate that each player truly fits across all four dimensions (technical, physical, tactical, mental).
 
 IMPORTANT: Some players have an INTEL line with real-time data from TheSportsDB (physical profile, wage, signing fee, agent, honours, career history), FotMob (player ID), and ClubElo (club strength). USE THIS DATA in your evaluation — it provides verified biographical context, salary expectations, career trajectory (former teams & trophies), and physical attributes that inform your assessment. Club Elo contextualizes the league level. Multiple honours signal elite experience.
@@ -1003,10 +1059,10 @@ ONLY valid JSON. No explanations outside the JSON.`;
     const result = await model.generateContent(prompt);
     const text = result.response?.text?.() || "";
     const jsonMatch = text.match(/\[[\s\S]*\]/);
-    if (!jsonMatch) return { verdictMap: {}, intelMap: {} };
+    if (!jsonMatch) return { verdictMap: reusedVerdictMap, intelMap };
 
     const verdicts = JSON.parse(jsonMatch[0]);
-    const verdictMap = {};
+    const verdictMap = { ...reusedVerdictMap };
     for (const v of verdicts) {
       if (v.name && v.verdict) {
         verdictMap[v.name.toLowerCase().trim()] = {
@@ -1021,7 +1077,7 @@ ONLY valid JSON. No explanations outside the JSON.`;
     return { verdictMap, intelMap };
   } catch (err) {
     console.warn("[SportDirector] Gemini verdict generation failed (non-fatal):", err.message);
-    return { verdictMap: {}, intelMap: {} };
+    return { verdictMap: reusedVerdictMap, intelMap: reusedIntelMap };
   }
 }
 

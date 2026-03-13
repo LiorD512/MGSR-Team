@@ -1708,7 +1708,7 @@ async function runScoutAgent() {
     const topProfiles = approvedProfiles
       .filter((pw) => pw.data.matchScore >= 70)
       .sort((a, b) => b.data.matchScore - a.data.matchScore)
-      .slice(0, 10);
+      .slice(0, 5);
 
     if (topProfiles.length > 0) {
       try {
