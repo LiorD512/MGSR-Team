@@ -23,7 +23,7 @@ function getScoutBaseUrl() {
   return url.trim().replace(/\/$/, "");
 }
 const LIGAT_HAAL_VALUE_MAX = 2_500_000;
-const DELAY_BETWEEN_REQUESTS_MS = 3000;
+const DELAY_BETWEEN_REQUESTS_MS = 5000;
 
 /** League name (from scout) -> agentId. Use lowercase for matching. */
 const LEAGUE_TO_AGENT = {
@@ -514,7 +514,6 @@ async function fetchRecruitment(params) {
   search.set("limit", "100");
   search.set("sort_by", params.sort_by || "score");
   search.set("lang", "en");
-  search.set("_t", String(Date.now()));
 
   const url = `${getScoutBaseUrl()}/recruitment?${search.toString()}`;
   const res = await fetch(url, {
