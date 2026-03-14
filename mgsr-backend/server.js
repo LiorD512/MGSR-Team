@@ -9,6 +9,31 @@ const app = express();
 const PORT = process.env.PORT || 8080;
 const TRANSFERMARKT_BASE = 'https://www.transfermarkt.com';
 
+// ─── Singleton Playwright browser (avoids ~150 MB per-request overhead) ──────
+let _browserInstance = null;
+let _browserLaunching = null;
+async function getBrowser() {
+  if (_browserInstance && _browserInstance.isConnected()) return _browserInstance;
+  if (_browserLaunching) return _browserLaunching;
+  _browserLaunching = chromium.launch({
+    headless: true,
+    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+  }).then((b) => {
+    _browserInstance = b;
+    _browserLaunching = null;
+    b.on('disconnected', () => { _browserInstance = null; });
+    return b;
+  }).catch((err) => {
+    _browserLaunching = null;
+    throw err;
+  });
+  return _browserLaunching;
+}
+
+// Concurrency guard — max 3 Playwright pages open at once
+let _activePwPages = 0;
+const MAX_PW_PAGES = 3;
+
 // CORS first - must run before any routes
 app.use(cors({ origin: true }));
 app.use(express.json());
@@ -41,9 +66,9 @@ function fetchHtml(url) {
         reject(new Error(`HTTP ${res.statusCode}`));
         return;
       }
-      let data = '';
-      res.on('data', (chunk) => { data += chunk; });
-      res.on('end', () => resolve(data));
+      const chunks = [];
+      res.on('data', (chunk) => { chunks.push(chunk); });
+      res.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
     });
     req.on('error', reject);
     req.setTimeout(FETCH_TIMEOUT_MS, () => { req.destroy(); reject(new Error('Timeout')); });
@@ -433,31 +458,34 @@ function parseIFAProfileHtml(html, url) {
 }
 
 app.post('/api/ifa/fetch-profile', async (req, res) => {
-  let browser;
+  let page;
   try {
     const url = (req.body?.url || '').trim();
     if (!url || !/^https?:\/\/(www\.)?football\.org\.il\/(en\/)?players\/player\/\?player_id=\d+/.test(url)) {
       return res.status(400).json({ error: 'Invalid IFA profile URL' });
     }
+    if (_activePwPages >= MAX_PW_PAGES) {
+      res.set('Retry-After', '5');
+      return res.status(503).json({ error: 'Too many concurrent browser requests, please retry' });
+    }
     const normalizedUrl = url.replace(/football\.org\.il\/en\/players\//, 'football.org.il/players/');
 
-    browser = await chromium.launch({
-      headless: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox'],
-    });
-    const page = await browser.newPage({
+    const browser = await getBrowser();
+    _activePwPages++;
+    page = await browser.newPage({
       userAgent: getRandomUserAgent(),
       extraHTTPHeaders: { 'Accept-Language': 'he-IL,he;q=0.9,en-US;q=0.8' },
     });
     await page.goto(normalizedUrl, { waitUntil: 'domcontentloaded', timeout: 15000 });
     const html = await page.content();
-    await browser.close();
-    browser = null;
+    await page.close();
+    page = null;
+    _activePwPages--;
 
     const profile = parseIFAProfileHtml(html, normalizedUrl);
     res.json(profile);
   } catch (err) {
-    if (browser) await browser.close().catch(() => {});
+    if (page) { await page.close().catch(() => {}); _activePwPages--; }
     console.error('[IFA fetch-profile]', err.message);
     res.status(500).json({ error: err.message || 'Failed to fetch IFA profile' });
   }
@@ -1292,13 +1320,12 @@ function buildTransferWindows() {
 }
 
 async function scrapeTransferWindowsWithPlaywright() {
-  let browser;
+  let page;
   try {
-    browser = await chromium.launch({
-      headless: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox'],
-    });
-    const page = await browser.newPage({
+    if (_activePwPages >= MAX_PW_PAGES) return null; // fall back to static list
+    const browser = await getBrowser();
+    _activePwPages++;
+    page = await browser.newPage({
       userAgent: getRandomUserAgent(),
       extraHTTPHeaders: { 'Accept-Language': 'en-US,en;q=0.9' },
     });
@@ -1323,8 +1350,9 @@ async function scrapeTransferWindowsWithPlaywright() {
     }
 
     const html = await page.content();
-    await browser.close();
-    browser = null;
+    await page.close();
+    page = null;
+    _activePwPages--;
 
     const $ = cheerio.load(html);
     const rows = $('table.transfer-window tbody tr');
@@ -1374,7 +1402,7 @@ async function scrapeTransferWindowsWithPlaywright() {
     return windows.sort((a, b) => (a.daysLeft ?? 999) - (b.daysLeft ?? 999));
   } catch (err) {
     console.error('Transfer window scrape error:', err.message);
-    if (browser) await browser.close().catch(() => {});
+    if (page) { await page.close().catch(() => {}); _activePwPages--; }
     return null;
   }
 }
@@ -1407,6 +1435,15 @@ app.get('/health', (_, res) => {
 });
 
 // ─── Start ──────────────────────────────────────────────────────────────────
+// ─── Graceful shutdown — close singleton browser on Render restart ──────────
+const shutdown = async () => {
+  console.log('Shutting down — closing Playwright browser...');
+  if (_browserInstance) await _browserInstance.close().catch(() => {});
+  process.exit(0);
+};
+process.on('SIGTERM', shutdown);
+process.on('SIGINT', shutdown);
+
 app.listen(PORT, () => {
   console.log(`MGSR Backend running at http://localhost:${PORT}`);
 });
