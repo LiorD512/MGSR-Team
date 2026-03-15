@@ -24,6 +24,7 @@ interface CalendarEvent {
   id?: string;
   summary?: string;
   start?: { date?: string };
+  extendedProperties?: { private?: Record<string, string> };
 }
 
 let tokenClient: google.accounts.oauth2.TokenClient | null = null;
@@ -112,20 +113,17 @@ async function getOrCreateMGSRCalendar(token: string): Promise<string> {
 
 /**
  * Get existing MGSR events from the calendar to avoid duplicates.
- * Returns a Map of "summary|date" → eventId.
+ * Uses extendedProperties.private.mgsrTaskId for reliable matching.
+ * Returns a Set of task IDs that already have calendar events.
  */
-async function getExistingMGSREvents(
+async function getExistingSyncedTaskIds(
   calendarId: string,
-  token: string,
-  minDate: string,
-  maxDate: string
-): Promise<Map<string, string>> {
+  token: string
+): Promise<Set<string>> {
   const params = new URLSearchParams({
-    q: EVENT_PREFIX,
-    timeMin: `${minDate}T00:00:00Z`,
-    timeMax: `${maxDate}T23:59:59Z`,
+    privateExtendedProperty: 'mgsrSource=true',
+    maxResults: '2500',
     singleEvents: 'true',
-    maxResults: '500',
   });
 
   const result = await calendarFetch(
@@ -133,13 +131,12 @@ async function getExistingMGSREvents(
     token
   );
 
-  const map = new Map<string, string>();
+  const ids = new Set<string>();
   for (const ev of (result.items || []) as CalendarEvent[]) {
-    if (ev.summary?.startsWith(EVENT_PREFIX) && ev.start?.date) {
-      map.set(`${ev.summary}|${ev.start.date}`, ev.id!);
-    }
+    const taskId = ev.extendedProperties?.private?.mgsrTaskId;
+    if (taskId) ids.add(taskId);
   }
-  return map;
+  return ids;
 }
 
 function formatDateYMD(ts: number): string {
@@ -194,26 +191,24 @@ export async function syncTasksToCalendar(
   // Get or create the dedicated calendar
   const calendarId = await getOrCreateMGSRCalendar(token);
 
-  // Determine date range for duplicate check
-  const dates = syncable.map((t) => t.dueDate!);
-  const minDate = formatDateYMD(Math.min(...dates));
-  const maxDate = formatDateYMD(Math.max(...dates));
-
-  // Fetch existing events to prevent duplicates
-  const existing = await getExistingMGSREvents(calendarId, token, minDate, maxDate);
+  // Fetch existing synced task IDs to prevent duplicates
+  const existingIds = await getExistingSyncedTaskIds(calendarId, token);
 
   let created = 0;
   let skipped = 0;
 
   for (const task of syncable) {
-    const dateStr = formatDateYMD(task.dueDate!);
-    const summary = taskToEventSummary(task);
-    const key = `${summary}|${dateStr}`;
-
-    if (existing.has(key)) {
+    if (existingIds.has(task.id)) {
       skipped++;
       continue;
     }
+
+    const dateStr = formatDateYMD(task.dueDate!);
+    const summary = taskToEventSummary(task);
+    // All-day events: end date must be the NEXT day (exclusive)
+    const endDate = new Date(task.dueDate!);
+    endDate.setDate(endDate.getDate() + 1);
+    const endDateStr = formatDateYMD(endDate.getTime());
 
     await calendarFetch(`/calendars/${encodeURIComponent(calendarId)}/events`, token, {
       method: 'POST',
@@ -221,13 +216,19 @@ export async function syncTasksToCalendar(
         summary,
         description: taskToEventDescription(task),
         start: { date: dateStr },
-        end: { date: dateStr },
+        end: { date: endDateStr },
         colorId: priorityToColorId(task.priority),
+        extendedProperties: {
+          private: {
+            mgsrTaskId: task.id,
+            mgsrSource: 'true',
+          },
+        },
         reminders: {
           useDefault: false,
-          overrides: [{ method: 'popup', minutes: 540 }], // 9 hours = morning of due date
+          overrides: [{ method: 'popup', minutes: 540 }],
         },
-        transparency: 'transparent', // won't block time (show as "free")
+        transparency: 'transparent',
       }),
     });
     created++;
