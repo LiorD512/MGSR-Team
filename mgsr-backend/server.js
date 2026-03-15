@@ -1115,6 +1115,82 @@ function buildTeammatesUrl(profileUrl) {
   return `${TRANSFERMARKT_BASE}/${slug}/gemeinsameSpiele/spieler/${playerId}/plus/0/galerie/0?gegner=0&kriterium=0&wettbewerb=&liga=&verein=&pos=&status=1`;
 }
 
+function parseTeammatesFromHtml(html) {
+  const $ = cheerio.load(html);
+  const teammates = [];
+  const gegnerLinks = $('a[href*="/gegner/"]');
+  if (gegnerLinks.length > 0) {
+    gegnerLinks.each((_, el) => {
+      const href = $(el).attr('href') || '';
+      const match = href.match(/\/gegner\/(\d+)/);
+      if (!match || match[1] === '0') return;
+      const teammateId = match[1];
+      const matchesText = $(el).text().trim().replace(/,/g, '').replace(/\./g, '');
+      const matchesPlayedTogether = parseInt(matchesText, 10);
+      if (matchesPlayedTogether >= 1 && matchesPlayedTogether <= 2000) {
+        teammates.push({
+          tmProfileUrl: `${TRANSFERMARKT_BASE}/profil/spieler/${teammateId}`,
+          playerName: null,
+          position: null,
+          matchesPlayedTogether,
+          minutesTogether: null,
+        });
+      }
+    });
+  } else {
+    $('table.items tbody tr.odd, table.items tbody tr.even, table.items tr.odd, table.items tr.even').each((_, row) => {
+      try {
+        const playerLink = $(row).find('td.hauptlink a[href*="/profil/spieler/"], td.hauptlink a[href*="/profile/player/"], td a[href*="/profil/spieler/"], td a[href*="/profile/player/"]').first();
+        const href = playerLink.attr('href');
+        if (!href) return;
+        const tmProfileUrl = makeAbsoluteUrl(href);
+        const playerName = playerLink.attr('title') || playerLink.text().trim() || null;
+        const hauptlinkText = $(row).find('td.hauptlink').text().trim();
+        let position = null;
+        if (playerName && hauptlinkText) {
+          const after = hauptlinkText.split(playerName).pop?.()?.trim?.();
+          if (after && after.length >= 2 && after.length <= 30) position = convertPosition(after) || after;
+        }
+        const cells = $(row).find('td');
+        let matchesPlayedTogether = 0;
+        for (let i = 1; i <= Math.min(3, cells.length - 1); i++) {
+          const t = $(cells[i]).text().trim().replace(/,/g, '').replace(/\./g, '');
+          const n = parseInt(t, 10);
+          if (n >= 1 && n <= 2000) {
+            matchesPlayedTogether = n;
+            break;
+          }
+        }
+        if (matchesPlayedTogether > 0) {
+          teammates.push({
+            tmProfileUrl,
+            playerName,
+            position,
+            matchesPlayedTogether,
+            minutesTogether: null,
+          });
+        }
+      } catch (e) {}
+    });
+  }
+  return teammates;
+}
+
+function getTotalPagesFromHtml(html) {
+  const $ = cheerio.load(html);
+  const pages = [];
+  $('div.pager li.tm-pagination__list-item, li.tm-pagination__list-item').each((_, el) => {
+    const n = parseInt($(el).text().trim(), 10);
+    if (!isNaN(n)) pages.push(n);
+  });
+  return pages.length > 0 ? Math.max(...pages) : 1;
+}
+
+function buildTeammatesPageUrl(baseUrl, page) {
+  const separator = baseUrl.includes('?') ? '&' : '?';
+  return `${baseUrl}${separator}page=${page}`;
+}
+
 app.get('/api/transfermarkt/teammates', async (req, res) => {
   try {
     let url = req.query.url || '';
@@ -1129,67 +1205,38 @@ app.get('/api/transfermarkt/teammates', async (req, res) => {
     if (!teammatesUrl) {
       return res.status(400).json({ error: 'Invalid player URL' });
     }
-    const html = await fetchHtmlWithRetry(teammatesUrl);
-    const $ = cheerio.load(html);
 
-    const teammates = [];
-    const gegnerLinks = $('a[href*="/gegner/"]');
-    if (gegnerLinks.length > 0) {
-      gegnerLinks.each((_, el) => {
-        const href = $(el).attr('href') || '';
-        const match = href.match(/\/gegner\/(\d+)/);
-        if (!match || match[1] === '0') return;
-        const teammateId = match[1];
-        const matchesText = $(el).text().trim().replace(/,/g, '').replace(/\./g, '');
-        const matchesPlayedTogether = parseInt(matchesText, 10);
-        if (matchesPlayedTogether >= 1 && matchesPlayedTogether <= 2000) {
-          teammates.push({
-            tmProfileUrl: `${TRANSFERMARKT_BASE}/profil/spieler/${teammateId}`,
-            playerName: null,
-            position: null,
-            matchesPlayedTogether,
-            minutesTogether: null,
-          });
+    // Fetch page 1 and detect total pages
+    const firstHtml = await fetchHtmlWithRetry(teammatesUrl);
+    const firstPageTeammates = parseTeammatesFromHtml(firstHtml);
+    const totalPages = getTotalPagesFromHtml(firstHtml);
+
+    let allTeammates = firstPageTeammates;
+    if (totalPages > 1) {
+      const MAX_CONCURRENT = 10;
+      const remainingPages = Array.from({ length: totalPages - 1 }, (_, i) => i + 2);
+      // Fetch remaining pages in batches
+      for (let i = 0; i < remainingPages.length; i += MAX_CONCURRENT) {
+        const batch = remainingPages.slice(i, i + MAX_CONCURRENT);
+        const results = await Promise.all(
+          batch.map((page) => fetchHtmlWithRetry(buildTeammatesPageUrl(teammatesUrl, page))
+            .then((html) => parseTeammatesFromHtml(html))
+            .catch(() => []))
+        );
+        for (const pageTeammates of results) {
+          allTeammates = allTeammates.concat(pageTeammates);
         }
-      });
-    } else {
-      $('table.items tbody tr.odd, table.items tbody tr.even, table.items tr.odd, table.items tr.even').each((_, row) => {
-        try {
-          const playerLink = $(row).find('td.hauptlink a[href*="/profil/spieler/"], td.hauptlink a[href*="/profile/player/"], td a[href*="/profil/spieler/"], td a[href*="/profile/player/"]').first();
-          const href = playerLink.attr('href');
-          if (!href) return;
-          const tmProfileUrl = makeAbsoluteUrl(href);
-          const playerName = playerLink.attr('title') || playerLink.text().trim() || null;
-          const hauptlinkText = $(row).find('td.hauptlink').text().trim();
-          let position = null;
-          if (playerName && hauptlinkText) {
-            const after = hauptlinkText.split(playerName).pop?.()?.trim?.();
-            if (after && after.length >= 2 && after.length <= 30) position = convertPosition(after) || after;
-          }
-          const cells = $(row).find('td');
-          let matchesPlayedTogether = 0;
-          for (let i = 1; i <= Math.min(3, cells.length - 1); i++) {
-            const t = $(cells[i]).text().trim().replace(/,/g, '').replace(/\./g, '');
-            const n = parseInt(t, 10);
-            if (n >= 1 && n <= 2000) {
-              matchesPlayedTogether = n;
-              break;
-            }
-          }
-          if (matchesPlayedTogether > 0) {
-            teammates.push({
-              tmProfileUrl,
-              playerName,
-              position,
-              matchesPlayedTogether,
-              minutesTogether: null,
-            });
-          }
-        } catch (e) {}
+      }
+      // Deduplicate by tmProfileUrl
+      const seen = new Set();
+      allTeammates = allTeammates.filter((t) => {
+        if (seen.has(t.tmProfileUrl)) return false;
+        seen.add(t.tmProfileUrl);
+        return true;
       });
     }
 
-    res.json({ teammates: teammates.slice(0, 200) });
+    res.json({ teammates: allTeammates.slice(0, 200) });
   } catch (err) {
     console.error('Teammates error:', err.message);
     res.status(500).json({ error: err.message || 'Failed to fetch teammates' });

@@ -1160,18 +1160,8 @@ function buildTeammatesUrl(profileUrl: string): string | null {
   return `${TRANSFERMARKT_BASE}/${slug}/gemeinsameSpiele/spieler/${playerId}/plus/0/galerie/0?gegner=0&kriterium=0&wettbewerb=&liga=&verein=&pos=&status=1`;
 }
 
-export async function handleTeammates(urlParam: string) {
-  let url = (urlParam || '').trim();
-  if (!url) throw new Error('Missing url parameter');
-  if (!url.startsWith('http')) {
-    url = url.startsWith('/') ? TRANSFERMARKT_BASE + url : TRANSFERMARKT_BASE + '/' + url;
-  }
-  const teammatesUrl = buildTeammatesUrl(url);
-  if (!teammatesUrl) throw new Error('Invalid player URL');
-
-  const html = await fetchHtmlWithRetry(teammatesUrl);
+function parseTeammatesFromHtml(html: string): Record<string, unknown>[] {
   const $ = cheerio.load(html);
-
   const teammates: Record<string, unknown>[] = [];
   const gegnerLinks = $('a[href*="/gegner/"]');
   if (gegnerLinks.length > 0) {
@@ -1234,8 +1224,64 @@ export async function handleTeammates(urlParam: string) {
       }
     });
   }
+  return teammates;
+}
 
-  return { teammates: teammates.slice(0, 200) };
+function getTotalPagesFromHtml(html: string): number {
+  const $ = cheerio.load(html);
+  const pages: number[] = [];
+  $('div.pager li.tm-pagination__list-item, li.tm-pagination__list-item').each((_, el) => {
+    const n = parseInt($(el).text().trim(), 10);
+    if (!isNaN(n)) pages.push(n);
+  });
+  return pages.length > 0 ? Math.max(...pages) : 1;
+}
+
+function buildTeammatesPageUrl(baseUrl: string, page: number): string {
+  const separator = baseUrl.includes('?') ? '&' : '?';
+  return `${baseUrl}${separator}page=${page}`;
+}
+
+export async function handleTeammates(urlParam: string) {
+  let url = (urlParam || '').trim();
+  if (!url) throw new Error('Missing url parameter');
+  if (!url.startsWith('http')) {
+    url = url.startsWith('/') ? TRANSFERMARKT_BASE + url : TRANSFERMARKT_BASE + '/' + url;
+  }
+  const teammatesUrl = buildTeammatesUrl(url);
+  if (!teammatesUrl) throw new Error('Invalid player URL');
+
+  // Fetch page 1 and detect total pages
+  const firstHtml = await fetchHtmlWithRetry(teammatesUrl);
+  const firstPageTeammates = parseTeammatesFromHtml(firstHtml);
+  const totalPages = getTotalPagesFromHtml(firstHtml);
+
+  let allTeammates = firstPageTeammates;
+  if (totalPages > 1) {
+    const MAX_CONCURRENT = 10;
+    const remainingPages = Array.from({ length: totalPages - 1 }, (_, i) => i + 2);
+    for (let i = 0; i < remainingPages.length; i += MAX_CONCURRENT) {
+      const batch = remainingPages.slice(i, i + MAX_CONCURRENT);
+      const results = await Promise.all(
+        batch.map((page) => fetchHtmlWithRetry(buildTeammatesPageUrl(teammatesUrl, page))
+          .then((html) => parseTeammatesFromHtml(html))
+          .catch(() => []))
+      );
+      for (const pageTeammates of results) {
+        allTeammates = allTeammates.concat(pageTeammates);
+      }
+    }
+    // Deduplicate by tmProfileUrl
+    const seen = new Set<string>();
+    allTeammates = allTeammates.filter((t) => {
+      const url = t.tmProfileUrl as string;
+      if (seen.has(url)) return false;
+      seen.add(url);
+      return true;
+    });
+  }
+
+  return { teammates: allTeammates.slice(0, 200) };
 }
 
 // ─── Transfer Windows ────────────────────────────────────────────────────────
