@@ -54,6 +54,7 @@ export default function RootLayout({
     <html lang="en" className={`${syne.variable} ${outfit.variable} ${instrumentSerif.variable} ${sora.variable}`}>
       <head>
         <link rel="manifest" href="/manifest.json" />
+        <script src="https://accounts.google.com/gsi/client" async defer></script>
       </head>
       <body className="font-sans antialiased">
         <AuthProvider>

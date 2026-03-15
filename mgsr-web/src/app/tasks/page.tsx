@@ -17,6 +17,7 @@ import {
 import { db } from '@/lib/firebase';
 import { usePlatform } from '@/contexts/PlatformContext';
 import AppLayout from '@/components/AppLayout';
+import { requestCalendarAccess, syncTasksToCalendar, type SyncResult } from '@/lib/googleCalendar';
 
 interface AgentTask {
   id: string;
@@ -146,6 +147,14 @@ export default function TasksPage() {
   const [editPriority, setEditPriority] = useState(0);
   const [editAgentId, setEditAgentId] = useState('');
   const [editSaving, setEditSaving] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [syncToast, setSyncToast] = useState<{ message: string; isError?: boolean } | null>(null);
+  const [lastSyncTime, setLastSyncTime] = useState<number | null>(null);
+
+  useEffect(() => {
+    const stored = localStorage.getItem(`mgsr_calendar_sync_${platform}`);
+    if (stored) setLastSyncTime(Number(stored));
+  }, [platform]);
 
   useEffect(() => {
     if (!loading && !user) router.replace('/login');
@@ -374,6 +383,46 @@ export default function TasksPage() {
 
   const isOverdue = (ts?: number) => ts && ts < new Date().setHours(0, 0, 0, 0);
 
+  const handleSyncCalendar = async () => {
+    const clientId = process.env.NEXT_PUBLIC_GOOGLE_CALENDAR_CLIENT_ID;
+    if (!clientId) {
+      setSyncToast({ message: 'Google Calendar Client ID not configured', isError: true });
+      setTimeout(() => setSyncToast(null), 4000);
+      return;
+    }
+
+    setSyncing(true);
+    setSyncToast(null);
+
+    try {
+      const token = await requestCalendarAccess(clientId);
+      const tasksToSync = myTasks;
+      const result = await syncTasksToCalendar(tasksToSync, token);
+
+      if (result.created === 0 && result.total === 0) {
+        setSyncToast({ message: t('tasks_sync_no_tasks') });
+      } else {
+        const msg = t('tasks_sync_success').replace('{created}', String(result.created))
+          + (result.skipped > 0 ? ' ' + t('tasks_sync_skipped').replace('{skipped}', String(result.skipped)) : '');
+        setSyncToast({ message: msg });
+      }
+      const now = Date.now();
+      setLastSyncTime(now);
+      localStorage.setItem(`mgsr_calendar_sync_${platform}`, String(now));
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      if (message.includes('denied') || message.includes('access_denied')) {
+        setSyncToast({ message: t('tasks_sync_denied'), isError: true });
+      } else {
+        setSyncToast({ message: t('tasks_sync_error'), isError: true });
+        console.error('Calendar sync error:', err);
+      }
+    } finally {
+      setSyncing(false);
+      setTimeout(() => setSyncToast(null), 5000);
+    }
+  };
+
   const priorityColors = isYouth ? PRIORITY_COLORS_YOUTH : isWomen ? PRIORITY_COLORS_WOMEN : PRIORITY_COLORS;
 
   if (loading || !user) {
@@ -476,20 +525,71 @@ export default function TasksPage() {
               </button>
             ))}
           </div>
-          <button
-            onClick={() => setShowAdd(true)}
-            className={`flex items-center gap-2 px-6 py-3 font-semibold transition ${
-              isYouth
-                ? 'rounded-2xl bg-gradient-to-r from-[var(--youth-cyan)] to-[var(--youth-violet)] text-mgsr-dark shadow-lg shadow-[var(--youth-cyan)]/25 hover:opacity-90 hover:-translate-y-0.5'
-                : isWomen
-                ? 'rounded-2xl bg-[var(--women-gradient)] text-white shadow-[var(--women-glow)] hover:opacity-90 hover:-translate-y-0.5'
-                : 'rounded-xl bg-mgsr-teal text-mgsr-dark hover:bg-mgsr-teal/90 shadow-lg shadow-mgsr-teal/25 hover:shadow-mgsr-teal/40 hover:-translate-y-0.5'
-            }`}
-          >
-            <span className="text-xl leading-none">+</span>
-            {isWomen ? t('tasks_add_women') : t('tasks_add')}
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleSyncCalendar}
+              disabled={syncing}
+              className={`flex items-center gap-2 px-5 py-3 font-medium transition border ${
+                isYouth
+                  ? 'rounded-2xl border-[var(--youth-cyan)]/30 bg-[var(--youth-cyan)]/10 text-[var(--youth-cyan)] hover:bg-[var(--youth-cyan)]/20'
+                  : isWomen
+                  ? 'rounded-2xl border-[var(--women-rose)]/30 bg-[var(--women-rose)]/10 text-[var(--women-rose)] hover:bg-[var(--women-rose)]/20'
+                  : 'rounded-xl border-mgsr-teal/30 bg-mgsr-teal/10 text-mgsr-teal hover:bg-mgsr-teal/20'
+              } ${syncing ? 'opacity-60 cursor-not-allowed' : 'hover:-translate-y-0.5'}`}
+            >
+              {syncing ? (
+                <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                  <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeDasharray="31.4 31.4" strokeLinecap="round" />
+                </svg>
+              ) : (
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" />
+                </svg>
+              )}
+              {syncing ? t('tasks_syncing') : t('tasks_sync_calendar')}
+              {lastSyncTime && !syncing && (
+                <span className="text-[10px] opacity-60 font-normal">
+                  {t('tasks_last_sync')}{' '}
+                  {new Date(lastSyncTime).toLocaleDateString(isRtl ? 'he-IL' : 'en-US', { day: 'numeric', month: 'short' })}{' '}
+                  {new Date(lastSyncTime).toLocaleTimeString(isRtl ? 'he-IL' : 'en-US', { hour: '2-digit', minute: '2-digit' })}
+                </span>
+              )}
+            </button>
+            <button
+              onClick={() => setShowAdd(true)}
+              className={`flex items-center gap-2 px-6 py-3 font-semibold transition ${
+                isYouth
+                  ? 'rounded-2xl bg-gradient-to-r from-[var(--youth-cyan)] to-[var(--youth-violet)] text-mgsr-dark shadow-lg shadow-[var(--youth-cyan)]/25 hover:opacity-90 hover:-translate-y-0.5'
+                  : isWomen
+                  ? 'rounded-2xl bg-[var(--women-gradient)] text-white shadow-[var(--women-glow)] hover:opacity-90 hover:-translate-y-0.5'
+                  : 'rounded-xl bg-mgsr-teal text-mgsr-dark hover:bg-mgsr-teal/90 shadow-lg shadow-mgsr-teal/25 hover:shadow-mgsr-teal/40 hover:-translate-y-0.5'
+              }`}
+            >
+              <span className="text-xl leading-none">+</span>
+              {isWomen ? t('tasks_add_women') : t('tasks_add')}
+            </button>
+          </div>
         </div>
+
+        {/* Calendar sync toast */}
+        {syncToast && (
+          <div className={`mb-6 px-5 py-3 rounded-xl text-sm font-medium flex items-center gap-2 transition-all ${
+            syncToast.isError
+              ? 'bg-red-500/15 text-red-400 border border-red-500/20'
+              : isYouth
+              ? 'bg-[var(--youth-cyan)]/15 text-[var(--youth-cyan)] border border-[var(--youth-cyan)]/20'
+              : isWomen
+              ? 'bg-[var(--women-rose)]/15 text-[var(--women-rose)] border border-[var(--women-rose)]/20'
+              : 'bg-mgsr-teal/15 text-mgsr-teal border border-mgsr-teal/20'
+          }`}>
+            {syncToast.isError ? (
+              <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+            ) : (
+              <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            )}
+            {syncToast.message}
+          </div>
+        )}
 
         {/* Content: My tasks (personal view) vs All agents (team lanes) */}
         {loadingList ? (
