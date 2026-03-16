@@ -379,9 +379,9 @@ export default function NewsPage() {
     <AppLayout>
       <div className={`min-h-screen ${isRtl ? 'text-right' : 'text-left'}`} dir={isRtl ? 'rtl' : 'ltr'}>
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
           <div>
-            <h1 className="font-display text-2xl md:text-3xl text-mgsr-text flex items-center gap-2">
+            <h1 className="font-display text-xl sm:text-2xl md:text-3xl text-mgsr-text flex items-center gap-2">
               📰 {t('news_title')}
             </h1>
             <p className="text-sm text-mgsr-muted mt-1">{t('news_subtitle')}</p>

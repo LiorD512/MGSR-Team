@@ -743,7 +743,7 @@ export default function ShortlistPage() {
     <AppLayout>
       <div dir={isRtl ? 'rtl' : 'ltr'} className="max-w-6xl mx-auto px-4 sm:px-0">
         {/* Header — clean, informative */}
-        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
           <div>
             <h1 className="text-2xl sm:text-3xl font-display font-bold text-mgsr-text tracking-tight">
               {isWomen ? t('shortlist_title_women') : t('shortlist_title')}
@@ -798,7 +798,7 @@ export default function ShortlistPage() {
           <>
             {/* Sort & Filter bar — men only, always visible when we have entries */}
             {platform === 'men' && entries.length > 0 && (
-              <div className="flex flex-col gap-4 mb-6 p-4 rounded-2xl bg-mgsr-card/80 border border-mgsr-border">
+              <div className="flex flex-col gap-3 sm:gap-4 mb-4 sm:mb-6 p-3 sm:p-4 rounded-2xl bg-mgsr-card/80 border border-mgsr-border">
                 {/* Row 1: Sort + Position chips */}
                 <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6">
                   <div className="flex items-center gap-3">
@@ -817,7 +817,7 @@ export default function ShortlistPage() {
                       <option value="matches">{t('shortlist_sort_matches')}</option>
                     </select>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-xs font-semibold uppercase tracking-wider text-mgsr-muted shrink-0">
                       {isRtl ? 'עמדה' : 'Position'}
                     </span>
@@ -942,7 +942,7 @@ export default function ShortlistPage() {
             </div>
               )
             ) : (
-            <div className={`grid gap-5 sm:grid-cols-2 xl:grid-cols-3 ${isWomen ? 'gap-6' : ''}`}>
+            <div className={`grid gap-4 sm:gap-5 sm:grid-cols-2 xl:grid-cols-3 ${isWomen ? '' : ''}`}>
             {sorted.map((entry, i) => {
               const playerUrl = entry.tmProfileUrl;
               const intel = platform === 'men' ? entryIntelligence.get(playerUrl) : null;

@@ -471,7 +471,7 @@ export default function PlayersPage() {
     <AppLayout>
       <div
         dir={isRtl ? 'rtl' : 'ltr'}
-        className={`max-w-6xl mx-auto ${isWomen ? 'p-6 md:p-10' : ''}`}
+        className={`max-w-6xl mx-auto ${isWomen ? 'p-3 sm:p-6 md:p-10' : ''}`}
       >
         {/* Youth: glassmorphism glow */}
         {isYouth && (
@@ -500,11 +500,11 @@ export default function PlayersPage() {
         )}
 
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-6 sm:mb-8">
           <div>
             <h1
               className={`font-display font-bold text-mgsr-text tracking-tight ${
-                isYouth ? 'text-4xl md:text-5xl font-extrabold' : isWomen ? 'text-4xl md:text-5xl font-extrabold' : 'text-3xl'
+                isYouth ? 'text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-extrabold' : isWomen ? 'text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-extrabold' : 'text-2xl sm:text-3xl'
               }`}
             >
               {isYouth ? <span className="youth-gradient-text">{t('players_title_youth')}</span> : t(isWomen ? 'players_title_women' : 'players_title')}

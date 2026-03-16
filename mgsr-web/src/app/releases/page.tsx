@@ -574,7 +574,7 @@ export default function ReleasesPage() {
       <div dir={isRtl ? 'rtl' : 'ltr'} className="max-w-6xl mx-auto">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
           <div>
-            <h1 className="text-3xl font-display font-bold text-mgsr-text tracking-tight">
+            <h1 className="text-2xl sm:text-3xl font-display font-bold text-mgsr-text tracking-tight">
               {t('releases_title')}
             </h1>
             <p className="text-mgsr-muted mt-1 text-sm">{t('releases_value_filter')}</p>
@@ -624,7 +624,7 @@ export default function ReleasesPage() {
         ) : (
           <>
             {/* Stats strip */}
-            <div className="flex flex-wrap items-center gap-4 mb-4 py-3 px-4 rounded-xl bg-mgsr-card/50 border border-mgsr-border">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-4 mb-4 py-3 px-3 sm:px-4 rounded-xl bg-mgsr-card/50 border border-mgsr-border">
               <span className="text-sm text-mgsr-muted">
                 {t('releases_stats_total')}: <strong className="text-mgsr-text">{players.length}</strong>
               </span>
@@ -650,7 +650,7 @@ export default function ReleasesPage() {
             </div>
 
             {/* Search + filters */}
-            <div className="flex flex-col gap-4 mb-6">
+            <div className="flex flex-col gap-3 sm:gap-4 mb-4 sm:mb-6">
               <input
                 type="text"
                 value={search}
@@ -711,7 +711,7 @@ export default function ReleasesPage() {
                 {hasActiveFilters ? t('search_no_results') : t('releases_empty')}
               </div>
             ) : (
-              <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+              <div className="grid gap-4 sm:gap-5 sm:grid-cols-2 xl:grid-cols-3">
                 {sortedPlayers.map((p) => (
                   <ReleaseCard
                     key={p.playerUrl}

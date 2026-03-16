@@ -115,7 +115,7 @@ export function MoreSheet({ onClose }: { onClose: () => void }) {
         </div>
 
         {/* Grid of nav items */}
-        <div className="px-4 pb-4 grid grid-cols-3 gap-2">
+        <div className="px-4 pb-4 grid grid-cols-3 gap-1.5 sm:gap-2">
           {moreItems.map((item) => {
             const active = pathname === item.href || pathname.startsWith(item.href + '/');
             const Icon = icons[item.href] || DefaultIcon;
@@ -126,7 +126,7 @@ export function MoreSheet({ onClose }: { onClose: () => void }) {
                 key={item.href}
                 href={item.href}
                 onClick={onClose}
-                className={`flex flex-col items-center justify-center gap-1.5 p-3 rounded-xl min-h-[72px] transition ${
+                className={`flex flex-col items-center justify-center gap-1 sm:gap-1.5 p-2.5 sm:p-3 rounded-xl min-h-[68px] sm:min-h-[72px] transition ${
                   active
                     ? isYouth
                       ? 'bg-[var(--youth-cyan)]/15 text-[var(--youth-cyan)]'

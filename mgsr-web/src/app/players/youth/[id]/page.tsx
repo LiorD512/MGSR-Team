@@ -670,7 +670,7 @@ export default function YouthPlayerPage() {
     <AppLayout>
       <div dir={isRtl ? 'rtl' : 'ltr'} className="max-w-5xl mx-auto">
         {/* Top bar */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center justify-between mb-4 sm:mb-8">
           <Link href={backHref} className="hidden lg:inline-flex items-center gap-2 text-mgsr-muted hover:text-[var(--youth-cyan)] transition-colors group">
             <span className={`transition-transform group-hover:-translate-x-1 ${isRtl ? 'rotate-180' : ''}`}>←</span>
             <span className="text-sm font-medium">{backLabel}</span>
@@ -689,7 +689,7 @@ export default function YouthPlayerPage() {
         </div>
 
         {/* ── Hero card ── */}
-        <div className={`${glassCard} p-4 sm:p-6 mb-8 relative overflow-hidden`}>
+        <div className={`${glassCard} p-4 sm:p-6 mb-5 sm:mb-8 relative overflow-hidden`}>
           {/* Glow background */}
           <div className="absolute -top-20 -right-20 w-60 h-60 rounded-full opacity-10 pointer-events-none" style={{ background: 'radial-gradient(circle, var(--youth-cyan) 0%, transparent 70%)' }} />
           <div className="absolute -bottom-10 -left-10 w-40 h-40 rounded-full opacity-8 pointer-events-none" style={{ background: 'radial-gradient(circle, var(--youth-violet) 0%, transparent 70%)' }} />
@@ -714,7 +714,7 @@ export default function YouthPlayerPage() {
               </div>
             </div>
             <div className="flex-1 min-w-0">
-              <h1 className="font-display font-bold text-2xl text-mgsr-text">{player.fullName}</h1>
+              <h1 className="font-display font-bold text-xl sm:text-2xl text-mgsr-text">{player.fullName}</h1>
               {player.fullNameHe && (
                 <p className="text-[var(--youth-cyan)]/60 text-sm mt-0.5" dir="rtl">{player.fullNameHe}</p>
               )}
@@ -744,12 +744,12 @@ export default function YouthPlayerPage() {
         </div>
 
         {/* ── Two-column layout ── */}
-        <div className="grid lg:grid-cols-3 gap-8">
+        <div className="grid lg:grid-cols-3 gap-5 sm:gap-8">
           {/* Left column */}
           <div className="lg:col-span-1 space-y-6">
             {/* Mandate switch */}
-            <div className={`${glassCard} p-5`}>
-              <div className="flex items-start justify-between gap-4">
+            <div className={`${glassCard} p-4 sm:p-5`}>
+              <div className="flex items-center justify-between gap-4">
                 <div className="min-w-0 flex-1">
                   <h3 className="text-sm font-semibold text-[var(--youth-cyan)]/60 uppercase tracking-wider mb-1">{t('youth_detail_mandate')}</h3>
                   {player.haveMandate && (() => {
@@ -760,17 +760,15 @@ export default function YouthPlayerPage() {
                     return <p className="text-xs text-mgsr-muted mt-0.5" dir="ltr">{t('youth_detail_expires')} {d.toLocaleDateString()}</p>;
                   })()}
                 </div>
-                <button
-                  role="switch"
-                  aria-checked={player.haveMandate ?? false}
-                  disabled={mandateToggling}
-                  onClick={() => handleMandateToggle(!(player.haveMandate ?? false))}
-                  className={`relative flex h-7 w-12 shrink-0 cursor-pointer items-center rounded-full px-0.5 transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--youth-cyan)] disabled:opacity-50 ${
-                    player.haveMandate ? 'bg-[var(--youth-cyan)] justify-end' : 'bg-mgsr-muted/50 justify-start'
-                  }`}
-                >
-                  <span className="pointer-events-none block h-5 w-5 rounded-full bg-white shadow" />
-                </button>
+                <label className="mgsr-switch">
+                  <input
+                    type="checkbox"
+                    checked={player.haveMandate ?? false}
+                    disabled={mandateToggling}
+                    onChange={() => handleMandateToggle(!(player.haveMandate ?? false))}
+                  />
+                  <span className="mgsr-slider" />
+                </label>
               </div>
             </div>
 

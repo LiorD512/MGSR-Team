@@ -219,7 +219,7 @@ export default function AddPlayerTaskModal({
             {t(isWomen ? 'tasks_new_task_women' : 'tasks_new_task')}
           </h2>
         </div>
-        <div className="p-6 space-y-5 overflow-y-auto flex-1 min-h-0">
+        <div className="p-4 sm:p-6 space-y-4 sm:space-y-5 overflow-y-auto flex-1 min-h-0">
           {playerContext && (
             <div className={`flex items-center gap-3 p-3 rounded-xl ${isWomen ? 'bg-[var(--women-rose)]/10 border border-[var(--women-rose)]/25' : 'bg-mgsr-teal/10 border border-mgsr-teal/25'}`}>
               {playerContext.playerImage && (

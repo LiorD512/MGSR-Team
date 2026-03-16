@@ -117,7 +117,7 @@ function VideoThumb({
       aria-label={selectable ? (selected ? `Deselect: ${video.title}` : `Select: ${video.title}`) : `Play: ${video.title}`}
       aria-pressed={selectable ? selected : undefined}
       className={`
-        flex-shrink-0 w-40 md:w-48 rounded-lg overflow-hidden border-2 transition-all duration-200
+        flex-shrink-0 w-36 sm:w-40 md:w-48 rounded-lg overflow-hidden border-2 transition-all duration-200
         ${selected ? 'border-mgsr-teal ring-2 ring-mgsr-teal/50' : ''}
         ${active && !selectable
           ? 'border-mgsr-teal shadow-lg shadow-mgsr-teal/20 scale-[1.02]'
@@ -192,7 +192,7 @@ function HighlightsSkeleton() {
       {/* Thumbnail strip skeleton */}
       <div className="flex gap-3">
         {[1, 2, 3, 4].map((i) => (
-          <div key={i} className="flex-shrink-0 w-40 md:w-48">
+          <div key={i} className="flex-shrink-0 w-36 sm:w-40 md:w-48">
             <div className="aspect-video rounded-lg bg-mgsr-dark/40" />
             <div className="mt-1.5 h-3 bg-mgsr-dark/30 rounded w-3/4" />
             <div className="mt-1 h-2.5 bg-mgsr-dark/20 rounded w-1/2" />

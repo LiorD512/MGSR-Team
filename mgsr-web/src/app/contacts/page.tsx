@@ -192,9 +192,9 @@ export default function ContactsPage() {
     <AppLayout>
       <div dir={isRtl ? 'rtl' : 'ltr'} className="max-w-6xl mx-auto">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-6 sm:mb-8">
           <div>
-            <h1 className="text-3xl font-display font-bold text-mgsr-text tracking-tight">
+            <h1 className="text-2xl sm:text-3xl font-display font-bold text-mgsr-text tracking-tight">
               {isWomen ? t('contacts_title_women') : t('contacts_title')}
             </h1>
             <p className="text-mgsr-muted mt-1 text-sm">
@@ -217,7 +217,7 @@ export default function ContactsPage() {
         </div>
 
         {/* Filters + Search */}
-        <div className="flex flex-col sm:flex-row gap-4 mb-6">
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mb-4 sm:mb-6">
           <div className="flex gap-2">
             {(isYouth ? ['all', 'club'] as const : ['all', 'club', 'agency'] as const).map((f) => (
               <button

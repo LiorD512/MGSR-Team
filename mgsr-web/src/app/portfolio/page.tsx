@@ -218,7 +218,7 @@ export default function PortfolioPage() {
     <AppLayout>
       <div className="max-w-6xl mx-auto">
         {/* Hero header */}
-        <div className={`relative overflow-hidden rounded-3xl mb-10 ${isYouth ? 'shadow-[0_0_40px_rgba(0,212,255,0.12)]' : isWomen ? 'shadow-[0_0_40px_rgba(232,160,191,0.12)]' : ''}`}>
+        <div className={`relative overflow-hidden rounded-2xl sm:rounded-3xl mb-6 sm:mb-10 ${isYouth ? 'shadow-[0_0_40px_rgba(0,212,255,0.12)]' : isWomen ? 'shadow-[0_0_40px_rgba(232,160,191,0.12)]' : ''}`}>
           <div className={`absolute inset-0 ${isYouth ? 'bg-gradient-to-br from-[var(--youth-cyan)]/15 via-mgsr-card to-mgsr-dark' : isWomen ? 'bg-gradient-to-br from-[var(--women-rose)]/15 via-mgsr-card to-mgsr-dark' : 'bg-gradient-to-br from-mgsr-teal/20 via-mgsr-card to-mgsr-dark'}`} />
           <div className={`absolute inset-0 ${isYouth ? 'bg-[radial-gradient(ellipse_at_70%_0%,rgba(0,212,255,0.25)_0%,transparent_60%)]' : isWomen ? 'bg-[radial-gradient(ellipse_at_70%_0%,rgba(232,160,191,0.25)_0%,transparent_60%)]' : 'bg-[radial-gradient(ellipse_at_70%_0%,rgba(77,182,172,0.25)_0%,transparent_60%)]'}`} />
           <div className={`absolute inset-0 ${isYouth ? 'bg-[radial-gradient(ellipse_at_20%_100%,rgba(168,85,247,0.15)_0%,transparent_50%)]' : isWomen ? 'bg-[radial-gradient(ellipse_at_20%_100%,rgba(232,160,191,0.15)_0%,transparent_50%)]' : 'bg-[radial-gradient(ellipse_at_20%_100%,rgba(77,182,172,0.15)_0%,transparent_50%)]'}`} />
@@ -278,7 +278,7 @@ export default function PortfolioPage() {
             </Link>
           </div>
         ) : (
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-4 sm:gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {items.map((item) => {
               const displayName =
                 isRtl

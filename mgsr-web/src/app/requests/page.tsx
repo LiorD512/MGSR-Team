@@ -454,9 +454,9 @@ export default function RequestsPage() {
     <AppLayout>
       <div dir={isRtl ? 'rtl' : 'ltr'} className="max-w-6xl mx-auto">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
           <div>
-            <h1 className="text-3xl font-display font-bold text-mgsr-text tracking-tight">
+            <h1 className="text-2xl sm:text-3xl font-display font-bold text-mgsr-text tracking-tight">
               {isYouth ? t('requests_title_youth') : isWomen ? t('requests_title_women') : t('requests_title')}
             </h1>
             <p className="text-mgsr-muted mt-1 text-sm">{isYouth ? t('requests_subtitle_youth') : isWomen ? t('requests_subtitle_women') : t('requests_subtitle')}</p>
@@ -477,7 +477,7 @@ export default function RequestsPage() {
         </div>
 
         {/* Stats strip (like app) */}
-        <div className={`flex flex-wrap gap-3 lg:gap-4 mb-6 p-4 rounded-2xl bg-mgsr-card border border-mgsr-border ${isYouth ? 'shadow-[0_0_30px_rgba(0,212,255,0.06)]' : isWomen ? 'shadow-[0_0_30px_rgba(232,160,191,0.06)]' : ''}`}>
+        <div className={`flex flex-wrap gap-2 sm:gap-3 lg:gap-4 mb-4 sm:mb-6 p-3 sm:p-4 rounded-2xl bg-mgsr-card border border-mgsr-border ${isYouth ? 'shadow-[0_0_30px_rgba(0,212,255,0.06)]' : isWomen ? 'shadow-[0_0_30px_rgba(232,160,191,0.06)]' : ''}`}>
           <div className="flex items-center gap-2">
             <div className={`w-1.5 h-1.5 rounded-full ${isYouth ? 'bg-[var(--youth-cyan)]' : isWomen ? 'bg-[var(--women-rose)]' : 'bg-mgsr-teal'}`} />
             <span className="text-mgsr-text font-semibold">{totalCount}</span>

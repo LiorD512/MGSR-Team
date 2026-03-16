@@ -436,7 +436,7 @@ export default function TasksPage() {
   return (
     <AppLayout>
       <div
-        className={`w-full max-w-[1600px] ${isRtl ? 'text-right' : 'text-left'}`}
+        className={`w-full max-w-7xl ${isRtl ? 'text-right' : 'text-left'}`}
         dir={isRtl ? 'rtl' : 'ltr'}
       >
         {/* Hero stats strip */}
@@ -471,9 +471,9 @@ export default function TasksPage() {
                 : { background: 'radial-gradient(ellipse_at_bottom_left, rgba(92,107,192,0.1) 0%, transparent 50%)' }
             }
           />
-          <div className="relative flex flex-wrap items-center justify-between gap-6 p-6 md:p-8">
-            <div className="flex items-center gap-4 lg:gap-6">
-              <h1 className="text-xl md:text-2xl lg:text-4xl font-bold text-mgsr-text font-display tracking-tight">
+          <div className="relative flex flex-wrap items-center justify-between gap-3 sm:gap-6 p-4 sm:p-6 md:p-8">
+            <div className="flex items-center gap-3 sm:gap-4 lg:gap-6">
+              <h1 className="text-lg sm:text-xl md:text-2xl lg:text-4xl font-bold text-mgsr-text font-display tracking-tight">
                 {isYouth ? t('tasks_title') : isWomen ? t('tasks_title_women') : t('tasks_title')}
               </h1>
               <button
@@ -483,23 +483,23 @@ export default function TasksPage() {
                 {lang === 'en' ? 'עברית' : 'English'}
               </button>
             </div>
-            <div className="flex flex-wrap items-center gap-3 lg:gap-6">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3 lg:gap-6">
               <div className="flex items-center gap-2">
-                <span className={`text-xl lg:text-3xl font-bold font-display ${accentText}`}>
+                <span className={`text-lg sm:text-xl lg:text-3xl font-bold font-display ${accentText}`}>
                   {stats.pending}
                 </span>
                 <span className="text-mgsr-muted text-sm lg:text-base">{t('tasks_filter_pending')}</span>
               </div>
               <div className="w-px h-6 lg:h-8 bg-mgsr-border" />
               <div className="flex items-center gap-2">
-                <span className="text-xl lg:text-3xl font-bold text-mgsr-red font-display">
+                <span className="text-lg sm:text-xl lg:text-3xl font-bold text-mgsr-red font-display">
                   {stats.overdue}
                 </span>
                 <span className="text-mgsr-muted text-sm lg:text-base">{t('tasks_overdue_count')}</span>
               </div>
               <div className="w-px h-6 lg:h-8 bg-mgsr-border" />
               <div className="flex items-center gap-2">
-                <span className="text-xl lg:text-3xl font-bold text-mgsr-text font-display">
+                <span className="text-lg sm:text-xl lg:text-3xl font-bold text-mgsr-text font-display">
                   {stats.agents}
                 </span>
                 <span className="text-mgsr-muted">{t('tasks_agents')}</span>
@@ -509,7 +509,7 @@ export default function TasksPage() {
         </div>
 
         {/* Toolbar */}
-        <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
+        <div className="flex flex-wrap items-center justify-between gap-3 sm:gap-4 mb-6 sm:mb-8">
           <div className={`flex overflow-hidden border border-mgsr-border bg-mgsr-card/60 p-0.5 ${isYouth || isWomen ? 'rounded-2xl' : 'rounded-xl'}`}>
             {(['all', 'mine'] as const).map((f) => (
               <button
@@ -525,11 +525,11 @@ export default function TasksPage() {
               </button>
             ))}
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             <button
               onClick={handleSyncCalendar}
               disabled={syncing}
-              className={`flex items-center gap-2 px-5 py-3 font-medium transition border ${
+              className={`flex items-center gap-2 px-3 sm:px-5 py-2.5 sm:py-3 text-sm font-medium transition border ${
                 isYouth
                   ? 'rounded-2xl border-[var(--youth-cyan)]/30 bg-[var(--youth-cyan)]/10 text-[var(--youth-cyan)] hover:bg-[var(--youth-cyan)]/20'
                   : isWomen
@@ -548,7 +548,7 @@ export default function TasksPage() {
               )}
               {syncing ? t('tasks_syncing') : t('tasks_sync_calendar')}
               {lastSyncTime && !syncing && (
-                <span className="text-[10px] opacity-60 font-normal">
+                <span className="hidden sm:inline text-[10px] opacity-60 font-normal">
                   {t('tasks_last_sync')}{' '}
                   {new Date(lastSyncTime).toLocaleDateString(isRtl ? 'he-IL' : 'en-US', { day: 'numeric', month: 'short' })}{' '}
                   {new Date(lastSyncTime).toLocaleTimeString(isRtl ? 'he-IL' : 'en-US', { hour: '2-digit', minute: '2-digit' })}
@@ -557,7 +557,7 @@ export default function TasksPage() {
             </button>
             <button
               onClick={() => setShowAdd(true)}
-              className={`flex items-center gap-2 px-6 py-3 font-semibold transition ${
+              className={`flex items-center gap-2 px-4 sm:px-6 py-2.5 sm:py-3 text-sm sm:text-base font-semibold transition ${
                 isYouth
                   ? 'rounded-2xl bg-gradient-to-r from-[var(--youth-cyan)] to-[var(--youth-violet)] text-mgsr-dark shadow-lg shadow-[var(--youth-cyan)]/25 hover:opacity-90 hover:-translate-y-0.5'
                   : isWomen

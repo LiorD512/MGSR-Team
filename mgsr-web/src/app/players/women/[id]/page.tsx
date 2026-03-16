@@ -853,7 +853,7 @@ export default function WomanPlayerPage() {
   return (
     <AppLayout>
       <div dir={isRtl ? 'rtl' : 'ltr'} className="max-w-5xl mx-auto">
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center justify-between mb-4 sm:mb-8">
           <Link
             href={backHref}
             className="hidden lg:inline-flex items-center gap-2 text-mgsr-muted hover:text-[var(--women-rose)] transition-colors group"
@@ -887,7 +887,7 @@ export default function WomanPlayerPage() {
             className="w-20 h-20 sm:w-24 sm:h-24 rounded-xl object-cover bg-mgsr-dark shrink-0 self-center sm:self-start"
           />
           <div className="flex-1 min-w-0">
-            <h1 className="font-display font-bold text-2xl text-mgsr-text">{player.fullName}</h1>
+            <h1 className="font-display font-bold text-xl sm:text-2xl text-mgsr-text">{player.fullName}</h1>
             <div className="flex flex-wrap gap-2 mt-2">
               {player.positions?.map((pos) => (
                 <span
@@ -910,12 +910,12 @@ export default function WomanPlayerPage() {
         </div>
 
         {/* Two-column layout */}
-        <div className="grid lg:grid-cols-3 gap-8">
+        <div className="grid lg:grid-cols-3 gap-5 sm:gap-8">
           {/* Left column - Mandate + Documents */}
           <div className="lg:col-span-1 space-y-6">
             {/* Mandate switch */}
-            <div className="p-5 rounded-xl bg-mgsr-card border border-mgsr-border shadow-[0_0_30px_rgba(232,160,191,0.08)]">
-              <div className="flex items-start justify-between gap-4">
+            <div className="p-4 sm:p-5 rounded-xl bg-mgsr-card border border-mgsr-border shadow-[0_0_30px_rgba(232,160,191,0.08)]">
+              <div className="flex items-center justify-between gap-4">
                 <div className="min-w-0 flex-1">
                   <h3 className="text-sm font-semibold text-mgsr-muted uppercase tracking-wider mb-1">
                     {t('player_info_mandate')}
@@ -948,19 +948,15 @@ export default function WomanPlayerPage() {
                     );
                   })()}
                 </div>
-                <div className="shrink-0 overflow-hidden rounded-full">
-                  <button
-                    role="switch"
-                    aria-checked={player.haveMandate ?? false}
-                    disabled={mandateToggling}
-                    onClick={() => handleMandateToggle(!(player.haveMandate ?? false))}
-                    className={`relative flex h-7 w-12 shrink-0 cursor-pointer items-center rounded-full border-0 px-0.5 transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--women-rose)] focus:ring-offset-2 focus:ring-offset-mgsr-dark disabled:opacity-50 disabled:cursor-not-allowed ${
-                      player.haveMandate ? 'bg-[var(--women-rose)] justify-end' : 'bg-mgsr-muted/50 justify-start'
-                    }`}
-                  >
-                    <span className="pointer-events-none block h-5 w-5 shrink-0 rounded-full bg-white shadow" />
-                  </button>
-                </div>
+                  <label className="mgsr-switch">
+                    <input
+                      type="checkbox"
+                      checked={player.haveMandate ?? false}
+                      disabled={mandateToggling}
+                      onChange={() => handleMandateToggle(!(player.haveMandate ?? false))}
+                    />
+                    <span className="mgsr-slider" />
+                  </label>
               </div>
             </div>
 

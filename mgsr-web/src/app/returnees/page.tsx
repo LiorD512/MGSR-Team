@@ -470,7 +470,7 @@ export default function ReturneesPage() {
       <div dir={isRtl ? 'rtl' : 'ltr'} className="max-w-6xl mx-auto">
         <div className="mb-6 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-display font-bold text-mgsr-text tracking-tight">
+            <h1 className="text-2xl sm:text-3xl font-display font-bold text-mgsr-text tracking-tight">
               {t('returnee_title')}
             </h1>
             <p className="text-mgsr-muted mt-1 text-sm">{t('returnee_subtitle')}</p>
@@ -490,7 +490,7 @@ export default function ReturneesPage() {
         </div>
 
         {/* Stats strip */}
-        <div className="flex flex-wrap items-center gap-4 mb-4 py-3 px-4 rounded-xl bg-mgsr-card/50 border border-mgsr-border">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-4 mb-4 py-3 px-3 sm:px-4 rounded-xl bg-mgsr-card/50 border border-mgsr-border">
           <span className="text-sm text-mgsr-muted">
             {t('releases_stats_total')}: <strong className="text-mgsr-text">{players.length}</strong>
           </span>

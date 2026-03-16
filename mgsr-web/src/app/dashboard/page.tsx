@@ -848,12 +848,12 @@ export default function DashboardPage() {
         )}
 
         {/* Header: greeting + platform switch & language */}
-        <div className={`flex flex-wrap items-start justify-between gap-4 mb-10 animate-fade-in ${isWomen || isYouth ? 'mb-12' : ''}`}>
+        <div className={`flex flex-wrap items-start justify-between gap-3 sm:gap-4 mb-6 sm:mb-10 animate-fade-in ${isWomen || isYouth ? 'sm:mb-12' : ''}`}>
           <div className="space-y-1">
             <p className="text-mgsr-muted text-sm font-medium">
               {greeting},
             </p>
-            <h1 className={`text-2xl lg:text-3xl md:text-4xl font-bold font-display tracking-tight ${isWomen ? 'text-mgsr-text bg-clip-text' : 'text-mgsr-text'}`}>
+            <h1 className={`text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold font-display tracking-tight ${isWomen ? 'text-mgsr-text bg-clip-text' : 'text-mgsr-text'}`}>
               {userName}
             </h1>
             <p className="text-mgsr-muted text-sm mt-1">{dateStr}</p>
@@ -873,7 +873,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Stats row — horizontally scrollable on phone, grid on tablet/desktop */}
-        <div className={`mb-10 ${isWomen ? '' : ''}`}>
+        <div className={`mb-6 sm:mb-10 ${isWomen ? '' : ''}`}>
           <div className={`${isWomen || isYouth ? 'grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-5' : 'flex lg:grid lg:grid-cols-6 gap-3 lg:gap-4 overflow-x-auto lg:overflow-visible pb-2 lg:pb-0 -mx-4 px-4 lg:mx-0 lg:px-0'}`}
                style={!isWomen && !isYouth ? { scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' } : undefined}>
           {(platform === 'youth'
@@ -914,7 +914,7 @@ export default function DashboardPage() {
               }`}
               style={{ animationDelay: `${i * 50}ms` }}
             >
-              <p className="text-2xl lg:text-3xl font-bold font-display" style={{ color: isYouth ? 'var(--youth-cyan)' : isWomen ? 'var(--women-rose)' : 'var(--mgsr-accent)' }}>
+              <p className="text-xl sm:text-2xl lg:text-3xl font-bold font-display" style={{ color: isYouth ? 'var(--youth-cyan)' : isWomen ? 'var(--women-rose)' : 'var(--mgsr-accent)' }}>
                 {item.arrow ? (isRtl ? '←' : '→') : item.count}
               </p>
               <p className="text-xs lg:text-sm text-mgsr-muted mt-1">{item.label}</p>
@@ -930,7 +930,7 @@ export default function DashboardPage() {
 
         {/* Charts row (men only; women & youth have simplified dashboards) */}
         {platform === 'men' && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-10">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-10">
           <div className="p-6 bg-mgsr-card/60 border border-mgsr-border rounded-2xl backdrop-blur-sm">
             <h3 className="text-sm font-semibold text-mgsr-text mb-5 font-display">
               {t('activity_this_week')}
@@ -1368,7 +1368,7 @@ export default function DashboardPage() {
         )}
 
         {/* Staff, Top agents & Leading agencies (men only for top agents & agencies) */}
-        <div className={`grid gap-4 md:gap-6 mb-10 ${isWomen || isYouth ? 'grid-cols-1 max-w-md' : 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3'}`}>
+        <div className={`grid gap-3 sm:gap-4 md:gap-6 mb-6 sm:mb-10 ${isWomen || isYouth ? 'grid-cols-1 max-w-md' : 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3'}`}>
           <div className={`p-4 md:p-6 border rounded-2xl backdrop-blur-sm ${
             isYouth ? 'bg-mgsr-card/40 border-[var(--youth-cyan)]/20' : isWomen ? 'bg-mgsr-card/50 border-[var(--women-rose)]/20' : 'bg-mgsr-card/60 border border-mgsr-border'
           }`}>
@@ -1779,7 +1779,7 @@ export default function DashboardPage() {
         )}
 
         {/* Quick actions — scrollable on mobile */}
-        <div className={`mb-10 ${platform === 'women' || platform === 'youth' ? '' : ''}`}>
+        <div className={`mb-6 sm:mb-10 ${platform === 'women' || platform === 'youth' ? '' : ''}`}>
           <div className={`${platform === 'women' || platform === 'youth' ? 'grid grid-cols-2 md:grid-cols-3 gap-4' : 'flex lg:grid lg:grid-cols-6 gap-3 lg:gap-4 overflow-x-auto lg:overflow-visible pb-2 lg:pb-0 -mx-4 px-4 lg:mx-0 lg:px-0'}`}
                style={platform === 'men' ? { scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' } : undefined}>
           {(platform === 'youth'
@@ -1903,11 +1903,11 @@ export default function DashboardPage() {
                     <div
                       key={ev.id}
                       id={`feed-event-${ev.id}`}
-                      className="group relative flex gap-5 py-4 animate-slide-up"
+                      className="group relative flex gap-3 sm:gap-5 py-3 sm:py-4 animate-slide-up"
                       style={{ animationDelay: `${i * 40}ms` }}
                     >
                       <div
-                        className="relative z-10 shrink-0 flex items-center justify-center w-10 h-10 rounded-full border-2 border-mgsr-dark bg-mgsr-card"
+                        className="relative z-10 shrink-0 flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 border-mgsr-dark bg-mgsr-card"
                         style={{
                           borderColor: color,
                           boxShadow: `0 0 0 1px ${color}40, 0 0 16px rgba(232,160,191,0.15)`,
@@ -1996,11 +1996,11 @@ export default function DashboardPage() {
                     <div
                       key={ev.id}
                       id={`feed-event-${ev.id}`}
-                      className="group relative flex gap-5 py-4 animate-slide-up"
+                      className="group relative flex gap-3 sm:gap-5 py-3 sm:py-4 animate-slide-up"
                       style={{ animationDelay: `${i * 40}ms` }}
                     >
                       <div
-                        className="relative z-10 shrink-0 flex items-center justify-center w-10 h-10 rounded-full border-2 border-mgsr-dark bg-mgsr-card"
+                        className="relative z-10 shrink-0 flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 border-mgsr-dark bg-mgsr-card"
                         style={{
                           borderColor: color,
                           boxShadow: `0 0 0 1px ${color}40, 0 0 16px rgba(0,212,255,0.15)`,
@@ -2079,9 +2079,9 @@ export default function DashboardPage() {
                     </div>
                   );
                   return (
-                    <div key={ev.id} id={`feed-event-${ev.id}`} className="group relative flex gap-5 py-4 animate-slide-up" style={{ animationDelay: `${i * 40}ms` }}>
+                    <div key={ev.id} id={`feed-event-${ev.id}`} className="group relative flex gap-3 sm:gap-5 py-3 sm:py-4 animate-slide-up" style={{ animationDelay: `${i * 40}ms` }}>
                       <div
-                        className="relative z-10 shrink-0 flex items-center justify-center w-10 h-10 rounded-full border-2 border-mgsr-dark bg-mgsr-card shadow-lg"
+                        className="relative z-10 shrink-0 flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 border-mgsr-dark bg-mgsr-card shadow-lg"
                         style={{ borderColor: color, boxShadow: `0 0 0 1px ${color}40` }}
                       >
                         {ev.playerImage ? (

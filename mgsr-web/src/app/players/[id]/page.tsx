@@ -1485,7 +1485,7 @@ export default function PlayerInfoPage() {
         </div>
 
         {/* Two-column content */}
-        <div className="grid lg:grid-cols-3 gap-8">
+        <div className="grid lg:grid-cols-3 gap-5 sm:gap-8">
           {/* Left column - Club, Contact, Mandate, Agency */}
           <div className="lg:col-span-1 space-y-6">
             {/* Club card */}
@@ -1757,8 +1757,8 @@ export default function PlayerInfoPage() {
             )}
 
             {/* Mandate switch (like Android) */}
-            <div className="p-5 rounded-xl bg-mgsr-card border border-mgsr-border">
-              <div className="flex items-start justify-between gap-4">
+            <div className="p-4 sm:p-5 rounded-xl bg-mgsr-card border border-mgsr-border">
+              <div className="flex items-center justify-between gap-4">
                 <div className="min-w-0 flex-1">
                   <h3 className="text-sm font-semibold text-mgsr-muted uppercase tracking-wider mb-1">
                     {t('player_info_mandate')}
@@ -1791,19 +1791,15 @@ export default function PlayerInfoPage() {
                     );
                   })()}
                 </div>
-                <div className="shrink-0 overflow-hidden rounded-full">
-                  <button
-                    role="switch"
-                    aria-checked={player.haveMandate ?? false}
-                    disabled={mandateToggling}
-                    onClick={() => handleMandateToggle(!(player.haveMandate ?? false))}
-                    className={`relative flex h-7 w-12 shrink-0 cursor-pointer items-center rounded-full border-0 px-0.5 transition-colors focus:outline-none focus:ring-2 focus:ring-mgsr-teal focus:ring-offset-2 focus:ring-offset-mgsr-dark disabled:opacity-50 disabled:cursor-not-allowed ${
-                      player.haveMandate ? 'bg-mgsr-teal justify-end' : 'bg-mgsr-muted/50 justify-start'
-                    }`}
-                  >
-                    <span className="pointer-events-none block h-5 w-5 shrink-0 rounded-full bg-white shadow" />
-                  </button>
-                </div>
+                  <label className="mgsr-switch">
+                    <input
+                      type="checkbox"
+                      checked={player.haveMandate ?? false}
+                      disabled={mandateToggling}
+                      onChange={() => handleMandateToggle(!(player.haveMandate ?? false))}
+                    />
+                    <span className="mgsr-slider" />
+                  </label>
               </div>
             </div>
 

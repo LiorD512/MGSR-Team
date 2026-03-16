@@ -320,8 +320,8 @@ export default function AiScoutPage() {
 
         <div className="relative max-w-[52rem] mx-auto">
           {/* Hero */}
-          <div className="mb-10">
-            <h1 className="text-3xl md:text-4xl font-display font-extrabold text-mgsr-text tracking-tight">
+          <div className="mb-6 sm:mb-10">
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-display font-extrabold text-mgsr-text tracking-tight">
               {t('ai_scout_title')}
             </h1>
             <p className="text-sm md:text-base text-mgsr-muted mt-1">
@@ -330,8 +330,8 @@ export default function AiScoutPage() {
           </div>
 
           {/* Search */}
-          <div className="mb-8">
-            <div className="rounded-2xl border border-mgsr-border bg-mgsr-card p-4 md:p-6">
+          <div className="mb-6 sm:mb-8">
+            <div className="rounded-2xl border border-mgsr-border bg-mgsr-card p-3 sm:p-4 md:p-6">
               <label htmlFor="ai-scout-query" className="sr-only">
                 {t('ai_scout_placeholder')}
               </label>

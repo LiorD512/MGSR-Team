@@ -265,7 +265,7 @@ export default function GenerateMandatePage() {
 
   return (
     <AppLayout>
-      <div dir={dir} className="max-w-2xl mx-auto py-8 px-4">
+      <div dir={dir} className="max-w-2xl mx-auto py-4 sm:py-8 px-4">
         <Link
           href={`/players/${id}`}
           className={`inline-flex items-center gap-2 text-mgsr-teal hover:underline mb-8 transition-colors ${isRtl ? 'flex-row-reverse' : ''}`}

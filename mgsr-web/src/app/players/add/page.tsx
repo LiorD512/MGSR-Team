@@ -323,7 +323,7 @@ export default function AddPlayerPage() {
         <div className="max-w-2xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
           <Link
             href={backHref}
-            className="inline-flex items-center gap-2 text-mgsr-muted hover:text-mgsr-teal transition-colors mb-10 group"
+            className="inline-flex items-center gap-2 text-mgsr-muted hover:text-mgsr-teal transition-colors mb-6 sm:mb-10 group"
           >
             <span className={`transition-transform duration-200 group-hover:-translate-x-1 ${isRtl ? 'rotate-180' : ''}`}>←</span>
             <span className="text-sm font-medium">{t('add_player_back')} {backLabel}</span>
@@ -332,7 +332,7 @@ export default function AddPlayerPage() {
           <h1 className="font-display font-bold text-2xl sm:text-3xl text-mgsr-text tracking-tight mb-1">
             {pageTitle}
           </h1>
-          <p className="text-mgsr-muted text-sm mb-10">
+          <p className="text-mgsr-muted text-sm mb-6 sm:mb-10">
             {hasPreloadedUrl
               ? t('add_player_from_shortlist_hint')
               : forShortlist
