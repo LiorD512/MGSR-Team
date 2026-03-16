@@ -59,6 +59,8 @@ export interface PlayerDetails {
   isOnLoan?: boolean;
   onLoanFromClub?: string;
   foot?: string;
+  instagramHandle?: string;
+  instagramUrl?: string;
 }
 
 export type Confederation = 'PRIORITY' | 'UEFA' | 'CONMEBOL' | 'CONCACAF' | 'AFC' | 'CAF' | 'OFC';
