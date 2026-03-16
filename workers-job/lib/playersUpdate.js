@@ -195,13 +195,16 @@ async function updatePlayerByTmProfile(tmProfile) {
     // Extract Instagram handle from social-media links
     let instagramHandle = null;
     let instagramUrl = null;
+    const tmOwnedHandles = new Set(["transfermarkt_official", "transfermarkt", "transfermarkt.de"]);
     $("a[href*='instagram.com']").each((_, el) => {
       const href = $(el).attr("href");
       if (href && !instagramUrl) {
-        instagramUrl = href.startsWith("http") ? href : "https://" + href.replace(/^\/\//, "");
         const match = href.match(/instagram\.com\/([a-zA-Z0-9_.]+)/);
-        if (match) instagramHandle = match[1];
-        return false;
+        if (match && !tmOwnedHandles.has(match[1].toLowerCase())) {
+          instagramUrl = href.startsWith("http") ? href : "https://" + href.replace(/^\/\//, "");
+          instagramHandle = match[1];
+          return false;
+        }
       }
     });
 
