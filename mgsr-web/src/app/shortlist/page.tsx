@@ -175,6 +175,12 @@ export default function ShortlistPage() {
     }
   }, [user]);
 
+  const findDocByUrl = useCallback(async (url: string) => {
+    const q = query(collection(db, shortlistsCollection), where('tmProfileUrl', '==', url));
+    const snap = await getDocs(q);
+    return snap.empty ? null : snap.docs[0];
+  }, [shortlistsCollection]);
+
   const confirmIgSent = useCallback(async (tmProfileUrl: string) => {
     const found = await findDocByUrl(tmProfileUrl);
     if (found) {
@@ -421,12 +427,6 @@ export default function ShortlistPage() {
   };
 
   // ── Notes CRUD ──
-  const findDocByUrl = useCallback(async (url: string) => {
-    const q = query(collection(db, shortlistsCollection), where('tmProfileUrl', '==', url));
-    const snap = await getDocs(q);
-    return snap.empty ? null : snap.docs[0];
-  }, [shortlistsCollection]);
-
   const addNoteToEntry = useCallback(async (entry: ShortlistEntry, noteText: string) => {
     if (!user) return;
     setSavingNote(true);
