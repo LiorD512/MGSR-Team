@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
-import { createPortal } from 'react-dom';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -15,8 +14,8 @@ import { SHORTLISTS_COLLECTIONS, PLAYERS_COLLECTIONS, FEED_EVENTS_COLLECTIONS, C
 import { subscribePlayersWomen, type WomanPlayer } from '@/lib/playersWomen';
 import { subscribePlayersYouth, type YouthPlayer } from '@/lib/playersYouth';
 import { matchingRequestsForPlayer, type ClubRequest } from '@/lib/requestMatcher';
+import { resolveTemplate, getInstagramDmUrl } from '@/lib/outreach';
 import {
-  computeContactScore,
   parseMarketValueToEuros,
   computeValueChangePercent,
   isFreeAgent,
@@ -59,6 +58,8 @@ interface ShortlistEntry {
   salaryRange?: string;
   transferFee?: string;
   currentClub?: { clubName?: string; clubLogo?: string };
+  instagramHandle?: string;
+  instagramUrl?: string;
 }
 
 interface RosterPlayer {
@@ -123,67 +124,16 @@ export default function ShortlistPage() {
   const [loadingTeammatesUrl, setLoadingTeammatesUrl] = useState<string | null>(null);
   const [expandedTeammatesUrl, setExpandedTeammatesUrl] = useState<string | null>(null);
   const [highlightedUrl, setHighlightedUrl] = useState<string | null>(null);
-  const [scoreHoverUrl, setScoreHoverUrl] = useState<string | null>(null);
-  const [scoreTooltipData, setScoreTooltipData] = useState<{
-    contactScore: number;
-    matchCount: number;
-    freeAgent: boolean;
-    contractMonths: number | null;
-    valueChangePct: number | null;
-    hasMinutesBonus?: boolean;
-    hasProductiveBonus?: boolean;
-  } | null>(null);
-  const scoreButtonRef = useRef<HTMLButtonElement | null>(null);
-  const [scoreTooltipRect, setScoreTooltipRect] = useState<{ top: number; left: number } | null>(null);
-
-  // Update tooltip position when open — keep fully in viewport
-  useEffect(() => {
-    if (!scoreHoverUrl || !scoreButtonRef.current) {
-      setScoreTooltipRect(null);
-      return;
-    }
-    const updatePos = () => {
-      const btn = scoreButtonRef.current;
-      if (!btn) return;
-      const rect = btn.getBoundingClientRect();
-      const tw = 280;
-      const th = 120;
-      const pad = 8;
-      let left = rect.left + (rect.width / 2) - (tw / 2);
-      left = Math.max(pad, Math.min(left, window.innerWidth - tw - pad));
-      let top = rect.bottom + 8;
-      if (top + th > window.innerHeight - pad) top = rect.top - th - 8;
-      setScoreTooltipRect({ top, left });
-    };
-    updatePos();
-    window.addEventListener('scroll', updatePos, true);
-    window.addEventListener('resize', updatePos);
-    return () => {
-      window.removeEventListener('scroll', updatePos, true);
-      window.removeEventListener('resize', updatePos);
-    };
-  }, [scoreHoverUrl]);
-
-  // Close score tooltip when clicking outside
-  useEffect(() => {
-    if (!scoreHoverUrl) return;
-    const handleClick = (e: MouseEvent) => {
-      if (!(e.target as Element).closest('[data-score-explanation]')) {
-        setScoreHoverUrl(null);
-        setScoreTooltipData(null);
-      }
-    };
-    document.addEventListener('click', handleClick, true);
-    return () => document.removeEventListener('click', handleClick, true);
-  }, [scoreHoverUrl]);
+  const [expandedPerformanceUrl, setExpandedPerformanceUrl] = useState<string | null>(null);
+  const [expandedMatchingUrl, setExpandedMatchingUrl] = useState<string | null>(null);
 
   // ── Intelligence state ──
   const [clubRequests, setClubRequests] = useState<(ClubRequest & { clubName?: string; clubLogo?: string })[]>([]);
   const [performanceCache, setPerformanceCache] = useState<Record<string, { appearances: number; goals: number; assists: number; minutes: number; season: string }>>({});
   const [loadingPerformanceUrl, setLoadingPerformanceUrl] = useState<string | null>(null);
   const [refreshingUrl, setRefreshingUrl] = useState<string | null>(null);
-  const [sortBy, setSortBy] = useState<'contact_score' | 'added' | 'market_value' | 'matches' | 'name' | 'age'>('contact_score');
-  const [filterBy, setFilterBy] = useState<'all' | 'action_today' | 'has_matches' | 'contract_expiring' | 'free_agent' | 'my_players'>('all');
+  const [sortBy, setSortBy] = useState<'added' | 'market_value' | 'matches' | 'name' | 'age'>('added');
+  const [filterBy, setFilterBy] = useState<'all' | 'has_matches' | 'contract_expiring' | 'free_agent' | 'my_players'>('all');
   const [agentFilter, setAgentFilter] = useState<string | null>(null);
   const [currentAccountId, setCurrentAccountId] = useState<string | null>(null);
   const [allAccounts, setAllAccounts] = useState<AccountForShortlist[]>([]);
@@ -197,6 +147,29 @@ export default function ShortlistPage() {
   const [noteModalEditIndex, setNoteModalEditIndex] = useState(-1);
   const [savingNote, setSavingNote] = useState(false);
   const [expandedNotesUrl, setExpandedNotesUrl] = useState<string | null>(null);
+  const [igLoadingUrl, setIgLoadingUrl] = useState<string | null>(null);
+  const [igCopiedUrl, setIgCopiedUrl] = useState<string | null>(null);
+
+  const handleInstagramOutreach = useCallback(async (entry: ShortlistEntry) => {
+    if (!entry.instagramHandle || !user) return;
+    setIgLoadingUrl(entry.tmProfileUrl);
+    try {
+      const account = await getCurrentAccountForShortlist(user);
+      const message = resolveTemplate({
+        playerName: entry.playerName || undefined,
+        agentName: account.name || undefined,
+        playerPosition: entry.playerPosition || undefined,
+      });
+      await navigator.clipboard.writeText(message);
+      setIgCopiedUrl(entry.tmProfileUrl);
+      setTimeout(() => setIgCopiedUrl(null), 3000);
+      window.open(getInstagramDmUrl(entry.instagramHandle), '_blank', 'noopener,noreferrer');
+    } catch (err) {
+      console.error('Instagram outreach error:', err);
+    } finally {
+      setIgLoadingUrl(null);
+    }
+  }, [user]);
 
   useEffect(() => {
     if (!loading && !user) router.replace('/login');
@@ -320,6 +293,8 @@ export default function ShortlistPage() {
             addedByAgentId: (e.addedByAgentId as string) ?? undefined,
             addedByAgentName: (e.addedByAgentName as string) ?? undefined,
             addedByAgentHebrewName: (e.addedByAgentHebrewName as string) ?? undefined,
+            instagramHandle: (e.instagramHandle as string) ?? undefined,
+            instagramUrl: (e.instagramUrl as string) ?? undefined,
             notes: Array.isArray(e.notes)
               ? (e.notes as Record<string, unknown>[]).map((n) => ({
                   text: (n.text as string) ?? '',
@@ -541,6 +516,9 @@ export default function ShortlistPage() {
       setRefreshingUrl(entry.tmProfileUrl);
       try {
         const details = await getPlayerDetails(entry.tmProfileUrl);
+        if (!details.instagramHandle) {
+          // instagramHandle not in API response — TM profile may lack social links
+        }
         const found = await findDocByUrl(entry.tmProfileUrl);
         if (!found) return;
         const prev = found.data() as Record<string, unknown>;
@@ -563,6 +541,8 @@ export default function ShortlistPage() {
           contractExpires: details.contractExpires ?? prev.contractExpires,
           positions: details.positions ?? prev.positions,
           foot: details.foot ?? prev.foot,
+          instagramHandle: details.instagramHandle ?? prev.instagramHandle,
+          instagramUrl: details.instagramUrl ?? prev.instagramUrl,
           lastRefreshedAt: Date.now(),
           marketValueHistory: history.length ? history : prev.marketValueHistory,
         }));
@@ -587,6 +567,17 @@ export default function ShortlistPage() {
     toRefresh.forEach((e) => void refreshEntry(e));
   }, [platform, entries.length, refreshEntry]);
 
+  // Enrich shortlist entries missing instagramHandle (one-time on load, max 5)
+  const hasRunIgEnrich = useRef(false);
+  useEffect(() => {
+    if (platform !== 'men' || entries.length === 0 || hasRunIgEnrich.current) return;
+    hasRunIgEnrich.current = true;
+    const missing = entries
+      .filter((e) => e.tmProfileUrl?.includes('transfermarkt') && !e.instagramHandle)
+      .slice(0, 5);
+    missing.forEach((e) => void refreshEntry(e));
+  }, [platform, entries.length, refreshEntry]);
+
   const fetchPerformance = useCallback(async (url: string) => {
     if (!url?.includes('transfermarkt')) return;
     setLoadingPerformanceUrl(url);
@@ -604,23 +595,12 @@ export default function ShortlistPage() {
   }, []);
 
   // Auto-fetch performance for all TM entries when entering the shortlist
-  const performanceFetchStarted = useRef<Set<string>>(new Set());
-  useEffect(() => {
-    if (platform !== 'men' || entries.length === 0) return;
-    const toFetch = entries
-      .filter((e) => e.tmProfileUrl?.includes('transfermarkt'))
-      .filter((e) => e.tmProfileUrl && !(e.tmProfileUrl in performanceCache) && !performanceFetchStarted.current.has(e.tmProfileUrl))
-      .map((e) => e.tmProfileUrl!);
-    toFetch.forEach((url) => performanceFetchStarted.current.add(url));
-    toFetch.forEach((url, i) => {
-      setTimeout(() => void fetchPerformance(url), i * 400);
-    });
-  }, [platform, entries, performanceCache, fetchPerformance]);
+  // REMOVED — performance is now fetched on-demand when user expands the section
 
   // Compute matching requests and contact score per entry (men only)
   const entryIntelligence = useMemo(() => {
-    if (platform !== 'men') return new Map<string, { matchCount: number; contactScore: number; matchingRequests: (ClubRequest & { clubName?: string; clubLogo?: string })[] }>();
-    const map = new Map<string, { matchCount: number; contactScore: number; matchingRequests: (ClubRequest & { clubName?: string; clubLogo?: string })[] }>();
+    if (platform !== 'men') return new Map<string, { matchCount: number; matchingRequests: (ClubRequest & { clubName?: string; clubLogo?: string })[] }>();
+    const map = new Map<string, { matchCount: number; matchingRequests: (ClubRequest & { clubName?: string; clubLogo?: string })[] }>();
     for (const entry of entries) {
       const playerForMatch = {
         id: entry.tmProfileUrl,
@@ -633,23 +613,7 @@ export default function ShortlistPage() {
         marketValue: entry.marketValue,
       };
       const matching = matchingRequestsForPlayer(playerForMatch, clubRequests);
-      const clubName = entry.currentClub?.clubName ?? entry.clubJoinedName;
-      const freeAgent = isFreeAgent(clubName);
-      const contractMonths = monthsUntilContractExpiry(entry.contractExpires);
-      const hist = entry.marketValueHistory;
-      const prevVal = hist && hist.length >= 2 ? hist[1]?.value : undefined;
-      const valueChange = computeValueChangePercent(prevVal ?? undefined, entry.marketValue);
-      const perf = entry.tmProfileUrl ? performanceCache[entry.tmProfileUrl] : undefined;
-      const score = computeContactScore({
-        requestMatchCount: matching.length,
-        isFreeAgent: freeAgent,
-        contractMonthsLeft: contractMonths,
-        valueChangePercent: valueChange,
-        minutes: perf?.minutes,
-        goals: perf?.goals,
-        assists: perf?.assists,
-      });
-      map.set(entry.tmProfileUrl, { matchCount: matching.length, contactScore: score, matchingRequests: matching });
+      map.set(entry.tmProfileUrl, { matchCount: matching.length, matchingRequests: matching });
     }
     return map;
   }, [platform, entries, clubRequests, performanceCache]);
@@ -669,7 +633,6 @@ export default function ShortlistPage() {
 
   const sorted = useMemo(() => {
     let list = [...entries];
-    if (filterBy === 'action_today') list = list.filter((e) => (entryIntelligence.get(e.tmProfileUrl)?.contactScore ?? 0) >= 7);
     if (filterBy === 'has_matches') list = list.filter((e) => (entryIntelligence.get(e.tmProfileUrl)?.matchCount ?? 0) >= 1);
     if (filterBy === 'contract_expiring')
       list = list.filter((e) => {
@@ -705,8 +668,7 @@ export default function ShortlistPage() {
     if (withNotesOnly) {
       list = list.filter((e) => e.notes && e.notes.length > 0);
     }
-    if (sortBy === 'contact_score') list.sort((a, b) => (entryIntelligence.get(b.tmProfileUrl)?.contactScore ?? 0) - (entryIntelligence.get(a.tmProfileUrl)?.contactScore ?? 0));
-    else if (sortBy === 'added') list.sort((a, b) => (b.addedAt || 0) - (a.addedAt || 0));
+    if (sortBy === 'added') list.sort((a, b) => (b.addedAt || 0) - (a.addedAt || 0));
     else if (sortBy === 'matches') list.sort((a, b) => (entryIntelligence.get(b.tmProfileUrl)?.matchCount ?? 0) - (entryIntelligence.get(a.tmProfileUrl)?.matchCount ?? 0));
     else if (sortBy === 'name') list.sort((a, b) => (a.playerName ?? '').localeCompare(b.playerName ?? ''));
     else if (sortBy === 'age') list.sort((a, b) => (parseInt(a.playerAge ?? '99') || 99) - (parseInt(b.playerAge ?? '99') || 99));
@@ -844,7 +806,6 @@ export default function ShortlistPage() {
                       onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
                       className="rounded-xl px-4 py-2.5 text-sm font-medium bg-mgsr-dark border border-mgsr-border text-mgsr-text focus:outline-none focus:ring-2 focus:ring-mgsr-teal/50 hover:border-mgsr-teal/50 transition"
                     >
-                      <option value="contact_score">{t('shortlist_sort_contact_score')}</option>
                       <option value="added">{t('shortlist_sort_added')}</option>
                       <option value="market_value">{t('shortlist_sort_market_value')}</option>
                       <option value="name">{t('shortlist_sort_name')}</option>
@@ -880,7 +841,7 @@ export default function ShortlistPage() {
                   <span className="text-xs font-semibold uppercase tracking-wider text-mgsr-muted shrink-0 w-full sm:w-auto">
                     {isRtl ? 'סינון' : 'Filter'}
                   </span>
-                  {(['all', 'my_players', 'action_today', 'has_matches', 'contract_expiring', 'free_agent'] as const).map((f) => (
+                  {(['all', 'my_players', 'has_matches', 'contract_expiring', 'free_agent'] as const).map((f) => (
                     <button
                       key={f}
                       type="button"
@@ -981,7 +942,6 @@ export default function ShortlistPage() {
             {sorted.map((entry, i) => {
               const playerUrl = entry.tmProfileUrl;
               const intel = platform === 'men' ? entryIntelligence.get(playerUrl) : null;
-              const contactScore = intel?.contactScore ?? 0;
               const matchCount = intel?.matchCount ?? 0;
               const matchingReqs = intel?.matchingRequests ?? [];
               const freeAgent = isFreeAgent(entry.currentClub?.clubName ?? entry.clubJoinedName);
@@ -991,7 +951,7 @@ export default function ShortlistPage() {
               const valueChangePct = computeValueChangePercent(prevVal, entry.marketValue);
               const daysStale = daysSince(entry.lastRefreshedAt);
               const perf = playerUrl ? performanceCache[playerUrl] : undefined;
-              const isHot = contactScore >= 7 || matchCount >= 2;
+              const isHot = matchCount >= 2;
               const rosterTeammates = playerUrl ? teammatesCache[playerUrl] : undefined;
               const isLoadingTeammates = loadingTeammatesUrl === playerUrl;
               const isExpanded = expandedTeammatesUrl === playerUrl;
@@ -1024,7 +984,7 @@ export default function ShortlistPage() {
                     : isWomen
                       ? 'rounded-2xl border border-[var(--women-rose)]/25 bg-mgsr-card shadow-[0_0_30px_rgba(232,160,191,0.06)] hover:border-[var(--women-rose)]/40 hover:shadow-[0_0_30px_rgba(232,160,191,0.12)]'
                       : `rounded-2xl border bg-mgsr-card transition-all ${
-                          isHot ? 'border-amber-500/40 shadow-lg shadow-amber-500/5' : 'border-mgsr-border hover:border-mgsr-teal/30'
+                          isHot ? 'border-amber-500/30 shadow-lg shadow-amber-500/5' : 'border-mgsr-border/60 hover:border-mgsr-teal/30'
                         }`
                 }`}
                 style={{ animationDelay: `${i * 40}ms` }}
@@ -1135,29 +1095,43 @@ export default function ShortlistPage() {
                     </div>
                   </div>
                 ) : (
-                /* Men: clean card design */
-                <div className="flex flex-col">
-                  {/* Main row: avatar, info, score, value, actions */}
-                  <div className="p-5 flex gap-4 items-start">
+                /* Men: ordered dossier card */
+                <div className="flex flex-col h-full">
+                  {isHot && <div className="h-[2px] bg-gradient-to-r from-amber-500 via-amber-400/70 to-transparent" />}
+
+                  {/* ─── Zone 1: Player identity ─── */}
+                  <div className="p-4 pb-2.5">
                     <Link
                       href={`/players/add?url=${encodeURIComponent(entry.tmProfileUrl)}&from=shortlist`}
-                      className="flex gap-4 flex-1 min-w-0"
+                      className="flex gap-3.5"
                     >
                       <img
                         src={entry.playerImage || 'https://via.placeholder.com/64'}
                         alt=""
-                        className={`w-16 h-16 rounded-2xl object-cover bg-mgsr-dark shrink-0 ring-2 transition-all ${isHot ? 'ring-amber-500/50' : 'ring-mgsr-border group-hover:ring-mgsr-teal/40'}`}
+                        className={`w-[52px] h-[52px] rounded-xl object-cover bg-mgsr-dark shrink-0 ring-1 transition-all ${isHot ? 'ring-amber-500/40' : 'ring-mgsr-border/50 group-hover:ring-mgsr-teal/40'}`}
                         onError={(e) => { (e.target as HTMLImageElement).src = 'https://via.placeholder.com/64'; }}
                       />
                       <div className="flex-1 min-w-0">
-                        <h3 className="text-lg font-bold text-mgsr-text truncate group-hover:text-mgsr-teal transition">
-                          {entry.playerName || 'Unknown'}
-                        </h3>
-                        <p className="text-sm text-mgsr-muted mt-0.5">
+                        <div className="flex items-baseline justify-between gap-2">
+                          <h3 className="text-[15px] font-semibold text-mgsr-text truncate leading-snug group-hover:text-mgsr-teal transition">
+                            {entry.playerName || 'Unknown'}
+                          </h3>
+                          <div className="flex items-baseline gap-1.5 shrink-0">
+                            <span className={`text-[15px] font-bold tabular-nums leading-snug ${valueChangePct != null && valueChangePct < -10 ? 'text-red-400' : 'text-mgsr-teal'}`}>
+                              {sanitizeMarketValue(entry.marketValue)}
+                            </span>
+                            {valueChangePct != null && valueChangePct !== 0 && (
+                              <span className={`text-[11px] font-semibold ${valueChangePct < 0 ? 'text-red-400' : 'text-emerald-400'}`}>
+                                {valueChangePct < 0 ? '↓' : '↑'}{Math.abs(valueChangePct)}%
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <p className="text-[13px] text-mgsr-muted/80 mt-0.5 truncate">
                           {entry.playerPosition || '—'} · {clubDisplay}
                           {entry.playerAge ? ` · ${entry.playerAge}` : ''}
                         </p>
-                        <p className="text-xs text-mgsr-muted/80 mt-2">
+                        <p className="text-[12px] text-mgsr-muted/60 mt-1">
                           {entry.addedAt
                             ? t('shortlist_added_by_date')
                               .replace('{agent}', getAgentDisplayName(entry))
@@ -1166,282 +1140,266 @@ export default function ShortlistPage() {
                         </p>
                       </div>
                     </Link>
-                    <div className="flex flex-col items-end gap-3 shrink-0">
-                      {(() => {
-                        const isScoreReady = !entry.tmProfileUrl?.includes('transfermarkt') || (entry.tmProfileUrl && entry.tmProfileUrl in performanceCache);
-                        if (!isScoreReady) {
-                          return (
-                            <div className="w-12 h-12 rounded-xl bg-mgsr-dark/40 overflow-hidden skeleton-shimmer flex items-center justify-center">
-                              <div className="w-6 h-5 rounded bg-mgsr-border/40 skeleton-shimmer" />
-                            </div>
-                          );
-                        }
-                        if (contactScore <= 0) return null;
-                        return (
-                        <div
-                          data-score-explanation
-                          className="relative"
-                          onMouseEnter={() => {
-                            setScoreHoverUrl(entry.tmProfileUrl);
-                            setScoreTooltipData({
-                              contactScore,
-                              matchCount,
-                              freeAgent,
-                              contractMonths,
-                              valueChangePct,
-                              hasMinutesBonus: (perf?.minutes ?? 0) >= 1500,
-                              hasProductiveBonus: ((perf?.goals ?? 0) + (perf?.assists ?? 0)) >= 5,
-                            });
-                          }}
-                          onMouseLeave={() => {
-                            setScoreHoverUrl(null);
-                            setScoreTooltipData(null);
-                          }}
-                        >
-                          <button
-                            ref={(el) => {
-                              if (el && scoreHoverUrl === entry.tmProfileUrl) scoreButtonRef.current = el;
-                              else if (!scoreHoverUrl) scoreButtonRef.current = null;
-                            }}
-                            type="button"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              if (scoreHoverUrl === entry.tmProfileUrl) {
-                                setScoreHoverUrl(null);
-                                setScoreTooltipData(null);
-                              } else {
-                                setScoreHoverUrl(entry.tmProfileUrl);
-                                setScoreTooltipData({
-                                  contactScore,
-                                  matchCount,
-                                  freeAgent,
-                                  contractMonths,
-                                  valueChangePct,
-                                  hasMinutesBonus: (perf?.minutes ?? 0) >= 1500,
-                                  hasProductiveBonus: ((perf?.goals ?? 0) + (perf?.assists ?? 0)) >= 5,
-                                });
-                              }
-                            }}
-                            className={`relative w-12 h-12 rounded-xl flex items-center justify-center text-lg font-bold cursor-pointer focus:outline-none focus:ring-2 focus:ring-mgsr-teal/50 ${
-                              contactScore >= 8 ? 'bg-green-500/20 text-green-400' :
-                              contactScore >= 5 ? 'bg-amber-500/20 text-amber-400' :
-                              'bg-mgsr-teal/15 text-mgsr-teal'
-                            }`}
-                            title={t('shortlist_score_why').replace('{n}', String(contactScore))}
-                          >
-                            <span>{contactScore}</span>
-                            <span className="absolute bottom-0.5 right-1 w-3.5 h-3.5 rounded-full bg-mgsr-teal/90 text-mgsr-dark text-[10px] font-bold flex items-center justify-center leading-none">
-                              ?
-                            </span>
-                          </button>
-                        </div>
-                        );
-                      })()}
-                      <div className="text-right">
-                        <p className={`text-lg font-bold ${valueChangePct != null && valueChangePct < -10 ? 'text-red-400' : 'text-mgsr-teal'}`}>
-                          {sanitizeMarketValue(entry.marketValue)}
-                        </p>
-                        {valueChangePct != null && valueChangePct !== 0 && (
-                          <p className={`text-xs font-medium ${valueChangePct < 0 ? 'text-red-400' : 'text-green-400'}`}>
-                            {valueChangePct < 0 ? '↓' : '↑'} {Math.abs(valueChangePct)}%
-                          </p>
-                        )}
-                      </div>
-                      <div className="flex gap-1.5">
-                        {entry.tmProfileUrl?.includes('transfermarkt') && (
-                          <a
-                            href={entry.tmProfileUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="w-9 h-9 rounded-lg flex items-center justify-center bg-mgsr-dark/40 border border-mgsr-border text-mgsr-teal hover:bg-mgsr-teal/15 hover:border-mgsr-teal/40 transition"
-                            title={t('shortlist_open_transfermarkt')}
-                          >
-                            <span className="text-xs font-bold">TM</span>
-                          </a>
-                        )}
-                        <button
-                          type="button"
-                          onClick={(e) => { e.preventDefault(); removeFromShortlist(entry); }}
-                          disabled={removingUrl === entry.tmProfileUrl}
-                          className="w-9 h-9 rounded-lg flex items-center justify-center bg-mgsr-dark/40 border border-mgsr-border text-mgsr-red/80 hover:bg-mgsr-red/15 hover:border-mgsr-red/30 disabled:opacity-50 transition"
-                          title={t('shortlist_remove')}
-                        >
-                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                        </button>
-                      </div>
-                    </div>
                   </div>
 
-                  {/* Badges — compact */}
-                  {(isEu || matchCount > 0 || freeAgent || contractMonths != null || valueChangePct != null || (daysStale != null && daysStale > 14)) && (
-                    <div className="px-5 pb-4 flex flex-wrap gap-2">
+                  {/* ─── Zone 3: Expandable accordion ─── */}
+                  <div className="flex-1 border-t border-mgsr-border/15 divide-y divide-mgsr-border/15">
+                    {/* Matching requests */}
+                    {matchingReqs.length > 0 && (
+                      <div className="px-4 py-2">
+                        <button
+                          type="button"
+                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); setExpandedMatchingUrl(expandedMatchingUrl === entry.tmProfileUrl ? null : entry.tmProfileUrl); }}
+                          className="w-full flex items-center justify-between text-left rtl:text-right py-0.5"
+                        >
+                          <span className="text-[12px] font-semibold uppercase tracking-wider text-mgsr-muted/70">
+                            {t('shortlist_matches_requests').replace('{n}', String(matchingReqs.length))}
+                          </span>
+                          <svg className={`w-4 h-4 text-mgsr-muted/50 transition-transform ${expandedMatchingUrl === entry.tmProfileUrl ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </button>
+                        {expandedMatchingUrl === entry.tmProfileUrl && (
+                          <div className="mt-2 pb-1 flex flex-wrap gap-1.5">
+                            {matchingReqs.slice(0, 4).map((req) => (
+                              <span key={req.id} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-mgsr-dark/30 text-[12px] text-mgsr-text">
+                                {req.clubLogo && <img src={req.clubLogo} alt="" className="w-4 h-4 rounded object-cover" />}
+                                {req.clubName ?? '—'} · {req.position}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Performance */}
+                    {entry.tmProfileUrl?.includes('transfermarkt') && (
+                      <div className="px-4 py-2">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            const isOpen = expandedPerformanceUrl === entry.tmProfileUrl;
+                            setExpandedPerformanceUrl(isOpen ? null : entry.tmProfileUrl);
+                            if (!isOpen && entry.tmProfileUrl && !(entry.tmProfileUrl in performanceCache)) {
+                              void fetchPerformance(entry.tmProfileUrl);
+                            }
+                          }}
+                          className="w-full flex items-center justify-between text-left rtl:text-right py-0.5"
+                        >
+                          <span className="text-[12px] font-semibold uppercase tracking-wider text-mgsr-muted/70">
+                            {t('shortlist_performance').replace('{season}', perf?.season ?? getCurrentSeasonLabel())}
+                          </span>
+                          <svg className={`w-4 h-4 text-mgsr-muted/50 transition-transform ${expandedPerformanceUrl === entry.tmProfileUrl ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </button>
+                        {expandedPerformanceUrl === entry.tmProfileUrl && (
+                          <div className="mt-2 pb-1">
+                            {perf ? (
+                              <div className="grid grid-cols-4 gap-1.5">
+                                {[
+                                  [t('shortlist_appearances'), perf.appearances],
+                                  [t('shortlist_goals'), perf.goals],
+                                  [t('shortlist_assists'), perf.assists],
+                                  [t('shortlist_minutes'), perf.minutes.toLocaleString()],
+                                ].map(([label, val]) => (
+                                  <div key={String(label)} className="py-2 px-1 rounded-md bg-mgsr-dark/30 text-center">
+                                    <p className="text-[10px] uppercase tracking-wider text-mgsr-muted/70">{label}</p>
+                                    <p className="text-sm font-bold text-mgsr-text mt-0.5">{val}</p>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <div className="grid grid-cols-4 gap-1.5">
+                                {[1, 2, 3, 4].map((ii) => (
+                                  <div key={ii} className="py-2 px-1 rounded-md bg-mgsr-dark/30 overflow-hidden">
+                                    <div className="h-2.5 w-10 rounded mb-1.5 bg-mgsr-border/30 skeleton-shimmer" />
+                                    <div className="h-4 w-6 rounded mt-1 bg-mgsr-border/30 skeleton-shimmer" style={{ animationDelay: `${ii * 0.15}s` }} />
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Notes */}
+                    <div className="px-4 py-2">
+                      <button
+                        type="button"
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setExpandedNotesUrl(isNotesExpanded ? null : entry.tmProfileUrl); }}
+                        className="w-full flex items-center justify-between text-left rtl:text-right py-0.5"
+                      >
+                        <span className="text-[12px] font-semibold uppercase tracking-wider text-mgsr-muted/70">
+                          {notes.length === 0 ? t('shortlist_notes_title') : t('shortlist_notes_count').replace('{n}', String(notes.length))}
+                        </span>
+                        <svg className={`w-4 h-4 text-mgsr-muted/50 transition-transform ${isNotesExpanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </button>
+                      {isNotesExpanded && (
+                        <div className="mt-2 pb-1 space-y-2">
+                          {notes.map((note, ni) => (
+                            <div key={ni} className="p-2.5 rounded-lg bg-mgsr-dark/30 border border-mgsr-border/30">
+                              <p className="text-[13px] text-mgsr-text whitespace-pre-wrap">{note.text}</p>
+                              <div className="flex items-center justify-between mt-1.5">
+                                <span className="text-[11px] text-mgsr-muted/50">{getNoteAuthor(note)} · {formatNoteDate(note.createdAt)}</span>
+                                <div className="flex gap-2">
+                                  <button type="button" onClick={(ev) => { ev.preventDefault(); ev.stopPropagation(); setNoteModalEntry(entry); setNoteModalMode('edit'); setNoteModalText(note.text); setNoteModalEditIndex(ni); }} className="text-[11px] text-mgsr-muted/60 hover:text-mgsr-text">{t('shortlist_notes_edit')}</button>
+                                  <button type="button" onClick={(ev) => { ev.preventDefault(); ev.stopPropagation(); deleteNoteFromEntry(entry, ni); }} className="text-[11px] text-mgsr-red/50 hover:text-mgsr-red">{t('shortlist_notes_delete')}</button>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Teammates */}
+                    {platform === 'men' && (
+                      <div className="px-4 py-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (!playerUrl) return;
+                            toggleTeammates(playerUrl);
+                            if (!(playerUrl in teammatesCache) && !loadingTeammatesUrl) void fetchTeammates(playerUrl);
+                          }}
+                          className="w-full flex items-center justify-between text-left rtl:text-right py-0.5"
+                        >
+                          <span className="text-[12px] font-semibold uppercase tracking-wider text-mgsr-muted/70">
+                            {isLoadingTeammates ? t('releases_roster_teammates_loading') : rosterTeammates != null ? t('releases_roster_teammates').replace('{count}', String(rosterTeammates.length)) : t('releases_roster_teammates_tap')}
+                          </span>
+                          <svg className={`w-4 h-4 text-mgsr-muted/50 transition-transform ${isExpanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </button>
+                        {isExpanded && (
+                          <div className="mt-2 pb-1 space-y-1.5">
+                            {isLoadingTeammates ? (
+                              <div className="py-6 flex justify-center"><span className="w-4 h-4 border-2 border-mgsr-teal/40 border-t-mgsr-teal rounded-full animate-spin" /></div>
+                            ) : rosterTeammates?.length === 0 ? (
+                              <p className="text-[13px] text-mgsr-muted/50 py-3 text-center">{t('releases_no_roster_teammates')}</p>
+                            ) : (
+                              rosterTeammates?.map((match) => (
+                                <Link key={match.player.id} href={`/players/${match.player.id}?from=/shortlist`} className="flex items-center gap-2.5 p-2 rounded-lg bg-mgsr-dark/30 border border-mgsr-border/30 hover:border-mgsr-teal/30 transition">
+                                  <img src={match.player.profileImage || 'https://via.placeholder.com/40'} alt="" className="w-8 h-8 rounded-full object-cover ring-1 ring-mgsr-border/50" />
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-[13px] font-medium text-mgsr-text truncate">{match.player.fullName || 'Unknown'}</p>
+                                    <p className="text-[11px] text-mgsr-muted/60 truncate">{match.player.positions?.filter(Boolean).join(', ') || '—'} · {match.player.age ? t('players_age_display').replace('{age}', match.player.age) : '—'}</p>
+                                  </div>
+                                  <span className="text-[11px] font-semibold px-2 py-0.5 rounded-md text-mgsr-teal bg-mgsr-teal/10">{t('releases_games_together').replace('{n}', String(match.matchesPlayedTogether))}</span>
+                                </Link>
+                              ))
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* ─── Tags row ─── */}
+                  {(isEu || matchCount > 0 || freeAgent || (contractMonths != null && contractMonths <= 6 && contractMonths > 0) || (valueChangePct != null && valueChangePct < -10) || (daysStale != null && daysStale > 14)) && (
+                    <div className="border-t border-mgsr-border/15 px-4 py-2 flex flex-wrap gap-1.5 mt-auto">
                       {isEu && (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-blue-500/15 text-blue-400 border border-blue-500/30">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-blue-500/10 text-blue-400">
                           🇪🇺 {t('eu_nat_tag')}
                         </span>
                       )}
                       {matchCount > 0 && (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium bg-purple-500/15 text-purple-400 border border-purple-500/30">
-                          <span className="w-1.5 h-1.5 rounded-full bg-purple-400" />
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-purple-500/10 text-purple-400">
+                          <span className="w-1 h-1 rounded-full bg-purple-400" />
                           {t('shortlist_matches_requests').replace('{n}', String(matchCount))}
                         </span>
                       )}
                       {freeAgent && (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium bg-green-500/15 text-green-400 border border-green-500/30">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-emerald-500/10 text-emerald-400">
                           {t('shortlist_free_agent')}
                         </span>
                       )}
                       {contractMonths != null && contractMonths <= 6 && contractMonths > 0 && (
-                        <span className="px-2.5 py-1 rounded-lg text-xs font-medium bg-amber-500/15 text-amber-400 border border-amber-500/30">
+                        <span className="px-2 py-0.5 rounded-md text-[11px] font-medium bg-amber-500/10 text-amber-400">
                           {t('shortlist_contract_expiring').replace('{n}', String(contractMonths))}
                         </span>
                       )}
                       {valueChangePct != null && valueChangePct < -10 && (
-                        <span className="px-2.5 py-1 rounded-lg text-xs font-medium bg-red-500/15 text-red-400 border border-red-500/30">
+                        <span className="px-2 py-0.5 rounded-md text-[11px] font-medium bg-red-500/10 text-red-400">
                           {t('shortlist_value_dropped').replace('{n}', String(Math.abs(valueChangePct)))}
                         </span>
                       )}
                       {daysStale != null && daysStale > 14 && (
-                        <span className="px-2.5 py-1 rounded-lg text-xs font-medium text-mgsr-muted bg-mgsr-border/30">
+                        <span className="px-2 py-0.5 rounded-md text-[11px] font-medium text-mgsr-muted/50 bg-mgsr-border/15">
                           {t('shortlist_data_stale').replace('{n}', String(daysStale))}
                         </span>
                       )}
                     </div>
                   )}
 
-                  {/* Collapsible sections */}
-                  <div className="border-t border-mgsr-border/60 divide-y divide-mgsr-border/60">
-                    {/* Matching requests */}
-                    {matchingReqs.length > 0 && (
-                      <div className="px-5 py-3">
-                        <p className="text-xs font-semibold uppercase tracking-wider text-mgsr-muted mb-2">
-                          {t('shortlist_matches_requests').replace('{n}', String(matchingReqs.length))}
-                        </p>
-                        <div className="flex flex-wrap gap-2">
-                          {matchingReqs.slice(0, 4).map((req) => (
-                            <span key={req.id} className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-mgsr-dark/50 text-sm text-mgsr-text">
-                              {req.clubLogo && <img src={req.clubLogo} alt="" className="w-5 h-5 rounded object-cover" />}
-                              {req.clubName ?? '—'} · {req.position}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
+                  {/* ─── Zone 4: Action bar (pinned bottom) ─── */}
+                  <div className="border-t border-mgsr-border/20 px-4 py-3 flex items-center gap-2">
+                    {/* Add Note — pill button with teal glass background */}
+                    <button
+                      type="button"
+                      onClick={(ev) => { ev.preventDefault(); ev.stopPropagation(); setNoteModalEntry(entry); setNoteModalMode('add'); setNoteModalText(''); setNoteModalEditIndex(-1); }}
+                      className="flex items-center gap-1.5 px-3.5 py-[7px] rounded-full text-[13px] font-semibold bg-mgsr-teal/[0.12] text-mgsr-teal border border-mgsr-teal/20 hover:bg-mgsr-teal/20 hover:border-mgsr-teal/35 active:scale-[0.97] transition-all duration-150"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
+                      {t('shortlist_notes_add')}
+                    </button>
 
-                    {/* Performance — always visible, auto-fetched on load */}
-                    {entry.tmProfileUrl?.includes('transfermarkt') && (
-                      <div className="px-5 py-3">
-                        <p className="text-xs font-semibold uppercase tracking-wider text-mgsr-muted mb-3">
-                          {t('shortlist_performance').replace('{season}', perf?.season ?? getCurrentSeasonLabel())}
-                        </p>
-                        {perf ? (
-                          <div className="grid grid-cols-4 gap-2">
-                            {[
-                              [t('shortlist_appearances'), perf.appearances],
-                              [t('shortlist_goals'), perf.goals],
-                              [t('shortlist_assists'), perf.assists],
-                              [t('shortlist_minutes'), perf.minutes.toLocaleString()],
-                            ].map(([label, val]) => (
-                              <div key={String(label)} className="p-3 rounded-xl bg-mgsr-dark/40 text-center">
-                                <p className="text-[10px] uppercase tracking-wider text-mgsr-muted">{label}</p>
-                                <p className="text-base font-bold text-mgsr-text mt-0.5">{val}</p>
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <div className="grid grid-cols-4 gap-2">
-                            {[1, 2, 3, 4].map((i) => (
-                              <div key={i} className="p-3 rounded-xl bg-mgsr-dark/40 overflow-hidden">
-                                <div className="h-3 w-12 rounded mb-2 bg-mgsr-border/40 skeleton-shimmer" />
-                                <div className="h-5 w-8 rounded mt-2 bg-mgsr-border/40 skeleton-shimmer" style={{ animationDelay: `${i * 0.15}s` }} />
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </div>
-                )}
+                    <div className="flex-1" />
 
-                {/* Notes — all platforms */}
-                <div className="border-t border-mgsr-border/60 px-5 py-3">
-                  <button
-                    type="button"
-                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); setExpandedNotesUrl(isNotesExpanded ? null : entry.tmProfileUrl); }}
-                    className="w-full flex items-center justify-between text-left rtl:text-right"
-                  >
-                    <span className="text-xs font-semibold uppercase tracking-wider text-mgsr-muted">
-                      {notes.length === 0 ? t('shortlist_notes_tap_to_add') : t('shortlist_notes_count').replace('{n}', String(notes.length))}
-                    </span>
-                    <svg className={`w-4 h-4 text-mgsr-muted transition-transform ${isNotesExpanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </button>
-                  {(isNotesExpanded || notes.length === 0) && (
-                    <div className="mt-3 space-y-2">
-                      {notes.map((note, ni) => (
-                        <div key={ni} className="p-3 rounded-xl bg-mgsr-dark/40 border border-mgsr-border/60">
-                          <p className="text-sm text-mgsr-text whitespace-pre-wrap">{note.text}</p>
-                          <div className="flex items-center justify-between mt-2">
-                            <span className="text-xs text-mgsr-muted">{getNoteAuthor(note)} · {formatNoteDate(note.createdAt)}</span>
-                            <div className="flex gap-2">
-                              <button type="button" onClick={(ev) => { ev.preventDefault(); ev.stopPropagation(); setNoteModalEntry(entry); setNoteModalMode('edit'); setNoteModalText(note.text); setNoteModalEditIndex(ni); }} className="text-xs text-mgsr-muted hover:text-mgsr-text">{t('shortlist_notes_edit')}</button>
-                              <button type="button" onClick={(ev) => { ev.preventDefault(); ev.stopPropagation(); deleteNoteFromEntry(entry, ni); }} className="text-xs text-mgsr-red/70 hover:text-mgsr-red">{t('shortlist_notes_delete')}</button>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
+                    {/* Icon actions — grouped pill toolbar */}
+                    <div className="flex items-center rounded-full bg-mgsr-border/[0.12] border border-mgsr-border/15 overflow-hidden">
+                      {entry.tmProfileUrl?.includes('transfermarkt') && (
+                        <a
+                          href={entry.tmProfileUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="w-9 h-9 flex items-center justify-center text-emerald-500/60 hover:text-emerald-400 hover:bg-emerald-500/10 active:scale-95 transition-all duration-150"
+                          title={t('shortlist_open_transfermarkt')}
+                        >
+                          <span className="text-[10px] font-extrabold tracking-tight">TM</span>
+                        </a>
+                      )}
+                      {entry.instagramHandle && (
+                        <>
+                          {entry.tmProfileUrl?.includes('transfermarkt') && <div className="w-px h-4 bg-mgsr-border/20" />}
+                          <button
+                            type="button"
+                            onClick={(e) => { e.preventDefault(); handleInstagramOutreach(entry); }}
+                            disabled={igLoadingUrl === entry.tmProfileUrl}
+                            className="w-9 h-9 flex items-center justify-center text-pink-400/60 hover:text-pink-400 hover:bg-pink-500/10 disabled:opacity-40 active:scale-95 transition-all duration-150"
+                            title={igCopiedUrl === entry.tmProfileUrl ? 'Message copied — paste in DM (Cmd+V)' : `DM @${entry.instagramHandle} on Instagram`}
+                          >
+                            {igLoadingUrl === entry.tmProfileUrl ? (
+                              <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                              </svg>
+                            ) : igCopiedUrl === entry.tmProfileUrl ? (
+                              <svg className="w-4 h-4 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                            ) : (
+                              <svg className="w-[15px] h-[15px]" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>
+                            )}
+                          </button>
+                        </>
+                      )}
+                      <div className="w-px h-4 bg-mgsr-border/20" />
                       <button
                         type="button"
-                        onClick={(ev) => { ev.preventDefault(); ev.stopPropagation(); setNoteModalEntry(entry); setNoteModalMode('add'); setNoteModalText(''); setNoteModalEditIndex(-1); }}
-                        className="w-full py-2.5 rounded-xl text-sm font-medium text-mgsr-teal bg-mgsr-teal/10 hover:bg-mgsr-teal/15 border border-mgsr-teal/30 transition"
+                        onClick={(e) => { e.preventDefault(); removeFromShortlist(entry); }}
+                        disabled={removingUrl === entry.tmProfileUrl}
+                        className="w-9 h-9 flex items-center justify-center text-mgsr-muted/40 hover:text-mgsr-red hover:bg-mgsr-red/10 disabled:opacity-40 active:scale-95 transition-all duration-150"
+                        title={t('shortlist_remove')}
                       >
-                        {t('shortlist_notes_add')}
+                        <svg className="w-[15px] h-[15px]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                       </button>
                     </div>
-                  )}
-                </div>
-
-                {/* Teammates — men only */}
-                {platform === 'men' && (
-                <div className="border-t border-mgsr-border/60 px-5 py-3">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (!playerUrl) return;
-                      toggleTeammates(playerUrl);
-                      if (!(playerUrl in teammatesCache) && !loadingTeammatesUrl) void fetchTeammates(playerUrl);
-                    }}
-                    className="w-full flex items-center justify-between text-left rtl:text-right"
-                  >
-                    <span className="text-xs font-semibold uppercase tracking-wider text-mgsr-muted">
-                      {isLoadingTeammates ? t('releases_roster_teammates_loading') : rosterTeammates != null ? t('releases_roster_teammates').replace('{count}', String(rosterTeammates.length)) : t('releases_roster_teammates_tap')}
-                    </span>
-                    <svg className={`w-4 h-4 text-mgsr-muted transition-transform ${isExpanded ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </button>
-                  {isExpanded && (
-                    <div className="mt-3 space-y-2">
-                      {isLoadingTeammates ? (
-                        <div className="py-8 flex justify-center"><span className="w-5 h-5 border-2 border-mgsr-teal/40 border-t-mgsr-teal rounded-full animate-spin" /></div>
-                      ) : rosterTeammates?.length === 0 ? (
-                        <p className="text-sm text-mgsr-muted py-4 text-center">{t('releases_no_roster_teammates')}</p>
-                      ) : (
-                        rosterTeammates?.map((match) => (
-                          <Link key={match.player.id} href={`/players/${match.player.id}?from=/shortlist`} className="flex items-center gap-3 p-3 rounded-xl bg-mgsr-dark/40 border border-mgsr-border/60 hover:border-mgsr-teal/40 transition">
-                            <img src={match.player.profileImage || 'https://via.placeholder.com/40'} alt="" className="w-10 h-10 rounded-full object-cover ring-1 ring-mgsr-border" />
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium text-mgsr-text truncate">{match.player.fullName || 'Unknown'}</p>
-                              <p className="text-xs text-mgsr-muted truncate">{match.player.positions?.filter(Boolean).join(', ') || '—'} · {match.player.age ? t('players_age_display').replace('{age}', match.player.age) : '—'}</p>
-                            </div>
-                            <span className="text-xs font-semibold px-2.5 py-1 rounded-lg text-mgsr-teal bg-mgsr-teal/15">{t('releases_games_together').replace('{n}', String(match.matchesPlayedTogether))}</span>
-                          </Link>
-                        ))
-                      )}
-                    </div>
-                  )}
+                  </div>
                 </div>
                 )}
               </div>
@@ -1538,43 +1496,6 @@ export default function ShortlistPage() {
         </div>
       )}
 
-      {/* Score explanation tooltip — portal to avoid overflow clipping */}
-      {typeof document !== 'undefined' &&
-        scoreHoverUrl &&
-        scoreTooltipData &&
-        scoreTooltipRect &&
-        createPortal(
-          <div
-            className={`fixed z-[9999] px-3 py-2.5 rounded-xl bg-mgsr-card border border-mgsr-border shadow-xl min-w-[200px] max-w-[280px] ${isRtl ? 'text-right' : 'text-left'}`}
-            style={{ top: scoreTooltipRect.top, left: scoreTooltipRect.left }}
-          >
-            <p className="text-xs font-semibold text-mgsr-teal mb-2">
-              {t('shortlist_score_why').replace('{n}', String(scoreTooltipData.contactScore))}
-            </p>
-            <ul className="space-y-1 text-xs text-mgsr-text">
-              <li>{t('shortlist_score_base')}</li>
-              {scoreTooltipData.matchCount >= 3 && (
-                <li>{t('shortlist_score_matches').replace('{points}', '3').replace('{n}', String(scoreTooltipData.matchCount))}</li>
-              )}
-              {scoreTooltipData.matchCount === 2 && (
-                <li>{t('shortlist_score_matches').replace('{points}', '2').replace('{n}', String(scoreTooltipData.matchCount))}</li>
-              )}
-              {scoreTooltipData.matchCount === 1 && <li>{t('shortlist_score_matches_one')}</li>}
-              {scoreTooltipData.freeAgent && <li>{t('shortlist_score_free_agent')}</li>}
-              {scoreTooltipData.contractMonths != null &&
-                scoreTooltipData.contractMonths <= 6 &&
-                scoreTooltipData.contractMonths > 0 && (
-                  <li>{t('shortlist_score_contract').replace('{n}', String(scoreTooltipData.contractMonths))}</li>
-                )}
-              {scoreTooltipData.valueChangePct != null && scoreTooltipData.valueChangePct < -10 && (
-                <li>{t('shortlist_score_value_drop').replace('{n}', String(Math.abs(scoreTooltipData.valueChangePct)))}</li>
-              )}
-              {scoreTooltipData.hasMinutesBonus && <li>{t('shortlist_score_minutes')}</li>}
-              {scoreTooltipData.hasProductiveBonus && <li>{t('shortlist_score_productive')}</li>}
-            </ul>
-          </div>,
-          document.body
-        )}
     </AppLayout>
   );
 }
