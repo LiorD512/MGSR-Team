@@ -577,6 +577,8 @@ export default function SimilarPlayersPanel({
           clubJoinedName: details.currentClub?.clubName ?? null,
           marketValue: details.marketValue ?? null,
           ...agentFields,
+          instagramHandle: details.instagramHandle ?? null,
+          instagramUrl: details.instagramUrl ?? null,
         };
       } catch {
         entry = {

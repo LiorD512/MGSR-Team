@@ -7,6 +7,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { doc, onSnapshot, getDoc, setDoc, collection, addDoc, getDocs, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { getCurrentAccountForShortlist } from '@/lib/accounts';
+import { enrichShortlistInstagram } from '@/lib/outreach';
 import { extractPlayerIdFromUrl, getPlayerDetails } from '@/lib/api';
 import AppLayout from '@/components/AppLayout';
 import { AGENTS_CONFIG, type AgentId } from '@/lib/scoutAgentConfig';
@@ -297,7 +298,8 @@ export default function WarRoomPage() {
           ...(c.sourceAgentId && { sourceAgentId: c.sourceAgentId }),
           ...(c.sourceProfileId && { sourceProfileId: c.sourceProfileId }),
         };
-        await addDoc(colRef, entry);
+        const docRef = await addDoc(colRef, entry);
+        enrichShortlistInstagram(url, docRef);
         await addDoc(collection(db, 'FeedEvents'), {
           type: 'SHORTLIST_ADDED',
           playerName: entry.playerName ?? null,
@@ -513,6 +515,8 @@ export default function WarRoomPage() {
             addedByAgentId: account.id,
             addedByAgentName: account.name ?? null,
             addedByAgentHebrewName: account.hebrewName ?? null,
+            instagramHandle: details.instagramHandle ?? null,
+            instagramUrl: details.instagramUrl ?? null,
           };
         } catch {
           entry = {

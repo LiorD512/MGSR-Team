@@ -24,6 +24,7 @@ import {
 import AppLayout from '@/components/AppLayout';
 import Link from 'next/link';
 import { getCurrentAccountForShortlist } from '@/lib/accounts';
+import { enrichShortlistInstagram } from '@/lib/outreach';
 import { getScreenCache, setScreenCache } from '@/lib/screenCache';
 
 const VALUE_PRESETS = [
@@ -470,7 +471,8 @@ export default function ReleasesPage() {
         const q = query(colRef, where('tmProfileUrl', '==', player.playerUrl));
         const existsSnap = await getDocs(q);
         if (existsSnap.empty) {
-          await addDoc(colRef, entry);
+          const docRef = await addDoc(colRef, entry);
+          enrichShortlistInstagram(player.playerUrl, docRef);
           const feedEvent: Record<string, unknown> = {
             type: 'SHORTLIST_ADDED',
             playerName: entry.playerName ?? null,

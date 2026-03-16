@@ -126,6 +126,8 @@ export default function AiScoutPage() {
               addedByAgentId: account.id,
               addedByAgentName: account.name ?? null,
               addedByAgentHebrewName: account.hebrewName ?? null,
+              instagramHandle: details.instagramHandle ?? null,
+              instagramUrl: details.instagramUrl ?? null,
             };
           } catch {
             entry = {

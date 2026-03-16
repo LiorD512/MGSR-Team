@@ -11,6 +11,7 @@ import { parseMarketValue } from '@/lib/releases';
 import AppLayout from '@/components/AppLayout';
 import Link from 'next/link';
 import { getCurrentAccountForShortlist } from '@/lib/accounts';
+import { enrichShortlistInstagram } from '@/lib/outreach';
 import {
   subscribeReturnees,
   getReturneesState,
@@ -390,7 +391,8 @@ export default function ReturneesPage() {
         const q = query(colRef, where('tmProfileUrl', '==', player.playerUrl));
         const existsSnap = await getDocs(q);
         if (existsSnap.empty) {
-          await addDoc(colRef, entry);
+          const docRef = await addDoc(colRef, entry);
+          enrichShortlistInstagram(player.playerUrl, docRef);
           await addDoc(collection(db, 'FeedEvents'), {
             type: 'SHORTLIST_ADDED',
             playerName: entry.playerName ?? null,

@@ -176,6 +176,8 @@ export default function AddPlayerPage() {
           addedByAgentId: account.id,
           addedByAgentName: account.name ?? null,
           addedByAgentHebrewName: account.hebrewName ?? null,
+          instagramHandle: selectedPlayer.instagramHandle ?? null,
+          instagramUrl: selectedPlayer.instagramUrl ?? null,
         };
         await addDoc(colRef, entry);
         const shortlistFeedEvent: Record<string, unknown> = {
