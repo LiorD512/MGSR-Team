@@ -49,6 +49,36 @@ function getRandomUserAgent() {
 
 const FETCH_TIMEOUT_MS = 60000; // 60s - Transfermarkt can be slow
 
+// ─── Instagram handle validation ────────────────────────────────────────────
+async function validateInstagramHandle(handle) {
+  if (!handle) return false;
+  try {
+    const igApiUrl = `https://www.instagram.com/api/v1/users/web_profile_info/?username=${encodeURIComponent(handle)}`;
+    return await new Promise((resolve) => {
+      const req = https.get(igApiUrl, {
+        headers: { 'User-Agent': 'Instagram 275.0.0.27.98' },
+        timeout: 8000,
+      }, (res) => {
+        let body = '';
+        res.on('data', (chunk) => { body += chunk; });
+        res.on('end', () => {
+          try {
+            const data = JSON.parse(body);
+            resolve(data.status === 'ok' && !!data.data?.user?.username);
+          } catch {
+            // HTML response = Page Not Found
+            resolve(false);
+          }
+        });
+      });
+      req.on('error', () => resolve(false));
+      req.on('timeout', () => { req.destroy(); resolve(false); });
+    });
+  } catch {
+    return false;
+  }
+}
+
 function fetchHtml(url) {
   return new Promise((resolve, reject) => {
     const u = new URL(url);
@@ -648,6 +678,15 @@ app.get('/api/transfermarkt/player', async (req, res) => {
         }
       }
     });
+
+    // Validate Instagram handle is a real profile
+    if (instagramHandle) {
+      const isValid = await validateInstagramHandle(instagramHandle);
+      if (!isValid) {
+        instagramHandle = null;
+        instagramUrl = null;
+      }
+    }
 
     const result = {
       tmProfile: url,
@@ -1508,6 +1547,14 @@ const shutdown = async () => {
 };
 process.on('SIGTERM', shutdown);
 process.on('SIGINT', shutdown);
+
+// ─── Instagram handle validation endpoint ──────────────────────────────────
+app.get('/api/instagram/validate', async (req, res) => {
+  const handle = req.query.handle;
+  if (!handle) return res.status(400).json({ error: 'handle param required' });
+  const valid = await validateInstagramHandle(handle);
+  res.json({ handle, valid });
+});
 
 app.listen(PORT, () => {
   console.log(`MGSR Backend running at http://localhost:${PORT}`);
