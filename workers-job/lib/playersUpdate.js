@@ -192,6 +192,19 @@ async function updatePlayerByTmProfile(tmProfile) {
     const loanInfo = detectLoanStatus($, clubName);
     const foot = extractFoot($);
 
+    // Extract Instagram handle from social-media links
+    let instagramHandle = null;
+    let instagramUrl = null;
+    $("a[href*='instagram.com']").each((_, el) => {
+      const href = $(el).attr("href");
+      if (href && !instagramUrl) {
+        instagramUrl = href.startsWith("http") ? href : "https://" + href.replace(/^\/\//, "");
+        const match = href.match(/instagram\.com\/([a-zA-Z0-9_.]+)/);
+        if (match) instagramHandle = match[1];
+        return false;
+      }
+    });
+
     let agency = null;
     let agencyUrl = null;
     $("span.info-table__content--regular").each((i, el) => {
@@ -230,6 +243,8 @@ async function updatePlayerByTmProfile(tmProfile) {
         foot,
         agency,
         agencyUrl,
+        instagramHandle,
+        instagramUrl,
       },
     };
   } catch (err) {

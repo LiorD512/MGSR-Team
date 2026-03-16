@@ -393,6 +393,19 @@ export async function handlePlayer(urlParam: string) {
     }
   });
 
+  // Extract Instagram handle from social-media links on the profile page
+  let instagramHandle: string | null = null;
+  let instagramUrl: string | null = null;
+  $('a[href*="instagram.com"]').each((_: number, el: cheerio.Element) => {
+    const href = $(el).attr('href');
+    if (href && !instagramUrl) {
+      instagramUrl = href.startsWith('http') ? href : 'https://' + href.replace(/^\/\//, '');
+      const match = href.match(/instagram\.com\/([a-zA-Z0-9_.]+)/);
+      if (match) instagramHandle = match[1];
+      return false;
+    }
+  });
+
   return {
     tmProfile: url,
     fullName,
@@ -415,6 +428,8 @@ export async function handlePlayer(urlParam: string) {
     isOnLoan: !!isOnLoan,
     onLoanFromClub: onLoanFromClub || null,
     foot: foot || null,
+    instagramHandle,
+    instagramUrl,
   };
 }
 

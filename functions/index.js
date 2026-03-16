@@ -16,6 +16,7 @@ const { runReleasesRefresh } = require("./workers/releasesRefresh");
 const { runScoutAgent } = require("./workers/scoutAgent");
 const { runScoutSkillLearning } = require("./workers/scoutSkillLearner");
 const { runDailyDigest } = require("./workers/dailyDigest");
+const { fetchDocument } = require("./lib/transfermarkt");
 
 initializeApp();
 const db = getFirestore();
@@ -584,3 +585,40 @@ exports.backfillMandateLeagues = onCall(
   }
 );
 
+// ─── Instagram enrichment on new shortlist entry ──────────────────────────────
+exports.onShortlistAdd = onDocumentCreated("Shortlists/{entryId}", async (event) => {
+  const snap = event.data;
+  if (!snap) return;
+  const data = snap.data();
+  const tmProfileUrl = data.tmProfileUrl;
+  if (!tmProfileUrl || !tmProfileUrl.includes("transfermarkt")) {
+    console.log("[onShortlistAdd] No TM URL, skipping:", snap.id);
+    return;
+  }
+  if (data.instagramHandle) {
+    console.log("[onShortlistAdd] Already has Instagram, skipping:", snap.id);
+    return;
+  }
+  try {
+    const $ = await fetchDocument(tmProfileUrl);
+    let instagramHandle = null;
+    let instagramUrl = null;
+    $("a[href*='instagram.com']").each((_, el) => {
+      const href = $(el).attr("href");
+      if (href && !instagramUrl) {
+        instagramUrl = href.startsWith("http") ? href : "https://" + href.replace(/^\/\//, "");
+        const match = href.match(/instagram\.com\/([a-zA-Z0-9_.]+)/);
+        if (match) instagramHandle = match[1];
+        return false;
+      }
+    });
+    if (instagramHandle) {
+      await snap.ref.update({ instagramHandle, instagramUrl });
+      console.log(`[onShortlistAdd] Enriched ${snap.id} with Instagram: @${instagramHandle}`);
+    } else {
+      console.log(`[onShortlistAdd] No Instagram found for ${snap.id}`);
+    }
+  } catch (err) {
+    console.error(`[onShortlistAdd] Error enriching ${snap.id}:`, err.message || err);
+  }
+});
