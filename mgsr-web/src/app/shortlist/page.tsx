@@ -516,9 +516,6 @@ export default function ShortlistPage() {
       setRefreshingUrl(entry.tmProfileUrl);
       try {
         const details = await getPlayerDetails(entry.tmProfileUrl);
-        if (!details.instagramHandle) {
-          // instagramHandle not in API response — TM profile may lack social links
-        }
         const found = await findDocByUrl(entry.tmProfileUrl);
         if (!found) return;
         const prev = found.data() as Record<string, unknown>;
