@@ -59,6 +59,9 @@ interface Player {
   noteList?: { notes?: string; createBy?: string; createdAt?: number }[];
   agentInChargeName?: string;
   agentInChargeId?: string;
+  originalAgentName?: string;
+  originalAgentId?: string;
+  agentTransferredAt?: number;
   haveMandate?: boolean;
   playerPhoneNumber?: string;
   agentPhoneNumber?: string;
@@ -1571,12 +1574,28 @@ export default function PlayerInfoPage() {
             )}
 
             {/* Added by */}
-            {player.agentInChargeName && (
+            {(player.originalAgentName || player.agentInChargeName) && (
               <div className="p-5 rounded-xl bg-mgsr-card border border-mgsr-border">
                 <h3 className="text-sm font-semibold text-mgsr-muted uppercase tracking-wider mb-3">
                   {t('player_info_added_by')}
                 </h3>
-                <p className="text-mgsr-text">{resolveAgentName(player.agentInChargeName, player.agentInChargeId)}</p>
+                <p className="text-mgsr-text">
+                  {resolveAgentName(
+                    player.originalAgentName || player.agentInChargeName,
+                    player.originalAgentId || player.agentInChargeId
+                  )}
+                </p>
+                {player.agentTransferredAt && player.originalAgentName && (
+                  <div className="mt-3 pt-3 border-t border-mgsr-border">
+                    <p className="text-xs text-mgsr-muted mb-1">{t('player_info_assigned_to')}</p>
+                    <p className="text-mgsr-text">
+                      {resolveAgentName(player.agentInChargeName, player.agentInChargeId)}
+                    </p>
+                    <p className="text-xs text-mgsr-muted mt-1">
+                      {new Date(player.agentTransferredAt).toLocaleDateString(isRtl ? 'he-IL' : 'en-US', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    </p>
+                  </div>
+                )}
                 <AgentTransferSection
                   player={player}
                   pendingTransfer={pendingTransfer}

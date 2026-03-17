@@ -84,10 +84,22 @@ export async function approveTransfer(
 
     if (data.playerId) {
       const playerRef = doc(db, playersCollection, data.playerId);
-      transaction.update(playerRef, {
+      const playerSnap = await transaction.get(playerRef);
+      const playerData = playerSnap.data() || {};
+
+      const updates: Record<string, unknown> = {
         agentInChargeId: data.toAgentId,
         agentInChargeName: data.toAgentName,
-      });
+        agentTransferredAt: Date.now(),
+      };
+
+      // Preserve original agent info on first transfer
+      if (!playerData.originalAgentId) {
+        updates.originalAgentId = playerData.agentInChargeId ?? null;
+        updates.originalAgentName = playerData.agentInChargeName ?? null;
+      }
+
+      transaction.update(playerRef, updates);
     }
   });
 }
