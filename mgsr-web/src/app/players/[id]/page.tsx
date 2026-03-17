@@ -23,6 +23,8 @@ import PlayerHighlightsPanel from '@/components/PlayerHighlightsPanel';
 import MatchingRequestsSection from '@/components/MatchingRequestsSection';
 import ProposalHistorySection, { type ProposalOffer } from '@/components/ProposalHistorySection';
 import { matchingRequestsForPlayer, type RosterPlayer, type ClubRequest } from '@/lib/requestMatcher';
+import AgentTransferSection from '@/components/AgentTransferSection';
+import { type AgentTransferRequest, listenForPendingRequest, requestAgentTransfer, approveTransfer, rejectTransfer, cancelTransferRequest } from '@/lib/agentTransfer';
 import { useEuCountries, isEuNational } from '@/hooks/useEuCountries';
 import {
   LineChart,
@@ -295,6 +297,7 @@ export default function PlayerInfoPage() {
   const [includeAgencyContact, setIncludeAgencyContact] = useState(false);
   const [clubRequests, setClubRequests] = useState<(ClubRequest & { status?: string; clubName?: string; clubLogo?: string; clubCountry?: string; contactPhoneNumber?: string })[]>([]);
   const [playerOffers, setPlayerOffers] = useState<{ id: string; requestId?: string; clubFeedback?: string; offeredAt?: number; markedByAgentName?: string; [key: string]: unknown }[]>([]);
+  const [pendingTransfer, setPendingTransfer] = useState<AgentTransferRequest | null>(null);
   const prevValidMandateCountRef = useRef<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -414,6 +417,61 @@ export default function PlayerInfoPage() {
     );
     return isRtl ? (account?.hebrewName ?? account?.name) : (account?.name ?? account?.hebrewName);
   }, [user?.email, accounts, isRtl]);
+
+  const currentUserAccountId = useMemo((): string | undefined => {
+    if (!user?.email) return undefined;
+    const account = accounts.find(
+      (a) => a.email?.toLowerCase() === user.email?.toLowerCase()
+    );
+    return account?.id;
+  }, [user?.email, accounts]);
+
+  const currentUserAccountName = useMemo((): string | undefined => {
+    if (!user?.email) return undefined;
+    const account = accounts.find(
+      (a) => a.email?.toLowerCase() === user.email?.toLowerCase()
+    );
+    return account?.name;
+  }, [user?.email, accounts]);
+
+  // Listen for pending agent transfer requests on this player
+  useEffect(() => {
+    if (!id) return;
+    const unsub = listenForPendingRequest(id, setPendingTransfer);
+    return () => unsub();
+  }, [id]);
+
+  const handleRequestTransfer = useCallback(async () => {
+    if (!player || !id || !currentUserAccountId || !currentUserAccountName) return;
+    const result = await requestAgentTransfer({
+      playerId: id,
+      playerName: player.fullName,
+      playerImage: player.profileImage,
+      platform: 'Men',
+      fromAgentId: player.agentInChargeId || '',
+      fromAgentName: player.agentInChargeName,
+      toAgentId: currentUserAccountId,
+      toAgentName: currentUserAccountName,
+    });
+    if (!result) {
+      alert(t('agent_transfer_already_pending'));
+    }
+  }, [player, id, currentUserAccountId, currentUserAccountName, t]);
+
+  const handleApproveTransfer = useCallback(async () => {
+    if (!pendingTransfer?.id) return;
+    await approveTransfer(pendingTransfer.id, 'Players');
+  }, [pendingTransfer]);
+
+  const handleRejectTransfer = useCallback(async () => {
+    if (!pendingTransfer?.id) return;
+    await rejectTransfer(pendingTransfer.id);
+  }, [pendingTransfer]);
+
+  const handleCancelTransfer = useCallback(async () => {
+    if (!pendingTransfer?.id) return;
+    await cancelTransferRequest(pendingTransfer.id);
+  }, [pendingTransfer]);
 
   const playerAsRoster: RosterPlayer | null = useMemo(() => {
     if (!player) return null;
@@ -1519,6 +1577,17 @@ export default function PlayerInfoPage() {
                   {t('player_info_added_by')}
                 </h3>
                 <p className="text-mgsr-text">{resolveAgentName(player.agentInChargeName, player.agentInChargeId)}</p>
+                <AgentTransferSection
+                  player={player}
+                  pendingTransfer={pendingTransfer}
+                  currentUserAccountId={currentUserAccountId}
+                  onRequestTransfer={handleRequestTransfer}
+                  onApproveTransfer={handleApproveTransfer}
+                  onRejectTransfer={handleRejectTransfer}
+                  onCancelTransfer={handleCancelTransfer}
+                  resolveAgentName={resolveAgentName}
+                  t={t}
+                />
               </div>
             )}
 
