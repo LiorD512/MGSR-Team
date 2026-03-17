@@ -42,7 +42,10 @@ data class ShortlistEntry(
     val addedByAgentId: String? = null,
     val addedByAgentName: String? = null,
     val addedByAgentHebrewName: String? = null,
-    val notes: List<ShortlistNote> = emptyList()
+    val notes: List<ShortlistNote> = emptyList(),
+    val instagramHandle: String? = null,
+    val instagramUrl: String? = null,
+    val instagramSentAt: Long? = null
 ) {
     /** Converts to LatestTransferModel for display in ReleaseListItem-style UI. */
     fun toLatestTransferModel(): LatestTransferModel = LatestTransferModel(
@@ -185,7 +188,10 @@ class ShortlistRepository(
             addedByAgentId = map["addedByAgentId"] as? String,
             addedByAgentName = map["addedByAgentName"] as? String,
             addedByAgentHebrewName = map["addedByAgentHebrewName"] as? String,
-            notes = notesList
+            notes = notesList,
+            instagramHandle = map["instagramHandle"] as? String,
+            instagramUrl = map["instagramUrl"] as? String,
+            instagramSentAt = (map["instagramSentAt"] as? Number)?.toLong()
         )
     }
 
@@ -497,6 +503,11 @@ class ShortlistRepository(
             notes[noteIndex] = notes[noteIndex].toMutableMap().apply { put("text", newText) }
             transaction.update(docRef, "notes", notes)
         }.await()
+    }
+
+    suspend fun markInstagramSent(tmProfileUrl: String) {
+        val docSnapshot = findDocByUrl(tmProfileUrl) ?: return
+        docSnapshot.reference.update("instagramSentAt", System.currentTimeMillis()).await()
     }
 
     @Suppress("UNCHECKED_CAST")

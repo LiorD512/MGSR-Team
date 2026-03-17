@@ -1395,4 +1395,19 @@
 
     <!-- Offered No Feedback filter -->
     <string name="players_filter_offered_no_feedback">Offered · No Feedback</string>
+
+    <!-- Instagram outreach -->
+    <string name="shortlist_ig_dm">DM @%1$s on Instagram</string>
+    <string name="shortlist_ig_copied">Message copied — paste in DM</string>
+    <string name="shortlist_ig_confirm_question">Did you send the DM?</string>
+    <string name="shortlist_ig_confirm_yes">Yes, sent</string>
+    <string name="shortlist_ig_confirm_no">Not yet</string>
+    <string name="shortlist_ig_sent">Instagram message sent %1$s</string>
+    <string name="shortlist_search_placeholder">Search player by name…</string>
+    <string name="relative_today">today</string>
+    <string name="relative_yesterday">yesterday</string>
+    <string name="relative_days_ago">%d days ago</string>
+    <string name="relative_week_ago">a week ago</string>
+    <string name="relative_weeks_ago">%d weeks ago</string>
+    <string name="relative_months_ago">%d months ago</string>
 </resources>

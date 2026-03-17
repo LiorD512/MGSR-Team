@@ -1388,4 +1388,19 @@
 
     <!-- Agent filter for shortlist -->
     <string name="shortlist_filter_agent">סוכן</string>
+
+    <!-- Instagram outreach -->
+    <string name="shortlist_ig_dm">שלח הודעה ל-@%1$s באינסטגרם</string>
+    <string name="shortlist_ig_copied">ההודעה הועתקה — הדבק ב-DM</string>
+    <string name="shortlist_ig_confirm_question">שלחת את ההודעה?</string>
+    <string name="shortlist_ig_confirm_yes">כן, נשלח</string>
+    <string name="shortlist_ig_confirm_no">עוד לא</string>
+    <string name="shortlist_ig_sent">הודעה נשלחה באינסטגרם %1$s</string>
+    <string name="shortlist_search_placeholder">חפש שחקן לפי שם…</string>
+    <string name="relative_today">היום</string>
+    <string name="relative_yesterday">אתמול</string>
+    <string name="relative_days_ago">לפני %d ימים</string>
+    <string name="relative_week_ago">לפני שבוע</string>
+    <string name="relative_weeks_ago">לפני %d שבועות</string>
+    <string name="relative_months_ago">לפני %d חודשים</string>
 </resources>

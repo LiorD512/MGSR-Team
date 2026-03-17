@@ -1,8 +1,11 @@
 package com.liordahan.mgsrteam.features.shortlist
 
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.widget.Toast
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -35,6 +38,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.BookmarkBorder
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.EditNote
@@ -42,6 +46,7 @@ import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PersonAdd
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SwapVert
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material3.Card
@@ -83,6 +88,10 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.vector.PathParser
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -144,17 +153,34 @@ private fun formatShortlistProfileDisplay(entry: ShortlistEntry): String {
 
 @Composable
 private fun formatRelativeDate(addedAt: Long): String {
-    val now = System.currentTimeMillis()
-    val diff = now - addedAt
-    val days = (diff / (24 * 60 * 60 * 1000)).toInt()
-    val weeks = days / 7
+    val dayMs = 24 * 60 * 60 * 1000L
+    val todayDayNum = System.currentTimeMillis() / dayMs
+    val eventDayNum = addedAt / dayMs
+    val calendarDays = (todayDayNum - eventDayNum).toInt()
+    val weeks = calendarDays / 7
     return when {
-        days < 1 -> stringResource(R.string.shortlist_added_today)
-        days == 1 -> stringResource(R.string.shortlist_added_yesterday)
-        days < 7 -> stringResource(R.string.shortlist_added_days_ago, days)
-        weeks == 1 -> stringResource(R.string.shortlist_added_week_ago)
-        weeks < 4 -> stringResource(R.string.shortlist_added_weeks_ago, weeks)
-        else -> stringResource(R.string.shortlist_added_months_ago, days / 30)
+        calendarDays <= 0 -> stringResource(R.string.shortlist_added_today)
+        calendarDays == 1 -> stringResource(R.string.shortlist_added_yesterday)
+        calendarDays < 7  -> stringResource(R.string.shortlist_added_days_ago, calendarDays)
+        weeks == 1        -> stringResource(R.string.shortlist_added_week_ago)
+        weeks < 4         -> stringResource(R.string.shortlist_added_weeks_ago, weeks)
+        else              -> stringResource(R.string.shortlist_added_months_ago, calendarDays / 30)
+    }
+}
+
+/** Bare relative date: "today" / "yesterday" / "3 days ago" — no "Added" prefix. */
+@Composable
+private fun formatBareRelativeDate(timestamp: Long): String {
+    val dayMs = 24 * 60 * 60 * 1000L
+    val calendarDays = (System.currentTimeMillis() / dayMs - timestamp / dayMs).toInt()
+    val weeks = calendarDays / 7
+    return when {
+        calendarDays <= 0 -> stringResource(R.string.relative_today)
+        calendarDays == 1 -> stringResource(R.string.relative_yesterday)
+        calendarDays < 7  -> stringResource(R.string.relative_days_ago, calendarDays)
+        weeks == 1        -> stringResource(R.string.relative_week_ago)
+        weeks < 4         -> stringResource(R.string.relative_weeks_ago, weeks)
+        else              -> stringResource(R.string.relative_months_ago, calendarDays / 30)
     }
 }
 
@@ -200,6 +226,12 @@ fun ShortlistScreen(
     var noteDialogEditIndex by remember { mutableStateOf(-1) }
     var expandedNotesUrl by remember { mutableStateOf<String?>(null) }
 
+    // Instagram outreach state
+    var igConfirmUrl by remember { mutableStateOf<String?>(null) }
+
+    // Search by name (men only)
+    var searchQuery by remember { mutableStateOf("") }
+
     // Roster teammates feature (same as Releases)
     val rosterPlayers by playersRepository.playersFlow().collectAsState(initial = emptyList())
     var expandedPlayerUrl by remember { mutableStateOf<String?>(null) }
@@ -228,13 +260,19 @@ fun ShortlistScreen(
         } catch (_: Exception) { }
     }
 
-    val filteredEntries = remember(state.entries, myPlayersOnly, selectedAgentFilter, currentUserName, selectedPosition, withNotesOnly, sortOption) {
+    val filteredEntries = remember(state.entries, myPlayersOnly, selectedAgentFilter, currentUserName, selectedPosition, withNotesOnly, sortOption, searchQuery) {
         var result = when {
             myPlayersOnly && !currentUserName.isNullOrBlank() ->
                 state.entries.filter { it.addedByAgentName.equals(currentUserName, ignoreCase = true) }
             selectedAgentFilter != null ->
                 state.entries.filter { it.addedByAgentName.equals(selectedAgentFilter, ignoreCase = true) }
             else -> state.entries
+        }
+
+        // Name search (men only)
+        val query = searchQuery.trim()
+        if (query.isNotEmpty()) {
+            result = result.filter { it.playerName?.contains(query, ignoreCase = true) == true }
         }
 
         // Position filter (supports both short codes like "CB"/"ST" and long-form like "Centre-Back")
@@ -335,6 +373,28 @@ fun ShortlistScreen(
         loadingPlayerUrl = null
     }
 
+    // Instagram outreach handler
+    val handleInstagramOutreach: (ShortlistEntry) -> Unit = { entry ->
+        val handle = entry.instagramHandle
+        if (handle != null) {
+            val message = resolveOutreachTemplate(
+                playerName = entry.playerName,
+                agentName = currentUserName,
+                playerPosition = entry.playerPosition
+            )
+            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+            clipboard.setPrimaryClip(ClipData.newPlainText("outreach", message))
+            Toast.makeText(
+                context,
+                context.getString(R.string.shortlist_ig_copied),
+                Toast.LENGTH_SHORT
+            ).show()
+            val dmIntent = Intent(Intent.ACTION_VIEW, Uri.parse(getInstagramDmUrl(handle)))
+            context.startActivity(dmIntent)
+            igConfirmUrl = entry.tmProfileUrl
+        }
+    }
+
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         containerColor = PlatformColors.palette.background,
@@ -371,6 +431,53 @@ fun ShortlistScreen(
                 total = state.entries.size,
                 thisWeek = thisWeekCount
             )
+
+            // ── Search bar (men only) ─────────────────────────────────
+            if (currentPlatform == Platform.MEN) {
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 4.dp)
+                        .height(48.dp),
+                    placeholder = {
+                        Text(
+                            text = stringResource(R.string.shortlist_search_placeholder),
+                            style = regularTextStyle(PlatformColors.palette.textSecondary.copy(alpha = 0.6f), 13.sp)
+                        )
+                    },
+                    textStyle = regularTextStyle(PlatformColors.palette.textPrimary, 13.sp),
+                    singleLine = true,
+                    shape = RoundedCornerShape(14.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = PlatformColors.palette.accent,
+                        unfocusedBorderColor = PlatformColors.palette.cardBorder,
+                        cursorColor = PlatformColors.palette.accent,
+                        focusedContainerColor = PlatformColors.palette.card,
+                        unfocusedContainerColor = PlatformColors.palette.card
+                    ),
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Default.Search,
+                            contentDescription = null,
+                            tint = PlatformColors.palette.textSecondary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    },
+                    trailingIcon = {
+                        if (searchQuery.isNotEmpty()) {
+                            IconButton(onClick = { searchQuery = "" }, modifier = Modifier.size(20.dp)) {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = stringResource(R.string.filter_clear),
+                                    tint = PlatformColors.palette.textSecondary
+                                )
+                            }
+                        }
+                    }
+                )
+            }
 
             // ── Position filter chips ─────────────────────────────────
             ShortlistPositionFilterChips(
@@ -490,7 +597,14 @@ fun ShortlistScreen(
                                         )
                                     )
                                 },
-                                onRemove = { entryToDelete = entry }
+                                onRemove = { entryToDelete = entry },
+                                igConfirmUrl = igConfirmUrl,
+                                onInstagramOutreach = { handleInstagramOutreach(entry) },
+                                onConfirmIgSent = {
+                                    viewModel.markInstagramSent(entry.tmProfileUrl)
+                                    igConfirmUrl = null
+                                },
+                                onDismissIgConfirm = { igConfirmUrl = null }
                             )
                         }
                     }
@@ -921,7 +1035,11 @@ private fun ShortlistCard(
     onDeleteNote: (noteIndex: Int) -> Unit = {},
     onAddToAgency: () -> Unit,
     onOpenTm: () -> Unit,
-    onRemove: () -> Unit
+    onRemove: () -> Unit,
+    igConfirmUrl: String? = null,
+    onInstagramOutreach: () -> Unit = {},
+    onConfirmIgSent: () -> Unit = {},
+    onDismissIgConfirm: () -> Unit = {}
 ) {
     var showMenu by remember { mutableStateOf(false) }
     val release = entry.toLatestTransferModel()
@@ -1307,6 +1425,33 @@ private fun ShortlistCard(
                 }
             }
             } // end if (!isWomen)
+
+            // ── Instagram "sent" badge ──
+            if (entry.instagramSentAt != null) {
+                Row(
+                    modifier = Modifier
+                        .padding(horizontal = 12.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(Color(0xFFE1306C).copy(alpha = 0.15f))
+                            .padding(horizontal = 8.dp, vertical = 3.dp)
+                    ) {
+                        Text(
+                            text = stringResource(
+                                R.string.shortlist_ig_sent,
+                                formatBareRelativeDate(entry.instagramSentAt)
+                            ),
+                            style = boldTextStyle(Color(0xFFE1306C), 10.sp)
+                        )
+                    }
+                }
+            }
+
+            // ── Action bar ──
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -1326,6 +1471,23 @@ private fun ShortlistCard(
                     )
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    // Instagram DM button
+                    if (!entry.instagramHandle.isNullOrBlank()) {
+                        IconButton(
+                            onClick = onInstagramOutreach,
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Icon(
+                                painter = InstagramIconPainter(),
+                                contentDescription = stringResource(
+                                    R.string.shortlist_ig_dm,
+                                    entry.instagramHandle
+                                ),
+                                tint = Color(0xFFE1306C),
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
                     IconButton(
                         onClick = onAddToAgency,
                         modifier = Modifier.size(36.dp)
@@ -1334,6 +1496,54 @@ private fun ShortlistCard(
                             imageVector = Icons.Default.PersonAdd,
                             contentDescription = stringResource(R.string.shortlist_add_to_agency),
                             tint = PlatformColors.palette.accent
+                        )
+                    }
+                }
+            }
+
+            // ── Instagram DM confirmation bar ──
+            if (igConfirmUrl == entry.tmProfileUrl) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(Color(0xFFE1306C).copy(alpha = 0.06f))
+                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        painter = InstagramIconPainter(),
+                        contentDescription = null,
+                        tint = Color(0xFFE1306C),
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Text(
+                        text = stringResource(R.string.shortlist_ig_confirm_question),
+                        style = regularTextStyle(Color(0xFFE1306C).copy(alpha = 0.8f), 12.sp),
+                        modifier = Modifier.weight(1f)
+                    )
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(100.dp))
+                            .background(Color(0xFFE1306C).copy(alpha = 0.2f))
+                            .border(1.dp, Color(0xFFE1306C).copy(alpha = 0.25f), RoundedCornerShape(100.dp))
+                            .clickWithNoRipple { onConfirmIgSent() }
+                            .padding(horizontal = 12.dp, vertical = 5.dp)
+                    ) {
+                        Text(
+                            text = stringResource(R.string.shortlist_ig_confirm_yes),
+                            style = boldTextStyle(Color(0xFFE1306C), 11.sp)
+                        )
+                    }
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(100.dp))
+                            .clickWithNoRipple { onDismissIgConfirm() }
+                            .padding(horizontal = 10.dp, vertical = 5.dp)
+                    ) {
+                        Text(
+                            text = stringResource(R.string.shortlist_ig_confirm_no),
+                            style = regularTextStyle(PlatformColors.palette.textSecondary.copy(alpha = 0.5f), 11.sp)
                         )
                     }
                 }
@@ -1448,9 +1658,12 @@ private fun ShortlistNoteItem(
         (note.createdByHebrewName ?: note.createdBy).orEmpty()
     else
         (note.createdBy ?: note.createdByHebrewName).orEmpty()
-    val daysAgo = ((System.currentTimeMillis() - note.createdAt) / (24 * 60 * 60 * 1000)).toInt()
+    val daysAgo = run {
+        val dayMs = 24 * 60 * 60 * 1000L
+        (System.currentTimeMillis() / dayMs - note.createdAt / dayMs).toInt()
+    }
     val timeLabel = when {
-        daysAgo < 1 -> stringResource(R.string.shortlist_added_today)
+        daysAgo <= 0 -> stringResource(R.string.shortlist_added_today)
         daysAgo == 1 -> stringResource(R.string.shortlist_added_yesterday)
         else -> stringResource(R.string.shortlist_notes_days_ago, daysAgo)
     }
@@ -1898,4 +2111,26 @@ private fun ShortlistAgentFilterChip(
             }
         }
     }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+//  INSTAGRAM ICON
+// ═════════════════════════════════════════════════════════════════════════════
+
+@Composable
+private fun InstagramIconPainter(): Painter {
+    val igVector = remember {
+        ImageVector.Builder(
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f
+        ).addPath(
+            pathData = PathParser().parsePathString(
+                "M12,2.163c3.204,0 3.584,0.012 4.85,0.07c3.252,0.148 4.771,1.691 4.919,4.919c0.058,1.265 0.069,1.645 0.069,4.849c0,3.205 -0.012,3.584 -0.069,4.849c-0.149,3.225 -1.664,4.771 -4.919,4.919c-1.266,0.058 -1.644,0.07 -4.85,0.07c-3.204,0 -3.584,-0.012 -4.849,-0.07c-3.26,-0.149 -4.771,-1.699 -4.919,-4.92c-0.058,-1.265 -0.07,-1.644 -0.07,-4.849c0,-3.204 0.013,-3.583 0.07,-4.849c0.149,-3.227 1.664,-4.771 4.919,-4.919c1.266,-0.057 1.645,-0.069 4.849,-0.069zM12,0C8.741,0 8.333,0.014 7.053,0.072C2.695,0.272 0.273,2.69 0.073,7.052C0.014,8.333 0,8.741 0,12c0,3.259 0.014,3.668 0.072,4.948c0.2,4.358 2.618,6.78 6.98,6.98C8.333,23.986 8.741,24 12,24c3.259,0 3.668,-0.014 4.948,-0.072c4.354,-0.2 6.782,-2.618 6.979,-6.98C23.986,15.668 24,15.259 24,12c0,-3.259 -0.014,-3.667 -0.072,-4.947c-0.196,-4.354 -2.617,-6.78 -6.979,-6.98C15.668,0.014 15.259,0 12,0zM12,5.838a6.162,6.162 0,1 0,0 12.324a6.162,6.162 0,0 0,0 -12.324zM12,16a4,4 0,1 1,0 -8a4,4 0,0 1,0 8zM18.406,4.155a1.44,1.44 0,1 0,0 2.881a1.44,1.44 0,0 0,0 -2.881z"
+            ).toNodes(),
+            fill = androidx.compose.ui.graphics.SolidColor(Color.Black)
+        ).build()
+    }
+    return rememberVectorPainter(igVector)
 }

@@ -32,6 +32,7 @@ interface IShortlistViewModel {
     fun setWithNotesOnly(enabled: Boolean)
     fun setMyPlayersOnly(enabled: Boolean)
     fun setSelectedAgentFilter(agent: String?)
+    fun markInstagramSent(tmProfileUrl: String)
 }
 
 class ShortlistViewModel(
@@ -113,6 +114,12 @@ class ShortlistViewModel(
                 selectedAgentFilter = agent,
                 myPlayersOnly = if (agent != null) false else it.myPlayersOnly
             )
+        }
+    }
+
+    override fun markInstagramSent(tmProfileUrl: String) {
+        viewModelScope.launch {
+            repository.markInstagramSent(tmProfileUrl)
         }
     }
 }

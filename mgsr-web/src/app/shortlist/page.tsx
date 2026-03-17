@@ -140,6 +140,7 @@ export default function ShortlistPage() {
   const [allAccounts, setAllAccounts] = useState<AccountForShortlist[]>([]);
   const [positionFilter, setPositionFilter] = useState<string | null>(null); // null = All
   const [withNotesOnly, setWithNotesOnly] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   // ── Notes state ──
   const [noteModalEntry, setNoteModalEntry] = useState<ShortlistEntry | null>(null);
@@ -682,6 +683,11 @@ export default function ShortlistPage() {
     if (withNotesOnly) {
       list = list.filter((e) => e.notes && e.notes.length > 0);
     }
+    // Name search
+    const q = searchQuery.trim().toLowerCase();
+    if (q) {
+      list = list.filter((e) => e.playerName?.toLowerCase().includes(q));
+    }
     if (sortBy === 'added') list.sort((a, b) => (b.addedAt || 0) - (a.addedAt || 0));
     else if (sortBy === 'matches') list.sort((a, b) => (entryIntelligence.get(b.tmProfileUrl)?.matchCount ?? 0) - (entryIntelligence.get(a.tmProfileUrl)?.matchCount ?? 0));
     else if (sortBy === 'name') list.sort((a, b) => (a.playerName ?? '').localeCompare(b.playerName ?? ''));
@@ -690,15 +696,14 @@ export default function ShortlistPage() {
       list.sort((a, b) => parseMarketValueToEuros(b.marketValue) - parseMarketValueToEuros(a.marketValue));
     } else list.sort((a, b) => (b.addedAt || 0) - (a.addedAt || 0));
     return list;
-  }, [entries, filterBy, sortBy, entryIntelligence, currentAccountId, agentFilter, allAccounts, positionFilter, withNotesOnly]);
+  }, [entries, filterBy, sortBy, entryIntelligence, currentAccountId, agentFilter, allAccounts, positionFilter, withNotesOnly, searchQuery]);
 
   const formatAddedDate = (addedAt?: number) => {
     if (!addedAt) return '';
-    const now = Date.now();
-    const diff = now - addedAt;
-    const days = Math.floor(diff / (24 * 60 * 60 * 1000));
+    const DAY_MS = 24 * 60 * 60 * 1000;
+    const days = Math.floor(Date.now() / DAY_MS) - Math.floor(addedAt / DAY_MS);
     const weeks = Math.floor(days / 7);
-    if (days < 1) return t('shortlist_added_today');
+    if (days <= 0) return t('shortlist_added_today');
     if (days === 1) return t('shortlist_added_yesterday');
     if (days < 7) return t('shortlist_added_days_ago').replace('{n}', String(days));
     if (weeks === 1) return t('shortlist_added_week_ago');
@@ -708,11 +713,10 @@ export default function ShortlistPage() {
 
   const formatAddedDateShort = (addedAt?: number) => {
     if (!addedAt) return '';
-    const now = Date.now();
-    const diff = now - addedAt;
-    const days = Math.floor(diff / (24 * 60 * 60 * 1000));
+    const DAY_MS = 24 * 60 * 60 * 1000;
+    const days = Math.floor(Date.now() / DAY_MS) - Math.floor(addedAt / DAY_MS);
     const weeks = Math.floor(days / 7);
-    if (days < 1) return t('shortlist_date_today');
+    if (days <= 0) return t('shortlist_date_today');
     if (days === 1) return t('shortlist_date_yesterday');
     if (days < 7) return t('shortlist_date_days_ago').replace('{n}', String(days));
     if (weeks === 1) return t('shortlist_date_week_ago');
@@ -747,7 +751,7 @@ export default function ShortlistPage() {
 
   const showingCount = sorted.length;
   const totalCount = entries.length;
-  const isFiltered = platform === 'men' && (filterBy !== 'all' || positionFilter !== null || withNotesOnly || agentFilter !== null) && showingCount < totalCount;
+  const isFiltered = platform === 'men' && (filterBy !== 'all' || positionFilter !== null || withNotesOnly || agentFilter !== null || searchQuery.trim() !== '') && showingCount < totalCount;
 
   return (
     <AppLayout>
@@ -809,6 +813,22 @@ export default function ShortlistPage() {
             {/* Sort & Filter bar — men only, always visible when we have entries */}
             {platform === 'men' && entries.length > 0 && (
               <div className="flex flex-col gap-3 sm:gap-4 mb-4 sm:mb-6 p-3 sm:p-4 rounded-2xl bg-mgsr-card/80 border border-mgsr-border">
+                {/* Search bar */}
+                <div className="relative">
+                  <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-mgsr-muted pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder={isRtl ? '\u05D7\u05E4\u05E9 \u05E9\u05D7\u05E7\u05DF \u05DC\u05E4\u05D9 \u05E9\u05DD\u2026' : 'Search player by name\u2026'}
+                    className="w-full pl-10 pr-9 py-2.5 rounded-xl text-sm bg-mgsr-dark border border-mgsr-border text-mgsr-text placeholder:text-mgsr-muted/50 focus:outline-none focus:ring-2 focus:ring-mgsr-teal/50 focus:border-mgsr-teal/50 transition"
+                  />
+                  {searchQuery && (
+                    <button type="button" onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-mgsr-muted hover:text-mgsr-text transition">
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
+                  )}
+                </div>
                 {/* Row 1: Sort + Position chips */}
                 <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6">
                   <div className="flex items-center gap-3">
@@ -901,13 +921,13 @@ export default function ShortlistPage() {
             )}
 
             {sorted.length === 0 ? (
-              entries.length > 0 && platform === 'men' && (filterBy !== 'all' || agentFilter || positionFilter || withNotesOnly) ? (
+              entries.length > 0 && platform === 'men' && (filterBy !== 'all' || agentFilter || positionFilter || withNotesOnly || searchQuery.trim()) ? (
             <div className="py-20 px-6 rounded-2xl bg-mgsr-card/50 border border-mgsr-border text-center">
               <p className="text-mgsr-text text-lg font-medium mb-2">{t('shortlist_filter_empty')}</p>
               <p className="text-mgsr-muted text-sm mb-6 max-w-sm mx-auto">{t('shortlist_filter_empty_hint').replace('{n}', String(entries.length))}</p>
               <button
                 type="button"
-                onClick={() => { setFilterBy('all'); setAgentFilter(null); setPositionFilter(null); setWithNotesOnly(false); }}
+                onClick={() => { setFilterBy('all'); setAgentFilter(null); setPositionFilter(null); setWithNotesOnly(false); setSearchQuery(''); }}
                 className="px-6 py-3 rounded-xl bg-mgsr-teal text-mgsr-dark font-semibold hover:bg-mgsr-teal/90 transition shadow-lg shadow-mgsr-teal/20"
               >
                 {t('shortlist_filter_clear')}
