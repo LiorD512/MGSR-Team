@@ -122,6 +122,27 @@ class DocumentDetectionService(
             // ──────────────────────────────────────────────────────
             var mandateResult = parseForMandate(text, originalFileName, playerName)
             if (mandateResult != null) {
+                // PHASE 2a: Gemini PRIMARY for mandate data (matches web approach).
+                // The web sends the raw file to Gemini and gets expiry + leagues in one call.
+                // Do the same here: always try Gemini with raw bytes first.
+                if (geminiPassportOcr != null) {
+                    Log.i(TAG, "Mandate detected, using Gemini as primary extractor (matching web logic)")
+                    try {
+                        val geminiResult = geminiPassportOcr.extractMandateDataFromBytes(bytes, mimeType)
+                        if (geminiResult.mandateExpiresAt != null) {
+                            Log.i(TAG, "Gemini primary extracted mandate expiry: ${geminiResult.mandateExpiresAt}")
+                            mandateResult = mandateResult.copy(mandateExpiresAt = geminiResult.mandateExpiresAt)
+                        }
+                        if (geminiResult.validLeagues.isNotEmpty()) {
+                            Log.i(TAG, "Gemini primary extracted mandate leagues: ${geminiResult.validLeagues}")
+                            mandateResult = mandateResult.copy(validLeagues = geminiResult.validLeagues)
+                        }
+                    } catch (e: Exception) {
+                        Log.w(TAG, "Gemini primary mandate extraction failed, falling back to text", e)
+                    }
+                }
+
+                // PHASE 2b: Text-based fallback for any fields Gemini missed
                 if ((mandateResult.mandateExpiresAt == null || mandateResult.validLeagues.isEmpty()) && isPdfMimeType(mimeType)) {
                     val pdfBoxText = extractTextFromPdfWithPdfBox(bytes)
                     if (pdfBoxText != null) {
@@ -141,19 +162,19 @@ class DocumentDetectionService(
                         }
                     }
                 }
-                // Gemini vision fallback for expiry AND leagues when text extraction fails
+                // PHASE 2c: Bitmap fallback if both Gemini-bytes and text extraction failed
                 if ((mandateResult.mandateExpiresAt == null || mandateResult.validLeagues.isEmpty()) && geminiPassportOcr != null) {
-                    Log.i(TAG, "Mandate data incomplete after text extraction (expiry=${mandateResult.mandateExpiresAt != null}, leagues=${mandateResult.validLeagues.size}), trying Gemini vision fallback")
+                    Log.i(TAG, "Mandate data still incomplete after primary + text (expiry=${mandateResult.mandateExpiresAt != null}, leagues=${mandateResult.validLeagues.size}), trying Gemini bitmap fallback")
                     val bitmap = if (isPdfMimeType(mimeType)) extractFirstPageAsBitmap(bytes) else decodeImage(bytes)
                     if (bitmap != null) {
                         try {
                             val geminiResult = geminiPassportOcr.extractMandateDataFromImage(bitmap)
                             if (mandateResult.mandateExpiresAt == null && geminiResult.mandateExpiresAt != null) {
-                                Log.i(TAG, "Gemini extracted mandate expiry: ${geminiResult.mandateExpiresAt}")
+                                Log.i(TAG, "Gemini bitmap extracted mandate expiry: ${geminiResult.mandateExpiresAt}")
                                 mandateResult = mandateResult.copy(mandateExpiresAt = geminiResult.mandateExpiresAt)
                             }
                             if (mandateResult.validLeagues.isEmpty() && geminiResult.validLeagues.isNotEmpty()) {
-                                Log.i(TAG, "Gemini extracted mandate leagues: ${geminiResult.validLeagues}")
+                                Log.i(TAG, "Gemini bitmap extracted mandate leagues: ${geminiResult.validLeagues}")
                                 mandateResult = mandateResult.copy(validLeagues = geminiResult.validLeagues)
                             }
                         } finally {

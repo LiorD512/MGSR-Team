@@ -28,6 +28,32 @@ class GeminiPassportOcrProvider {
         private const val TAG = "GeminiPassportOcr"
         private const val MODEL_NAME = "gemini-2.5-flash"
         private const val MAX_IMAGE_DIMENSION = 2048
+
+        /**
+         * Mandate extraction prompt — matches the web's working Gemini prompt.
+         * Asks for expiry date from "ends on DD/MM/YYYY" and valid leagues list.
+         */
+        private const val MANDATE_EXTRACTION_PROMPT = """Look at this Football Agent Mandate document.
+
+Extract TWO things:
+
+1. EXPIRY DATE: Find where the mandate term/validity ends.
+   Look for patterns like:
+   - "starts on DD/MM/YYYY and ends on DD/MM/YYYY" — extract the END date
+   - "valid from DD/MM/YYYY until DD/MM/YYYY" — extract the UNTIL date
+   - "ends on DD/MM/YYYY"
+   - "Term" section with two dates — the second/later date is the expiry
+   Return it as "mandateExpiresAt" in DD/MM/YYYY format.
+
+2. VALID LEAGUES: Find the section titled "Valid Leagues for this mandate:" followed by a list of country/league names (bullet points or line items).
+   Return the list of league names as "validLeagues" array of strings.
+
+Return ONLY a JSON object like:
+{"mandateExpiresAt": "15/06/2026", "validLeagues": ["Israel", "Portugal"]}
+
+If expiry date is not found, use null for mandateExpiresAt.
+If no leagues section exists, use empty array for validLeagues.
+Return ONLY valid JSON. No markdown, no explanation."""
     }
 
     /**
@@ -257,37 +283,19 @@ class GeminiPassportOcrProvider {
     )
 
     /**
-     * Extracts both expiry date and valid leagues from a mandate document image
-     * using Gemini vision in a single API call.
-     * Fallback when PdfBox/OCR text extraction fails (e.g. pdf-lib generated PDFs).
+     * PRIMARY mandate extraction: sends raw file bytes (PDF or image) directly to Gemini.
+     * This matches the web approach which sends the raw file to Gemini in a single call.
+     * Much more reliable than bitmap conversion for PDFs (preserves text fidelity).
      */
-    suspend fun extractMandateDataFromImage(bitmap: Bitmap): MandateExtractionResult =
+    suspend fun extractMandateDataFromBytes(bytes: ByteArray, mimeType: String?): MandateExtractionResult =
         withContext(Dispatchers.IO) {
             try {
-                val prompt = """
-                    Look at this Football Agent Mandate document image.
-                    
-                    Extract TWO things:
-                    
-                    1. EXPIRY DATE: Find the Term section that says "starts on DD/MM/YYYY and ends on DD/MM/YYYY".
-                       Extract the END date (the expiry/end date of the mandate).
-                       Return it as "mandateExpiresAt" in DD/MM/YYYY format.
-                       Also look for patterns like "valid from ... until DD/MM/YYYY" or "ends on DD/MM/YYYY".
-                    
-                    2. VALID LEAGUES: Find the section titled "Valid Leagues for this mandate:" 
-                       and extract ALL league/country names listed there.
-                       Return them as "validLeagues" array.
-                    
-                    Return ONLY a JSON object like:
-                    {"mandateExpiresAt": "15/06/2026", "validLeagues": ["Israel", "Portugal"]}
-                    
-                    If expiry date is not found, use null for mandateExpiresAt.
-                    If no leagues section exists, use empty array for validLeagues.
-                    Return ONLY valid JSON. No markdown, no explanation.
-                """.trimIndent()
+                val effectiveMime = mimeType?.lowercase()?.takeIf { it.isNotBlank() } ?: "application/octet-stream"
+
+                val prompt = MANDATE_EXTRACTION_PROMPT
 
                 val content = Content.Builder()
-                    .image(bitmap)
+                    .inlineData(bytes, effectiveMime)
                     .text(prompt)
                     .build()
 
@@ -309,26 +317,71 @@ class GeminiPassportOcrProvider {
 
                 val response = model.generateContent(listOf(content))
                 val text = response.text ?: return@withContext MandateExtractionResult()
-                val json = extractJsonFromResponse(text) ?: return@withContext MandateExtractionResult()
-                val obj = JSONObject(json)
+                parseMandateGeminiResponse(text)
+            } catch (e: Exception) {
+                Log.w(TAG, "Gemini mandate extraction from bytes failed", e)
+                MandateExtractionResult()
+            }
+        }
 
-                // Parse expiry date
-                val expiryRaw = obj.optString("mandateExpiresAt", "").trim()
-                val expiresAt = parseMandateExpiryDate(expiryRaw)
+    /**
+     * Extracts both expiry date and valid leagues from a mandate document image
+     * using Gemini vision in a single API call.
+     * Fallback when raw bytes extraction and PdfBox/OCR text extraction fail.
+     */
+    suspend fun extractMandateDataFromImage(bitmap: Bitmap): MandateExtractionResult =
+        withContext(Dispatchers.IO) {
+            try {
+                val content = Content.Builder()
+                    .image(bitmap)
+                    .text(MANDATE_EXTRACTION_PROMPT)
+                    .build()
 
-                // Parse leagues
-                val arr = obj.optJSONArray("validLeagues")
-                val leagues = if (arr != null) {
-                    (0 until arr.length()).mapNotNull { arr.optString(it)?.trim()?.takeIf { s -> s.isNotBlank() } }
-                } else emptyList()
+                val jsonSchema = Schema.obj(
+                    mapOf(
+                        "mandateExpiresAt" to Schema.string(),
+                        "validLeagues" to Schema.array(Schema.string())
+                    ),
+                    optionalProperties = listOf("mandateExpiresAt")
+                )
 
-                Log.i(TAG, "Gemini mandate extraction - expiry: $expiresAt, leagues: $leagues")
-                MandateExtractionResult(mandateExpiresAt = expiresAt, validLeagues = leagues)
+                val model = FirebaseAI.getInstance(backend = GenerativeBackend.googleAI()).generativeModel(
+                    modelName = MODEL_NAME,
+                    generationConfig = generationConfig {
+                        responseMimeType = "application/json"
+                        responseSchema = jsonSchema
+                    }
+                )
+
+                val response = model.generateContent(listOf(content))
+                val text = response.text ?: return@withContext MandateExtractionResult()
+                parseMandateGeminiResponse(text)
             } catch (e: Exception) {
                 Log.w(TAG, "Gemini mandate data extraction failed", e)
                 MandateExtractionResult()
             }
         }
+
+    /**
+     * Parses the Gemini mandate extraction JSON response into a MandateExtractionResult.
+     */
+    private fun parseMandateGeminiResponse(responseText: String): MandateExtractionResult {
+        val json = extractJsonFromResponse(responseText) ?: return MandateExtractionResult()
+        val obj = JSONObject(json)
+
+        // Parse expiry date
+        val expiryRaw = obj.optString("mandateExpiresAt", "").trim()
+        val expiresAt = parseMandateExpiryDate(expiryRaw)
+
+        // Parse leagues
+        val arr = obj.optJSONArray("validLeagues")
+        val leagues = if (arr != null) {
+            (0 until arr.length()).mapNotNull { arr.optString(it)?.trim()?.takeIf { s -> s.isNotBlank() } }
+        } else emptyList()
+
+        Log.i(TAG, "Gemini mandate extraction - expiry: $expiresAt, leagues: $leagues")
+        return MandateExtractionResult(mandateExpiresAt = expiresAt, validLeagues = leagues)
+    }
 
     /**
      * Parses a date string (DD/MM/YYYY, DD-MM-YYYY, DD.MM.YYYY) to millis at end of day.

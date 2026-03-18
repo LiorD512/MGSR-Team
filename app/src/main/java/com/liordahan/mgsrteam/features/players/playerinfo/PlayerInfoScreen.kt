@@ -704,6 +704,7 @@ fun PlayerInfoScreen(
                         currentUserAuthUid = viewModel.currentUserAuthUid,
                         currentUserAccountName = currentUserAccount?.name,
                         currentUserAccountHebrewName = currentUserAccount?.hebrewName,
+                        allAccounts = allAccounts,
                         isLoading = transferLoading,
                         onRequestTransfer = { showTransferConfirmDialog = true },
                         onApproveTransfer = { viewModel.approveTransfer() },
@@ -1469,8 +1470,14 @@ private fun PlayerInfoHeroCard(
                 overflow = TextOverflow.Ellipsis
             )
             Spacer(Modifier.height(2.dp))
+            val addedByName = resolveAgentDisplayName(
+                player.originalAgentId ?: player.agentInChargeId,
+                player.originalAgentName ?: player.agentInChargeName,
+                allAccounts,
+                LocaleManager.isHebrew(context)
+            )
             Text(
-                text = stringResource(R.string.player_info_added_by, player.originalAgentName ?: player.agentInChargeName ?: "—"),
+                text = stringResource(R.string.player_info_added_by, addedByName),
                 style = regularTextStyle(PlatformColors.palette.textSecondary.copy(alpha = 0.8f), 11.sp)
             )
 
@@ -4045,6 +4052,22 @@ private fun String.toMarketValueDouble(): Double {
     }
 }
 
+/** Resolves an agent name to the locale-appropriate display name using allAccounts. */
+private fun resolveAgentDisplayName(
+    agentId: String?,
+    agentName: String?,
+    allAccounts: List<com.liordahan.mgsrteam.features.login.models.Account>,
+    isHebrew: Boolean
+): String {
+    if (allAccounts.isEmpty()) return agentName ?: "—"
+    val account = allAccounts.firstOrNull { it.id == agentId }
+        ?: allAccounts.firstOrNull { it.name?.trim().equals(agentName?.trim(), ignoreCase = true) }
+        ?: allAccounts.firstOrNull { it.hebrewName?.trim().equals(agentName?.trim(), ignoreCase = true) }
+    if (account == null) return agentName ?: "—"
+    return if (isHebrew) (account.hebrewName ?: account.name).orEmpty()
+    else (account.name ?: "").ifEmpty { account.hebrewName.orEmpty() }
+}
+
 // ── Agent Transfer Composables ──────────────────────────────────────────────
 
 @Composable
@@ -4057,6 +4080,7 @@ private fun AgentTransferSection(
     currentUserAuthUid: String?,
     currentUserAccountName: String?,
     currentUserAccountHebrewName: String?,
+    allAccounts: List<com.liordahan.mgsrteam.features.login.models.Account>,
     isLoading: Boolean,
     onRequestTransfer: () -> Unit,
     onApproveTransfer: () -> Unit,
@@ -4076,12 +4100,15 @@ private fun AgentTransferSection(
             nameMatch
     )
 
+    val context = LocalContext.current
+    val isHebrew = LocaleManager.isHebrew(context)
+
     Column(modifier = modifier) {
         when {
             // Current user IS the agent in charge and there's a pending request TO review
             pendingTransfer != null && isCurrentUserAgent -> {
                 AgentTransferApprovalBanner(
-                    requesterName = pendingTransfer.toAgentName ?: "—",
+                    requesterName = resolveAgentDisplayName(pendingTransfer.toAgentId, pendingTransfer.toAgentName, allAccounts, isHebrew),
                     isLoading = isLoading,
                     onApprove = onApproveTransfer,
                     onReject = onRejectTransfer
@@ -4090,7 +4117,7 @@ private fun AgentTransferSection(
             // Current user requested a transfer — show pending/waiting state
             pendingTransfer != null && pendingTransfer.toAgentId == currentUserAccountId -> {
                 AgentTransferPendingBanner(
-                    currentAgentName = pendingTransfer.fromAgentName ?: "—",
+                    currentAgentName = resolveAgentDisplayName(pendingTransfer.fromAgentId, pendingTransfer.fromAgentName, allAccounts, isHebrew),
                     onCancel = onCancelTransfer
                 )
             }
@@ -4103,15 +4130,23 @@ private fun AgentTransferSection(
         // Resolved transfer banner (always shown if exists)
         if (resolvedTransfer != null) {
             Spacer(Modifier.height(8.dp))
-            AgentTransferResolvedBanner(resolvedTransfer = resolvedTransfer)
+            AgentTransferResolvedBanner(
+                resolvedTransfer = resolvedTransfer,
+                allAccounts = allAccounts,
+                isHebrew = isHebrew
+            )
         }
     }
 }
 
 @Composable
 private fun AgentTransferResolvedBanner(
-    resolvedTransfer: com.liordahan.mgsrteam.features.players.playerinfo.agenttransfer.AgentTransferRequest
+    resolvedTransfer: com.liordahan.mgsrteam.features.players.playerinfo.agenttransfer.AgentTransferRequest,
+    allAccounts: List<com.liordahan.mgsrteam.features.login.models.Account>,
+    isHebrew: Boolean
 ) {
+    val fromName = resolveAgentDisplayName(resolvedTransfer.fromAgentId, resolvedTransfer.fromAgentName, allAccounts, isHebrew)
+    val toName = resolveAgentDisplayName(resolvedTransfer.toAgentId, resolvedTransfer.toAgentName, allAccounts, isHebrew)
     val isApproved = resolvedTransfer.status == com.liordahan.mgsrteam.features.players.playerinfo.agenttransfer.AgentTransferRequest.STATUS_APPROVED
     val accentColor = if (isApproved) Color(0xFF10B981) else Color(0xFFEF4444)
     val icon = if (isApproved) "✓" else "✕"
@@ -4186,12 +4221,12 @@ private fun AgentTransferResolvedBanner(
             Text(
                 text = if (isApproved) {
                     stringResource(R.string.agent_transfer_resolved_approved_desc,
-                        resolvedTransfer.fromAgentName ?: "",
-                        resolvedTransfer.toAgentName ?: "")
+                        fromName,
+                        toName)
                 } else {
                     stringResource(R.string.agent_transfer_resolved_rejected_desc,
-                        resolvedTransfer.fromAgentName ?: "",
-                        resolvedTransfer.toAgentName ?: "")
+                        fromName,
+                        toName)
                 },
                 style = regularTextStyle(PlatformColors.palette.textSecondary, 12.sp).copy(
                     lineHeight = 18.sp
