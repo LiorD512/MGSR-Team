@@ -32,14 +32,13 @@ export default function AgentTransferSection({
 }: AgentTransferSectionProps) {
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 
-  // agentInChargeId stores Auth UID, so compare with both Auth UID and Account doc ID.
-  // Fallback: also match by name in case the Auth UID was orphaned (deleted/recreated account).
-  const isCurrentUserAgent =
-    !!player.agentInChargeId &&
-    (player.agentInChargeId === currentUserAuthUid ||
-     player.agentInChargeId === currentUserAccountId ||
-     (!!currentUserAccountName && !!player.agentInChargeName &&
-      currentUserAccountName.trim().toLowerCase() === player.agentInChargeName.trim().toLowerCase()));
+  // Check if current user is the agent in charge — by ID or by name fallback
+  const hasAgent = !!player.agentInChargeId || !!player.agentInChargeName;
+  const idMatch = !!player.agentInChargeId &&
+    (player.agentInChargeId === currentUserAuthUid || player.agentInChargeId === currentUserAccountId);
+  const nameMatch = !!currentUserAccountName && !!player.agentInChargeName &&
+    currentUserAccountName.trim().toLowerCase() === player.agentInChargeName.trim().toLowerCase();
+  const isCurrentUserAgent = hasAgent && (idMatch || nameMatch);
 
   // Current user IS the agent and there's a pending transfer TO review
   if (pendingTransfer && isCurrentUserAgent) {
@@ -98,7 +97,7 @@ export default function AgentTransferSection({
   }
 
   // No pending transfer, current user is NOT the agent — show request button
-  if (!pendingTransfer && !isCurrentUserAgent && player.agentInChargeId) {
+  if (!pendingTransfer && !isCurrentUserAgent && hasAgent) {
     return (
       <>
         <button
