@@ -298,6 +298,8 @@ export default function PlayerInfoPage() {
   const [showSalaryFeeModal, setShowSalaryFeeModal] = useState(false);
   const [includePlayerContact, setIncludePlayerContact] = useState(false);
   const [includeAgencyContact, setIncludeAgencyContact] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [clubRequests, setClubRequests] = useState<(ClubRequest & { status?: string; clubName?: string; clubLogo?: string; clubCountry?: string; contactPhoneNumber?: string })[]>([]);
   const [playerOffers, setPlayerOffers] = useState<{ id: string; requestId?: string; clubFeedback?: string; offeredAt?: number; markedByAgentName?: string; [key: string]: unknown }[]>([]);
   const [pendingTransfer, setPendingTransfer] = useState<AgentTransferRequest | null>(null);
@@ -489,6 +491,20 @@ export default function PlayerInfoPage() {
     if (!pendingTransfer?.id) return;
     await cancelTransferRequest(pendingTransfer.id);
   }, [pendingTransfer]);
+
+  const handleDeletePlayer = useCallback(async () => {
+    if (!id) return;
+    setDeleting(true);
+    try {
+      await deleteDoc(doc(db, 'Players', id));
+      router.push('/dashboard');
+    } catch (e) {
+      console.error('Failed to delete player:', e);
+      alert(isRtl ? 'שגיאה במחיקת השחקן' : 'Failed to delete player');
+      setDeleting(false);
+      setShowDeleteConfirm(false);
+    }
+  }, [id, router, isRtl]);
 
   const playerAsRoster: RosterPlayer | null = useMemo(() => {
     if (!player) return null;
@@ -2504,6 +2520,16 @@ export default function PlayerInfoPage() {
                     </svg>
                     <span className="font-medium text-sm">{t('player_info_prepare_portfolio')}</span>
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowDeleteConfirm(true)}
+                    className="flex items-center gap-2 text-red-400 hover:text-red-300 transition-colors"
+                  >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                    <span className="font-medium text-sm">{isRtl ? 'מחק' : 'Delete'}</span>
+                  </button>
                 </div>
                 {(shareError || portfolioError) && (
                   <p className="text-sm text-red-400 text-center">{shareError || portfolioError}</p>
@@ -2513,6 +2539,56 @@ export default function PlayerInfoPage() {
           );
         })()}
       </div>
+
+      {/* Delete confirmation dialog */}
+      {showDeleteConfirm && (
+        <div
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
+          onClick={() => !deleting && setShowDeleteConfirm(false)}
+        >
+          <div className="absolute inset-0 bg-black/60" aria-hidden />
+          <div
+            dir={isRtl ? 'rtl' : 'ltr'}
+            className="relative w-full max-w-sm bg-mgsr-card border border-mgsr-border rounded-2xl shadow-2xl p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex flex-col items-center gap-3 mb-5">
+              <div className="w-12 h-12 rounded-full bg-red-500/15 flex items-center justify-center">
+                <svg className="w-6 h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-display font-semibold text-mgsr-text">
+                {isRtl ? 'מחיקת שחקן' : 'Delete Player'}
+              </h3>
+              <p className="text-sm text-mgsr-muted text-center">
+                {isRtl
+                  ? `האם אתה בטוח שברצונך למחוק את ${player?.fullName || 'השחקן'}? פעולה זו לא ניתנת לביטול.`
+                  : `Are you sure you want to delete ${player?.fullName || 'this player'}? This action cannot be undone.`}
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setShowDeleteConfirm(false)}
+                disabled={deleting}
+                className="flex-1 px-4 py-2.5 rounded-xl bg-mgsr-dark border border-mgsr-border text-mgsr-text text-sm font-medium hover:bg-mgsr-border/30 transition-colors disabled:opacity-50"
+              >
+                {isRtl ? 'ביטול' : 'Cancel'}
+              </button>
+              <button
+                type="button"
+                onClick={handleDeletePlayer}
+                disabled={deleting}
+                className="flex-1 px-4 py-2.5 rounded-xl bg-red-500/90 hover:bg-red-500 text-white text-sm font-medium transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {deleting && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
+                {isRtl ? 'מחק' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Portfolio preparation loader */}
       {addingToPortfolio && (
