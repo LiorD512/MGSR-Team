@@ -301,6 +301,11 @@ export default function PlayerInfoPage() {
   const [clubRequests, setClubRequests] = useState<(ClubRequest & { status?: string; clubName?: string; clubLogo?: string; clubCountry?: string; contactPhoneNumber?: string })[]>([]);
   const [playerOffers, setPlayerOffers] = useState<{ id: string; requestId?: string; clubFeedback?: string; offeredAt?: number; markedByAgentName?: string; [key: string]: unknown }[]>([]);
   const [pendingTransfer, setPendingTransfer] = useState<AgentTransferRequest | null>(null);
+
+  // Reset transfer state when player changes
+  useEffect(() => {
+    setPendingTransfer(null);
+  }, [id]);
   const prevValidMandateCountRef = useRef<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
