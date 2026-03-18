@@ -6,6 +6,7 @@
 export interface NoteModel {
   notes?: string;
   createBy?: string;
+  createByHe?: string;
   createdAt?: number;
 }
 

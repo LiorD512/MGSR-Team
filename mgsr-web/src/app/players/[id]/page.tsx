@@ -56,7 +56,7 @@ interface Player {
   contractExpired?: string;
   tmProfile?: string;
   notes?: string;
-  noteList?: { notes?: string; createBy?: string; createdAt?: number }[];
+  noteList?: { notes?: string; createBy?: string; createByHe?: string; createdAt?: number }[];
   agentInChargeName?: string;
   agentInChargeId?: string;
   originalAgentName?: string;
@@ -1234,9 +1234,13 @@ export default function PlayerInfoPage() {
       try {
         const createdBy = getCurrentUserName() ?? '';
         const currentNotes = player.noteList ?? [];
+        const account = accounts.find(
+          (a) => a.email?.toLowerCase() === user?.email?.toLowerCase()
+        );
         const newNote: NoteModel = {
           notes: text.trim(),
-          createBy: createdBy,
+          createBy: account?.name ?? createdBy,
+          createByHe: account?.hebrewName ?? undefined,
           createdAt: Date.now(),
         };
         const newNoteList = [...currentNotes, newNote];
@@ -2487,7 +2491,7 @@ export default function PlayerInfoPage() {
                         <p className="text-mgsr-text whitespace-pre-wrap">{n.notes}</p>
                         <div className="flex flex-wrap items-center gap-2 mt-3 text-xs text-mgsr-muted">
                           {n.createBy && (
-                            <span>{t('note_written_by')}: {resolveAgentName(n.createBy)}</span>
+                            <span>{t('note_written_by')}: {isRtl ? (n.createByHe ?? resolveAgentName(n.createBy)) : n.createBy}</span>
                           )}
                           {n.createdAt && (
                             <span>{new Date(n.createdAt).toLocaleDateString()}</span>

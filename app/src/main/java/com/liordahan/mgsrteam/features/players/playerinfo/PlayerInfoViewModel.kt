@@ -600,8 +600,12 @@ class PlayerInfoViewModel(
             var createdBy: String? = null
             _playerInfoFlow.update { player ->
                 val currentNotes = player?.noteList?.toMutableList() ?: mutableListOf()
-                createdBy = getCurrentUserName()
-                val note = notes.copy(createBy = createdBy)
+                val account = getCurrentUserAccount()
+                createdBy = account?.name
+                val note = notes.copy(
+                    createBy = account?.name,
+                    createByHe = account?.hebrewName
+                )
                 currentNotes.add(note)
                 val newNoteList = currentNotes
                 val salaryRange = NoteParser.extractSalaryRange(newNoteList)

@@ -339,7 +339,11 @@ fun NoteCard(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = notesModel.createBy ?: "",
+                        text = run {
+                            val isHebrew = com.liordahan.mgsrteam.localization.LocaleManager.isHebrew(LocalContext.current)
+                            if (isHebrew) notesModel.createByHe ?: notesModel.createBy ?: ""
+                            else notesModel.createBy ?: ""
+                        },
                         style = regularTextStyle(
                             PlatformColors.palette.textSecondary,
                             12.sp,

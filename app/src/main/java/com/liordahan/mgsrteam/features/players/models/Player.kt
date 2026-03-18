@@ -134,6 +134,7 @@ data class PlayerAdditionalInfoModel(
 data class NotesModel(
     val notes: String? = null,
     val createBy: String? = null,
+    val createByHe: String? = null,
     val createdAt: Long? = 0,
 ) : Parcelable
 
