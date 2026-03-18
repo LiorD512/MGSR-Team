@@ -3,7 +3,7 @@ if (typeof globalThis.File === "undefined") {
   globalThis.File = class File {};
 }
 
-const { onDocumentCreated } = require("firebase-functions/v2/firestore");
+const { onDocumentCreated, onDocumentUpdated } = require("firebase-functions/v2/firestore");
 const { onMessagePublished } = require("firebase-functions/v2/pubsub");
 const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { onCall } = require("firebase-functions/v2/https");
@@ -622,3 +622,181 @@ exports.onShortlistAdd = onDocumentCreated("Shortlists/{entryId}", async (event)
     console.error(`[onShortlistAdd] Error enriching ${snap.id}:`, err.message || err);
   }
 });
+
+// ─── Agent Transfer ────────────────────────────────────────────────────────
+
+const TRANSFER_COLLECTION = "AgentTransferRequests";
+
+/**
+ * Resolves an agent identifier to { accountId, accountData }.
+ * Tries: (1) direct doc ID, (2) query by uid field, (3) query by name match.
+ * agentInChargeId may be a Firebase Auth UID rather than an Account doc ID.
+ */
+async function resolveAccount(agentId, agentName) {
+  if (!agentId) return null;
+
+  // 1. Try by doc ID
+  const byDoc = await db.collection(ACCOUNTS_COLLECTION).doc(agentId).get();
+  if (byDoc.exists) return { accountId: byDoc.id, accountData: byDoc.data() };
+
+  // 2. Try by uid field (some Account docs may store the auth UID)
+  const byUid = await db.collection(ACCOUNTS_COLLECTION).where("uid", "==", agentId).limit(1).get();
+  if (!byUid.empty) {
+    const d = byUid.docs[0];
+    return { accountId: d.id, accountData: d.data() };
+  }
+
+  // 3. Fallback: match by name (case-insensitive)
+  if (agentName) {
+    const all = await db.collection(ACCOUNTS_COLLECTION).get();
+    for (const d of all.docs) {
+      const data = d.data();
+      if (
+        (data.name || "").toLowerCase() === agentName.toLowerCase() ||
+        (data.hebrewName || "").toLowerCase() === agentName.toLowerCase()
+      ) {
+        return { accountId: d.id, accountData: data };
+      }
+    }
+  }
+
+  return null;
+}
+
+/**
+ * When a new transfer request is created, notify the current agent (fromAgent)
+ * that someone wants to take over their player.
+ */
+exports.onAgentTransferRequest = onDocumentCreated(
+  `${TRANSFER_COLLECTION}/{requestId}`,
+  async (event) => {
+    const data = event.data?.data();
+    if (!data) return;
+
+    const fromAgentId = data.fromAgentId || "";
+    const fromAgentName = data.fromAgentName || "";
+    const toAgentName = data.toAgentName || "Someone";
+    const playerName = data.playerName || "a player";
+
+    if (!fromAgentId && !fromAgentName) return;
+
+    const resolved = await resolveAccount(fromAgentId, fromAgentName);
+    if (!resolved) {
+      console.log(`[onAgentTransferRequest] Account not resolved for id=${fromAgentId} name=${fromAgentName}`);
+      return;
+    }
+
+    const { accountId, accountData } = resolved;
+    const tokens = getAllTokens(accountData);
+    if (tokens.length === 0) {
+      console.log(`[onAgentTransferRequest] No FCM tokens for ${accountId}`);
+      return;
+    }
+
+    const notifTitle = "Agent Transfer Request";
+    const notifBody = `${toAgentName} wants to take over as agent for ${playerName}`;
+
+    const payload = {
+      notification: { title: notifTitle, body: notifBody },
+      data: {
+        type: "AGENT_TRANSFER_REQUEST",
+        requesterName: toAgentName,
+        playerName: playerName,
+        playerId: data.playerId || "",
+        screen: "player",
+      },
+      android: {
+        priority: "high",
+        notification: { channelId: "mgsr_team_notifications" },
+      },
+      webpush: {
+        notification: {
+          title: notifTitle,
+          body: notifBody,
+          icon: "/logo.svg",
+          tag: `transfer-${event.params.requestId}`,
+        },
+        fcmOptions: { link: data.playerId ? `/players/${data.playerId}` : "/" },
+      },
+    };
+
+    try {
+      await sendToAllTokens(accountId, accountData, payload);
+      console.log(`[onAgentTransferRequest] Notification sent to ${accountId}: ${toAgentName} → ${playerName}`);
+    } catch (err) {
+      console.error("[onAgentTransferRequest] FCM error:", err);
+    }
+  }
+);
+
+/**
+ * When a transfer request status changes (approved/rejected), notify the requester (toAgent).
+ */
+exports.onAgentTransferResolved = onDocumentUpdated(
+  `${TRANSFER_COLLECTION}/{requestId}`,
+  async (event) => {
+    const before = event.data?.before?.data();
+    const after = event.data?.after?.data();
+    if (!before || !after) return;
+
+    // Only fire when status changes from "pending" to "approved" or "rejected"
+    if (before.status !== "pending") return;
+    if (after.status !== "approved" && after.status !== "rejected") return;
+
+    const toAgentId = after.toAgentId || "";
+    const toAgentName = after.toAgentName || "";
+    const playerName = after.playerName || "a player";
+    const isApproved = after.status === "approved";
+
+    if (!toAgentId && !toAgentName) return;
+
+    const resolved = await resolveAccount(toAgentId, toAgentName);
+    if (!resolved) {
+      console.log(`[onAgentTransferResolved] Account not resolved for id=${toAgentId} name=${toAgentName}`);
+      return;
+    }
+
+    const { accountId, accountData } = resolved;
+    const tokens = getAllTokens(accountData);
+    if (tokens.length === 0) {
+      console.log(`[onAgentTransferResolved] No FCM tokens for ${accountId}`);
+      return;
+    }
+
+    const notifTitle = isApproved ? "Transfer Approved" : "Transfer Rejected";
+    const notifBody = isApproved
+      ? `You are now the agent in charge of ${playerName}`
+      : `Your transfer request for ${playerName} was rejected`;
+    const notificationType = isApproved ? "AGENT_TRANSFER_APPROVED" : "AGENT_TRANSFER_REJECTED";
+
+    const payload = {
+      notification: { title: notifTitle, body: notifBody },
+      data: {
+        type: notificationType,
+        playerName: playerName,
+        playerId: after.playerId || "",
+        screen: "player",
+      },
+      android: {
+        priority: "high",
+        notification: { channelId: "mgsr_team_notifications" },
+      },
+      webpush: {
+        notification: {
+          title: notifTitle,
+          body: notifBody,
+          icon: "/logo.svg",
+          tag: `transfer-${event.params.requestId}`,
+        },
+        fcmOptions: { link: after.playerId ? `/players/${after.playerId}` : "/" },
+      },
+    };
+
+    try {
+      await sendToAllTokens(accountId, accountData, payload);
+      console.log(`[onAgentTransferResolved] ${notificationType} notification sent to ${accountId}: ${playerName}`);
+    } catch (err) {
+      console.error("[onAgentTransferResolved] FCM error:", err);
+    }
+  }
+);

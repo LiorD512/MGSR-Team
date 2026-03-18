@@ -12,6 +12,7 @@ import {
   orderBy,
   limit,
   onSnapshot,
+  where,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import AppLayout from '@/components/AppLayout';
@@ -292,6 +293,7 @@ export default function DashboardPage() {
   const [accounts, setAccounts] = useState<Account[]>(cached?.accounts ?? []);
   const [currentAccount, setCurrentAccount] = useState<Account | null>(cached?.currentAccount ?? null);
   const [transferWindows, setTransferWindows] = useState<TransferWindow[]>([]);
+  const [pendingTransfers, setPendingTransfers] = useState<{ id: string; playerId?: string; playerName?: string; playerImage?: string; fromAgentId?: string; fromAgentName?: string; toAgentId?: string; toAgentName?: string; requestedAt?: number }[]>([]);
   const [transferWindowsLoading, setTransferWindowsLoading] = useState(false);
   const [expandedConfederations, setExpandedConfederations] = useState<Set<string>>(new Set(['PRIORITY']));
   const [expandedWindowCountries, setExpandedWindowCountries] = useState<Set<string>>(new Set());
@@ -339,6 +341,20 @@ export default function DashboardPage() {
         (a) => a.email?.toLowerCase() === user.email?.toLowerCase()
       );
       setCurrentAccount(me || null);
+    });
+    return () => unsub();
+  }, [user]);
+
+  // Listen for pending agent transfer requests relevant to current user
+  useEffect(() => {
+    if (!user) return;
+    const q = query(
+      collection(db, 'AgentTransferRequests'),
+      where('status', '==', 'pending')
+    );
+    const unsub = onSnapshot(q, (snap) => {
+      const list = snap.docs.map((d) => ({ id: d.id, ...d.data() } as typeof pendingTransfers[0]));
+      setPendingTransfers(list);
     });
     return () => unsub();
   }, [user]);
@@ -796,6 +812,20 @@ export default function DashboardPage() {
   const isWomen = platform === 'women';
   const isYouth = platform === 'youth';
 
+  // Filter pending agent transfer requests relevant to current user
+  const myPendingTransfers = useMemo(() => {
+    if (!user || !pendingTransfers.length) return { toApprove: [] as typeof pendingTransfers, waitingApproval: [] as typeof pendingTransfers };
+    const authUid = user.uid;
+    const accountId = currentAccount?.id;
+    const toApprove = pendingTransfers.filter(
+      (tr) => tr.fromAgentId === authUid || tr.fromAgentId === accountId
+    );
+    const waitingApproval = pendingTransfers.filter(
+      (tr) => tr.toAgentId === authUid || tr.toAgentId === accountId
+    );
+    return { toApprove, waitingApproval };
+  }, [user, currentAccount, pendingTransfers]);
+
   if (loading || !user) {
     return (
       <div className="min-h-screen bg-mgsr-dark flex items-center justify-center">
@@ -927,6 +957,53 @@ export default function DashboardPage() {
           ))}
           </div>
         </div>
+
+        {/* Pending agent transfer requests */}
+        {(myPendingTransfers.toApprove.length > 0 || myPendingTransfers.waitingApproval.length > 0) && (
+          <div className="mb-6 sm:mb-10 p-4 sm:p-6 bg-mgsr-card/60 border border-amber-500/30 rounded-2xl backdrop-blur-sm">
+            <h3 className="text-lg font-bold text-amber-400 mb-4 font-display flex items-center gap-2">
+              <span>🔄</span> {t('dashboard_pending_transfers_title')}
+            </h3>
+            <div className="space-y-2">
+              {myPendingTransfers.toApprove.map((tr) => (
+                <Link
+                  key={tr.id}
+                  href={`/players/${tr.playerId}`}
+                  className="flex items-center gap-3 p-3 rounded-xl bg-mgsr-dark/40 hover:bg-mgsr-dark/70 transition-colors border border-mgsr-border/50 hover:border-amber-500/40"
+                >
+                  {tr.playerImage ? (
+                    <img src={tr.playerImage} alt="" className="w-10 h-10 rounded-full object-cover border border-mgsr-border" />
+                  ) : (
+                    <div className="w-10 h-10 rounded-full bg-mgsr-border/30 flex items-center justify-center text-mgsr-muted text-sm">⚽</div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-white truncate">{tr.playerName || 'Unknown'}</p>
+                    <p className="text-xs text-amber-400/80">{t('dashboard_transfer_requests_assign').replace('%s', tr.toAgentName || '')}</p>
+                  </div>
+                  <span className="text-xs text-mgsr-muted">{isRtl ? '←' : '→'}</span>
+                </Link>
+              ))}
+              {myPendingTransfers.waitingApproval.map((tr) => (
+                <Link
+                  key={tr.id}
+                  href={`/players/${tr.playerId}`}
+                  className="flex items-center gap-3 p-3 rounded-xl bg-mgsr-dark/40 hover:bg-mgsr-dark/70 transition-colors border border-mgsr-border/50 hover:border-amber-500/40"
+                >
+                  {tr.playerImage ? (
+                    <img src={tr.playerImage} alt="" className="w-10 h-10 rounded-full object-cover border border-mgsr-border" />
+                  ) : (
+                    <div className="w-10 h-10 rounded-full bg-mgsr-border/30 flex items-center justify-center text-mgsr-muted text-sm">⚽</div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-white truncate">{tr.playerName || 'Unknown'}</p>
+                    <p className="text-xs text-mgsr-muted">{t('dashboard_transfer_waiting_approval').replace('%s', tr.fromAgentName || '')}</p>
+                  </div>
+                  <span className="text-xs text-mgsr-muted">{isRtl ? '←' : '→'}</span>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Charts row (men only; women & youth have simplified dashboards) */}
         {platform === 'men' && (

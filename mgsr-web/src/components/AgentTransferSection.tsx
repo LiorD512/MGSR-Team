@@ -7,6 +7,7 @@ interface AgentTransferSectionProps {
   player: { agentInChargeId?: string; agentInChargeName?: string; fullName?: string };
   pendingTransfer: AgentTransferRequest | null;
   currentUserAccountId: string | undefined;
+  currentUserAuthUid: string | undefined;
   onRequestTransfer: () => void;
   onApproveTransfer: () => void;
   onRejectTransfer: () => void;
@@ -19,6 +20,7 @@ export default function AgentTransferSection({
   player,
   pendingTransfer,
   currentUserAccountId,
+  currentUserAuthUid,
   onRequestTransfer,
   onApproveTransfer,
   onRejectTransfer,
@@ -28,8 +30,10 @@ export default function AgentTransferSection({
 }: AgentTransferSectionProps) {
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 
+  // agentInChargeId stores Auth UID, so compare with both Auth UID and Account doc ID
   const isCurrentUserAgent =
-    !!currentUserAccountId && currentUserAccountId === player.agentInChargeId;
+    !!player.agentInChargeId &&
+    (player.agentInChargeId === currentUserAuthUid || player.agentInChargeId === currentUserAccountId);
 
   // Current user IS the agent and there's a pending transfer TO review
   if (pendingTransfer && isCurrentUserAgent) {
