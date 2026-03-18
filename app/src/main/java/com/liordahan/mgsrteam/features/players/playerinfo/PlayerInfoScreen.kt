@@ -703,6 +703,7 @@ fun PlayerInfoScreen(
                         currentUserAccountId = currentUserAccount?.id,
                         currentUserAuthUid = viewModel.currentUserAuthUid,
                         currentUserAccountName = currentUserAccount?.name,
+                        currentUserAccountHebrewName = currentUserAccount?.hebrewName,
                         isLoading = transferLoading,
                         onRequestTransfer = { showTransferConfirmDialog = true },
                         onApproveTransfer = { viewModel.approveTransfer() },
@@ -4055,19 +4056,24 @@ private fun AgentTransferSection(
     currentUserAccountId: String?,
     currentUserAuthUid: String?,
     currentUserAccountName: String?,
+    currentUserAccountHebrewName: String?,
     isLoading: Boolean,
     onRequestTransfer: () -> Unit,
     onApproveTransfer: () -> Unit,
     onRejectTransfer: () -> Unit,
     onCancelTransfer: () -> Unit
 ) {
-    // Triple-check: account doc ID match, auth UID match, or name match
+    // Triple-check: account doc ID match, auth UID match, or name match (both en/he)
     val hasAgent = !player.agentInChargeId.isNullOrEmpty() || !player.agentInChargeName.isNullOrEmpty()
+    val agentName = player.agentInChargeName
+    val nameMatch = !agentName.isNullOrEmpty() && (
+            (!currentUserAccountName.isNullOrEmpty() && currentUserAccountName.equals(agentName, ignoreCase = true)) ||
+            (!currentUserAccountHebrewName.isNullOrEmpty() && currentUserAccountHebrewName.equals(agentName, ignoreCase = true))
+    )
     val isCurrentUserAgent = currentUserAccountId != null && (
             currentUserAccountId == player.agentInChargeId ||
             currentUserAuthUid == player.agentInChargeId ||
-            (!currentUserAccountName.isNullOrEmpty() &&
-                currentUserAccountName.equals(player.agentInChargeName, ignoreCase = true))
+            nameMatch
     )
 
     Column(modifier = modifier) {
