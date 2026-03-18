@@ -48,6 +48,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.automirrored.filled.NoteAdd
 import androidx.compose.material.icons.automirrored.filled.TrendingDown
@@ -78,12 +79,14 @@ import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -180,7 +183,8 @@ import java.util.concurrent.TimeUnit
 fun DashboardScreen(
     navController: NavController,
     viewModel: IHomeScreenViewModel = koinViewModel(),
-    platformManager: PlatformManager = koinInject()
+    platformManager: PlatformManager = koinInject(),
+    onSignOut: () -> Unit = {}
 ) {
     val state by viewModel.dashboardState.collectAsStateWithLifecycle()
     val currentPlatform by platformManager.current.collectAsStateWithLifecycle()
@@ -280,7 +284,8 @@ fun DashboardScreen(
         GreetingHeader(
             state = state,
             isHebrew = isHebrew,
-            onLanguageClick = { showLanguageDialog = true }
+            onLanguageClick = { showLanguageDialog = true },
+            onSignOut = onSignOut
         )
 
         // ── Platform tagline (animated) ──────────────────────────────────
@@ -782,12 +787,52 @@ private fun LanguageChangeDialog(
 private fun GreetingHeader(
     state: HomeDashboardState,
     isHebrew: Boolean,
-    onLanguageClick: () -> Unit
+    onLanguageClick: () -> Unit,
+    onSignOut: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val userName = state.currentUserAccount?.getDisplayName(context)?.takeIf { it.isNotBlank() }
         ?: stringResource(R.string.greeting_agent_default)
     val dateStr = SimpleDateFormat("EEEE, MMM d, yyyy", Locale.getDefault()).format(Date())
+    var showLogoutConfirm by remember { mutableStateOf(false) }
+
+    if (showLogoutConfirm) {
+        AlertDialog(
+            onDismissRequest = { showLogoutConfirm = false },
+            containerColor = PlatformColors.palette.card,
+            title = {
+                Text(
+                    text = stringResource(R.string.logout_confirm_title),
+                    style = boldTextStyle(PlatformColors.palette.textPrimary, 16.sp)
+                )
+            },
+            text = {
+                Text(
+                    text = stringResource(R.string.logout_confirm_message),
+                    style = regularTextStyle(PlatformColors.palette.textSecondary, 14.sp)
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    showLogoutConfirm = false
+                    onSignOut()
+                }) {
+                    Text(
+                        text = stringResource(R.string.logout_confirm_yes),
+                        style = boldTextStyle(PlatformColors.palette.red, 14.sp)
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showLogoutConfirm = false }) {
+                    Text(
+                        text = stringResource(R.string.cancel),
+                        style = regularTextStyle(PlatformColors.palette.textSecondary, 14.sp)
+                    )
+                }
+            }
+        )
+    }
 
     Column(
         modifier = Modifier
@@ -821,6 +866,18 @@ private fun GreetingHeader(
                     .clip(CircleShape)
                     .clickWithNoRipple { onLanguageClick() },
                 contentScale = ContentScale.Fit
+            )
+
+            Spacer(Modifier.width(8.dp))
+
+            // ── Logout button ────────────────────────────────────────
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.ExitToApp,
+                contentDescription = stringResource(R.string.logout_button_cd),
+                tint = HomeTextSecondary,
+                modifier = Modifier
+                    .size(28.dp)
+                    .clickWithNoRipple { showLogoutConfirm = true }
             )
         }
 

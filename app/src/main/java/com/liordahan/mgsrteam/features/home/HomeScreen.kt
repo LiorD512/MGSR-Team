@@ -176,7 +176,7 @@ fun HomeScreen(
         ) {
 
             composable(route = Screens.DashboardScreen.route) {
-                DashboardScreen(navController = navController, viewModel = homeViewModel)
+                DashboardScreen(navController = navController, viewModel = homeViewModel, onSignOut = { mainViewModel.signOut() })
             }
 
             composable(route = Screens.TasksScreen.route) {

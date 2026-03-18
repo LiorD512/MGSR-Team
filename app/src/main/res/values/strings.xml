@@ -1438,4 +1438,8 @@
     <string name="agent_transfer_resolved_rejected">Assignment request declined</string>
     <string name="agent_transfer_resolved_approved_desc">%1$s approved transfer to %2$s</string>
     <string name="agent_transfer_resolved_rejected_desc">%1$s declined request from %2$s</string>
+    <string name="logout_confirm_title">Logout</string>
+    <string name="logout_confirm_message">Are you sure you want to log out?</string>
+    <string name="logout_confirm_yes">Logout</string>
+    <string name="logout_button_cd">Logout</string>
 </resources>

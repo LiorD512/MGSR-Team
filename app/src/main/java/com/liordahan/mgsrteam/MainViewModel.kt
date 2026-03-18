@@ -29,7 +29,7 @@ abstract class IMainViewModel : ViewModel() {
     /** When set, navigate to Add Player screen. */
     abstract val pendingOpenAddPlayerScreen: StateFlow<Boolean>
     abstract fun setPendingOpenAddPlayerScreen(value: Boolean)
-}
+    abstract fun signOut()
 
 class MainViewModel(
     private val firebaseHandler: FirebaseHandler
@@ -106,5 +106,10 @@ class MainViewModel(
             _currentUserFlow.value = null
         }
         _isReady.value = true
+    }
+
+    override fun signOut() {
+        firebaseHandler.firebaseAuth.signOut()
+        _currentUserFlow.value = null
     }
 }

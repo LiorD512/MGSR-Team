@@ -1431,4 +1431,8 @@
     <string name="agent_transfer_resolved_rejected">בקשת השיוך נדחתה</string>
     <string name="agent_transfer_resolved_approved_desc">%1$s אישר ל%2$s</string>
     <string name="agent_transfer_resolved_rejected_desc">%1$s דחה את הבקשה של %2$s</string>
+    <string name="logout_confirm_title">התנתקות</string>
+    <string name="logout_confirm_message">האם אתה בטוח שברצונך להתנתק?</string>
+    <string name="logout_confirm_yes">התנתק</string>
+    <string name="logout_button_cd">התנתקות</string>
 </resources>
