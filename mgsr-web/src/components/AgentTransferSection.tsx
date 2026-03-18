@@ -117,7 +117,7 @@ export default function AgentTransferSection({
           onClick={() => setShowConfirmDialog(true)}
           className="mt-3 w-full p-3 rounded-xl border border-dashed border-blue-500/30 bg-blue-500/8 flex items-center justify-center gap-2 hover:bg-blue-500/15 transition-colors"
         >
-          <span className="text-sm">🙋</span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-400"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4-4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
           <span className="text-xs font-bold text-blue-400">{t('agent_transfer_request_button')}</span>
         </button>
 
