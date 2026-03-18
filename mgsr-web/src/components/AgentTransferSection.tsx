@@ -10,8 +10,8 @@ interface AgentTransferSectionProps {
   currentUserAuthUid: string | undefined;
   currentUserAccountName: string | undefined;
   onRequestTransfer: () => void;
-  onApproveTransfer: () => void;
-  onRejectTransfer: () => void;
+  onApproveTransfer: () => Promise<void> | void;
+  onRejectTransfer: () => Promise<void> | void;
   onCancelTransfer: () => void;
   resolveAgentName: (name: string | undefined, agentId?: string) => string;
   t: (key: string) => string;
@@ -31,6 +31,7 @@ export default function AgentTransferSection({
   t,
 }: AgentTransferSectionProps) {
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [actionLoading, setActionLoading] = useState<'approve' | 'reject' | null>(null);
 
   // Check if current user is the agent in charge — by ID or by name fallback
   const hasAgent = !!player.agentInChargeId || !!player.agentInChargeName;
@@ -54,16 +55,28 @@ export default function AgentTransferSection({
         </p>
         <div className="flex gap-2">
           <button
-            onClick={onApproveTransfer}
-            className="flex-1 py-2 px-3 rounded-xl text-xs font-bold text-white bg-emerald-500 hover:bg-emerald-600 transition-colors"
+            onClick={async () => {
+              setActionLoading('approve');
+              try { await onApproveTransfer(); } finally { setActionLoading(null); }
+            }}
+            disabled={!!actionLoading}
+            className="flex-1 py-2 px-3 rounded-xl text-xs font-bold text-white bg-emerald-500 hover:bg-emerald-600 transition-colors disabled:opacity-50"
           >
-            {t('agent_transfer_approve')}
+            {actionLoading === 'approve' ? (
+              <span className="inline-block w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+            ) : t('agent_transfer_approve')}
           </button>
           <button
-            onClick={onRejectTransfer}
-            className="flex-1 py-2 px-3 rounded-xl text-xs font-bold text-red-400 bg-red-500/12 border border-red-500/30 hover:bg-red-500/20 transition-colors"
+            onClick={async () => {
+              setActionLoading('reject');
+              try { await onRejectTransfer(); } finally { setActionLoading(null); }
+            }}
+            disabled={!!actionLoading}
+            className="flex-1 py-2 px-3 rounded-xl text-xs font-bold text-red-400 bg-red-500/12 border border-red-500/30 hover:bg-red-500/20 transition-colors disabled:opacity-50"
           >
-            {t('agent_transfer_reject')}
+            {actionLoading === 'reject' ? (
+              <span className="inline-block w-4 h-4 border-2 border-red-400/30 border-t-red-400 rounded-full animate-spin" />
+            ) : t('agent_transfer_reject')}
           </button>
         </div>
       </div>

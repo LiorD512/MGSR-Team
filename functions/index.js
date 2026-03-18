@@ -745,6 +745,7 @@ exports.onAgentTransferResolved = onDocumentUpdated(
 
     const toAgentId = after.toAgentId || "";
     const toAgentName = after.toAgentName || "";
+    const fromAgentName = after.fromAgentName || "";
     const playerName = after.playerName || "a player";
     const isApproved = after.status === "approved";
 
@@ -763,10 +764,10 @@ exports.onAgentTransferResolved = onDocumentUpdated(
       return;
     }
 
-    const notifTitle = isApproved ? "Transfer Approved" : "Transfer Rejected";
+    const notifTitle = isApproved ? "בקשת שיוך אושרה ✓" : "בקשת שיוך נדחתה ✕";
     const notifBody = isApproved
-      ? `You are now the agent in charge of ${playerName}`
-      : `Your transfer request for ${playerName} was rejected`;
+      ? `${fromAgentName} אישר את בקשת השיוך ל${playerName}`
+      : `${fromAgentName} דחה את בקשת השיוך ל${playerName}`;
     const notificationType = isApproved ? "AGENT_TRANSFER_APPROVED" : "AGENT_TRANSFER_REJECTED";
 
     const payload = {
