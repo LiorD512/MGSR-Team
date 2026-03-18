@@ -401,6 +401,29 @@ fun DashboardScreen(
             }
 
             val platformLazyState = rememberLazyListState()
+
+            // ── Pending Agent Transfers (computed before LazyColumn) ──
+            val account = state.currentUserAccount
+            val accountId = account?.id
+            val accountName = account?.name?.trim()?.lowercase()
+            val accountNameHe = account?.hebrewName?.trim()?.lowercase()
+            val authUid = remember { com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid }
+
+            val toApprove = remember(state.pendingTransfers, accountId, authUid, accountName, accountNameHe) {
+                state.pendingTransfers.filter { tr ->
+                    tr.fromAgentId == accountId || tr.fromAgentId == authUid ||
+                        (!accountName.isNullOrEmpty() && tr.fromAgentName?.trim()?.lowercase() == accountName) ||
+                        (!accountNameHe.isNullOrEmpty() && tr.fromAgentName?.trim()?.lowercase() == accountNameHe)
+                }
+            }
+            val waitingApproval = remember(state.pendingTransfers, accountId, authUid, accountName, accountNameHe) {
+                state.pendingTransfers.filter { tr ->
+                    tr.toAgentId == accountId || tr.toAgentId == authUid ||
+                        (!accountName.isNullOrEmpty() && tr.toAgentName?.trim()?.lowercase() == accountName) ||
+                        (!accountNameHe.isNullOrEmpty() && tr.toAgentName?.trim()?.lowercase() == accountNameHe)
+                }
+            }
+
             LaunchedEffect(state.myAgentOverview) {
                 state.myAgentOverview?.let { overview ->
                     WidgetUpdateHelper.syncToWidget(context, overview)
@@ -433,27 +456,6 @@ fun DashboardScreen(
                     contentPadding = PaddingValues(bottom = 64.dp)
                 ) {
                     // ── Pending Agent Transfers ───────────────────────────
-                    val account = state.currentUserAccount
-                    val accountId = account?.id
-                    val accountName = account?.name?.trim()?.lowercase()
-                    val accountNameHe = account?.hebrewName?.trim()?.lowercase()
-                    val authUid = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid
-
-                    val toApprove = remember(state.pendingTransfers, accountId, authUid, accountName, accountNameHe) {
-                        state.pendingTransfers.filter { tr ->
-                            tr.fromAgentId == accountId || tr.fromAgentId == authUid ||
-                                (!accountName.isNullOrEmpty() && tr.fromAgentName?.trim()?.lowercase() == accountName) ||
-                                (!accountNameHe.isNullOrEmpty() && tr.fromAgentName?.trim()?.lowercase() == accountNameHe)
-                        }
-                    }
-                    val waitingApproval = remember(state.pendingTransfers, accountId, authUid, accountName, accountNameHe) {
-                        state.pendingTransfers.filter { tr ->
-                            tr.toAgentId == accountId || tr.toAgentId == authUid ||
-                                (!accountName.isNullOrEmpty() && tr.toAgentName?.trim()?.lowercase() == accountName) ||
-                                (!accountNameHe.isNullOrEmpty() && tr.toAgentName?.trim()?.lowercase() == accountNameHe)
-                        }
-                    }
-
                     if (toApprove.isNotEmpty() || waitingApproval.isNotEmpty()) {
                         item {
                             PendingTransfersSection(
