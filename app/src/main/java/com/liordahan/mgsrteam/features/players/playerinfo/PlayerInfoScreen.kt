@@ -4076,6 +4076,16 @@ private fun AgentTransferSection(
             nameMatch
     )
 
+    android.util.Log.d("MGSR_Transfer", "AgentTransferSection: " +
+            "currentUserAccountId=$currentUserAccountId, " +
+            "currentUserAuthUid=$currentUserAuthUid, " +
+            "currentUserAccountName=$currentUserAccountName, " +
+            "currentUserAccountHebrewName=$currentUserAccountHebrewName, " +
+            "player.agentInChargeId=${player.agentInChargeId}, " +
+            "player.agentInChargeName=${player.agentInChargeName}, " +
+            "hasAgent=$hasAgent, nameMatch=$nameMatch, isCurrentUserAgent=$isCurrentUserAgent, " +
+            "pendingTransfer=${pendingTransfer?.status}")
+
     Column(modifier = modifier) {
         when {
             // Current user IS the agent in charge and there's a pending request TO review
