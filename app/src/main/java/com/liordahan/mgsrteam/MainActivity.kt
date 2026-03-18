@@ -149,6 +149,7 @@ class MainActivity : AppCompatActivity() {
         // Handle notification tap — action or type determines destination
         val notificationAction = intent.getStringExtra(com.liordahan.mgsrteam.firebase.MgsrFirebaseMessagingService.EXTRA_NOTIFICATION_ACTION)
         val dataType = intent.getStringExtra("type")
+        val notificationPlayerId = intent.getStringExtra(com.liordahan.mgsrteam.firebase.MgsrFirebaseMessagingService.EXTRA_PLAYER_ID)
         val playerTmProfile = intent.getStringExtra(com.liordahan.mgsrteam.firebase.MgsrFirebaseMessagingService.EXTRA_PLAYER_TM_PROFILE)?.takeIf { it.isNotBlank() }
         playerTmProfile?.let { url ->
             when {
@@ -165,6 +166,14 @@ class MainActivity : AppCompatActivity() {
                     PendingShareHolder.setPendingAddPlayerTmUrl(url)
                 }
             }
+            return
+        }
+
+        // Handle notification with playerId but no TM profile (e.g. agent transfer notifications)
+        if (!notificationPlayerId.isNullOrBlank() && dataType != null) {
+            intent.removeExtra(com.liordahan.mgsrteam.firebase.MgsrFirebaseMessagingService.EXTRA_PLAYER_ID)
+            viewModel.setPendingDeepLinkPlayerId(notificationPlayerId)
+            return
         }
 
         // Handle Share (ACTION_SEND) or VIEW intent — extract Transfermarkt URL from all sources.
