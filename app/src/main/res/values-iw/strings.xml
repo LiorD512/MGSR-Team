@@ -1429,7 +1429,7 @@
     <string name="notification_transfer_rejected_body">בקשת ההעברה שלך עבור %s נדחתה</string>
     <string name="agent_transfer_resolved_approved">השיוך אושר בהצלחה</string>
     <string name="agent_transfer_resolved_rejected">בקשת השיוך נדחתה</string>
-    <string name="agent_transfer_resolved_approved_desc">%1$s אישר ל%2$s</string>
+    <string name="agent_transfer_resolved_approved_desc">%1$s אישר ל %2$s</string>
     <string name="agent_transfer_resolved_rejected_desc">%1$s דחה את הבקשה של %2$s</string>
     <string name="logout_confirm_title">התנתקות</string>
     <string name="logout_confirm_message">האם אתה בטוח שברצונך להתנתק?</string>
