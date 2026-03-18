@@ -842,7 +842,7 @@ private fun GreetingHeader(
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.Top
+            verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
@@ -854,8 +854,16 @@ private fun GreetingHeader(
                     style = boldTextStyle(HomeTextPrimary, 26.sp)
                 )
             }
-            // ── Language flag button ─────────────────────────────────
 
+            Text(
+                text = stringResource(R.string.logout_confirm_title),
+                style = boldTextStyle(HomeTealAccent, 13.sp),
+                modifier = Modifier.clickWithNoRipple { showLogoutConfirm = true }
+            )
+
+            Spacer(Modifier.width(8.dp))
+
+            // ── Language flag button ─────────────────────────────────
             Image(
                 painter = painterResource(
                     if (isHebrew) R.drawable.use_flag else R.drawable.israel_flag
@@ -866,18 +874,6 @@ private fun GreetingHeader(
                     .clip(CircleShape)
                     .clickWithNoRipple { onLanguageClick() },
                 contentScale = ContentScale.Fit
-            )
-
-            Spacer(Modifier.width(8.dp))
-
-            // ── Logout button ────────────────────────────────────────
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.ExitToApp,
-                contentDescription = stringResource(R.string.logout_button_cd),
-                tint = HomeTextSecondary,
-                modifier = Modifier
-                    .size(28.dp)
-                    .clickWithNoRipple { showLogoutConfirm = true }
             )
         }
 
