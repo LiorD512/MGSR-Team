@@ -1438,6 +1438,11 @@
     <string name="agent_transfer_resolved_rejected">Assignment request declined</string>
     <string name="agent_transfer_resolved_approved_desc">%1$s approved transfer to %2$s</string>
     <string name="agent_transfer_resolved_rejected_desc">%1$s declined request from %2$s</string>
+    <string name="dashboard_pending_transfers_title">Players Pending Assignment</string>
+    <string name="dashboard_transfer_requests_assign">%s requests to assign this player</string>
+    <string name="dashboard_transfer_waiting_approval">Waiting for %s approval</string>
+    <string name="dashboard_transfer_needs_approval">Needs Approval</string>
+    <string name="dashboard_transfer_waiting">Waiting</string>
     <string name="logout_confirm_title">Logout</string>
     <string name="logout_confirm_message">Are you sure you want to log out?</string>
     <string name="logout_confirm_yes">Logout</string>

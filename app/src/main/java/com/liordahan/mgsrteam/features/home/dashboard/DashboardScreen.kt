@@ -432,6 +432,42 @@ fun DashboardScreen(
                         .weight(1f),
                     contentPadding = PaddingValues(bottom = 64.dp)
                 ) {
+                    // ── Pending Agent Transfers ───────────────────────────
+                    val account = state.currentUserAccount
+                    val accountId = account?.id
+                    val accountName = account?.name?.trim()?.lowercase()
+                    val accountNameHe = account?.hebrewName?.trim()?.lowercase()
+                    val authUid = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid
+
+                    val toApprove = remember(state.pendingTransfers, accountId, authUid, accountName, accountNameHe) {
+                        state.pendingTransfers.filter { tr ->
+                            tr.fromAgentId == accountId || tr.fromAgentId == authUid ||
+                                (!accountName.isNullOrEmpty() && tr.fromAgentName?.trim()?.lowercase() == accountName) ||
+                                (!accountNameHe.isNullOrEmpty() && tr.fromAgentName?.trim()?.lowercase() == accountNameHe)
+                        }
+                    }
+                    val waitingApproval = remember(state.pendingTransfers, accountId, authUid, accountName, accountNameHe) {
+                        state.pendingTransfers.filter { tr ->
+                            tr.toAgentId == accountId || tr.toAgentId == authUid ||
+                                (!accountName.isNullOrEmpty() && tr.toAgentName?.trim()?.lowercase() == accountName) ||
+                                (!accountNameHe.isNullOrEmpty() && tr.toAgentName?.trim()?.lowercase() == accountNameHe)
+                        }
+                    }
+
+                    if (toApprove.isNotEmpty() || waitingApproval.isNotEmpty()) {
+                        item {
+                            PendingTransfersSection(
+                                toApprove = toApprove,
+                                waitingApproval = waitingApproval,
+                                onNavigateToPlayer = { playerId ->
+                                    navController.navigate(
+                                        "${Screens.PlayerInfoScreen.route}/${android.net.Uri.encode(playerId)}"
+                                    )
+                                }
+                            )
+                        }
+                    }
+
                     // ── My Agent Hub ───────────────────────────────────
                     item {
                         val overview = state.myAgentOverview
@@ -3485,6 +3521,176 @@ private fun DocumentRemindersSection(reminders: List<DocumentReminder>) {
                     modifier = Modifier.weight(1f)
                 )
             }
+        }
+    }
+}
+
+// ── Pending Agent Transfers Section ──────────────────────────────────────────
+
+@Composable
+private fun PendingTransfersSection(
+    toApprove: List<com.liordahan.mgsrteam.features.players.playerinfo.agenttransfer.AgentTransferRequest>,
+    waitingApproval: List<com.liordahan.mgsrteam.features.players.playerinfo.agenttransfer.AgentTransferRequest>,
+    onNavigateToPlayer: (String) -> Unit
+) {
+    val amberColor = Color(0xFFF59E0B)
+    val emeraldColor = Color(0xFF10B981)
+    val totalCount = toApprove.size + waitingApproval.size
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = HomeDarkCard),
+        border = androidx.compose.foundation.BorderStroke(1.dp, amberColor.copy(alpha = 0.20f))
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            // Header with count badge
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .background(
+                            color = amberColor.copy(alpha = 0.15f),
+                            shape = RoundedCornerShape(8.dp)
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.SwapHoriz,
+                        contentDescription = null,
+                        tint = amberColor,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+                Spacer(Modifier.width(12.dp))
+                Text(
+                    text = stringResource(R.string.dashboard_pending_transfers_title),
+                    style = boldTextStyle(Color.White, 15.sp),
+                    modifier = Modifier.weight(1f)
+                )
+                Box(
+                    modifier = Modifier
+                        .background(
+                            color = amberColor.copy(alpha = 0.20f),
+                            shape = RoundedCornerShape(12.dp)
+                        )
+                        .padding(horizontal = 10.dp, vertical = 4.dp)
+                ) {
+                    Text(
+                        text = "$totalCount",
+                        style = boldTextStyle(amberColor, 11.sp)
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(14.dp))
+
+            // "Needs Approval" items (toApprove — emerald accented)
+            toApprove.forEach { tr ->
+                PendingTransferRow(
+                    playerName = tr.playerName ?: "—",
+                    playerImage = tr.playerImage,
+                    subtitle = stringResource(R.string.dashboard_transfer_requests_assign, tr.toAgentName ?: ""),
+                    badgeText = stringResource(R.string.dashboard_transfer_needs_approval),
+                    badgeColor = emeraldColor,
+                    onClick = { tr.playerId?.let { onNavigateToPlayer(it) } }
+                )
+                Spacer(Modifier.height(8.dp))
+            }
+
+            // "Waiting" items (waitingApproval — amber accented)
+            waitingApproval.forEach { tr ->
+                PendingTransferRow(
+                    playerName = tr.playerName ?: "—",
+                    playerImage = tr.playerImage,
+                    subtitle = stringResource(R.string.dashboard_transfer_waiting_approval, tr.fromAgentName ?: ""),
+                    badgeText = stringResource(R.string.dashboard_transfer_waiting),
+                    badgeColor = amberColor,
+                    onClick = { tr.playerId?.let { onNavigateToPlayer(it) } }
+                )
+                if (tr != waitingApproval.last()) Spacer(Modifier.height(8.dp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun PendingTransferRow(
+    playerName: String,
+    playerImage: String?,
+    subtitle: String,
+    badgeText: String,
+    badgeColor: Color,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(HomeDarkBackground.copy(alpha = 0.5f))
+            .border(
+                width = 1.dp,
+                color = badgeColor.copy(alpha = 0.25f),
+                shape = RoundedCornerShape(12.dp)
+            )
+            .clickable(onClick = onClick)
+            .padding(12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Player image or fallback
+        if (!playerImage.isNullOrEmpty()) {
+            AsyncImage(
+                model = playerImage,
+                contentDescription = playerName,
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(HomeDarkCard),
+                contentScale = ContentScale.Crop
+            )
+        } else {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .background(badgeColor.copy(alpha = 0.12f), CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(text = "⚽", fontSize = 18.sp)
+            }
+        }
+        Spacer(Modifier.width(12.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = playerName,
+                style = boldTextStyle(Color.White, 14.sp),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                text = subtitle,
+                style = regularTextStyle(HomeTextSecondary.copy(alpha = 0.7f), 12.sp),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+        Spacer(Modifier.width(8.dp))
+        Box(
+            modifier = Modifier
+                .background(
+                    color = badgeColor.copy(alpha = 0.15f),
+                    shape = RoundedCornerShape(8.dp)
+                )
+                .padding(horizontal = 8.dp, vertical = 4.dp)
+        ) {
+            Text(
+                text = badgeText,
+                style = boldTextStyle(badgeColor, 10.sp)
+            )
         }
     }
 }

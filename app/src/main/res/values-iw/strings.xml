@@ -1431,6 +1431,11 @@
     <string name="agent_transfer_resolved_rejected">בקשת השיוך נדחתה</string>
     <string name="agent_transfer_resolved_approved_desc">%1$s אישר ל %2$s</string>
     <string name="agent_transfer_resolved_rejected_desc">%1$s דחה את הבקשה של %2$s</string>
+    <string name="dashboard_pending_transfers_title">שחקנים ממתינים לשיוך</string>
+    <string name="dashboard_transfer_requests_assign">%s מבקש לשייך את השחקן</string>
+    <string name="dashboard_transfer_waiting_approval">ממתין לאישור של %s</string>
+    <string name="dashboard_transfer_needs_approval">דורש אישורך</string>
+    <string name="dashboard_transfer_waiting">ממתין</string>
     <string name="logout_confirm_title">התנתקות</string>
     <string name="logout_confirm_message">האם אתה בטוח שברצונך להתנתק?</string>
     <string name="logout_confirm_yes">התנתק</string>

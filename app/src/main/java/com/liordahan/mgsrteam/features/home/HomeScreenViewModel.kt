@@ -84,6 +84,9 @@ data class HomeDashboardState(
     val expandedConfederations: Set<Confederation> = setOf(Confederation.PRIORITY),
     val transferWindowsLoading: Boolean = false,
 
+    // pending agent transfers
+    val pendingTransfers: List<com.liordahan.mgsrteam.features.players.playerinfo.agenttransfer.AgentTransferRequest> = emptyList(),
+
     // loading
     val isLoading: Boolean = true
 )
@@ -149,6 +152,7 @@ class HomeScreenViewModel(
         listenToRequests()
         loadFeedEvents()
         listenToAgentTasks()
+        listenToPendingTransfers()
         loadTransferWindowsDeferred()
         ensureLoadingClearedWithinTimeout()
     }
@@ -181,6 +185,7 @@ class HomeScreenViewModel(
         listenToRequests()
         loadFeedEvents()
         listenToAgentTasks()
+        listenToPendingTransfers()
         ensureLoadingClearedWithinTimeout()
     }
 
@@ -379,6 +384,22 @@ class HomeScreenViewModel(
                 if (snapshot == null) return@addSnapshotListener
                 val count = snapshot.size()
                 _state.update { it.copy(requestsCount = count) }
+            }
+        listenerRegistrations.add(reg)
+    }
+
+    // ── Pending agent transfers ──────────────────────────────────────────────
+
+    private fun listenToPendingTransfers() {
+        val reg = firebaseHandler.firebaseStore
+            .collection(com.liordahan.mgsrteam.features.players.playerinfo.agenttransfer.AgentTransferRequest.COLLECTION)
+            .whereEqualTo("status", com.liordahan.mgsrteam.features.players.playerinfo.agenttransfer.AgentTransferRequest.STATUS_PENDING)
+            .addSnapshotListener { snapshot, _ ->
+                if (snapshot == null) return@addSnapshotListener
+                val transfers = snapshot.toObjects(
+                    com.liordahan.mgsrteam.features.players.playerinfo.agenttransfer.AgentTransferRequest::class.java
+                )
+                _state.update { it.copy(pendingTransfers = transfers) }
             }
         listenerRegistrations.add(reg)
     }
