@@ -73,18 +73,25 @@ export async function approveTransfer(
   const requestRef = doc(db, COLLECTION, requestId);
 
   await runTransaction(db, async (transaction) => {
+    // All reads MUST come before any writes in Firestore transactions
     const snap = await transaction.get(requestRef);
     if (!snap.exists()) return;
     const data = snap.data() as AgentTransferRequest;
 
+    let playerSnap = null;
+    let playerRef = null;
+    if (data.playerId) {
+      playerRef = doc(db, playersCollection, data.playerId);
+      playerSnap = await transaction.get(playerRef);
+    }
+
+    // Now do all writes
     transaction.update(requestRef, {
       status: STATUS_APPROVED,
       resolvedAt: Date.now(),
     });
 
-    if (data.playerId) {
-      const playerRef = doc(db, playersCollection, data.playerId);
-      const playerSnap = await transaction.get(playerRef);
+    if (playerRef && playerSnap) {
       const playerData = playerSnap.data() || {};
 
       const updates: Record<string, unknown> = {
@@ -93,7 +100,6 @@ export async function approveTransfer(
         agentTransferredAt: Date.now(),
       };
 
-      // Preserve original agent info on first transfer
       if (!playerData.originalAgentId) {
         updates.originalAgentId = playerData.agentInChargeId ?? null;
         updates.originalAgentName = playerData.agentInChargeName ?? null;
