@@ -53,30 +53,31 @@ class AgentTransferRepository(
     }
 
     /**
-     * Approves a transfer request:
-     * 1. Updates the request status to "approved"
-     * 2. Updates the player's agentInChargeId and agentInChargeName
+     * Approves a transfer request inside a single Firestore transaction:
+     * 1. Reads the request doc + player doc (all reads first)
+     * 2. Updates request status to "approved"
+     * 3. Updates the player's agent fields
      */
     suspend fun approveTransfer(
         requestId: String,
         playersCollection: String
     ) {
         val requestRef = firebaseStore.collection(COLLECTION).document(requestId)
-        val snapshot = requestRef.get().await()
-        val request = snapshot.toObject(AgentTransferRequest::class.java) ?: return
 
         firebaseStore.runTransaction { transaction ->
-            // Update request status
+            // ── All reads first ──
+            val requestSnap = transaction.get(requestRef)
+            val request = requestSnap.toObject(AgentTransferRequest::class.java) ?: return@runTransaction
+
+            val playerId = request.playerId ?: return@runTransaction
+            val playerRef = firebaseStore.collection(playersCollection).document(playerId)
+            val playerSnap = transaction.get(playerRef)
+
+            // ── Now all writes ──
             transaction.update(requestRef, mapOf(
                 "status" to STATUS_APPROVED,
                 "resolvedAt" to System.currentTimeMillis()
             ))
-
-            // Update the player document
-            val playerId = request.playerId ?: return@runTransaction
-
-            val playerRef = firebaseStore.collection(playersCollection).document(playerId)
-            val playerSnap = transaction.get(playerRef)
 
             val updates = mutableMapOf<String, Any?>(
                 "agentInChargeId" to request.toAgentId,
@@ -140,6 +141,29 @@ class AgentTransferRepository(
                 val request = snapshot?.documents?.firstOrNull()
                     ?.toObject(AgentTransferRequest::class.java)
                 onResult(request)
+            }
+    }
+
+    /**
+     * Listens for the most recent resolved (approved/rejected) transfer request on a player.
+     * Uses a single query on playerId and filters client-side.
+     */
+    fun listenForResolvedTransfer(
+        playerId: String,
+        onResult: (AgentTransferRequest?) -> Unit
+    ): ListenerRegistration {
+        return firebaseStore.collection(COLLECTION)
+            .whereEqualTo("playerId", playerId)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    onResult(null)
+                    return@addSnapshotListener
+                }
+                val latest = snapshot?.documents
+                    ?.mapNotNull { it.toObject(AgentTransferRequest::class.java) }
+                    ?.filter { it.status == STATUS_APPROVED || it.status == STATUS_REJECTED }
+                    ?.maxByOrNull { it.resolvedAt ?: 0L }
+                onResult(latest)
             }
     }
 }

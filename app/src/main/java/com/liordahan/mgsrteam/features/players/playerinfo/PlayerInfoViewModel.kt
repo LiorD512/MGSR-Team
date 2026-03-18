@@ -122,8 +122,11 @@ abstract class IPlayerInfoViewModel : ViewModel() {
 
     // ── Agent Transfer ─────────────────────────────────────────────
     abstract val pendingTransferFlow: StateFlow<com.liordahan.mgsrteam.features.players.playerinfo.agenttransfer.AgentTransferRequest?>
+    abstract val resolvedTransferFlow: StateFlow<com.liordahan.mgsrteam.features.players.playerinfo.agenttransfer.AgentTransferRequest?>
     abstract val currentUserAccountFlow: StateFlow<com.liordahan.mgsrteam.features.login.models.Account?>
+    abstract val currentUserAuthUid: String?
     abstract val transferSuccessFlow: SharedFlow<String>
+    abstract val transferLoadingFlow: StateFlow<Boolean>
     abstract fun requestAgentTransfer()
     abstract fun approveTransfer()
     abstract fun rejectTransfer()
@@ -328,13 +331,23 @@ class PlayerInfoViewModel(
     private val _pendingTransferFlow = MutableStateFlow<AgentTransferRequest?>(null)
     override val pendingTransferFlow: StateFlow<AgentTransferRequest?> = _pendingTransferFlow
 
+    private val _resolvedTransferFlow = MutableStateFlow<AgentTransferRequest?>(null)
+    override val resolvedTransferFlow: StateFlow<AgentTransferRequest?> = _resolvedTransferFlow
+
     private val _currentUserAccountFlow = MutableStateFlow<Account?>(null)
     override val currentUserAccountFlow: StateFlow<Account?> = _currentUserAccountFlow
+
+    override val currentUserAuthUid: String?
+        get() = firebaseHandler.firebaseAuth.currentUser?.uid
 
     private val _transferSuccessFlow = MutableSharedFlow<String>()
     override val transferSuccessFlow: SharedFlow<String> = _transferSuccessFlow
 
+    private val _transferLoadingFlow = MutableStateFlow(false)
+    override val transferLoadingFlow: StateFlow<Boolean> = _transferLoadingFlow
+
     private var transferListenerRegistration: com.google.firebase.firestore.ListenerRegistration? = null
+    private var resolvedTransferListenerRegistration: com.google.firebase.firestore.ListenerRegistration? = null
 
     init {
         // Load current user account eagerly for transfer feature
@@ -346,6 +359,7 @@ class PlayerInfoViewModel(
             _playerDocumentIdFlow.collect { docId ->
                 if (docId != null) {
                     startTransferListener(docId)
+                    startResolvedTransferListener(docId)
                 }
             }
         }
@@ -355,6 +369,7 @@ class PlayerInfoViewModel(
         super.onCleared()
         playerListenerRegistration?.remove()
         transferListenerRegistration?.remove()
+        resolvedTransferListenerRegistration?.remove()
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -1249,12 +1264,21 @@ class PlayerInfoViewModel(
         }
     }
 
+    /** Start listening for resolved (approved/rejected) transfer requests. */
+    private fun startResolvedTransferListener(playerId: String) {
+        resolvedTransferListenerRegistration?.remove()
+        resolvedTransferListenerRegistration = agentTransferRepository.listenForResolvedTransfer(playerId) { request ->
+            _resolvedTransferFlow.value = request
+        }
+    }
+
     override fun requestAgentTransfer() {
         viewModelScope.launch {
             val player = _playerInfoFlow.value ?: return@launch
             val docId = _playerDocumentIdFlow.value ?: return@launch
             val currentUser = _currentUserAccountFlow.value ?: getCurrentUserAccount() ?: return@launch
-            val fromAgentId = player.agentInChargeId ?: return@launch
+            // Allow empty fromAgentId — cloud function uses name fallback
+            val fromAgentId = player.agentInChargeId ?: ""
             val fromAgentName = player.agentInChargeName
 
             val platformName = platformManager.current.value.name
@@ -1280,11 +1304,14 @@ class PlayerInfoViewModel(
         viewModelScope.launch {
             val request = _pendingTransferFlow.value ?: return@launch
             val requestId = request.id ?: return@launch
+            _transferLoadingFlow.value = true
             try {
                 agentTransferRepository.approveTransfer(requestId, firebaseHandler.playersTable)
                 _transferSuccessFlow.emit("transfer_approved")
             } catch (e: Exception) {
                 Log.e(TAG, "approveTransfer failed", e)
+            } finally {
+                _transferLoadingFlow.value = false
             }
         }
     }
@@ -1293,11 +1320,14 @@ class PlayerInfoViewModel(
         viewModelScope.launch {
             val request = _pendingTransferFlow.value ?: return@launch
             val requestId = request.id ?: return@launch
+            _transferLoadingFlow.value = true
             try {
                 agentTransferRepository.rejectTransfer(requestId)
                 _transferSuccessFlow.emit("transfer_rejected")
             } catch (e: Exception) {
                 Log.e(TAG, "rejectTransfer failed", e)
+            } finally {
+                _transferLoadingFlow.value = false
             }
         }
     }

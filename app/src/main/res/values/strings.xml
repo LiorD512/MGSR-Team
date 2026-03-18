@@ -1434,4 +1434,8 @@
     <string name="notification_transfer_approved_body">You are now the agent in charge of %s</string>
     <string name="notification_transfer_rejected_title">Transfer Rejected</string>
     <string name="notification_transfer_rejected_body">Your transfer request for %s was rejected</string>
+    <string name="agent_transfer_resolved_approved">Player successfully assigned</string>
+    <string name="agent_transfer_resolved_rejected">Assignment request declined</string>
+    <string name="agent_transfer_resolved_approved_desc">%1$s approved transfer to %2$s</string>
+    <string name="agent_transfer_resolved_rejected_desc">%1$s declined request from %2$s</string>
 </resources>

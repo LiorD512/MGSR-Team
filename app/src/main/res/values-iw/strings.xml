@@ -1427,4 +1427,8 @@
     <string name="notification_transfer_approved_body">אתה כעת הסוכן האחראי על %s</string>
     <string name="notification_transfer_rejected_title">העברה נדחתה</string>
     <string name="notification_transfer_rejected_body">בקשת ההעברה שלך עבור %s נדחתה</string>
+    <string name="agent_transfer_resolved_approved">השיוך אושר בהצלחה</string>
+    <string name="agent_transfer_resolved_rejected">בקשת השיוך נדחתה</string>
+    <string name="agent_transfer_resolved_approved_desc">%1$s אישר ל%2$s</string>
+    <string name="agent_transfer_resolved_rejected_desc">%1$s דחה את הבקשה של %2$s</string>
 </resources>
