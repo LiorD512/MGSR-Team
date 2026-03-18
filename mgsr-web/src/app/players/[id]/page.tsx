@@ -24,7 +24,7 @@ import MatchingRequestsSection from '@/components/MatchingRequestsSection';
 import ProposalHistorySection, { type ProposalOffer } from '@/components/ProposalHistorySection';
 import { matchingRequestsForPlayer, type RosterPlayer, type ClubRequest } from '@/lib/requestMatcher';
 import AgentTransferSection from '@/components/AgentTransferSection';
-import { type AgentTransferRequest, listenForPendingRequest, requestAgentTransfer, approveTransfer, rejectTransfer, cancelTransferRequest } from '@/lib/agentTransfer';
+import { type AgentTransferRequest, listenForPendingRequest, listenForResolvedTransfer, requestAgentTransfer, approveTransfer, rejectTransfer, cancelTransferRequest } from '@/lib/agentTransfer';
 import { useEuCountries, isEuNational } from '@/hooks/useEuCountries';
 import {
   LineChart,
@@ -303,6 +303,8 @@ export default function PlayerInfoPage() {
   const [clubRequests, setClubRequests] = useState<(ClubRequest & { status?: string; clubName?: string; clubLogo?: string; clubCountry?: string; contactPhoneNumber?: string })[]>([]);
   const [playerOffers, setPlayerOffers] = useState<{ id: string; requestId?: string; clubFeedback?: string; offeredAt?: number; markedByAgentName?: string; [key: string]: unknown }[]>([]);
   const [pendingTransfer, setPendingTransfer] = useState<AgentTransferRequest | null>(null);
+  const [resolvedTransfer, setResolvedTransfer] = useState<AgentTransferRequest | null>(null);
+  const [resolvedDismissed, setResolvedDismissed] = useState(false);
 
   // Reset transfer state when player changes
   useEffect(() => {
@@ -448,6 +450,14 @@ export default function PlayerInfoPage() {
   useEffect(() => {
     if (!id) return;
     const unsub = listenForPendingRequest(id, setPendingTransfer);
+    return () => unsub();
+  }, [id]);
+
+  // Listen for resolved (approved/rejected) transfer requests
+  useEffect(() => {
+    if (!id) return;
+    setResolvedDismissed(false);
+    const unsub = listenForResolvedTransfer(id, setResolvedTransfer);
     return () => unsub();
   }, [id]);
 
@@ -1659,6 +1669,56 @@ export default function PlayerInfoPage() {
                   resolveAgentName={resolveAgentName}
                   t={t}
                 />
+                {/* Resolved transfer indication */}
+                {resolvedTransfer && !resolvedDismissed && (
+                  <div className={`mt-3 p-3 rounded-xl border flex items-start gap-3 ${
+                    resolvedTransfer.status === 'approved'
+                      ? 'bg-emerald-500/10 border-emerald-500/25'
+                      : 'bg-red-500/10 border-red-500/25'
+                  }`}>
+                    <div className={`w-7 h-7 rounded-full shrink-0 flex items-center justify-center mt-0.5 ${
+                      resolvedTransfer.status === 'approved'
+                        ? 'bg-emerald-500/20 text-emerald-400'
+                        : 'bg-red-500/20 text-red-400'
+                    }`}>
+                      {resolvedTransfer.status === 'approved' ? (
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
+                      ) : (
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-sm font-semibold ${
+                        resolvedTransfer.status === 'approved' ? 'text-emerald-400' : 'text-red-400'
+                      }`}>
+                        {resolvedTransfer.status === 'approved'
+                          ? (isRtl ? 'השיוך אושר בהצלחה' : 'Player successfully assigned')
+                          : (isRtl ? 'בקשת השיוך נדחתה' : 'Assignment request declined')}
+                      </p>
+                      <p className="text-xs text-mgsr-muted/70 mt-0.5">
+                        {resolvedTransfer.status === 'approved'
+                          ? (isRtl
+                              ? `${resolvedTransfer.fromAgentName || ''} אישר ל${resolvedTransfer.toAgentName || ''}`
+                              : `${resolvedTransfer.fromAgentName || ''} approved transfer to ${resolvedTransfer.toAgentName || ''}`)
+                          : (isRtl
+                              ? `${resolvedTransfer.fromAgentName || ''} דחה את הבקשה של ${resolvedTransfer.toAgentName || ''}`
+                              : `${resolvedTransfer.fromAgentName || ''} declined request from ${resolvedTransfer.toAgentName || ''}`)}
+                      </p>
+                      {resolvedTransfer.resolvedAt && (
+                        <p className="text-[0.65rem] text-mgsr-muted/50 font-mono mt-1">
+                          {new Date(resolvedTransfer.resolvedAt).toLocaleDateString(isRtl ? 'he-IL' : 'en-US', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                        </p>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setResolvedDismissed(true)}
+                      className="text-mgsr-muted/40 hover:text-mgsr-muted transition-colors shrink-0 mt-0.5"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 
