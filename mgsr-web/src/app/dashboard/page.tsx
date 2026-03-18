@@ -817,11 +817,14 @@ export default function DashboardPage() {
     if (!user || !pendingTransfers.length) return { toApprove: [] as typeof pendingTransfers, waitingApproval: [] as typeof pendingTransfers };
     const authUid = user.uid;
     const accountId = currentAccount?.id;
+    const accountName = currentAccount?.name?.trim().toLowerCase();
     const toApprove = pendingTransfers.filter(
-      (tr) => tr.fromAgentId === authUid || tr.fromAgentId === accountId
+      (tr) => tr.fromAgentId === authUid || tr.fromAgentId === accountId ||
+        (accountName && tr.fromAgentName?.trim().toLowerCase() === accountName)
     );
     const waitingApproval = pendingTransfers.filter(
-      (tr) => tr.toAgentId === authUid || tr.toAgentId === accountId
+      (tr) => tr.toAgentId === authUid || tr.toAgentId === accountId ||
+        (accountName && tr.toAgentName?.trim().toLowerCase() === accountName)
     );
     return { toApprove, waitingApproval };
   }, [user, currentAccount, pendingTransfers]);

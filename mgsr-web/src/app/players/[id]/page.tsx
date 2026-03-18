@@ -1601,6 +1601,7 @@ export default function PlayerInfoPage() {
                   pendingTransfer={pendingTransfer}
                   currentUserAccountId={currentUserAccountId}
                   currentUserAuthUid={user?.uid}
+                  currentUserAccountName={currentUserAccountName}
                   onRequestTransfer={handleRequestTransfer}
                   onApproveTransfer={handleApproveTransfer}
                   onRejectTransfer={handleRejectTransfer}

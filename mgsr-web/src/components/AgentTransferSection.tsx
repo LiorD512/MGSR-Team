@@ -8,6 +8,7 @@ interface AgentTransferSectionProps {
   pendingTransfer: AgentTransferRequest | null;
   currentUserAccountId: string | undefined;
   currentUserAuthUid: string | undefined;
+  currentUserAccountName: string | undefined;
   onRequestTransfer: () => void;
   onApproveTransfer: () => void;
   onRejectTransfer: () => void;
@@ -21,6 +22,7 @@ export default function AgentTransferSection({
   pendingTransfer,
   currentUserAccountId,
   currentUserAuthUid,
+  currentUserAccountName,
   onRequestTransfer,
   onApproveTransfer,
   onRejectTransfer,
@@ -30,10 +32,14 @@ export default function AgentTransferSection({
 }: AgentTransferSectionProps) {
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 
-  // agentInChargeId stores Auth UID, so compare with both Auth UID and Account doc ID
+  // agentInChargeId stores Auth UID, so compare with both Auth UID and Account doc ID.
+  // Fallback: also match by name in case the Auth UID was orphaned (deleted/recreated account).
   const isCurrentUserAgent =
     !!player.agentInChargeId &&
-    (player.agentInChargeId === currentUserAuthUid || player.agentInChargeId === currentUserAccountId);
+    (player.agentInChargeId === currentUserAuthUid ||
+     player.agentInChargeId === currentUserAccountId ||
+     (!!currentUserAccountName && !!player.agentInChargeName &&
+      currentUserAccountName.trim().toLowerCase() === player.agentInChargeName.trim().toLowerCase()));
 
   // Current user IS the agent and there's a pending transfer TO review
   if (pendingTransfer && isCurrentUserAgent) {
@@ -66,7 +72,11 @@ export default function AgentTransferSection({
   }
 
   // Current user requested a transfer — show pending/waiting state
-  if (pendingTransfer && pendingTransfer.toAgentId === currentUserAccountId) {
+  if (pendingTransfer &&
+    (pendingTransfer.toAgentId === currentUserAccountId ||
+     pendingTransfer.toAgentId === currentUserAuthUid ||
+     (!!currentUserAccountName && !!pendingTransfer.toAgentName &&
+      currentUserAccountName.trim().toLowerCase() === pendingTransfer.toAgentName.trim().toLowerCase()))) {
     const currentAgentName = resolveAgentName(pendingTransfer.fromAgentName, pendingTransfer.fromAgentId);
     return (
       <div className="mt-3 p-4 rounded-xl border border-yellow-500/25 bg-yellow-500/8">
