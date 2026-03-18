@@ -1,4 +1,4 @@
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, doc, getDocs, updateDoc } from 'firebase/firestore';
 import { db } from './firebase';
 import type { User } from 'firebase/auth';
 
@@ -60,4 +60,9 @@ export async function getAllAccounts(): Promise<AccountForShortlist[]> {
       phone: (data.phone as string)?.trim() || undefined,
     };
   });
+}
+
+/** Save the user's language preference to their Account doc in Firestore. */
+export async function saveAccountLanguage(accountId: string, language: string): Promise<void> {
+  await updateDoc(doc(db, 'Accounts', accountId), { language });
 }

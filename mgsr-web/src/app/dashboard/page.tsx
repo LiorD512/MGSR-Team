@@ -38,6 +38,7 @@ import { usePlatform } from '@/contexts/PlatformContext';
 import { PlatformSwitcher } from '@/components/PlatformSwitcher';
 import { subscribePlayersWomen, type WomanPlayer } from '@/lib/playersWomen';
 import { subscribePlayersYouth, type YouthPlayer } from '@/lib/playersYouth';
+import { saveAccountLanguage } from '@/lib/accounts';
 import {
   FEED_EVENTS_COLLECTIONS,
   PLAYERS_COLLECTIONS,
@@ -344,6 +345,12 @@ export default function DashboardPage() {
     });
     return () => unsub();
   }, [user]);
+
+  // Sync language preference to Account doc in Firestore
+  useEffect(() => {
+    if (!currentAccount?.id) return;
+    saveAccountLanguage(currentAccount.id, lang).catch(() => {});
+  }, [lang, currentAccount?.id]);
 
   // Listen for pending agent transfer requests relevant to current user
   useEffect(() => {

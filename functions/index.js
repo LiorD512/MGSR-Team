@@ -633,20 +633,20 @@ const TRANSFER_COLLECTION = "AgentTransferRequests";
  * agentInChargeId may be a Firebase Auth UID rather than an Account doc ID.
  */
 async function resolveAccount(agentId, agentName) {
-  if (!agentId) return null;
+  if (agentId) {
+    // 1. Try by doc ID
+    const byDoc = await db.collection(ACCOUNTS_COLLECTION).doc(agentId).get();
+    if (byDoc.exists) return { accountId: byDoc.id, accountData: byDoc.data() };
 
-  // 1. Try by doc ID
-  const byDoc = await db.collection(ACCOUNTS_COLLECTION).doc(agentId).get();
-  if (byDoc.exists) return { accountId: byDoc.id, accountData: byDoc.data() };
-
-  // 2. Try by uid field (some Account docs may store the auth UID)
-  const byUid = await db.collection(ACCOUNTS_COLLECTION).where("uid", "==", agentId).limit(1).get();
-  if (!byUid.empty) {
-    const d = byUid.docs[0];
-    return { accountId: d.id, accountData: d.data() };
+    // 2. Try by uid field (some Account docs may store the auth UID)
+    const byUid = await db.collection(ACCOUNTS_COLLECTION).where("uid", "==", agentId).limit(1).get();
+    if (!byUid.empty) {
+      const d = byUid.docs[0];
+      return { accountId: d.id, accountData: d.data() };
+    }
   }
 
-  // 3. Fallback: match by name (case-insensitive)
+  // 3. Fallback: match by name (works even when agentId is empty/null)
   if (agentName) {
     const all = await db.collection(ACCOUNTS_COLLECTION).get();
     for (const d of all.docs) {
@@ -693,8 +693,13 @@ exports.onAgentTransferRequest = onDocumentCreated(
       return;
     }
 
-    const notifTitle = "Agent Transfer Request";
-    const notifBody = `${toAgentName} wants to take over as agent for ${playerName}`;
+    const lang = accountData.language || "he";
+    const notifTitle = lang === "he"
+      ? "בקשת שיוך שחקן חדשה"
+      : "New Agent Transfer Request";
+    const notifBody = lang === "he"
+      ? `${toAgentName} מבקש לקבל את השיוך ל${playerName}`
+      : `${toAgentName} wants to take over as agent for ${playerName}`;
 
     const payload = {
       notification: { title: notifTitle, body: notifBody },
@@ -722,7 +727,7 @@ exports.onAgentTransferRequest = onDocumentCreated(
 
     try {
       await sendToAllTokens(accountId, accountData, payload);
-      console.log(`[onAgentTransferRequest] Notification sent to ${accountId}: ${toAgentName} → ${playerName}`);
+      console.log(`[onAgentTransferRequest] Notification sent to ${accountId} (lang=${lang}): ${toAgentName} → ${playerName}`);
     } catch (err) {
       console.error("[onAgentTransferRequest] FCM error:", err);
     }
@@ -764,11 +769,21 @@ exports.onAgentTransferResolved = onDocumentUpdated(
       return;
     }
 
-    const notifTitle = isApproved ? "בקשת שיוך אושרה ✓" : "בקשת שיוך נדחתה ✕";
-    const notifBody = isApproved
-      ? `${fromAgentName} אישר את בקשת השיוך ל${playerName}`
-      : `${fromAgentName} דחה את בקשת השיוך ל${playerName}`;
+    const lang = accountData.language || "he";
     const notificationType = isApproved ? "AGENT_TRANSFER_APPROVED" : "AGENT_TRANSFER_REJECTED";
+
+    let notifTitle, notifBody;
+    if (lang === "he") {
+      notifTitle = isApproved ? "בקשת שיוך אושרה ✓" : "בקשת שיוך נדחתה ✕";
+      notifBody = isApproved
+        ? `${fromAgentName} אישר את בקשת השיוך ל${playerName}`
+        : `${fromAgentName} דחה את בקשת השיוך ל${playerName}`;
+    } else {
+      notifTitle = isApproved ? "Transfer Request Approved ✓" : "Transfer Request Rejected ✕";
+      notifBody = isApproved
+        ? `${fromAgentName} approved the transfer request for ${playerName}`
+        : `${fromAgentName} rejected the transfer request for ${playerName}`;
+    }
 
     const payload = {
       notification: { title: notifTitle, body: notifBody },
@@ -795,7 +810,7 @@ exports.onAgentTransferResolved = onDocumentUpdated(
 
     try {
       await sendToAllTokens(accountId, accountData, payload);
-      console.log(`[onAgentTransferResolved] ${notificationType} notification sent to ${accountId}: ${playerName}`);
+      console.log(`[onAgentTransferResolved] ${notificationType} notification sent to ${accountId} (lang=${lang}): ${playerName}`);
     } catch (err) {
       console.error("[onAgentTransferResolved] FCM error:", err);
     }

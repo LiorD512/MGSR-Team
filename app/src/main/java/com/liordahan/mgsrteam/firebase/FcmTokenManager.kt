@@ -5,6 +5,7 @@ import android.util.Log
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.messaging.FirebaseMessaging
+import com.liordahan.mgsrteam.localization.LocaleManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -78,15 +79,16 @@ class FcmTokenManager(
     private suspend fun saveTokenToFirestore(token: String, email: String?) {
         if (email.isNullOrBlank()) return
         try {
+            val language = LocaleManager.getSavedLanguage(context)
             val snapshot = FirebaseFirestore.getInstance()
                 .collection(firebaseHandler.accountsTable)
                 .whereEqualTo("email", email)
                 .get()
                 .await()
             snapshot.documents.firstOrNull()?.reference
-                ?.update("fcmToken", token)
+                ?.update(mapOf("fcmToken" to token, "language" to language))
                 ?.await()
-            Log.i(TAG, "FCM token saved to Firestore for $email")
+            Log.i(TAG, "FCM token + language ($language) saved to Firestore for $email")
         } catch (e: Exception) {
             Log.w(TAG, "Failed to save token to Firestore: ${e.message}")
         }
