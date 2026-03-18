@@ -1410,4 +1410,28 @@
     <string name="relative_week_ago">a week ago</string>
     <string name="relative_weeks_ago">%d weeks ago</string>
     <string name="relative_months_ago">%d months ago</string>
+
+    <!-- Agent Transfer -->
+    <string name="agent_transfer_request_button">Assign Player to Yourself</string>
+    <string name="agent_transfer_pending_title">Transfer Requested</string>
+    <string name="agent_transfer_pending_desc">Waiting for %s to approve your request…</string>
+    <string name="agent_transfer_cancel">✕ Cancel Request</string>
+    <string name="agent_transfer_approval_title">Transfer Request</string>
+    <string name="agent_transfer_approval_desc">%s requests to manage this player</string>
+    <string name="agent_transfer_approve">✓ Approve</string>
+    <string name="agent_transfer_reject">✕ Reject</string>
+    <string name="agent_transfer_confirm_title">Request Agent Transfer</string>
+    <string name="agent_transfer_confirm_body">You are requesting to become the agent in charge of %1$s. %2$s will be notified and must approve the transfer.</string>
+    <string name="agent_transfer_send_request">Send Request</string>
+    <string name="agent_transfer_request_sent">Transfer request sent</string>
+    <string name="agent_transfer_already_pending">A transfer request is already pending for this player</string>
+    <string name="agent_transfer_approved">Transfer approved! You are now the agent in charge</string>
+    <string name="agent_transfer_rejected">Transfer request rejected</string>
+    <string name="agent_transfer_cancelled">Transfer request cancelled</string>
+    <string name="notification_transfer_request_title">Agent Transfer Request</string>
+    <string name="notification_transfer_request_body">%1$s wants to take over as agent for %2$s</string>
+    <string name="notification_transfer_approved_title">Transfer Approved</string>
+    <string name="notification_transfer_approved_body">You are now the agent in charge of %s</string>
+    <string name="notification_transfer_rejected_title">Transfer Rejected</string>
+    <string name="notification_transfer_rejected_body">Your transfer request for %s was rejected</string>
 </resources>

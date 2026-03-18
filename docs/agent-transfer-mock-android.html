@@ -1,0 +1,1020 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MGSR — Agent Transfer Mock (Android)</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Inter', -apple-system, sans-serif;
+    background: #0a0a0f;
+    color: #e8e8ed;
+    display: flex;
+    justify-content: center;
+    padding: 32px 16px;
+    min-height: 100vh;
+  }
+
+  .page-wrapper {
+    max-width: 1400px;
+    width: 100%;
+  }
+
+  h1 {
+    font-size: 28px;
+    font-weight: 800;
+    text-align: center;
+    margin-bottom: 8px;
+    background: linear-gradient(135deg, #60a5fa, #a78bfa);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .subtitle {
+    text-align: center;
+    color: #888;
+    font-size: 14px;
+    margin-bottom: 40px;
+  }
+
+  .scenarios {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+    gap: 40px;
+  }
+
+  .scenario {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .scenario-title {
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: #a78bfa;
+    margin-bottom: 12px;
+  }
+
+  .scenario-desc {
+    font-size: 12px;
+    color: #777;
+    margin-bottom: 16px;
+    text-align: center;
+    max-width: 340px;
+  }
+
+  /* ─── Phone Frame ─── */
+  .phone {
+    width: 375px;
+    height: 780px;
+    background: #111118;
+    border-radius: 40px;
+    border: 3px solid #2a2a35;
+    overflow: hidden;
+    position: relative;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05);
+  }
+
+  .status-bar {
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 24px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #ccc;
+  }
+
+  .status-bar .time { font-size: 14px; font-weight: 700; }
+  .status-bar .icons { display: flex; gap: 6px; font-size: 11px; }
+
+  .top-bar {
+    display: flex;
+    align-items: center;
+    padding: 4px 16px 12px;
+    gap: 12px;
+  }
+
+  .back-arrow {
+    width: 32px;
+    height: 32px;
+    border-radius: 10px;
+    background: rgba(255,255,255,0.06);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    color: #aaa;
+  }
+
+  .top-bar-title {
+    font-size: 16px;
+    font-weight: 700;
+    flex: 1;
+  }
+
+  .top-bar-actions {
+    display: flex;
+    gap: 8px;
+  }
+
+  .top-bar-actions span {
+    font-size: 18px;
+    opacity: 0.5;
+  }
+
+  .scroll-content {
+    overflow-y: auto;
+    height: calc(100% - 44px - 48px);
+    padding: 0 14px 24px;
+  }
+
+  /* ─── Hero Card ─── */
+  .hero-card {
+    background: linear-gradient(145deg, #1a1a28, #151522);
+    border-radius: 20px;
+    border: 1px solid #2a2a3a;
+    padding: 20px;
+    margin-bottom: 14px;
+  }
+
+  .player-header {
+    display: flex;
+    gap: 14px;
+    margin-bottom: 14px;
+  }
+
+  .player-avatar {
+    width: 72px;
+    height: 72px;
+    border-radius: 16px;
+    background: linear-gradient(135deg, #2a2a3a, #1f1f30);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    border: 2px solid #3a3a4a;
+    flex-shrink: 0;
+  }
+
+  .player-meta {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .player-name {
+    font-size: 18px;
+    font-weight: 800;
+    margin-bottom: 3px;
+  }
+
+  .player-detail-row {
+    font-size: 11px;
+    color: #888;
+    margin-bottom: 2px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .position-tag {
+    display: inline-block;
+    background: rgba(96, 165, 250, 0.15);
+    color: #60a5fa;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 6px;
+    margin-right: 4px;
+  }
+
+  .agent-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(255,255,255,0.06);
+  }
+
+  .agent-avatar-sm {
+    width: 24px;
+    height: 24px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #a78bfa, #7c3aed);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: 700;
+    color: white;
+    flex-shrink: 0;
+  }
+
+  .agent-label {
+    font-size: 11px;
+    color: #888;
+  }
+
+  .agent-label strong {
+    color: #ccc;
+    font-weight: 600;
+  }
+
+  /* ─── Transfer Button ─── */
+  .transfer-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    padding: 12px;
+    border-radius: 14px;
+    border: 1.5px dashed rgba(167, 139, 250, 0.4);
+    background: rgba(167, 139, 250, 0.06);
+    color: #a78bfa;
+    font-size: 13px;
+    font-weight: 600;
+    margin-top: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .transfer-btn:hover {
+    background: rgba(167, 139, 250, 0.12);
+    border-color: rgba(167, 139, 250, 0.6);
+  }
+
+  .transfer-btn .icon { font-size: 16px; }
+
+  /* ─── Pending Banner (Requester View) ─── */
+  .pending-banner {
+    margin-top: 12px;
+    padding: 12px 14px;
+    border-radius: 14px;
+    border: 1px solid rgba(251, 191, 36, 0.25);
+    background: rgba(251, 191, 36, 0.06);
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .pending-banner .icon {
+    font-size: 20px;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+
+  .pending-banner .content {
+    flex: 1;
+  }
+
+  .pending-banner .title {
+    font-size: 12px;
+    font-weight: 700;
+    color: #fbbf24;
+    margin-bottom: 2px;
+  }
+
+  .pending-banner .desc {
+    font-size: 11px;
+    color: #999;
+    line-height: 1.4;
+  }
+
+  .cancel-link {
+    font-size: 11px;
+    color: #ef4444;
+    font-weight: 600;
+    margin-top: 6px;
+    cursor: pointer;
+  }
+
+  /* ─── Approval Banner (Current Agent View) ─── */
+  .approval-banner {
+    margin-top: 12px;
+    padding: 14px;
+    border-radius: 14px;
+    border: 1px solid rgba(96, 165, 250, 0.3);
+    background: linear-gradient(135deg, rgba(96, 165, 250, 0.08), rgba(167, 139, 250, 0.06));
+  }
+
+  .approval-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+
+  .approval-header .icon {
+    font-size: 18px;
+  }
+
+  .approval-header .text {
+    font-size: 12px;
+    font-weight: 700;
+    color: #60a5fa;
+  }
+
+  .approval-message {
+    font-size: 12px;
+    color: #bbb;
+    line-height: 1.5;
+    margin-bottom: 12px;
+  }
+
+  .approval-message strong {
+    color: #e8e8ed;
+    font-weight: 600;
+  }
+
+  .approval-actions {
+    display: flex;
+    gap: 10px;
+  }
+
+  .btn-approve {
+    flex: 1;
+    padding: 10px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #22c55e, #16a34a);
+    color: white;
+    font-size: 13px;
+    font-weight: 700;
+    text-align: center;
+    border: none;
+    cursor: pointer;
+  }
+
+  .btn-reject {
+    flex: 1;
+    padding: 10px;
+    border-radius: 12px;
+    background: rgba(239, 68, 68, 0.12);
+    border: 1.5px solid rgba(239, 68, 68, 0.3);
+    color: #ef4444;
+    font-size: 13px;
+    font-weight: 700;
+    text-align: center;
+    cursor: pointer;
+  }
+
+  /* ─── Confirmation Dialog ─── */
+  .dialog-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.65);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+  }
+
+  .dialog-card {
+    width: 300px;
+    background: #1e1e2e;
+    border-radius: 24px;
+    border: 1px solid #3a3a4a;
+    padding: 24px;
+    text-align: center;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+  }
+
+  .dialog-icon {
+    font-size: 42px;
+    margin-bottom: 12px;
+  }
+
+  .dialog-title {
+    font-size: 16px;
+    font-weight: 800;
+    margin-bottom: 6px;
+  }
+
+  .dialog-body {
+    font-size: 13px;
+    color: #999;
+    line-height: 1.5;
+    margin-bottom: 20px;
+  }
+
+  .dialog-body strong {
+    color: #e0e0e0;
+  }
+
+  .dialog-actions {
+    display: flex;
+    gap: 10px;
+  }
+
+  .dialog-btn {
+    flex: 1;
+    padding: 12px;
+    border-radius: 14px;
+    font-size: 14px;
+    font-weight: 700;
+    text-align: center;
+    cursor: pointer;
+    border: none;
+  }
+
+  .dialog-btn.cancel {
+    background: rgba(255,255,255,0.08);
+    color: #aaa;
+  }
+
+  .dialog-btn.confirm {
+    background: linear-gradient(135deg, #a78bfa, #7c3aed);
+    color: white;
+  }
+
+  /* ─── Push Notification Mock ─── */
+  .push-mockup {
+    position: absolute;
+    top: 50px;
+    left: 12px;
+    right: 12px;
+    background: #252535;
+    border-radius: 18px;
+    padding: 14px 16px;
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+    z-index: 20;
+    border: 1px solid #3a3a4a;
+    animation: slideDown 0.3s ease-out;
+  }
+
+  @keyframes slideDown {
+    from { transform: translateY(-20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+
+  .push-app-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #2563eb, #7c3aed);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: 800;
+    color: white;
+    flex-shrink: 0;
+  }
+
+  .push-content {
+    flex: 1;
+  }
+
+  .push-app-name {
+    font-size: 10px;
+    font-weight: 600;
+    color: #60a5fa;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 2px;
+  }
+
+  .push-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: #e8e8ed;
+    margin-bottom: 2px;
+  }
+
+  .push-body {
+    font-size: 11px;
+    color: #999;
+    line-height: 1.4;
+  }
+
+  .push-time {
+    font-size: 10px;
+    color: #666;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  /* ─── Success State ─── */
+  .success-banner {
+    margin-top: 12px;
+    padding: 12px 14px;
+    border-radius: 14px;
+    border: 1px solid rgba(34, 197, 94, 0.25);
+    background: rgba(34, 197, 94, 0.06);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .success-banner .icon { font-size: 20px; }
+
+  .success-banner .text {
+    font-size: 12px;
+    font-weight: 600;
+    color: #22c55e;
+  }
+
+  /* ─── Quick Actions ─── */
+  .quick-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 14px;
+  }
+
+  .quick-action {
+    flex: 1;
+    padding: 10px 8px;
+    border-radius: 12px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    text-align: center;
+    font-size: 18px;
+  }
+
+  .quick-action .label {
+    font-size: 9px;
+    color: #777;
+    margin-top: 4px;
+  }
+
+  /* ─── Mandate Row ─── */
+  .mandate-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(255,255,255,0.06);
+  }
+
+  .mandate-label {
+    font-size: 11px;
+    color: #888;
+  }
+
+  .toggle {
+    width: 40px;
+    height: 22px;
+    border-radius: 11px;
+    background: #333;
+    position: relative;
+    cursor: pointer;
+  }
+
+  .toggle.on { background: #2563eb; }
+
+  .toggle::after {
+    content: '';
+    position: absolute;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: white;
+    top: 2px;
+    left: 2px;
+    transition: transform 0.2s;
+  }
+
+  .toggle.on::after { transform: translateX(18px); }
+
+  /* ─── Section placeholders ─── */
+  .section-placeholder {
+    background: rgba(255,255,255,0.02);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 16px;
+    padding: 16px;
+    margin-bottom: 12px;
+    text-align: center;
+    color: #555;
+    font-size: 11px;
+  }
+</style>
+</head>
+<body>
+<div class="page-wrapper">
+
+  <h1>Agent Transfer — Android Mock</h1>
+  <p class="subtitle">Player Info Screen — Hero Card States (Men Platform)</p>
+
+  <div class="scenarios">
+
+    <!-- ═══════ SCENARIO 1: Request Button ═══════ -->
+    <div class="scenario">
+      <div class="scenario-title">State 1 — Request Transfer</div>
+      <div class="scenario-desc">Current user is NOT the agent in charge. They can request to take over.</div>
+
+      <div class="phone">
+        <div class="status-bar">
+          <span class="time">9:41</span>
+          <span class="icons">📶 📡 🔋</span>
+        </div>
+        <div class="top-bar">
+          <div class="back-arrow">‹</div>
+          <div class="top-bar-title">Player Info</div>
+          <div class="top-bar-actions">
+            <span>📤</span>
+            <span>⋮</span>
+          </div>
+        </div>
+        <div class="scroll-content">
+          <div class="hero-card">
+            <div class="player-header">
+              <div class="player-avatar">⚽</div>
+              <div class="player-meta">
+                <div class="player-name">Omer Atzili</div>
+                <div class="player-detail-row">
+                  <span class="position-tag">LW</span>
+                  <span class="position-tag">AM</span>
+                  <span>• 31 years</span>
+                </div>
+                <div class="player-detail-row">🏟️ Maccabi Haifa • 🇮🇱 Israel</div>
+                <div class="player-detail-row">💰 €800K • 📅 Jun 2026</div>
+              </div>
+            </div>
+
+            <div class="agent-row">
+              <div class="agent-avatar-sm">DD</div>
+              <div class="agent-label">Agent in charge: <strong>Dudu Dahan</strong></div>
+            </div>
+
+            <div class="transfer-btn">
+              <span class="icon">🙋</span>
+              Request Agent Transfer
+            </div>
+
+            <div class="mandate-row">
+              <span class="mandate-label">📋 Mandate</span>
+              <div class="toggle"></div>
+            </div>
+
+            <div class="quick-actions">
+              <div class="quick-action">📱<div class="label">Player</div></div>
+              <div class="quick-action">📞<div class="label">Agent</div></div>
+              <div class="quick-action">🔗<div class="label">TM</div></div>
+              <div class="quick-action">📎<div class="label">Share</div></div>
+            </div>
+          </div>
+
+          <div class="section-placeholder">📊 Market Value Chart</div>
+          <div class="section-placeholder">🎬 Pinned Highlights</div>
+          <div class="section-placeholder">🤖 AI Scout Report</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════ SCENARIO 2: Confirmation Dialog ═══════ -->
+    <div class="scenario">
+      <div class="scenario-title">State 2 — Confirmation Dialog</div>
+      <div class="scenario-desc">User tapped "Request Transfer" — a confirmation dialog appears before submitting.</div>
+
+      <div class="phone">
+        <div class="status-bar">
+          <span class="time">9:41</span>
+          <span class="icons">📶 📡 🔋</span>
+        </div>
+        <div class="top-bar">
+          <div class="back-arrow">‹</div>
+          <div class="top-bar-title">Player Info</div>
+          <div class="top-bar-actions">
+            <span>📤</span>
+            <span>⋮</span>
+          </div>
+        </div>
+        <div class="scroll-content" style="filter: blur(2px); pointer-events: none;">
+          <div class="hero-card">
+            <div class="player-header">
+              <div class="player-avatar">⚽</div>
+              <div class="player-meta">
+                <div class="player-name">Omer Atzili</div>
+                <div class="player-detail-row">
+                  <span class="position-tag">LW</span>
+                  <span class="position-tag">AM</span>
+                  <span>• 31 years</span>
+                </div>
+                <div class="player-detail-row">🏟️ Maccabi Haifa • 🇮🇱 Israel</div>
+                <div class="player-detail-row">💰 €800K • 📅 Jun 2026</div>
+              </div>
+            </div>
+
+            <div class="agent-row">
+              <div class="agent-avatar-sm">DD</div>
+              <div class="agent-label">Agent in charge: <strong>Dudu Dahan</strong></div>
+            </div>
+
+            <div class="transfer-btn">
+              <span class="icon">🙋</span>
+              Request Agent Transfer
+            </div>
+          </div>
+        </div>
+
+        <div class="dialog-overlay">
+          <div class="dialog-card">
+            <div class="dialog-icon">🔄</div>
+            <div class="dialog-title">Request Agent Transfer</div>
+            <div class="dialog-body">
+              You are requesting to become the agent in charge of <strong>Omer Atzili</strong>.<br><br>
+              <strong>Dudu Dahan</strong> will be notified and must approve this transfer.
+            </div>
+            <div class="dialog-actions">
+              <div class="dialog-btn cancel">Cancel</div>
+              <div class="dialog-btn confirm">Send Request</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════ SCENARIO 3: Pending (Requester View) ═══════ -->
+    <div class="scenario">
+      <div class="scenario-title">State 3 — Pending (Requester)</div>
+      <div class="scenario-desc">Request has been sent. The requester sees a waiting banner with cancel option.</div>
+
+      <div class="phone">
+        <div class="status-bar">
+          <span class="time">9:42</span>
+          <span class="icons">📶 📡 🔋</span>
+        </div>
+        <div class="top-bar">
+          <div class="back-arrow">‹</div>
+          <div class="top-bar-title">Player Info</div>
+          <div class="top-bar-actions">
+            <span>📤</span>
+            <span>⋮</span>
+          </div>
+        </div>
+        <div class="scroll-content">
+          <div class="hero-card">
+            <div class="player-header">
+              <div class="player-avatar">⚽</div>
+              <div class="player-meta">
+                <div class="player-name">Omer Atzili</div>
+                <div class="player-detail-row">
+                  <span class="position-tag">LW</span>
+                  <span class="position-tag">AM</span>
+                  <span>• 31 years</span>
+                </div>
+                <div class="player-detail-row">🏟️ Maccabi Haifa • 🇮🇱 Israel</div>
+                <div class="player-detail-row">💰 €800K • 📅 Jun 2026</div>
+              </div>
+            </div>
+
+            <div class="agent-row">
+              <div class="agent-avatar-sm">DD</div>
+              <div class="agent-label">Agent in charge: <strong>Dudu Dahan</strong></div>
+            </div>
+
+            <div class="pending-banner">
+              <span class="icon">⏳</span>
+              <div class="content">
+                <div class="title">Transfer Requested</div>
+                <div class="desc">Waiting for <strong style="color:#ddd;">Dudu Dahan</strong> to approve your request to manage this player.</div>
+                <div class="cancel-link">✕ Cancel Request</div>
+              </div>
+            </div>
+
+            <div class="mandate-row">
+              <span class="mandate-label">📋 Mandate</span>
+              <div class="toggle"></div>
+            </div>
+
+            <div class="quick-actions">
+              <div class="quick-action">📱<div class="label">Player</div></div>
+              <div class="quick-action">📞<div class="label">Agent</div></div>
+              <div class="quick-action">🔗<div class="label">TM</div></div>
+              <div class="quick-action">📎<div class="label">Share</div></div>
+            </div>
+          </div>
+
+          <div class="section-placeholder">📊 Market Value Chart</div>
+          <div class="section-placeholder">🎬 Pinned Highlights</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════ SCENARIO 4: Push Notification (Current Agent) ═══════ -->
+    <div class="scenario">
+      <div class="scenario-title">State 4 — Push Notification</div>
+      <div class="scenario-desc">The current agent receives a push notification on their device.</div>
+
+      <div class="phone">
+        <div class="status-bar">
+          <span class="time">9:42</span>
+          <span class="icons">📶 📡 🔋</span>
+        </div>
+
+        <div class="push-mockup">
+          <div class="push-app-icon">M</div>
+          <div class="push-content">
+            <div class="push-app-name">MGSR Team</div>
+            <div class="push-title">🔄 Agent Transfer Request</div>
+            <div class="push-body">Lior Dahan wants to become the agent in charge of Omer Atzili. Tap to review.</div>
+          </div>
+          <div class="push-time">now</div>
+        </div>
+
+        <div class="top-bar" style="margin-top: 8px;">
+          <div class="back-arrow">‹</div>
+          <div class="top-bar-title">Player Info</div>
+          <div class="top-bar-actions">
+            <span>📤</span>
+            <span>⋮</span>
+          </div>
+        </div>
+        <div class="scroll-content">
+          <div class="hero-card">
+            <div class="player-header">
+              <div class="player-avatar">⚽</div>
+              <div class="player-meta">
+                <div class="player-name">Omer Atzili</div>
+                <div class="player-detail-row">
+                  <span class="position-tag">LW</span>
+                  <span class="position-tag">AM</span>
+                  <span>• 31 years</span>
+                </div>
+                <div class="player-detail-row">🏟️ Maccabi Haifa • 🇮🇱 Israel</div>
+                <div class="player-detail-row">💰 €800K • 📅 Jun 2026</div>
+              </div>
+            </div>
+
+            <div class="agent-row">
+              <div class="agent-avatar-sm">DD</div>
+              <div class="agent-label">Agent in charge: <strong>Dudu Dahan</strong> (You)</div>
+            </div>
+
+            <div class="approval-banner">
+              <div class="approval-header">
+                <span class="icon">📨</span>
+                <span class="text">Transfer Request</span>
+              </div>
+              <div class="approval-message">
+                <strong>Lior Dahan</strong> is requesting to become the agent in charge of this player. <br>If you approve, you will no longer manage <strong>Omer Atzili</strong>.
+              </div>
+              <div class="approval-actions">
+                <div class="btn-approve">✓ Approve</div>
+                <div class="btn-reject">✕ Reject</div>
+              </div>
+            </div>
+
+            <div class="mandate-row">
+              <span class="mandate-label">📋 Mandate</span>
+              <div class="toggle on"></div>
+            </div>
+
+            <div class="quick-actions">
+              <div class="quick-action">📱<div class="label">Player</div></div>
+              <div class="quick-action">📞<div class="label">Agent</div></div>
+              <div class="quick-action">🔗<div class="label">TM</div></div>
+              <div class="quick-action">📎<div class="label">Share</div></div>
+            </div>
+          </div>
+
+          <div class="section-placeholder">📊 Market Value Chart</div>
+          <div class="section-placeholder">🎬 Pinned Highlights</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════ SCENARIO 5: Transfer Approved ═══════ -->
+    <div class="scenario">
+      <div class="scenario-title">State 5 — Transfer Approved</div>
+      <div class="scenario-desc">Agent in charge approved. The player now shows the new agent.</div>
+
+      <div class="phone">
+        <div class="status-bar">
+          <span class="time">9:45</span>
+          <span class="icons">📶 📡 🔋</span>
+        </div>
+        <div class="top-bar">
+          <div class="back-arrow">‹</div>
+          <div class="top-bar-title">Player Info</div>
+          <div class="top-bar-actions">
+            <span>📤</span>
+            <span>⋮</span>
+          </div>
+        </div>
+        <div class="scroll-content">
+          <div class="hero-card">
+            <div class="player-header">
+              <div class="player-avatar">⚽</div>
+              <div class="player-meta">
+                <div class="player-name">Omer Atzili</div>
+                <div class="player-detail-row">
+                  <span class="position-tag">LW</span>
+                  <span class="position-tag">AM</span>
+                  <span>• 31 years</span>
+                </div>
+                <div class="player-detail-row">🏟️ Maccabi Haifa • 🇮🇱 Israel</div>
+                <div class="player-detail-row">💰 €800K • 📅 Jun 2026</div>
+              </div>
+            </div>
+
+            <div class="agent-row">
+              <div class="agent-avatar-sm" style="background: linear-gradient(135deg, #22c55e, #16a34a);">LD</div>
+              <div class="agent-label">Agent in charge: <strong>Lior Dahan</strong> (You)</div>
+            </div>
+
+            <div class="success-banner">
+              <span class="icon">✅</span>
+              <span class="text">Transfer complete — you are now managing this player</span>
+            </div>
+
+            <div class="mandate-row">
+              <span class="mandate-label">📋 Mandate</span>
+              <div class="toggle"></div>
+            </div>
+
+            <div class="quick-actions">
+              <div class="quick-action">📱<div class="label">Player</div></div>
+              <div class="quick-action">📞<div class="label">Agent</div></div>
+              <div class="quick-action">🔗<div class="label">TM</div></div>
+              <div class="quick-action">📎<div class="label">Share</div></div>
+            </div>
+          </div>
+
+          <div class="section-placeholder">📊 Market Value Chart</div>
+          <div class="section-placeholder">🎬 Pinned Highlights</div>
+          <div class="section-placeholder">🤖 AI Scout Report</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════ SCENARIO 6: No Agent Assigned ═══════ -->
+    <div class="scenario">
+      <div class="scenario-title">State 6 — No Agent (Direct Claim)</div>
+      <div class="scenario-desc">Player has no agent assigned. User can directly claim without approval.</div>
+
+      <div class="phone">
+        <div class="status-bar">
+          <span class="time">9:41</span>
+          <span class="icons">📶 📡 🔋</span>
+        </div>
+        <div class="top-bar">
+          <div class="back-arrow">‹</div>
+          <div class="top-bar-title">Player Info</div>
+          <div class="top-bar-actions">
+            <span>📤</span>
+            <span>⋮</span>
+          </div>
+        </div>
+        <div class="scroll-content">
+          <div class="hero-card">
+            <div class="player-header">
+              <div class="player-avatar">⚽</div>
+              <div class="player-meta">
+                <div class="player-name">Eden Karzev</div>
+                <div class="player-detail-row">
+                  <span class="position-tag">CB</span>
+                  <span>• 24 years</span>
+                </div>
+                <div class="player-detail-row">🏟️ Hapoel Beer Sheva • 🇮🇱 Israel</div>
+                <div class="player-detail-row">💰 €450K • 📅 Jun 2027</div>
+              </div>
+            </div>
+
+            <div class="agent-row">
+              <div class="agent-avatar-sm" style="background: #333; color: #666;">?</div>
+              <div class="agent-label">Agent in charge: <strong style="color: #666;">Unassigned</strong></div>
+            </div>
+
+            <div class="transfer-btn" style="border-color: rgba(34,197,94,0.4); background: rgba(34,197,94,0.06); color: #22c55e;">
+              <span class="icon">✋</span>
+              Claim as Agent in Charge
+            </div>
+
+            <div class="mandate-row">
+              <span class="mandate-label">📋 Mandate</span>
+              <div class="toggle"></div>
+            </div>
+
+            <div class="quick-actions">
+              <div class="quick-action">📱<div class="label">Player</div></div>
+              <div class="quick-action">📞<div class="label">Agent</div></div>
+              <div class="quick-action">🔗<div class="label">TM</div></div>
+              <div class="quick-action">📎<div class="label">Share</div></div>
+            </div>
+          </div>
+
+          <div class="section-placeholder">📊 Market Value Chart</div>
+          <div class="section-placeholder">🎬 Pinned Highlights</div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /scenarios -->
+
+</div>
+</body>
+</html>

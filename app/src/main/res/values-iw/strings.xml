@@ -1403,4 +1403,28 @@
     <string name="relative_week_ago">לפני שבוע</string>
     <string name="relative_weeks_ago">לפני %d שבועות</string>
     <string name="relative_months_ago">לפני %d חודשים</string>
+
+    <!-- Agent Transfer -->
+    <string name="agent_transfer_request_button">שייך את השחקן אלייך</string>
+    <string name="agent_transfer_pending_title">בקשת העברה נשלחה</string>
+    <string name="agent_transfer_pending_desc">ממתין לאישור של %s…</string>
+    <string name="agent_transfer_cancel">✕ בטל בקשה</string>
+    <string name="agent_transfer_approval_title">בקשת העברה</string>
+    <string name="agent_transfer_approval_desc">%s מבקש לנהל את השחקן הזה</string>
+    <string name="agent_transfer_approve">✓ אשר</string>
+    <string name="agent_transfer_reject">✕ דחה</string>
+    <string name="agent_transfer_confirm_title">בקשת העברת סוכן</string>
+    <string name="agent_transfer_confirm_body">אתה מבקש להיות הסוכן האחראי על %1$s. %2$s יקבל הודעה ויצטרך לאשר את ההעברה.</string>
+    <string name="agent_transfer_send_request">שלח בקשה</string>
+    <string name="agent_transfer_request_sent">בקשת ההעברה נשלחה</string>
+    <string name="agent_transfer_already_pending">כבר קיימת בקשת העברה ממתינה עבור השחקן הזה</string>
+    <string name="agent_transfer_approved">ההעברה אושרה! אתה כעת הסוכן האחראי</string>
+    <string name="agent_transfer_rejected">בקשת ההעברה נדחתה</string>
+    <string name="agent_transfer_cancelled">בקשת ההעברה בוטלה</string>
+    <string name="notification_transfer_request_title">בקשת העברת סוכן</string>
+    <string name="notification_transfer_request_body">%1$s רוצה לקחת אחריות כסוכן על %2$s</string>
+    <string name="notification_transfer_approved_title">העברה אושרה</string>
+    <string name="notification_transfer_approved_body">אתה כעת הסוכן האחראי על %s</string>
+    <string name="notification_transfer_rejected_title">העברה נדחתה</string>
+    <string name="notification_transfer_rejected_body">בקשת ההעברה שלך עבור %s נדחתה</string>
 </resources>

@@ -1,0 +1,6 @@
+{
+  "redirects": [
+    { "source": "/team", "destination": "/", "permanent": true },
+    { "source": "/%D7%90%D7%95%D7%93%D7%95%D7%AA", "destination": "/", "permanent": true }
+  ]
+}

@@ -26,6 +26,8 @@ import com.liordahan.mgsrteam.features.home.models.AgentTask
 import com.liordahan.mgsrteam.features.requests.RequestMatcher
 import com.liordahan.mgsrteam.features.requests.repository.IRequestsRepository
 import com.liordahan.mgsrteam.features.home.models.FeedEvent
+import com.liordahan.mgsrteam.features.players.playerinfo.agenttransfer.AgentTransferRepository
+import com.liordahan.mgsrteam.features.players.playerinfo.agenttransfer.AgentTransferRequest
 import com.liordahan.mgsrteam.features.platform.Platform
 import com.liordahan.mgsrteam.features.platform.PlatformManager
 import com.liordahan.mgsrteam.firebase.FirebaseHandler
@@ -117,6 +119,15 @@ abstract class IPlayerInfoViewModel : ViewModel() {
     abstract val isFmIntelligenceLoading: StateFlow<Boolean>
     abstract val fmIntelligenceError: StateFlow<String?>
     abstract fun fetchFmIntelligence(player: Player)
+
+    // ── Agent Transfer ─────────────────────────────────────────────
+    abstract val pendingTransferFlow: StateFlow<com.liordahan.mgsrteam.features.players.playerinfo.agenttransfer.AgentTransferRequest?>
+    abstract val currentUserAccountFlow: StateFlow<com.liordahan.mgsrteam.features.login.models.Account?>
+    abstract val transferSuccessFlow: SharedFlow<String>
+    abstract fun requestAgentTransfer()
+    abstract fun approveTransfer()
+    abstract fun rejectTransfer()
+    abstract fun cancelTransferRequest()
 }
 
 
@@ -134,6 +145,7 @@ class PlayerInfoViewModel(
     private val platformManager: PlatformManager,
     private val highlightsApiClient: com.liordahan.mgsrteam.features.players.playerinfo.highlights.HighlightsApiClient = com.liordahan.mgsrteam.features.players.playerinfo.highlights.HighlightsApiClient(),
     private val scoutApiClient: com.liordahan.mgsrteam.features.scouting.ScoutApiClient,
+    private val agentTransferRepository: AgentTransferRepository = AgentTransferRepository(com.google.firebase.firestore.FirebaseFirestore.getInstance()),
 ) : IPlayerInfoViewModel() {
 
     private val _playerInfoFlow = MutableStateFlow<Player?>(null)
@@ -312,9 +324,37 @@ class PlayerInfoViewModel(
         }
     }
 
+    // ── Agent Transfer ──────────────────────────────────────────────
+    private val _pendingTransferFlow = MutableStateFlow<AgentTransferRequest?>(null)
+    override val pendingTransferFlow: StateFlow<AgentTransferRequest?> = _pendingTransferFlow
+
+    private val _currentUserAccountFlow = MutableStateFlow<Account?>(null)
+    override val currentUserAccountFlow: StateFlow<Account?> = _currentUserAccountFlow
+
+    private val _transferSuccessFlow = MutableSharedFlow<String>()
+    override val transferSuccessFlow: SharedFlow<String> = _transferSuccessFlow
+
+    private var transferListenerRegistration: com.google.firebase.firestore.ListenerRegistration? = null
+
+    init {
+        // Load current user account eagerly for transfer feature
+        viewModelScope.launch(Dispatchers.IO) {
+            _currentUserAccountFlow.value = getCurrentUserAccount()
+        }
+        // Start transfer listener when player doc ID is available
+        viewModelScope.launch {
+            _playerDocumentIdFlow.collect { docId ->
+                if (docId != null) {
+                    startTransferListener(docId)
+                }
+            }
+        }
+    }
+
     override fun onCleared() {
         super.onCleared()
         playerListenerRegistration?.remove()
+        transferListenerRegistration?.remove()
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -1198,4 +1238,80 @@ class PlayerInfoViewModel(
 
     private suspend fun getCurrentUserName(): String? =
         getCurrentUserAccount()?.getDisplayName(appContext)
+
+    // ── Agent Transfer Operations ────────────────────────────────────
+
+    /** Start listening for pending transfer requests on the current player. */
+    private fun startTransferListener(playerId: String) {
+        transferListenerRegistration?.remove()
+        transferListenerRegistration = agentTransferRepository.listenForPendingRequest(playerId) { request ->
+            _pendingTransferFlow.value = request
+        }
+    }
+
+    override fun requestAgentTransfer() {
+        viewModelScope.launch {
+            val player = _playerInfoFlow.value ?: return@launch
+            val docId = _playerDocumentIdFlow.value ?: return@launch
+            val currentUser = _currentUserAccountFlow.value ?: getCurrentUserAccount() ?: return@launch
+            val fromAgentId = player.agentInChargeId ?: return@launch
+            val fromAgentName = player.agentInChargeName
+
+            val platformName = platformManager.current.value.name
+            val result = agentTransferRepository.requestTransfer(
+                playerId = docId,
+                playerName = player.fullName,
+                playerImage = player.profileImage,
+                platform = platformName,
+                fromAgentId = fromAgentId,
+                fromAgentName = fromAgentName,
+                toAgentId = currentUser.id ?: return@launch,
+                toAgentName = currentUser.getDisplayName(appContext)
+            )
+            if (result != null) {
+                _transferSuccessFlow.emit("request_sent")
+            } else {
+                _transferSuccessFlow.emit("request_already_pending")
+            }
+        }
+    }
+
+    override fun approveTransfer() {
+        viewModelScope.launch {
+            val request = _pendingTransferFlow.value ?: return@launch
+            val requestId = request.id ?: return@launch
+            try {
+                agentTransferRepository.approveTransfer(requestId, firebaseHandler.playersTable)
+                _transferSuccessFlow.emit("transfer_approved")
+            } catch (e: Exception) {
+                Log.e(TAG, "approveTransfer failed", e)
+            }
+        }
+    }
+
+    override fun rejectTransfer() {
+        viewModelScope.launch {
+            val request = _pendingTransferFlow.value ?: return@launch
+            val requestId = request.id ?: return@launch
+            try {
+                agentTransferRepository.rejectTransfer(requestId)
+                _transferSuccessFlow.emit("transfer_rejected")
+            } catch (e: Exception) {
+                Log.e(TAG, "rejectTransfer failed", e)
+            }
+        }
+    }
+
+    override fun cancelTransferRequest() {
+        viewModelScope.launch {
+            val request = _pendingTransferFlow.value ?: return@launch
+            val requestId = request.id ?: return@launch
+            try {
+                agentTransferRepository.cancelTransferRequest(requestId)
+                _transferSuccessFlow.emit("request_cancelled")
+            } catch (e: Exception) {
+                Log.e(TAG, "cancelTransferRequest failed", e)
+            }
+        }
+    }
 }

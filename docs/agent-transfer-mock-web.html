@@ -1,0 +1,1075 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MGSR — Agent Transfer Mock (Web)</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Inter', -apple-system, sans-serif;
+    background: #0d0d14;
+    color: #e0e0eb;
+    padding: 40px 24px;
+    min-height: 100vh;
+  }
+
+  h1 {
+    font-size: 32px;
+    font-weight: 800;
+    text-align: center;
+    margin-bottom: 8px;
+    background: linear-gradient(135deg, #60a5fa, #a78bfa);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .subtitle {
+    text-align: center;
+    color: #666;
+    font-size: 14px;
+    margin-bottom: 48px;
+  }
+
+  .web-scenarios {
+    display: flex;
+    flex-direction: column;
+    gap: 56px;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  .web-scenario {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .scenario-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .scenario-number {
+    width: 32px;
+    height: 32px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #a78bfa, #7c3aed);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: 800;
+    color: white;
+    flex-shrink: 0;
+  }
+
+  .scenario-label {
+    font-size: 16px;
+    font-weight: 700;
+    color: #e0e0eb;
+  }
+
+  .scenario-desc {
+    font-size: 12px;
+    color: #666;
+    margin-left: 44px;
+    margin-bottom: 16px;
+  }
+
+  /* ─── Web Browser Frame ─── */
+  .browser-frame {
+    background: #111118;
+    border-radius: 16px;
+    border: 1px solid #2a2a35;
+    overflow: hidden;
+    box-shadow: 0 16px 48px rgba(0,0,0,0.4);
+  }
+
+  .browser-chrome {
+    height: 42px;
+    background: #1a1a24;
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    gap: 10px;
+    border-bottom: 1px solid #2a2a35;
+  }
+
+  .browser-dots {
+    display: flex;
+    gap: 6px;
+  }
+
+  .browser-dots span {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #333;
+  }
+
+  .browser-dots span:nth-child(1) { background: #ef4444; }
+  .browser-dots span:nth-child(2) { background: #fbbf24; }
+  .browser-dots span:nth-child(3) { background: #22c55e; }
+
+  .browser-url {
+    flex: 1;
+    height: 26px;
+    background: #0d0d14;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+    font-size: 11px;
+    color: #666;
+  }
+
+  .browser-url .lock { color: #22c55e; margin-right: 6px; font-size: 10px; }
+
+  .browser-content {
+    padding: 24px 32px 32px;
+    min-height: 400px;
+  }
+
+  /* ─── Web Page Layout ─── */
+  .web-nav {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+
+  .web-breadcrumb {
+    font-size: 12px;
+    color: #666;
+  }
+
+  .web-breadcrumb a {
+    color: #60a5fa;
+    text-decoration: none;
+  }
+
+  .web-breadcrumb span { color: #444; margin: 0 6px; }
+
+  .web-page-grid {
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    gap: 24px;
+  }
+
+  /* ─── Player Sidebar ─── */
+  .player-sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .player-card-web {
+    background: linear-gradient(145deg, #191926, #14141f);
+    border-radius: 16px;
+    border: 1px solid #2a2a38;
+    padding: 24px;
+    text-align: center;
+  }
+
+  .player-img-web {
+    width: 96px;
+    height: 96px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #2a2a3a, #1f1f30);
+    margin: 0 auto 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 36px;
+    border: 3px solid #3a3a4a;
+  }
+
+  .player-name-web {
+    font-size: 20px;
+    font-weight: 800;
+    margin-bottom: 6px;
+  }
+
+  .player-club-web {
+    font-size: 13px;
+    color: #888;
+    margin-bottom: 12px;
+  }
+
+  .player-tags-web {
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+  }
+
+  .tag-web {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 8px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+
+  .tag-position { background: rgba(96,165,250,0.12); color: #60a5fa; }
+  .tag-age { background: rgba(255,255,255,0.06); color: #999; }
+  .tag-value { background: rgba(34,197,94,0.12); color: #22c55e; }
+  .tag-nationality { background: rgba(251,191,36,0.12); color: #fbbf24; }
+
+  .player-stats-web {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(255,255,255,0.06);
+  }
+
+  .stat-item-web {
+    text-align: center;
+    padding: 8px;
+    background: rgba(255,255,255,0.02);
+    border-radius: 10px;
+  }
+
+  .stat-item-web .value { font-size: 14px; font-weight: 700; color: #e0e0eb; }
+  .stat-item-web .label { font-size: 9px; color: #666; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 2px; }
+
+  /* ─── Agent Section in Sidebar ─── */
+  .agent-section-web {
+    background: linear-gradient(145deg, #191926, #14141f);
+    border-radius: 16px;
+    border: 1px solid #2a2a38;
+    padding: 18px;
+  }
+
+  .agent-section-title {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #666;
+    margin-bottom: 12px;
+  }
+
+  .agent-info-web {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+
+  .agent-avatar-web {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #a78bfa, #7c3aed);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: 800;
+    color: white;
+    flex-shrink: 0;
+  }
+
+  .agent-name-web {
+    font-size: 14px;
+    font-weight: 700;
+  }
+
+  .agent-role-web {
+    font-size: 11px;
+    color: #888;
+  }
+
+  /* ─── Transfer Button (Web) ─── */
+  .transfer-btn-web {
+    width: 100%;
+    padding: 12px 16px;
+    border-radius: 12px;
+    border: 1.5px dashed rgba(167,139,250,0.4);
+    background: rgba(167,139,250,0.06);
+    color: #a78bfa;
+    font-size: 13px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .transfer-btn-web:hover {
+    background: rgba(167,139,250,0.12);
+    border-color: rgba(167,139,250,0.6);
+  }
+
+  /* ─── Pending Banner (Web) ─── */
+  .pending-banner-web {
+    padding: 14px 16px;
+    border-radius: 12px;
+    border: 1px solid rgba(251,191,36,0.25);
+    background: rgba(251,191,36,0.05);
+  }
+
+  .pending-banner-web .header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+  }
+
+  .pending-banner-web .header .icon { font-size: 16px; }
+
+  .pending-banner-web .header .text {
+    font-size: 13px;
+    font-weight: 700;
+    color: #fbbf24;
+  }
+
+  .pending-banner-web .body {
+    font-size: 12px;
+    color: #999;
+    line-height: 1.5;
+    margin-bottom: 8px;
+  }
+
+  .pending-banner-web .body strong { color: #ddd; }
+
+  .cancel-btn-web {
+    font-size: 12px;
+    color: #ef4444;
+    font-weight: 600;
+    cursor: pointer;
+    background: none;
+    border: none;
+    padding: 0;
+  }
+
+  /* ─── Approval Banner (Web) ─── */
+  .approval-banner-web {
+    padding: 16px 18px;
+    border-radius: 12px;
+    border: 1px solid rgba(96,165,250,0.25);
+    background: linear-gradient(135deg, rgba(96,165,250,0.06), rgba(167,139,250,0.04));
+  }
+
+  .approval-banner-web .header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+
+  .approval-banner-web .header .icon { font-size: 18px; }
+
+  .approval-banner-web .header .text {
+    font-size: 13px;
+    font-weight: 700;
+    color: #60a5fa;
+  }
+
+  .approval-banner-web .body {
+    font-size: 13px;
+    color: #bbb;
+    line-height: 1.6;
+    margin-bottom: 14px;
+  }
+
+  .approval-banner-web .body strong { color: #e8e8ed; }
+
+  .approval-actions-web {
+    display: flex;
+    gap: 10px;
+  }
+
+  .btn-approve-web {
+    flex: 1;
+    padding: 10px 16px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #22c55e, #16a34a);
+    color: white;
+    font-size: 13px;
+    font-weight: 700;
+    text-align: center;
+    border: none;
+    cursor: pointer;
+    transition: transform 0.1s;
+  }
+
+  .btn-approve-web:hover { transform: scale(1.02); }
+
+  .btn-reject-web {
+    flex: 1;
+    padding: 10px 16px;
+    border-radius: 10px;
+    background: rgba(239,68,68,0.1);
+    border: 1.5px solid rgba(239,68,68,0.25);
+    color: #ef4444;
+    font-size: 13px;
+    font-weight: 700;
+    text-align: center;
+    cursor: pointer;
+    transition: transform 0.1s;
+  }
+
+  .btn-reject-web:hover { transform: scale(1.02); }
+
+  /* ─── Success Banner (Web) ─── */
+  .success-banner-web {
+    padding: 12px 16px;
+    border-radius: 12px;
+    border: 1px solid rgba(34,197,94,0.25);
+    background: rgba(34,197,94,0.05);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .success-banner-web .icon { font-size: 18px; }
+  .success-banner-web .text { font-size: 13px; font-weight: 600; color: #22c55e; }
+
+  /* ─── Claim Button ─── */
+  .claim-btn-web {
+    width: 100%;
+    padding: 12px 16px;
+    border-radius: 12px;
+    border: 1.5px dashed rgba(34,197,94,0.4);
+    background: rgba(34,197,94,0.06);
+    color: #22c55e;
+    font-size: 13px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .claim-btn-web:hover {
+    background: rgba(34,197,94,0.12);
+    border-color: rgba(34,197,94,0.6);
+  }
+
+  /* ─── Main Content Area ─── */
+  .main-content {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .content-tab-bar {
+    display: flex;
+    gap: 4px;
+    background: rgba(255,255,255,0.03);
+    border-radius: 12px;
+    padding: 4px;
+  }
+
+  .content-tab {
+    padding: 8px 16px;
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #666;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .content-tab.active {
+    background: rgba(96,165,250,0.12);
+    color: #60a5fa;
+  }
+
+  .content-placeholder {
+    background: rgba(255,255,255,0.02);
+    border: 1px solid rgba(255,255,255,0.05);
+    border-radius: 14px;
+    padding: 32px;
+    text-align: center;
+    color: #444;
+    font-size: 13px;
+  }
+
+  /* ─── Web Notification Toast ─── */
+  .web-toast {
+    position: absolute;
+    top: 54px;
+    right: 16px;
+    width: 360px;
+    background: #1e1e2e;
+    border-radius: 14px;
+    border: 1px solid #3a3a4a;
+    padding: 16px 18px;
+    box-shadow: 0 12px 36px rgba(0,0,0,0.5);
+    z-index: 10;
+    animation: slideIn 0.3s ease-out;
+  }
+
+  @keyframes slideIn {
+    from { transform: translateX(20px); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+  }
+
+  .web-toast .toast-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+
+  .web-toast .toast-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #2563eb, #7c3aed);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 800;
+    color: white;
+    flex-shrink: 0;
+  }
+
+  .web-toast .toast-title {
+    font-size: 13px;
+    font-weight: 700;
+    flex: 1;
+  }
+
+  .web-toast .toast-close {
+    font-size: 14px;
+    color: #666;
+    cursor: pointer;
+  }
+
+  .web-toast .toast-body {
+    font-size: 12px;
+    color: #999;
+    line-height: 1.5;
+    margin-bottom: 12px;
+  }
+
+  .web-toast .toast-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+  }
+
+  .web-toast .toast-btn {
+    padding: 6px 14px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: transform 0.1s;
+  }
+
+  .web-toast .toast-btn.review {
+    background: linear-gradient(135deg, #60a5fa, #3b82f6);
+    color: white;
+  }
+
+  .web-toast .toast-btn.dismiss {
+    background: rgba(255,255,255,0.06);
+    color: #888;
+  }
+
+  /* ─── Confirmation Modal (Web) ─── */
+  .modal-overlay {
+    position: absolute;
+    inset: 42px 0 0 0;
+    background: rgba(0,0,0,0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 20;
+    border-radius: 0 0 16px 16px;
+  }
+
+  .modal-card {
+    width: 440px;
+    background: #1e1e2e;
+    border-radius: 20px;
+    border: 1px solid #3a3a4a;
+    padding: 32px;
+    box-shadow: 0 20px 48px rgba(0,0,0,0.5);
+  }
+
+  .modal-card .icon-row {
+    text-align: center;
+    font-size: 42px;
+    margin-bottom: 16px;
+  }
+
+  .modal-card .title {
+    font-size: 18px;
+    font-weight: 800;
+    text-align: center;
+    margin-bottom: 8px;
+  }
+
+  .modal-card .body {
+    font-size: 14px;
+    color: #999;
+    text-align: center;
+    line-height: 1.6;
+    margin-bottom: 24px;
+  }
+
+  .modal-card .body strong { color: #e0e0eb; }
+
+  .modal-actions {
+    display: flex;
+    gap: 12px;
+  }
+
+  .modal-btn {
+    flex: 1;
+    padding: 12px;
+    border-radius: 14px;
+    font-size: 14px;
+    font-weight: 700;
+    text-align: center;
+    cursor: pointer;
+    border: none;
+    transition: transform 0.1s;
+  }
+
+  .modal-btn.cancel { background: rgba(255,255,255,0.06); color: #888; }
+  .modal-btn.confirm { background: linear-gradient(135deg, #a78bfa, #7c3aed); color: white; }
+
+  /* ─── Unassigned Agent ─── */
+  .agent-avatar-web.unassigned {
+    background: #282838;
+    color: #555;
+  }
+
+  .agent-name-web.unassigned { color: #555; }
+</style>
+</head>
+<body>
+
+<h1>Agent Transfer — Web Mock</h1>
+<p class="subtitle">Player Detail Page — Next.js / React (Men Platform Only)</p>
+
+<div class="web-scenarios">
+
+  <!-- ═══════ SCENARIO 1: Request Transfer Button ═══════ -->
+  <div class="web-scenario">
+    <div class="scenario-header">
+      <div class="scenario-number">1</div>
+      <div class="scenario-label">Request Transfer — Another Agent's Player</div>
+    </div>
+    <div class="scenario-desc">Current user sees the player managed by "Dudu Dahan" and can request to take over.</div>
+
+    <div class="browser-frame">
+      <div class="browser-chrome">
+        <div class="browser-dots"><span></span><span></span><span></span></div>
+        <div class="browser-url"><span class="lock">🔒</span> mgsr-web.vercel.app/players/omer-atzili-tm123</div>
+      </div>
+      <div class="browser-content">
+        <div class="web-nav">
+          <div class="web-breadcrumb">
+            <a>Players</a> <span>›</span> Omer Atzili
+          </div>
+        </div>
+        <div class="web-page-grid">
+          <div class="player-sidebar">
+            <div class="player-card-web">
+              <div class="player-img-web">⚽</div>
+              <div class="player-name-web">Omer Atzili</div>
+              <div class="player-club-web">🏟️ Maccabi Haifa FC</div>
+              <div class="player-tags-web">
+                <span class="tag-web tag-position">LW</span>
+                <span class="tag-web tag-position">AM</span>
+                <span class="tag-web tag-age">31 yrs</span>
+                <span class="tag-web tag-value">€800K</span>
+                <span class="tag-web tag-nationality">🇮🇱</span>
+              </div>
+              <div class="player-stats-web">
+                <div class="stat-item-web"><div class="value">Jun 2026</div><div class="label">Contract</div></div>
+                <div class="stat-item-web"><div class="value">Left</div><div class="label">Foot</div></div>
+                <div class="stat-item-web"><div class="value">175cm</div><div class="label">Height</div></div>
+                <div class="stat-item-web"><div class="value">—</div><div class="label">Salary</div></div>
+              </div>
+            </div>
+
+            <div class="agent-section-web">
+              <div class="agent-section-title">Agent in Charge</div>
+              <div class="agent-info-web">
+                <div class="agent-avatar-web">DD</div>
+                <div>
+                  <div class="agent-name-web">Dudu Dahan</div>
+                  <div class="agent-role-web">Added Jan 15, 2025</div>
+                </div>
+              </div>
+              <div class="transfer-btn-web">
+                🙋 Request Agent Transfer
+              </div>
+            </div>
+          </div>
+
+          <div class="main-content">
+            <div class="content-tab-bar">
+              <div class="content-tab active">Overview</div>
+              <div class="content-tab">Documents</div>
+              <div class="content-tab">Highlights</div>
+              <div class="content-tab">AI Scout</div>
+              <div class="content-tab">Notes</div>
+            </div>
+            <div class="content-placeholder">📊 Market Value Chart & Player Stats</div>
+            <div class="content-placeholder">🎬 Pinned Highlights</div>
+            <div class="content-placeholder">🤖 AI Scout Report</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════ SCENARIO 2: Confirmation Modal ═══════ -->
+  <div class="web-scenario">
+    <div class="scenario-header">
+      <div class="scenario-number">2</div>
+      <div class="scenario-label">Confirmation Modal</div>
+    </div>
+    <div class="scenario-desc">User clicked "Request Agent Transfer" — a centered modal asks for confirmation before sending.</div>
+
+    <div class="browser-frame" style="position: relative;">
+      <div class="browser-chrome">
+        <div class="browser-dots"><span></span><span></span><span></span></div>
+        <div class="browser-url"><span class="lock">🔒</span> mgsr-web.vercel.app/players/omer-atzili-tm123</div>
+      </div>
+      <div class="browser-content" style="filter: blur(3px); pointer-events: none;">
+        <div class="web-nav">
+          <div class="web-breadcrumb"><a>Players</a> <span>›</span> Omer Atzili</div>
+        </div>
+        <div class="web-page-grid">
+          <div class="player-sidebar">
+            <div class="player-card-web">
+              <div class="player-img-web">⚽</div>
+              <div class="player-name-web">Omer Atzili</div>
+              <div class="player-club-web">🏟️ Maccabi Haifa FC</div>
+            </div>
+          </div>
+          <div class="main-content">
+            <div class="content-placeholder">📊 Market Value Chart</div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-overlay">
+        <div class="modal-card">
+          <div class="icon-row">🔄</div>
+          <div class="title">Request Agent Transfer</div>
+          <div class="body">
+            You're requesting to become the agent in charge of <strong>Omer Atzili</strong>.<br><br>
+            A notification will be sent to <strong>Dudu Dahan</strong> for approval. The transfer will only take effect once approved.
+          </div>
+          <div class="modal-actions">
+            <div class="modal-btn cancel">Cancel</div>
+            <div class="modal-btn confirm">Send Request</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════ SCENARIO 3: Pending (Requester View) ═══════ -->
+  <div class="web-scenario">
+    <div class="scenario-header">
+      <div class="scenario-number">3</div>
+      <div class="scenario-label">Pending Transfer — Requester's View</div>
+    </div>
+    <div class="scenario-desc">Request sent. The requester sees a waiting state with option to cancel.</div>
+
+    <div class="browser-frame">
+      <div class="browser-chrome">
+        <div class="browser-dots"><span></span><span></span><span></span></div>
+        <div class="browser-url"><span class="lock">🔒</span> mgsr-web.vercel.app/players/omer-atzili-tm123</div>
+      </div>
+      <div class="browser-content">
+        <div class="web-nav">
+          <div class="web-breadcrumb"><a>Players</a> <span>›</span> Omer Atzili</div>
+        </div>
+        <div class="web-page-grid">
+          <div class="player-sidebar">
+            <div class="player-card-web">
+              <div class="player-img-web">⚽</div>
+              <div class="player-name-web">Omer Atzili</div>
+              <div class="player-club-web">🏟️ Maccabi Haifa FC</div>
+              <div class="player-tags-web">
+                <span class="tag-web tag-position">LW</span>
+                <span class="tag-web tag-position">AM</span>
+                <span class="tag-web tag-age">31 yrs</span>
+                <span class="tag-web tag-value">€800K</span>
+              </div>
+            </div>
+
+            <div class="agent-section-web">
+              <div class="agent-section-title">Agent in Charge</div>
+              <div class="agent-info-web">
+                <div class="agent-avatar-web">DD</div>
+                <div>
+                  <div class="agent-name-web">Dudu Dahan</div>
+                  <div class="agent-role-web">Added Jan 15, 2025</div>
+                </div>
+              </div>
+              <div class="pending-banner-web">
+                <div class="header">
+                  <span class="icon">⏳</span>
+                  <span class="text">Transfer Requested</span>
+                </div>
+                <div class="body">
+                  Waiting for <strong>Dudu Dahan</strong> to approve your request to manage this player.
+                </div>
+                <button class="cancel-btn-web">✕ Cancel Request</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="main-content">
+            <div class="content-tab-bar">
+              <div class="content-tab active">Overview</div>
+              <div class="content-tab">Documents</div>
+              <div class="content-tab">Highlights</div>
+              <div class="content-tab">AI Scout</div>
+              <div class="content-tab">Notes</div>
+            </div>
+            <div class="content-placeholder">📊 Market Value Chart & Player Stats</div>
+            <div class="content-placeholder">🎬 Pinned Highlights</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════ SCENARIO 4: Approval View with Browser Notification ═══════ -->
+  <div class="web-scenario">
+    <div class="scenario-header">
+      <div class="scenario-number">4</div>
+      <div class="scenario-label">Approval View — Current Agent's Screen</div>
+    </div>
+    <div class="scenario-desc">The current agent (Dudu Dahan) receives a browser notification OR push, and sees the approval banner on the player page.</div>
+
+    <div class="browser-frame" style="position: relative;">
+      <div class="browser-chrome">
+        <div class="browser-dots"><span></span><span></span><span></span></div>
+        <div class="browser-url"><span class="lock">🔒</span> mgsr-web.vercel.app/players/omer-atzili-tm123</div>
+      </div>
+
+      <div class="web-toast">
+        <div class="toast-header">
+          <div class="toast-icon">M</div>
+          <div class="toast-title">🔄 Agent Transfer Request</div>
+          <div class="toast-close">✕</div>
+        </div>
+        <div class="toast-body">
+          <strong>Lior Dahan</strong> wants to become the agent in charge of <strong>Omer Atzili</strong>.
+        </div>
+        <div class="toast-actions">
+          <div class="toast-btn dismiss">Dismiss</div>
+          <div class="toast-btn review">Review</div>
+        </div>
+      </div>
+
+      <div class="browser-content">
+        <div class="web-nav">
+          <div class="web-breadcrumb"><a>Players</a> <span>›</span> Omer Atzili</div>
+        </div>
+        <div class="web-page-grid">
+          <div class="player-sidebar">
+            <div class="player-card-web">
+              <div class="player-img-web">⚽</div>
+              <div class="player-name-web">Omer Atzili</div>
+              <div class="player-club-web">🏟️ Maccabi Haifa FC</div>
+              <div class="player-tags-web">
+                <span class="tag-web tag-position">LW</span>
+                <span class="tag-web tag-position">AM</span>
+                <span class="tag-web tag-age">31 yrs</span>
+                <span class="tag-web tag-value">€800K</span>
+              </div>
+            </div>
+
+            <div class="agent-section-web">
+              <div class="agent-section-title">Agent in Charge</div>
+              <div class="agent-info-web">
+                <div class="agent-avatar-web">DD</div>
+                <div>
+                  <div class="agent-name-web">Dudu Dahan (You)</div>
+                  <div class="agent-role-web">Added Jan 15, 2025</div>
+                </div>
+              </div>
+              <div class="approval-banner-web">
+                <div class="header">
+                  <span class="icon">📨</span>
+                  <span class="text">Incoming Transfer Request</span>
+                </div>
+                <div class="body">
+                  <strong>Lior Dahan</strong> is requesting to become the agent in charge of this player.<br>
+                  If you approve, you will no longer manage <strong>Omer Atzili</strong>.
+                </div>
+                <div class="approval-actions-web">
+                  <button class="btn-approve-web">✓ Approve Transfer</button>
+                  <button class="btn-reject-web">✕ Reject</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="main-content">
+            <div class="content-tab-bar">
+              <div class="content-tab active">Overview</div>
+              <div class="content-tab">Documents</div>
+              <div class="content-tab">Highlights</div>
+              <div class="content-tab">AI Scout</div>
+              <div class="content-tab">Notes</div>
+            </div>
+            <div class="content-placeholder">📊 Market Value Chart & Player Stats</div>
+            <div class="content-placeholder">🎬 Pinned Highlights</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════ SCENARIO 5: Transfer Approved ═══════ -->
+  <div class="web-scenario">
+    <div class="scenario-header">
+      <div class="scenario-number">5</div>
+      <div class="scenario-label">Transfer Approved — New Agent's View</div>
+    </div>
+    <div class="scenario-desc">The transfer was approved. The player now shows the new agent in charge.</div>
+
+    <div class="browser-frame">
+      <div class="browser-chrome">
+        <div class="browser-dots"><span></span><span></span><span></span></div>
+        <div class="browser-url"><span class="lock">🔒</span> mgsr-web.vercel.app/players/omer-atzili-tm123</div>
+      </div>
+      <div class="browser-content">
+        <div class="web-nav">
+          <div class="web-breadcrumb"><a>Players</a> <span>›</span> Omer Atzili</div>
+        </div>
+        <div class="web-page-grid">
+          <div class="player-sidebar">
+            <div class="player-card-web">
+              <div class="player-img-web">⚽</div>
+              <div class="player-name-web">Omer Atzili</div>
+              <div class="player-club-web">🏟️ Maccabi Haifa FC</div>
+              <div class="player-tags-web">
+                <span class="tag-web tag-position">LW</span>
+                <span class="tag-web tag-position">AM</span>
+                <span class="tag-web tag-age">31 yrs</span>
+                <span class="tag-web tag-value">€800K</span>
+              </div>
+            </div>
+
+            <div class="agent-section-web">
+              <div class="agent-section-title">Agent in Charge</div>
+              <div class="agent-info-web">
+                <div class="agent-avatar-web" style="background: linear-gradient(135deg, #22c55e, #16a34a);">LD</div>
+                <div>
+                  <div class="agent-name-web">Lior Dahan (You)</div>
+                  <div class="agent-role-web">Transferred Mar 17, 2026</div>
+                </div>
+              </div>
+              <div class="success-banner-web">
+                <span class="icon">✅</span>
+                <span class="text">Transfer approved — you now manage this player</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="main-content">
+            <div class="content-tab-bar">
+              <div class="content-tab active">Overview</div>
+              <div class="content-tab">Documents</div>
+              <div class="content-tab">Highlights</div>
+              <div class="content-tab">AI Scout</div>
+              <div class="content-tab">Notes</div>
+            </div>
+            <div class="content-placeholder">📊 Market Value Chart & Player Stats</div>
+            <div class="content-placeholder">🎬 Pinned Highlights</div>
+            <div class="content-placeholder">🤖 AI Scout Report</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════ SCENARIO 6: No Agent — Direct Claim ═══════ -->
+  <div class="web-scenario">
+    <div class="scenario-header">
+      <div class="scenario-number">6</div>
+      <div class="scenario-label">No Agent Assigned — Direct Claim</div>
+    </div>
+    <div class="scenario-desc">Player has no agent. Any user can claim immediately without approval.</div>
+
+    <div class="browser-frame">
+      <div class="browser-chrome">
+        <div class="browser-dots"><span></span><span></span><span></span></div>
+        <div class="browser-url"><span class="lock">🔒</span> mgsr-web.vercel.app/players/eden-karzev-tm456</div>
+      </div>
+      <div class="browser-content">
+        <div class="web-nav">
+          <div class="web-breadcrumb"><a>Players</a> <span>›</span> Eden Karzev</div>
+        </div>
+        <div class="web-page-grid">
+          <div class="player-sidebar">
+            <div class="player-card-web">
+              <div class="player-img-web">⚽</div>
+              <div class="player-name-web">Eden Karzev</div>
+              <div class="player-club-web">🏟️ Hapoel Beer Sheva</div>
+              <div class="player-tags-web">
+                <span class="tag-web tag-position">CB</span>
+                <span class="tag-web tag-age">24 yrs</span>
+                <span class="tag-web tag-value">€450K</span>
+                <span class="tag-web tag-nationality">🇮🇱</span>
+              </div>
+            </div>
+
+            <div class="agent-section-web">
+              <div class="agent-section-title">Agent in Charge</div>
+              <div class="agent-info-web">
+                <div class="agent-avatar-web unassigned">?</div>
+                <div>
+                  <div class="agent-name-web unassigned">Unassigned</div>
+                  <div class="agent-role-web">No agent managing this player</div>
+                </div>
+              </div>
+              <div class="claim-btn-web">
+                ✋ Claim as Agent in Charge
+              </div>
+            </div>
+          </div>
+
+          <div class="main-content">
+            <div class="content-tab-bar">
+              <div class="content-tab active">Overview</div>
+              <div class="content-tab">Documents</div>
+              <div class="content-tab">Highlights</div>
+              <div class="content-tab">AI Scout</div>
+              <div class="content-tab">Notes</div>
+            </div>
+            <div class="content-placeholder">📊 Market Value Chart & Player Stats</div>
+            <div class="content-placeholder">🎬 Pinned Highlights</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /web-scenarios -->
+
+</body>
+</html>

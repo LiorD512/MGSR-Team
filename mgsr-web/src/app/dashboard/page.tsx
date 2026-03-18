@@ -963,45 +963,61 @@ export default function DashboardPage() {
 
         {/* Pending agent transfer requests */}
         {(myPendingTransfers.toApprove.length > 0 || myPendingTransfers.waitingApproval.length > 0) && (
-          <div className="mb-6 sm:mb-10 p-4 sm:p-6 bg-mgsr-card/60 border border-amber-500/30 rounded-2xl backdrop-blur-sm">
-            <h3 className="text-lg font-bold text-amber-400 mb-4 font-display flex items-center gap-2">
-              <span>🔄</span> {t('dashboard_pending_transfers_title')}
-            </h3>
-            <div className="space-y-2">
+          <div className="mb-6 sm:mb-10 p-5 sm:p-6 bg-gradient-to-br from-mgsr-card/80 to-mgsr-card/40 border border-amber-500/20 rounded-2xl backdrop-blur-sm">
+            <div className="flex items-center gap-3 mb-5">
+              <div className="w-9 h-9 rounded-lg bg-amber-500/15 flex items-center justify-center">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-400">
+                  <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                  <circle cx="9" cy="7" r="4" />
+                  <polyline points="16 11 18 13 22 9" />
+                </svg>
+              </div>
+              <h3 className="text-base font-bold text-white font-display">
+                {t('dashboard_pending_transfers_title')}
+              </h3>
+              <span className="ms-auto text-[0.65rem] font-bold bg-amber-500/20 text-amber-400 px-2.5 py-1 rounded-full">
+                {myPendingTransfers.toApprove.length + myPendingTransfers.waitingApproval.length}
+              </span>
+            </div>
+            <div className="space-y-2.5">
               {myPendingTransfers.toApprove.map((tr) => (
                 <Link
                   key={tr.id}
                   href={`/players/${tr.playerId}`}
-                  className="flex items-center gap-3 p-3 rounded-xl bg-mgsr-dark/40 hover:bg-mgsr-dark/70 transition-colors border border-mgsr-border/50 hover:border-amber-500/40"
+                  className="group flex items-center gap-3.5 p-3.5 rounded-xl bg-mgsr-dark/50 hover:bg-mgsr-dark/80 transition-all duration-200 border border-mgsr-border/40 hover:border-emerald-500/40 hover:translate-x-0.5 rtl:hover:-translate-x-0.5"
                 >
                   {tr.playerImage ? (
-                    <img src={tr.playerImage} alt="" className="w-10 h-10 rounded-full object-cover border border-mgsr-border" />
+                    <img src={tr.playerImage} alt="" className="w-10 h-10 rounded-full object-cover border-2 border-mgsr-border/60 group-hover:border-emerald-500/40 transition-colors" />
                   ) : (
-                    <div className="w-10 h-10 rounded-full bg-mgsr-border/30 flex items-center justify-center text-mgsr-muted text-sm">⚽</div>
+                    <div className="w-10 h-10 rounded-full bg-mgsr-border/20 flex items-center justify-center text-mgsr-muted text-sm">⚽</div>
                   )}
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-white truncate">{tr.playerName || 'Unknown'}</p>
-                    <p className="text-xs text-amber-400/80">{t('dashboard_transfer_requests_assign').replace('%s', tr.toAgentName || '')}</p>
+                    <p className="text-xs text-mgsr-muted/70 mt-0.5">{t('dashboard_transfer_requests_assign').replace('%s', tr.toAgentName || '')}</p>
                   </div>
-                  <span className="text-xs text-mgsr-muted">{isRtl ? '←' : '→'}</span>
+                  <span className="text-[0.6rem] font-bold uppercase tracking-wider bg-emerald-500/15 text-emerald-400 px-2 py-1 rounded-md whitespace-nowrap">
+                    {isRtl ? 'דורש אישורך' : 'Needs Approval'}
+                  </span>
                 </Link>
               ))}
               {myPendingTransfers.waitingApproval.map((tr) => (
                 <Link
                   key={tr.id}
                   href={`/players/${tr.playerId}`}
-                  className="flex items-center gap-3 p-3 rounded-xl bg-mgsr-dark/40 hover:bg-mgsr-dark/70 transition-colors border border-mgsr-border/50 hover:border-amber-500/40"
+                  className="group flex items-center gap-3.5 p-3.5 rounded-xl bg-mgsr-dark/50 hover:bg-mgsr-dark/80 transition-all duration-200 border border-mgsr-border/40 hover:border-amber-500/30 hover:translate-x-0.5 rtl:hover:-translate-x-0.5"
                 >
                   {tr.playerImage ? (
-                    <img src={tr.playerImage} alt="" className="w-10 h-10 rounded-full object-cover border border-mgsr-border" />
+                    <img src={tr.playerImage} alt="" className="w-10 h-10 rounded-full object-cover border-2 border-mgsr-border/60 group-hover:border-amber-500/30 transition-colors" />
                   ) : (
-                    <div className="w-10 h-10 rounded-full bg-mgsr-border/30 flex items-center justify-center text-mgsr-muted text-sm">⚽</div>
+                    <div className="w-10 h-10 rounded-full bg-mgsr-border/20 flex items-center justify-center text-mgsr-muted text-sm">⚽</div>
                   )}
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-white truncate">{tr.playerName || 'Unknown'}</p>
-                    <p className="text-xs text-mgsr-muted">{t('dashboard_transfer_waiting_approval').replace('%s', tr.fromAgentName || '')}</p>
+                    <p className="text-xs text-mgsr-muted/70 mt-0.5">{t('dashboard_transfer_waiting_approval').replace('%s', tr.fromAgentName || '')}</p>
                   </div>
-                  <span className="text-xs text-mgsr-muted">{isRtl ? '←' : '→'}</span>
+                  <span className="text-[0.6rem] font-bold uppercase tracking-wider bg-amber-500/15 text-amber-400 px-2 py-1 rounded-md whitespace-nowrap">
+                    {isRtl ? 'ממתין' : 'Waiting'}
+                  </span>
                 </Link>
               ))}
             </div>

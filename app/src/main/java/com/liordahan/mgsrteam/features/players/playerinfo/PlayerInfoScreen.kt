@@ -674,6 +674,38 @@ fun PlayerInfoScreen(
                 )
             }
 
+            // Section: Agent Transfer (men only)
+            if (currentPlatform == Platform.MEN) {
+                playerToPresent?.let { player ->
+                    val pendingTransfer by viewModel.pendingTransferFlow.collectAsState()
+                    val currentUserAccount by viewModel.currentUserAccountFlow.collectAsState()
+                    var showTransferConfirmDialog by remember { mutableStateOf(false) }
+
+                    if (showTransferConfirmDialog) {
+                        AgentTransferConfirmDialog(
+                            playerName = player.fullName ?: "",
+                            currentAgentName = player.agentInChargeName ?: "—",
+                            onConfirm = {
+                                showTransferConfirmDialog = false
+                                viewModel.requestAgentTransfer()
+                            },
+                            onDismiss = { showTransferConfirmDialog = false }
+                        )
+                    }
+
+                    AgentTransferSection(
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                        player = player,
+                        pendingTransfer = pendingTransfer,
+                        currentUserAccountId = currentUserAccount?.id,
+                        onRequestTransfer = { showTransferConfirmDialog = true },
+                        onApproveTransfer = { viewModel.approveTransfer() },
+                        onRejectTransfer = { viewModel.rejectTransfer() },
+                        onCancelTransfer = { viewModel.cancelTransferRequest() }
+                    )
+                }
+            }
+
             // Section: AI Helper (men only)
             if (currentPlatform == Platform.MEN) {
                 playerToPresent?.let { player ->
@@ -1281,7 +1313,7 @@ private fun PlayerInfoHeroCard(
     currentPlatform: Platform = Platform.MEN,
     onMandateChanged: (Boolean) -> Unit,
     onSalaryTransferFeeClicked: () -> Unit = {},
-    onClearSalaryAndTransferFee: () -> Unit = {}
+    onClearSalaryAndTransferFee: () -> Unit = {},
 ) {
     val resources = LocalContext.current.resources
     val valueTrend = remember(player.marketValueHistory) {
@@ -1434,6 +1466,7 @@ private fun PlayerInfoHeroCard(
                 text = stringResource(R.string.player_info_added_by, player.agentInChargeName ?: "—"),
                 style = regularTextStyle(PlatformColors.palette.textSecondary.copy(alpha = 0.8f), 11.sp)
             )
+
             if (currentPlatform == Platform.MEN && (player.createdAt ?: 0L) > 0L) {
                 Spacer(Modifier.height(2.dp))
                 Text(
@@ -4002,5 +4035,252 @@ private fun String.toMarketValueDouble(): Double {
         lower.endsWith("k") -> lower.removeSuffix("k").toDoubleOrNull()?.times(1_000) ?: 0.0
         lower.endsWith("m") -> lower.removeSuffix("m").toDoubleOrNull()?.times(1_000_000) ?: 0.0
         else -> lower.toDoubleOrNull() ?: 0.0
+    }
+}
+
+// ── Agent Transfer Composables ──────────────────────────────────────────────
+
+@Composable
+private fun AgentTransferSection(
+    modifier: Modifier = Modifier,
+    player: Player,
+    pendingTransfer: com.liordahan.mgsrteam.features.players.playerinfo.agenttransfer.AgentTransferRequest?,
+    currentUserAccountId: String?,
+    onRequestTransfer: () -> Unit,
+    onApproveTransfer: () -> Unit,
+    onRejectTransfer: () -> Unit,
+    onCancelTransfer: () -> Unit
+) {
+    val isCurrentUserAgent = currentUserAccountId != null &&
+            currentUserAccountId == player.agentInChargeId
+
+    when {
+        // Current user IS the agent in charge and there's a pending request TO review
+        pendingTransfer != null && isCurrentUserAgent -> {
+            AgentTransferApprovalBanner(
+                modifier = modifier,
+                requesterName = pendingTransfer.toAgentName ?: "—",
+                onApprove = onApproveTransfer,
+                onReject = onRejectTransfer
+            )
+        }
+        // Current user requested a transfer — show pending/waiting state
+        pendingTransfer != null && pendingTransfer.toAgentId == currentUserAccountId -> {
+            AgentTransferPendingBanner(
+                modifier = modifier,
+                currentAgentName = pendingTransfer.fromAgentName ?: "—",
+                onCancel = onCancelTransfer
+            )
+        }
+        // No pending transfer, current user is NOT the agent — show request button
+        pendingTransfer == null && !isCurrentUserAgent && player.agentInChargeId != null -> {
+            AgentTransferRequestButton(modifier = modifier, onClick = onRequestTransfer)
+        }
+    }
+}
+
+@Composable
+private fun AgentTransferRequestButton(modifier: Modifier = Modifier, onClick: () -> Unit) {
+    Surface(
+        modifier = modifier
+            .fillMaxWidth()
+            .clickWithNoRipple(onClick = onClick),
+        shape = RoundedCornerShape(12.dp),
+        color = PlatformColors.palette.accent.copy(alpha = 0.08f),
+        border = BorderStroke(1.dp, PlatformColors.palette.accent.copy(alpha = 0.3f))
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Text(
+                text = "🙋",
+                style = boldTextStyle(PlatformColors.palette.textPrimary, 14.sp)
+            )
+            Spacer(Modifier.width(8.dp))
+            Text(
+                text = stringResource(R.string.agent_transfer_request_button),
+                style = boldTextStyle(PlatformColors.palette.accent, 13.sp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun AgentTransferPendingBanner(
+    modifier: Modifier = Modifier,
+    currentAgentName: String,
+    onCancel: () -> Unit
+) {
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        color = Color(0xFFFBBF24).copy(alpha = 0.08f),
+        border = BorderStroke(1.dp, Color(0xFFFBBF24).copy(alpha = 0.25f))
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(14.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(text = "⏳", style = boldTextStyle(Color.Unspecified, 16.sp))
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    text = stringResource(R.string.agent_transfer_pending_title),
+                    style = boldTextStyle(Color(0xFFFBBF24), 12.sp)
+                )
+            }
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = stringResource(R.string.agent_transfer_pending_desc, currentAgentName),
+                style = regularTextStyle(PlatformColors.palette.textSecondary, 11.sp)
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = stringResource(R.string.agent_transfer_cancel),
+                modifier = Modifier.clickWithNoRipple(onClick = onCancel),
+                style = boldTextStyle(PlatformColors.palette.red, 11.sp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun AgentTransferApprovalBanner(
+    modifier: Modifier = Modifier,
+    requesterName: String,
+    onApprove: () -> Unit,
+    onReject: () -> Unit
+) {
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        color = PlatformColors.palette.blue.copy(alpha = 0.08f),
+        border = BorderStroke(1.dp, PlatformColors.palette.blue.copy(alpha = 0.25f))
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(14.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(text = "📨", style = boldTextStyle(Color.Unspecified, 16.sp))
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    text = stringResource(R.string.agent_transfer_approval_title),
+                    style = boldTextStyle(PlatformColors.palette.blue, 12.sp)
+                )
+            }
+            Spacer(Modifier.height(6.dp))
+            Text(
+                text = stringResource(R.string.agent_transfer_approval_desc, requesterName),
+                style = regularTextStyle(PlatformColors.palette.textSecondary, 12.sp)
+            )
+            Spacer(Modifier.height(12.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Button(
+                    onClick = onApprove,
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = PlatformColors.palette.green
+                    )
+                ) {
+                    Text(
+                        text = stringResource(R.string.agent_transfer_approve),
+                        style = boldTextStyle(Color.White, 13.sp)
+                    )
+                }
+                Button(
+                    onClick = onReject,
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = PlatformColors.palette.red.copy(alpha = 0.12f)
+                    ),
+                    border = BorderStroke(1.dp, PlatformColors.palette.red.copy(alpha = 0.3f))
+                ) {
+                    Text(
+                        text = stringResource(R.string.agent_transfer_reject),
+                        style = boldTextStyle(PlatformColors.palette.red, 13.sp)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AgentTransferConfirmDialog(
+    playerName: String,
+    currentAgentName: String,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(containerColor = PlatformColors.palette.card),
+            border = BorderStroke(1.dp, PlatformColors.palette.cardBorder)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(text = "🔄", style = boldTextStyle(Color.Unspecified, 36.sp))
+                Spacer(Modifier.height(12.dp))
+                Text(
+                    text = stringResource(R.string.agent_transfer_confirm_title),
+                    style = boldTextStyle(PlatformColors.palette.textPrimary, 16.sp)
+                )
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = stringResource(R.string.agent_transfer_confirm_body, playerName, currentAgentName),
+                    style = regularTextStyle(PlatformColors.palette.textSecondary, 13.sp),
+                    textAlign = TextAlign.Center
+                )
+                Spacer(Modifier.height(20.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Button(
+                        onClick = onDismiss,
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(14.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = PlatformColors.palette.background
+                        )
+                    ) {
+                        Text(
+                            text = stringResource(R.string.cancel),
+                            style = boldTextStyle(PlatformColors.palette.textSecondary, 14.sp)
+                        )
+                    }
+                    Button(
+                        onClick = onConfirm,
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(14.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = PlatformColors.palette.accent
+                        )
+                    ) {
+                        Text(
+                            text = stringResource(R.string.agent_transfer_send_request),
+                            style = boldTextStyle(Color.White, 14.sp)
+                        )
+                    }
+                }
+            }
+        }
     }
 }

@@ -1,0 +1,1411 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MGSR – Agent Transfer Feature Showcase</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-deep: #080b12;
+    --bg-card: #0e1320;
+    --bg-card-hover: #131a2d;
+    --bg-elevated: #151d33;
+    --border: rgba(255,255,255,0.06);
+    --border-hover: rgba(255,255,255,0.12);
+    --text-primary: #eef1f7;
+    --text-secondary: #7b8499;
+    --text-dim: #4a5068;
+    --accent-teal: #38e8c6;
+    --accent-teal-dim: rgba(56,232,198,0.12);
+    --accent-blue: #5b8af5;
+    --accent-blue-dim: rgba(91,138,245,0.1);
+    --accent-emerald: #34d399;
+    --accent-emerald-dim: rgba(52,211,153,0.1);
+    --accent-amber: #f59e0b;
+    --accent-amber-dim: rgba(245,158,11,0.08);
+    --accent-rose: #f43f5e;
+    --accent-rose-dim: rgba(244,63,94,0.08);
+    --accent-violet: #8b5cf6;
+    --accent-violet-dim: rgba(139,92,246,0.1);
+    --gradient-approval: linear-gradient(135deg, rgba(91,138,245,0.15) 0%, rgba(139,92,246,0.08) 100%);
+    --gradient-pending: linear-gradient(135deg, rgba(245,158,11,0.12) 0%, rgba(251,191,36,0.04) 100%);
+    --gradient-success: linear-gradient(135deg, rgba(52,211,153,0.15) 0%, rgba(56,232,198,0.05) 100%);
+    --gradient-hero: linear-gradient(160deg, #0e1320 0%, #131a2d 40%, #0e1320 100%);
+    --radius-sm: 10px;
+    --radius-md: 16px;
+    --radius-lg: 24px;
+    --radius-xl: 32px;
+    --shadow-card: 0 4px 24px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.2);
+    --shadow-glow-teal: 0 0 40px rgba(56,232,198,0.15);
+    --shadow-glow-blue: 0 0 40px rgba(91,138,245,0.15);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg-deep);
+    color: var(--text-primary);
+    font-family: 'DM Sans', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+    line-height: 1.6;
+  }
+
+  /* ── Noise Grain Overlay ── */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    pointer-events: none;
+    opacity: 0.025;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    background-size: 128px;
+  }
+
+  /* ── Typography ── */
+  .font-serif { font-family: 'Instrument Serif', serif; }
+  .font-mono { font-family: 'JetBrains Mono', monospace; }
+
+  /* ── Page Header ── */
+  .page-header {
+    position: relative;
+    padding: 60px 0 40px;
+    text-align: center;
+    overflow: hidden;
+  }
+  .page-header::before {
+    content: '';
+    position: absolute;
+    top: -120px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 600px;
+    height: 400px;
+    background: radial-gradient(ellipse, rgba(56,232,198,0.08) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .page-header h1 {
+    font-family: 'Instrument Serif', serif;
+    font-size: clamp(2.5rem, 5vw, 4rem);
+    font-weight: 400;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+    background: linear-gradient(135deg, var(--text-primary) 0%, var(--accent-teal) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .page-header .subtitle {
+    font-size: 0.95rem;
+    color: var(--text-secondary);
+    margin-top: 12px;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    font-weight: 500;
+  }
+  .badge-feature {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 20px;
+    padding: 6px 16px;
+    border-radius: 100px;
+    border: 1px solid rgba(56,232,198,0.2);
+    background: rgba(56,232,198,0.06);
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--accent-teal);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .badge-feature::before { content: '◆'; font-size: 0.5rem; }
+
+  /* ── Layout ── */
+  .container { max-width: 1280px; margin: 0 auto; padding: 0 32px; }
+  .section { margin-bottom: 100px; }
+  .section-label {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 32px;
+  }
+  .section-label .num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--accent-teal);
+    padding: 4px 10px;
+    border-radius: 6px;
+    background: var(--accent-teal-dim);
+    border: 1px solid rgba(56,232,198,0.15);
+    letter-spacing: 0.1em;
+  }
+  .section-label h2 {
+    font-family: 'Instrument Serif', serif;
+    font-size: 1.6rem;
+    font-weight: 400;
+    color: var(--text-primary);
+  }
+  .section-desc {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    margin-bottom: 40px;
+    max-width: 600px;
+    line-height: 1.7;
+  }
+
+  /* ── Grid ── */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
+  @media (max-width: 900px) {
+    .grid-2, .grid-3 { grid-template-columns: 1fr; }
+  }
+
+  /* ── Cards ── */
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 28px;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .card:hover {
+    border-color: var(--border-hover);
+    background: var(--bg-card-hover);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-card);
+  }
+  .card-glow-teal::after {
+    content: '';
+    position: absolute;
+    top: -1px; right: -1px;
+    width: 80px; height: 80px;
+    background: radial-gradient(circle, rgba(56,232,198,0.12) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .card-label {
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    font-weight: 700;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  /* ── Player Card (Mini) ── */
+  .player-mini {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 16px;
+    border-radius: var(--radius-md);
+    background: rgba(255,255,255,0.02);
+    border: 1px solid var(--border);
+    margin-bottom: 16px;
+  }
+  .player-avatar {
+    width: 52px; height: 52px;
+    border-radius: 14px;
+    object-fit: cover;
+    border: 2px solid var(--border);
+    background: var(--bg-elevated);
+  }
+  .player-info h4 {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 2px;
+  }
+  .player-info span {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+  }
+  .player-info .pos {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: var(--accent-teal-dim);
+    color: var(--accent-teal);
+    font-weight: 500;
+    margin-right: 6px;
+  }
+
+  /* ── Agent Badge ── */
+  .agent-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    border-radius: 100px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border);
+    font-size: 0.8rem;
+    color: var(--text-primary);
+    font-weight: 500;
+  }
+  .agent-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--accent-teal);
+    box-shadow: 0 0 8px var(--accent-teal);
+  }
+
+  /* ── Buttons ── */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px 24px;
+    border-radius: var(--radius-sm);
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+  }
+  .btn-primary {
+    background: var(--accent-teal);
+    color: #080b12;
+  }
+  .btn-primary:hover {
+    box-shadow: var(--shadow-glow-teal);
+    transform: translateY(-1px);
+  }
+  .btn-outline {
+    background: transparent;
+    border: 1px dashed rgba(91,138,245,0.35);
+    color: var(--accent-blue);
+    padding: 14px 24px;
+  }
+  .btn-outline:hover {
+    background: var(--accent-blue-dim);
+    border-style: solid;
+    box-shadow: var(--shadow-glow-blue);
+  }
+  .btn-approve {
+    background: var(--accent-emerald);
+    color: #080b12;
+    font-weight: 700;
+  }
+  .btn-approve:hover {
+    box-shadow: 0 0 30px rgba(52,211,153,0.3);
+    transform: translateY(-1px);
+  }
+  .btn-reject {
+    background: var(--accent-rose-dim);
+    border: 1px solid rgba(244,63,94,0.25);
+    color: var(--accent-rose);
+    font-weight: 700;
+  }
+  .btn-reject:hover {
+    background: rgba(244,63,94,0.15);
+  }
+  .btn-ghost {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+  }
+  .btn-ghost:hover { background: rgba(255,255,255,0.08); color: var(--text-primary); }
+  .btn-full { width: 100%; }
+  .btn-sm { padding: 8px 16px; font-size: 0.8rem; }
+
+  /* ── Spinner ── */
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .spinner {
+    display: inline-block;
+    width: 18px; height: 18px;
+    border: 2.5px solid rgba(255,255,255,0.15);
+    border-top-color: currentColor;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+  }
+  .spinner-dark {
+    border-color: rgba(0,0,0,0.12);
+    border-top-color: #080b12;
+  }
+
+  /* ── Transfer States ── */
+  .state-box {
+    border-radius: var(--radius-md);
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+  }
+  .state-box::before {
+    content: '';
+    position: absolute;
+    top: 0; right: 0;
+    width: 120px; height: 120px;
+    border-radius: 50%;
+    filter: blur(50px);
+    pointer-events: none;
+  }
+  .state-approval {
+    background: var(--gradient-approval);
+    border: 1px solid rgba(91,138,245,0.2);
+  }
+  .state-approval::before { background: rgba(91,138,245,0.2); }
+  .state-pending {
+    background: var(--gradient-pending);
+    border: 1px solid rgba(245,158,11,0.15);
+  }
+  .state-pending::before { background: rgba(245,158,11,0.15); }
+  .state-success {
+    background: var(--gradient-success);
+    border: 1px solid rgba(52,211,153,0.2);
+  }
+  .state-success::before { background: rgba(52,211,153,0.2); }
+
+  .state-icon {
+    width: 36px; height: 36px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    margin-bottom: 12px;
+  }
+  .state-title {
+    font-size: 0.85rem;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+  .state-desc {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    line-height: 1.6;
+    margin-bottom: 16px;
+  }
+
+  /* ── Dialog ── */
+  .dialog-overlay {
+    position: relative;
+    border-radius: var(--radius-xl);
+    overflow: hidden;
+    background: rgba(8,11,18,0.7);
+    backdrop-filter: blur(20px);
+    padding: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 420px;
+    border: 1px solid var(--border);
+  }
+  .dialog-overlay::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at center, rgba(91,138,245,0.06) 0%, transparent 60%);
+    pointer-events: none;
+  }
+  .dialog-box {
+    position: relative;
+    z-index: 1;
+    background: var(--bg-card);
+    border: 1px solid var(--border-hover);
+    border-radius: var(--radius-lg);
+    padding: 36px;
+    max-width: 380px;
+    width: 100%;
+    text-align: center;
+    box-shadow: 0 24px 80px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.05);
+  }
+  .dialog-icon {
+    width: 64px; height: 64px;
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 20px;
+    font-size: 1.8rem;
+    background: linear-gradient(135deg, var(--accent-blue-dim), var(--accent-violet-dim));
+    border: 1px solid rgba(91,138,245,0.15);
+  }
+  .dialog-title {
+    font-family: 'Instrument Serif', serif;
+    font-size: 1.3rem;
+    font-weight: 400;
+    margin-bottom: 8px;
+  }
+  .dialog-desc {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin-bottom: 28px;
+    line-height: 1.7;
+  }
+  .dialog-actions { display: flex; gap: 10px; }
+  .dialog-actions .btn { flex: 1; }
+
+  /* ── Dashboard Section ── */
+  .dash-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+  }
+  .dash-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 1rem;
+    font-weight: 700;
+  }
+  .dash-title .icon {
+    width: 32px; height: 32px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 10px;
+    background: var(--accent-amber-dim);
+    border: 1px solid rgba(245,158,11,0.15);
+    font-size: 0.9rem;
+  }
+  .dash-count {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    padding: 3px 8px;
+    border-radius: 100px;
+    background: var(--accent-amber-dim);
+    color: var(--accent-amber);
+    border: 1px solid rgba(245,158,11,0.2);
+    font-weight: 600;
+  }
+
+  .transfer-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 16px;
+    border-radius: var(--radius-md);
+    background: rgba(255,255,255,0.015);
+    border: 1px solid var(--border);
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  .transfer-row:hover {
+    background: rgba(255,255,255,0.035);
+    border-color: var(--border-hover);
+    transform: translateX(-3px);
+  }
+  .transfer-row .avatar {
+    width: 44px; height: 44px;
+    border-radius: 12px;
+    object-fit: cover;
+    border: 2px solid var(--border);
+  }
+  .transfer-row .info { flex: 1; min-width: 0; }
+  .transfer-row .name {
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin-bottom: 2px;
+  }
+  .transfer-row .meta {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+  }
+  .transfer-row .meta strong { color: var(--accent-amber); font-weight: 600; }
+  .transfer-row .arrow {
+    color: var(--text-dim);
+    font-size: 0.9rem;
+    transition: transform 0.2s;
+  }
+  .transfer-row:hover .arrow { transform: translateX(-4px); color: var(--accent-teal); }
+
+  .tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-size: 0.65rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .tag-approve { background: var(--accent-emerald-dim); color: var(--accent-emerald); border: 1px solid rgba(52,211,153,0.15); }
+  .tag-waiting { background: var(--accent-amber-dim); color: var(--accent-amber); border: 1px solid rgba(245,158,11,0.15); }
+  .tag-rejected { background: var(--accent-rose-dim); color: var(--accent-rose); border: 1px solid rgba(244,63,94,0.15); }
+
+  /* ── Notification Toast ── */
+  .notif-stack { display: flex; flex-direction: column; gap: 12px; }
+  .notif {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 16px 18px;
+    border-radius: var(--radius-md);
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+    position: relative;
+    overflow: hidden;
+  }
+  .notif::before {
+    content: '';
+    position: absolute;
+    top: 0; right: 0;
+    width: 3px; height: 100%;
+  }
+  .notif-approve::before { background: var(--accent-emerald); }
+  .notif-reject::before { background: var(--accent-rose); }
+  .notif-request::before { background: var(--accent-blue); }
+  .notif-icon {
+    width: 36px; height: 36px;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1rem;
+    flex-shrink: 0;
+  }
+  .notif-approve .notif-icon { background: var(--accent-emerald-dim); }
+  .notif-reject .notif-icon { background: var(--accent-rose-dim); }
+  .notif-request .notif-icon { background: var(--accent-blue-dim); }
+  .notif-content h5 { font-size: 0.82rem; font-weight: 600; margin-bottom: 3px; }
+  .notif-content p { font-size: 0.78rem; color: var(--text-secondary); line-height: 1.5; }
+  .notif-time {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.6rem;
+    color: var(--text-dim);
+    margin-top: 6px;
+  }
+
+  /* ── Added By / Assigned To ── */
+  .agent-history {
+    padding: 22px;
+    border-radius: var(--radius-md);
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+  }
+  .agent-history-title {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    font-weight: 700;
+    color: var(--text-dim);
+    margin-bottom: 14px;
+  }
+  .agent-line {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 10px;
+  }
+  .agent-line .dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    border: 2px solid var(--text-dim);
+    flex-shrink: 0;
+    position: relative;
+  }
+  .agent-line.active .dot {
+    border-color: var(--accent-teal);
+    background: var(--accent-teal);
+    box-shadow: 0 0 10px rgba(56,232,198,0.3);
+  }
+  .agent-line .line {
+    position: absolute;
+    top: 12px; right: 4px;
+    width: 2px; height: 22px;
+    background: var(--border);
+  }
+  .agent-line-label { font-size: 0.72rem; color: var(--text-dim); }
+  .agent-line-name { font-size: 0.88rem; font-weight: 600; }
+  .agent-line-date { font-size: 0.7rem; color: var(--text-dim); font-family: 'JetBrains Mono', monospace; }
+  .divider-line {
+    height: 1px;
+    background: var(--border);
+    margin: 14px 0;
+  }
+
+  /* ── Flow Diagram ── */
+  .flow {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    justify-content: center;
+    flex-wrap: wrap;
+    padding: 40px 0;
+  }
+  .flow-step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding: 20px 18px;
+    min-width: 130px;
+  }
+  .flow-step .icon {
+    width: 48px; height: 48px;
+    border-radius: 14px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.2rem;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    transition: all 0.3s;
+  }
+  .flow-step:hover .icon {
+    border-color: var(--accent-teal);
+    box-shadow: var(--shadow-glow-teal);
+  }
+  .flow-step .label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    text-align: center;
+  }
+  .flow-step .sub {
+    font-size: 0.65rem;
+    color: var(--text-dim);
+    text-align: center;
+  }
+  .flow-arrow {
+    font-size: 1.2rem;
+    color: var(--text-dim);
+    padding: 0 4px;
+  }
+
+  /* ── Animations ── */
+  @keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes slideInRight {
+    from { opacity: 0; transform: translateX(30px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+  @keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+  .anim-up { animation: fadeInUp 0.6s cubic-bezier(0.4, 0, 0.2, 1) both; }
+  .anim-in { animation: fadeIn 0.5s ease both; }
+  .anim-slide { animation: slideInRight 0.5s cubic-bezier(0.4, 0, 0.2, 1) both; }
+  .anim-d1 { animation-delay: 0.1s; }
+  .anim-d2 { animation-delay: 0.2s; }
+  .anim-d3 { animation-delay: 0.3s; }
+  .anim-d4 { animation-delay: 0.4s; }
+  .anim-d5 { animation-delay: 0.5s; }
+  .anim-d6 { animation-delay: 0.6s; }
+
+  /* ── Separator ── */
+  .sep {
+    height: 1px;
+    background: linear-gradient(90deg, transparent 0%, var(--border) 50%, transparent 100%);
+    margin: 80px 0;
+  }
+
+  /* ── Player Hero (for context) ── */
+  .player-hero {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    padding: 24px;
+    border-radius: var(--radius-lg);
+    background: var(--gradient-hero);
+    border: 1px solid var(--border);
+    margin-bottom: 20px;
+  }
+  .player-hero-img {
+    width: 80px; height: 80px;
+    border-radius: 20px;
+    object-fit: cover;
+    border: 2px solid var(--border);
+  }
+  .player-hero-name {
+    font-family: 'Instrument Serif', serif;
+    font-size: 1.5rem;
+    margin-bottom: 4px;
+  }
+  .player-hero-detail {
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .player-hero-detail .sep-dot { color: var(--text-dim); }
+  .player-hero-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--accent-teal);
+    margin-right: auto;
+  }
+
+  /* ── Loading state ── */
+  .btn-loading {
+    pointer-events: none;
+    opacity: 0.7;
+  }
+</style>
+</head>
+<body>
+
+  <div class="container">
+
+    <!-- ═══════════════════════════════════════════════ -->
+    <!-- HEADER -->
+    <!-- ═══════════════════════════════════════════════ -->
+    <header class="page-header anim-up">
+      <div class="badge-feature">תכונה חדשה</div>
+      <h1 class="font-serif">שיוך שחקנים בין סוכנים</h1>
+      <p class="subtitle">Agent Transfer Feature</p>
+    </header>
+
+    <!-- ═══════════════════════════════════════════════ -->
+    <!-- FLOW OVERVIEW -->
+    <!-- ═══════════════════════════════════════════════ -->
+    <section class="section anim-up anim-d1">
+      <div class="flow">
+        <div class="flow-step">
+          <div class="icon">🙋</div>
+          <div class="label">בקשת שיוך</div>
+          <div class="sub">סוכן מבקש לשייך שחקן</div>
+        </div>
+        <div class="flow-arrow">←</div>
+        <div class="flow-step">
+          <div class="icon">🔔</div>
+          <div class="label">התראה</div>
+          <div class="sub">הסוכן הנוכחי מקבל הודעה</div>
+        </div>
+        <div class="flow-arrow">←</div>
+        <div class="flow-step">
+          <div class="icon">⏳</div>
+          <div class="label">ממתין לאישור</div>
+          <div class="sub">שני הצדדים רואים סטטוס</div>
+        </div>
+        <div class="flow-arrow">←</div>
+        <div class="flow-step">
+          <div class="icon">✓</div>
+          <div class="label">אישור / דחייה</div>
+          <div class="sub">הסוכן הנוכחי מחליט</div>
+        </div>
+        <div class="flow-arrow">←</div>
+        <div class="flow-step">
+          <div class="icon">📨</div>
+          <div class="label">התראת תוצאה</div>
+          <div class="sub">המבקש מקבל עדכון</div>
+        </div>
+      </div>
+    </section>
+
+    <div class="sep"></div>
+
+    <!-- ═══════════════════════════════════════════════ -->
+    <!-- ICON OPTIONS -->
+    <!-- ═══════════════════════════════════════════════ -->
+    <section class="section anim-up anim-d1">
+      <div class="section-label">
+        <span class="num">00</span>
+        <h2 class="font-serif">אפשרויות אייקון לכפתור שיוך</h2>
+      </div>
+      <p class="section-desc">
+        השוואה בין אייקונים אפשריים לכפתור "שייך את השחקן אלייך" — בוחרים את המקצועי והמתאים ביותר.
+      </p>
+
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-bottom:40px;">
+
+        <!-- Option A -->
+        <div class="card" style="text-align:center;padding:24px;">
+          <div style="font-size:0.6rem;text-transform:uppercase;letter-spacing:0.15em;font-weight:700;color:var(--accent-teal);margin-bottom:16px;">Option A — אייקון מומלץ</div>
+          <button class="btn btn-outline btn-full" style="font-size:0.9rem;margin-bottom:14px;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4-4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+            שייך את השחקן אלייך
+          </button>
+          <div style="font-size:0.75rem;color:var(--text-secondary);line-height:1.6;">
+            <strong style="color:var(--text-primary);">SVG — User Transfer</strong><br>
+            נקי, מקצועי, מייצג העברת שחקן בין סוכנים. אין צורך באימוג׳י.
+          </div>
+        </div>
+
+        <!-- Option B -->
+        <div class="card" style="text-align:center;padding:24px;">
+          <div style="font-size:0.6rem;text-transform:uppercase;letter-spacing:0.15em;font-weight:700;color:var(--accent-blue);margin-bottom:16px;">Option B</div>
+          <button class="btn btn-outline btn-full" style="font-size:0.9rem;margin-bottom:14px;">
+            <span style="font-size:1rem;">↗️</span>
+            שייך את השחקן אלייך
+          </button>
+          <div style="font-size:0.75rem;color:var(--text-secondary);line-height:1.6;">
+            <strong style="color:var(--text-primary);">↗️ — חץ מפנה</strong><br>
+            פשוט ומינימלי, מרמז על העברה/שאיפה.
+          </div>
+        </div>
+
+        <!-- Option C -->
+        <div class="card" style="text-align:center;padding:24px;">
+          <div style="font-size:0.6rem;text-transform:uppercase;letter-spacing:0.15em;font-weight:700;color:var(--accent-violet);margin-bottom:16px;">Option C</div>
+          <button class="btn btn-outline btn-full" style="font-size:0.9rem;margin-bottom:14px;">
+            <span style="font-size:1rem;">🔗</span>
+            שייך את השחקן אלייך
+          </button>
+          <div style="font-size:0.75rem;color:var(--text-secondary);line-height:1.6;">
+            <strong style="color:var(--text-primary);">🔗 — קישור/שיוך</strong><br>
+            מייצג חיבור ושיוך, מתאים למשמעות הפעולה.
+          </div>
+        </div>
+
+        <!-- Option D -->
+        <div class="card" style="text-align:center;padding:24px;">
+          <div style="font-size:0.6rem;text-transform:uppercase;letter-spacing:0.15em;font-weight:700;color:var(--accent-amber);margin-bottom:16px;">Option D</div>
+          <button class="btn btn-outline btn-full" style="font-size:0.9rem;margin-bottom:14px;">
+            <span style="font-size:1rem;">📋</span>
+            שייך את השחקן אלייך
+          </button>
+          <div style="font-size:0.75rem;color:var(--text-secondary);line-height:1.6;">
+            <strong style="color:var(--text-primary);">📋 — לוח משימות</strong><br>
+            מזכיר "בקשה רשמית", פורמלי ומקצועי.
+          </div>
+        </div>
+
+        <!-- Option E -->
+        <div class="card" style="text-align:center;padding:24px;">
+          <div style="font-size:0.6rem;text-transform:uppercase;letter-spacing:0.15em;font-weight:700;color:var(--accent-emerald);margin-bottom:16px;">Option E</div>
+          <button class="btn btn-outline btn-full" style="font-size:0.9rem;margin-bottom:14px;">
+            <span style="font-size:0.95rem;">⤴</span>
+            שייך את השחקן אלייך
+          </button>
+          <div style="font-size:0.75rem;color:var(--text-secondary);line-height:1.6;">
+            <strong style="color:var(--text-primary);">⤴ — חץ העברה</strong><br>
+            סמל טכני ומינימלי, מרמז על מעבר/העברה.
+          </div>
+        </div>
+
+        <!-- Option F -->
+        <div class="card" style="text-align:center;padding:24px;">
+          <div style="font-size:0.6rem;text-transform:uppercase;letter-spacing:0.15em;font-weight:700;color:var(--accent-rose);margin-bottom:16px;">Option F</div>
+          <button class="btn btn-outline btn-full" style="font-size:0.9rem;margin-bottom:14px;">
+            <span style="font-size:1rem;">🤝</span>
+            שייך את השחקן אלייך
+          </button>
+          <div style="font-size:0.75rem;color:var(--text-secondary);line-height:1.6;">
+            <strong style="color:var(--text-primary);">🤝 — לחיצת יד</strong><br>
+            מייצג עסקה/הסכם, מתאים לעולם הסוכנים.
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <div class="sep"></div>
+
+    <!-- ═══════════════════════════════════════════════ -->
+    <!-- 01 · REQUEST BUTTON -->
+    <!-- ═══════════════════════════════════════════════ -->
+    <section class="section anim-up anim-d2">
+      <div class="section-label">
+        <span class="num">01</span>
+        <h2 class="font-serif">כפתור בקשת שיוך</h2>
+      </div>
+      <p class="section-desc">
+        כשסוכן צופה בדף שחקן שמנוהל על ידי סוכן אחר, מופיע כפתור לבקשת שיוך. הכפתור מוצג מתחת לאזור "נוסף על ידי".
+      </p>
+
+      <div class="grid-2">
+        <div>
+          <div class="player-hero">
+            <img src="https://img.a.transfermarkt.technology/portrait/header/518636-1557418959.png?lm=1" class="player-hero-img" alt="">
+            <div>
+              <div class="player-hero-name font-serif">Cyrille Kpan</div>
+              <div class="player-hero-detail">
+                <span>🇧🇫 Burkina Faso</span>
+                <span class="sep-dot">·</span>
+                <span>CB · LB</span>
+                <span class="sep-dot">·</span>
+                <span>27</span>
+              </div>
+            </div>
+            <div class="player-hero-value">€200k</div>
+          </div>
+
+          <div class="agent-history">
+            <div class="agent-history-title">נוסף על ידי</div>
+            <div class="agent-line active" style="position:relative">
+              <div class="dot"></div>
+              <div>
+                <div class="agent-line-name">ליאור דהן</div>
+              </div>
+            </div>
+            <div style="margin-top: 16px;">
+              <button class="btn btn-outline btn-full" style="font-size: 0.9rem;">
+                <span>🙋</span>
+                שייך את השחקן אלייך
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="display:flex;flex-direction:column;justify-content:center;">
+          <div class="card-label" style="color: var(--accent-blue);">
+            <span>ℹ️</span> מתי הכפתור מופיע
+          </div>
+          <ul style="list-style: none; font-size: 0.85rem; color: var(--text-secondary); line-height: 2.2;">
+            <li>✦ &nbsp;השחקן מנוהל על ידי סוכן אחר</li>
+            <li>✦ &nbsp;אין בקשת שיוך ממתינה לשחקן זה</li>
+            <li>✦ &nbsp;הסוכן הנוכחי מזוהה לפי ID או שם</li>
+            <li>✦ &nbsp;ניתן לשלוח בקשות מקבילות לשחקנים שונים</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <div class="sep"></div>
+
+    <!-- ═══════════════════════════════════════════════ -->
+    <!-- 02 · CONFIRMATION DIALOG -->
+    <!-- ═══════════════════════════════════════════════ -->
+    <section class="section anim-up anim-d2">
+      <div class="section-label">
+        <span class="num">02</span>
+        <h2 class="font-serif">דיאלוג אישור שליחה</h2>
+      </div>
+      <p class="section-desc">
+        לפני שליחת הבקשה, מופיע דיאלוג עם פרטי השחקן והסוכן הנוכחי. הסוכן מאשר שהוא רוצה לשייך את השחקן אליו.
+      </p>
+
+      <div class="dialog-overlay">
+        <div class="dialog-box anim-up">
+          <div class="dialog-icon">🔄</div>
+          <h3 class="dialog-title font-serif">בקשת שיוך שחקן</h3>
+          <p class="dialog-desc">
+            אתה מבקש להיות הסוכן האחראי על <strong style="color:var(--text-primary)">Cyrille Kpan</strong>.<br>
+            <strong style="color:var(--text-primary)">ליאור דהן</strong> יקבל הודעה ויצטרך לאשר את ההעברה.
+          </p>
+          <div class="dialog-actions">
+            <button class="btn btn-ghost">ביטול</button>
+            <button class="btn btn-primary">שלח בקשה</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="sep"></div>
+
+    <!-- ═══════════════════════════════════════════════ -->
+    <!-- 03 · PENDING & APPROVAL STATES -->
+    <!-- ═══════════════════════════════════════════════ -->
+    <section class="section anim-up anim-d3">
+      <div class="section-label">
+        <span class="num">03</span>
+        <h2 class="font-serif">מצבי בקשה — ממתין ואישור</h2>
+      </div>
+      <p class="section-desc">
+        לאחר השליחה, שני הסוכנים רואים סטטוס מעודכן בזמן אמת. המבקש רואה סטטוס המתנה, והסוכן הנוכחי רואה תיבת אישור.
+      </p>
+
+      <div class="grid-2">
+        <!-- Requester view -->
+        <div>
+          <div class="card-label" style="color: var(--accent-amber); margin-bottom: 12px;">
+            <span>👁️</span> מה רואה הסוכן שביקש (אביב זימרמן)
+          </div>
+          <div class="agent-history">
+            <div class="agent-history-title">נוסף על ידי</div>
+            <div class="agent-line active" style="position:relative">
+              <div class="dot"></div>
+              <div>
+                <div class="agent-line-name">ליאור דהן</div>
+              </div>
+            </div>
+            <div style="margin-top: 16px;">
+              <div class="state-box state-pending">
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+                  <div class="state-icon" style="background:var(--accent-amber-dim);border:1px solid rgba(245,158,11,0.15);">⏳</div>
+                  <div>
+                    <div class="state-title" style="color:var(--accent-amber);">בקשת העברה נשלחה</div>
+                  </div>
+                </div>
+                <div class="state-desc">ממתין לאישור של ליאור דהן…</div>
+                <button class="btn btn-sm" style="background:var(--accent-rose-dim);border:1px solid rgba(244,63,94,0.2);color:var(--accent-rose);font-weight:700;">
+                  ✕ בטל בקשה
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Current agent view -->
+        <div>
+          <div class="card-label" style="color: var(--accent-blue); margin-bottom: 12px;">
+            <span>👁️</span> מה רואה הסוכן הנוכחי (ליאור דהן)
+          </div>
+          <div class="agent-history">
+            <div class="agent-history-title">נוסף על ידי</div>
+            <div class="agent-line active" style="position:relative">
+              <div class="dot"></div>
+              <div>
+                <div class="agent-line-name">ליאור דהן</div>
+              </div>
+            </div>
+            <div style="margin-top: 16px;">
+              <div class="state-box state-approval">
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+                  <div class="state-icon" style="background:var(--accent-blue-dim);border:1px solid rgba(91,138,245,0.2);">📨</div>
+                  <div>
+                    <div class="state-title" style="color:var(--accent-blue);">בקשת העברה</div>
+                  </div>
+                </div>
+                <div class="state-desc">אביב זימרמן מבקש לנהל את השחקן הזה</div>
+                <div style="display:flex;gap:10px;">
+                  <button class="btn btn-approve" style="flex:1;">✓ אשר</button>
+                  <button class="btn btn-reject" style="flex:1;">✕ דחה</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="sep"></div>
+
+    <!-- ═══════════════════════════════════════════════ -->
+    <!-- 04 · LOADING STATE -->
+    <!-- ═══════════════════════════════════════════════ -->
+    <section class="section anim-up anim-d3">
+      <div class="section-label">
+        <span class="num">04</span>
+        <h2 class="font-serif">מצב טעינה בעת פעולה</h2>
+      </div>
+      <p class="section-desc">
+        כשהסוכן לוחץ על אישור או דחייה, הכפתורים מציגים ספינר טעינה והופכים ללא-לחיצים עד סיום הפעולה.
+      </p>
+
+      <div class="grid-2">
+        <div>
+          <div class="card-label" style="color: var(--accent-emerald); margin-bottom: 12px;">
+            <span>⏳</span> טעינה — אישור בתהליך
+          </div>
+          <div class="agent-history">
+            <div class="agent-history-title">נוסף על ידי</div>
+            <div class="agent-line active"><div class="dot"></div><div><div class="agent-line-name">ליאור דהן</div></div></div>
+            <div style="margin-top: 16px;">
+              <div class="state-box state-approval">
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+                  <div class="state-icon" style="background:var(--accent-blue-dim);border:1px solid rgba(91,138,245,0.2);">📨</div>
+                  <div><div class="state-title" style="color:var(--accent-blue);">בקשת העברה</div></div>
+                </div>
+                <div class="state-desc">אביב זימרמן מבקש לנהל את השחקן הזה</div>
+                <div style="display:flex;gap:10px;">
+                  <button class="btn btn-approve btn-loading" style="flex:1;">
+                    <span class="spinner spinner-dark"></span>
+                  </button>
+                  <button class="btn btn-reject btn-loading" style="flex:1;opacity:0.4;">✕ דחה</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div class="card-label" style="color: var(--accent-rose); margin-bottom: 12px;">
+            <span>⏳</span> טעינה — דחייה בתהליך
+          </div>
+          <div class="agent-history">
+            <div class="agent-history-title">נוסף על ידי</div>
+            <div class="agent-line active"><div class="dot"></div><div><div class="agent-line-name">ליאור דהן</div></div></div>
+            <div style="margin-top: 16px;">
+              <div class="state-box state-approval">
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+                  <div class="state-icon" style="background:var(--accent-blue-dim);border:1px solid rgba(91,138,245,0.2);">📨</div>
+                  <div><div class="state-title" style="color:var(--accent-blue);">בקשת העברה</div></div>
+                </div>
+                <div class="state-desc">אביב זימרמן מבקש לנהל את השחקן הזה</div>
+                <div style="display:flex;gap:10px;">
+                  <button class="btn btn-approve btn-loading" style="flex:1;opacity:0.4;">✓ אשר</button>
+                  <button class="btn btn-reject btn-loading" style="flex:1;">
+                    <span class="spinner" style="border-top-color:var(--accent-rose);border-color:rgba(244,63,94,0.2);"></span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="sep"></div>
+
+    <!-- ═══════════════════════════════════════════════ -->
+    <!-- 05 · AFTER APPROVAL — ASSIGNED TO -->
+    <!-- ═══════════════════════════════════════════════ -->
+    <section class="section anim-up anim-d4">
+      <div class="section-label">
+        <span class="num">05</span>
+        <h2 class="font-serif">לאחר אישור — שויך ל</h2>
+      </div>
+      <p class="section-desc">
+        לאחר אישור, דף השחקן מציג את הסוכן המקורי שהוסיף ואת הסוכן החדש שהשחקן שויך אליו, כולל תאריך.
+      </p>
+
+      <div style="max-width: 420px;">
+        <div class="agent-history">
+          <div class="agent-history-title">נוסף על ידי</div>
+          <div class="agent-line" style="position:relative">
+            <div class="dot" style="position:relative;">
+              <div class="line"></div>
+            </div>
+            <div>
+              <div class="agent-line-name" style="color:var(--text-secondary);">ליאור דהן</div>
+            </div>
+          </div>
+          <div class="divider-line"></div>
+          <div class="agent-history-title">שויך ל</div>
+          <div class="agent-line active">
+            <div class="dot"></div>
+            <div>
+              <div class="agent-line-name">אביב זימרמן</div>
+              <div class="agent-line-date">18 Mar 2026</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="sep"></div>
+
+    <!-- ═══════════════════════════════════════════════ -->
+    <!-- 06 · DASHBOARD SECTION -->
+    <!-- ═══════════════════════════════════════════════ -->
+    <section class="section anim-up anim-d4">
+      <div class="section-label">
+        <span class="num">06</span>
+        <h2 class="font-serif">אזור דשבורד — שחקנים ממתינים לשיוך</h2>
+      </div>
+      <p class="section-desc">
+        בדשבורד הראשי מופיע אזור ייעודי המציג את כל בקשות השיוך הממתינות — גם בקשות שהמשתמש שלח וגם בקשות שמחכות לאישורו.
+      </p>
+
+      <div class="card" style="max-width: 700px;">
+        <div class="dash-header">
+          <div class="dash-title" style="color: var(--accent-amber);">
+            <div class="icon">🔄</div>
+            <span>שחקנים ממתינים לשיוך</span>
+          </div>
+          <div class="dash-count">3</div>
+        </div>
+
+        <!-- To Approve -->
+        <div style="margin-bottom: 6px;">
+          <div class="transfer-row anim-slide anim-d1">
+            <img src="https://img.a.transfermarkt.technology/portrait/header/518636-1557418959.png?lm=1" class="avatar" alt="">
+            <div class="info">
+              <div class="name">Cyrille Kpan</div>
+              <div class="meta"><strong>אביב זימרמן</strong> מבקש לשייך את השחקן</div>
+            </div>
+            <span class="tag tag-approve">דורש אישורך</span>
+            <span class="arrow">←</span>
+          </div>
+        </div>
+
+        <div style="margin-bottom: 6px;">
+          <div class="transfer-row anim-slide anim-d2">
+            <img src="https://img.a.transfermarkt.technology/portrait/header/325029-1667834638.jpg?lm=1" class="avatar" alt="">
+            <div class="info">
+              <div class="name">Emmanuel Avornyo</div>
+              <div class="meta"><strong>אביב זימרמן</strong> מבקש לשייך את השחקן</div>
+            </div>
+            <span class="tag tag-approve">דורש אישורך</span>
+            <span class="arrow">←</span>
+          </div>
+        </div>
+
+        <div style="margin-bottom: 6px;">
+          <div class="transfer-row anim-slide anim-d3">
+            <div style="width:44px;height:44px;border-radius:12px;background:var(--bg-elevated);border:2px solid var(--border);display:flex;align-items:center;justify-content:center;color:var(--text-dim);">⚽</div>
+            <div class="info">
+              <div class="name">Mamady Diarra</div>
+              <div class="meta">ממתין לאישור <strong>ליאור דהן</strong></div>
+            </div>
+            <span class="tag tag-waiting">ממתין</span>
+            <span class="arrow">←</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="sep"></div>
+
+    <!-- ═══════════════════════════════════════════════ -->
+    <!-- 07 · PUSH NOTIFICATIONS -->
+    <!-- ═══════════════════════════════════════════════ -->
+    <section class="section anim-up anim-d5">
+      <div class="section-label">
+        <span class="num">07</span>
+        <h2 class="font-serif">התראות פוש</h2>
+      </div>
+      <p class="section-desc">
+        בכל שלב, הסוכנים מקבלים התראות פוש בזמן אמת — בקשה חדשה, אישור או דחייה. ההתראות בעברית וכוללות שם הסוכן והשחקן.
+      </p>
+
+      <div class="notif-stack" style="max-width: 440px;">
+        <div class="notif notif-request anim-slide anim-d1">
+          <div class="notif-icon">📨</div>
+          <div class="notif-content">
+            <h5>בקשת שיוך חדשה</h5>
+            <p>אביב זימרמן מבקש לשייך את Cyrille Kpan אליו</p>
+            <div class="notif-time">הרגע</div>
+          </div>
+        </div>
+
+        <div class="notif notif-approve anim-slide anim-d2">
+          <div class="notif-icon">✓</div>
+          <div class="notif-content">
+            <h5>בקשת שיוך אושרה ✓</h5>
+            <p>ליאור דהן אישר את בקשת השיוך ל-Cyrille Kpan</p>
+            <div class="notif-time">לפני 2 דקות</div>
+          </div>
+        </div>
+
+        <div class="notif notif-reject anim-slide anim-d3">
+          <div class="notif-icon">✕</div>
+          <div class="notif-content">
+            <h5>בקשת שיוך נדחתה ✕</h5>
+            <p>ליאור דהן דחה את בקשת השיוך ל-Emmanuel Avornyo</p>
+            <div class="notif-time">לפני 15 דקות</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="sep"></div>
+
+    <!-- ═══════════════════════════════════════════════ -->
+    <!-- 08 · FULL PLAYER PAGE CONTEXT -->
+    <!-- ═══════════════════════════════════════════════ -->
+    <section class="section anim-up anim-d5">
+      <div class="section-label">
+        <span class="num">08</span>
+        <h2 class="font-serif">תצוגה מלאה בדף שחקן</h2>
+      </div>
+      <p class="section-desc">
+        כך נראה האזור המלא בדף שחקן — כרטיס מידע, סוכן מקורי, סוכן משויך, ותיבת בקשה או אישור.
+      </p>
+
+      <div class="grid-3">
+        <!-- State A: Can request -->
+        <div class="card card-glow-teal">
+          <div class="card-label" style="color: var(--accent-teal);">
+            <span>🟢</span> מצב: ניתן לבקש
+          </div>
+          <div class="player-mini">
+            <img src="https://img.a.transfermarkt.technology/portrait/header/325029-1667834638.jpg?lm=1" class="player-avatar" alt="">
+            <div class="player-info">
+              <h4>Emmanuel Avornyo</h4>
+              <span><span class="pos">CF</span> Without Club · 27</span>
+            </div>
+          </div>
+          <div style="padding:14px;border-radius:12px;background:rgba(255,255,255,0.015);border:1px solid var(--border);">
+            <div style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-dim);font-weight:700;margin-bottom:8px;">נוסף על ידי</div>
+            <div style="font-size:0.88rem;font-weight:600;">ליאור דהן</div>
+          </div>
+          <button class="btn btn-outline btn-full" style="margin-top:14px;">
+            <span>🙋</span> שייך את השחקן אלייך
+          </button>
+        </div>
+
+        <!-- State B: Pending -->
+        <div class="card">
+          <div class="card-label" style="color: var(--accent-amber);">
+            <span>🟡</span> מצב: בקשה ממתינה
+          </div>
+          <div class="player-mini">
+            <img src="https://img.a.transfermarkt.technology/portrait/header/518636-1557418959.png?lm=1" class="player-avatar" alt="">
+            <div class="player-info">
+              <h4>Cyrille Kpan</h4>
+              <span><span class="pos">CB</span> Without Club · 27</span>
+            </div>
+          </div>
+          <div style="padding:14px;border-radius:12px;background:rgba(255,255,255,0.015);border:1px solid var(--border);">
+            <div style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-dim);font-weight:700;margin-bottom:8px;">נוסף על ידי</div>
+            <div style="font-size:0.88rem;font-weight:600;">ליאור דהן</div>
+          </div>
+          <div class="state-box state-pending" style="margin-top:14px;">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+              <span style="font-size:1rem;">⏳</span>
+              <span style="font-size:0.8rem;font-weight:700;color:var(--accent-amber);">בקשת העברה נשלחה</span>
+            </div>
+            <div style="font-size:0.78rem;color:var(--text-secondary);margin-bottom:10px;">ממתין לאישור של ליאור דהן…</div>
+            <button class="btn btn-sm" style="background:var(--accent-rose-dim);border:1px solid rgba(244,63,94,0.2);color:var(--accent-rose);font-weight:700;font-size:0.75rem;">
+              ✕ בטל בקשה
+            </button>
+          </div>
+        </div>
+
+        <!-- State C: Approved -->
+        <div class="card">
+          <div class="card-label" style="color: var(--accent-emerald);">
+            <span>🟢</span> מצב: שויך בהצלחה
+          </div>
+          <div class="player-mini">
+            <div style="width:52px;height:52px;border-radius:14px;background:var(--bg-elevated);border:2px solid var(--border);display:flex;align-items:center;justify-content:center;color:var(--text-dim);">⚽</div>
+            <div class="player-info">
+              <h4>Mamady Diarra</h4>
+              <span><span class="pos">CM</span> FK Bashkimi · 24</span>
+            </div>
+          </div>
+          <div style="padding:14px;border-radius:12px;background:rgba(255,255,255,0.015);border:1px solid var(--border);">
+            <div style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-dim);font-weight:700;margin-bottom:8px;">נוסף על ידי</div>
+            <div style="font-size:0.88rem;font-weight:600;color:var(--text-secondary);">ליאור דהן</div>
+            <div style="height:1px;background:var(--border);margin:10px 0;"></div>
+            <div style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-dim);font-weight:700;margin-bottom:8px;">שויך ל</div>
+            <div style="font-size:0.88rem;font-weight:600;">אביב זימרמן</div>
+            <div style="font-size:0.7rem;color:var(--text-dim);font-family:'JetBrains Mono',monospace;margin-top:4px;">18 Mar 2026</div>
+          </div>
+          <div class="state-box state-success" style="margin-top:14px;">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span style="font-size:1rem;">✓</span>
+              <span style="font-size:0.8rem;font-weight:700;color:var(--accent-emerald);">השחקן שויך בהצלחה</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════ -->
+    <!-- FOOTER -->
+    <!-- ═══════════════════════════════════════════════ -->
+    <footer style="text-align:center;padding:60px 0 40px;color:var(--text-dim);font-size:0.75rem;letter-spacing:0.08em;">
+      <div style="margin-bottom:12px;">
+        <img src="/logo.svg" alt="MGSR" style="width:32px;height:32px;opacity:0.3;">
+      </div>
+      MGSR Team · Agent Transfer Feature · March 2026
+    </footer>
+
+  </div>
+
+  <script>
+    // Intersection Observer for scroll-based animations
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.style.opacity = '1';
+          entry.target.style.transform = 'translateY(0)';
+        }
+      });
+    }, { threshold: 0.1 });
+
+    document.querySelectorAll('.section').forEach(el => {
+      el.style.opacity = '0';
+      el.style.transform = 'translateY(30px)';
+      el.style.transition = 'opacity 0.7s cubic-bezier(0.4,0,0.2,1), transform 0.7s cubic-bezier(0.4,0,0.2,1)';
+      observer.observe(el);
+    });
+  </script>
+
+</body>
+</html>

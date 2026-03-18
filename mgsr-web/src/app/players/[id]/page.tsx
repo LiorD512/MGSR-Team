@@ -1587,26 +1587,46 @@ export default function PlayerInfoPage() {
               </div>
             )}
 
-            {/* Added by */}
+            {/* Added by / Assigned to */}
             {(player.originalAgentName || player.agentInChargeName) && (
               <div className="p-5 rounded-xl bg-mgsr-card border border-mgsr-border">
-                <h3 className="text-sm font-semibold text-mgsr-muted uppercase tracking-wider mb-3">
+                <h3 className="text-[0.65rem] font-bold text-mgsr-muted/60 uppercase tracking-[0.14em] mb-3">
                   {t('player_info_added_by')}
                 </h3>
-                <p className="text-mgsr-text">
-                  {resolveAgentName(
-                    player.originalAgentName || player.agentInChargeName,
-                    player.originalAgentId || player.agentInChargeId
-                  )}
-                </p>
-                {player.agentTransferredAt && player.originalAgentName && (
-                  <div className="mt-3 pt-3 border-t border-mgsr-border">
-                    <p className="text-xs text-mgsr-muted mb-1">{t('player_info_assigned_to')}</p>
-                    <p className="text-mgsr-text">
-                      {resolveAgentName(player.agentInChargeName, player.agentInChargeId)}
-                    </p>
-                    <p className="text-xs text-mgsr-muted mt-1">
-                      {new Date(player.agentTransferredAt).toLocaleDateString(isRtl ? 'he-IL' : 'en-US', { day: 'numeric', month: 'short', year: 'numeric' })}
+                {player.agentTransferredAt && player.originalAgentName ? (
+                  <>
+                    {/* Original agent (dimmed) */}
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="w-2.5 h-2.5 rounded-full border-2 border-mgsr-muted/30 shrink-0" />
+                      <p className="text-mgsr-muted text-sm">
+                        {resolveAgentName(player.originalAgentName, player.originalAgentId)}
+                      </p>
+                    </div>
+                    <div className="h-px bg-mgsr-border my-3" />
+                    {/* Assigned to (active) */}
+                    <h3 className="text-[0.65rem] font-bold text-mgsr-muted/60 uppercase tracking-[0.14em] mb-3">
+                      {t('player_info_assigned_to')}
+                    </h3>
+                    <div className="flex items-center gap-3">
+                      <div className="w-2.5 h-2.5 rounded-full border-2 border-[var(--mgsr-accent)] bg-[var(--mgsr-accent)] shrink-0 shadow-[0_0_8px_rgba(56,232,198,0.3)]" />
+                      <div>
+                        <p className="text-mgsr-text text-sm font-semibold">
+                          {resolveAgentName(player.agentInChargeName, player.agentInChargeId)}
+                        </p>
+                        <p className="text-[0.7rem] text-mgsr-muted/60 font-mono mt-0.5">
+                          {new Date(player.agentTransferredAt).toLocaleDateString(isRtl ? 'he-IL' : 'en-US', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        </p>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex items-center gap-3">
+                    <div className="w-2.5 h-2.5 rounded-full border-2 border-[var(--mgsr-accent)] bg-[var(--mgsr-accent)] shrink-0 shadow-[0_0_8px_rgba(56,232,198,0.3)]" />
+                    <p className="text-mgsr-text text-sm font-semibold">
+                      {resolveAgentName(
+                        player.originalAgentName || player.agentInChargeName,
+                        player.originalAgentId || player.agentInChargeId
+                      )}
                     </p>
                   </div>
                 )}

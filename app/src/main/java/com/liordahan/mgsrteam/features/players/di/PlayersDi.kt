@@ -54,6 +54,7 @@ import com.liordahan.mgsrteam.features.players.playerinfo.documents.GeminiPasspo
 import com.liordahan.mgsrteam.features.players.playerinfo.documents.PlayerDocumentsRepository
 import com.liordahan.mgsrteam.features.players.playerinfo.matchingrequests.IPlayerOffersRepository
 import com.liordahan.mgsrteam.features.players.playerinfo.matchingrequests.PlayerOffersRepository
+import com.liordahan.mgsrteam.features.players.playerinfo.agenttransfer.AgentTransferRepository
 import com.liordahan.mgsrteam.features.players.playerinfo.mandate.GenerateMandateViewModel
 import com.liordahan.mgsrteam.features.players.repository.IPlayersRepository
 import com.liordahan.mgsrteam.features.players.repository.PlayersRepository
@@ -94,7 +95,8 @@ val playersModule = module {
     single { DocumentDetectionService(get<Context>(), get<CloudVisionOcrProvider>(), get<GeminiPassportOcrProvider>()) }
     single { PlayerOffersRepository(get()) } bind IPlayerOffersRepository::class
     single { HighlightsApiClient() }
-    viewModel<IPlayerInfoViewModel> { PlayerInfoViewModel(get<Context>(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get<ScoutApiClient>()) }
+    single { AgentTransferRepository(com.google.firebase.firestore.FirebaseFirestore.getInstance()) }
+    viewModel<IPlayerInfoViewModel> { PlayerInfoViewModel(get<Context>(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get<ScoutApiClient>(), get()) }
     viewModel { GenerateMandateViewModel() }
 
     factory<IAddPositionFilterUseCase> {
