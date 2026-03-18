@@ -1669,8 +1669,11 @@ export default function PlayerInfoPage() {
                   resolveAgentName={resolveAgentName}
                   t={t}
                 />
-                {/* Resolved transfer indication */}
-                {resolvedTransfer && !resolvedDismissed && (
+              </div>
+            )}
+
+            {/* Resolved transfer indication — always visible */}
+            {resolvedTransfer && !resolvedDismissed && (
                   <div className={`mt-3 p-3 rounded-xl border flex items-start gap-3 ${
                     resolvedTransfer.status === 'approved'
                       ? 'bg-emerald-500/10 border-emerald-500/25'
@@ -1719,8 +1722,6 @@ export default function PlayerInfoPage() {
                     </button>
                   </div>
                 )}
-              </div>
-            )}
 
             {/* Contact - agent phone + player phone — editable */}
             <div className="p-5 rounded-xl bg-mgsr-card border border-mgsr-border">
