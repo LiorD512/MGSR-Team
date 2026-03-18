@@ -1470,7 +1470,7 @@ private fun PlayerInfoHeroCard(
             )
             Spacer(Modifier.height(2.dp))
             Text(
-                text = stringResource(R.string.player_info_added_by, player.agentInChargeName ?: "—"),
+                text = stringResource(R.string.player_info_added_by, player.originalAgentName ?: player.agentInChargeName ?: "—"),
                 style = regularTextStyle(PlatformColors.palette.textSecondary.copy(alpha = 0.8f), 11.sp)
             )
 
