@@ -461,6 +461,7 @@ fun DashboardScreen(
                             PendingTransfersSection(
                                 toApprove = toApprove,
                                 waitingApproval = waitingApproval,
+                                allAccounts = state.allAccounts,
                                 onNavigateToPlayer = { playerId ->
                                     navController.navigate(
                                         "${Screens.PlayerInfoScreen.route}/${android.net.Uri.encode(playerId)}"
@@ -3529,12 +3530,32 @@ private fun DocumentRemindersSection(reminders: List<DocumentReminder>) {
 
 // ── Pending Agent Transfers Section ──────────────────────────────────────────
 
+/** Resolves an agent name to the appropriate display name based on locale. */
+private fun resolveAgentDisplayName(
+    agentId: String?,
+    agentName: String?,
+    allAccounts: List<Account>,
+    isHebrew: Boolean
+): String {
+    if (allAccounts.isEmpty()) return agentName ?: "—"
+    // Try matching by ID first, then by name
+    val account = allAccounts.firstOrNull { it.id == agentId }
+        ?: allAccounts.firstOrNull { it.name?.trim().equals(agentName?.trim(), ignoreCase = true) }
+        ?: allAccounts.firstOrNull { it.hebrewName?.trim().equals(agentName?.trim(), ignoreCase = true) }
+    if (account == null) return agentName ?: "—"
+    return if (isHebrew) (account.hebrewName ?: account.name).orEmpty()
+    else (account.name ?: "").ifEmpty { account.hebrewName.orEmpty() }
+}
+
 @Composable
 private fun PendingTransfersSection(
     toApprove: List<com.liordahan.mgsrteam.features.players.playerinfo.agenttransfer.AgentTransferRequest>,
     waitingApproval: List<com.liordahan.mgsrteam.features.players.playerinfo.agenttransfer.AgentTransferRequest>,
+    allAccounts: List<Account>,
     onNavigateToPlayer: (String) -> Unit
 ) {
+    val context = LocalContext.current
+    val isHebrew = LocaleManager.isHebrew(context)
     val amberColor = Color(0xFFF59E0B)
     val emeraldColor = Color(0xFF10B981)
     val totalCount = toApprove.size + waitingApproval.size
@@ -3594,10 +3615,11 @@ private fun PendingTransfersSection(
 
             // "Needs Approval" items (toApprove — emerald accented)
             toApprove.forEach { tr ->
+                val agentName = resolveAgentDisplayName(tr.toAgentId, tr.toAgentName, allAccounts, isHebrew)
                 PendingTransferRow(
                     playerName = tr.playerName ?: "—",
                     playerImage = tr.playerImage,
-                    subtitle = stringResource(R.string.dashboard_transfer_requests_assign, tr.toAgentName ?: ""),
+                    subtitle = stringResource(R.string.dashboard_transfer_requests_assign, agentName),
                     badgeText = stringResource(R.string.dashboard_transfer_needs_approval),
                     badgeColor = emeraldColor,
                     onClick = { tr.playerId?.let { onNavigateToPlayer(it) } }
@@ -3607,10 +3629,11 @@ private fun PendingTransfersSection(
 
             // "Waiting" items (waitingApproval — amber accented)
             waitingApproval.forEach { tr ->
+                val agentName = resolveAgentDisplayName(tr.fromAgentId, tr.fromAgentName, allAccounts, isHebrew)
                 PendingTransferRow(
                     playerName = tr.playerName ?: "—",
                     playerImage = tr.playerImage,
-                    subtitle = stringResource(R.string.dashboard_transfer_waiting_approval, tr.fromAgentName ?: ""),
+                    subtitle = stringResource(R.string.dashboard_transfer_waiting_approval, agentName),
                     badgeText = stringResource(R.string.dashboard_transfer_waiting),
                     badgeColor = amberColor,
                     onClick = { tr.playerId?.let { onNavigateToPlayer(it) } }
