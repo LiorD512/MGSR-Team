@@ -4244,9 +4244,11 @@ private fun AgentTransferRequestButton(modifier: Modifier = Modifier, onClick: (
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Center
         ) {
-            Text(
-                text = "🔀",
-                fontSize = 14.sp
+            Icon(
+                imageVector = Icons.Filled.PersonAddAlt,
+                contentDescription = null,
+                tint = blueColor,
+                modifier = Modifier.size(16.dp)
             )
             Spacer(Modifier.width(8.dp))
             Text(
