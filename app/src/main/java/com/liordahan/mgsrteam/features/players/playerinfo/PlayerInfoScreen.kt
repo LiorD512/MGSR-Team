@@ -640,6 +640,7 @@ fun PlayerInfoScreen(
                     mandateExpiryAt = mandateExpiry,
                     mandateValidLeagues = mandateLeagues,
                     currentPlatform = currentPlatform,
+                    allAccounts = allAccounts,
                     onMandateChanged = { viewModel.updateHaveMandate(it) },
                     onSalaryTransferFeeClicked = { showSalaryTransferFeeSheet = true },
                     onClearSalaryAndTransferFee = {
@@ -1319,11 +1320,13 @@ private fun PlayerInfoHeroCard(
     mandateExpiryAt: Long? = null,
     mandateValidLeagues: List<String> = emptyList(),
     currentPlatform: Platform = Platform.MEN,
+    allAccounts: List<com.liordahan.mgsrteam.features.login.models.Account> = emptyList(),
     onMandateChanged: (Boolean) -> Unit,
     onSalaryTransferFeeClicked: () -> Unit = {},
     onClearSalaryAndTransferFee: () -> Unit = {},
 ) {
-    val resources = LocalContext.current.resources
+    val context = LocalContext.current
+    val resources = context.resources
     val valueTrend = remember(player.marketValueHistory) {
         playerInfoComputeValueTrend(player.marketValueHistory)
     }
