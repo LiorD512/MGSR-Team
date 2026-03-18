@@ -30,6 +30,7 @@ abstract class IMainViewModel : ViewModel() {
     abstract val pendingOpenAddPlayerScreen: StateFlow<Boolean>
     abstract fun setPendingOpenAddPlayerScreen(value: Boolean)
     abstract fun signOut()
+}
 
 class MainViewModel(
     private val firebaseHandler: FirebaseHandler

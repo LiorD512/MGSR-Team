@@ -799,17 +799,17 @@ private fun GreetingHeader(
     if (showLogoutConfirm) {
         AlertDialog(
             onDismissRequest = { showLogoutConfirm = false },
-            containerColor = PlatformColors.palette.card,
+            containerColor = HomeDarkCard,
             title = {
                 Text(
                     text = stringResource(R.string.logout_confirm_title),
-                    style = boldTextStyle(PlatformColors.palette.textPrimary, 16.sp)
+                    style = boldTextStyle(HomeTextPrimary, 16.sp)
                 )
             },
             text = {
                 Text(
                     text = stringResource(R.string.logout_confirm_message),
-                    style = regularTextStyle(PlatformColors.palette.textSecondary, 14.sp)
+                    style = regularTextStyle(HomeTextSecondary, 14.sp)
                 )
             },
             confirmButton = {
@@ -819,7 +819,7 @@ private fun GreetingHeader(
                 }) {
                     Text(
                         text = stringResource(R.string.logout_confirm_yes),
-                        style = boldTextStyle(PlatformColors.palette.red, 14.sp)
+                        style = boldTextStyle(HomeRedAccent, 14.sp)
                     )
                 }
             },
@@ -827,7 +827,7 @@ private fun GreetingHeader(
                 TextButton(onClick = { showLogoutConfirm = false }) {
                     Text(
                         text = stringResource(R.string.cancel),
-                        style = regularTextStyle(PlatformColors.palette.textSecondary, 14.sp)
+                        style = regularTextStyle(HomeTextSecondary, 14.sp)
                     )
                 }
             }
