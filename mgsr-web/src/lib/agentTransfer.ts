@@ -10,7 +10,6 @@ import {
   doc,
   onSnapshot,
   runTransaction,
-  orderBy,
   Unsubscribe,
 } from 'firebase/firestore';
 import { db } from './firebase';
@@ -148,50 +147,25 @@ export function listenForResolvedTransfer(
   playerId: string,
   callback: (request: AgentTransferRequest | null) => void
 ): Unsubscribe {
-  const qApproved = query(
+  // Simple query: get all non-pending requests for this player.
+  // Filter client-side to avoid needing a composite index on resolvedAt.
+  const q = query(
     collection(db, COLLECTION),
     where('playerId', '==', playerId),
-    where('status', '==', STATUS_APPROVED),
-    orderBy('resolvedAt', 'desc'),
-    limit(1)
-  );
-  const qRejected = query(
-    collection(db, COLLECTION),
-    where('playerId', '==', playerId),
-    where('status', '==', STATUS_REJECTED),
-    orderBy('resolvedAt', 'desc'),
-    limit(1)
   );
 
-  let latest: AgentTransferRequest | null = null;
-  let approvedResult: AgentTransferRequest | null = null;
-  let rejectedResult: AgentTransferRequest | null = null;
-  let gotApproved = false;
-  let gotRejected = false;
-
-  function emit() {
-    if (!gotApproved || !gotRejected) return;
-    const a = approvedResult;
-    const r = rejectedResult;
-    if (a && r) {
-      latest = (a.resolvedAt ?? 0) >= (r.resolvedAt ?? 0) ? a : r;
-    } else {
-      latest = a || r;
+  return onSnapshot(q, (snap) => {
+    let latest: AgentTransferRequest | null = null;
+    for (const d of snap.docs) {
+      const data = d.data() as AgentTransferRequest;
+      if (data.status !== STATUS_APPROVED && data.status !== STATUS_REJECTED) continue;
+      if (!latest || (data.resolvedAt ?? 0) > (latest.resolvedAt ?? 0)) {
+        latest = { id: d.id, ...data };
+      }
     }
     callback(latest);
-  }
-
-  const unsub1 = onSnapshot(qApproved, (snap) => {
-    approvedResult = snap.empty ? null : { id: snap.docs[0].id, ...snap.docs[0].data() } as AgentTransferRequest;
-    gotApproved = true;
-    emit();
+  }, (err) => {
+    console.error('[listenForResolvedTransfer] error:', err);
+    callback(null);
   });
-
-  const unsub2 = onSnapshot(qRejected, (snap) => {
-    rejectedResult = snap.empty ? null : { id: snap.docs[0].id, ...snap.docs[0].data() } as AgentTransferRequest;
-    gotRejected = true;
-    emit();
-  });
-
-  return () => { unsub1(); unsub2(); };
 }
