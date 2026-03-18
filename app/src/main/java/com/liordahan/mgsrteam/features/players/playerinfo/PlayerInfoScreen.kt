@@ -4076,16 +4076,6 @@ private fun AgentTransferSection(
             nameMatch
     )
 
-    android.util.Log.d("MGSR_Transfer", "AgentTransferSection: " +
-            "currentUserAccountId=$currentUserAccountId, " +
-            "currentUserAuthUid=$currentUserAuthUid, " +
-            "currentUserAccountName=$currentUserAccountName, " +
-            "currentUserAccountHebrewName=$currentUserAccountHebrewName, " +
-            "player.agentInChargeId=${player.agentInChargeId}, " +
-            "player.agentInChargeName=${player.agentInChargeName}, " +
-            "hasAgent=$hasAgent, nameMatch=$nameMatch, isCurrentUserAgent=$isCurrentUserAgent, " +
-            "pendingTransfer=${pendingTransfer?.status}")
-
     Column(modifier = modifier) {
         when {
             // Current user IS the agent in charge and there's a pending request TO review
@@ -4123,34 +4113,76 @@ private fun AgentTransferResolvedBanner(
     resolvedTransfer: com.liordahan.mgsrteam.features.players.playerinfo.agenttransfer.AgentTransferRequest
 ) {
     val isApproved = resolvedTransfer.status == com.liordahan.mgsrteam.features.players.playerinfo.agenttransfer.AgentTransferRequest.STATUS_APPROVED
-    val bgColor = if (isApproved) Color(0xFF10B981).copy(alpha = 0.08f) else Color(0xFFEF4444).copy(alpha = 0.08f)
-    val borderColor = if (isApproved) Color(0xFF10B981).copy(alpha = 0.25f) else Color(0xFFEF4444).copy(alpha = 0.25f)
     val accentColor = if (isApproved) Color(0xFF10B981) else Color(0xFFEF4444)
     val icon = if (isApproved) "✓" else "✕"
 
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        color = bgColor,
-        border = BorderStroke(1.dp, borderColor)
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(
+                brush = Brush.linearGradient(
+                    colors = listOf(
+                        accentColor.copy(alpha = 0.08f),
+                        accentColor.copy(alpha = 0.03f)
+                    ),
+                    start = Offset.Zero,
+                    end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
+                )
+            )
+            .border(
+                width = 1.dp,
+                color = accentColor.copy(alpha = 0.15f),
+                shape = RoundedCornerShape(16.dp)
+            )
     ) {
+        // Glow effect
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .size(96.dp)
+                .graphicsLayer { alpha = 0.20f }
+                .blur(40.dp)
+                .background(
+                    color = accentColor.copy(alpha = 0.3f),
+                    shape = androidx.compose.foundation.shape.CircleShape
+                )
+        )
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(14.dp)
+                .padding(16.dp)
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(text = icon, style = boldTextStyle(accentColor, 16.sp))
-                Spacer(Modifier.width(8.dp))
+                // Icon badge
+                Box(
+                    modifier = Modifier
+                        .size(32.dp)
+                        .background(
+                            color = accentColor.copy(alpha = 0.12f),
+                            shape = RoundedCornerShape(8.dp)
+                        )
+                        .border(
+                            width = 1.dp,
+                            color = accentColor.copy(alpha = 0.20f),
+                            shape = RoundedCornerShape(8.dp)
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(text = icon, style = boldTextStyle(accentColor, 14.sp))
+                }
+                Spacer(Modifier.width(10.dp))
                 Text(
                     text = stringResource(
                         if (isApproved) R.string.agent_transfer_resolved_approved
                         else R.string.agent_transfer_resolved_rejected
                     ),
-                    style = boldTextStyle(accentColor, 12.sp)
+                    style = boldTextStyle(accentColor, 12.sp).copy(
+                        letterSpacing = 0.5.sp
+                    )
                 )
             }
-            Spacer(Modifier.height(4.dp))
+            Spacer(Modifier.height(8.dp))
             Text(
                 text = if (isApproved) {
                     stringResource(R.string.agent_transfer_resolved_approved_desc,
@@ -4161,10 +4193,12 @@ private fun AgentTransferResolvedBanner(
                         resolvedTransfer.fromAgentName ?: "",
                         resolvedTransfer.toAgentName ?: "")
                 },
-                style = regularTextStyle(PlatformColors.palette.textSecondary, 11.sp)
+                style = regularTextStyle(PlatformColors.palette.textSecondary, 12.sp).copy(
+                    lineHeight = 18.sp
+                )
             )
             resolvedTransfer.resolvedAt?.let { ts ->
-                Spacer(Modifier.height(4.dp))
+                Spacer(Modifier.height(6.dp))
                 Text(
                     text = java.text.SimpleDateFormat("d MMM yyyy, HH:mm", java.util.Locale.getDefault()).format(java.util.Date(ts)),
                     style = regularTextStyle(PlatformColors.palette.textSecondary.copy(alpha = 0.5f), 10.sp)
@@ -4176,29 +4210,50 @@ private fun AgentTransferResolvedBanner(
 
 @Composable
 private fun AgentTransferRequestButton(modifier: Modifier = Modifier, onClick: () -> Unit) {
-    Surface(
+    val blueColor = Color(0xFF5B8AF5)
+    Box(
         modifier = modifier
             .fillMaxWidth()
-            .clickWithNoRipple(onClick = onClick),
-        shape = RoundedCornerShape(12.dp),
-        color = PlatformColors.palette.accent.copy(alpha = 0.08f),
-        border = BorderStroke(1.dp, PlatformColors.palette.accent.copy(alpha = 0.3f))
+            .clip(RoundedCornerShape(16.dp))
+            .drawBehind {
+                val stroke = 1.dp.toPx()
+                val dashWidth = 8.dp.toPx()
+                val gapWidth = 5.dp.toPx()
+                drawRoundRect(
+                    color = blueColor.copy(alpha = 0.05f),
+                    size = size,
+                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(16.dp.toPx())
+                )
+                drawRoundRect(
+                    color = blueColor.copy(alpha = 0.25f),
+                    size = size,
+                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(16.dp.toPx()),
+                    style = androidx.compose.ui.graphics.drawscope.Stroke(
+                        width = stroke,
+                        pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(
+                            floatArrayOf(dashWidth, gapWidth), 0f
+                        )
+                    )
+                )
+            }
+            .clickWithNoRipple(onClick = onClick)
+            .padding(vertical = 14.dp),
+        contentAlignment = Alignment.Center
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Center
         ) {
             Text(
-                text = "🙋",
-                style = boldTextStyle(PlatformColors.palette.textPrimary, 14.sp)
+                text = "🔀",
+                fontSize = 14.sp
             )
             Spacer(Modifier.width(8.dp))
             Text(
                 text = stringResource(R.string.agent_transfer_request_button),
-                style = boldTextStyle(PlatformColors.palette.accent, 13.sp)
+                style = boldTextStyle(blueColor, 12.sp).copy(
+                    letterSpacing = 0.5.sp
+                )
             )
         }
     }
@@ -4210,36 +4265,98 @@ private fun AgentTransferPendingBanner(
     currentAgentName: String,
     onCancel: () -> Unit
 ) {
-    Surface(
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        color = Color(0xFFFBBF24).copy(alpha = 0.08f),
-        border = BorderStroke(1.dp, Color(0xFFFBBF24).copy(alpha = 0.25f))
+    val amberColor = Color(0xFFF59E0B)
+    val redColor = Color(0xFFEF4444)
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(
+                brush = Brush.linearGradient(
+                    colors = listOf(
+                        amberColor.copy(alpha = 0.08f),
+                        Color(0xFFFBBF24).copy(alpha = 0.03f)
+                    ),
+                    start = Offset.Zero,
+                    end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
+                )
+            )
+            .border(
+                width = 1.dp,
+                color = amberColor.copy(alpha = 0.15f),
+                shape = RoundedCornerShape(16.dp)
+            )
     ) {
+        // Glow effect
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .size(96.dp)
+                .graphicsLayer { alpha = 0.25f }
+                .blur(40.dp)
+                .background(
+                    color = amberColor.copy(alpha = 0.3f),
+                    shape = androidx.compose.foundation.shape.CircleShape
+                )
+        )
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(14.dp)
+                .padding(16.dp)
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(text = "⏳", style = boldTextStyle(Color.Unspecified, 16.sp))
-                Spacer(Modifier.width(8.dp))
+                // Icon badge
+                Box(
+                    modifier = Modifier
+                        .size(32.dp)
+                        .background(
+                            color = amberColor.copy(alpha = 0.10f),
+                            shape = RoundedCornerShape(8.dp)
+                        )
+                        .border(
+                            width = 1.dp,
+                            color = amberColor.copy(alpha = 0.15f),
+                            shape = RoundedCornerShape(8.dp)
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(text = "⏳", fontSize = 14.sp)
+                }
+                Spacer(Modifier.width(10.dp))
                 Text(
                     text = stringResource(R.string.agent_transfer_pending_title),
-                    style = boldTextStyle(Color(0xFFFBBF24), 12.sp)
+                    style = boldTextStyle(Color(0xFFFBBF24), 12.sp).copy(
+                        letterSpacing = 0.5.sp
+                    )
                 )
             }
-            Spacer(Modifier.height(4.dp))
-            Text(
-                text = stringResource(R.string.agent_transfer_pending_desc, currentAgentName),
-                style = regularTextStyle(PlatformColors.palette.textSecondary, 11.sp)
-            )
             Spacer(Modifier.height(8.dp))
             Text(
-                text = stringResource(R.string.agent_transfer_cancel),
-                modifier = Modifier.clickWithNoRipple(onClick = onCancel),
-                style = boldTextStyle(PlatformColors.palette.red, 11.sp)
+                text = stringResource(R.string.agent_transfer_pending_desc, currentAgentName),
+                style = regularTextStyle(PlatformColors.palette.textSecondary, 12.sp).copy(
+                    lineHeight = 18.sp
+                )
             )
+            Spacer(Modifier.height(12.dp))
+            // Cancel button — small outlined red pill
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(redColor.copy(alpha = 0.05f))
+                    .border(
+                        width = 1.dp,
+                        color = redColor.copy(alpha = 0.20f),
+                        shape = RoundedCornerShape(8.dp)
+                    )
+                    .clickWithNoRipple(onClick = onCancel)
+                    .padding(horizontal = 12.dp, vertical = 6.dp)
+            ) {
+                Text(
+                    text = stringResource(R.string.agent_transfer_cancel),
+                    style = boldTextStyle(redColor, 12.sp)
+                )
+            }
         }
     }
 }
@@ -4252,77 +4369,129 @@ private fun AgentTransferApprovalBanner(
     onApprove: () -> Unit,
     onReject: () -> Unit
 ) {
-    Surface(
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        color = PlatformColors.palette.blue.copy(alpha = 0.08f),
-        border = BorderStroke(1.dp, PlatformColors.palette.blue.copy(alpha = 0.25f))
+    val blueColor = Color(0xFF5B8AF5)
+    val emeraldColor = Color(0xFF34D399)
+    val redColor = Color(0xFFEF4444)
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(
+                brush = Brush.linearGradient(
+                    colors = listOf(
+                        blueColor.copy(alpha = 0.10f),
+                        Color(0xFF8B5CF6).copy(alpha = 0.05f)
+                    ),
+                    start = Offset.Zero,
+                    end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
+                )
+            )
+            .border(
+                width = 1.dp,
+                color = blueColor.copy(alpha = 0.20f),
+                shape = RoundedCornerShape(16.dp)
+            )
     ) {
+        // Glow effect
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .size(96.dp)
+                .graphicsLayer { alpha = 0.30f }
+                .blur(40.dp)
+                .background(
+                    color = blueColor.copy(alpha = 0.3f),
+                    shape = androidx.compose.foundation.shape.CircleShape
+                )
+        )
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(14.dp)
+                .padding(16.dp)
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(text = "📨", style = boldTextStyle(Color.Unspecified, 16.sp))
-                Spacer(Modifier.width(8.dp))
+                // Icon badge
+                Box(
+                    modifier = Modifier
+                        .size(32.dp)
+                        .background(
+                            color = blueColor.copy(alpha = 0.12f),
+                            shape = RoundedCornerShape(8.dp)
+                        )
+                        .border(
+                            width = 1.dp,
+                            color = blueColor.copy(alpha = 0.20f),
+                            shape = RoundedCornerShape(8.dp)
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(text = "📨", fontSize = 14.sp)
+                }
+                Spacer(Modifier.width(10.dp))
                 Text(
                     text = stringResource(R.string.agent_transfer_approval_title),
-                    style = boldTextStyle(PlatformColors.palette.blue, 12.sp)
+                    style = boldTextStyle(blueColor, 12.sp).copy(
+                        letterSpacing = 0.5.sp
+                    )
                 )
             }
-            Spacer(Modifier.height(6.dp))
+            Spacer(Modifier.height(10.dp))
             Text(
                 text = stringResource(R.string.agent_transfer_approval_desc, requesterName),
-                style = regularTextStyle(PlatformColors.palette.textSecondary, 12.sp)
+                style = regularTextStyle(PlatformColors.palette.textSecondary, 12.sp).copy(
+                    lineHeight = 18.sp
+                )
             )
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(16.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
+                // Approve button — emerald green
                 Button(
                     onClick = onApprove,
                     modifier = Modifier.weight(1f),
                     enabled = !isLoading,
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = PlatformColors.palette.green
+                        containerColor = emeraldColor
                     )
                 ) {
                     if (isLoading) {
                         CircularProgressIndicator(
                             modifier = Modifier.size(16.dp),
-                            color = Color.White,
+                            color = Color(0xFF080B12),
                             strokeWidth = 2.dp
                         )
                     } else {
                         Text(
                             text = stringResource(R.string.agent_transfer_approve),
-                            style = boldTextStyle(Color.White, 13.sp)
+                            style = boldTextStyle(Color(0xFF080B12), 12.sp)
                         )
                     }
                 }
+                // Reject button — outlined red
                 Button(
                     onClick = onReject,
                     modifier = Modifier.weight(1f),
                     enabled = !isLoading,
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = PlatformColors.palette.red.copy(alpha = 0.12f)
+                        containerColor = Color(0xFFF43F5E).copy(alpha = 0.06f)
                     ),
-                    border = BorderStroke(1.dp, PlatformColors.palette.red.copy(alpha = 0.3f))
+                    border = BorderStroke(1.dp, redColor.copy(alpha = 0.25f))
                 ) {
                     if (isLoading) {
                         CircularProgressIndicator(
                             modifier = Modifier.size(16.dp),
-                            color = PlatformColors.palette.red,
+                            color = redColor,
                             strokeWidth = 2.dp
                         )
                     } else {
                         Text(
                             text = stringResource(R.string.agent_transfer_reject),
-                            style = boldTextStyle(PlatformColors.palette.red, 13.sp)
+                            style = boldTextStyle(redColor, 12.sp)
                         )
                     }
                 }
@@ -4338,59 +4507,108 @@ private fun AgentTransferConfirmDialog(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit
 ) {
+    val blueColor = Color(0xFF5B8AF5)
+    val tealColor = Color(0xFF38E8C6)
+
     Dialog(onDismissRequest = onDismiss) {
-        Card(
-            shape = RoundedCornerShape(24.dp),
-            colors = CardDefaults.cardColors(containerColor = PlatformColors.palette.card),
-            border = BorderStroke(1.dp, PlatformColors.palette.cardBorder)
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(24.dp))
+                .background(PlatformColors.palette.card)
+                .border(
+                    width = 1.dp,
+                    color = Color.White.copy(alpha = 0.06f),
+                    shape = RoundedCornerShape(24.dp)
+                )
         ) {
+            // Top glow effect
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .size(192.dp)
+                    .graphicsLayer { alpha = 0.20f }
+                    .blur(60.dp)
+                    .background(
+                        color = blueColor.copy(alpha = 0.4f),
+                        shape = androidx.compose.foundation.shape.CircleShape
+                    )
+            )
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(24.dp),
+                    .padding(32.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text(text = "🔄", style = boldTextStyle(Color.Unspecified, 36.sp))
-                Spacer(Modifier.height(12.dp))
+                // Icon badge with gradient
+                Box(
+                    modifier = Modifier
+                        .size(64.dp)
+                        .background(
+                            brush = Brush.linearGradient(
+                                colors = listOf(
+                                    blueColor.copy(alpha = 0.10f),
+                                    Color(0xFF8B5CF6).copy(alpha = 0.08f)
+                                ),
+                                start = Offset.Zero,
+                                end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
+                            ),
+                            shape = RoundedCornerShape(18.dp)
+                        )
+                        .border(
+                            width = 1.dp,
+                            color = blueColor.copy(alpha = 0.15f),
+                            shape = RoundedCornerShape(18.dp)
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(text = "🔄", fontSize = 28.sp)
+                }
+                Spacer(Modifier.height(20.dp))
                 Text(
                     text = stringResource(R.string.agent_transfer_confirm_title),
-                    style = boldTextStyle(PlatformColors.palette.textPrimary, 16.sp)
+                    style = boldTextStyle(PlatformColors.palette.textPrimary, 18.sp)
                 )
                 Spacer(Modifier.height(8.dp))
                 Text(
                     text = stringResource(R.string.agent_transfer_confirm_body, playerName, currentAgentName),
-                    style = regularTextStyle(PlatformColors.palette.textSecondary, 13.sp),
+                    style = regularTextStyle(PlatformColors.palette.textSecondary, 14.sp).copy(
+                        lineHeight = 20.sp
+                    ),
                     textAlign = TextAlign.Center
                 )
-                Spacer(Modifier.height(20.dp))
+                Spacer(Modifier.height(28.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
+                    // Cancel button — subtle/transparent
                     Button(
                         onClick = onDismiss,
                         modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(14.dp),
+                        shape = RoundedCornerShape(12.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = PlatformColors.palette.background
-                        )
+                            containerColor = Color.White.copy(alpha = 0.02f)
+                        ),
+                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.06f))
                     ) {
                         Text(
                             text = stringResource(R.string.cancel),
                             style = boldTextStyle(PlatformColors.palette.textSecondary, 14.sp)
                         )
                     }
+                    // Confirm button — teal
                     Button(
                         onClick = onConfirm,
                         modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(14.dp),
+                        shape = RoundedCornerShape(12.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = PlatformColors.palette.accent
+                            containerColor = tealColor
                         )
                     ) {
                         Text(
                             text = stringResource(R.string.agent_transfer_send_request),
-                            style = boldTextStyle(Color.White, 14.sp)
+                            style = boldTextStyle(Color(0xFF080B12), 14.sp)
                         )
                     }
                 }
