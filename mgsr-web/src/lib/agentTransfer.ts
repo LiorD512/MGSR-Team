@@ -45,7 +45,7 @@ export async function requestAgentTransfer(params: {
   toAgentId: string;
   toAgentName?: string;
 }): Promise<string | null> {
-  // Check for existing pending request on this player
+  // Check for existing pending request on this specific player only
   const existingSnap = await getDocs(
     query(
       collection(db, COLLECTION),
@@ -53,8 +53,8 @@ export async function requestAgentTransfer(params: {
       where('status', '==', STATUS_PENDING),
       limit(1)
     )
-  );
-  if (!existingSnap.empty) return null;
+  ).catch(() => null);
+  if (existingSnap && !existingSnap.empty) return null;
 
   const request: AgentTransferRequest = {
     ...params,
