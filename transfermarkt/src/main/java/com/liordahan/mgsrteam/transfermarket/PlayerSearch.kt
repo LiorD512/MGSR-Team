@@ -49,7 +49,9 @@ data class TransfermarktPlayerDetails(
     val currentClub: TransfermarktClub? = null,
     val isOnLoan: Boolean = false,
     val onLoanFromClub: String? = null,
-    val foot: String? = null
+    val foot: String? = null,
+    val agency: String? = null,
+    val agencyUrl: String? = null
 )
 
 class PlayerSearch {
@@ -183,6 +185,26 @@ class PlayerSearch {
 
                 val foot = extractFootFromProfile(doc)
 
+                // Scrape agency from info table
+                var agency: String? = null
+                var agencyUrl: String? = null
+                val infoLabels = doc.select("span.info-table__content--regular")
+                for (label in infoLabels) {
+                    val labelText = label.text().trim().lowercase()
+                    val valueSpan = label.nextElementSibling() ?: continue
+                    if (labelText.contains("player agent") || labelText.contains("agent")) {
+                        val link = valueSpan.selectFirst("a")
+                        agency = link?.text()?.trim()?.takeIf { it.isNotBlank() }
+                            ?: valueSpan.text().trim().takeIf { it.isNotBlank() }
+                        val href = link?.attr("href")
+                        if (!href.isNullOrBlank()) {
+                            agencyUrl = if (href.startsWith("http")) href
+                            else TRANSFERMARKT_BASE_URL + href
+                        }
+                        break
+                    }
+                }
+
                 return@withContext TransfermarktPlayerDetails(
                     tmProfile = playerSearchModel.tmProfile,
                     fullName = fullName?.ifEmpty { null },
@@ -204,7 +226,9 @@ class PlayerSearch {
                     ),
                     isOnLoan = loanInfo.isOnLoan,
                     onLoanFromClub = loanInfo.onLoanFromClub,
-                    foot = foot
+                    foot = foot,
+                    agency = agency,
+                    agencyUrl = agencyUrl
                 )
 
             } catch (ex: IOException) {
