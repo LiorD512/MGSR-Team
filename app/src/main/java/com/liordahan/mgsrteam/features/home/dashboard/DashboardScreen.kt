@@ -463,9 +463,13 @@ fun DashboardScreen(
                                 waitingApproval = waitingApproval,
                                 allAccounts = state.allAccounts,
                                 onNavigateToPlayer = { playerId ->
-                                    navController.navigate(
-                                        "${Screens.PlayerInfoScreen.route}/${android.net.Uri.encode(playerId)}"
-                                    )
+                                    viewModel.resolvePlayerNavId(playerId) { navId ->
+                                        if (navId != null) {
+                                            navController.navigate(
+                                                "${Screens.PlayerInfoScreen.route}/${android.net.Uri.encode(navId)}"
+                                            )
+                                        }
+                                    }
                                 }
                             )
                         }

@@ -127,6 +127,8 @@ abstract class IHomeScreenViewModel : ViewModel() {
     abstract fun refreshTransferWindows()
     /** Called from UI when user switches MGSR platform (Men / Women / Youth). */
     abstract fun reloadForPlatformSwitch()
+    /** Resolves a Firestore doc ID to the correct nav ID for PlayerInfoScreen (tmProfile for Men, doc ID for Women/Youth). */
+    abstract fun resolvePlayerNavId(docId: String, onResult: (String?) -> Unit)
 }
 
 class HomeScreenViewModel(
@@ -201,6 +203,27 @@ class HomeScreenViewModel(
         super.onCleared()
         listenerRegistrations.forEach { it.remove() }
         listenerRegistrations.clear()
+    }
+
+    override fun resolvePlayerNavId(docId: String, onResult: (String?) -> Unit) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val navId = try {
+                val isNonMen = platformManager.current.value != com.liordahan.mgsrteam.features.platform.Platform.MEN
+                if (isNonMen) {
+                    // Women/Youth — doc ID is the nav ID
+                    docId
+                } else {
+                    // Men — look up the doc and get tmProfile
+                    val doc = firebaseHandler.firebaseStore
+                        .collection(firebaseHandler.playersTable)
+                        .document(docId)
+                        .get()
+                        .await()
+                    doc.getString("tmProfile") ?: docId
+                }
+            } catch (_: Exception) { null }
+            withContext(Dispatchers.Main) { onResult(navId) }
+        }
     }
 
     override fun checkPlayerExists(tmProfile: String, onResult: (Boolean) -> Unit) {
