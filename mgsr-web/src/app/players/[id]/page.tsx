@@ -468,12 +468,21 @@ export default function PlayerInfoPage() {
 
   const handleApproveTransfer = useCallback(async () => {
     if (!pendingTransfer?.id) return;
-    await approveTransfer(pendingTransfer.id, 'Players');
+    try {
+      await approveTransfer(pendingTransfer.id, 'Players');
+    } catch (e) {
+      console.error('approveTransfer failed:', e);
+      alert('Failed to approve transfer: ' + (e instanceof Error ? e.message : String(e)));
+    }
   }, [pendingTransfer]);
 
   const handleRejectTransfer = useCallback(async () => {
     if (!pendingTransfer?.id) return;
-    await rejectTransfer(pendingTransfer.id);
+    try {
+      await rejectTransfer(pendingTransfer.id);
+    } catch (e) {
+      console.error('rejectTransfer failed:', e);
+    }
   }, [pendingTransfer]);
 
   const handleCancelTransfer = useCallback(async () => {
