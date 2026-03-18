@@ -4210,32 +4210,17 @@ private fun AgentTransferResolvedBanner(
 
 @Composable
 private fun AgentTransferRequestButton(modifier: Modifier = Modifier, onClick: () -> Unit) {
-    val blueColor = Color(0xFF5B8AF5)
+    val tealColor = PlatformColors.palette.accent
     Box(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .drawBehind {
-                val stroke = 1.dp.toPx()
-                val dashWidth = 8.dp.toPx()
-                val gapWidth = 5.dp.toPx()
-                drawRoundRect(
-                    color = blueColor.copy(alpha = 0.05f),
-                    size = size,
-                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(16.dp.toPx())
-                )
-                drawRoundRect(
-                    color = blueColor.copy(alpha = 0.25f),
-                    size = size,
-                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(16.dp.toPx()),
-                    style = androidx.compose.ui.graphics.drawscope.Stroke(
-                        width = stroke,
-                        pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(
-                            floatArrayOf(dashWidth, gapWidth), 0f
-                        )
-                    )
-                )
-            }
+            .background(tealColor.copy(alpha = 0.05f))
+            .border(
+                width = 0.5.dp,
+                color = tealColor.copy(alpha = 0.4f),
+                shape = RoundedCornerShape(16.dp)
+            )
             .clickWithNoRipple(onClick = onClick)
             .padding(vertical = 14.dp),
         contentAlignment = Alignment.Center
@@ -4247,13 +4232,13 @@ private fun AgentTransferRequestButton(modifier: Modifier = Modifier, onClick: (
             Icon(
                 imageVector = Icons.Filled.PersonAddAlt,
                 contentDescription = null,
-                tint = blueColor,
+                tint = tealColor,
                 modifier = Modifier.size(16.dp)
             )
             Spacer(Modifier.width(8.dp))
             Text(
                 text = stringResource(R.string.agent_transfer_request_button),
-                style = boldTextStyle(blueColor, 12.sp).copy(
+                style = boldTextStyle(tealColor, 12.sp).copy(
                     letterSpacing = 0.5.sp
                 )
             )
