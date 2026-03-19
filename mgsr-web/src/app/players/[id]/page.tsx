@@ -11,7 +11,7 @@ import { auth, db, storage } from '@/lib/firebase';
 import { getPlayerDetails, PlayerDetails } from '@/lib/api';
 import AppLayout from '@/components/AppLayout';
 import Link from 'next/link';
-import { toWhatsAppUrl } from '@/lib/whatsapp';
+import { toWhatsAppUrl, openWhatsAppShare } from '@/lib/whatsapp';
 import { createShare } from '@/lib/shareApi';
 import type { HighlightVideo } from '@/lib/highlightsApi';
 import { parseMarketValue, formatMarketValue } from '@/lib/releases';
@@ -1041,8 +1041,7 @@ export default function PlayerInfoPage() {
           setShowShareSetupModal(true);
           setShareError(null);
         } else {
-          const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
-          window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
+          openWhatsAppShare(shareText);
         }
       } catch (e) {
         console.error('Share failed:', e);
@@ -2859,8 +2858,7 @@ export default function PlayerInfoPage() {
               <button
                 type="button"
                 onClick={() => {
-                  const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(pendingShareUrl)}`;
-                  window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
+                  openWhatsAppShare(pendingShareUrl);
                   setShowShareSetupModal(false);
                 }}
                 className="flex-1 px-4 py-2.5 rounded-xl bg-mgsr-teal text-mgsr-dark font-medium hover:bg-mgsr-teal/90"

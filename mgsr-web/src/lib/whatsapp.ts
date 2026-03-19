@@ -13,3 +13,30 @@ export function toWhatsAppUrl(phone: string | null | undefined): string | null {
   }
   return `https://wa.me/${normalized}`;
 }
+
+/**
+ * Open a WhatsApp share with pre-filled text.
+ * Uses api.whatsapp.com/send (more reliable than wa.me/?text= which strips
+ * the text param through redirect chains on many devices).
+ *
+ * On mobile: tries native Web Share API first, then navigates via
+ * window.location.href to avoid popup-blocker issues (the window.open call
+ * happens after async work, outside the original click context).
+ *
+ * On desktop: opens a new tab to WhatsApp Web.
+ */
+export function openWhatsAppShare(text: string): void {
+  if (typeof window === 'undefined') return;
+
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+  const waUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
+
+  if (isMobile) {
+    // On mobile, navigate the current tab — avoids popup-blocker issues
+    window.location.href = waUrl;
+  } else {
+    // On desktop, open WhatsApp Web in a new tab (no noopener/noreferrer
+    // which can strip URL params through the redirect chain)
+    window.open(waUrl, '_blank');
+  }
+}

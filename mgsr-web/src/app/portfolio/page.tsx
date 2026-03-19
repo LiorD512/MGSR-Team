@@ -17,6 +17,7 @@ import {
 } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { createShare } from '@/lib/shareApi';
+import { openWhatsAppShare } from '@/lib/whatsapp';
 import type { PortfolioItem } from '@/lib/portfolioApi';
 import { PORTFOLIO_COLLECTIONS } from '@/lib/platformCollections';
 
@@ -147,8 +148,7 @@ export default function PortfolioPage() {
           setPendingShareUrl(shareText);
           setShowShareSetupModal(true);
         } else {
-          const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
-          window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
+          openWhatsAppShare(shareText);
         }
       } catch (e) {
         console.error('Portfolio share failed:', e);
@@ -560,8 +560,7 @@ export default function PortfolioPage() {
                 <button
                   type="button"
                   onClick={() => {
-                    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(pendingShareUrl)}`;
-                    window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
+                    openWhatsAppShare(pendingShareUrl);
                     setShowShareSetupModal(false);
                     setPendingShareUrl(null);
                   }}
