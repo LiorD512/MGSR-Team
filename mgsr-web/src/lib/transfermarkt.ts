@@ -3169,6 +3169,8 @@ export interface ClubTransfer {
   isFree: boolean;
   isLoan: boolean;
   tmUrl: string;
+  marketValue: number;
+  marketValueDisplay: string;
 }
 
 export interface ClubTransferSeason {
@@ -3245,7 +3247,13 @@ export async function scrapeClubTransfers(clubTmProfile: string, season?: number
           ? (clubLinks.last().attr('title') || clubLinks.last().text().trim() || '')
           : '';
 
-        // Fee
+        // Market value at time of transfer (second-to-last td.rechts)
+        const rechtsCells = $row.find('td.rechts');
+        const mvCell = rechtsCells.length >= 2 ? $(rechtsCells[rechtsCells.length - 2]) : null;
+        const marketValueDisplay = mvCell ? mvCell.text().trim() : '';
+        const marketValue = parseValueToEuros(marketValueDisplay);
+
+        // Fee (last td.rechts)
         const feeCell = $row.find('td.rechts a, td.rechts').last();
         const feeDisplay = feeCell.text().trim();
         const feeLower = feeDisplay.toLowerCase();
@@ -3263,7 +3271,7 @@ export async function scrapeClubTransfers(clubTmProfile: string, season?: number
           (fee === 0 && feeDisplay.length < 5)
         );
 
-        transfers.push({ playerName, age, position, nationality, fromClub, toClub, fee, feeDisplay, isFree, isLoan, tmUrl });
+        transfers.push({ playerName, age, position, nationality, fromClub, toClub, fee, feeDisplay, isFree, isLoan, tmUrl, marketValue, marketValueDisplay });
       } catch {
         // skip row
       }

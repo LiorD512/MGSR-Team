@@ -86,6 +86,7 @@ export default function ClubIntelPanel({ data, isHebrew }: ClubIntelPanelProps) 
         inSquad: 'בסגל',
         sold: 'נמכר',
         arrivalFee: 'עלות הגעה',
+        arrivalMV: 'שווי בהגעה',
         currentValue: 'שווי נוכחי',
         soldFor: 'נמכר ב',
         growth: 'גידול',
@@ -126,6 +127,7 @@ export default function ClubIntelPanel({ data, isHebrew }: ClubIntelPanelProps) 
         inSquad: 'In Squad',
         sold: 'Sold',
         arrivalFee: 'Arrival Fee',
+        arrivalMV: 'MV at Arrival',
         currentValue: 'Current Value',
         soldFor: 'Sold For',
         growth: 'Growth',
@@ -267,8 +269,11 @@ function PlayerCard({ p, t, isHebrew }: { p: PlayerSuccessEntry; t: Record<strin
       </div>
 
       {/* Financial row */}
-      <div className="flex items-center gap-3 text-[11px]">
+      <div className="flex items-center flex-wrap gap-x-3 gap-y-1 text-[11px]">
         <span className="text-mgsr-muted">{t.arrivalFee}: <span className="text-mgsr-text font-medium">{p.wasFree ? t.free : p.arrivalFeeDisplay}</span></span>
+        {p.marketValueAtArrival > 0 && (
+          <span className="text-mgsr-muted">{t.arrivalMV}: <span className="text-mgsr-text font-medium">{p.marketValueAtArrivalDisplay}</span></span>
+        )}
         <span className="text-mgsr-muted">→</span>
         {p.status === 'sold' ? (
           <span className="text-mgsr-muted">{t.soldFor}: <span className="text-mgsr-text font-medium">{p.soldForDisplay}</span></span>

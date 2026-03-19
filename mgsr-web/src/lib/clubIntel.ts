@@ -38,6 +38,8 @@ export interface PlayerSuccessEntry {
   ageAtArrival: number | null;
   arrivalFee: number;
   arrivalFeeDisplay: string;
+  marketValueAtArrival: number;
+  marketValueAtArrivalDisplay: string;
   wasFree: boolean;
   wasLoan: boolean;
   // If still in squad
@@ -339,6 +341,8 @@ async function buildSuccessProfiles(
       ageAtArrival: a.age,
       arrivalFee: investedAmount,
       arrivalFeeDisplay: investedAmount > 0 ? formatEuros(investedAmount) : 'Free',
+      marketValueAtArrival: a.marketValue,
+      marketValueAtArrivalDisplay: a.marketValue > 0 ? formatEuros(a.marketValue) : '—',
       wasFree: a.isFree,
       wasLoan: false,
       currentMarketValue,
