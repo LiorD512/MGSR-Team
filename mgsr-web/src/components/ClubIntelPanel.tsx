@@ -254,7 +254,11 @@ function PlayerCard({ p, t, isHebrew }: { p: PlayerSuccessEntry; t: Record<strin
       {/* Header: name + status badge */}
       <div className="flex items-center justify-between gap-2">
         <div className="min-w-0">
-          <p className="text-sm font-semibold text-mgsr-text truncate">{p.name}</p>
+          {p.tmUrl ? (
+            <a href={p.tmUrl} target="_blank" rel="noopener noreferrer" className="text-sm font-semibold text-mgsr-text hover:text-mgsr-teal transition truncate block">{p.name}</a>
+          ) : (
+            <p className="text-sm font-semibold text-mgsr-text truncate">{p.name}</p>
+          )}
           <p className="text-[11px] text-mgsr-muted">{posDisplay} · {p.nationality}{p.ageAtArrival ? ` · ${p.ageAtArrival}` : ''}</p>
         </div>
         <span className={`shrink-0 text-[10px] font-medium px-1.5 py-0.5 rounded ${p.status === 'in-squad' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-blue-500/20 text-blue-400'}`}>

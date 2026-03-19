@@ -57,6 +57,8 @@ export interface PlayerSuccessEntry {
   minutesPlayed: number;
   // Status
   status: 'in-squad' | 'sold';
+  // TM profile URL
+  tmUrl: string;
 }
 
 /** Aggregated insight about what profile succeeds at this club */
@@ -351,6 +353,7 @@ async function buildSuccessProfiles(
       assists: 0,
       minutesPlayed: 0,
       status,
+      tmUrl: inSquad?.tmUrl || '',
     });
   }
 
