@@ -1,4 +1,68 @@
 {
-  "windows": [],
-  "updatedAt": "2026-03-18T08:37:58.735Z"
+  "windows": [
+    {
+      "countryName": "Bolivia",
+      "countryCode": "bo",
+      "flagUrl": "https://tmssl.akamaized.net/images/flagge/originals/23.png",
+      "confederation": "CONMEBOL",
+      "daysLeft": 0
+    },
+    {
+      "countryName": "Sweden",
+      "countryCode": "se",
+      "flagUrl": "https://tmssl.akamaized.net/images/flagge/originals/147.png",
+      "confederation": "UEFA",
+      "daysLeft": 7
+    },
+    {
+      "countryName": "United States",
+      "countryCode": "us",
+      "flagUrl": "https://tmssl.akamaized.net/images/flagge/originals/184.png",
+      "confederation": "CONCACAF",
+      "daysLeft": 7
+    },
+    {
+      "countryName": "Korea, South",
+      "countryCode": "kr",
+      "flagUrl": "https://tmssl.akamaized.net/images/flagge/originals/87.png",
+      "confederation": "AFC",
+      "daysLeft": 8
+    },
+    {
+      "countryName": "Ecuador",
+      "countryCode": "ec",
+      "flagUrl": "https://tmssl.akamaized.net/images/flagge/originals/44.png",
+      "confederation": "CONMEBOL",
+      "daysLeft": 10
+    },
+    {
+      "countryName": "Norway",
+      "countryCode": "no",
+      "flagUrl": "https://tmssl.akamaized.net/images/flagge/originals/125.png",
+      "confederation": "UEFA",
+      "daysLeft": 13
+    },
+    {
+      "countryName": "Kazakhstan",
+      "countryCode": "kz",
+      "flagUrl": "https://tmssl.akamaized.net/images/flagge/originals/81.png",
+      "confederation": "UEFA",
+      "daysLeft": 16
+    },
+    {
+      "countryName": "Japan",
+      "countryCode": "jp",
+      "flagUrl": "https://tmssl.akamaized.net/images/flagge/originals/77.png",
+      "confederation": "AFC",
+      "daysLeft": 21
+    },
+    {
+      "countryName": "Canada",
+      "countryCode": "ca",
+      "flagUrl": "https://tmssl.akamaized.net/images/flagge/originals/80.png",
+      "confederation": "CONCACAF",
+      "daysLeft": 29
+    }
+  ],
+  "updatedAt": "2026-03-19T08:32:18.567Z"
 }
