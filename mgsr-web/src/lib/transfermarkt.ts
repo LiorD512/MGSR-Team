@@ -3190,7 +3190,7 @@ export async function scrapeClubTransfers(clubTmProfile: string, season?: number
   const currentYear = new Date().getFullYear();
   const seasonYear = season ?? (new Date().getMonth() >= 7 ? currentYear : currentYear - 1);
   const slug = clubTmProfile.split('.com/')[1]?.split('/')[0] || 'club';
-  const transfersUrl = `${TRANSFERMARKT_BASE}/${slug}/transfers/verein/${vereinId}/saison_id/${seasonYear}`;
+  const transfersUrl = `${TRANSFERMARKT_BASE}/${slug}/transfers/verein/${vereinId}/saison_id/${seasonYear}/pos//detailpos/0/w_s//plus/1`;
 
   const html = await fetchHtmlWithRetry(transfersUrl);
   const $ = cheerio.load(html);
