@@ -106,9 +106,9 @@ export async function savePinnedHighlights(
     thumbnailUrl: v.thumbnailUrl,
     embedUrl: v.embedUrl,
     channelName: v.channelName,
-    publishedAt: v.publishedAt,
-    durationSeconds: v.durationSeconds,
-    viewCount: v.viewCount,
+    publishedAt: v.publishedAt || '',
+    durationSeconds: v.durationSeconds ?? 0,
+    ...(v.viewCount != null ? { viewCount: v.viewCount } : {}),
   }));
   await updateDoc(doc(db, playerCollection, playerId), { pinnedHighlights: toSave });
 }
@@ -116,6 +116,51 @@ export async function savePinnedHighlights(
 /** @deprecated Use player.pinnedHighlights from Firestore instead. Kept for fallback. */
 export function getPinnedHighlights(playerId: string): HighlightVideo[] {
   return [];
+}
+
+/**
+ * Extract a YouTube video ID from various URL formats.
+ * Supports youtube.com/watch?v=, youtu.be/, youtube.com/embed/, youtube.com/shorts/, etc.
+ * Returns null if the URL is not a valid YouTube link.
+ */
+export function parseYouTubeVideoId(url: string): string | null {
+  const trimmed = url.trim();
+  // Match standard and short YouTube URL patterns
+  const patterns = [
+    /(?:youtube\.com\/watch\?.*v=)([\w-]{11})/,
+    /(?:youtu\.be\/)([\w-]{11})/,
+    /(?:youtube\.com\/embed\/)([\w-]{11})/,
+    /(?:youtube\.com\/shorts\/)([\w-]{11})/,
+    /(?:youtube\.com\/v\/)([\w-]{11})/,
+  ];
+  for (const re of patterns) {
+    const m = trimmed.match(re);
+    if (m) return m[1];
+  }
+  return null;
+}
+
+/**
+ * Fetch basic YouTube video metadata via our oEmbed proxy endpoint.
+ * Returns a partial HighlightVideo ready to be saved.
+ */
+export async function fetchYouTubeOembed(videoId: string): Promise<HighlightVideo> {
+  const res = await fetch(`/api/highlights/oembed?videoId=${encodeURIComponent(videoId)}`);
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error((data as { error?: string }).error || 'Failed to fetch video info');
+  }
+  const data = await res.json();
+  return {
+    id: data.id,
+    source: 'youtube',
+    title: data.title,
+    thumbnailUrl: data.thumbnailUrl,
+    embedUrl: `https://www.youtube.com/embed/${data.id}`,
+    channelName: data.channelName,
+    publishedAt: '',
+    durationSeconds: 0,
+  };
 }
 
 /** Format "time ago" from a date string */

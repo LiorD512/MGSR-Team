@@ -8,6 +8,8 @@ import {
   formatDuration,
   formatViews,
   timeAgo,
+  parseYouTubeVideoId,
+  fetchYouTubeOembed,
   type HighlightVideo,
 } from '@/lib/highlightsApi';
 
@@ -283,6 +285,9 @@ export default function PlayerHighlightsPanel({
   const [activeIndex, setActiveIndex] = useState(0);
   const [cachedAt, setCachedAt] = useState(0);
   const [sources, setSources] = useState<string[]>([]);
+  const [manualUrl, setManualUrl] = useState('');
+  const [manualLoading, setManualLoading] = useState(false);
+  const [manualError, setManualError] = useState<string | null>(null);
   const youtubeScrollRef = useRef<HTMLDivElement>(null);
   const scorebatScrollRef = useRef<HTMLDivElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -333,6 +338,34 @@ export default function PlayerHighlightsPanel({
     setMode('pinned');
     setSelectedIds(new Set());
   }, []);
+
+  const isMenCollection = playerCollection === 'Players';
+
+  const handleManualUrlSubmit = useCallback(async () => {
+    setManualError(null);
+    const videoId = parseYouTubeVideoId(manualUrl);
+    if (!videoId) {
+      setManualError(t('highlights_manual_invalid_url'));
+      return;
+    }
+    // Check if already pinned
+    if (pinned.some((v) => v.id === videoId)) {
+      setManualError(t('highlights_manual_already_pinned'));
+      return;
+    }
+    setManualLoading(true);
+    try {
+      const video = await fetchYouTubeOembed(videoId);
+      const newPinned = [...pinned, video].slice(0, MAX_PINNED);
+      await savePinnedHighlights(playerId, newPinned, playerCollection);
+      setManualUrl('');
+      setManualError(null);
+    } catch (err) {
+      setManualError(err instanceof Error ? err.message : 'Failed to add video');
+    } finally {
+      setManualLoading(false);
+    }
+  }, [manualUrl, pinned, playerId, playerCollection, t]);
 
   // Lazy-fetch: only load when panel is expanded for the first time
   const doFetch = useCallback(async (forceRefresh = false) => {
@@ -541,6 +574,44 @@ export default function PlayerHighlightsPanel({
                   ))}
                 </div>
               )}
+              {/* ── Manual YouTube URL input (men only) ──────────── */}
+              {isMenCollection && pinned.length < MAX_PINNED && (
+                <div className="rounded-lg bg-mgsr-dark/40 border border-mgsr-border/50 p-3 space-y-2">
+                  <p className="text-xs font-medium text-mgsr-muted">{t('highlights_manual_title')}</p>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={manualUrl}
+                      onChange={(e) => { setManualUrl(e.target.value); setManualError(null); }}
+                      placeholder={t('highlights_manual_placeholder')}
+                      className="flex-1 min-w-0 px-3 py-2 rounded-lg bg-mgsr-dark border border-mgsr-border text-sm text-mgsr-text placeholder:text-mgsr-muted/50 focus:outline-none focus:ring-2 focus:ring-mgsr-teal/50 focus:border-mgsr-teal"
+                      dir="ltr"
+                      disabled={manualLoading}
+                      onKeyDown={(e) => { if (e.key === 'Enter') handleManualUrlSubmit(); }}
+                    />
+                    <button
+                      onClick={handleManualUrlSubmit}
+                      disabled={manualLoading || !manualUrl.trim()}
+                      className="px-4 py-2 rounded-lg bg-mgsr-teal text-white hover:bg-mgsr-teal/90 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 flex-shrink-0"
+                    >
+                      {manualLoading ? (
+                        <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                        </svg>
+                      ) : (
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                        </svg>
+                      )}
+                      {t('highlights_manual_add')}
+                    </button>
+                  </div>
+                  {manualError && (
+                    <p className="text-xs text-red-400">{manualError}</p>
+                  )}
+                </div>
+              )}
               <div className="flex items-center justify-between border-t border-mgsr-border/50 pt-3">
                 <div className="flex items-center gap-1.5 text-[10px] text-mgsr-muted/60">
                   <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
@@ -583,7 +654,49 @@ export default function PlayerHighlightsPanel({
               )}
 
               {!loading && !error && videos.length === 0 && fetched && (
-                <EmptyState isRtl={isRtl} />
+                <>
+                  <EmptyState isRtl={isRtl} />
+                  {/* Manual URL input in empty state (men only) */}
+                  {isMenCollection && (
+                    <div className="px-5 pb-4">
+                      <div className="rounded-lg bg-mgsr-dark/40 border border-mgsr-border/50 p-3 space-y-2">
+                        <p className="text-xs font-medium text-mgsr-muted">{t('highlights_manual_title')}</p>
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            value={manualUrl}
+                            onChange={(e) => { setManualUrl(e.target.value); setManualError(null); }}
+                            placeholder={t('highlights_manual_placeholder')}
+                            className="flex-1 min-w-0 px-3 py-2 rounded-lg bg-mgsr-dark border border-mgsr-border text-sm text-mgsr-text placeholder:text-mgsr-muted/50 focus:outline-none focus:ring-2 focus:ring-mgsr-teal/50 focus:border-mgsr-teal"
+                            dir="ltr"
+                            disabled={manualLoading}
+                            onKeyDown={(e) => { if (e.key === 'Enter') handleManualUrlSubmit(); }}
+                          />
+                          <button
+                            onClick={handleManualUrlSubmit}
+                            disabled={manualLoading || !manualUrl.trim()}
+                            className="px-4 py-2 rounded-lg bg-mgsr-teal text-white hover:bg-mgsr-teal/90 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 flex-shrink-0"
+                          >
+                            {manualLoading ? (
+                              <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                              </svg>
+                            ) : (
+                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                              </svg>
+                            )}
+                            {t('highlights_manual_add')}
+                          </button>
+                        </div>
+                        {manualError && (
+                          <p className="text-xs text-red-400">{manualError}</p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
 
               {!loading && videos.length > 0 && (
@@ -712,6 +825,45 @@ export default function PlayerHighlightsPanel({
                   )}
                 </>
               )}
+
+                  {/* ── Manual YouTube URL input (men only, always visible in select/replace) ── */}
+                  {isMenCollection && (
+                    <div className="rounded-lg bg-mgsr-dark/40 border border-mgsr-border/50 p-3 space-y-2">
+                      <p className="text-xs font-medium text-mgsr-muted">{t('highlights_manual_title')}</p>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={manualUrl}
+                          onChange={(e) => { setManualUrl(e.target.value); setManualError(null); }}
+                          placeholder={t('highlights_manual_placeholder')}
+                          className="flex-1 min-w-0 px-3 py-2 rounded-lg bg-mgsr-dark border border-mgsr-border text-sm text-mgsr-text placeholder:text-mgsr-muted/50 focus:outline-none focus:ring-2 focus:ring-mgsr-teal/50 focus:border-mgsr-teal"
+                          dir="ltr"
+                          disabled={manualLoading}
+                          onKeyDown={(e) => { if (e.key === 'Enter') handleManualUrlSubmit(); }}
+                        />
+                        <button
+                          onClick={handleManualUrlSubmit}
+                          disabled={manualLoading || !manualUrl.trim()}
+                          className="px-4 py-2 rounded-lg bg-mgsr-teal text-white hover:bg-mgsr-teal/90 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 flex-shrink-0"
+                        >
+                          {manualLoading ? (
+                            <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                            </svg>
+                          ) : (
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                            </svg>
+                          )}
+                          {t('highlights_manual_add')}
+                        </button>
+                      </div>
+                      {manualError && (
+                        <p className="text-xs text-red-400">{manualError}</p>
+                      )}
+                    </div>
+                  )}
 
                   {/* Action buttons */}
                   <div className="flex items-center gap-3">

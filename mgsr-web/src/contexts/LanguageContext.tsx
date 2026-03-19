@@ -974,6 +974,11 @@ const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     highlights_confirm_replacement: 'Confirm replacement',
     highlights_cancel: 'Cancel',
     highlights_pinned_count: '{n} pinned',
+    highlights_manual_title: 'Add YouTube video manually',
+    highlights_manual_placeholder: 'Paste YouTube URL here...',
+    highlights_manual_add: 'Add',
+    highlights_manual_invalid_url: 'Please paste a valid YouTube URL',
+    highlights_manual_already_pinned: 'This video is already pinned',
     // FM Intelligence Panel
     fm_section_title: 'FM Intelligence',
     fm_empty_title: 'Not in the FM database',
@@ -2101,6 +2106,11 @@ const TRANSLATIONS: Record<Lang, Record<string, string>> = {
     highlights_confirm_replacement: 'אישור החלפה',
     highlights_cancel: 'ביטול',
     highlights_pinned_count: '{n} קבועים',
+    highlights_manual_title: 'הוסף סרטון YouTube ידנית',
+    highlights_manual_placeholder: 'הדבק קישור YouTube כאן...',
+    highlights_manual_add: 'הוסף',
+    highlights_manual_invalid_url: 'נא להדביק קישור YouTube תקין',
+    highlights_manual_already_pinned: 'הסרטון הזה כבר מוצמד',
     // FM Intelligence Panel
     fm_section_title: 'תובנות FM',
     fm_empty_title: 'לא במסד הנתונים של FM',
