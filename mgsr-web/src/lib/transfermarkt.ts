@@ -2855,6 +2855,8 @@ function parseTransferArrivals(html: string, clubName: string | null, clubLogo: 
         previousClub,
         previousLeague: null,
         transferDate,
+        transferFee: null,
+        transferFeeValue: 0,
         playerImage: makeAbsoluteUrl(playerImage.replace('tiny', 'big').replace('medium', 'big')),
         tmProfile,
         source: 'transfer_arrival',
