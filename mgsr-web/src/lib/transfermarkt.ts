@@ -2626,7 +2626,7 @@ function getNationalityCode(nationality: string | null): string | null {
     ukraine: 'ua', romania: 'ro', bulgaria: 'bg', greece: 'gr', austria: 'at',
     sweden: 'se', denmark: 'dk', norway: 'no', finland: 'fi', iceland: 'is',
     czechia: 'cz', 'czech republic': 'cz', slovakia: 'sk', slovenia: 'si',
-    hungary: 'hu', serbia: 'rs', israel: 'il', egypt: 'eg', morocco: 'ma',
+    hungary: 'hu', israel: 'il', egypt: 'eg', morocco: 'ma',
     'south africa': 'za', cameroon: 'cm', ghana: 'gh', senegal: 'sn',
     mexico: 'mx', colombia: 'co', chile: 'cl', peru: 'pe', uruguay: 'uy',
     paraguay: 'py', bolivia: 'bo', venezuela: 've', ecuador: 'ec',
