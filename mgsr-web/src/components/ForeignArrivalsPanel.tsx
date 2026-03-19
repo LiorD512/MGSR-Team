@@ -184,38 +184,40 @@ export default function ForeignArrivalsPanel({ leagueCode }: ForeignArrivalsPane
         <div className="p-4 md:p-5 rounded-xl bg-mgsr-dark/40 border border-mgsr-border/30">
           <h4 className="text-sm font-semibold text-mgsr-text mb-4 font-display">{t('fa_mv_by_country')}</h4>
           {countryData.length > 0 ? (
-            <div className="h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={countryData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={100}
-                    paddingAngle={2}
-                    dataKey="marketValue"
-                    stroke="none"
-                  >
-                    {countryData.map((_, index) => (
-                      <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} opacity={0.85} />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: 'var(--mgsr-card)',
-                      border: '1px solid var(--mgsr-card-border)',
-                      borderRadius: '0.75rem',
-                      color: 'var(--mgsr-text)',
-                      fontSize: '0.75rem',
-                    }}
-                    itemStyle={{ color: 'var(--mgsr-text)' }}
-                    labelStyle={{ color: 'var(--mgsr-text)' }}
-                    formatter={(value: number | undefined, name?: string) => [formatCurrency(value ?? 0), name ?? '']}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-              {/* Legend */}
+            <div>
+              <div className="h-64 sm:h-80">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={countryData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={60}
+                      outerRadius={100}
+                      paddingAngle={2}
+                      dataKey="marketValue"
+                      stroke="none"
+                    >
+                      {countryData.map((_, index) => (
+                        <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} opacity={0.85} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: 'var(--mgsr-card)',
+                        border: '1px solid var(--mgsr-card-border)',
+                        borderRadius: '0.75rem',
+                        color: 'var(--mgsr-text)',
+                        fontSize: '0.75rem',
+                      }}
+                      itemStyle={{ color: 'var(--mgsr-text)' }}
+                      labelStyle={{ color: 'var(--mgsr-text)' }}
+                      formatter={(value: number | undefined, name?: string) => [formatCurrency(value ?? 0), name ?? '']}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+              {/* Legend — outside fixed-height chart container */}
               <div className="flex flex-wrap gap-x-5 gap-y-2 mt-3 justify-center">
                 {countryData.map((item, i) => (
                   <div key={item.name} className="flex items-center gap-2">
