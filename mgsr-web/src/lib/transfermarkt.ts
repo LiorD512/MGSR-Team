@@ -93,6 +93,21 @@ function parseValueToEuros(s: string | undefined): number {
   return parseFloat(t) || 0;
 }
 
+/** Parse transfer fee string to euros. Handles "free transfer", "loan transfer", "?", "Loan fee:€45k", "End of loan..." etc. */
+function parseFeeToEuros(s: string | null): number {
+  if (!s) return 0;
+  const t = s.trim().toLowerCase();
+  if (!t || t === '-' || t === '?' || t.startsWith('free') || t.startsWith('loan transfer') || t.startsWith('end of loan')) return 0;
+  // Extract euro amount from strings like "Loan fee:€45k" or "€1.50m"
+  const match = t.match(/€([\d.,]+)\s*(k|m)?/i);
+  if (!match) return 0;
+  const num = parseFloat(match[1].replace(',', '.')) || 0;
+  const unit = (match[2] || '').toLowerCase();
+  if (unit === 'm') return num * 1_000_000;
+  if (unit === 'k') return num * 1_000;
+  return num;
+}
+
 /**
  * League config: competition code -> slug for startseite URL.
  * Used for getLeagueAvgMarketValue.
@@ -2488,4 +2503,531 @@ export async function handleGoogleNews(leagueCodes?: string[], targetLang = 'en'
 
   GNEWS_RESULT_CACHE.set(resultKey, { items: deduped, ts: Date.now() });
   return deduped;
+}
+
+// ─── Ligat Ha'al Foreign Arrivals Analysis ──────────────────────────────────
+
+interface LigatHaalClub {
+  name: string;
+  slug: string;
+  id: string;
+}
+
+/** Fallback clubs for ISR1 if dynamic extraction fails */
+const LIGAT_HAAL_CLUBS_FALLBACK: LigatHaalClub[] = [
+  { name: 'Maccabi Tel Aviv', slug: 'maccabi-tel-aviv', id: '119' },
+  { name: 'Maccabi Haifa', slug: 'maccabi-haifa', id: '1064' },
+  { name: 'Hapoel Beer Sheva', slug: 'hapoel-beer-sheva', id: '2976' },
+  { name: 'Beitar Jerusalem', slug: 'beitar-jerusalem', id: '3793' },
+  { name: 'Hapoel Tel Aviv', slug: 'hapoel-tel-aviv', id: '1017' },
+  { name: 'Maccabi Netanya', slug: 'maccabi-netanya', id: '5223' },
+  { name: 'Hapoel Haifa', slug: 'hapoel-haifa', id: '810' },
+  { name: 'FC Ashdod', slug: 'fc-ashdod', id: '6105' },
+  { name: 'Hapoel Jerusalem', slug: 'hapoel-jerusalem', id: '43119' },
+  { name: 'Hapoel Petah Tikva', slug: 'hapoel-petah-tikva', id: '262' },
+  { name: 'Ironi Kiryat Shmona', slug: 'ironi-kiryat-shmona', id: '6028' },
+  { name: 'Ironi Tiberias', slug: 'ironi-tiberias', id: '51070' },
+  { name: 'Ihud Bnei Sakhnin', slug: 'ihud-bnei-sachnin', id: '4769' },
+  { name: 'Maccabi Bnei Reineh', slug: 'maccabi-bnei-reineh', id: '70178' },
+];
+
+async function fetchLigatHaalClubs(): Promise<LigatHaalClub[]> {
+  try {
+    const html = await fetchHtmlWithRetry(`${TRANSFERMARKT_BASE}/ligat-haal/startseite/wettbewerb/ISR1`);
+    const $ = cheerio.load(html);
+    const clubs: LigatHaalClub[] = [];
+    const seen = new Set<string>();
+
+    $('a[href*="/startseite/verein/"]').each((_, a) => {
+      const href = $(a).attr('href') || '';
+      const match = href.match(/^\/([^/]+)\/startseite\/verein\/(\d+)/);
+      if (!match) return;
+
+      const slug = match[1];
+      const id = match[2];
+      if (seen.has(id)) return;
+
+      const name = ($(a).attr('title') || $(a).text() || '').trim();
+      if (!name || name.length < 2) return;
+
+      seen.add(id);
+      clubs.push({ name, slug, id });
+    });
+
+    if (clubs.length >= 10) {
+      console.log(`[Ligat Ha'al Analysis] Extracted ${clubs.length} clubs from ISR1 league page`);
+      return clubs;
+    }
+
+    console.warn(`[Ligat Ha'al Analysis] Extracted only ${clubs.length} clubs from ISR1, using fallback list`);
+    return LIGAT_HAAL_CLUBS_FALLBACK;
+  } catch (e) {
+    console.warn('[Ligat Ha\'al Analysis] Failed to load ISR1 clubs dynamically, using fallback list:', e instanceof Error ? e.message : String(e));
+    return LIGAT_HAAL_CLUBS_FALLBACK;
+  }
+}
+
+export interface LigatHaalTransferPlayer {
+  playerName: string | null;
+  playerAge: number | null;
+  playerNationality: string | null;
+  playerNationalityCode: string | null;
+  playerNationalityFlag: string | null;
+  marketValue: number;
+  marketValueFormatted: string | null;
+  playerPosition: string | null;
+  clubJoinedName: string | null;
+  clubJoinedLogo: string | null;
+  previousClub: string | null;
+  previousLeague: string | null;
+  transferDate: string | null;
+  transferFee: string | null;
+  transferFeeValue: number;
+  playerImage: string | null;
+  tmProfile: string | null;
+  source: 'transfer_arrival' | 'free_agent';
+}
+
+export interface LigatHaalAnalysisStats {
+  totalCount: number;
+  totalMarketValue: number;
+  avgMarketValue: number;
+  totalSpend: number;
+  avgSpend: number;
+  medianAge: number;
+  countByCountry: Record<string, number>;
+  countByPreviousLeague: Record<string, number>;
+  valueByCountry: Record<string, number>;
+}
+
+export interface LigatHaalAnalysisResult {
+  window: 'SUMMER_2025' | 'WINTER_2025_2026';
+  players: LigatHaalTransferPlayer[];
+  stats: LigatHaalAnalysisStats;
+  cachedAt: string;
+}
+
+/** Parse age from "24 years" or "24" format */
+function parseAge(ageStr: string | null): number | null {
+  if (!ageStr) return null;
+  const match = String(ageStr).match(/(\d+)/);
+  return match ? parseInt(match[1], 10) : null;
+}
+
+/** Extract nationality code from flag URL or use mapping */
+function getNationalityCode(nationality: string | null): string | null {
+  if (!nationality) return null;
+  const nationalityLower = nationality.toLowerCase();
+  // Map common nationalities to ISO codes
+  const codeMap: Record<string, string> = {
+    argentina: 'ar', brazil: 'br', france: 'fr', germany: 'de', italy: 'it',
+    spain: 'es', england: 'gb-eng', portugal: 'pt', netherlands: 'nl',
+    belgium: 'be', poland: 'pl', turkey: 'tr', serbia: 'rs', croatia: 'hr',
+    ukraine: 'ua', romania: 'ro', bulgaria: 'bg', greece: 'gr', austria: 'at',
+    sweden: 'se', denmark: 'dk', norway: 'no', finland: 'fi', iceland: 'is',
+    czechia: 'cz', 'czech republic': 'cz', slovakia: 'sk', slovenia: 'si',
+    hungary: 'hu', serbia: 'rs', israel: 'il', egypt: 'eg', morocco: 'ma',
+    'south africa': 'za', cameroon: 'cm', ghana: 'gh', senegal: 'sn',
+    mexico: 'mx', colombia: 'co', chile: 'cl', peru: 'pe', uruguay: 'uy',
+    paraguay: 'py', bolivia: 'bo', venezuela: 've', ecuador: 'ec',
+    usa: 'us', 'united states': 'us', canada: 'ca', japan: 'jp', 'south korea': 'kr',
+    korea: 'kr', china: 'cn', australia: 'au', thailand: 'th', vietnam: 'vn',
+    indonesia: 'id', philippines: 'ph', 'saudi arabia': 'sa', uae: 'ae', qatar: 'qa',
+    iran: 'ir', iraq: 'iq', lebanon: 'lb', palestine: 'ps', jordan: 'jo', 'new zealand': 'nz',
+    albania: 'al', 'north macedonia': 'mk', 'bosnia-herzegovina': 'ba', kosovo: 'xk',
+    montenegro: 'me', luxembourg: 'lu', malta: 'mt', cyprus: 'cy', ireland: 'ie',
+    switzerland: 'ch', liechtenstein: 'li', moldova: 'md', belarus: 'by', georgia: 'ge',
+    armenia: 'am', azerbaijan: 'az', kazakhstan: 'kz', uzbekistan: 'uz',
+  };
+  return codeMap[nationalityLower] || null;
+}
+
+/** Parse transfer arrivals table from club transfers page */
+function parseTransferArrivals(html: string, clubName: string | null, clubLogo: string | null): LigatHaalTransferPlayer[] {
+  const $ = cheerio.load(html);
+  const players: LigatHaalTransferPlayer[] = [];
+  const seenUrls = new Set<string>();
+
+  // Arrivals table is typically the first table with transfer data
+  const tables = $('table.items');
+  if (tables.length === 0) return players;
+
+  const arrivalsTable = tables.eq(0); // First table = arrivals
+  const rows = arrivalsTable.find('tbody tr, tr.odd, tr.even');
+
+  rows.each((_, row) => {
+    try {
+      const $row = $(row);
+      const cells = $row.find('td');
+      if (cells.length < 3) return; // Skip invalid rows
+
+      // Player link and info - be more flexible with selectors
+      let playerLink = $row.find('a[href*="/spieler/"], a[href*="/player/"]').first();
+      if (!playerLink.length) playerLink = $row.find('td.hauptlink a').first();
+      
+      const playerHref = playerLink.attr('href') || '';
+      if (!playerHref) return;
+
+      const tmProfile = playerHref.startsWith('http') ? playerHref : TRANSFERMARKT_BASE + playerHref;
+      if (seenUrls.has(tmProfile)) return;
+      seenUrls.add(tmProfile);
+
+      const playerName = playerLink.attr('title') || playerLink.text().trim() || null;
+      if (!playerName) return;
+
+      // Get player image
+      const playerImg = $row.find('img').first();
+      const playerImage = playerImg.attr('data-src') || playerImg.attr('src') || '';
+
+      // Age: look for pattern in all cells
+      let playerAge: number | null = null;
+      cells.each((_, cell) => {
+        if (playerAge) return;
+        const val = $(cell).text().trim();
+        const parsed = parseInt(val, 10);
+        if (!isNaN(parsed) && parsed > 15 && parsed < 52) {
+          playerAge = parsed;
+          return false;
+        }
+      });
+
+      // Position: look in cells for position text or in inline table
+      let playerPosition: string | null = null;
+      const inlineTable = $row.find('table.inline-table').first();
+      if (inlineTable.length) {
+        const posText = inlineTable.find('tr').eq(1).text().replace(/-/g, ' ').trim();
+        playerPosition = convertPosition(posText) || posText || null;
+      }
+      if (!playerPosition) {
+        for (let i = 0; i < cells.length; i++) {
+          const text = $(cells[i]).text().trim();
+          const converted = convertPosition(text);
+          if (converted || (text.length > 0 && text.length < 15 && /^[A-Z]/i.test(text))) {
+            playerPosition = converted || text;
+            break;
+          }
+        }
+      }
+
+      // Nationality and flag - very selective about which img to use
+      let playerNationality: string | null = null;
+      let playerNationalityFlag: string | null = null;
+      
+      const allImages = $row.find('img');
+      allImages.each((_, imgEl) => {
+        if (playerNationality) return;
+        const title = $(imgEl).attr('title') || '';
+        const alt = $(imgEl).attr('alt') || '';
+        const src = ($(imgEl).attr('data-src') || $(imgEl).attr('src') || '').toLowerCase();
+
+        const textContent = title || alt;
+
+        // SKIP: images that are clearly not flags
+        if (
+          src.includes('/portrait/') ||        // Player portrait
+          src.includes('/kaderquad/') ||      // Squad photo
+          src.includes('/wappen/') ||         // Team badge
+          textContent.includes(' FC') ||      // Club name
+          textContent.includes(' SC') ||      // Club name
+          textContent.includes(' SV') ||      // Club name
+          textContent.includes('U17') ||      // Youth academy
+          textContent.includes('U19') ||      // Youth academy
+          textContent.includes('U21') ||      // Youth academy
+          /Logo|Club|logo|badge|Crest|crest|squad|youth|academy/i.test(textContent) || // Obvious non-flags
+          /^\d/.test(textContent) ||          // Starts with number
+          /\s\d{2,}\s/.test(textContent)      // Contains multi-digit age
+        ) {
+          return; // Skip this image
+        }
+
+        // Valid country flags: 2-35 chars, contains no URLs, not player/club names
+        if (
+          textContent.length > 1 &&
+          textContent.length < 36 &&
+          !textContent.includes('/') &&
+          !textContent.includes('\\') &&
+          !/-\d+/.test(textContent)  // Not like "Name-123"
+        ) {
+          playerNationality = textContent;
+          const flagSrc = $(imgEl).attr('data-src') || $(imgEl).attr('src') || '';
+          playerNationalityFlag = flagSrc ? makeAbsoluteUrl(flagSrc) : null;
+          return false;
+        }
+      });
+
+      // Skip Israeli players
+      if (playerNationality && playerNationality.toLowerCase().includes('israel')) return;
+
+      // Market value - look for € symbol
+      let marketValueFormatted: string | null = null;
+      let marketValue = 0;
+      cells.each((_, cell) => {
+        const text = $(cell).text().trim();
+        if (text.includes('€')) {
+          marketValueFormatted = text;
+          marketValue = parseValueToEuros(text);
+          return false;
+        }
+      });
+
+      // Transfer date - very strict matching
+      let transferDate: string | null = null;
+      cells.each((_, cell) => {
+        if (transferDate) return;
+        const text = $(cell).text().trim();
+        // Only match pure date strings with nothing else
+        const match = text.match(/^(\d{1,2})[./](\d{1,2})[./](\d{2,4})$/);
+        if (match) {
+          const [_, day, month, year] = match;
+          // Validate month and day
+          const m = parseInt(month, 10);
+          const d = parseInt(day, 10);
+          if (m >= 1 && m <= 12 && d >= 1 && d <= 31) {
+            transferDate = text;
+            return false;
+          }
+        }
+      });
+
+      // Fallback: parse date from descriptive transfer text
+      if (!transferDate) {
+        const rowText = $row.text().replace(/\s+/g, ' ').trim();
+        const dateLabelMatch = rowText.match(/(?:date|started on|on)\s*:\s*(\d{1,2}[./]\d{1,2}[./]\d{2,4})/i);
+        if (dateLabelMatch) {
+          transferDate = dateLabelMatch[1];
+        } else {
+          const anyDateMatch = rowText.match(/\b(\d{1,2}[./]\d{1,2}[./]\d{2,4})\b/);
+          if (anyDateMatch) {
+            transferDate = anyDateMatch[1];
+          }
+        }
+      }
+
+      // Previous club - skip club links and look for source club
+      let previousClub: string | null = null;
+      const clubLinks = $row.find('a[href*="/startseite/verein/"], a[href*="/club/"]');
+      // Skip the first link (which might be the main joined club) and look for others
+      if (clubLinks.length > 1) {
+        previousClub = clubLinks.eq(1).attr('title') || clubLinks.eq(1).text().trim() || null;
+      } else if (clubLinks.length === 1) {
+        // If only one link, check if the previous cell text contains transfer info
+        const idx = cells.index(clubLinks.eq(0).closest('td')[0]);
+        if (idx >= 0 && cells.length > idx) {
+          const cellText = $(cells[idx]).text();
+          // Look for "Joined from X" or similar patterns
+          const joinedMatch = cellText.match(/Joined.+?from\s+(.*?)(?:;|date:|$)/i);
+          if (joinedMatch) {
+            previousClub = joinedMatch[1].trim();
+          }
+        }
+      }
+
+      // Extra fallback: many TM rows embed date in previous club text or HTML attributes
+      if (!transferDate) {
+        const inPrevClub = (previousClub || '').match(/date\s*:\s*(\d{1,2}[./]\d{1,2}[./]\d{2,4})/i);
+        if (inPrevClub) {
+          transferDate = inPrevClub[1];
+        }
+      }
+
+      if (!transferDate) {
+        const rowHtml = $row.html() || '';
+        const inHtml = rowHtml.match(/(?:date|started on|on)\s*:\s*(\d{1,2}[./]\d{1,2}[./]\d{2,4})/i)
+          || rowHtml.match(/\b(\d{1,2}[./]\d{1,2}[./]\d{2,4})\b/);
+        if (inHtml) {
+          transferDate = inHtml[1];
+        }
+      }
+
+      players.push({
+        playerName,
+        playerAge,
+        playerNationality,
+        playerNationalityCode: getNationalityCode(playerNationality),
+        playerNationalityFlag,
+        marketValue,
+        marketValueFormatted,
+        playerPosition,
+        clubJoinedName: clubName,
+        clubJoinedLogo: clubLogo,
+        previousClub,
+        previousLeague: null,
+        transferDate,
+        playerImage: makeAbsoluteUrl(playerImage.replace('tiny', 'big').replace('medium', 'big')),
+        tmProfile,
+        source: 'transfer_arrival',
+      });
+    } catch (e) {
+      // Skip malformed rows silently
+    }
+  });
+
+  return players;
+}
+
+/**
+ * Analyze foreign player arrivals to Ligat Ha'al in a specific transfer window.
+ * Scrapes all 14 clubs' transfer pages and aggregates statistics.
+ */
+export async function handleLigatHaalAnalysis(
+  window: 'SUMMER_2025' | 'WINTER_2025_2026'
+): Promise<LigatHaalAnalysisResult> {
+  console.log(`[Ligat Ha'al Analysis] Starting analysis for window: ${window}`);
+
+  const seasonId = '2025';
+  const windowSelector = window === 'WINTER_2025_2026' ? 'w' : 's';
+  const leagueUrl = `${TRANSFERMARKT_BASE}/ligat-haal/transfers/wettbewerb/ISR1?saison_id=${seasonId}&s_w=${windowSelector}`;
+
+  console.log(`[Ligat Ha'al Analysis] Fetching league transfers: ${leagueUrl}`);
+  const html = await fetchHtmlWithRetry(leagueUrl);
+  const $ = cheerio.load(html);
+
+  const allPlayers: LigatHaalTransferPlayer[] = [];
+  const seen = new Set<string>();
+
+  // The ISR1 league transfers page has one section per club.
+  // Each club section: h2.content-box-headline (club name) > div.box
+  //   containing multiple div.responsive-table:
+  //     - First table with TH "In" = arrivals
+  //     - Second table with TH "Out" = departures
+  // We iterate each club section, find the "In" table, and extract every
+  // non-Israeli nationality player row.
+
+  $('h2.content-box-headline').each((_i, h2El) => {
+    const clubJoinedName = $(h2El).text().trim();
+    if (!clubJoinedName || clubJoinedName === 'Transfer record') return;
+
+    const box = $(h2El).closest('div.box');
+    // Find the club logo from the box header area
+    const clubLogo = box.find('img[src*="/header/"], img[data-src*="/header/"]').first().attr('data-src')
+      || box.find('img[src*="/header/"]').first().attr('src')
+      || null;
+
+    // Iterate responsive tables inside this club's box, find the "In" table
+    box.find('div.responsive-table').each((_ti, tbl) => {
+      const firstTh = $(tbl).find('tr').first().find('th').first().text().trim();
+      if (firstTh !== 'In') return; // skip "Out" tables
+
+      // Get all data rows (not header rows, has multiple TDs)
+      const playerRows = $(tbl).find('tr').filter((_ri, row) => {
+        return $(row).find('th').length === 0 && $(row).find('td').length > 2;
+      });
+
+      playerRows.each((_ri, row) => {
+        const $row = $(row);
+
+        // TD[0]: Player name + profile link
+        const playerLink = $row.find('td').first().find('a[href*="/profil/spieler/"]').first();
+        const playerHref = playerLink.attr('href') || '';
+        if (!playerHref) return;
+
+        const tmProfile = playerHref.startsWith('http') ? playerHref : `${TRANSFERMARKT_BASE}${playerHref}`;
+
+        // Dedupe by profile URL
+        if (seen.has(tmProfile)) return;
+        seen.add(tmProfile);
+
+        const playerName = playerLink.text().trim() || playerLink.attr('title') || null;
+        if (!playerName) return;
+
+        // TD[2]: Nationality flag image (class nat-transfer-cell)
+        const natImg = $row.find('td[class*="nat-transfer-cell"] img').first();
+        const playerNationality = natImg.attr('title') || natImg.attr('alt') || null;
+
+        // Skip Israeli nationals
+        if (playerNationality && playerNationality.toLowerCase().includes('israel')) return;
+
+        const nationalityFlag = natImg.attr('data-src') || natImg.attr('src') || '';
+
+        // TD[1]: Age
+        const ageText = $row.find('td[class*="alter-transfer-cell"]').first().text().trim();
+
+        // TD[3]/TD[4]: Position
+        const positionFull = $row.find('td[class*="pos-transfer-cell"]').first().text().trim();
+        const positionShort = $row.find('td[class*="kurzpos-transfer-cell"]').first().text().trim();
+
+        // TD[5]: Market value
+        const marketValueFormatted = $row.find('td[class*="mw-transfer-cell"]').first().text().trim() || null;
+        const marketValue = parseValueToEuros(marketValueFormatted || '');
+
+        // TD[6]-TD[7]: Previous club (the "Left" column - where they came FROM)
+        const prevClubLink = $row.find('td[class*="verein-flagge-transfer-cell"] a').first();
+        const previousClub = (prevClubLink.attr('title') || prevClubLink.text() || '').trim() || null;
+
+        // TD[8]: Fee (last TD in the row - class varies between windows)
+        const allTds = $row.find('td');
+        const feeText = allTds.last().text().trim() || null;
+        const feeValue = parseFeeToEuros(feeText);
+
+        // Player image from first TD
+        const playerImg = $row.find('td').first().find('img').first().attr('data-src')
+          || $row.find('td').first().find('img').first().attr('src')
+          || null;
+
+        allPlayers.push({
+          playerName,
+          playerAge: parseAge(ageText),
+          playerNationality,
+          playerNationalityCode: getNationalityCode(playerNationality),
+          playerNationalityFlag: nationalityFlag ? makeAbsoluteUrl(nationalityFlag) : null,
+          marketValue,
+          marketValueFormatted,
+          playerPosition: convertPosition(positionFull || positionShort) || positionFull || positionShort || null,
+          clubJoinedName,
+          clubJoinedLogo: clubLogo ? makeAbsoluteUrl(clubLogo) : null,
+          previousClub,
+          previousLeague: null,
+          transferDate: null,
+          transferFee: feeText,
+          transferFeeValue: feeValue,
+          playerImage: playerImg ? makeAbsoluteUrl(playerImg.replace('tiny', 'big').replace('medium', 'big')) : null,
+          tmProfile,
+          source: 'transfer_arrival',
+        });
+      });
+    });
+  });
+
+  console.log(`[Ligat Ha'al Analysis] Parsed ${allPlayers.length} foreign arrivals from ISR1 league page`);
+
+  // Calculate statistics
+  const totalMV = allPlayers.reduce((sum, p) => sum + p.marketValue, 0);
+  const totalFees = allPlayers.reduce((sum, p) => sum + p.transferFeeValue, 0);
+  const stats: LigatHaalAnalysisStats = {
+    totalCount: allPlayers.length,
+    totalMarketValue: totalMV,
+    avgMarketValue: allPlayers.length > 0 ? Math.round(totalMV / allPlayers.length) : 0,
+    totalSpend: totalFees,
+    avgSpend: allPlayers.length > 0 ? Math.round(totalFees / allPlayers.length) : 0,
+    medianAge: 0,
+    countByCountry: {},
+    countByPreviousLeague: {},
+    valueByCountry: {},
+  };
+
+  // Calculate median age
+  const ages = allPlayers.filter((p) => p.playerAge).map((p) => p.playerAge as number);
+  if (ages.length > 0) {
+    ages.sort((a, b) => a - b);
+    stats.medianAge = ages.length % 2 === 0
+      ? Math.round((ages[ages.length / 2 - 1] + ages[ages.length / 2]) / 2)
+      : ages[Math.floor(ages.length / 2)];
+  }
+
+  // Aggregate by country
+  for (const player of allPlayers) {
+    if (player.playerNationality) {
+      stats.countByCountry[player.playerNationality] = (stats.countByCountry[player.playerNationality] || 0) + 1;
+      stats.valueByCountry[player.playerNationality] = (stats.valueByCountry[player.playerNationality] || 0) + player.marketValue;
+    }
+  }
+
+  console.log(`[Ligat Ha'al Analysis] Statistics calculated: ${stats.totalCount} arrivals, €${stats.totalMarketValue} total value`);
+
+  return {
+    window,
+    players: allPlayers,
+    stats,
+    cachedAt: new Date().toISOString(),
+  };
 }

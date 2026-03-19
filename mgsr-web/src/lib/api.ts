@@ -486,3 +486,58 @@ export async function getGoogleNews(leagues?: string[], lang?: string): Promise<
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();
 }
+
+// ─── Ligat Ha'al Foreign Arrivals Analysis ──────────────────────────────────
+
+export interface LigatHaalTransferPlayer {
+  playerName: string | null;
+  playerAge: number | null;
+  playerNationality: string | null;
+  playerNationalityCode: string | null;
+  playerNationalityFlag: string | null;
+  marketValue: number;
+  marketValueFormatted: string | null;
+  playerPosition: string | null;
+  clubJoinedName: string | null;
+  clubJoinedLogo: string | null;
+  previousClub: string | null;
+  previousLeague: string | null;
+  transferDate: string | null;
+  transferFee: string | null;
+  transferFeeValue: number;
+  playerImage: string | null;
+  tmProfile: string | null;
+  source: 'transfer_arrival' | 'free_agent';
+}
+
+export interface LigatHaalAnalysisStats {
+  totalCount: number;
+  totalMarketValue: number;
+  avgMarketValue: number;
+  totalSpend: number;
+  avgSpend: number;
+  medianAge: number;
+  countByCountry: Record<string, number>;
+  countByPreviousLeague: Record<string, number>;
+  valueByCountry: Record<string, number>;
+}
+
+export interface LigatHaalAnalysisResult {
+  window: 'SUMMER_2025' | 'WINTER_2025_2026';
+  players: LigatHaalTransferPlayer[];
+  stats: LigatHaalAnalysisStats;
+  cachedAt: string;
+}
+
+export async function getLigatHaalAnalysis(
+  window: 'SUMMER_2025' | 'WINTER_2025_2026' = 'SUMMER_2025'
+): Promise<LigatHaalAnalysisResult> {
+  const res = await fetch(`/api/transfers/ligat-haal-analysis?window=${window}&useCache=false&_ts=${Date.now()}`, {
+    cache: 'no-store',
+  });
+  if (!res.ok) {
+    const error = await res.text();
+    throw new Error(`Failed to fetch Ligat Ha'al analysis: ${error}`);
+  }
+  return res.json();
+}

@@ -47,6 +47,7 @@ import {
   AGENT_TASKS_COLLECTIONS,
   SHORTLISTS_COLLECTIONS,
 } from '@/lib/platformCollections';
+import ForeignArrivalsPanel from '@/components/ForeignArrivalsPanel';
 
 interface FeedEvent {
   id: string;
@@ -1141,6 +1142,17 @@ export default function DashboardPage() {
             </div>
           </div>
         </div>
+        )}
+
+        {/* Ligat Ha'al Analyze — Foreign Arrivals (men only) */}
+        {platform === 'men' && (
+          <div className="mb-10">
+            <h2 className="text-lg font-semibold text-mgsr-text font-display">{t('fa_section_title')}</h2>
+            <div className="w-10 h-0.5 rounded-full bg-mgsr-teal mb-4 mt-2" />
+            <div className="p-4 md:p-6 bg-mgsr-card/60 border border-mgsr-border rounded-2xl backdrop-blur-sm">
+              <ForeignArrivalsPanel leagueCode="ISR1" />
+            </div>
+          </div>
         )}
 
         {/* Roster Analytics (men only) */}
