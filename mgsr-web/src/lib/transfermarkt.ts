@@ -2756,7 +2756,8 @@ function parseTransferArrivals(html: string, clubName: string | null, clubLogo: 
       });
 
       // Skip Israeli players
-      if (playerNationality && playerNationality.toLowerCase().includes('israel')) return;
+      const nat = playerNationality as string | null;
+      if (nat && nat.toLowerCase().includes('israel')) return;
 
       // Market value - look for € symbol
       let marketValueFormatted: string | null = null;
