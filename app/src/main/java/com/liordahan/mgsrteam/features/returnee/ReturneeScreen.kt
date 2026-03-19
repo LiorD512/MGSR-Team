@@ -40,7 +40,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -99,12 +99,12 @@ fun ReturneeScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
-    val rosterPlayers by playersRepository.playersFlow().collectAsState(initial = emptyList())
+    val rosterPlayers by playersRepository.playersFlow().collectAsStateWithLifecycle(initialValue = emptyList())
     var expandedPlayerUrl by remember { mutableStateOf<String?>(null) }
     var teammatesCache by remember { mutableStateOf<Map<String, List<RosterTeammateMatch>>>(emptyMap()) }
     var loadingPlayerUrl by remember { mutableStateOf<String?>(null) }
 
-    val returneeState by viewModel.returneeFlow.collectAsState()
+    val returneeState by viewModel.returneeFlow.collectAsStateWithLifecycle()
     val visibleReturneeList = returneeState.visibleList
     val originalReturneeList = returneeState.returneeList
     val positionList = returneeState.positionList
@@ -119,21 +119,21 @@ fun ReturneeScreen(
     var showAddPlayerBottomSheet by remember { mutableStateOf(false) }
     var addPlayerTmUrl by remember { mutableStateOf<String?>(null) }
 
-    val addPlayerState = addPlayerViewModel.playerSearchStateFlow.collectAsState()
-    val selectedPlayer by addPlayerViewModel.selectedPlayerFlow.collectAsState()
-    val isPlayerAdded by addPlayerViewModel.isPlayerAddedFlow.collectAsState()
+    val addPlayerState = addPlayerViewModel.playerSearchStateFlow.collectAsStateWithLifecycle()
+    val selectedPlayer by addPlayerViewModel.selectedPlayerFlow.collectAsStateWithLifecycle()
+    val isPlayerAdded by addPlayerViewModel.isPlayerAddedFlow.collectAsStateWithLifecycle()
 
     val state = rememberLazyListState()
 
     // Track shortlist status
     val shortlistEntries by shortlistRepository.getShortlistFlow()
-        .collectAsState(initial = emptyList())
+        .collectAsStateWithLifecycle(initialValue = emptyList())
     val shortlistUrls = remember(shortlistEntries) {
         shortlistEntries.map { it.tmProfileUrl }.toSet()
     }
     var justAddedUrls by remember { mutableStateOf(setOf<String>()) }
     val shortlistPendingUrls by shortlistRepository.getShortlistPendingUrlsFlow()
-        .collectAsState(initial = emptySet())
+        .collectAsStateWithLifecycle(initialValue = emptySet())
 
     val shortlistedCount = remember(originalReturneeList, shortlistUrls, justAddedUrls) {
         originalReturneeList.count { it.playerUrl in shortlistUrls || it.playerUrl in justAddedUrls }

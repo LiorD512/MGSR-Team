@@ -2,6 +2,7 @@ package com.liordahan.mgsrteam.features.players.playerinfo.agenttransfer
 
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
+import com.google.firebase.firestore.Query
 import com.liordahan.mgsrteam.features.players.playerinfo.agenttransfer.AgentTransferRequest.Companion.COLLECTION
 import com.liordahan.mgsrteam.features.players.playerinfo.agenttransfer.AgentTransferRequest.Companion.STATUS_APPROVED
 import com.liordahan.mgsrteam.features.players.playerinfo.agenttransfer.AgentTransferRequest.Companion.STATUS_PENDING
@@ -146,7 +147,7 @@ class AgentTransferRepository(
 
     /**
      * Listens for the most recent resolved (approved/rejected) transfer request on a player.
-     * Uses a single query on playerId and filters client-side.
+     * Uses server-side filtering via composite index on playerId + status + resolvedAt.
      */
     fun listenForResolvedTransfer(
         playerId: String,
@@ -154,15 +155,16 @@ class AgentTransferRepository(
     ): ListenerRegistration {
         return firebaseStore.collection(COLLECTION)
             .whereEqualTo("playerId", playerId)
+            .whereIn("status", listOf(STATUS_APPROVED, STATUS_REJECTED))
+            .orderBy("resolvedAt", Query.Direction.DESCENDING)
+            .limit(1)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     onResult(null)
                     return@addSnapshotListener
                 }
-                val latest = snapshot?.documents
-                    ?.mapNotNull { it.toObject(AgentTransferRequest::class.java) }
-                    ?.filter { it.status == STATUS_APPROVED || it.status == STATUS_REJECTED }
-                    ?.maxByOrNull { it.resolvedAt ?: 0L }
+                val latest = snapshot?.documents?.firstOrNull()
+                    ?.toObject(AgentTransferRequest::class.java)
                 onResult(latest)
             }
     }

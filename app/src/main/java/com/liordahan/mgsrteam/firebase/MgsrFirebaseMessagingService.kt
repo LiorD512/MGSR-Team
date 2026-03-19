@@ -119,6 +119,16 @@ class MgsrFirebaseMessagingService : FirebaseMessagingService() {
                 val body = ctx.getString(R.string.notification_mandate_expired_body, playerName)
                 title to body
             }
+            TYPE_REQUEST_ADDED -> {
+                val agentNameVal = data[KEY_AGENT_NAME].orEmpty()
+                val title = ctx.getString(R.string.notification_request_added_title)
+                val body = if (agentNameVal.isNotBlank()) {
+                    ctx.getString(R.string.notification_request_added_body, agentNameVal, playerName)
+                } else {
+                    ctx.getString(R.string.notification_request_added_body_fallback, playerName)
+                }
+                title to body
+            }
             TYPE_AGENT_TRANSFER_REQUEST -> {
                 val requesterName = data[KEY_REQUESTER_NAME].orEmpty()
                 val title = ctx.getString(R.string.notification_transfer_request_title)
@@ -183,6 +193,7 @@ class MgsrFirebaseMessagingService : FirebaseMessagingService() {
             TYPE_MANDATE_EXPIRED -> 0xFFE53935.toInt() to R.drawable.notification_accent_orange
             TYPE_AGENT_TRANSFER_REQUEST, TYPE_AGENT_TRANSFER_APPROVED, TYPE_AGENT_TRANSFER_REJECTED ->
                 0xFF2196F3.toInt() to R.drawable.notification_accent_blue
+            TYPE_REQUEST_ADDED -> 0xFF9C27B0.toInt() to R.drawable.notification_accent_green
             else -> 0xFF39D164.toInt() to R.drawable.notification_accent_green
         }
 
@@ -305,10 +316,12 @@ class MgsrFirebaseMessagingService : FirebaseMessagingService() {
         private const val TYPE_MARKET_VALUE_CHANGE = "MARKET_VALUE_CHANGE"
         const val TYPE_NEW_RELEASE_FROM_CLUB = "NEW_RELEASE_FROM_CLUB"
         const val TYPE_MANDATE_EXPIRED = "MANDATE_EXPIRED"
+        const val TYPE_REQUEST_ADDED = "REQUEST_ADDED"
         const val TYPE_AGENT_TRANSFER_REQUEST = "AGENT_TRANSFER_REQUEST"
         const val TYPE_AGENT_TRANSFER_APPROVED = "AGENT_TRANSFER_APPROVED"
         const val TYPE_AGENT_TRANSFER_REJECTED = "AGENT_TRANSFER_REJECTED"
         private const val KEY_REQUESTER_NAME = "requesterName"
+        private const val KEY_AGENT_NAME = "agentName"
         const val EXTRA_PLAYER_TM_PROFILE = "playerTmProfile"
         const val EXTRA_NOTIFICATION_ACTION = "notification_action"
         const val ACTION_ADD_TO_SHORTLIST = "add_to_shortlist"

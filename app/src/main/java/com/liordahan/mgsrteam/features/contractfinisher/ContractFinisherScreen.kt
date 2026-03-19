@@ -35,7 +35,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -97,25 +97,25 @@ fun ContractFinisherScreen(
     var showFilterSheet by remember { mutableStateOf(false) }
 
     // Roster teammates feature (same as Releases)
-    val rosterPlayers by playersRepository.playersFlow().collectAsState(initial = emptyList())
+    val rosterPlayers by playersRepository.playersFlow().collectAsStateWithLifecycle(initialValue = emptyList())
     var expandedPlayerUrl by remember { mutableStateOf<String?>(null) }
     var teammatesCache by remember { mutableStateOf<Map<String, List<RosterTeammateMatch>>>(emptyMap()) }
     var loadingPlayerUrl by remember { mutableStateOf<String?>(null) }
 
-    val addPlayerState = addPlayerViewModel.playerSearchStateFlow.collectAsState()
-    val selectedPlayer by addPlayerViewModel.selectedPlayerFlow.collectAsState()
-    val isPlayerAdded by addPlayerViewModel.isPlayerAddedFlow.collectAsState()
+    val addPlayerState = addPlayerViewModel.playerSearchStateFlow.collectAsStateWithLifecycle()
+    val selectedPlayer by addPlayerViewModel.selectedPlayerFlow.collectAsStateWithLifecycle()
+    val isPlayerAdded by addPlayerViewModel.isPlayerAddedFlow.collectAsStateWithLifecycle()
 
-    val state by viewModel.contractFinisherFlow.collectAsState()
-    val positionList by viewModel.positionsFlow.collectAsState(initial = emptyList())
-    val selectedAgeRange by viewModel.selectedAgeRangeFlow.collectAsState()
-    val selectedConfederation by viewModel.selectedConfederationFlow.collectAsState()
-    val selectedMarketValueRange by viewModel.selectedMarketValueRangeFlow.collectAsState()
-    val selectedPosition by viewModel.selectedPositionFlow.collectAsState()
+    val state by viewModel.contractFinisherFlow.collectAsStateWithLifecycle()
+    val positionList by viewModel.positionsFlow.collectAsStateWithLifecycle(initialValue = emptyList())
+    val selectedAgeRange by viewModel.selectedAgeRangeFlow.collectAsStateWithLifecycle()
+    val selectedConfederation by viewModel.selectedConfederationFlow.collectAsStateWithLifecycle()
+    val selectedMarketValueRange by viewModel.selectedMarketValueRangeFlow.collectAsStateWithLifecycle()
+    val selectedPosition by viewModel.selectedPositionFlow.collectAsStateWithLifecycle()
 
-    val shortlistEntries by shortlistRepository.getShortlistFlow().collectAsState(initial = emptyList())
+    val shortlistEntries by shortlistRepository.getShortlistFlow().collectAsStateWithLifecycle(initialValue = emptyList())
     val shortlistPendingUrls by shortlistRepository.getShortlistPendingUrlsFlow()
-        .collectAsState(initial = emptySet())
+        .collectAsStateWithLifecycle(initialValue = emptySet())
     val shortlistUrls = remember(shortlistEntries) { shortlistEntries.map { it.tmProfileUrl }.toSet() }
     var justAddedUrls by remember { mutableStateOf(setOf<String>()) }
 

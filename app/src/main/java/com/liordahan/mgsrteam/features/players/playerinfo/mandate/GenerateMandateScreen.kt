@@ -76,7 +76,7 @@ import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -139,24 +139,24 @@ fun GenerateMandateScreen(
     val mandateViewModel: GenerateMandateViewModel = koinViewModel(
         viewModelStoreOwner = navController.currentBackStackEntry!!
     )
-    val player by viewModel.playerInfoFlow.collectAsState(initial = null)
+    val player by viewModel.playerInfoFlow.collectAsStateWithLifecycle(initialValue = null)
     val passportDetails = player?.passportDetails
     val firebaseHandler: FirebaseHandler = koinInject()
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
-    val currentStep by mandateViewModel.currentStep.collectAsState()
-    val isLoadingAgents by mandateViewModel.isLoadingAgents.collectAsState()
-    val agentsWithFifaLicense by mandateViewModel.agentsWithFifaLicense.collectAsState()
-    val selectedAgent by mandateViewModel.selectedAgent.collectAsState()
-    val expiryDate by mandateViewModel.expiryDate.collectAsState()
-    val showDatePicker by mandateViewModel.showDatePicker.collectAsState()
-    val showAddLeagueSheet by mandateViewModel.showAddLeagueSheet.collectAsState()
-    val isGenerating by mandateViewModel.isGenerating.collectAsState()
+    val currentStep by mandateViewModel.currentStep.collectAsStateWithLifecycle()
+    val isLoadingAgents by mandateViewModel.isLoadingAgents.collectAsStateWithLifecycle()
+    val agentsWithFifaLicense by mandateViewModel.agentsWithFifaLicense.collectAsStateWithLifecycle()
+    val selectedAgent by mandateViewModel.selectedAgent.collectAsStateWithLifecycle()
+    val expiryDate by mandateViewModel.expiryDate.collectAsStateWithLifecycle()
+    val showDatePicker by mandateViewModel.showDatePicker.collectAsStateWithLifecycle()
+    val showAddLeagueSheet by mandateViewModel.showAddLeagueSheet.collectAsStateWithLifecycle()
+    val isGenerating by mandateViewModel.isGenerating.collectAsStateWithLifecycle()
 
     val validLeagues = remember(
-        mandateViewModel.countryOnly.collectAsState().value,
-        mandateViewModel.selectedClubs.collectAsState().value
+        mandateViewModel.countryOnly.collectAsStateWithLifecycle().value,
+        mandateViewModel.selectedClubs.collectAsStateWithLifecycle().value
     ) { mandateViewModel.validLeagues }
 
     LaunchedEffect(Unit) {
@@ -1061,11 +1061,11 @@ private fun AddLeagueBottomSheet(
 ) {
     val clubSearch: ClubSearch = koinInject()
 
-    val sheetCountryQuery by mandateViewModel.sheetCountryQuery.collectAsState()
-    val sheetSelectedCountry by mandateViewModel.sheetSelectedCountry.collectAsState()
-    val sheetEntireCountry by mandateViewModel.sheetEntireCountry.collectAsState()
-    val sheetClubQuery by mandateViewModel.sheetClubQuery.collectAsState()
-    val sheetPendingClubs by mandateViewModel.sheetPendingClubs.collectAsState()
+    val sheetCountryQuery by mandateViewModel.sheetCountryQuery.collectAsStateWithLifecycle()
+    val sheetSelectedCountry by mandateViewModel.sheetSelectedCountry.collectAsStateWithLifecycle()
+    val sheetEntireCountry by mandateViewModel.sheetEntireCountry.collectAsStateWithLifecycle()
+    val sheetClubQuery by mandateViewModel.sheetClubQuery.collectAsStateWithLifecycle()
+    val sheetPendingClubs by mandateViewModel.sheetPendingClubs.collectAsStateWithLifecycle()
 
     var clubSearchResults by remember { mutableStateOf<List<ClubSearchModel>>(emptyList()) }
     var isSearchingClubs by remember { mutableStateOf(false) }

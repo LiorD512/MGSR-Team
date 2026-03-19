@@ -144,6 +144,11 @@
     <string name="notification_mandate_expired_title">מנדט פג תוקף</string>
     <string name="notification_mandate_expired_body">המנדט של %1$s פג תוקף.</string>
 
+    <!-- Request notifications -->
+    <string name="notification_request_added_title">בקשה חדשה ממועדון</string>
+    <string name="notification_request_added_body">%1$s הוסיף בקשה חדשה מ %2$s</string>
+    <string name="notification_request_added_body_fallback">בקשה חדשה נוספה מ %1$s</string>
+
     <!-- Task notifications -->
     <string name="notification_task_assigned_title">משימה חדשה הוקצתה</string>
     <string name="notification_task_assigned_body">%1$s הקצה לך: %2$s</string>

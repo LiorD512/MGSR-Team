@@ -43,7 +43,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -102,8 +102,8 @@ fun ShadowTeamsScreen(
     navController: NavController,
     viewModel: IShadowTeamsViewModel = koinViewModel()
 ) {
-    val state by viewModel.uiState.collectAsState()
-    val rosterPlayers by viewModel.rosterPlayers.collectAsState()
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val rosterPlayers by viewModel.rosterPlayers.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val isHebrew = LocaleManager.isHebrew(context)
     val scope = rememberCoroutineScope()

@@ -89,7 +89,7 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -199,7 +199,7 @@ fun PlayerInfoScreen(
 
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val platformManager: PlatformManager = koinInject()
-    val currentPlatform by platformManager.current.collectAsState()
+    val currentPlatform by platformManager.current.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -284,7 +284,7 @@ fun PlayerInfoScreen(
         }
     }
 
-    val isRefreshingPlayer by viewModel.updatePlayerFlow.collectAsState(initial = UiResult.UnInitialized)
+    val isRefreshingPlayer by viewModel.updatePlayerFlow.collectAsStateWithLifecycle(initialValue = UiResult.UnInitialized)
 
     var showDeletePlayerIcon by remember { mutableStateOf(false) }
 
@@ -301,15 +301,15 @@ fun PlayerInfoScreen(
     var playerDocumentId by remember { mutableStateOf<String?>(null) }
     var allAccounts by remember { mutableStateOf<List<com.liordahan.mgsrteam.features.login.models.Account>>(emptyList()) }
     var documentsList by remember { mutableStateOf<List<PlayerDocument>>(emptyList()) }
-    val scoutReport by viewModel.scoutReportFlow.collectAsState()
-    val highlightVideos by viewModel.highlightVideosFlow.collectAsState()
-    val isHighlightsLoading by viewModel.isHighlightsLoading.collectAsState()
-    val highlightsError by viewModel.highlightsError.collectAsState()
-    val highlightsHasFetched by viewModel.highlightsHasFetched.collectAsState()
-    val isHighlightsSaving by viewModel.isHighlightsSaving.collectAsState()
-    val fmIntelligenceData by viewModel.fmIntelligenceFlow.collectAsState()
-    val isFmIntelligenceLoading by viewModel.isFmIntelligenceLoading.collectAsState()
-    val fmIntelligenceError by viewModel.fmIntelligenceError.collectAsState()
+    val scoutReport by viewModel.scoutReportFlow.collectAsStateWithLifecycle()
+    val highlightVideos by viewModel.highlightVideosFlow.collectAsStateWithLifecycle()
+    val isHighlightsLoading by viewModel.isHighlightsLoading.collectAsStateWithLifecycle()
+    val highlightsError by viewModel.highlightsError.collectAsStateWithLifecycle()
+    val highlightsHasFetched by viewModel.highlightsHasFetched.collectAsStateWithLifecycle()
+    val isHighlightsSaving by viewModel.isHighlightsSaving.collectAsStateWithLifecycle()
+    val fmIntelligenceData by viewModel.fmIntelligenceFlow.collectAsStateWithLifecycle()
+    val isFmIntelligenceLoading by viewModel.isFmIntelligenceLoading.collectAsStateWithLifecycle()
+    val fmIntelligenceError by viewModel.fmIntelligenceError.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
     var docToDelete by remember { mutableStateOf<PlayerDocument?>(null) }
     var isUploadingDocument by remember { mutableStateOf(false) }
@@ -635,12 +635,14 @@ fun PlayerInfoScreen(
                 val mandateLeagues = mandateDocs
                     .flatMap { it.validLeagues.orEmpty() }
                     .distinct()
+                val heroResolvedTransfer by viewModel.resolvedTransferFlow.collectAsStateWithLifecycle()
                 PlayerInfoHeroCard(
                     player = player,
                     mandateExpiryAt = mandateExpiry,
                     mandateValidLeagues = mandateLeagues,
                     currentPlatform = currentPlatform,
                     allAccounts = allAccounts,
+                    resolvedTransfer = heroResolvedTransfer,
                     onMandateChanged = { viewModel.updateHaveMandate(it) },
                     onSalaryTransferFeeClicked = { showSalaryTransferFeeSheet = true },
                     onClearSalaryAndTransferFee = {
@@ -678,10 +680,10 @@ fun PlayerInfoScreen(
             // Section: Agent Transfer (men only)
             if (currentPlatform == Platform.MEN) {
                 playerToPresent?.let { player ->
-                    val pendingTransfer by viewModel.pendingTransferFlow.collectAsState()
-                    val resolvedTransfer by viewModel.resolvedTransferFlow.collectAsState()
-                    val currentUserAccount by viewModel.currentUserAccountFlow.collectAsState()
-                    val transferLoading by viewModel.transferLoadingFlow.collectAsState()
+                    val pendingTransfer by viewModel.pendingTransferFlow.collectAsStateWithLifecycle()
+                    val resolvedTransfer by viewModel.resolvedTransferFlow.collectAsStateWithLifecycle()
+                    val currentUserAccount by viewModel.currentUserAccountFlow.collectAsStateWithLifecycle()
+                    val transferLoading by viewModel.transferLoadingFlow.collectAsStateWithLifecycle()
                     var showTransferConfirmDialog by remember { mutableStateOf(false) }
 
                     if (showTransferConfirmDialog) {
@@ -759,8 +761,8 @@ fun PlayerInfoScreen(
 
             // Section: Matching Requests
             playerToPresent?.let { player ->
-                val matchingRequests by viewModel.matchingRequestsFlow.collectAsState(initial = emptyList())
-                val allAccounts by viewModel.allAccountsFlow.collectAsState(initial = emptyList())
+                val matchingRequests by viewModel.matchingRequestsFlow.collectAsStateWithLifecycle(initialValue = emptyList())
+                val allAccounts by viewModel.allAccountsFlow.collectAsStateWithLifecycle(initialValue = emptyList())
                 PlayerInfoSectionHeader(stringResource(R.string.player_info_matching_requests))
                 MatchingRequestsSection(
                     matchingRequests = matchingRequests,
@@ -770,7 +772,7 @@ fun PlayerInfoScreen(
                 )
 
                 // Section: Proposal History (persists after request deletion)
-                val proposalHistory by viewModel.proposalHistoryFlow.collectAsState(initial = emptyList())
+                val proposalHistory by viewModel.proposalHistoryFlow.collectAsStateWithLifecycle(initialValue = emptyList())
                 ProposalHistorySection(
                     offers = proposalHistory,
                     allAccounts = allAccounts,
@@ -1321,6 +1323,7 @@ private fun PlayerInfoHeroCard(
     mandateValidLeagues: List<String> = emptyList(),
     currentPlatform: Platform = Platform.MEN,
     allAccounts: List<com.liordahan.mgsrteam.features.login.models.Account> = emptyList(),
+    resolvedTransfer: com.liordahan.mgsrteam.features.players.playerinfo.agenttransfer.AgentTransferRequest? = null,
     onMandateChanged: (Boolean) -> Unit,
     onSalaryTransferFeeClicked: () -> Unit = {},
     onClearSalaryAndTransferFee: () -> Unit = {},
@@ -1474,8 +1477,8 @@ private fun PlayerInfoHeroCard(
             )
             Spacer(Modifier.height(2.dp))
             val addedByName = resolveAgentDisplayName(
-                player.originalAgentId ?: player.agentInChargeId,
-                player.originalAgentName ?: player.agentInChargeName,
+                player.originalAgentId ?: resolvedTransfer?.fromAgentId ?: player.agentInChargeId,
+                player.originalAgentName ?: resolvedTransfer?.fromAgentName ?: player.agentInChargeName,
                 allAccounts,
                 LocaleManager.isHebrew(context)
             )
@@ -2061,20 +2064,20 @@ private fun PlayerInfoAiHelperSection(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val shortlistEntries by shortlistRepository.getShortlistFlow().collectAsState(initial = emptyList())
+    val shortlistEntries by shortlistRepository.getShortlistFlow().collectAsStateWithLifecycle(initialValue = emptyList())
     val shortlistUrls = remember(shortlistEntries) { shortlistEntries.map { it.tmProfileUrl }.toSet() }
     var justAddedUrls by remember { mutableStateOf<Set<String>>(emptySet()) }
     val shortlistPendingUrls by shortlistRepository.getShortlistPendingUrlsFlow()
-        .collectAsState(initial = emptySet())
+        .collectAsStateWithLifecycle(initialValue = emptySet())
     var isFindSimilarExpanded by remember { mutableStateOf(false) }
     var expandedSimilarIndex by remember { mutableStateOf<Int?>(null) }
     var similarPlayersOptions by remember { mutableStateOf(SimilarPlayersOptions()) }
-    val similarPlayers by viewModel.similarPlayersFlow.collectAsState()
-    val isSimilarLoading by viewModel.isSimilarPlayersLoading.collectAsState()
+    val similarPlayers by viewModel.similarPlayersFlow.collectAsStateWithLifecycle()
+    val isSimilarLoading by viewModel.isSimilarPlayersLoading.collectAsStateWithLifecycle()
     var isScoutReportExpanded by remember { mutableStateOf(false) }
     var scoutReportOptions by remember { mutableStateOf(ScoutReportOptions()) }
-    val scoutReport by viewModel.scoutReportFlow.collectAsState()
-    val isScoutReportLoading by viewModel.isScoutReportLoading.collectAsState()
+    val scoutReport by viewModel.scoutReportFlow.collectAsStateWithLifecycle()
+    val isScoutReportLoading by viewModel.isScoutReportLoading.collectAsStateWithLifecycle()
 
     PlayerInfoSectionHeader(stringResource(R.string.player_info_ai_helper))
     Column(
@@ -2084,8 +2087,8 @@ private fun PlayerInfoAiHelperSection(
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         // Hidden Gem Potential
-        val hiddenGem by viewModel.hiddenGemFlow.collectAsState()
-        val isHiddenGemLoading by viewModel.isHiddenGemLoading.collectAsState()
+        val hiddenGem by viewModel.hiddenGemFlow.collectAsStateWithLifecycle()
+        val isHiddenGemLoading by viewModel.isHiddenGemLoading.collectAsStateWithLifecycle()
         Card(
             modifier = Modifier
                 .fillMaxWidth()

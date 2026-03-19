@@ -59,7 +59,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -549,9 +548,9 @@ private fun DiscoveryTab(
     val context = LocalContext.current
     val shortlistRepository: ShortlistRepository = koinInject()
     val playersRepository: IPlayersRepository = koinInject()
-    val shortlistEntries by shortlistRepository.getShortlistFlow().collectAsState(initial = emptyList())
+    val shortlistEntries by shortlistRepository.getShortlistFlow().collectAsStateWithLifecycle(initialValue = emptyList())
     val shortlistUrls = remember(shortlistEntries) { shortlistEntries.map { it.tmProfileUrl }.toSet() }
-    val rosterPlayers by playersRepository.playersFlow().collectAsState(initial = emptyList())
+    val rosterPlayers by playersRepository.playersFlow().collectAsStateWithLifecycle(initialValue = emptyList())
     val rosterIds = remember(rosterPlayers) {
         rosterPlayers.mapNotNull { extractPlayerIdFromUrl(it.tmProfile ?: "") }.toSet()
     }
@@ -560,7 +559,7 @@ private fun DiscoveryTab(
     }
     var justAddedUrls by remember { mutableStateOf<Set<String>>(emptySet()) }
     val shortlistPendingUrls by shortlistRepository.getShortlistPendingUrlsFlow()
-        .collectAsState(initial = emptySet())
+        .collectAsStateWithLifecycle(initialValue = emptySet())
     val coroutineScope = rememberCoroutineScope()
 
     val filteredCandidates = (if (state.selectedSourceFilter == "all") {
@@ -1431,9 +1430,9 @@ private fun AgentsTab(state: WarRoomUiState, viewModel: IWarRoomViewModel, navCo
     val context = LocalContext.current
     val shortlistRepository: ShortlistRepository = koinInject()
     val playersRepository: IPlayersRepository = koinInject()
-    val shortlistEntries by shortlistRepository.getShortlistFlow().collectAsState(initial = emptyList())
+    val shortlistEntries by shortlistRepository.getShortlistFlow().collectAsStateWithLifecycle(initialValue = emptyList())
     val shortlistUrls = remember(shortlistEntries) { shortlistEntries.map { it.tmProfileUrl }.toSet() }
-    val rosterPlayers by playersRepository.playersFlow().collectAsState(initial = emptyList())
+    val rosterPlayers by playersRepository.playersFlow().collectAsStateWithLifecycle(initialValue = emptyList())
     val rosterIds = remember(rosterPlayers) {
         rosterPlayers.mapNotNull { extractPlayerIdFromUrl(it.tmProfile ?: "") }.toSet()
     }
@@ -1442,7 +1441,7 @@ private fun AgentsTab(state: WarRoomUiState, viewModel: IWarRoomViewModel, navCo
     }
     var justAddedUrls by remember { mutableStateOf<Set<String>>(emptySet()) }
     val shortlistPendingUrls by shortlistRepository.getShortlistPendingUrlsFlow()
-        .collectAsState(initial = emptySet())
+        .collectAsStateWithLifecycle(initialValue = emptySet())
     val coroutineScope = rememberCoroutineScope()
 
     val filteredScoutProfiles = remember(state.scoutProfiles, rosterIds, shortlistIds) {

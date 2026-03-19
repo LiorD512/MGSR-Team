@@ -119,15 +119,40 @@ export async function POST(request: NextRequest) {
       scoutReport = await generateShortScoutReport(player, lang);
     }
 
+    /** Firestore rejects undefined values – strip them recursively */
+    function stripUndefined(obj: Record<string, unknown>): Record<string, unknown> {
+      const result: Record<string, unknown> = {};
+      for (const [k, v] of Object.entries(obj)) {
+        if (v === undefined) continue;
+        if (Array.isArray(v)) {
+          result[k] = v.filter((x) => x !== undefined).map((x) =>
+            x !== null && typeof x === 'object' && !(x instanceof Date) && Object.getPrototypeOf(x) === Object.prototype
+              ? stripUndefined(x as Record<string, unknown>)
+              : x
+          );
+        } else if (
+          v !== null &&
+          typeof v === 'object' &&
+          !(v instanceof Date) &&
+          Object.getPrototypeOf(v) === Object.prototype
+        ) {
+          result[k] = stripUndefined(v as Record<string, unknown>);
+        } else {
+          result[k] = v;
+        }
+      }
+      return result;
+    }
+
     const playerPhone = includePlayerContact
       ? (player.playerAdditionalInfoModel?.playerNumber ?? (player as { playerPhoneNumber?: string }).playerPhoneNumber)
       : undefined;
     const agentPhone = includeAgencyContact
       ? (player.playerAdditionalInfoModel?.agentNumber ?? player.agentPhoneNumber)
       : undefined;
-    const shareDoc = {
+    const shareDoc = stripUndefined({
       playerId,
-      player: {
+      player: stripUndefined({
         fullName: player.fullName,
         fullNameHe: player.fullNameHe,
         profileImage: player.profileImage,
@@ -141,7 +166,7 @@ export async function POST(request: NextRequest) {
         tmProfile: (player as { tmProfile?: string }).tmProfile,
         ...(playerPhone ? { playerPhoneNumber: playerPhone } : {}),
         ...(agentPhone ? { agentPhoneNumber: agentPhone } : {}),
-      },
+      }),
       mandateInfo: mandateInfo ?? null,
       mandateUrl: mandateUrl ?? null,
       sharerPhone: sharerPhone ?? null,
@@ -152,7 +177,7 @@ export async function POST(request: NextRequest) {
       platform: platform ?? null,
       createdAt: Date.now(),
       createdBy: uid,
-    };
+    });
 
     const ref = await adminDb().collection('SharedPlayers').add(shareDoc);
     const shareToken = ref.id;

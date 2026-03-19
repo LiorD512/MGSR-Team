@@ -73,7 +73,6 @@ import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -174,9 +173,9 @@ fun PlayersScreen(
     // Notes preview bottom sheet
     var notesPreviewPlayer by remember { mutableStateOf<Player?>(null) }
 
-    val addPlayerState = addPlayerViewModel.playerSearchStateFlow.collectAsState()
-    val selectedPlayer by addPlayerViewModel.selectedPlayerFlow.collectAsState()
-    val isPlayerAdded by addPlayerViewModel.isPlayerAddedFlow.collectAsState()
+    val addPlayerState = addPlayerViewModel.playerSearchStateFlow.collectAsStateWithLifecycle()
+    val selectedPlayer by addPlayerViewModel.selectedPlayerFlow.collectAsStateWithLifecycle()
+    val isPlayerAdded by addPlayerViewModel.isPlayerAddedFlow.collectAsStateWithLifecycle()
     val snackBarHostState = remember { SnackbarHostState() }
 
     // Consume pending URL from Share/View intent (mainViewModel is null when navigated from FAB)

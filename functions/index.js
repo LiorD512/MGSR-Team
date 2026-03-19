@@ -39,6 +39,7 @@ const NOTIFIABLE_TYPES = [
   "MARKET_VALUE_CHANGE",
   "NEW_RELEASE_FROM_CLUB",
   "MANDATE_EXPIRED",
+  "REQUEST_ADDED",
 ];
 
 /**
@@ -131,6 +132,7 @@ exports.onNewFeedEvent = onDocumentCreated("FeedEvents/{eventId}", async (event)
   const oldValue = data.oldValue || "";
   const newValue = data.newValue || "";
   const extraInfo = data.extraInfo || "";
+  const agentName = data.agentName || "";
 
   let title;
   let body;
@@ -159,6 +161,12 @@ exports.onNewFeedEvent = onDocumentCreated("FeedEvents/{eventId}", async (event)
       title = "Mandate Expired";
       body = `${playerName}'s mandate has expired.`;
       break;
+    case "REQUEST_ADDED":
+      title = "New Club Request";
+      body = agentName
+        ? `${agentName} added a new request from ${playerName}`
+        : `New request added from ${playerName}`;
+      break;
     default:
       title = "MGSR Team Update";
       body = `New update for ${playerName}`;
@@ -173,6 +181,7 @@ exports.onNewFeedEvent = onDocumentCreated("FeedEvents/{eventId}", async (event)
       oldValue,
       newValue,
       extraInfo: extraInfo || "",
+      agentName: agentName || "",
       playerTmProfile: data.playerTmProfile || "",
     },
     android: {

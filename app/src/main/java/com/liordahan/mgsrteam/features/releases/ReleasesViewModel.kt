@@ -106,7 +106,7 @@ class ReleasesViewModel(
                     is TransfermarktResult.Success -> releaseFlowsMap[range]?.value = result.data.filterNotNull()
                     is TransfermarktResult.Failed -> fetchFailedErrorFlow.value = result.cause
                 }
-                fetchedCount.value += 1
+                fetchedCount.update { it + 1 }
             }
         }
     }

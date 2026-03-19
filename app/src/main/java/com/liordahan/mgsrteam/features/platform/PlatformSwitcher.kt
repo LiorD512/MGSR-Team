@@ -21,7 +21,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -60,7 +60,7 @@ fun PlatformSwitcher(
     onSwitch: (Platform) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val current by platformManager.current.collectAsState()
+    val current by platformManager.current.collectAsStateWithLifecycle()
     val platforms = Platform.entries
     val density = LocalDensity.current
     val segmentWidth = 100.dp

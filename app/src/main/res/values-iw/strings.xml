@@ -1421,6 +1421,9 @@
     <string name="agent_transfer_approved">ההעברה אושרה! אתה כעת הסוכן האחראי</string>
     <string name="agent_transfer_rejected">בקשת ההעברה נדחתה</string>
     <string name="agent_transfer_cancelled">בקשת ההעברה בוטלה</string>
+    <string name="notification_request_added_title">בקשה חדשה ממועדון</string>
+    <string name="notification_request_added_body">%1$s הוסיף בקשה חדשה מ %2$s</string>
+    <string name="notification_request_added_body_fallback">בקשה חדשה נוספה מ %1$s</string>
     <string name="notification_transfer_request_title">בקשת העברת סוכן</string>
     <string name="notification_transfer_request_body">%1$s רוצה לקחת אחריות כסוכן על %2$s</string>
     <string name="notification_transfer_approved_title">העברה אושרה</string>

@@ -181,6 +181,12 @@
     <string name="notification_action_add_shortlist">Add to Shortlist</string>
 
     <!-- Task notifications -->
+    <!-- Request notifications -->
+    <string name="notification_request_added_title">New Club Request</string>
+    <string name="notification_request_added_body">%1$s added a new request from %2$s</string>
+    <string name="notification_request_added_body_fallback">New request added from %1$s</string>
+
+    <!-- Task notifications -->
     <string name="notification_task_assigned_title">New Task Assigned</string>
     <string name="notification_task_assigned_body">%1$s assigned you: %2$s</string>
     <string name="notification_task_assigned_body_fallback">You have a new task: %1$s</string>

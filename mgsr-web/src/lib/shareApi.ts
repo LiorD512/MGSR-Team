@@ -114,7 +114,11 @@ export async function createShare(
     for (const [k, v] of Object.entries(obj)) {
       if (v === undefined) continue;
       if (Array.isArray(v)) {
-        result[k] = v.filter((x) => x !== undefined);
+        result[k] = v.filter((x) => x !== undefined).map((x) =>
+          x !== null && typeof x === 'object' && !(x instanceof Date) && Object.getPrototypeOf(x) === Object.prototype
+            ? stripUndefined(x as Record<string, unknown>)
+            : x
+        );
       } else if (
         v !== null &&
         typeof v === 'object' &&

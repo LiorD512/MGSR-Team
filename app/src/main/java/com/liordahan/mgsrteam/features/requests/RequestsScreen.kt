@@ -171,7 +171,7 @@ import android.view.HapticFeedbackConstants
 import androidx.compose.foundation.layout.offset
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.koinInject
 import java.text.SimpleDateFormat
@@ -185,7 +185,7 @@ fun RequestsScreen(
     navController: NavController
 ) {
     val platformManager: PlatformManager = koinInject()
-    val currentPlatform by platformManager.current.collectAsState()
+    val currentPlatform by platformManager.current.collectAsStateWithLifecycle()
     val isWomen = currentPlatform == Platform.WOMEN
     val state by viewModel.requestsState.collectAsStateWithLifecycle()
     val positions by viewModel.positions.collectAsStateWithLifecycle()

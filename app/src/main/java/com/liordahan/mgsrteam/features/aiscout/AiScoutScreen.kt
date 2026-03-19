@@ -62,7 +62,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -467,9 +466,9 @@ private fun FindNextTabContent(state: FindNextUiState, viewModel: IAiScoutViewMo
     val context = LocalContext.current
     val shortlistRepository: ShortlistRepository = koinInject()
     val playersRepository: IPlayersRepository = koinInject()
-    val shortlistEntries by shortlistRepository.getShortlistFlow().collectAsState(initial = emptyList())
+    val shortlistEntries by shortlistRepository.getShortlistFlow().collectAsStateWithLifecycle(initialValue = emptyList())
     val shortlistUrls = remember(shortlistEntries) { shortlistEntries.map { it.tmProfileUrl }.toSet() }
-    val rosterPlayers by playersRepository.playersFlow().collectAsState(initial = emptyList())
+    val rosterPlayers by playersRepository.playersFlow().collectAsStateWithLifecycle(initialValue = emptyList())
     val rosterIds = remember(rosterPlayers) {
         rosterPlayers.mapNotNull { extractPlayerIdFromUrl(it.tmProfile) }.toSet()
     }
@@ -478,7 +477,7 @@ private fun FindNextTabContent(state: FindNextUiState, viewModel: IAiScoutViewMo
     }
     var justAddedUrls by remember { mutableStateOf<Set<String>>(emptySet()) }
     val shortlistPendingUrls by shortlistRepository.getShortlistPendingUrlsFlow()
-        .collectAsState(initial = emptySet())
+        .collectAsStateWithLifecycle(initialValue = emptySet())
     val coroutineScope = rememberCoroutineScope()
 
     val infiniteTransition = rememberInfiniteTransition(label = "find_next_bg")
@@ -1872,9 +1871,9 @@ private fun AiScoutResultsState(state: AiScoutUiState, viewModel: IAiScoutViewMo
     val context = LocalContext.current
     val shortlistRepository: ShortlistRepository = koinInject()
     val playersRepository: IPlayersRepository = koinInject()
-    val shortlistEntries by shortlistRepository.getShortlistFlow().collectAsState(initial = emptyList())
+    val shortlistEntries by shortlistRepository.getShortlistFlow().collectAsStateWithLifecycle(initialValue = emptyList())
     val shortlistUrls = remember(shortlistEntries) { shortlistEntries.map { it.tmProfileUrl }.toSet() }
-    val rosterPlayers by playersRepository.playersFlow().collectAsState(initial = emptyList())
+    val rosterPlayers by playersRepository.playersFlow().collectAsStateWithLifecycle(initialValue = emptyList())
     val rosterIds = remember(rosterPlayers) {
         rosterPlayers.mapNotNull { extractPlayerIdFromUrl(it.tmProfile) }.toSet()
     }
@@ -1883,7 +1882,7 @@ private fun AiScoutResultsState(state: AiScoutUiState, viewModel: IAiScoutViewMo
     }
     var justAddedUrls by remember { mutableStateOf<Set<String>>(emptySet()) }
     val shortlistPendingUrls by shortlistRepository.getShortlistPendingUrlsFlow()
-        .collectAsState(initial = emptySet())
+        .collectAsStateWithLifecycle(initialValue = emptySet())
     val coroutineScope = rememberCoroutineScope()
 
     val filteredResults = remember(state.results, rosterIds, shortlistIds) {

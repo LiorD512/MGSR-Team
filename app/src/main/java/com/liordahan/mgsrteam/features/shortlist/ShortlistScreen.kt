@@ -74,7 +74,6 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -208,7 +207,7 @@ fun ShortlistScreen(
     platformManager: PlatformManager = koinInject(),
     mainViewModel: com.liordahan.mgsrteam.IMainViewModel? = null
 ) {
-    val state by viewModel.shortlistFlow.collectAsState()
+    val state by viewModel.shortlistFlow.collectAsStateWithLifecycle()
     val currentPlatform by platformManager.current.collectAsStateWithLifecycle()
     val isWomen = currentPlatform == Platform.WOMEN
     val context = LocalContext.current
@@ -233,7 +232,7 @@ fun ShortlistScreen(
     var searchQuery by remember { mutableStateOf("") }
 
     // Roster teammates feature (same as Releases)
-    val rosterPlayers by playersRepository.playersFlow().collectAsState(initial = emptyList())
+    val rosterPlayers by playersRepository.playersFlow().collectAsStateWithLifecycle(initialValue = emptyList())
     var expandedPlayerUrl by remember { mutableStateOf<String?>(null) }
     var teammatesCache by remember { mutableStateOf<Map<String, List<RosterTeammateMatch>>>(emptyMap()) }
     var loadingPlayerUrl by remember { mutableStateOf<String?>(null) }
@@ -304,9 +303,9 @@ fun ShortlistScreen(
         listState.animateScrollToItem(0)
     }
 
-    val addPlayerState = addPlayerViewModel.playerSearchStateFlow.collectAsState()
-    val selectedPlayer by addPlayerViewModel.selectedPlayerFlow.collectAsState()
-    val isPlayerAdded by addPlayerViewModel.isPlayerAddedFlow.collectAsState()
+    val addPlayerState = addPlayerViewModel.playerSearchStateFlow.collectAsStateWithLifecycle()
+    val selectedPlayer by addPlayerViewModel.selectedPlayerFlow.collectAsStateWithLifecycle()
+    val isPlayerAdded by addPlayerViewModel.isPlayerAddedFlow.collectAsStateWithLifecycle()
     val snackBarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 

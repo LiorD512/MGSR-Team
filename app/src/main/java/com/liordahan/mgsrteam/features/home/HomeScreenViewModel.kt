@@ -368,9 +368,11 @@ class HomeScreenViewModel(
                 val docsSnap = firebaseHandler.firebaseStore
                     .collection(firebaseHandler.playerDocumentsTable)
                     .whereEqualTo("type", DocumentType.MANDATE.name)
+                    .whereEqualTo("expired", false)
+                    .whereGreaterThanOrEqualTo("expiresAt", now)
                     .get().await()
                 val docs = docsSnap.toObjects(PlayerDocument::class.java)
-                docs.filter { it.playerTmProfile != null && it.expiresAt != null && !it.expired && it.expiresAt >= now }
+                docs.filter { it.playerTmProfile != null }
                     .mapNotNull { it.playerTmProfile }.toSet()
             } catch (_: Exception) { emptySet() }
 
