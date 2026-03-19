@@ -139,6 +139,7 @@ export default function ShortlistPage() {
   const [currentAccountId, setCurrentAccountId] = useState<string | null>(null);
   const [allAccounts, setAllAccounts] = useState<AccountForShortlist[]>([]);
   const [positionFilter, setPositionFilter] = useState<string | null>(null); // null = All
+  const [specificPositionFilter, setSpecificPositionFilter] = useState<string | null>(null);
   const [withNotesOnly, setWithNotesOnly] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -660,8 +661,14 @@ export default function ShortlistPage() {
       const matchAccount = allAccounts.find((a) => a.name === agentFilter);
       if (matchAccount) list = list.filter((e) => e.addedByAgentId === matchAccount.id || e.addedByAgentName?.toLowerCase() === agentFilter.toLowerCase());
     }
-    // Position filter
-    if (positionFilter) {
+    // Position filter — specific position takes precedence over group
+    if (specificPositionFilter) {
+      const code = specificPositionFilter.toUpperCase();
+      list = list.filter((e) => {
+        const positions = e.positions ?? (e.playerPosition ? [e.playerPosition] : []);
+        return positions.some((p) => p.toUpperCase().trim() === code);
+      });
+    } else if (positionFilter) {
       const positionCodes: Record<string, Set<string>> = {
         GK: new Set(['GK', 'GOALKEEPER']),
         DEF: new Set(['CB', 'RB', 'LB', 'CENTRE-BACK', 'LEFT-BACK', 'RIGHT-BACK', 'BACK']),
@@ -696,7 +703,7 @@ export default function ShortlistPage() {
       list.sort((a, b) => parseMarketValueToEuros(b.marketValue) - parseMarketValueToEuros(a.marketValue));
     } else list.sort((a, b) => (b.addedAt || 0) - (a.addedAt || 0));
     return list;
-  }, [entries, filterBy, sortBy, entryIntelligence, currentAccountId, agentFilter, allAccounts, positionFilter, withNotesOnly, searchQuery]);
+  }, [entries, filterBy, sortBy, entryIntelligence, currentAccountId, agentFilter, allAccounts, positionFilter, specificPositionFilter, withNotesOnly, searchQuery]);
 
   const formatAddedDate = (addedAt?: number) => {
     if (!addedAt) return '';
@@ -751,7 +758,7 @@ export default function ShortlistPage() {
 
   const showingCount = sorted.length;
   const totalCount = entries.length;
-  const isFiltered = platform === 'men' && (filterBy !== 'all' || positionFilter !== null || withNotesOnly || agentFilter !== null || searchQuery.trim() !== '') && showingCount < totalCount;
+  const isFiltered = platform === 'men' && (filterBy !== 'all' || positionFilter !== null || specificPositionFilter !== null || withNotesOnly || agentFilter !== null || searchQuery.trim() !== '') && showingCount < totalCount;
 
   return (
     <AppLayout>
@@ -857,7 +864,15 @@ export default function ShortlistPage() {
                         <button
                           key={pos}
                           type="button"
-                          onClick={() => setPositionFilter(pos === 'All' || positionFilter === pos ? null : pos)}
+                          onClick={() => {
+                            if (pos === 'All' || positionFilter === pos) {
+                              setPositionFilter(null);
+                              setSpecificPositionFilter(null);
+                            } else {
+                              setPositionFilter(pos);
+                              setSpecificPositionFilter(null);
+                            }
+                          }}
                           className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all ${
                             isSelected
                               ? 'bg-mgsr-teal text-mgsr-dark shadow-lg shadow-mgsr-teal/20'
@@ -868,6 +883,39 @@ export default function ShortlistPage() {
                         </button>
                       );
                     })}
+                    {/* Specific position dropdown */}
+                    {(() => {
+                      const SPECIFIC_POSITIONS_BY_GROUP: Record<string, string[]> = {
+                        GK: ['GK'],
+                        DEF: ['CB', 'RB', 'LB'],
+                        MID: ['DM', 'CM', 'AM'],
+                        FWD: ['LW', 'RW', 'CF', 'ST', 'SS'],
+                      };
+                      const ALL_SPECIFIC = ['GK', 'CB', 'RB', 'LB', 'DM', 'CM', 'AM', 'LW', 'RW', 'CF', 'ST', 'SS'];
+                      const LABELS_EN: Record<string, string> = { GK: 'Goalkeeper', CB: 'Centre Back', RB: 'Right Back', LB: 'Left Back', DM: 'Defensive Mid', CM: 'Central Mid', AM: 'Attacking Mid', LW: 'Left Winger', RW: 'Right Winger', CF: 'Centre Forward', ST: 'Striker', SS: 'Second Striker' };
+                      const LABELS_HE: Record<string, string> = { GK: '\u05e9\u05d5\u05e2\u05e8', CB: '\u05d1\u05dc\u05dd', RB: '\u05de\u05d2\u05df \u05d9\u05de\u05e0\u05d9', LB: '\u05de\u05d2\u05df \u05e9\u05de\u05d0\u05dc\u05d9', DM: '\u05e7\u05e9\u05e8 \u05d4\u05d2\u05e0\u05ea\u05d9', CM: '\u05e7\u05e9\u05e8 \u05de\u05e8\u05db\u05d6\u05d9', AM: '\u05e7\u05e9\u05e8 \u05d4\u05ea\u05e7\u05e4\u05d9', LW: '\u05db\u05e0\u05e3 \u05e9\u05de\u05d0\u05dc', RW: '\u05db\u05e0\u05e3 \u05d9\u05de\u05d9\u05df', CF: '\u05d7\u05dc\u05d5\u05e5 \u05de\u05e8\u05db\u05d6\u05d9', ST: '\u05d7\u05dc\u05d5\u05e5', SS: '\u05d7\u05dc\u05d5\u05e5 \u05e9\u05e0\u05d9' };
+                      const options = positionFilter ? (SPECIFIC_POSITIONS_BY_GROUP[positionFilter] ?? ALL_SPECIFIC) : ALL_SPECIFIC;
+                      const labels = lang === 'he' ? LABELS_HE : LABELS_EN;
+                      return (
+                        <select
+                          value={specificPositionFilter ?? ''}
+                          onChange={(e) => setSpecificPositionFilter(e.target.value || null)}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all appearance-none cursor-pointer ${
+                            specificPositionFilter
+                              ? 'bg-mgsr-teal text-mgsr-dark shadow-lg shadow-mgsr-teal/20'
+                              : 'bg-mgsr-dark/60 border border-mgsr-border text-mgsr-muted hover:text-mgsr-text hover:border-mgsr-teal/40'
+                          }`}
+                          style={{ paddingRight: '24px', backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: `${isRtl ? 'left 6px center' : 'right 6px center'}` }}
+                        >
+                          <option value="">{lang === 'he' ? '\u05e2\u05de\u05d3\u05d4 \u05e1\u05e4\u05e6\u05d9\u05e4\u05d9\u05ea' : 'Specific Position'}</option>
+                          {options.map((code) => (
+                            <option key={code} value={code}>
+                              {labels[code] ?? code} ({code})
+                            </option>
+                          ))}
+                        </select>
+                      );
+                    })()}
                   </div>
                 </div>
                 {/* Row 2: Quick filters */}
@@ -921,13 +969,13 @@ export default function ShortlistPage() {
             )}
 
             {sorted.length === 0 ? (
-              entries.length > 0 && platform === 'men' && (filterBy !== 'all' || agentFilter || positionFilter || withNotesOnly || searchQuery.trim()) ? (
+              entries.length > 0 && platform === 'men' && (filterBy !== 'all' || agentFilter || positionFilter || specificPositionFilter || withNotesOnly || searchQuery.trim()) ? (
             <div className="py-20 px-6 rounded-2xl bg-mgsr-card/50 border border-mgsr-border text-center">
               <p className="text-mgsr-text text-lg font-medium mb-2">{t('shortlist_filter_empty')}</p>
               <p className="text-mgsr-muted text-sm mb-6 max-w-sm mx-auto">{t('shortlist_filter_empty_hint').replace('{n}', String(entries.length))}</p>
               <button
                 type="button"
-                onClick={() => { setFilterBy('all'); setAgentFilter(null); setPositionFilter(null); setWithNotesOnly(false); setSearchQuery(''); }}
+                onClick={() => { setFilterBy('all'); setAgentFilter(null); setPositionFilter(null); setSpecificPositionFilter(null); setWithNotesOnly(false); setSearchQuery(''); }}
                 className="px-6 py-3 rounded-xl bg-mgsr-teal text-mgsr-dark font-semibold hover:bg-mgsr-teal/90 transition shadow-lg shadow-mgsr-teal/20"
               >
                 {t('shortlist_filter_clear')}

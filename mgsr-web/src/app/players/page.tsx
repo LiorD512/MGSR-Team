@@ -44,6 +44,7 @@ interface PlayersCache {
   players: Player[];
   search: string;
   positionFilter: string | null;
+  specificPositionFilter: string | null;
   freeAgents: boolean;
   contractExpiring: boolean;
   withMandate: boolean;
@@ -63,6 +64,46 @@ const POSITION_CODES: Record<string, Set<string>> = {
   DEF: new Set(['CB', 'RB', 'LB']),
   MID: new Set(['CM', 'DM', 'AM']),
   FWD: new Set(['ST', 'CF', 'LW', 'RW', 'SS', 'AM']),
+};
+
+/** Specific positions available per group, shown in the dropdown. */
+const SPECIFIC_POSITIONS_BY_GROUP: Record<string, string[]> = {
+  GK: ['GK'],
+  DEF: ['CB', 'RB', 'LB'],
+  MID: ['DM', 'CM', 'AM'],
+  FWD: ['LW', 'RW', 'CF', 'ST', 'SS'],
+};
+const ALL_SPECIFIC_POSITIONS = ['GK', 'CB', 'RB', 'LB', 'DM', 'CM', 'AM', 'LW', 'RW', 'CF', 'ST', 'SS'];
+
+/** English display labels for specific positions. */
+const SPECIFIC_POSITION_LABELS_EN: Record<string, string> = {
+  GK: 'Goalkeeper',
+  CB: 'Centre Back',
+  RB: 'Right Back',
+  LB: 'Left Back',
+  DM: 'Defensive Mid',
+  CM: 'Central Mid',
+  AM: 'Attacking Mid',
+  LW: 'Left Winger',
+  RW: 'Right Winger',
+  CF: 'Centre Forward',
+  ST: 'Striker',
+  SS: 'Second Striker',
+};
+/** Hebrew display labels for specific positions. */
+const SPECIFIC_POSITION_LABELS_HE: Record<string, string> = {
+  GK: 'שוער',
+  CB: 'בלם',
+  RB: 'מגן ימני',
+  LB: 'מגן שמאלי',
+  DM: 'קשר הגנתי',
+  CM: 'קשר מרכזי',
+  AM: 'קשר התקפי',
+  LW: 'כנף שמאל',
+  RW: 'כנף ימין',
+  CF: 'חלוץ מרכזי',
+  ST: 'חלוץ',
+  SS: 'חלוץ שני',
 };
 
 function isContractExpiringWithin6Months(contractExpired: string | undefined): boolean {
@@ -109,6 +150,7 @@ export default function PlayersPage() {
   const [youthLoading, setYouthLoading] = useState(true);
   const [search, setSearch] = useState(cached?.search ?? '');
   const [positionFilter, setPositionFilter] = useState<string | null>(cached?.positionFilter ?? null);
+  const [specificPositionFilter, setSpecificPositionFilter] = useState<string | null>(cached?.specificPositionFilter ?? null);
   const [freeAgents, setFreeAgents] = useState(cached?.freeAgents ?? false);
   const [contractExpiring, setContractExpiring] = useState(cached?.contractExpiring ?? false);
   const [withMandate, setWithMandate] = useState(cached?.withMandate ?? false);
@@ -235,6 +277,7 @@ export default function PlayersPage() {
       players,
       search,
       positionFilter,
+      specificPositionFilter,
       freeAgents,
       contractExpiring,
       withMandate,
@@ -247,7 +290,7 @@ export default function PlayersPage() {
       euNationalOnly,
       offeredNoFeedback,
     });
-  }, [players, search, positionFilter, freeAgents, contractExpiring, withMandate, myPlayersOnly, agentFilter, loanPlayersOnly, withoutRegisteredAgent, withNotes, footFilter, euNationalOnly, offeredNoFeedback]);
+  }, [players, search, positionFilter, specificPositionFilter, freeAgents, contractExpiring, withMandate, myPlayersOnly, agentFilter, loanPlayersOnly, withoutRegisteredAgent, withNotes, footFilter, euNationalOnly, offeredNoFeedback]);
 
   const filtered = useMemo(() => {
     if (platform === 'youth') {
@@ -304,8 +347,13 @@ export default function PlayersPage() {
       );
     }
 
-    // Position
-    if (positionFilter && POSITION_CODES[positionFilter]) {
+    // Position — specific position takes precedence over group
+    if (specificPositionFilter) {
+      const code = specificPositionFilter.toUpperCase();
+      result = result.filter((p) =>
+        p.positions?.some((pos) => pos?.toUpperCase() === code)
+      );
+    } else if (positionFilter && POSITION_CODES[positionFilter]) {
       const codes = POSITION_CODES[positionFilter];
       result = result.filter((p) =>
         p.positions?.some((pos) => pos && codes.has(pos.toUpperCase()))
@@ -390,6 +438,7 @@ export default function PlayersPage() {
     platform,
     search,
     positionFilter,
+    specificPositionFilter,
     freeAgents,
     contractExpiring,
     withMandate,
@@ -408,6 +457,7 @@ export default function PlayersPage() {
 
   const hasActiveFilters =
     !!positionFilter ||
+    !!specificPositionFilter ||
     (platform === 'men' &&
       (freeAgents ||
         contractExpiring ||
@@ -423,6 +473,7 @@ export default function PlayersPage() {
 
   const clearFilters = useCallback(() => {
     setPositionFilter(null);
+    setSpecificPositionFilter(null);
     setFreeAgents(false);
     setContractExpiring(false);
     setWithMandate(false);
@@ -574,7 +625,15 @@ export default function PlayersPage() {
             {POSITION_GROUPS.map((pos) => (
               <button
                 key={pos}
-                onClick={() => setPositionFilter(positionFilter === pos ? null : pos)}
+                onClick={() => {
+                  if (positionFilter === pos) {
+                    setPositionFilter(null);
+                    setSpecificPositionFilter(null);
+                  } else {
+                    setPositionFilter(pos);
+                    setSpecificPositionFilter(null);
+                  }
+                }}
                 className={`px-3 py-1.5 text-sm font-medium transition-all duration-200 ${
                   isWomen ? 'rounded-xl' : 'rounded-lg'
                 } ${
@@ -594,6 +653,32 @@ export default function PlayersPage() {
                 {t(isWomen && pos.toLowerCase() === 'gk' ? 'players_filter_position_gk_women' : `players_filter_position_${pos.toLowerCase()}`)}
               </button>
             ))}
+
+            {/* Specific position dropdown — men only */}
+            {platform === 'men' && (() => {
+              const options = positionFilter ? (SPECIFIC_POSITIONS_BY_GROUP[positionFilter] ?? ALL_SPECIFIC_POSITIONS) : ALL_SPECIFIC_POSITIONS;
+              const labels = lang === 'he' ? SPECIFIC_POSITION_LABELS_HE : SPECIFIC_POSITION_LABELS_EN;
+              return (
+                <select
+                  value={specificPositionFilter ?? ''}
+                  onChange={(e) => setSpecificPositionFilter(e.target.value || null)}
+                  className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-all duration-200 appearance-none cursor-pointer bg-mgsr-card border text-mgsr-muted hover:text-mgsr-text focus:outline-none ${
+                    specificPositionFilter
+                      ? 'border-[var(--mgsr-accent)]/60 text-[var(--mgsr-accent)] bg-[var(--mgsr-accent-dim)]'
+                      : 'border-mgsr-border hover:border-[var(--mgsr-accent)]/40'
+                  }`}
+                  style={{ paddingRight: '28px', backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: `${isRtl ? 'left 8px center' : 'right 8px center'}` }}
+                >
+                  <option value="">{lang === 'he' ? 'עמדה ספציפית' : 'Specific Position'}</option>
+                  {options.map((code) => (
+                    <option key={code} value={code}>
+                      {labels[code] ?? code} ({code})
+                    </option>
+                  ))}
+                </select>
+              );
+            })()}
+
             {hasActiveFilters && (
               <button
                 onClick={clearFilters}
