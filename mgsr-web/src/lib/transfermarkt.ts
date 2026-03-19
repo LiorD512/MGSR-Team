@@ -85,7 +85,7 @@ export function extractPlayerIdFromUrl(url: string | undefined): string | null {
 }
 
 /** Parse market value string to euros (number). Returns 0 for empty or "-". */
-function parseValueToEuros(s: string | undefined): number {
+export function parseValueToEuros(s: string | undefined): number {
   if (!s?.trim() || s.includes('-')) return 0;
   const t = s.replace(/[€\s]/g, '').toLowerCase();
   if (t.includes('k')) return (parseFloat(t.replace('k', '')) || 0) * 1000;
@@ -94,7 +94,7 @@ function parseValueToEuros(s: string | undefined): number {
 }
 
 /** Parse transfer fee string to euros. Handles "free transfer", "loan transfer", "?", "Loan fee:€45k", "End of loan..." etc. */
-function parseFeeToEuros(s: string | null): number {
+export function parseFeeToEuros(s: string | null): number {
   if (!s) return 0;
   const t = s.trim().toLowerCase();
   if (!t || t === '-' || t === '?' || t.startsWith('free') || t.startsWith('loan transfer') || t.startsWith('end of loan')) return 0;
@@ -3033,5 +3033,249 @@ export async function handleLigatHaalAnalysis(
     players: allPlayers,
     stats,
     cachedAt: new Date().toISOString(),
+  };
+}
+
+// ─── Club Intelligence Scrapers ──────────────────────────────────────────────
+
+export interface ClubSquadPlayer {
+  name: string;
+  position: string;
+  age: number | null;
+  nationality: string;
+  nationalityFlag: string;
+  marketValue: number;
+  marketValueDisplay: string;
+  contractEnd: string;
+  tmUrl: string;
+}
+
+/**
+ * Scrape a club's full squad roster from its /kader/ page.
+ * Extracts per player: name, position, age, nationality, market value, contract end.
+ */
+export async function scrapeClubSquad(clubTmProfile: string): Promise<ClubSquadPlayer[]> {
+  // Extract verein ID from URL like https://www.transfermarkt.com/fc-barcelona/startseite/verein/131
+  const idMatch = clubTmProfile.match(/verein\/(\d+)/);
+  if (!idMatch) throw new Error('Invalid club TM profile URL');
+  const vereinId = idMatch[1];
+
+  // Build kader URL with current season (standard view, NOT /plus/1 which has different HTML)
+  const currentYear = new Date().getFullYear();
+  const season = new Date().getMonth() >= 7 ? currentYear : currentYear - 1;
+  const slug = clubTmProfile.split('.com/')[1]?.split('/')[0] || 'club';
+  const kaderUrl = `${TRANSFERMARKT_BASE}/${slug}/kader/verein/${vereinId}/saison_id/${season}`;
+
+  const html = await fetchHtmlWithRetry(kaderUrl);
+  const $ = cheerio.load(html);
+
+  const players: ClubSquadPlayer[] = [];
+
+  // Standard kader view uses table.items with tr.odd/tr.even rows
+  $('table.items tbody tr.odd, table.items tbody tr.even, table.items tr.odd, table.items tr.even').each((_, row) => {
+    try {
+      const $row = $(row);
+
+      // Skip totals or empty rows
+      const cells = $row.find('td');
+      if (cells.length < 4) return;
+
+      // Name + URL
+      const nameLink = $row.find('td.hauptlink a[href*="/profil/"]').first();
+      const name = nameLink.text().trim();
+      if (!name) return;
+      const href = nameLink.attr('href') || '';
+      const tmUrl = href ? makeAbsoluteUrl(href) : '';
+
+      // Position — from the inner table (posrela) or second column
+      const posText = $row.find('td.posrela table tr:last-child td').text().trim()
+        || $row.find('td:nth-child(2)').text().trim();
+      const position = convertPosition(posText) || posText;
+
+      // Age — In the standard kader view, age is in a zentriert cell.
+      // The jersey number is in td.rn_nummer (first column) or td:first-child.
+      // Collect all zentriert cells that contain just a number.
+      let age: number | null = null;
+      
+      // First try: look for date pattern "Mar 15, 1998 (27)" — age in parentheses
+      cells.each((_, td) => {
+        if (age != null) return;
+        const text = $(td).text().trim();
+        const parenMatch = text.match(/\((\d{1,2})\)\s*$/);
+        if (parenMatch) {
+          const val = parseInt(parenMatch[1], 10);
+          if (val >= 14 && val <= 50) age = val;
+        }
+      });
+
+      // Second try: Get all zentriert cells with just a number, skip the first one (jersey #)
+      if (age == null) {
+        const numericCenteredCells: number[] = [];
+        cells.each((_, td) => {
+          const cls = $(td).attr('class') || '';
+          if (!cls.includes('zentriert')) return;
+          const text = $(td).text().trim();
+          if (/^\d{1,2}$/.test(text)) {
+            numericCenteredCells.push(parseInt(text, 10));
+          }
+        });
+        // If we have multiple numeric zentriert cells, the LAST one is typically age
+        // (first could be jersey number)
+        if (numericCenteredCells.length > 0) {
+          const candidate = numericCenteredCells[numericCenteredCells.length - 1];
+          if (candidate >= 14 && candidate <= 50) age = candidate;
+        }
+      }
+
+      // Nationality — first flag image in the row
+      const natImg = $row.find('td.zentriert img[alt]').first();
+      const nationality = natImg.attr('title') || natImg.attr('alt') || '';
+      const nationalityFlag = makeAbsoluteUrl(
+        (natImg.attr('data-src') || natImg.attr('src') || '').replace('verysmall', 'head').replace('tiny', 'head')
+      );
+
+      // Market value
+      const valueTd = $row.find('td.rechts a, td.rechts').last();
+      const marketValueDisplay = valueTd.text().trim();
+      const marketValue = parseValueToEuros(marketValueDisplay);
+
+      // Contract end — usually in a zentriert cell with a date pattern
+      let contractEnd = '';
+      cells.each((_, td) => {
+        const text = $(td).text().trim();
+        if (/\w{3}\s+\d{1,2},\s+\d{4}/.test(text) || /\d{2}\.\d{2}\.\d{4}/.test(text)) {
+          contractEnd = text;
+        }
+      });
+
+      players.push({ name, position, age, nationality, nationalityFlag, marketValue, marketValueDisplay, contractEnd, tmUrl });
+    } catch {
+      // skip row
+    }
+  });
+
+  return players;
+}
+
+export interface ClubTransfer {
+  playerName: string;
+  age: number | null;
+  position: string;
+  nationality: string;
+  fromClub: string;
+  toClub: string;
+  fee: number;
+  feeDisplay: string;
+  isFree: boolean;
+  isLoan: boolean;
+}
+
+export interface ClubTransferSeason {
+  arrivals: ClubTransfer[];
+  departures: ClubTransfer[];
+}
+
+/**
+ * Scrape a club's transfer arrivals and departures for a given season.
+ * Extracts: player name, fee (free/paid/loan), age, position, from/to club.
+ */
+export async function scrapeClubTransfers(clubTmProfile: string, season?: number): Promise<ClubTransferSeason> {
+  const idMatch = clubTmProfile.match(/verein\/(\d+)/);
+  if (!idMatch) throw new Error('Invalid club TM profile URL');
+  const vereinId = idMatch[1];
+
+  const currentYear = new Date().getFullYear();
+  const seasonYear = season ?? (new Date().getMonth() >= 7 ? currentYear : currentYear - 1);
+  const slug = clubTmProfile.split('.com/')[1]?.split('/')[0] || 'club';
+  const transfersUrl = `${TRANSFERMARKT_BASE}/${slug}/transfers/verein/${vereinId}/saison_id/${seasonYear}`;
+
+  const html = await fetchHtmlWithRetry(transfersUrl);
+  const $ = cheerio.load(html);
+
+  const parseTransferTable = (heading: string): ClubTransfer[] => {
+    const transfers: ClubTransfer[] = [];
+
+    // Find the right box by heading text (Arrivals / Zugänge or Departures / Abgänge)
+    const boxes = $('div.box');
+    let targetBox: cheerio.Cheerio | null = null;
+    boxes.each((_, box) => {
+      const h2 = $(box).find('h2').first().text().toLowerCase();
+      if (h2.includes(heading)) {
+        targetBox = $(box);
+        return false;
+      }
+    });
+    if (!targetBox) return transfers;
+
+    (targetBox as cheerio.Cheerio).find('table.items tbody tr.odd, table.items tbody tr.even').each((_, row) => {
+      try {
+        const $row = $(row);
+        const cells = $row.find('td');
+        if (cells.length < 3) return;
+
+        const nameLink = $row.find('td.hauptlink a').first();
+        const playerName = nameLink.text().trim();
+        if (!playerName) return;
+
+        // Age
+        const ageText = $row.find('td.zentriert').filter((_, td) => /^\d{1,2}$/.test($(td).text().trim())).first().text().trim();
+        const age = ageText ? parseInt(ageText, 10) : null;
+
+        // Position
+        const posText = $row.find('td.posrela table tr:last-child td').text().trim()
+          || $row.find('td:nth-child(2)').text().trim();
+        const position = convertPosition(posText) || posText;
+
+        // Nationality
+        const natImg = $row.find('img[alt]').filter((_, img) => {
+          const cls = $(img).attr('class') || '';
+          return cls.includes('flaggenrahmen') || cls.includes('flag');
+        }).first();
+        const nationality = natImg.attr('title') || natImg.attr('alt') || '';
+
+        // From/To club
+        const clubLinks = $row.find('td.vereinswappen_tooltip, td.no-border-links, td.no-border-rechts').find('a');
+        const fromClub = heading.includes('arrival') || heading.includes('zugäng')
+          ? (clubLinks.last().attr('title') || clubLinks.last().text().trim() || '')
+          : '';
+        const toClub = heading.includes('departure') || heading.includes('abgäng')
+          ? (clubLinks.last().attr('title') || clubLinks.last().text().trim() || '')
+          : '';
+
+        // Fee
+        const feeCell = $row.find('td.rechts a, td.rechts').last();
+        const feeDisplay = feeCell.text().trim();
+        const feeLower = feeDisplay.toLowerCase();
+        const isLoan = feeLower.includes('loan') || feeLower.includes('leihe') || feeLower.includes('leih');
+        const fee = parseFeeToEuros(feeDisplay);
+        // Free = explicitly "free transfer" / "ablösefrei" / "-" / empty / "?" / fee is 0 and not a loan
+        const isFree = !isLoan && (
+          feeLower.includes('free') ||
+          feeLower.includes('ablösefrei') ||
+          feeLower.includes('ablösefre') ||
+          feeLower === '-' ||
+          feeLower === '?' ||
+          feeLower === '0' ||
+          feeLower === '' ||
+          (fee === 0 && feeDisplay.length < 5)
+        );
+
+        transfers.push({ playerName, age, position, nationality, fromClub, toClub, fee, feeDisplay, isFree, isLoan });
+      } catch {
+        // skip row
+      }
+    });
+
+    return transfers;
+  };
+
+  const arrivals = parseTransferTable('arrival');
+  const arrivalsAlt = arrivals.length > 0 ? arrivals : parseTransferTable('zugäng');
+  const departures = parseTransferTable('departure');
+  const departuresAlt = departures.length > 0 ? departures : parseTransferTable('abgäng');
+
+  return {
+    arrivals: arrivalsAlt.length > 0 ? arrivalsAlt : arrivals,
+    departures: departuresAlt.length > 0 ? departuresAlt : departures,
   };
 }

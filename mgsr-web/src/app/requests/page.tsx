@@ -13,11 +13,13 @@ import { getCountryDisplayName } from '@/lib/countryTranslations';
 import { matchRequestToPlayers, type RosterPlayer } from '@/lib/requestMatcher';
 import { findPlayersForRequest, type ScoutPlayerSuggestion } from '@/lib/scoutApi';
 import { getPlayerDetails } from '@/lib/api';
-import { getCurrentAccountForShortlist } from '@/lib/accounts';
+import { getCurrentAccountForShortlist, getAllAccounts } from '@/lib/accounts';
 import { getScreenCache, setScreenCache } from '@/lib/screenCache';
 import { toWhatsAppUrl } from '@/lib/whatsapp';
 import { CLUB_REQUESTS_COLLECTIONS, PLAYERS_COLLECTIONS, SHORTLISTS_COLLECTIONS, FEED_EVENTS_COLLECTIONS } from '@/lib/platformCollections';
 import { subscribePlayersWomen, type WomanPlayer } from '@/lib/playersWomen';
+import ClubIntelPanel from '@/components/ClubIntelPanel';
+import { type ClubIntelligence } from '@/lib/clubIntel';
 import AddRequestSheet from './AddRequestSheet';
 
 interface Request {
@@ -43,6 +45,7 @@ interface Request {
   status?: string;
   euOnly?: boolean;
   createdByAgent?: string;
+  createdByAgentHebrew?: string;
 }
 
 
@@ -177,6 +180,11 @@ export default function RequestsPage() {
   );
   const [shortlistError, setShortlistError] = useState<string | null>(null);
   const [scoutErrorByRequestId, setScoutErrorByRequestId] = useState<Record<string, string>>({});
+  const [clubIntelByClub, setClubIntelByClub] = useState<Record<string, ClubIntelligence>>({});
+  const [clubIntelLoading, setClubIntelLoading] = useState<string | null>(null);
+  const [clubIntelExpandedRequestId, setClubIntelExpandedRequestId] = useState<string | null>(null);
+  const [clubIntelError, setClubIntelError] = useState<Record<string, string>>({});
+  const [agentHebrewMap, setAgentHebrewMap] = useState<Record<string, string>>({});
 
   const isHebrew = lang === 'he';
   const isWomen = platform === 'women';
@@ -186,6 +194,17 @@ export default function RequestsPage() {
   useEffect(() => {
     if (!loading && !user) router.replace('/login');
   }, [user, loading, router]);
+
+  // Load agent English→Hebrew name map from Accounts
+  useEffect(() => {
+    getAllAccounts().then((accounts) => {
+      const map: Record<string, string> = {};
+      for (const a of accounts) {
+        if (a.name && a.hebrewName) map[a.name] = a.hebrewName;
+      }
+      setAgentHebrewMap(map);
+    }).catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (!user) return;
@@ -291,6 +310,29 @@ export default function RequestsPage() {
       else next.add(requestId);
       return next;
     });
+  };
+
+  const fetchClubIntel = async (clubTmProfile: string, requestId: string) => {
+    if (!clubTmProfile) return;
+    // Toggle if already expanded
+    if (clubIntelExpandedRequestId === requestId) {
+      setClubIntelExpandedRequestId(null);
+      return;
+    }
+    setClubIntelLoading(requestId);
+    setClubIntelExpandedRequestId(requestId);
+    setClubIntelError((prev) => ({ ...prev, [clubTmProfile]: '' }));
+    try {
+      const res = await fetch(`/api/club-intel?clubTmProfile=${encodeURIComponent(clubTmProfile)}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      setClubIntelByClub((prev) => ({ ...prev, [clubTmProfile]: data }));
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setClubIntelError((prev) => ({ ...prev, [clubTmProfile]: msg }));
+    } finally {
+      setClubIntelLoading(null);
+    }
   };
 
   const fetchScoutPlayers = async (r: Request) => {
@@ -555,9 +597,16 @@ export default function RequestsPage() {
                                 {getCountryDisplayName(country, isHebrew)}
                               </span>
                               <span className="text-mgsr-muted text-sm">
-                                {reqs.length === 1
-                                  ? t('requests_country_club_one')
-                                  : t('requests_country_clubs').replace('{count}', String(reqs.length))}
+                                {(() => {
+                                  const uniqueClubs = new Set(reqs.map(r => r.clubName || r.clubTmProfile || r.id)).size;
+                                  const clubText = uniqueClubs === 1
+                                    ? t('requests_country_club_one')
+                                    : t('requests_country_clubs').replace('{count}', String(uniqueClubs));
+                                  const reqText = reqs.length === 1
+                                    ? t('requests_country_request_one')
+                                    : t('requests_country_requests').replace('{count}', String(reqs.length));
+                                  return `${clubText} · ${reqText}`;
+                                })()}
                               </span>
                               <span className="flex-1 min-w-4" aria-hidden />
                               <span
@@ -598,11 +647,23 @@ export default function RequestsPage() {
                                           </div>
                                         )}
                                         <div className="flex-1 min-w-0">
-                                          <p className="font-medium text-mgsr-text">{r.clubName || '—'}</p>
+                                          {r.clubTmProfile ? (
+                                            <a
+                                              href={r.clubTmProfile}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              className="font-medium text-mgsr-text hover:text-mgsr-teal transition-colors"
+                                              onClick={(e) => e.stopPropagation()}
+                                            >
+                                              {r.clubName || '—'}
+                                            </a>
+                                          ) : (
+                                            <p className="font-medium text-mgsr-text">{r.clubName || '—'}</p>
+                                          )}
                                           {(r.createdByAgent || r.createdAt) && (
                                             <p className="text-xs text-mgsr-muted mt-0.5">
                                               {r.createdByAgent && (
-                                                <span className="font-medium">{r.createdByAgent}</span>
+                                                <span className="font-medium">{isHebrew ? (r.createdByAgentHebrew || agentHebrewMap[r.createdByAgent || ''] || r.createdByAgent) : r.createdByAgent}</span>
                                               )}
                                               {r.createdByAgent && r.createdAt && <span> · </span>}
                                               {r.createdAt && (
@@ -884,6 +945,42 @@ export default function RequestsPage() {
                                         )}
                                       </div>
                                       )}
+
+                                      {/* Club Intelligence — men only, needs clubTmProfile */}
+                                      {!isWomen && !isYouth && r.clubTmProfile && (() => {
+                                        const clubUrl = r.clubTmProfile!;
+                                        const reqId = r.id!;
+                                        const isLoading = clubIntelLoading === reqId;
+                                        const isExpanded = clubIntelExpandedRequestId === reqId;
+                                        const intel = clubIntelByClub[clubUrl];
+                                        const error = clubIntelError[clubUrl];
+                                        return (
+                                          <div className="border-t border-mgsr-border/50">
+                                            <button
+                                              type="button"
+                                              onClick={() => fetchClubIntel(clubUrl, reqId)}
+                                              disabled={!!clubIntelLoading}
+                                              className="w-full flex items-center gap-3 px-3 py-2.5 text-start hover:bg-mgsr-dark/30 transition disabled:opacity-60"
+                                            >
+                                              <span className="text-sm text-purple-400">{isHebrew ? 'מודיעין על המועדון' : 'Club Intelligence'}</span>
+                                              {isLoading && (
+                                                <span className="shrink-0 w-4 h-4 border-2 border-purple-400 border-t-transparent rounded-full animate-spin" />
+                                              )}
+                                              {intel && !isLoading && (
+                                                <span className="text-xs text-mgsr-muted">{isExpanded ? '▲' : '▼'}</span>
+                                              )}
+                                            </button>
+                                            {isExpanded && !isLoading && (
+                                              <div className="border-t border-mgsr-border/50">
+                                                {error && (
+                                                  <p className="text-sm text-red-400 px-3 py-2">{error}</p>
+                                                )}
+                                                {intel && <ClubIntelPanel data={intel} isHebrew={isHebrew} />}
+                                              </div>
+                                            )}
+                                          </div>
+                                        );
+                                      })()}
                                     </div>
                                   );
                                 })}

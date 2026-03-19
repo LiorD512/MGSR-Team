@@ -162,7 +162,9 @@ export default function AddRequestSheet({ open, onClose, onSaved, clubRequestsCo
         return;
       }
       const createdAt = Date.now();
-      const agentName = user ? (await getCurrentAccountForShortlist(user)).name ?? null : null;
+      const account = user ? await getCurrentAccountForShortlist(user) : null;
+      const agentName = account?.name ?? null;
+      const agentHebrewName = account?.hebrewName ?? null;
       await addDoc(collection(db, clubRequestsCollection), {
         clubTmProfile: (isWomen || isYouth) ? '' : (selectedClub?.clubTmProfile || ''),
         clubName,
@@ -185,6 +187,7 @@ export default function AddRequestSheet({ open, onClose, onSaved, clubRequestsCo
         status: 'pending',
         euOnly: euOnly || false,
         createdByAgent: agentName || '',
+        createdByAgentHebrew: agentHebrewName || '',
       });
       const feedEvent: Record<string, unknown> = {
         type: 'REQUEST_ADDED',
