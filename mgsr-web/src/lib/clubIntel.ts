@@ -325,10 +325,14 @@ async function buildSuccessProfiles(
 
     const investedAmount = a.fee; // 0 for free signings
     const currentWorth = status === 'sold' ? soldFor : currentMarketValue;
-    const valueChange = currentWorth - investedAmount;
-    const valueChangePct = investedAmount > 0
-      ? Math.round((valueChange / investedAmount) * 100)
-      : (currentWorth > 0 ? 100 : 0); // Free signing with value = 100% gain
+    const arrivalMV = a.marketValue; // market value when they arrived
+    // Value change based on market value at arrival vs current worth
+    const valueChange = arrivalMV > 0
+      ? currentWorth - arrivalMV
+      : currentWorth; // if no arrival MV data, just use current worth as gain
+    const valueChangePct = arrivalMV > 0
+      ? Math.round((valueChange / arrivalMV) * 100)
+      : 0;
 
     // Use squad data for position if available (cleaner), otherwise clean the arrival position
     const posFromSquad = inSquad?.position;
