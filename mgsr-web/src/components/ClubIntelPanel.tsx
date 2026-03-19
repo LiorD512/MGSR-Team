@@ -356,24 +356,6 @@ function SuccessProfilesSection({ sp, t, isHebrew }: { sp: SuccessProfileSummary
             </div>
           )}
         </div>
-
-        {/* Financial summary */}
-        <div className="flex gap-4 text-[11px] pt-1.5 border-t border-purple-500/20">
-          <span className="text-mgsr-muted">
-            {profitIsPositive ? t.totalProfit : t.totalLoss}:{' '}
-            <span className={`font-bold ${profitIsPositive ? 'text-emerald-400' : 'text-red-400'}`}>
-              {profitIsPositive ? '+' : '-'}{sp.totalProfitDisplay}
-            </span>
-          </span>
-          {sp.avgROI !== 0 && (
-            <span className="text-mgsr-muted">
-              {t.avgROI}:{' '}
-              <span className={`font-bold ${sp.avgROI >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                {sp.avgROI >= 0 ? '+' : ''}{sp.avgROI}%
-              </span>
-            </span>
-          )}
-        </div>
       </div>
 
       {/* Individual player cards */}
