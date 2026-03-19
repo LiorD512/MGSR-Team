@@ -2812,7 +2812,8 @@ function parseTransferArrivals(html: string, clubName: string | null, clubLogo: 
         previousClub = clubLinks.eq(1).attr('title') || clubLinks.eq(1).text().trim() || null;
       } else if (clubLinks.length === 1) {
         // If only one link, check if the previous cell text contains transfer info
-        const idx = cells.index(clubLinks.eq(0).closest('td')[0]);
+        const closestTd = clubLinks.eq(0).closest('td');
+        const idx = closestTd.length ? cells.index(closestTd) : -1;
         if (idx >= 0 && cells.length > idx) {
           const cellText = $(cells[idx]).text();
           // Look for "Joined from X" or similar patterns
