@@ -3168,6 +3168,7 @@ export interface ClubTransfer {
   feeDisplay: string;
   isFree: boolean;
   isLoan: boolean;
+  tmUrl: string;
 }
 
 export interface ClubTransferSeason {
@@ -3216,6 +3217,8 @@ export async function scrapeClubTransfers(clubTmProfile: string, season?: number
         const nameLink = $row.find('td.hauptlink a').first();
         const playerName = nameLink.text().trim();
         if (!playerName) return;
+        const playerHref = nameLink.attr('href') || '';
+        const tmUrl = playerHref ? makeAbsoluteUrl(playerHref) : '';
 
         // Age
         const ageText = $row.find('td.zentriert').filter((_, td) => /^\d{1,2}$/.test($(td).text().trim())).first().text().trim();
@@ -3260,7 +3263,7 @@ export async function scrapeClubTransfers(clubTmProfile: string, season?: number
           (fee === 0 && feeDisplay.length < 5)
         );
 
-        transfers.push({ playerName, age, position, nationality, fromClub, toClub, fee, feeDisplay, isFree, isLoan });
+        transfers.push({ playerName, age, position, nationality, fromClub, toClub, fee, feeDisplay, isFree, isLoan, tmUrl });
       } catch {
         // skip row
       }

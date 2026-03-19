@@ -353,7 +353,7 @@ async function buildSuccessProfiles(
       assists: 0,
       minutesPlayed: 0,
       status,
-      tmUrl: inSquad?.tmUrl || '',
+      tmUrl: inSquad?.tmUrl || a.tmUrl || '',
     });
   }
 
