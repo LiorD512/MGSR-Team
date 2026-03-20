@@ -295,6 +295,7 @@ export default function PlayerInfoPage() {
   const [savingPhone, setSavingPhone] = useState(false);
   const [confirmDeletePhone, setConfirmDeletePhone] = useState<'agent' | 'player' | null>(null);
   const [showPortfolioLanguageModal, setShowPortfolioLanguageModal] = useState(false);
+  const [portfolioTargetClub, setPortfolioTargetClub] = useState<{ name: string; position?: string; salaryRange?: string; transferFee?: string; dominateFoot?: string } | null>(null);
   const [showSalaryFeeModal, setShowSalaryFeeModal] = useState(false);
   const [includePlayerContact, setIncludePlayerContact] = useState(false);
   const [includeAgencyContact, setIncludeAgencyContact] = useState(false);
@@ -1060,7 +1061,7 @@ export default function PlayerInfoPage() {
   );
 
   const handleAddToPortfolio = useCallback(
-    async (lang: 'he' | 'en') => {
+    async (lang: 'he' | 'en', targetClub?: { name: string; position?: string; salaryRange?: string; transferFee?: string; dominateFoot?: string } | null) => {
       if (!player || !id || !user || addingToPortfolio) return;
       setAddingToPortfolio(true);
       setPortfolioError(null);
@@ -1112,7 +1113,7 @@ export default function PlayerInfoPage() {
         const res = await fetch('/api/share/generate-scout-report', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ player: playerPayload, lang }),
+          body: JSON.stringify({ player: playerPayload, lang, ...(targetClub ? { targetClub: targetClub.name, targetClubRequest: { position: targetClub.position, salaryRange: targetClub.salaryRange, transferFee: targetClub.transferFee, dominateFoot: targetClub.dominateFoot } } : {}) }),
         });
         const json = (await res.json()) as { scoutReport?: string };
         scoutReport = json.scoutReport?.trim() || '';
@@ -1175,6 +1176,8 @@ export default function PlayerInfoPage() {
           highlights: highlightsPayload ?? null,
           lang,
           createdAt: Date.now(),
+          ...(targetClub?.name ? { targetClubName: targetClub.name } : {}),
+          ...(targetClub?.position ? { targetClubPosition: targetClub.position } : {}),
         });
 
         const existingQ = query(
@@ -2684,11 +2687,11 @@ export default function PlayerInfoPage() {
         </div>
       )}
 
-      {/* Portfolio language choice modal */}
+      {/* Portfolio language + club selection modal */}
       {showPortfolioLanguageModal && !addingToPortfolio && (
         <div
           className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
-          onClick={() => setShowPortfolioLanguageModal(false)}
+          onClick={() => { setShowPortfolioLanguageModal(false); setPortfolioTargetClub(null); }}
         >
           <div className="absolute inset-0 bg-black/60" aria-hidden />
           <div
@@ -2697,8 +2700,44 @@ export default function PlayerInfoPage() {
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-lg font-display font-semibold text-mgsr-text mb-2">
-              {isRtl ? 'הכן לפורטפוליו ב' : 'Prepare for portfolio in'}
+              {isRtl ? 'הכן לפורטפוליו' : 'Prepare for Portfolio'}
             </h3>
+
+            {/* Club selection — show matching requests */}
+            {matchingRequests.length > 0 && (
+              <div className="mb-4">
+                <p className="text-sm text-mgsr-muted mb-2">
+                  {isRtl ? 'התאם דוח למועדון ספציפי (אופציונלי):' : 'Tailor report to a specific club (optional):'}
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {matchingRequests.map(({ request }) => {
+                    const r = request as typeof request & { clubName?: string; clubLogo?: string; position?: string };
+                    if (!r.clubName) return null;
+                    const isSelected = portfolioTargetClub?.name === r.clubName;
+                    return (
+                      <button
+                        key={r.id}
+                        type="button"
+                        onClick={() => setPortfolioTargetClub(isSelected ? null : { name: r.clubName!, position: r.position, salaryRange: (r as typeof r & { salaryRange?: string }).salaryRange, transferFee: (r as typeof r & { transferFee?: string }).transferFee, dominateFoot: (r as typeof r & { dominateFoot?: string }).dominateFoot })}                        className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition border ${
+                          isSelected
+                            ? 'bg-mgsr-teal/20 border-mgsr-teal text-mgsr-teal'
+                            : 'bg-mgsr-dark/50 border-mgsr-border text-mgsr-text hover:border-mgsr-teal/40'
+                        }`}
+                      >
+                        {r.clubLogo && (
+                          <img src={r.clubLogo} alt="" className="w-5 h-5 rounded-full object-cover" />
+                        )}
+                        {r.clubName}
+                        {r.position && (
+                          <span className="text-xs text-mgsr-muted">({r.position})</span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             <p className="text-sm text-mgsr-muted mb-4">
               {isRtl
                 ? 'בחר את שפת דוח הסקאוט'
@@ -2709,7 +2748,7 @@ export default function PlayerInfoPage() {
                 type="button"
                 onClick={() => {
                   setShowPortfolioLanguageModal(false);
-                  handleAddToPortfolio('he');
+                  handleAddToPortfolio('he', portfolioTargetClub);
                 }}
                 disabled={addingToPortfolio}
                 className="flex-1 px-4 py-3 rounded-xl bg-mgsr-teal/20 text-mgsr-teal font-medium hover:bg-mgsr-teal/30 disabled:opacity-50"
@@ -2720,7 +2759,7 @@ export default function PlayerInfoPage() {
                 type="button"
                 onClick={() => {
                   setShowPortfolioLanguageModal(false);
-                  handleAddToPortfolio('en');
+                  handleAddToPortfolio('en', portfolioTargetClub);
                 }}
                 disabled={addingToPortfolio}
                 className="flex-1 px-4 py-3 rounded-xl bg-mgsr-teal/20 text-mgsr-teal font-medium hover:bg-mgsr-teal/30 disabled:opacity-50"

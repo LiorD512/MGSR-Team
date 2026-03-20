@@ -212,6 +212,8 @@ export default function PortfolioPage() {
     await deleteDoc(doc(db, portfolioColl, id));
   }, [isRtl, isWomen, isYouth, portfolioColl]);
 
+
+
   if (loading || !user) return null;
 
   return (
@@ -323,6 +325,11 @@ export default function PortfolioPage() {
                         <span className={`inline-block mt-1 px-2 py-0.5 rounded text-xs font-medium ${isYouth ? 'bg-[var(--youth-cyan)]/15 text-[var(--youth-cyan)]' : isWomen ? 'bg-[var(--women-rose)]/15 text-[var(--women-rose)]' : 'bg-mgsr-teal/15 text-mgsr-teal'}`}>
                           {item.lang === 'he' ? t('portfolio_version_hebrew') : t('portfolio_version_english')}
                         </span>
+                        {item.targetClubName && (
+                          <span className="inline-block mt-1 ms-1 px-2 py-0.5 rounded text-xs font-medium bg-amber-500/15 text-amber-400">
+                            {isRtl ? 'עבור' : 'For'} {item.targetClubName}{item.targetClubPosition ? ` — ${item.targetClubPosition}` : ''}
+                          </span>
+                        )}
                         <p className="text-sm text-mgsr-muted mt-0.5">
                           {item.player.positions?.filter(Boolean).join(' • ') ||
                             '—'}
@@ -342,7 +349,7 @@ export default function PortfolioPage() {
 
                     {item.scoutReport && (
                       <p className="mt-4 text-sm text-mgsr-muted line-clamp-3 leading-relaxed">
-                        {item.scoutReport.replace(/^## .+$/gm, '').replace(/\n{2,}/g, ' ').trim()}
+                        {item.scoutReport.replace(/^## .+$/gm, '').replace(/\*{1,3}([^*]+)\*{1,3}/g, '$1').replace(/\n{2,}/g, ' ').trim()}
                       </p>
                     )}
 
@@ -387,7 +394,7 @@ export default function PortfolioPage() {
                             {isRtl ? 'טוען...' : 'Loading...'}
                           </>
                         ) : (
-                          t('portfolio_view')
+                          isRtl ? 'צפה / ערוך' : 'View / Edit'
                         )}
                       </button>
                       {isMine && (

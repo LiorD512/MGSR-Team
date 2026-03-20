@@ -20,6 +20,8 @@ export interface PortfolioItem {
   scoutReport: string;
   highlights?: SharePayload['highlights'];
   lang: 'he' | 'en';
+  targetClubName?: string;
+  targetClubPosition?: string;
 }
 
 export interface PortfolioItemPayload {
@@ -31,4 +33,6 @@ export interface PortfolioItemPayload {
   scoutReport: string;
   highlights?: SharePayload['highlights'];
   lang: 'he' | 'en';
+  targetClubName?: string;
+  targetClubPosition?: string;
 }

@@ -334,8 +334,9 @@ function buildYouthTemplateScoutReport(
 const SCOUT_REPORT_PROMPT = `You are a professional scout presenting a player to clubs. Your job is to showcase the player in the best light — promotional, engaging, data-driven. NO verdict, NO sign/monitor/pass decision. Just present the player attractively.
 
 OUTPUT FORMAT:
-- Structured markdown with ## section headers.
-- Use **bold** for key numbers and standout stats.
+- Use ## for section headers only.
+- Do NOT use ** for bold text — write plain text instead.
+- Do NOT use * for emphasis or italic.
 - ~200–300 words total.
 - Promotional tone: highlight strengths only. Never mention areas to develop, weaknesses, or weak attributes.
 - Never use generic phrases ("works hard", "comfortable on the ball") — always cite specific numbers.
@@ -348,7 +349,7 @@ REQUIRED SECTIONS (use these exact ## headers):
 1–2 sentences. Narrative hook: e.g. "A [nationality] [position] with [key standout trait] who could [value proposition for Ligat Ha'Al]." Start with impact, not "Player X is 24 years old."
 
 ## Key Strengths
-2–4 bullet points. Each must cite specific data: "**2.1** tackles/90", "FM CA **78**", "**X** goals/90". Include playing style if available.
+2–4 bullet points. Each must cite specific data: "2.1 tackles/90", "FM CA 78", "X goals/90". Include playing style if available.
 
 ## Comparable Players
 1–2 sentences. Use the comparable players list: "Statistically similar to players like X (€Y, Club Z) and W (€V, Club U)." If no comparable players, omit this section.
@@ -361,8 +362,8 @@ Use ONLY data from the profile below. Never invent stats. Israeli clubs typicall
 const YOUTH_SCOUT_PROMPT = `You are a professional scout presenting a youth player to clubs. Showcase the player attractively using IFA (Israel Football Association) data. Promotional tone, data-driven. NO verdict. Write in {outputLang}.
 
 OUTPUT FORMAT:
-- Structured markdown with ## section headers.
-- Use **bold** for key numbers (matches, goals, assists).
+- Use ## for section headers only.
+- Do NOT use ** for bold or * for italic — write plain text.
 - ~150–250 words.
 - Use ONLY data from the profile below. Never invent stats.
 
@@ -373,8 +374,8 @@ REQUIRED SECTIONS:
 
 export async function POST(request: NextRequest) {
   try {
-    const body = (await request.json()) as { player: PlayerPayload; lang?: string; platform?: string };
-    const { player, lang = 'en', platform } = body;
+    const body = (await request.json()) as { player: PlayerPayload; lang?: string; platform?: string; targetClub?: string; targetClubRequest?: { position?: string; salaryRange?: string; transferFee?: string; dominateFoot?: string } };
+    const { player, lang = 'en', platform, targetClub, targetClubRequest } = body;
     if (!player) return NextResponse.json({ scoutReport: '' });
 
     const langKey = (lang === 'he' || lang === 'iw' ? 'he' : 'en') as 'he' | 'en';
@@ -426,7 +427,22 @@ export async function POST(request: NextRequest) {
           : buildPlayerContext(player, scoutData);
 
         const promptTemplate = isYouth ? YOUTH_SCOUT_PROMPT : SCOUT_REPORT_PROMPT;
-        const prompt = `${promptTemplate.replace('{outputLang}', outputLang)}
+        const clubContext = targetClub
+          ? `\n\nCLUB-SPECIFIC BRIEF — This report is a sales pitch to ${targetClub}.
+The club is actively searching for a player for the following request:
+${targetClubRequest?.position ? `- Position needed: ${targetClubRequest.position}` : ''}
+${targetClubRequest?.salaryRange ? `- Salary budget: ${targetClubRequest.salaryRange}` : ''}
+${targetClubRequest?.transferFee ? `- Transfer fee budget: ${targetClubRequest.transferFee}` : ''}
+${targetClubRequest?.dominateFoot ? `- Preferred foot: ${targetClubRequest.dominateFoot}` : ''}
+
+INSTRUCTIONS FOR CLUB-TARGETED REPORT:
+1. Executive Summary: Open with a direct pitch to ${targetClub} — e.g. "For ${targetClub}'s search for a ${targetClubRequest?.position || 'new signing'}, [Player] represents..." Frame the player as THE answer to their specific need.
+2. Key Strengths: Emphasize stats and attributes that directly match what ${targetClub} is looking for in this ${targetClubRequest?.position || 'role'}. Connect each strength to the club's need.
+3. Replace "Comparable Players" with "## Why ${targetClub}?" — 2-3 sentences explaining why this player is a strong match: does the player fit the budget? does his profile/position match exactly what they asked for? mention contract situation if favorable.
+4. Tactical Fit: Be specific about how this player slots into ${targetClub}'s squad for the ${targetClubRequest?.position || 'requested'} role. If salary/fee data fits within budget, mention the financial fit.
+Make it feel like a personalized proposal written specifically for ${targetClub}'s sporting director, not a generic scouting report.`
+          : '';
+        const prompt = `${promptTemplate.replace('{outputLang}', outputLang)}${clubContext}
 
 Player profile (ONLY use data below — never invent):
 ${playerContext}`;

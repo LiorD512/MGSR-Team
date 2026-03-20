@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { toWhatsAppUrl } from '@/lib/whatsapp';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import ReactMarkdown from 'react-markdown';
 import type { ShareData } from './types';
@@ -25,9 +26,22 @@ function getScoutReportComponents(isWomen: boolean) {
       <li className="leading-relaxed">{children}</li>
     ),
     strong: ({ children }: { children?: React.ReactNode }) => (
-      <strong className={`font-semibold ${accent}`}>{children}</strong>
+      <span className="font-semibold text-mgsr-text">{children}</span>
     ),
   };
+}
+
+/** Strip ** and ## markdown from text for clean plain-text display */
+function cleanMarkdown(text: string): string {
+  return text
+    .replace(/\*{1,3}([^*]+)\*{1,3}/g, '$1')
+    .replace(/^#+\s*/gm, '')
+    .trim();
+}
+
+/** Strip only ** bold markers, keep ## headers for ReactMarkdown */
+function stripBold(text: string): string {
+  return text.replace(/\*{1,3}([^*]+)\*{1,3}/g, '$1');
 }
 
 function StatCard({ label, value, isWomen }: { label: string; value?: string; isWomen?: boolean }) {
@@ -52,6 +66,109 @@ export default function SharedPlayerContent({
   const [data, setData] = useState<ShareData | null>(initialData);
   const [loading, setLoading] = useState(!initialData);
   const [error, setError] = useState<string | null>(null);
+  const searchParams = useSearchParams();
+  const platformParam = searchParams.get('platform');
+
+  // Scout report editor state (only used when fromPortfolio)
+  const [editedReport, setEditedReport] = useState<string | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [regenerating, setRegenerating] = useState(false);
+  const [sharing, setSharing] = useState(false);
+
+  // Initialize edited report when data loads
+  useEffect(() => {
+    if (fromPortfolio && data?.scoutReport && editedReport === null) {
+      setEditedReport(data.scoutReport);
+    }
+  }, [fromPortfolio, data, editedReport]);
+
+  const splitSections = useCallback((report: string): { title: string; body: string }[] => {
+    const sections: { title: string; body: string }[] = [];
+    const parts = report.split(/^(## .+)$/gm);
+    if (parts[0]?.trim()) sections.push({ title: '', body: parts[0].trim() });
+    for (let i = 1; i < parts.length; i += 2) {
+      sections.push({ title: parts[i]?.replace(/^## /, '').trim() || '', body: parts[i + 1]?.trim() || '' });
+    }
+    return sections;
+  }, []);
+
+  const removeSection = useCallback((idx: number) => {
+    if (!editedReport) return;
+    const sections = splitSections(editedReport);
+    const updated = sections.filter((_, i) => i !== idx)
+      .map((s) => (s.title ? `## ${s.title}\n\n${s.body}` : s.body))
+      .join('\n\n');
+    setEditedReport(updated);
+  }, [editedReport, splitSections]);
+
+  const handleRegenerate = useCallback(async () => {
+    if (regenerating || !data) return;
+    setRegenerating(true);
+    try {
+      const res = await fetch('/api/share/generate-scout-report', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          player: data.player,
+          lang: data.lang ?? 'he',
+          platform: platformParam || data.platform || 'men',
+        }),
+      });
+      if (res.ok) {
+        const { scoutReport } = await res.json();
+        if (scoutReport) setEditedReport(scoutReport);
+      }
+    } catch (e) {
+      console.error('Regenerate failed:', e);
+    } finally {
+      setRegenerating(false);
+    }
+  }, [regenerating, data, platformParam]);
+
+  const handleShareEdited = useCallback(async () => {
+    if (sharing || !data || !editedReport) return;
+    setSharing(true);
+    try {
+      const { createShare } = await import('@/lib/shareApi');
+      const { auth } = await import('@/lib/firebase');
+      const { openWhatsAppShare } = await import('@/lib/whatsapp');
+      const getIdToken = () => auth.currentUser?.getIdToken() ?? Promise.resolve(null);
+      const { url } = await createShare(
+        {
+          playerId: data.playerId,
+          player: data.player,
+          mandateInfo: data.mandateInfo,
+          mandateUrl: data.mandateUrl,
+          sharerPhone: data.sharerPhone,
+          sharerName: data.sharerName,
+          scoutReport: editedReport,
+          highlights: data.highlights,
+          lang: data.lang,
+          platform: (platformParam || data.platform || 'men') as 'men' | 'women' | 'youth',
+        },
+        getIdToken
+      );
+      const useHeb = data.lang === 'he';
+      const displayName = useHeb
+        ? (data.player.fullNameHe || data.player.fullName || '—')
+        : (data.player.fullName || data.player.fullNameHe || '—');
+      const isWom = data.platform === 'women';
+      const brand = isWom ? 'MGSR Women' : 'MGSR';
+      const shareText = useHeb
+        ? `פרופיל חדש נשלח אלייך מ - ${brand}.\n${displayName}\n${url}`
+        : `A new profile sent to you by ${brand}.\n${displayName}\n${url}`;
+      if (url.includes('localhost') && typeof window !== 'undefined') {
+        await navigator.clipboard.writeText(url);
+        alert(useHeb ? 'לינק הועתק!' : 'Link copied!');
+      } else {
+        openWhatsAppShare(shareText);
+      }
+    } catch (e) {
+      console.error('Share edited failed:', e);
+    } finally {
+      setSharing(false);
+    }
+  }, [sharing, data, editedReport, platformParam]);
 
   useEffect(() => {
     if (initialData) return;
@@ -116,7 +233,6 @@ export default function SharedPlayerContent({
         scoutReport: 'דוח סקאוט',
         highlights: 'היילייטס',
         contact: 'איש קשר',
-        contactNote: 'המספר שיוצג בשיתוף הוא מספר הטלפון של הסוכן ששיתף את המסמך.',
         playerContact: isWomen ? 'יצירת קשר עם השחקנית' : 'יצירת קשר עם השחקן',
         agencyContact: 'יצירת קשר עם הסוכנות',
         addToContacts: 'הוסף לרשימת אנשי קשר',
@@ -135,7 +251,6 @@ export default function SharedPlayerContent({
         scoutReport: 'Scout Report',
         highlights: 'Highlights',
         contact: 'Contact',
-        contactNote: 'The phone number shown when sharing is the phone number of the agent who shared the document.',
         playerContact: isWomen ? 'Athlete contact' : 'Player contact',
         agencyContact: 'Agency contact',
         addToContacts: 'Add to contacts',
@@ -305,14 +420,103 @@ export default function SharedPlayerContent({
 
         {data.scoutReport && (
           <div className={`p-5 rounded-xl bg-mgsr-card border mb-8 ${isWomen ? 'border-[var(--women-rose)]/20 shadow-[0_0_30px_rgba(232,160,191,0.05)]' : 'border-mgsr-border'}`}>
-            <h3 className="text-sm font-semibold text-mgsr-muted uppercase tracking-wider mb-4">
-              {labels.scoutReport}
-            </h3>
-            <div className="scout-report-content text-mgsr-text">
-              <ReactMarkdown components={scoutComponents}>
-                {data.scoutReport}
-              </ReactMarkdown>
+            {/* Header with edit controls when from portfolio */}
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-semibold text-mgsr-muted uppercase tracking-wider">
+                {labels.scoutReport}
+              </h3>
+              {fromPortfolio && editedReport !== null && (
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsEditing(!isEditing)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1.5 ${
+                      isEditing
+                        ? (isWomen ? 'bg-[var(--women-rose)]/20 text-[var(--women-rose)]' : 'bg-mgsr-teal/20 text-mgsr-teal')
+                        : 'bg-mgsr-border/50 text-mgsr-muted hover:text-mgsr-text'
+                    }`}
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                    {useHebrew ? (isEditing ? 'סיום עריכה' : 'ערוך') : (isEditing ? 'Done' : 'Edit')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleRegenerate}
+                    disabled={regenerating}
+                    className="px-3 py-1.5 rounded-lg text-xs font-medium bg-mgsr-border/50 text-mgsr-muted hover:text-mgsr-text transition flex items-center gap-1.5 disabled:opacity-50"
+                  >
+                    {regenerating ? (
+                      <div className={`w-3.5 h-3.5 border-2 border-t-transparent rounded-full animate-spin ${isWomen ? 'border-[var(--women-rose)]' : 'border-mgsr-teal'}`} />
+                    ) : (
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
+                    )}
+                    {useHebrew ? 'חדש' : 'Regenerate'}
+                  </button>
+                  {editedReport !== data.scoutReport && (
+                    <button
+                      type="button"
+                      onClick={() => { setEditedReport(data.scoutReport ?? null); setIsEditing(false); }}
+                      className="px-3 py-1.5 rounded-lg text-xs font-medium bg-mgsr-border/50 text-mgsr-muted hover:text-mgsr-text transition flex items-center gap-1.5"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                      </svg>
+                      {useHebrew ? 'איפוס' : 'Reset'}
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
+
+            {/* Content: editor or read-only */}
+            {fromPortfolio && editedReport !== null ? (
+              isEditing ? (
+                <textarea
+                  value={editedReport}
+                  onChange={(e) => setEditedReport(e.target.value)}
+                  className="w-full h-64 p-4 rounded-xl bg-mgsr-dark border border-mgsr-border text-mgsr-text text-sm leading-relaxed resize-y focus:outline-none focus:ring-1 focus:ring-mgsr-teal"
+                  dir={useHebrew ? 'rtl' : 'ltr'}
+                />
+              ) : (
+                <div className="space-y-2">
+                  {splitSections(editedReport).map((section, idx) => (
+                    <div
+                      key={idx}
+                      className="group/section relative rounded-xl bg-mgsr-dark/50 border border-mgsr-border/50 p-3 hover:border-mgsr-border transition"
+                    >
+                      <button
+                        type="button"
+                        onClick={() => removeSection(idx)}
+                        className={`absolute ${useHebrew ? 'left-2' : 'right-2'} top-2 p-1 rounded-lg opacity-0 group-hover/section:opacity-100 text-mgsr-muted hover:text-red-400 hover:bg-red-500/10 transition-all`}
+                        title={useHebrew ? 'הסר קטע' : 'Remove section'}
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                      {section.title && (
+                        <p className={`text-xs font-semibold uppercase tracking-wider mb-1 ${isWomen ? 'text-[var(--women-rose)]' : 'text-mgsr-teal'}`}>
+                          {section.title}
+                        </p>
+                      )}
+                      <p className="text-sm text-mgsr-text/80 leading-relaxed whitespace-pre-line">
+                        {cleanMarkdown(section.body)}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )
+            ) : (
+              <div className="scout-report-content text-mgsr-text">
+                <ReactMarkdown components={scoutComponents}>
+                  {stripBold(data.scoutReport)}
+                </ReactMarkdown>
+              </div>
+            )}
           </div>
         )}
 
@@ -381,9 +585,6 @@ export default function SharedPlayerContent({
             <h3 className="text-sm font-semibold text-mgsr-muted uppercase tracking-wider mb-3">
               {labels.contact}
             </h3>
-            <p className="text-xs text-mgsr-muted mb-2">
-              {labels.contactNote}
-            </p>
             <p className="text-mgsr-text font-medium mb-2">
               {data.sharerName || '—'}
             </p>
@@ -404,10 +605,44 @@ export default function SharedPlayerContent({
           </div>
         )}
 
-        <p className="text-center text-mgsr-muted text-sm mt-12">
+        <p className="text-center text-mgsr-muted text-sm mt-12 mb-24">
           {labels.sharedVia}
         </p>
       </main>
+
+      {/* Floating share bar when editing from portfolio */}
+      {fromPortfolio && editedReport !== null && (
+        <div className={`fixed bottom-0 inset-x-0 z-50 border-t backdrop-blur-xl ${isWomen ? 'border-[var(--women-rose)]/20 bg-mgsr-card/90' : 'border-mgsr-border bg-mgsr-card/90'}`}>
+          <div className="max-w-2xl mx-auto px-6 py-4 flex items-center justify-between gap-4" dir={useHebrew ? 'rtl' : 'ltr'}>
+            <div className="text-sm text-mgsr-muted">
+              {editedReport !== data.scoutReport
+                ? (useHebrew ? '✏️ הדוח שונה — שתף גרסה ערוכה' : '✏️ Report modified — share edited version')
+                : (useHebrew ? 'שתף דוח זה' : 'Share this report')
+              }
+            </div>
+            <button
+              type="button"
+              onClick={handleShareEdited}
+              disabled={sharing}
+              className={`px-5 py-2.5 rounded-xl font-medium disabled:opacity-50 flex items-center gap-2 transition ${isWomen ? 'bg-[var(--women-rose)] text-mgsr-dark hover:opacity-90' : 'bg-mgsr-teal text-mgsr-dark hover:bg-mgsr-teal/90'}`}
+            >
+              {sharing ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-mgsr-dark border-t-transparent rounded-full animate-spin" />
+                  {useHebrew ? 'מכין...' : 'Preparing...'}
+                </>
+              ) : (
+                <>
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+                  </svg>
+                  {useHebrew ? 'שתף ב-WhatsApp' : 'Share via WhatsApp'}
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
