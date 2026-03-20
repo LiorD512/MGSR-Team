@@ -25,6 +25,8 @@ class ScoutApiClient(private val baseUrl: String = DEFAULT_BASE_URL) {
         private const val TAG = "ScoutApiClient"
         // Production server on Render
         const val DEFAULT_BASE_URL = "https://football-scout-server-l38w.onrender.com"
+        // Vercel web app — used for FM intelligence (FMInside blocks Render IPs)
+        private const val VERCEL_BASE_URL = "https://mgsr-team.vercel.app"
         // For local testing (Android emulator → host machine):
         // const val DEFAULT_BASE_URL = "http://10.0.2.2:8123"
     }
@@ -147,26 +149,44 @@ class ScoutApiClient(private val baseUrl: String = DEFAULT_BASE_URL) {
 
     /**
      * Fetch FM Intelligence data for a player.
-     * Calls /fm_intelligence?player_name=...&club=...&age=...
+     * Primary: Vercel web app /api/fminside/player (direct FMInside scraping).
+     * Fallback: Scout server /fm_intelligence (cached DB, currently broken on Render).
      * Returns null if no data is found.
      */
     suspend fun getFmIntelligence(
         playerName: String,
         club: String? = null,
         age: String? = null
-    ): JSONObject? = try {
-        val params = buildList {
-            add("player_name=${encode(playerName)}")
-            club?.takeIf { it.isNotBlank() }?.let { add("club=${encode(it)}") }
-            age?.takeIf { it.isNotBlank() }?.let { add("age=${encode(it)}") }
+    ): JSONObject? {
+        // Primary: Vercel direct FMInside scraping (reliable)
+        try {
+            val params = buildList {
+                add("player_name=${encode(playerName)}")
+                club?.takeIf { it.isNotBlank() }?.let { add("club=${encode(it)}") }
+                age?.takeIf { it.isNotBlank() }?.let { add("age=${encode(it)}") }
+            }
+            val vercelUrl = "$VERCEL_BASE_URL/api/fminside/player?${params.joinToString("&")}"
+            Log.d(TAG, "getFmIntelligence (Vercel): $vercelUrl")
+            val json = fetch(vercelUrl)
+            if (!json.has("error") && json.optInt("ca", 0) > 0) return json
+        } catch (e: Exception) {
+            Log.w(TAG, "getFmIntelligence Vercel failed for $playerName, trying scout server", e)
         }
-        val url = "$baseUrl/fm_intelligence?${params.joinToString("&")}"
-        Log.d(TAG, "getFmIntelligence: $url")
-        val json = fetch(url)
-        if (json.has("error")) null else json
-    } catch (e: Exception) {
-        Log.e(TAG, "getFmIntelligence failed for $playerName", e)
-        null
+        // Fallback: scout server
+        return try {
+            val params = buildList {
+                add("player_name=${encode(playerName)}")
+                club?.takeIf { it.isNotBlank() }?.let { add("club=${encode(it)}") }
+                age?.takeIf { it.isNotBlank() }?.let { add("age=${encode(it)}") }
+            }
+            val url = "$baseUrl/fm_intelligence?${params.joinToString("&")}"
+            Log.d(TAG, "getFmIntelligence (scout): $url")
+            val json = fetch(url)
+            if (json.has("error")) null else json
+        } catch (e: Exception) {
+            Log.e(TAG, "getFmIntelligence failed for $playerName", e)
+            null
+        }
     }
 
     private suspend fun fetch(url: String): JSONObject {
