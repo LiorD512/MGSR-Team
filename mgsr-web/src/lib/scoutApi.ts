@@ -319,13 +319,14 @@ export async function findSimilarPlayers(
 
 /**
  * Fetch full FM intelligence report for a player.
- * Returns dimension scores, position fit heatmap, top/weak attributes.
+ * Tries the scout proxy first, then falls back to FMInside direct scraping.
  */
 export async function getFmIntelligence(
   playerName: string,
   club?: string,
   age?: string
 ): Promise<FmIntelligenceData | null> {
+  // 1. Try scout proxy (which tries scout server → men's endpoint → women's endpoint)
   try {
     let url = `${SCOUT_BASE_URL}/fm-intelligence?player_name=${encodeURIComponent(playerName)}`;
     if (club) url += `&club=${encodeURIComponent(club)}`;
@@ -335,11 +336,47 @@ export async function getFmIntelligence(
       cache: 'no-store',
       signal: AbortSignal.timeout(30000),
     });
-    if (!res.ok) return null;
-    const data = (await res.json()) as FmIntelligenceData;
-    if (data.error) return null;
-    return data;
+    if (res.ok) {
+      const data = (await res.json()) as FmIntelligenceData;
+      if (!data.error && data.ca > 0) return data;
+    }
   } catch {
-    return null;
+    // Fall through
   }
+
+  // 2. Direct fallback: call FMInside women-player endpoint (proven reliable, returns both genders)
+  try {
+    const params = new URLSearchParams();
+    params.set('name', playerName);
+    if (club) params.set('club', club);
+    if (age) params.set('age', age);
+    const res = await fetch(`/api/fminside/women-player?${params.toString()}`, {
+      headers: { Accept: 'application/json' },
+      cache: 'no-store',
+      signal: AbortSignal.timeout(25000),
+    });
+    if (!res.ok) return null;
+    const wData = (await res.json()) as Record<string, unknown>;
+    if (wData.found && typeof wData.ca === 'number' && wData.ca > 0) {
+      return {
+        player_name: String(wData.player_name || playerName),
+        ca: wData.ca as number,
+        pa: (wData.pa as number) || (wData.ca as number),
+        potential_gap: (wData.potential_gap as number) || 0,
+        tier: String(wData.tier || 'unknown'),
+        dimension_scores: (wData.dimension_scores as Record<string, number>) || {},
+        top_attributes: (wData.top_attributes as FmAttribute[]) || [],
+        weak_attributes: (wData.weak_attributes as FmAttribute[]) || [],
+        all_attributes: (wData.all_attributes as Record<string, number>) || {},
+        position_fit: (wData.position_fit as FmPositionFit) || {},
+        best_position: (wData.best_position as { position: string; fit: number }) || { position: '—', fit: 0 },
+        foot: (wData.foot as { left: number; right: number }) || { left: 0, right: 0 },
+        height_cm: (wData.height_cm as number) || 0,
+      };
+    }
+  } catch {
+    // Fall through
+  }
+
+  return null;
 }

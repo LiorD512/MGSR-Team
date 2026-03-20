@@ -73,34 +73,7 @@ interface SearchHit {
   score: number;
 }
 
-/* ─── FMInside AJAX search (men, gender=1) ───────────────────────── */
-
-function toCookieHeader(setCookie: string | string[] | null): string {
-  if (!setCookie) return '';
-  const list = Array.isArray(setCookie) ? setCookie : [setCookie];
-  const pairs: string[] = [];
-  for (const raw of list) {
-    const s = typeof raw === 'string' ? raw : '';
-    for (const part of s.split(/,\s*(?=[\w-]+=)/)) {
-      const nameValue = part.split(';')[0].trim();
-      if (nameValue) pairs.push(nameValue);
-    }
-  }
-  return pairs.join('; ');
-}
-
-function mergeCookies(...parts: string[]): string {
-  const map = new Map<string, string>();
-  for (const part of parts) {
-    for (const pair of part.split(';').map((s) => s.trim())) {
-      const eq = pair.indexOf('=');
-      if (eq > 0 && !['path', 'domain', 'expires', 'max-age', 'secure', 'httponly', 'samesite'].includes(pair.slice(0, eq).toLowerCase())) {
-        map.set(pair.slice(0, eq), pair.slice(eq + 1));
-      }
-    }
-  }
-  return Array.from(map.entries()).map(([k, v]) => `${k}=${v}`).join('; ');
-}
+/* ─── FMInside AJAX search (men, gender=-1 Both) ─────────────────── */
 
 const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
 const BASE_HEADERS: Record<string, string> = {
@@ -127,13 +100,49 @@ async function searchFmInsideMen(
     redirect: 'follow',
   });
   if (!initRes.ok) return null;
-  const initCookies = toCookieHeader(initRes.headers.get('set-cookie'));
 
-  // Step 2: POST search filter — gender=1 for Men
+  // Cookie handling: parse Set-Cookie into a single header.
+  // Must use getSetCookie() when available (Node 20+/Vercel) to handle
+  // multiple Set-Cookie headers that get merged into one by .get().
+  function parseCookies(res: Response): string {
+    const h = res.headers as Headers & { getSetCookie?: () => string[] };
+    const raw = typeof h.getSetCookie === 'function'
+      ? h.getSetCookie()
+      : [res.headers.get('set-cookie') || ''];
+    const pairs: string[] = [];
+    for (const s of raw) {
+      if (!s) continue;
+      for (const part of s.split(/,\s*(?=[A-Za-z_\-]+=)/)) {
+        const nv = part.split(';')[0].trim();
+        if (nv && nv.includes('=')) pairs.push(nv);
+      }
+    }
+    return pairs.join('; ');
+  }
+  function merge(...parts: string[]): string {
+    const map = new Map<string, string>();
+    for (const part of parts) {
+      for (const pair of part.split(';').map((s) => s.trim()).filter(Boolean)) {
+        const eq = pair.indexOf('=');
+        if (eq > 0) {
+          const key = pair.slice(0, eq).toLowerCase();
+          if (!['path', 'domain', 'expires', 'max-age', 'secure', 'httponly', 'samesite'].includes(key)) {
+            map.set(pair.slice(0, eq), pair.slice(eq + 1));
+          }
+        }
+      }
+    }
+    return Array.from(map.entries()).map(([k, v]) => `${k}=${v}`).join('; ');
+  }
+
+  const initCookies = parseCookies(initRes);
+
+  // Step 2: POST search filter — use gender=-1 (Both) which is the FMInside default.
+  // This ensures men's players are included regardless of server-side filter state.
   const filterBody = new URLSearchParams({
     page: 'players',
     database_version: '7',
-    gender: '1',
+    gender: '-1',
     name: searchName,
   });
   const updateRes = await fetch(`${FMINSIDE_BASE}/resources/inc/ajax/update_filter.php`, {
@@ -150,12 +159,8 @@ async function searchFmInsideMen(
     signal: AbortSignal.timeout(10000),
   });
 
-  const headers = updateRes.headers as Headers & { getSetCookie?: () => string[] };
-  const updateSetCookie = typeof headers.getSetCookie === 'function' ? headers.getSetCookie() : null;
-  const updateCookies = updateSetCookie?.length
-    ? toCookieHeader(updateSetCookie)
-    : toCookieHeader(updateRes.headers.get('set-cookie'));
-  const finalCookie = mergeCookies(initCookies, updateCookies);
+  const updateCookies = parseCookies(updateRes);
+  const finalCookie = merge(initCookies, updateCookies);
 
   // Step 3: GET filtered results
   const tableRes = await fetch(

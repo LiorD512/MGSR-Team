@@ -149,8 +149,9 @@ class ScoutApiClient(private val baseUrl: String = DEFAULT_BASE_URL) {
 
     /**
      * Fetch FM Intelligence data for a player.
-     * Primary: Vercel web app /api/fminside/player (direct FMInside scraping).
-     * Fallback: Scout server /fm_intelligence (cached DB, currently broken on Render).
+     * Primary: Vercel /api/fminside/women-player (proven reliable, returns both genders).
+     * Fallback 1: Vercel /api/fminside/player (men's dedicated endpoint).
+     * Fallback 2: Scout server /fm_intelligence (cached DB).
      * Returns null if no data is found.
      */
     suspend fun getFmIntelligence(
@@ -158,7 +159,24 @@ class ScoutApiClient(private val baseUrl: String = DEFAULT_BASE_URL) {
         club: String? = null,
         age: String? = null
     ): JSONObject? {
-        // Primary: Vercel direct FMInside scraping (reliable)
+        // Primary: women-player endpoint (works for both genders, proven on Vercel)
+        try {
+            val params = buildList {
+                add("name=${encode(playerName)}")
+                club?.takeIf { it.isNotBlank() }?.let { add("club=${encode(it)}") }
+                age?.takeIf { it.isNotBlank() }?.let { add("age=${encode(it)}") }
+            }
+            val womenUrl = "$VERCEL_BASE_URL/api/fminside/women-player?${params.joinToString("&")}"
+            Log.d(TAG, "getFmIntelligence (women-player): $womenUrl")
+            val json = fetch(womenUrl)
+            if (json.optBoolean("found", false) && json.optInt("ca", 0) > 0) {
+                // Normalize to expected FM intelligence format
+                return json
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "getFmIntelligence women-player failed for $playerName", e)
+        }
+        // Fallback 1: men's dedicated endpoint
         try {
             val params = buildList {
                 add("player_name=${encode(playerName)}")
@@ -166,13 +184,13 @@ class ScoutApiClient(private val baseUrl: String = DEFAULT_BASE_URL) {
                 age?.takeIf { it.isNotBlank() }?.let { add("age=${encode(it)}") }
             }
             val vercelUrl = "$VERCEL_BASE_URL/api/fminside/player?${params.joinToString("&")}"
-            Log.d(TAG, "getFmIntelligence (Vercel): $vercelUrl")
+            Log.d(TAG, "getFmIntelligence (player): $vercelUrl")
             val json = fetch(vercelUrl)
             if (!json.has("error") && json.optInt("ca", 0) > 0) return json
         } catch (e: Exception) {
-            Log.w(TAG, "getFmIntelligence Vercel failed for $playerName, trying scout server", e)
+            Log.w(TAG, "getFmIntelligence player endpoint failed for $playerName", e)
         }
-        // Fallback: scout server
+        // Fallback 2: scout server
         return try {
             val params = buildList {
                 add("player_name=${encode(playerName)}")
