@@ -1,68 +1,61 @@
 {
   "windows": [
     {
-      "countryName": "Bolivia",
-      "countryCode": "bo",
-      "flagUrl": "https://tmssl.akamaized.net/images/flagge/originals/23.png",
-      "confederation": "CONMEBOL",
-      "daysLeft": 0
-    },
-    {
       "countryName": "Sweden",
       "countryCode": "se",
       "flagUrl": "https://tmssl.akamaized.net/images/flagge/originals/147.png",
       "confederation": "UEFA",
-      "daysLeft": 7
+      "daysLeft": 6
     },
     {
       "countryName": "United States",
       "countryCode": "us",
       "flagUrl": "https://tmssl.akamaized.net/images/flagge/originals/184.png",
       "confederation": "CONCACAF",
-      "daysLeft": 7
+      "daysLeft": 6
     },
     {
       "countryName": "Korea, South",
       "countryCode": "kr",
       "flagUrl": "https://tmssl.akamaized.net/images/flagge/originals/87.png",
       "confederation": "AFC",
-      "daysLeft": 8
+      "daysLeft": 7
     },
     {
       "countryName": "Ecuador",
       "countryCode": "ec",
       "flagUrl": "https://tmssl.akamaized.net/images/flagge/originals/44.png",
       "confederation": "CONMEBOL",
-      "daysLeft": 10
+      "daysLeft": 9
     },
     {
       "countryName": "Norway",
       "countryCode": "no",
       "flagUrl": "https://tmssl.akamaized.net/images/flagge/originals/125.png",
       "confederation": "UEFA",
-      "daysLeft": 13
+      "daysLeft": 12
     },
     {
       "countryName": "Kazakhstan",
       "countryCode": "kz",
       "flagUrl": "https://tmssl.akamaized.net/images/flagge/originals/81.png",
       "confederation": "UEFA",
-      "daysLeft": 16
+      "daysLeft": 15
     },
     {
       "countryName": "Japan",
       "countryCode": "jp",
       "flagUrl": "https://tmssl.akamaized.net/images/flagge/originals/77.png",
       "confederation": "AFC",
-      "daysLeft": 21
+      "daysLeft": 20
     },
     {
       "countryName": "Canada",
       "countryCode": "ca",
       "flagUrl": "https://tmssl.akamaized.net/images/flagge/originals/80.png",
       "confederation": "CONCACAF",
-      "daysLeft": 29
+      "daysLeft": 28
     }
   ],
-  "updatedAt": "2026-03-19T08:32:18.567Z"
+  "updatedAt": "2026-03-20T08:31:24.501Z"
 }
