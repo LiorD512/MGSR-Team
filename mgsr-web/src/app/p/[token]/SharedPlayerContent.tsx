@@ -199,9 +199,9 @@ export default function SharedPlayerContent({
     return (
       <div className="min-h-screen bg-mgsr-dark flex flex-col items-center justify-center p-6">
         <p className="text-mgsr-muted text-lg mb-6">{error}</p>
-        <Link href="/" className="text-mgsr-teal hover:underline">
+        <span className="text-mgsr-teal">
           MGSR Team
-        </Link>
+        </span>
       </div>
     );
   }
@@ -334,11 +334,11 @@ export default function SharedPlayerContent({
   return (
     <div className="min-h-screen bg-mgsr-dark" dir={useHebrew ? 'rtl' : 'ltr'}>
       <header className={`border-b px-4 py-3 flex items-center justify-between gap-4 ${isWomen ? 'border-[var(--women-rose)]/20 bg-mgsr-card/50' : 'border-mgsr-border bg-mgsr-card/50'}`}>
-        <Link
-          href={fromPortfolio ? (isWomen ? '/portfolio?platform=women' : '/portfolio') : '/'}
-          className={`inline-flex items-center gap-2 ${accentLink}`}
-        >
-          {fromPortfolio && (
+        {fromPortfolio ? (
+          <Link
+            href={isWomen ? '/portfolio?platform=women' : '/portfolio'}
+            className={`inline-flex items-center gap-2 ${accentLink}`}
+          >
             <svg
               className={`w-5 h-5 shrink-0 ${useHebrew ? 'scale-x-[-1]' : ''}`}
               fill="none"
@@ -347,12 +347,19 @@ export default function SharedPlayerContent({
             >
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
-          )}
-          <img src="/logo.svg" alt="" className="w-8 h-8" />
-          <span className="font-bold font-display">
-            {fromPortfolio ? (useHebrew ? 'חזרה לפורטפוליו' : 'Back to Portfolio') : (isWomen ? 'MGSR Women' : 'MGSR Team')}
-          </span>
-        </Link>
+            <img src="/logo.svg" alt="" className="w-8 h-8" />
+            <span className="font-bold font-display">
+              {useHebrew ? 'חזרה לפורטפוליו' : 'Back to Portfolio'}
+            </span>
+          </Link>
+        ) : (
+          <div className="inline-flex items-center gap-2">
+            <img src="/logo.svg" alt="" className="w-8 h-8" />
+            <span className={`font-bold font-display ${isWomen ? 'text-[var(--women-rose)]' : 'text-mgsr-teal'}`}>
+              {isWomen ? 'MGSR Women' : 'MGSR Team'}
+            </span>
+          </div>
+        )}
       </header>
 
       <main className="max-w-2xl mx-auto p-6">
