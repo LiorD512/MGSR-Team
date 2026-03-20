@@ -14,8 +14,8 @@ android {
         applicationId = "com.liordahan.mgsrteam"
         minSdk = 28
         targetSdk = 36
-        versionCode = 29
-        versionName = "1.3.0"
+        versionCode = 30
+        versionName = "1.3.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
