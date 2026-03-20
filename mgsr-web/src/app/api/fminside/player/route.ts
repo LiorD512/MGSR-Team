@@ -446,11 +446,11 @@ async function fetchPlayerDetail(url: string, expectedName?: string) {
 
 function classifyTier(ca: number): string {
   if (ca <= 0) return 'unknown';
-  if (ca >= 180) return 'world_class';
-  if (ca >= 160) return 'elite';
-  if (ca >= 140) return 'top_league';
-  if (ca >= 120) return 'solid_pro';
-  if (ca >= 100) return 'lower_league';
+  if (ca >= 90) return 'world_class';
+  if (ca >= 80) return 'elite';
+  if (ca >= 70) return 'top_league';
+  if (ca >= 60) return 'solid_pro';
+  if (ca >= 50) return 'lower_league';
   return 'prospect';
 }
 
