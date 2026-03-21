@@ -709,6 +709,17 @@
     <string name="mandate_no_leagues_hint">לא נוספו ליגות עדיין.\nלחץ על הכפתור למעלה להוספת מדינות או מועדונים.</string>
     <string name="mandate_worldwide">עולמי</string>
     <string name="mandate_worldwide_desc">הייפוי כוח תקף לכל המדינות והליגות</string>
+    <string name="mandate_with_origin_agent">עם סוכן מקור של השחקן</string>
+    <string name="mandate_with_origin_agent_desc">לשחקן כבר יש סוכן קיים</string>
+    <string name="mandate_origin_agent_name">שם הסוכן</string>
+    <string name="mandate_origin_agent_name_hint">הזן שם מלא של סוכן המקור</string>
+    <string name="mandate_origin_agent_id_type">סוג זיהוי</string>
+    <string name="mandate_origin_fifa_license">רישיון FIFA</string>
+    <string name="mandate_origin_passport">דרכון</string>
+    <string name="mandate_origin_license_number">מספר רישיון FIFA</string>
+    <string name="mandate_origin_passport_number">מספר דרכון</string>
+    <string name="mandate_origin_passport_hint">הזן מספר דרכון</string>
+    <string name="mandate_origin_agent_title">סוכן מקור של השחקן</string>
     <string name="mandate_hint_select_agent">בחר סוכן כדי להמשיך</string>
     <string name="mandate_hint_date_and_leagues">הגדר תאריך תפוגה והוסף לפחות ליגה אחת</string>
     <string name="mandate_hint_select_date">בחר תאריך תפוגה כדי להמשיך</string>

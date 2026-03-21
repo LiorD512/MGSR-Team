@@ -158,6 +158,10 @@ fun GenerateMandateScreen(
     val isCreatingSigning by mandateViewModel.isCreatingSigning.collectAsStateWithLifecycle()
     val signingUrl by mandateViewModel.signingUrl.collectAsStateWithLifecycle()
     val isWorldWide by mandateViewModel.isWorldWide.collectAsStateWithLifecycle()
+    val withOriginAgent by mandateViewModel.withOriginAgent.collectAsStateWithLifecycle()
+    val originAgentName by mandateViewModel.originAgentName.collectAsStateWithLifecycle()
+    val originAgentUseLicense by mandateViewModel.originAgentUseLicense.collectAsStateWithLifecycle()
+    val originAgentId by mandateViewModel.originAgentId.collectAsStateWithLifecycle()
 
     val validLeagues = remember(
         mandateViewModel.countryOnly.collectAsStateWithLifecycle().value,
@@ -257,7 +261,15 @@ fun GenerateMandateScreen(
                             isLoading = isLoadingAgents,
                             agents = agentsWithFifaLicense,
                             selectedAgent = selectedAgent,
-                            onSelectAgent = { mandateViewModel.setSelectedAgent(it) }
+                            onSelectAgent = { mandateViewModel.setSelectedAgent(it) },
+                            withOriginAgent = withOriginAgent,
+                            onWithOriginAgentChange = { mandateViewModel.setWithOriginAgent(it) },
+                            originAgentName = originAgentName,
+                            onOriginAgentNameChange = { mandateViewModel.setOriginAgentName(it) },
+                            originAgentUseLicense = originAgentUseLicense,
+                            onOriginAgentUseLicenseChange = { mandateViewModel.setOriginAgentUseLicense(it) },
+                            originAgentId = originAgentId,
+                            onOriginAgentIdChange = { mandateViewModel.setOriginAgentId(it) }
                         )
                         1 -> MandateStep2ValidityContent(
                             expiryDate = expiryDate,
@@ -282,6 +294,10 @@ fun GenerateMandateScreen(
                             selectedAgent = selectedAgent,
                             expiryDate = expiryDate,
                             validLeagues = validLeagues,
+                            withOriginAgent = withOriginAgent,
+                            originAgentName = originAgentName,
+                            originAgentUseLicense = originAgentUseLicense,
+                            originAgentId = originAgentId,
                             onEditAgent = { mandateViewModel.editAgent() },
                             onEditValidity = { mandateViewModel.editValidity() }
                         )
@@ -372,7 +388,12 @@ fun GenerateMandateScreen(
                                             expiryDate = expiryDate!!,
                                             validLeagues = validLeagues,
                                             agentName = agentName,
-                                            fifaLicenseId = fifaLicenseId
+                                            fifaLicenseId = fifaLicenseId,
+                                            originAgentName = if (withOriginAgent) originAgentName.ifBlank { null } else null,
+                                            originAgentIdLabel = if (withOriginAgent) {
+                                                if (originAgentUseLicense) "FIFA License" else "passport number"
+                                            } else null,
+                                            originAgentId = if (withOriginAgent) originAgentId.ifBlank { null } else null
                                         )
                                         MandatePdfGenerator.generatePdf(data, file, context)
                                     }
@@ -471,6 +492,11 @@ fun GenerateMandateScreen(
                                             "validLeagues" to validLeagues,
                                             "agentName" to agentName,
                                             "fifaLicenseId" to fifaLicenseId,
+                                            "originAgentName" to if (withOriginAgent) originAgentName.ifBlank { null } else null,
+                                            "originAgentIdLabel" to if (withOriginAgent) {
+                                                if (originAgentUseLicense) "FIFA License" else "passport number"
+                                            } else null,
+                                            "originAgentId" to if (withOriginAgent) originAgentId.ifBlank { null } else null,
                                             "agentAccountId" to agentAccountId,
                                             "playerId" to playerId,
                                             "playerName" to playerFullName,
@@ -708,7 +734,15 @@ private fun MandateStep1AgentContent(
     isLoading: Boolean,
     agents: List<Account>,
     selectedAgent: Account?,
-    onSelectAgent: (Account) -> Unit
+    onSelectAgent: (Account) -> Unit,
+    withOriginAgent: Boolean,
+    onWithOriginAgentChange: (Boolean) -> Unit,
+    originAgentName: String,
+    onOriginAgentNameChange: (String) -> Unit,
+    originAgentUseLicense: Boolean,
+    onOriginAgentUseLicenseChange: (Boolean) -> Unit,
+    originAgentId: String,
+    onOriginAgentIdChange: (String) -> Unit
 ) {
     val context = LocalContext.current
     Column(
@@ -801,6 +835,163 @@ private fun MandateStep1AgentContent(
                     }
                 }
             }
+        }
+
+        // ── Origin Agent Section ──
+        Spacer(Modifier.height(24.dp))
+        HorizontalDivider(color = HomeDarkCardBorder)
+        Spacer(Modifier.height(16.dp))
+
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onWithOriginAgentChange(!withOriginAgent) },
+            shape = RoundedCornerShape(14.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = if (withOriginAgent) HomeTealAccent.copy(alpha = 0.12f) else HomeDarkCard
+            ),
+            border = BorderStroke(
+                1.dp,
+                if (withOriginAgent) HomeTealAccent.copy(alpha = 0.5f) else HomeDarkCardBorder
+            )
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(14.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Switch(
+                    checked = withOriginAgent,
+                    onCheckedChange = { onWithOriginAgentChange(it) },
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = HomeDarkBackground,
+                        checkedTrackColor = HomeTealAccent,
+                        uncheckedThumbColor = HomeTextSecondary,
+                        uncheckedTrackColor = HomeDarkCardBorder
+                    )
+                )
+                Spacer(Modifier.width(12.dp))
+                Column {
+                    Text(
+                        text = stringResource(R.string.mandate_with_origin_agent),
+                        style = boldTextStyle(
+                            if (withOriginAgent) HomeTealAccent else HomeTextPrimary,
+                            15.sp
+                        )
+                    )
+                    Text(
+                        text = stringResource(R.string.mandate_with_origin_agent_desc),
+                        style = regularTextStyle(HomeTextSecondary, 12.sp)
+                    )
+                }
+            }
+        }
+
+        if (withOriginAgent) {
+            Spacer(Modifier.height(16.dp))
+
+            // Origin agent name
+            Text(
+                text = stringResource(R.string.mandate_origin_agent_name),
+                style = boldTextStyle(HomeTextSecondary, 12.sp),
+                modifier = Modifier.padding(bottom = 6.dp)
+            )
+            OutlinedTextField(
+                value = originAgentName,
+                onValueChange = onOriginAgentNameChange,
+                modifier = Modifier.fillMaxWidth(),
+                placeholder = {
+                    Text(
+                        stringResource(R.string.mandate_origin_agent_name_hint),
+                        style = regularTextStyle(HomeTextSecondary, 14.sp)
+                    )
+                },
+                shape = RoundedCornerShape(12.dp),
+                textStyle = regularTextStyle(HomeTextPrimary, 14.sp),
+                singleLine = true
+            )
+
+            Spacer(Modifier.height(16.dp))
+
+            // ID type toggle: FIFA License vs Passport
+            Text(
+                text = stringResource(R.string.mandate_origin_agent_id_type),
+                style = boldTextStyle(HomeTextSecondary, 12.sp),
+                modifier = Modifier.padding(bottom = 6.dp)
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                listOf(true, false).forEach { isLicense ->
+                    val selected = originAgentUseLicense == isLicense
+                    Card(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickable { onOriginAgentUseLicenseChange(isLicense) },
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = if (selected) HomeTealAccent.copy(alpha = 0.15f) else HomeDarkCard
+                        ),
+                        border = BorderStroke(
+                            if (selected) 2.dp else 1.dp,
+                            if (selected) HomeTealAccent else HomeDarkCardBorder
+                        )
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            RadioButton(
+                                selected = selected,
+                                onClick = { onOriginAgentUseLicenseChange(isLicense) },
+                                colors = RadioButtonDefaults.colors(
+                                    selectedColor = HomeTealAccent,
+                                    unselectedColor = HomeTextSecondary
+                                ),
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(Modifier.width(6.dp))
+                            Text(
+                                text = if (isLicense) stringResource(R.string.mandate_origin_fifa_license)
+                                       else stringResource(R.string.mandate_origin_passport),
+                                style = boldTextStyle(
+                                    if (selected) HomeTealAccent else HomeTextPrimary,
+                                    13.sp
+                                )
+                            )
+                        }
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(12.dp))
+
+            // ID number input
+            Text(
+                text = if (originAgentUseLicense) stringResource(R.string.mandate_origin_license_number)
+                       else stringResource(R.string.mandate_origin_passport_number),
+                style = boldTextStyle(HomeTextSecondary, 12.sp),
+                modifier = Modifier.padding(bottom = 6.dp)
+            )
+            OutlinedTextField(
+                value = originAgentId,
+                onValueChange = onOriginAgentIdChange,
+                modifier = Modifier.fillMaxWidth(),
+                placeholder = {
+                    Text(
+                        if (originAgentUseLicense) "XXXXXX-XXXX" else stringResource(R.string.mandate_origin_passport_hint),
+                        style = regularTextStyle(HomeTextSecondary, 14.sp)
+                    )
+                },
+                shape = RoundedCornerShape(12.dp),
+                textStyle = regularTextStyle(HomeTextPrimary, 14.sp),
+                singleLine = true
+            )
         }
     }
 }
@@ -1129,6 +1320,10 @@ private fun MandateStep3ReviewContent(
     selectedAgent: Account?,
     expiryDate: Date?,
     validLeagues: List<String>,
+    withOriginAgent: Boolean,
+    originAgentName: String,
+    originAgentUseLicense: Boolean,
+    originAgentId: String,
     onEditAgent: () -> Unit,
     onEditValidity: () -> Unit
 ) {
@@ -1179,6 +1374,23 @@ private fun MandateStep3ReviewContent(
                 stringResource(R.string.mandate_review_fifa_id),
                 selectedAgent?.fifaLicenseId ?: "—"
             )
+        }
+
+        // Origin agent card (if applicable)
+        if (withOriginAgent && originAgentName.isNotBlank()) {
+            Spacer(Modifier.height(12.dp))
+            ReviewCard(
+                icon = Icons.Default.Person,
+                title = stringResource(R.string.mandate_origin_agent_title),
+                onEdit = onEditAgent
+            ) {
+                ReviewRow(stringResource(R.string.mandate_origin_agent_name), originAgentName)
+                ReviewRow(
+                    if (originAgentUseLicense) stringResource(R.string.mandate_origin_fifa_license)
+                    else stringResource(R.string.mandate_origin_passport),
+                    originAgentId
+                )
+            }
         }
 
         Spacer(Modifier.height(12.dp))

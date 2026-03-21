@@ -190,7 +190,9 @@ fun BirthdaysSection(
 
     val context = LocalContext.current
     var showUpcoming by remember { mutableStateOf(false) }
-    val sentWishes = remember { mutableStateOf(setOf<String>()) }
+    val prefs = remember { context.getSharedPreferences("birthday_wishes", Context.MODE_PRIVATE) }
+    val prefsKey = "sent_${java.util.Calendar.getInstance().get(java.util.Calendar.YEAR)}"
+    val sentWishes = remember { mutableStateOf(prefs.getStringSet(prefsKey, emptySet()) ?: emptySet()) }
 
     val accent = platform.accent
     val cardBg = HomeDarkCard
@@ -250,7 +252,9 @@ fun BirthdaysSection(
                     isSent = player.id in sentWishes.value,
                     onSendWishes = {
                         sendBirthdayWishes(context, player, senderName)
-                        sentWishes.value = sentWishes.value + player.id
+                        val updated = sentWishes.value + player.id
+                        sentWishes.value = updated
+                        prefs.edit().putStringSet(prefsKey, updated.toSet()).apply()
                     }
                 )
                 Spacer(Modifier.height(6.dp))

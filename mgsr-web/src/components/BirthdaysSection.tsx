@@ -74,7 +74,13 @@ export default function BirthdaysSection({ menPlayers = [], womenPlayers, youthP
   const { t, isRtl } = useLanguage();
   const { isWomen, isYouth } = usePlatform();
   const [showUpcoming, setShowUpcoming] = useState(false);
-  const [sentWishes, setSentWishes] = useState<Set<string>>(new Set());
+  const storageKey = `birthday_wishes_sent_${new Date().getFullYear()}`;
+  const [sentWishes, setSentWishes] = useState<Set<string>>(() => {
+    try {
+      const stored = localStorage.getItem(storageKey);
+      return stored ? new Set(JSON.parse(stored) as string[]) : new Set();
+    } catch { return new Set(); }
+  });
 
   const { todayBirthdays, upcomingBirthdays } = useMemo(() => {
     const all: BirthdayPlayer[] = [];
@@ -160,7 +166,11 @@ export default function BirthdaysSection({ menPlayers = [], womenPlayers, youthP
   const sendWishes = (player: BirthdayPlayer) => {
     const msg = `Happy Birthday ${firstName(player.fullName)}!\nWishing you a wonderful year ahead, full of success on and off the pitch!\n${userNameEn}`;
     openWhatsAppWithMessage(player.phone, msg);
-    setSentWishes(prev => new Set(prev).add(player.id));
+    setSentWishes(prev => {
+      const next = new Set(prev).add(player.id);
+      try { localStorage.setItem(storageKey, JSON.stringify(Array.from(next))); } catch {}
+      return next;
+    });
   };
 
   const accentColor = isYouth ? 'var(--youth-cyan)' : isWomen ? 'var(--women-rose)' : 'var(--mgsr-accent)';

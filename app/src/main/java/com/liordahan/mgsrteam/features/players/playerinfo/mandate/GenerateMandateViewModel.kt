@@ -57,6 +57,37 @@ class GenerateMandateViewModel : ViewModel() {
         _selectedAgent.value = agent
     }
 
+    // ── Origin agent (player already has an agent) ──
+
+    private val _withOriginAgent = MutableStateFlow(false)
+    val withOriginAgent: StateFlow<Boolean> = _withOriginAgent.asStateFlow()
+
+    private val _originAgentName = MutableStateFlow("")
+    val originAgentName: StateFlow<String> = _originAgentName.asStateFlow()
+
+    /** true = FIFA License, false = Passport */
+    private val _originAgentUseLicense = MutableStateFlow(true)
+    val originAgentUseLicense: StateFlow<Boolean> = _originAgentUseLicense.asStateFlow()
+
+    private val _originAgentId = MutableStateFlow("")
+    val originAgentId: StateFlow<String> = _originAgentId.asStateFlow()
+
+    fun setWithOriginAgent(with: Boolean) {
+        _withOriginAgent.value = with
+        if (!with) {
+            _originAgentName.value = ""
+            _originAgentUseLicense.value = true
+            _originAgentId.value = ""
+        }
+    }
+
+    fun setOriginAgentName(name: String) { _originAgentName.value = name }
+    fun setOriginAgentUseLicense(useLicense: Boolean) {
+        _originAgentUseLicense.value = useLicense
+        _originAgentId.value = ""
+    }
+    fun setOriginAgentId(id: String) { _originAgentId.value = id }
+
     // ── Step 2: Validity (date + leagues) ──
 
     private val _expiryDate = MutableStateFlow<Date?>(
@@ -104,7 +135,14 @@ class GenerateMandateViewModel : ViewModel() {
     // ── Step 1 validation ──
 
     val canProceedStep1: Boolean
-        get() = _selectedAgent.value != null
+        get() {
+            if (_selectedAgent.value == null) return false
+            if (_withOriginAgent.value) {
+                if (_originAgentName.value.isBlank()) return false
+                if (_originAgentId.value.isBlank()) return false
+            }
+            return true
+        }
 
     // ── Step 2 validation ──
 
