@@ -256,7 +256,7 @@ object MandatePdfGenerator {
         y = drawText("APPOINTMENT AND SERVICES", headingPaint)
         drawLine(4)
         y = drawText(
-            "1. The Player appoints the Football Agent, acting through his Agency, on a worldwide and exclusive basis to provide football agent services, including identifying and presenting opportunities to conclude an employment contract and/or facilitating and negotiating the conclusion of an employment contract or other football-related transaction, as well as related activities such as scouting opportunities, trials, introductions, club communications, meetings, negotiation support (employment, extension, variation, termination or settlement), and regulatory or administrative assistance connected to registration and documentation.",
+            "1. The Player appoints the Football Agent, acting through his Agency, on a valid leagues mentions in the mandate and exclusive basis to provide football agent services, including identifying and presenting opportunities to conclude an employment contract and/or facilitating and negotiating the conclusion of an employment contract or other football-related transaction, as well as related activities such as scouting opportunities, trials, introductions, club communications, meetings, negotiation support (employment, extension, variation, termination or settlement), and regulatory or administrative assistance connected to registration and documentation.",
             bodyPaint
         )
         drawLine(4)
@@ -269,7 +269,7 @@ object MandatePdfGenerator {
         y = drawText("EXCLUSIVITY", headingPaint)
         drawLine(4)
         y = drawText(
-            "3. The Mandate is exclusive. During the Term, the Player shall not appoint, consult, or use any third party, whether licensed or unlicensed, to perform football agent services or to negotiate or facilitate a transaction on the Player's behalf.",
+            "3. The Mandate is exclusive. During the Term, the Player shall not appoint, consult, or use any third party, whether licensed or unlicensed, to perform football agent services or to negotiate or facilitate a transaction on the Player's behalf, In the valid leagues.",
             bodyPaint
         )
         drawLine(4)
@@ -306,7 +306,7 @@ object MandatePdfGenerator {
         y = drawText("8. Payment shall be made to the Agency's designated account and is exclusive of VAT, if applicable.", bodyPaint)
         drawLine(4)
         y = drawText(
-            "9. The Player gives advance consent to permit dual representation being allowed by the applicable regulatory framework, without prejudice to any transaction-specific disclosures and consents required at the relevant time.",
+            "9. The Player might need to permit dual representation being allowed by the applicable regulatory framework, without prejudice to any transaction-specific disclosures and consents required at the relevant time.",
             bodyPaint
         )
         drawLine(4)

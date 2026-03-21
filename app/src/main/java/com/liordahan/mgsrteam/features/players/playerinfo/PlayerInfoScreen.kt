@@ -554,10 +554,8 @@ fun PlayerInfoScreen(
             }
         }
         if (showShareLanguageSheet) {
-            val hasPlayerPhone = (playerToPresent?.playerAdditionalInfoModel?.playerNumber?.takeIf { it.isNotBlank() }
-                ?: playerToPresent?.playerPhoneNumber?.takeIf { it.isNotBlank() }) != null
-            val hasAgentPhone = (playerToPresent?.playerAdditionalInfoModel?.agentNumber?.takeIf { it.isNotBlank() }
-                ?: playerToPresent?.agentPhoneNumber?.takeIf { it.isNotBlank() }) != null
+            val hasPlayerPhone = playerToPresent?.playerPhoneNumber?.takeIf { it.isNotBlank() } != null
+            val hasAgentPhone = playerToPresent?.agentPhoneNumber?.takeIf { it.isNotBlank() } != null
             ShareLanguageBottomSheet(
                 hasPlayerPhone = hasPlayerPhone,
                 hasAgentPhone = hasAgentPhone,

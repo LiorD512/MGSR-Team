@@ -119,6 +119,20 @@ class MgsrFirebaseMessagingService : FirebaseMessagingService() {
                 val body = ctx.getString(R.string.notification_mandate_expired_body, playerName)
                 title to body
             }
+            TYPE_MANDATE_PLAYER_SIGNED -> {
+                val fullySigned = data[KEY_FULLY_SIGNED] == "true"
+                val title = if (fullySigned) {
+                    ctx.getString(R.string.notification_mandate_fully_signed_title)
+                } else {
+                    ctx.getString(R.string.notification_mandate_signed_title)
+                }
+                val body = if (fullySigned) {
+                    ctx.getString(R.string.notification_mandate_fully_signed_body, playerName)
+                } else {
+                    ctx.getString(R.string.notification_mandate_signed_body, playerName)
+                }
+                title to body
+            }
             TYPE_REQUEST_ADDED -> {
                 val agentNameVal = data[KEY_AGENT_NAME].orEmpty()
                 val title = ctx.getString(R.string.notification_request_added_title)
@@ -167,15 +181,22 @@ class MgsrFirebaseMessagingService : FirebaseMessagingService() {
         val playerTmProfile = data[KEY_PLAYER_TM_PROFILE].orEmpty()
         val screen = data[KEY_SCREEN].orEmpty()
 
-        val contentIntent = Intent(this, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-            putExtra(KEY_TYPE, type)
-            data[KEY_PLAYER_ID]?.let { putExtra(EXTRA_PLAYER_ID, it) }
-            if (screen.isNotBlank()) putExtra(EXTRA_SCREEN, screen)
-            if (playerTmProfile.isNotBlank()) {
-                putExtra(EXTRA_PLAYER_TM_PROFILE, playerTmProfile)
-                if (type == TYPE_NEW_RELEASE_FROM_CLUB) {
-                    putExtra(EXTRA_NOTIFICATION_ACTION, ACTION_ADD_TO_SHORTLIST)
+        val contentIntent = if (type == TYPE_MANDATE_PLAYER_SIGNED) {
+            val mandateToken = data[KEY_MANDATE_TOKEN].orEmpty()
+            Intent(Intent.ACTION_VIEW, Uri.parse("$SIGNING_PAGE_BASE_URL$mandateToken")).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }
+        } else {
+            Intent(this, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                putExtra(KEY_TYPE, type)
+                data[KEY_PLAYER_ID]?.let { putExtra(EXTRA_PLAYER_ID, it) }
+                if (screen.isNotBlank()) putExtra(EXTRA_SCREEN, screen)
+                if (playerTmProfile.isNotBlank()) {
+                    putExtra(EXTRA_PLAYER_TM_PROFILE, playerTmProfile)
+                    if (type == TYPE_NEW_RELEASE_FROM_CLUB) {
+                        putExtra(EXTRA_NOTIFICATION_ACTION, ACTION_ADD_TO_SHORTLIST)
+                    }
                 }
             }
         }
@@ -191,6 +212,7 @@ class MgsrFirebaseMessagingService : FirebaseMessagingService() {
             TYPE_CLUB_CHANGE -> 0xFF2196F3.toInt() to R.drawable.notification_accent_blue
             TYPE_BECAME_FREE_AGENT, TYPE_NEW_RELEASE_FROM_CLUB -> 0xFFFF9800.toInt() to R.drawable.notification_accent_orange
             TYPE_MANDATE_EXPIRED -> 0xFFE53935.toInt() to R.drawable.notification_accent_orange
+            TYPE_MANDATE_PLAYER_SIGNED -> 0xFF4DB6AC.toInt() to R.drawable.notification_accent_green
             TYPE_AGENT_TRANSFER_REQUEST, TYPE_AGENT_TRANSFER_APPROVED, TYPE_AGENT_TRANSFER_REJECTED ->
                 0xFF2196F3.toInt() to R.drawable.notification_accent_blue
             TYPE_REQUEST_ADDED -> 0xFF9C27B0.toInt() to R.drawable.notification_accent_green
@@ -316,6 +338,10 @@ class MgsrFirebaseMessagingService : FirebaseMessagingService() {
         private const val TYPE_MARKET_VALUE_CHANGE = "MARKET_VALUE_CHANGE"
         const val TYPE_NEW_RELEASE_FROM_CLUB = "NEW_RELEASE_FROM_CLUB"
         const val TYPE_MANDATE_EXPIRED = "MANDATE_EXPIRED"
+        const val TYPE_MANDATE_PLAYER_SIGNED = "MANDATE_PLAYER_SIGNED"
+        private const val KEY_MANDATE_TOKEN = "token"
+        private const val KEY_FULLY_SIGNED = "fullySigned"
+        private const val SIGNING_PAGE_BASE_URL = "https://management.mgsrfa.com/sign-mandate/"
         const val TYPE_REQUEST_ADDED = "REQUEST_ADDED"
         const val TYPE_AGENT_TRANSFER_REQUEST = "AGENT_TRANSFER_REQUEST"
         const val TYPE_AGENT_TRANSFER_APPROVED = "AGENT_TRANSFER_APPROVED"

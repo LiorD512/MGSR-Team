@@ -153,6 +153,8 @@ fun GenerateMandateScreen(
     val showDatePicker by mandateViewModel.showDatePicker.collectAsStateWithLifecycle()
     val showAddLeagueSheet by mandateViewModel.showAddLeagueSheet.collectAsStateWithLifecycle()
     val isGenerating by mandateViewModel.isGenerating.collectAsStateWithLifecycle()
+    val isCreatingSigning by mandateViewModel.isCreatingSigning.collectAsStateWithLifecycle()
+    val signingUrl by mandateViewModel.signingUrl.collectAsStateWithLifecycle()
 
     val validLeagues = remember(
         mandateViewModel.countryOnly.collectAsStateWithLifecycle().value,
@@ -416,6 +418,190 @@ fun GenerateMandateScreen(
                                     stringResource(R.string.mandate_generate_pdf),
                                     style = boldTextStyle(Color.White, 15.sp)
                                 )
+                            }
+                        }
+
+                        Spacer(Modifier.height(12.dp))
+
+                        // Send for Signing button
+                        val clipboardManager = context.getSystemService(android.content.ClipboardManager::class.java)
+                        Button(
+                            onClick = {
+                                if (expiryDate == null || passportDetails == null) return@Button
+                                mandateViewModel.setIsCreatingSigning(true)
+                                scope.launch {
+                                    try {
+                                        val token = java.util.UUID.randomUUID().toString()
+                                        val signingPageUrl = "https://management.mgsrfa.com/sign-mandate/$token"
+                                        val agentName = selectedAgent?.name ?: "Lior Dahan"
+                                        val fifaLicenseId = selectedAgent?.fifaLicenseId ?: "22412-9595"
+
+                                        // Get current user account ID
+                                        val currentEmail = firebaseHandler.firebaseAuth.currentUser?.email
+                                        val accountSnapshot = if (currentEmail != null) {
+                                            firebaseHandler.firebaseStore
+                                                .collection(firebaseHandler.accountsTable)
+                                                .whereEqualTo("email", currentEmail)
+                                                .limit(1)
+                                                .get()
+                                                .await()
+                                        } else null
+                                        val agentAccountId = accountSnapshot?.documents?.firstOrNull()?.id
+
+                                        val playerFullName = listOfNotNull(passportDetails.firstName, passportDetails.lastName)
+                                            .joinToString(" ").ifBlank { null }
+
+                                        val docData = hashMapOf(
+                                            "token" to token,
+                                            "passportDetails" to hashMapOf(
+                                                "firstName" to (passportDetails.firstName ?: ""),
+                                                "lastName" to (passportDetails.lastName ?: ""),
+                                                "dateOfBirth" to (passportDetails.dateOfBirth ?: ""),
+                                                "passportNumber" to (passportDetails.passportNumber ?: ""),
+                                                "nationality" to (passportDetails.nationality ?: "")
+                                            ),
+                                            "effectiveDate" to System.currentTimeMillis(),
+                                            "expiryDate" to expiryDate!!.time,
+                                            "validLeagues" to validLeagues,
+                                            "agentName" to agentName,
+                                            "fifaLicenseId" to fifaLicenseId,
+                                            "agentAccountId" to agentAccountId,
+                                            "playerId" to playerId,
+                                            "playerName" to playerFullName,
+                                            "createdAt" to System.currentTimeMillis(),
+                                            "status" to "pending",
+                                            "playerSignature" to null,
+                                            "playerSignedAt" to null,
+                                            "agentSignature" to null,
+                                            "agentSignedAt" to null
+                                        )
+
+                                        firebaseHandler.firebaseStore
+                                            .collection("MandateSigningRequests")
+                                            .document(token)
+                                            .set(docData)
+                                            .await()
+
+                                        mandateViewModel.setSigningUrl(signingPageUrl)
+                                    } catch (e: Exception) {
+                                        Log.e("GenerateMandate", "Signing link creation failed", e)
+                                        ToastManager.showError(
+                                            context.getString(R.string.mandate_error_signing_failed, e.message ?: "")
+                                        )
+                                    } finally {
+                                        mandateViewModel.setIsCreatingSigning(false)
+                                    }
+                                }
+                            },
+                            enabled = !isCreatingSigning && !isGenerating,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(52.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            border = BorderStroke(2.dp, HomeTealAccent),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color.Transparent,
+                                disabledContainerColor = Color.Transparent
+                            )
+                        ) {
+                            if (isCreatingSigning) {
+                                CircularProgressIndicator(
+                                    color = HomeTealAccent,
+                                    modifier = Modifier.size(22.dp),
+                                    strokeWidth = 2.5.dp
+                                )
+                                Spacer(Modifier.width(12.dp))
+                                Text(
+                                    stringResource(R.string.mandate_creating_signing),
+                                    style = boldTextStyle(HomeTealAccent, 15.sp)
+                                )
+                            } else {
+                                Icon(
+                                    Icons.Default.Edit,
+                                    contentDescription = null,
+                                    tint = HomeTealAccent,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(Modifier.width(8.dp))
+                                Text(
+                                    stringResource(R.string.mandate_send_for_signing),
+                                    style = boldTextStyle(HomeTealAccent, 15.sp)
+                                )
+                            }
+                        }
+
+                        // Signing URL display
+                        if (signingUrl != null) {
+                            Spacer(Modifier.height(16.dp))
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(16.dp),
+                                colors = CardDefaults.cardColors(containerColor = HomeTealAccent.copy(alpha = 0.1f)),
+                                border = BorderStroke(1.dp, HomeTealAccent.copy(alpha = 0.3f))
+                            ) {
+                                Column(modifier = Modifier.padding(16.dp)) {
+                                    Text(
+                                        text = stringResource(R.string.mandate_signing_link_created),
+                                        style = boldTextStyle(HomeTealAccent, 14.sp)
+                                    )
+                                    Spacer(Modifier.height(4.dp))
+                                    Text(
+                                        text = stringResource(R.string.mandate_signing_link_desc),
+                                        style = regularTextStyle(HomeTextSecondary, 12.sp)
+                                    )
+                                    Spacer(Modifier.height(12.dp))
+                                    Text(
+                                        text = signingUrl!!,
+                                        style = regularTextStyle(HomeTextPrimary, 11.sp),
+                                        maxLines = 2,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .background(
+                                                HomeDarkCard,
+                                                RoundedCornerShape(8.dp)
+                                            )
+                                            .padding(12.dp)
+                                    )
+                                    Spacer(Modifier.height(12.dp))
+                                    Row(
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        Button(
+                                            onClick = {
+                                                val clip = android.content.ClipData.newPlainText("Signing URL", signingUrl)
+                                                clipboardManager?.setPrimaryClip(clip)
+                                                ToastManager.showSuccess(context.getString(R.string.mandate_link_copied))
+                                            },
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .height(44.dp),
+                                            shape = RoundedCornerShape(10.dp),
+                                            colors = ButtonDefaults.buttonColors(containerColor = HomeTealAccent)
+                                        ) {
+                                            Text(
+                                                stringResource(R.string.mandate_copy_link),
+                                                style = boldTextStyle(Color.White, 13.sp)
+                                            )
+                                        }
+                                        Button(
+                                            onClick = {
+                                                val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, Uri.parse(signingUrl))
+                                                context.startActivity(intent)
+                                            },
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .height(44.dp),
+                                            shape = RoundedCornerShape(10.dp),
+                                            border = BorderStroke(1.dp, HomeTealAccent),
+                                            colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent)
+                                        ) {
+                                            Text(
+                                                stringResource(R.string.mandate_open_signing_page),
+                                                style = boldTextStyle(HomeTealAccent, 13.sp)
+                                            )
+                                        }
+                                    }
+                                }
                             }
                         }
                     }

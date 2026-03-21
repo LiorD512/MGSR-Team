@@ -228,7 +228,7 @@ async function searchViaDuckDuckGo(name: string): Promise<SearchHit | null> {
   try {
     const res = await fetch(`https://html.duckduckgo.com/html/?q=${query}`, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; MGSR/1.0; +https://mgsr-team.vercel.app)',
+        'User-Agent': 'Mozilla/5.0 (compatible; MGSR/1.0; +https://management.mgsrfa.com)',
         Accept: 'text/html',
       },
       cache: 'no-store',
@@ -340,7 +340,7 @@ async function searchViaDuckDuckGoBroad(name: string): Promise<SearchHit | null>
   try {
     const res = await fetch(`https://html.duckduckgo.com/html/?q=${query}`, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; MGSR/1.0; +https://mgsr-team.vercel.app)',
+        'User-Agent': 'Mozilla/5.0 (compatible; MGSR/1.0; +https://management.mgsrfa.com)',
         Accept: 'text/html',
       },
       cache: 'no-store',
@@ -411,7 +411,7 @@ async function fetchPlayerDetail(url: string, expectedName?: string): Promise<{
 } | null> {
   const res = await fetch(url, {
     headers: {
-      'User-Agent': 'Mozilla/5.0 (compatible; MGSR/1.0; +https://mgsr-team.vercel.app)',
+      'User-Agent': 'Mozilla/5.0 (compatible; MGSR/1.0; +https://management.mgsrfa.com)',
       Accept: 'text/html',
     },
     cache: 'no-store',

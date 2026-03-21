@@ -203,4 +203,20 @@ class GenerateMandateViewModel : ViewModel() {
 
     fun editAgent() { _currentStep.value = 0 }
     fun editValidity() { _currentStep.value = 1 }
+
+    // ── Send for Signing ──
+
+    private val _isCreatingSigning = MutableStateFlow(false)
+    val isCreatingSigning: StateFlow<Boolean> = _isCreatingSigning.asStateFlow()
+
+    private val _signingUrl = MutableStateFlow<String?>(null)
+    val signingUrl: StateFlow<String?> = _signingUrl.asStateFlow()
+
+    fun setIsCreatingSigning(creating: Boolean) {
+        _isCreatingSigning.value = creating
+    }
+
+    fun setSigningUrl(url: String?) {
+        _signingUrl.value = url
+    }
 }

@@ -144,6 +144,15 @@ class MainActivity : AppCompatActivity() {
                 intent.removeExtra(com.liordahan.mgsrteam.firebase.MgsrFirebaseMessagingService.EXTRA_SCREEN)
                 return
             }
+            "mandate_signing" -> {
+                val token = intent.getStringExtra("token").orEmpty()
+                if (token.isNotBlank()) {
+                    val url = "https://management.mgsrfa.com/sign-mandate/$token"
+                    startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                }
+                intent.removeExtra(com.liordahan.mgsrteam.firebase.MgsrFirebaseMessagingService.EXTRA_SCREEN)
+                return
+            }
         }
 
         // Handle notification tap — action or type determines destination

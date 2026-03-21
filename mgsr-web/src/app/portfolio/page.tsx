@@ -440,7 +440,6 @@ export default function PortfolioPage() {
                         <div className="space-y-3 mb-4">
                           {(() => {
                             const hasPlayer = !!(
-                              item.player.playerAdditionalInfoModel?.playerNumber ||
                               (item.player as { playerPhoneNumber?: string }).playerPhoneNumber
                             );
                             return hasPlayer ? (
@@ -459,8 +458,7 @@ export default function PortfolioPage() {
                           })()}
                           {(() => {
                             const hasAgency = !!(
-                              item.player.agentPhoneNumber ||
-                              item.player.playerAdditionalInfoModel?.agentNumber
+                              item.player.agentPhoneNumber
                             );
                             return hasAgency ? (
                               <label className="flex items-start gap-3 cursor-pointer">
@@ -477,10 +475,8 @@ export default function PortfolioPage() {
                             ) : null;
                           })()}
                           {!(
-                            item.player.playerAdditionalInfoModel?.playerNumber ||
                             (item.player as { playerPhoneNumber?: string }).playerPhoneNumber ||
-                            item.player.agentPhoneNumber ||
-                            item.player.playerAdditionalInfoModel?.agentNumber
+                            item.player.agentPhoneNumber
                           ) && (
                             <p className="text-sm text-mgsr-muted">
                               {t('portfolio_share_no_contact')}

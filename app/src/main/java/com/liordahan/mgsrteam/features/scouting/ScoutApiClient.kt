@@ -26,7 +26,7 @@ class ScoutApiClient(private val baseUrl: String = DEFAULT_BASE_URL) {
         // Production server on Render
         const val DEFAULT_BASE_URL = "https://football-scout-server-l38w.onrender.com"
         // Vercel web app — used for FM intelligence (FMInside blocks Render IPs)
-        private const val VERCEL_BASE_URL = "https://mgsr-team.vercel.app"
+        private const val VERCEL_BASE_URL = "https://management.mgsrfa.com"
         // For local testing (Android emulator → host machine):
         // const val DEFAULT_BASE_URL = "http://10.0.2.2:8123"
     }

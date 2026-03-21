@@ -35,7 +35,6 @@ interface SharePayload {
     contractExpired?: string;
     tmProfile?: string;
     agentPhoneNumber?: string;
-    playerAdditionalInfoModel?: { agentNumber?: string; playerNumber?: string };
     playerPhoneNumber?: string;
   };
   mandateInfo?: {
@@ -145,10 +144,10 @@ export async function POST(request: NextRequest) {
     };
 
     const playerPhone = includePlayerContact
-      ? (player.playerAdditionalInfoModel?.playerNumber ?? (player as { playerPhoneNumber?: string }).playerPhoneNumber)
+      ? ((player as { playerPhoneNumber?: string }).playerPhoneNumber)
       : undefined;
     const agentPhone = includeAgencyContact
-      ? (player.playerAdditionalInfoModel?.agentNumber ?? player.agentPhoneNumber)
+      ? (player.agentPhoneNumber)
       : undefined;
     const shareDoc = stripUndefined({
       playerId,

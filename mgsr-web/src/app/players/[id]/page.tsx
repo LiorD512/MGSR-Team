@@ -65,7 +65,6 @@ interface Player {
   haveMandate?: boolean;
   playerPhoneNumber?: string;
   agentPhoneNumber?: string;
-  playerAdditionalInfoModel?: { playerNumber?: string; agentNumber?: string };
   marketValueHistory?: { value?: string; date?: number }[];
   salaryRange?: string;
   transferFee?: string;
@@ -831,10 +830,10 @@ export default function PlayerInfoPage() {
   const isEuPlayer = isEuNational(merged.nationality, euCountries, merged.nationalities);
 
   const getPhone = () =>
-    player?.playerAdditionalInfoModel?.playerNumber ||
+    player?.playerPhoneNumber;
     player?.playerPhoneNumber;
   const getAgentPhone = () =>
-    player?.playerAdditionalInfoModel?.agentNumber ||
+    player?.agentPhoneNumber;
     player?.agentPhoneNumber;
 
   const savePhone = useCallback(async (type: 'agent' | 'player', value: string) => {
@@ -844,15 +843,9 @@ export default function PlayerInfoPage() {
       const trimmed = value.trim();
       if (type === 'agent') {
         const updates: Record<string, unknown> = { agentPhoneNumber: trimmed || null };
-        if (player?.playerAdditionalInfoModel) {
-          updates['playerAdditionalInfoModel.agentNumber'] = trimmed || null;
-        }
         await updateDoc(doc(db, 'Players', id), updates);
       } else {
         const updates: Record<string, unknown> = { playerPhoneNumber: trimmed || null };
-        if (player?.playerAdditionalInfoModel) {
-          updates['playerAdditionalInfoModel.playerNumber'] = trimmed || null;
-        }
         await updateDoc(doc(db, 'Players', id), updates);
       }
       setEditingPhoneType(null);
@@ -870,15 +863,9 @@ export default function PlayerInfoPage() {
     try {
       if (type === 'agent') {
         const updates: Record<string, unknown> = { agentPhoneNumber: deleteField() };
-        if (player?.playerAdditionalInfoModel) {
-          updates['playerAdditionalInfoModel.agentNumber'] = deleteField();
-        }
         await updateDoc(doc(db, 'Players', id), updates);
       } else {
         const updates: Record<string, unknown> = { playerPhoneNumber: deleteField() };
-        if (player?.playerAdditionalInfoModel) {
-          updates['playerAdditionalInfoModel.playerNumber'] = deleteField();
-        }
         await updateDoc(doc(db, 'Players', id), updates);
       }
       setConfirmDeletePhone(null);
@@ -978,7 +965,6 @@ export default function PlayerInfoPage() {
           tmProfile: merged.tmProfile || player.tmProfile,
           agentPhoneNumber: player.agentPhoneNumber,
           playerPhoneNumber: player.playerPhoneNumber,
-          playerAdditionalInfoModel: player.playerAdditionalInfoModel,
         };
 
         let scoutReport = '';
@@ -1106,7 +1092,6 @@ export default function PlayerInfoPage() {
           tmProfile: merged.tmProfile || player.tmProfile,
           ...(agentPhone ? { agentPhoneNumber: agentPhone } : {}),
           ...(playerPhone ? { playerPhoneNumber: playerPhone } : {}),
-          ...(player.playerAdditionalInfoModel ? { playerAdditionalInfoModel: player.playerAdditionalInfoModel } : {}),
         };
 
         let scoutReport = '';
@@ -2792,8 +2777,8 @@ export default function PlayerInfoPage() {
 
             {/* Contact inclusion checkboxes */}
             {(() => {
-              const hasPlayerPhone = !!(player?.playerAdditionalInfoModel?.playerNumber || player?.playerPhoneNumber);
-              const hasAgentPhone = !!(player?.playerAdditionalInfoModel?.agentNumber || player?.agentPhoneNumber);
+              const hasPlayerPhone = !!player?.playerPhoneNumber;
+              const hasAgentPhone = !!player?.agentPhoneNumber;
               if (!hasPlayerPhone && !hasAgentPhone) return null;
               return (
                 <div className="space-y-3 mb-4">

@@ -49,7 +49,7 @@ class MgsrWebApiClient(
 
         // For local testing change to "http://10.0.2.2:3000" (Android emulator → host)
         // For production use the Vercel URL
-        const val DEFAULT_BASE_URL = "https://mgsr-team.vercel.app"
+        const val DEFAULT_BASE_URL = "https://management.mgsrfa.com"
     }
 
     private val client = OkHttpClient.Builder()

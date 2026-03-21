@@ -294,6 +294,85 @@ exports.onNewAgentTask = onDocumentCreated(
 const TZ_ISRAEL = "Asia/Jerusalem";
 
 /**
+ * Triggered when a MandateSigningRequest is updated.
+ * When the player signs (status changes to player_signed or fully_signed),
+ * sends a push notification to the agent who created the signing request.
+ */
+exports.onMandateSigningUpdated = onDocumentUpdated(
+  "MandateSigningRequests/{token}",
+  async (event) => {
+    const before = event.data?.before?.data();
+    const after = event.data?.after?.data();
+    if (!before || !after) return;
+
+    // Only notify when player signature was just added
+    if (before.playerSignature || !after.playerSignature) return;
+
+    const agentAccountId = after.agentAccountId;
+    if (!agentAccountId) {
+      console.log("No agentAccountId on signing request, skipping notification");
+      return;
+    }
+
+    let accountData;
+    try {
+      const accountSnap = await db.collection(ACCOUNTS_COLLECTION).doc(agentAccountId).get();
+      if (!accountSnap.exists) {
+        console.log(`Account not found for ${agentAccountId}, skipping mandate signing notification`);
+        return;
+      }
+      accountData = accountSnap.data();
+    } catch (e) {
+      console.error("Failed to fetch agent account for signing notification:", e);
+      return;
+    }
+
+    const playerName = after.playerName || [after.passportDetails?.firstName, after.passportDetails?.lastName].filter(Boolean).join(" ") || "A player";
+    const fullySignedNow = after.playerSignature && after.agentSignature;
+
+    const notifTitle = fullySignedNow ? "Mandate Fully Signed" : "Player Signed Mandate";
+    const notifBody = fullySignedNow
+      ? `${playerName}'s mandate is now fully signed by both parties.`
+      : `${playerName} has signed the mandate. Your signature is still needed.`;
+
+    const payload = {
+      notification: { title: notifTitle, body: notifBody },
+      data: {
+        type: "MANDATE_PLAYER_SIGNED",
+        playerName,
+        token: event.params.token,
+        screen: "mandate_signing",
+        fullySigned: fullySignedNow ? "true" : "false",
+      },
+      android: {
+        priority: "high",
+        notification: {
+          channelId: "mgsr_team_notifications",
+        },
+      },
+      webpush: {
+        notification: {
+          title: notifTitle,
+          body: notifBody,
+          icon: "/logo.svg",
+          tag: `mandate-sign-${event.params.token}`,
+        },
+        fcmOptions: {
+          link: `/sign-mandate/${event.params.token}`,
+        },
+      },
+    };
+
+    try {
+      await sendToAllTokens(agentAccountId, accountData, payload);
+      console.log(`Mandate signing notification sent to ${agentAccountId}: ${playerName}`);
+    } catch (err) {
+      console.error("FCM mandate signing notification error:", err);
+    }
+  }
+);
+
+/**
  * Returns days until due date using Israel timezone for day boundaries.
  * Fixes the bug where tasks created on Android (local midnight) were missed
  * because the previous logic used UTC, causing "due today" to appear as -1.
@@ -826,5 +905,92 @@ exports.onAgentTransferResolved = onDocumentUpdated(
     } catch (err) {
       console.error("[onAgentTransferResolved] FCM error:", err);
     }
+  }
+);
+
+// ─── Backfill DOB from TransferMarkt ────────────────────────────────────────
+
+/**
+ * Callable function that scrapes dateOfBirth from TM profiles for all players
+ * that have a tmProfile URL but no dateOfBirth on their player document.
+ * Updates the Player document directly (not passportDetails).
+ *
+ * Processes all 3 collections: Players, PlayersWomen, PlayersYouth.
+ * Uses batching (5 concurrent, 2s delay) to avoid TM rate limits.
+ */
+exports.backfillPlayerDob = onCall(
+  { timeoutSeconds: 540, memory: "512MiB" },
+  async (request) => {
+    const collections = ["Players", "PlayersWomen", "PlayersYouth"];
+    const BATCH_SIZE = 5;
+    const BATCH_DELAY = 2000;
+    const results = { updated: 0, skipped: 0, failed: 0, errors: [] };
+
+    for (const collName of collections) {
+      console.log(`[backfillPlayerDob] Processing ${collName}...`);
+      const snap = await db.collection(collName).get();
+      const candidates = [];
+
+      snap.forEach((doc) => {
+        const d = doc.data();
+        if (d.tmProfile && !d.dateOfBirth) {
+          candidates.push({ ref: doc.ref, tmProfile: d.tmProfile, name: d.fullName || doc.id });
+        }
+      });
+
+      console.log(`[backfillPlayerDob] ${collName}: ${candidates.length} players need DOB (${snap.size} total)`);
+
+      for (let i = 0; i < candidates.length; i += BATCH_SIZE) {
+        if (i > 0) await new Promise((r) => setTimeout(r, BATCH_DELAY));
+        const batch = candidates.slice(i, i + BATCH_SIZE);
+
+        await Promise.all(
+          batch.map(async (player) => {
+            try {
+              const $ = await fetchDocument(player.tmProfile);
+              const birthText = $("span[itemprop=birthDate]").first().text().trim();
+              // birthText is like "Jun 15, 2000 (24)" or "Mar 5, 1998 (28)"
+              if (!birthText) {
+                results.skipped++;
+                return;
+              }
+              // Remove the "(age)" suffix and parse the date
+              const dateStr = birthText.replace(/\s*\(\d+\)\s*$/, "").trim();
+              // Try DD/MM/YYYY first (common TM format for non-English locales)
+              const ddmmyyyy = dateStr.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+              let yyyy, mm, dd;
+              if (ddmmyyyy) {
+                dd = String(ddmmyyyy[1]).padStart(2, "0");
+                mm = String(ddmmyyyy[2]).padStart(2, "0");
+                yyyy = ddmmyyyy[3];
+              } else {
+                const parsed = new Date(dateStr);
+                if (isNaN(parsed.getTime())) {
+                  console.warn(`[backfillPlayerDob] Could not parse date "${dateStr}" for ${player.name}`);
+                  results.failed++;
+                  results.errors.push(`${player.name}: unparseable "${dateStr}"`);
+                  return;
+                }
+                yyyy = parsed.getFullYear();
+                mm = String(parsed.getMonth() + 1).padStart(2, "0");
+                dd = String(parsed.getDate()).padStart(2, "0");
+              }
+              const dob = `${yyyy}-${mm}-${dd}`;
+
+              await player.ref.update({ dateOfBirth: dob });
+              console.log(`[backfillPlayerDob] ${player.name} -> ${dob}`);
+              results.updated++;
+            } catch (err) {
+              console.error(`[backfillPlayerDob] Error for ${player.name}:`, err.message);
+              results.failed++;
+              results.errors.push(`${player.name}: ${err.message}`);
+            }
+          })
+        );
+      }
+    }
+
+    console.log(`[backfillPlayerDob] Done. Updated: ${results.updated}, Skipped: ${results.skipped}, Failed: ${results.failed}`);
+    return results;
   }
 );

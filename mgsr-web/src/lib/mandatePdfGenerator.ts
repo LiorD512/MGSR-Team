@@ -198,6 +198,7 @@ export async function generateMandatePdf(data: MandateData): Promise<Uint8Array>
   const form = doc.getForm();
   const sigFieldH = 18;
   const sigFieldW = 180;
+  const printFieldW = 350;
   const dateFieldW = 90;
 
   const playerLabel = 'Signed by the Player: ';
@@ -240,7 +241,7 @@ export async function generateMandatePdf(data: MandateData): Promise<Uint8Array>
   playerPrintField.addToPage(page, {
     x: MARGIN + font.widthOfTextAtSize(printLabel, BODY_SIZE) + 4,
     y: y - 2,
-    width: sigFieldW,
+    width: printFieldW,
     height: sigFieldH,
     borderColor: black,
     borderWidth: 1,
@@ -285,7 +286,7 @@ export async function generateMandatePdf(data: MandateData): Promise<Uint8Array>
   agentNameField.addToPage(page, {
     x: MARGIN + font.widthOfTextAtSize(printLabel, BODY_SIZE) + 4,
     y: y - 2,
-    width: sigFieldW,
+    width: printFieldW,
     height: sigFieldH,
     borderColor: black,
     borderWidth: 1,

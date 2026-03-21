@@ -35,7 +35,6 @@ export interface SharePayload {
     nationality?: string;
     contractExpired?: string;
     agentPhoneNumber?: string;
-    playerAdditionalInfoModel?: { agentNumber?: string; playerNumber?: string };
     playerPhoneNumber?: string;
     tmProfile?: string;
   };
@@ -147,11 +146,11 @@ export async function createShare(
     tmProfile: (payload.player as { tmProfile?: string }).tmProfile,
   };
   if (payload.includePlayerContact) {
-    const playerPhone = payload.player.playerAdditionalInfoModel?.playerNumber ?? (payload.player as { playerPhoneNumber?: string }).playerPhoneNumber;
+    const playerPhone = (payload.player as { playerPhoneNumber?: string }).playerPhoneNumber;
     if (playerPhone) (playerObj as Record<string, unknown>).playerPhoneNumber = playerPhone;
   }
   if (payload.includeAgencyContact) {
-    const agentPhone = payload.player.playerAdditionalInfoModel?.agentNumber ?? payload.player.agentPhoneNumber;
+    const agentPhone = payload.player.agentPhoneNumber;
     if (agentPhone) (playerObj as Record<string, unknown>).agentPhoneNumber = agentPhone;
   }
 

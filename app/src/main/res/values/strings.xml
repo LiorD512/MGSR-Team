@@ -177,6 +177,10 @@
     <string name="notification_new_release_body_not_in_db">%1$s released from his club — maybe you want to approach him. Not in our database.</string>
     <string name="notification_mandate_expired_title">Mandate Expired</string>
     <string name="notification_mandate_expired_body">%1$s\'s mandate has expired.</string>
+    <string name="notification_mandate_signed_title">Player Signed Mandate</string>
+    <string name="notification_mandate_signed_body">%1$s has signed the mandate. Your signature is still needed.</string>
+    <string name="notification_mandate_fully_signed_title">Mandate Fully Signed</string>
+    <string name="notification_mandate_fully_signed_body">%1$s\'s mandate is now fully signed by both parties.</string>
     <string name="notification_action_open_tm">Open Transfermarkt</string>
     <string name="notification_action_add_shortlist">Add to Shortlist</string>
 
@@ -942,6 +946,16 @@
     <string name="mandate_sheet_search_clubs">Search clubs in %1$s…</string>
     <string name="mandate_selected_clubs">%d club(s) selected</string>
     <string name="mandate_sheet_add_button">Add to Mandate</string>
+
+    <!-- Mandate Signing -->
+    <string name="mandate_send_for_signing">Send for Signing</string>
+    <string name="mandate_creating_signing">Creating signing link…</string>
+    <string name="mandate_signing_link_created">Signing link created!</string>
+    <string name="mandate_signing_link_desc">Share this link with the player to sign the mandate digitally.</string>
+    <string name="mandate_copy_link">Copy Link</string>
+    <string name="mandate_open_signing_page">Open Signing Page</string>
+    <string name="mandate_link_copied">Link copied to clipboard</string>
+    <string name="mandate_error_signing_failed">Failed to create signing link: %1$s</string>
     <string name="player_info_delete">Delete</string>
     <string name="player_info_delete_player_confirm">Are you sure you want to delete this player?</string>
     <string name="player_info_delete_note_confirm">Are you sure you want to delete this note?</string>
@@ -1453,4 +1467,17 @@
     <string name="logout_confirm_message">Are you sure you want to log out?</string>
     <string name="logout_confirm_yes">Logout</string>
     <string name="logout_button_cd">Logout</string>
+
+    <!-- Birthdays -->
+    <string name="birthdays_title">Today\'s Birthdays</string>
+    <string name="birthdays_today_badge">today</string>
+    <string name="birthdays_turns">Turns</string>
+    <string name="birthdays_turns_male">Turns</string>
+    <string name="birthdays_turns_female">Turns</string>
+    <string name="birthdays_send_wishes">Send Wishes</string>
+    <string name="birthdays_none_today">No player birthdays today</string>
+    <string name="birthdays_upcoming">Upcoming (next 7 days)</string>
+    <string name="birthdays_players">players</string>
+    <string name="birthdays_in_days">In %d days</string>
+    <string name="birthdays_agent">Agent</string>
 </resources>

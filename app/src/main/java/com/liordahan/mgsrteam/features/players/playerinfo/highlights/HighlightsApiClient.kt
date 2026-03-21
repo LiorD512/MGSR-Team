@@ -44,7 +44,7 @@ class HighlightsApiClient(
 ) {
     companion object {
         private const val TAG = "HighlightsApi"
-        const val DEFAULT_BASE_URL = "https://mgsr-team.vercel.app"
+        const val DEFAULT_BASE_URL = "https://management.mgsrfa.com"
         const val MAX_PINNED = 2
     }
 

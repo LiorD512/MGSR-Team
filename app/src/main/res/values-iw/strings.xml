@@ -183,6 +183,10 @@
     <string name="notification_new_release_body_not_in_db">%1$s שוחרר מהמועדון שלו — אולי תרצה לפנות אליו. לא במאגר שלנו.</string>
     <string name="notification_mandate_expired_title">מנדט פג תוקף</string>
     <string name="notification_mandate_expired_body">המנדט של %1$s פג תוקף.</string>
+    <string name="notification_mandate_signed_title">שחקן חתם על מנדט</string>
+    <string name="notification_mandate_signed_body">%1$s חתם על המנדט. החתימה שלך עדיין נדרשת.</string>
+    <string name="notification_mandate_fully_signed_title">מנדט נחתם במלואו</string>
+    <string name="notification_mandate_fully_signed_body">המנדט של %1$s נחתם על ידי שני הצדדים.</string>
     <string name="notification_action_open_tm">פתח Transfermarkt</string>
     <string name="notification_action_add_shortlist">הוסף לרשימת מעקב</string>
 
@@ -867,6 +871,17 @@
     <string name="mandate_sheet_search_clubs">חפש מועדונים ב%1$s…</string>
     <string name="mandate_selected_clubs">%d מועדון(ים) נבחרו</string>
     <string name="mandate_sheet_add_button">הוסף למנדט</string>
+
+    <!-- Mandate Signing -->
+    <string name="mandate_send_for_signing">שלח לחתימה</string>
+    <string name="mandate_creating_signing">יוצר קישור חתימה…</string>
+    <string name="mandate_signing_link_created">קישור חתימה נוצר!</string>
+    <string name="mandate_signing_link_desc">שתף את הקישור עם השחקן כדי לחתום על המנדט דיגיטלית.</string>
+    <string name="mandate_copy_link">העתק קישור</string>
+    <string name="mandate_open_signing_page">פתח דף חתימה</string>
+    <string name="mandate_link_copied">הקישור הועתק ללוח</string>
+    <string name="mandate_error_signing_failed">יצירת קישור חתימה נכשלה: %1$s</string>
+
     <string name="player_info_delete">מחק</string>
     <string name="player_info_delete_player_confirm">האם אתה בטוח שברצונך למחוק את השחקן?</string>
     <string name="player_info_delete_note_confirm">האם אתה בטוח שברצונך למחוק את ההערה?</string>
@@ -1443,4 +1458,17 @@
     <string name="logout_confirm_message">האם אתה בטוח שברצונך להתנתק?</string>
     <string name="logout_confirm_yes">התנתק</string>
     <string name="logout_button_cd">התנתקות</string>
+
+    <!-- Birthdays -->
+    <string name="birthdays_title">ימי הולדת היום</string>
+    <string name="birthdays_today_badge">היום</string>
+    <string name="birthdays_turns">בן</string>
+    <string name="birthdays_turns_male">בן</string>
+    <string name="birthdays_turns_female">בת</string>
+    <string name="birthdays_send_wishes">שלח ברכה</string>
+    <string name="birthdays_none_today">אין ימי הולדת של שחקנים היום</string>
+    <string name="birthdays_upcoming">בקרוב (7 ימים הקרובים)</string>
+    <string name="birthdays_players">שחקנים</string>
+    <string name="birthdays_in_days">בעוד %d ימים</string>
+    <string name="birthdays_agent">סוכן</string>
 </resources>

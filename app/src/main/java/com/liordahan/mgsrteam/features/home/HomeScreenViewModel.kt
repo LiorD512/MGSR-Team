@@ -10,6 +10,8 @@ import com.liordahan.mgsrteam.features.home.models.AgentTask
 import com.liordahan.mgsrteam.features.home.models.AlertSeverity
 import com.liordahan.mgsrteam.features.home.models.FeedEvent
 import com.liordahan.mgsrteam.features.home.models.MyAgentOverview
+import com.liordahan.mgsrteam.features.home.dashboard.BirthdayPlayer
+import com.liordahan.mgsrteam.features.home.dashboard.buildBirthdayPlayers
 import com.liordahan.mgsrteam.features.login.models.Account
 import com.liordahan.mgsrteam.features.players.models.Player
 import com.liordahan.mgsrteam.features.players.models.isFreeAgent
@@ -86,6 +88,10 @@ data class HomeDashboardState(
 
     // pending agent transfers
     val pendingTransfers: List<com.liordahan.mgsrteam.features.players.playerinfo.agenttransfer.AgentTransferRequest> = emptyList(),
+
+    // birthdays
+    val todayBirthdays: List<BirthdayPlayer> = emptyList(),
+    val upcomingBirthdays: List<BirthdayPlayer> = emptyList(),
 
     // loading
     val isLoading: Boolean = true
@@ -339,6 +345,11 @@ class HomeScreenViewModel(
 
                     _currentPlayers = players
 
+                    // Birthdays
+                    val currentPlatform = platformManager.current.value
+                    val (today, upcoming) = buildBirthdayPlayers(players, currentPlatform)
+
+
                     val mandateStatusByTmProfile = players
                         .filter { it.tmProfile != null }
                         .associate { it.tmProfile!! to it.haveMandate }
@@ -348,7 +359,9 @@ class HomeScreenViewModel(
                             freeAgents = freeAgents,
                             expiringSoon = expiring,
                             agentSummaries = summaries,
-                            mandateStatusByTmProfile = mandateStatusByTmProfile
+                            mandateStatusByTmProfile = mandateStatusByTmProfile,
+                            todayBirthdays = today,
+                            upcomingBirthdays = upcoming
                         )
                     }
                     recomputeMyOverview()

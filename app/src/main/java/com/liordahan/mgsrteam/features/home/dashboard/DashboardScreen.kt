@@ -475,6 +475,21 @@ fun DashboardScreen(
                         }
                     }
 
+                    // ── Birthdays ──────────────────────────────────────
+                    if (state.todayBirthdays.isNotEmpty() || state.upcomingBirthdays.isNotEmpty()) {
+                        item {
+                            val senderName = account?.name
+                                ?: account?.hebrewName
+                                ?: "Agent"
+                            BirthdaysSection(
+                                todayBirthdays = state.todayBirthdays,
+                                upcomingBirthdays = state.upcomingBirthdays,
+                                senderName = senderName,
+                                platform = platform
+                            )
+                        }
+                    }
+
                     // ── My Agent Hub ───────────────────────────────────
                     item {
                         val overview = state.myAgentOverview

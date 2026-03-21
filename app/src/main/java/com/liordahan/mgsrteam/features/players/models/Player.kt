@@ -34,7 +34,6 @@ data class Player(
     val haveMandate: Boolean = false,
     val playerPhoneNumber: String? = null,
     val agentPhoneNumber: String? = null,
-    val playerAdditionalInfoModel: PlayerAdditionalInfoModel? = null,
     val notes: String? = null,
     val noteList: List<NotesModel>? = null,
     val marketValueHistory: List<MarketValueEntry>? = null,
@@ -95,13 +94,11 @@ data class MarketValueEntry(
 ) : Parcelable
 
 fun Player.getPlayerPhoneNumber(): String? {
-    return if(playerAdditionalInfoModel?.playerNumber?.isEmpty() == false) playerAdditionalInfoModel.playerNumber
-    else playerPhoneNumber?.takeIf { it.isNotBlank() }
+    return playerPhoneNumber?.takeIf { it.isNotBlank() }
 }
 
 fun Player.getAgentPhoneNumber(): String? {
-    return if(playerAdditionalInfoModel?.agentNumber?.isEmpty() == false) playerAdditionalInfoModel.agentNumber
-    else agentPhoneNumber?.takeIf { it.isNotBlank() }
+    return agentPhoneNumber?.takeIf { it.isNotBlank() }
 }
 
 /** Single source of truth for free-agent detection. */
@@ -124,12 +121,6 @@ data class Club(
     val offeredAt: String? = null
 ) : Parcelable
 
-@Keep
-@Parcelize
-data class PlayerAdditionalInfoModel(
-    val playerNumber: String? = null,
-    val agentNumber: String? = null,
-) : Parcelable
 
 @Keep
 @Parcelize

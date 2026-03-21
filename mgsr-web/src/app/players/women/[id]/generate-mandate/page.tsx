@@ -416,7 +416,7 @@ export default function GenerateMandateWomenPage() {
               </div>
               <div>
                 <p className="text-xs font-medium text-mgsr-muted uppercase tracking-wider mb-1">{t('mandate_expiry_date')}</p>
-                <p className="text-mgsr-text font-medium">{new Date(expiryDate).toLocaleDateString()}</p>
+                <p className="text-mgsr-text font-medium">{new Date(expiryDate).toLocaleDateString('en-GB')}</p>
               </div>
               {validLeagues.length > 0 && (
                 <div>

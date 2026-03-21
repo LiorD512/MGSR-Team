@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { doc, collection, onSnapshot } from 'firebase/firestore';
+import { doc, collection, onSnapshot, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import AppLayout from '@/components/AppLayout';
 import Link from 'next/link';
@@ -62,6 +62,8 @@ export default function GenerateMandatePage() {
   const [countryOnly, setCountryOnly] = useState<string[]>([]);
   const [selectedClubs, setSelectedClubs] = useState<{ clubName: string; clubCountry: string }[]>([]);
   const [generating, setGenerating] = useState(false);
+  const [creatingSigning, setCreatingSigning] = useState(false);
+  const [signingUrl, setSigningUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   // Add country/league modal state
@@ -167,6 +169,45 @@ export default function GenerateMandatePage() {
       setGenerating(false);
     }
   }, [player, selectedAgent, expiryDate, validLeagues, id, router, currentUser]);
+
+  const handleCreateSigning = useCallback(async () => {
+    if (!player?.passportDetails) return;
+    setCreatingSigning(true);
+    setError(null);
+    setSigningUrl(null);
+    try {
+      // Get a unique token from the server
+      const res = await fetch('/api/mandate/create-signing', { method: 'POST' });
+      if (!res.ok) throw new Error('Failed to create signing token');
+      const { token, signingUrl: url } = await res.json();
+
+      // Write mandate data to Firestore client-side
+      await setDoc(doc(db, 'MandateSigningRequests', token), {
+        token,
+        passportDetails: player.passportDetails,
+        expiryDate: new Date(expiryDate).getTime(),
+        validLeagues,
+        agentName: selectedAgent?.name ?? 'Lior Dahan',
+        fifaLicenseId: selectedAgent?.fifaLicenseId ?? '22412-9595',
+        agentAccountId: currentUser?.id || null,
+        playerId: id || null,
+        playerName: [player.passportDetails.firstName, player.passportDetails.lastName].filter(Boolean).join(' ') || null,
+        effectiveDate: Date.now(),
+        createdAt: Date.now(),
+        status: 'pending',
+        playerSignature: null,
+        playerSignedAt: null,
+        agentSignature: null,
+        agentSignedAt: null,
+      });
+
+      setSigningUrl(url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create signing link');
+    } finally {
+      setCreatingSigning(false);
+    }
+  }, [player, selectedAgent, expiryDate, validLeagues, id]);
 
   const openModal = () => {
     setModalOpen(true);
@@ -421,7 +462,7 @@ export default function GenerateMandatePage() {
               </div>
               <div>
                 <p className="text-xs font-medium text-mgsr-muted uppercase tracking-wider mb-1">{t('mandate_expiry_date')}</p>
-                <p className="text-mgsr-text font-medium">{new Date(expiryDate).toLocaleDateString()}</p>
+                <p className="text-mgsr-text font-medium">{new Date(expiryDate).toLocaleDateString('en-GB')}</p>
               </div>
               {validLeagues.length > 0 && (
                 <div>
@@ -459,22 +500,74 @@ export default function GenerateMandatePage() {
               {t('mandate_next')}
             </button>
           ) : (
-            <button
-              onClick={handleGenerate}
-              disabled={generating}
-              className="px-6 py-3 rounded-xl bg-mgsr-teal text-mgsr-dark font-semibold hover:bg-mgsr-teal/90 transition disabled:opacity-50 flex items-center gap-2"
-            >
-              {generating ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-mgsr-dark border-t-transparent rounded-full animate-spin" />
-                  {t('mandate_generating')}
-                </>
-              ) : (
-                t('mandate_generate_pdf')
-              )}
-            </button>
+            <div className="flex gap-3 flex-wrap">
+              <button
+                onClick={handleGenerate}
+                disabled={generating || creatingSigning}
+                className="px-6 py-3 rounded-xl bg-mgsr-teal text-mgsr-dark font-semibold hover:bg-mgsr-teal/90 transition disabled:opacity-50 flex items-center gap-2"
+              >
+                {generating ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-mgsr-dark border-t-transparent rounded-full animate-spin" />
+                    {t('mandate_generating')}
+                  </>
+                ) : (
+                  t('mandate_generate_pdf')
+                )}
+              </button>
+              <button
+                onClick={handleCreateSigning}
+                disabled={generating || creatingSigning}
+                className="px-6 py-3 rounded-xl border-2 border-mgsr-teal text-mgsr-teal font-semibold hover:bg-mgsr-teal/10 transition disabled:opacity-50 flex items-center gap-2"
+              >
+                {creatingSigning ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-mgsr-teal border-t-transparent rounded-full animate-spin" />
+                    {t('mandate_creating_signing')}
+                  </>
+                ) : (
+                  t('mandate_send_for_signing')
+                )}
+              </button>
+            </div>
           )}
         </div>
+
+        {/* Signing URL */}
+        {signingUrl && (
+          <div className="mt-4 p-4 rounded-xl bg-mgsr-teal/10 border border-mgsr-teal/30">
+            <p className="text-mgsr-text text-sm font-medium mb-2">{t('mandate_signing_link_created')}</p>
+            <p className="text-mgsr-muted text-xs mb-3">
+              {t('mandate_signing_link_desc')}
+            </p>
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                readOnly
+                value={signingUrl}
+                className="flex-1 px-3 py-2 rounded-lg bg-mgsr-card border border-mgsr-border text-mgsr-text text-sm font-mono truncate"
+              />
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(signingUrl);
+                }}
+                className="px-4 py-2 rounded-lg bg-mgsr-teal text-mgsr-dark text-sm font-semibold hover:bg-mgsr-teal/90 transition whitespace-nowrap"
+              >
+                {t('mandate_copy_link')}
+              </button>
+            </div>
+            <div className="flex gap-2 mt-3">
+              <a
+                href={signingUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-mgsr-teal text-sm hover:underline"
+              >
+                {t('mandate_open_signing_page')}
+              </a>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Add country/league modal */}

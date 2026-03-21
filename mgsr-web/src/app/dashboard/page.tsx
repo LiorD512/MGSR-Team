@@ -48,6 +48,7 @@ import {
   SHORTLISTS_COLLECTIONS,
 } from '@/lib/platformCollections';
 import ForeignArrivalsPanel from '@/components/ForeignArrivalsPanel';
+import BirthdaysSection from '@/components/BirthdaysSection';
 
 interface FeedEvent {
   id: string;
@@ -96,6 +97,13 @@ interface AgentTask {
 
 interface RosteredPlayer {
   id: string;
+  fullName?: string;
+  profileImage?: string;
+  currentClub?: { clubName?: string };
+  playerPhoneNumber?: string;
+  agentInChargeName?: string;
+  dateOfBirth?: string;
+  passportDetails?: { dateOfBirth?: string };
   tmProfile?: string;
   positions?: string[];
   age?: string;
@@ -1031,6 +1039,15 @@ export default function DashboardPage() {
             </div>
           </div>
         )}
+
+        {/* Birthdays */}
+        <BirthdaysSection
+          menPlayers={rosterPlayers}
+          womenPlayers={womenPlayers}
+          youthPlayers={youthPlayers}
+          userName={userName}
+          userNameEn={currentAccount ? (currentAccount.name || currentAccount.hebrewName || 'Agent') : (user?.displayName || 'Agent')}
+        />
 
         {/* Charts row (men only; women & youth have simplified dashboards) */}
         {platform === 'men' && (

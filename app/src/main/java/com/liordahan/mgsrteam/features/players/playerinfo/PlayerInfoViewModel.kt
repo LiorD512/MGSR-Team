@@ -499,16 +499,12 @@ class PlayerInfoViewModel(
     override fun updatePlayerNumber(number: String) {
         _playerInfoFlow.update {
             it?.copy(
-                playerPhoneNumber = number,
-                playerAdditionalInfoModel = it?.playerAdditionalInfoModel?.copy(playerNumber = number.takeIf { n -> n.isNotBlank() })
+                playerPhoneNumber = number
             )
         }
 
         viewModelScope.launch {
             val updates = mutableMapOf<String, Any?>("playerPhoneNumber" to number)
-            if (_playerInfoFlow.value?.playerAdditionalInfoModel != null) {
-                updates["playerAdditionalInfoModel.playerNumber"] = number.takeIf { it.isNotBlank() }
-            }
             getPlayerDocRef()?.update(updates)?.await()
         }
     }
@@ -516,16 +512,12 @@ class PlayerInfoViewModel(
     override fun updateAgentNumber(number: String) {
         _playerInfoFlow.update {
             it?.copy(
-                agentPhoneNumber = number,
-                playerAdditionalInfoModel = it?.playerAdditionalInfoModel?.copy(agentNumber = number.takeIf { n -> n.isNotBlank() })
+                agentPhoneNumber = number
             )
         }
 
         viewModelScope.launch {
             val updates = mutableMapOf<String, Any?>("agentPhoneNumber" to number)
-            if (_playerInfoFlow.value?.playerAdditionalInfoModel != null) {
-                updates["playerAdditionalInfoModel.agentNumber"] = number.takeIf { it.isNotBlank() }
-            }
             getPlayerDocRef()?.update(updates)?.await()
         }
     }
@@ -1110,13 +1102,11 @@ class PlayerInfoViewModel(
                     "tmProfile" to player.tmProfile
                 )
             if (includePlayerContact) {
-                val playerPhone = player.playerAdditionalInfoModel?.playerNumber?.takeIf { it.isNotBlank() }
-                    ?: player.playerPhoneNumber?.takeIf { it.isNotBlank() }
+                val playerPhone = player.playerPhoneNumber?.takeIf { it.isNotBlank() }
                 if (playerPhone != null) playerMap["playerPhoneNumber"] = playerPhone
             }
             if (includeAgencyContact) {
-                val agentPhone = player.playerAdditionalInfoModel?.agentNumber?.takeIf { it.isNotBlank() }
-                    ?: player.agentPhoneNumber?.takeIf { it.isNotBlank() }
+                val agentPhone = player.agentPhoneNumber?.takeIf { it.isNotBlank() }
                 if (agentPhone != null) playerMap["agentPhoneNumber"] = agentPhone
             }
 

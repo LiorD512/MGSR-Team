@@ -40,3 +40,20 @@ export function openWhatsAppShare(text: string): void {
     window.open(waUrl, '_blank');
   }
 }
+
+/**
+ * Open WhatsApp conversation with a specific phone number and pre-filled message.
+ * Combines toWhatsAppUrl() normalisation with a text param.
+ */
+export function openWhatsAppWithMessage(phone: string, message: string): void {
+  if (typeof window === 'undefined') return;
+  const base = toWhatsAppUrl(phone);
+  if (!base) return;
+  const url = `${base}?text=${encodeURIComponent(message)}`;
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+  if (isMobile) {
+    window.location.href = url;
+  } else {
+    window.open(url, '_blank');
+  }
+}
