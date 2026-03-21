@@ -214,9 +214,27 @@ export async function generateMandatePdf(data: MandateData): Promise<Uint8Array>
   const printFieldW = 350;
   const dateFieldW = 90;
 
-  const playerLabel = 'Signed by the Player: ';
+  // Ensure enough space for the full signature block (~130pt for 2 sig rows + print names)
+  if (y < MARGIN + 140) {
+    page.drawText(`-- ${pageNum} --`, {
+      x: PAGE_WIDTH / 2 - 25,
+      y: 20,
+      size: 9,
+      font,
+      color: black,
+    });
+    page = doc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
+    pageNum++;
+    y = PAGE_HEIGHT - MARGIN;
+  }
+
+  // Determine signature labels based on origin agent
+  const hasLicensedOriginAgent = !!(data.originAgentName && data.originAgentId && data.originAgentIdLabel === 'FIFA License');
+  const playerFullName = [data.passportDetails.firstName, data.passportDetails.lastName].filter(Boolean).join(' ') || 'the Player';
+  const sig1Name = hasLicensedOriginAgent ? data.originAgentName! : playerFullName;
+  const playerLabel = `Signed by ${sig1Name}: `;
   const dateLabel = 'Date: ';
-  const agentLabel = 'Signed by the Agent: ';
+  const agentLabel = `Signed by ${data.agentName || 'the Agent'}: `;
   const printLabel = 'Print Name: ';
 
   page.drawText(playerLabel, { x: MARGIN, y, size: BODY_SIZE, font, color: black });
