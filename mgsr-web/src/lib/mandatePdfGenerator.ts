@@ -32,6 +32,9 @@ export interface MandateData {
   validLeagues: string[];
   agentName: string;
   fifaLicenseId: string;
+  originAgentName?: string;
+  originAgentIdLabel?: string;  // "FIFA License" or "passport number"
+  originAgentId?: string;
 }
 
 function formatDobToDdMmYyyy(dob: string | undefined): string {
@@ -150,6 +153,16 @@ export async function generateMandatePdf(data: MandateData): Promise<Uint8Array>
     false
   );
   y -= 4;
+  // Origin agent paragraph (when mandate is "with agent")
+  if (data.originAgentName && data.originAgentId) {
+    const idLabel = data.originAgentIdLabel || 'FIFA License';
+    drawText(
+      `This mandate valid through the player agent. Name: ${data.originAgentName}, ${idLabel}: ${data.originAgentId}.`,
+      BODY_SIZE,
+      false
+    );
+    y -= 4;
+  }
   drawText('The Player and the Football Agent are the "Parties" and each a "Party."', BODY_SIZE, false);
   y -= 4;
   if (data.validLeagues.length > 0) {
