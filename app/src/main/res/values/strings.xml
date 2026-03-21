@@ -930,6 +930,8 @@
     <string name="mandate_tap_to_change">Tap to change</string>
     <string name="mandate_add_country_league">Add Country / League</string>
     <string name="mandate_no_leagues_hint">No leagues added yet.\nTap the button above to add countries or clubs.</string>
+    <string name="mandate_worldwide">WorldWide</string>
+    <string name="mandate_worldwide_desc">Mandate valid for all countries and leagues</string>
     <string name="mandate_hint_select_agent">Select an agent to continue</string>
     <string name="mandate_hint_date_and_leagues">Set an expiry date and add at least one league</string>
     <string name="mandate_hint_select_date">Select an expiry date to continue</string>
@@ -1475,6 +1477,7 @@
     <string name="birthdays_turns_male">Turns</string>
     <string name="birthdays_turns_female">Turns</string>
     <string name="birthdays_send_wishes">Send Wishes</string>
+    <string name="birthdays_wish_sent">Sent</string>
     <string name="birthdays_none_today">No player birthdays today</string>
     <string name="birthdays_upcoming">Upcoming (next 7 days)</string>
     <string name="birthdays_players">players</string>

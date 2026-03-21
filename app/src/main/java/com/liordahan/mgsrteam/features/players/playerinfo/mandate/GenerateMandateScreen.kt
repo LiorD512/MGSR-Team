@@ -51,6 +51,8 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
@@ -155,10 +157,12 @@ fun GenerateMandateScreen(
     val isGenerating by mandateViewModel.isGenerating.collectAsStateWithLifecycle()
     val isCreatingSigning by mandateViewModel.isCreatingSigning.collectAsStateWithLifecycle()
     val signingUrl by mandateViewModel.signingUrl.collectAsStateWithLifecycle()
+    val isWorldWide by mandateViewModel.isWorldWide.collectAsStateWithLifecycle()
 
     val validLeagues = remember(
         mandateViewModel.countryOnly.collectAsStateWithLifecycle().value,
-        mandateViewModel.selectedClubs.collectAsStateWithLifecycle().value
+        mandateViewModel.selectedClubs.collectAsStateWithLifecycle().value,
+        isWorldWide
     ) { mandateViewModel.validLeagues }
 
     LaunchedEffect(Unit) {
@@ -258,6 +262,8 @@ fun GenerateMandateScreen(
                         1 -> MandateStep2ValidityContent(
                             expiryDate = expiryDate,
                             validLeagues = validLeagues,
+                            isWorldWide = isWorldWide,
+                            onWorldWideChange = { mandateViewModel.setIsWorldWide(it) },
                             onDatePickerRequest = { mandateViewModel.setShowDatePicker(true) },
                             onAddLeagueRequest = { mandateViewModel.setShowAddLeagueSheet(true) },
                             onRemoveLeague = { entry ->
@@ -862,6 +868,8 @@ private fun AgentSkeletonCard(index: Int) {
 private fun MandateStep2ValidityContent(
     expiryDate: Date?,
     validLeagues: List<String>,
+    isWorldWide: Boolean,
+    onWorldWideChange: (Boolean) -> Unit,
     onDatePickerRequest: () -> Unit,
     onAddLeagueRequest: () -> Unit,
     onRemoveLeague: (String) -> Unit
@@ -962,7 +970,7 @@ private fun MandateStep2ValidityContent(
                 text = stringResource(R.string.mandate_valid_leagues),
                 style = boldTextStyle(HomeTextSecondary, 12.sp)
             )
-            if (validLeagues.isNotEmpty()) {
+            if (!isWorldWide && validLeagues.isNotEmpty()) {
                 Text(
                     text = validLeagues.size.toString(),
                     style = boldTextStyle(HomeTealAccent, 12.sp),
@@ -974,14 +982,64 @@ private fun MandateStep2ValidityContent(
         }
         Spacer(Modifier.height(10.dp))
 
-        // Add league button
+        // WorldWide checkbox
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable { onAddLeagueRequest() },
+                .clickable { onWorldWideChange(!isWorldWide) },
             shape = RoundedCornerShape(14.dp),
-            colors = CardDefaults.cardColors(containerColor = HomeTealAccent.copy(alpha = 0.08f)),
-            border = BorderStroke(1.dp, HomeTealAccent.copy(alpha = 0.3f))
+            colors = CardDefaults.cardColors(
+                containerColor = if (isWorldWide) HomeTealAccent.copy(alpha = 0.12f) else HomeDarkCard
+            ),
+            border = BorderStroke(
+                1.dp,
+                if (isWorldWide) HomeTealAccent.copy(alpha = 0.5f) else HomeDarkCardBorder
+            )
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(14.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Checkbox(
+                    checked = isWorldWide,
+                    onCheckedChange = { onWorldWideChange(it) },
+                    colors = CheckboxDefaults.colors(
+                        checkedColor = HomeTealAccent,
+                        uncheckedColor = HomeTextSecondary,
+                        checkmarkColor = HomeDarkBackground
+                    )
+                )
+                Spacer(Modifier.width(8.dp))
+                Column {
+                    Text(
+                        text = stringResource(R.string.mandate_worldwide),
+                        style = boldTextStyle(
+                            if (isWorldWide) HomeTealAccent else HomeTextPrimary,
+                            15.sp
+                        )
+                    )
+                    Text(
+                        text = stringResource(R.string.mandate_worldwide_desc),
+                        style = regularTextStyle(HomeTextSecondary, 12.sp)
+                    )
+                }
+            }
+        }
+
+        // Country/league selection — hidden when WorldWide is checked
+        if (!isWorldWide) {
+            Spacer(Modifier.height(12.dp))
+
+            // Add league button
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onAddLeagueRequest() },
+                shape = RoundedCornerShape(14.dp),
+                colors = CardDefaults.cardColors(containerColor = HomeTealAccent.copy(alpha = 0.08f)),
+                border = BorderStroke(1.dp, HomeTealAccent.copy(alpha = 0.3f))
         ) {
             Row(
                 modifier = Modifier
@@ -1057,6 +1115,7 @@ private fun MandateStep2ValidityContent(
                 textAlign = TextAlign.Center
             )
         }
+        } // end if (!isWorldWide)
 
         Spacer(Modifier.height(24.dp))
     }

@@ -61,9 +61,11 @@ export default function GenerateMandatePage() {
   });
   const [countryOnly, setCountryOnly] = useState<string[]>([]);
   const [selectedClubs, setSelectedClubs] = useState<{ clubName: string; clubCountry: string }[]>([]);
+  const [isWorldWide, setIsWorldWide] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [creatingSigning, setCreatingSigning] = useState(false);
   const [signingUrl, setSigningUrl] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Add country/league modal state
@@ -77,7 +79,7 @@ export default function GenerateMandatePage() {
   const [modalPendingClubs, setModalPendingClubs] = useState<ClubSearchResult[]>([]);
 
   const agentsWithFifa = accounts.filter((a) => a.fifaLicenseId?.trim());
-  const validLeagues = buildValidLeagues(countryOnly, selectedClubs);
+  const validLeagues = isWorldWide ? ['WorldWide'] : buildValidLeagues(countryOnly, selectedClubs);
 
   const dir = isRtl ? 'rtl' : 'ltr';
 
@@ -394,6 +396,29 @@ export default function GenerateMandatePage() {
 
             <div>
               <label className="block text-sm font-medium text-mgsr-muted mb-2">{t('mandate_valid_leagues')}</label>
+
+              {/* WorldWide checkbox */}
+              <label
+                className={`flex items-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all mb-3 ${
+                  isWorldWide
+                    ? 'border-mgsr-teal bg-mgsr-teal/10'
+                    : 'border-mgsr-border hover:border-mgsr-teal/40'
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  checked={isWorldWide}
+                  onChange={(e) => setIsWorldWide(e.target.checked)}
+                  className="w-5 h-5 accent-[#39d2c0] rounded"
+                />
+                <div>
+                  <p className={`font-semibold text-sm ${isWorldWide ? 'text-mgsr-teal' : 'text-mgsr-text'}`}>{t('mandate_worldwide')}</p>
+                  <p className="text-xs text-mgsr-muted">{t('mandate_worldwide_desc')}</p>
+                </div>
+              </label>
+
+              {!isWorldWide && (
+                <>
               <button
                 type="button"
                 onClick={openModal}
@@ -438,6 +463,8 @@ export default function GenerateMandatePage() {
                     </div>
                   ))}
                 </div>
+              )}
+                </>
               )}
             </div>
           </div>
@@ -550,10 +577,12 @@ export default function GenerateMandatePage() {
               <button
                 onClick={() => {
                   navigator.clipboard.writeText(signingUrl);
+                  setCopied(true);
+                  setTimeout(() => setCopied(false), 2000);
                 }}
-                className="px-4 py-2 rounded-lg bg-mgsr-teal text-mgsr-dark text-sm font-semibold hover:bg-mgsr-teal/90 transition whitespace-nowrap"
+                className={`px-4 py-2 rounded-lg text-sm font-semibold transition whitespace-nowrap ${copied ? 'bg-green-500 text-white' : 'bg-mgsr-teal text-mgsr-dark hover:bg-mgsr-teal/90'}`}
               >
-                {t('mandate_copy_link')}
+                {copied ? '✓ ' + t('mandate_link_copied') : t('mandate_copy_link')}
               </button>
             </div>
             <div className="flex gap-2 mt-3">

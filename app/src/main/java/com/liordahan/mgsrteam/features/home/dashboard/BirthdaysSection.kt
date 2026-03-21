@@ -190,6 +190,7 @@ fun BirthdaysSection(
 
     val context = LocalContext.current
     var showUpcoming by remember { mutableStateOf(false) }
+    val sentWishes = remember { mutableStateOf(setOf<String>()) }
 
     val accent = platform.accent
     val cardBg = HomeDarkCard
@@ -246,7 +247,11 @@ fun BirthdaysSection(
                     player = player,
                     accent = accent,
                     isWomen = platform == Platform.WOMEN,
-                    onSendWishes = { sendBirthdayWishes(context, player, senderName) }
+                    isSent = player.id in sentWishes.value,
+                    onSendWishes = {
+                        sendBirthdayWishes(context, player, senderName)
+                        sentWishes.value = sentWishes.value + player.id
+                    }
                 )
                 Spacer(Modifier.height(6.dp))
             }
@@ -337,6 +342,7 @@ private fun BirthdayPlayerRow(
     player: BirthdayPlayer,
     accent: Color,
     isWomen: Boolean,
+    isSent: Boolean,
     onSendWishes: () -> Unit
 ) {
     Row(
@@ -422,25 +428,45 @@ private fun BirthdayPlayerRow(
         Spacer(Modifier.width(8.dp))
 
         // WhatsApp button
-        Row(
-            modifier = Modifier
-                .clip(RoundedCornerShape(8.dp))
-                .background(WhatsAppGreen.copy(alpha = 0.15f))
-                .clickable { onSendWishes() }
-                .padding(horizontal = 10.dp, vertical = 6.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                painter = painterResource(R.drawable.ic_whatsapp),
-                contentDescription = null,
-                tint = WhatsAppGreen,
-                modifier = Modifier.size(16.dp)
-            )
-            Spacer(Modifier.width(4.dp))
-            Text(
-                text = stringResource(R.string.birthdays_send_wishes),
-                style = boldTextStyle(WhatsAppGreen, 11.sp)
-            )
+        if (isSent) {
+            Row(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(accent.copy(alpha = 0.15f))
+                    .padding(horizontal = 10.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "\u2713",
+                    style = boldTextStyle(accent, 12.sp)
+                )
+                Spacer(Modifier.width(4.dp))
+                Text(
+                    text = stringResource(R.string.birthdays_wish_sent),
+                    style = boldTextStyle(accent, 11.sp)
+                )
+            }
+        } else {
+            Row(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(WhatsAppGreen.copy(alpha = 0.15f))
+                    .clickable { onSendWishes() }
+                    .padding(horizontal = 10.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_whatsapp),
+                    contentDescription = null,
+                    tint = WhatsAppGreen,
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(Modifier.width(4.dp))
+                Text(
+                    text = stringResource(R.string.birthdays_send_wishes),
+                    style = boldTextStyle(WhatsAppGreen, 11.sp)
+                )
+            }
         }
     }
 }

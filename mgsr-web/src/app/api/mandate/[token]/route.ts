@@ -1,10 +1,39 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getFirebaseAdmin, adminDb } from '@/lib/firebaseAdmin';
+import { getFirebaseAdmin } from '@/lib/firebaseAdmin';
+
+const TTL_MS = 48 * 60 * 60 * 1000;
+
+/**
+ * Helper: get Firestore doc via Admin SDK, or fall back to client SDK.
+ */
+async function getMandateDoc(token: string) {
+  const app = getFirebaseAdmin();
+  if (app) {
+    const { getFirestore } = await import('firebase-admin/firestore');
+    const db = getFirestore(app);
+    const snap = await db.collection('MandateSigningRequests').doc(token).get();
+    return snap.exists ? { data: snap.data()!, ref: snap.ref, admin: true as const } : null;
+  }
+  // Fallback: client SDK (local dev without Admin credentials)
+  const { db } = await import('@/lib/firebase');
+  const { doc, getDoc } = await import('firebase/firestore');
+  const snap = await getDoc(doc(db, 'MandateSigningRequests', token));
+  return snap.exists() ? { data: snap.data()!, docRef: doc(db, 'MandateSigningRequests', token), admin: false as const } : null;
+}
+
+async function updateMandateDoc(token: string, update: Record<string, unknown>, result: Awaited<ReturnType<typeof getMandateDoc>>) {
+  if (result?.admin) {
+    await result.ref.update(update);
+  } else {
+    const { db } = await import('@/lib/firebase');
+    const { doc, updateDoc } = await import('firebase/firestore');
+    await updateDoc(doc(db, 'MandateSigningRequests', token), update);
+  }
+}
 
 /**
  * Public API for mandate signing data — no auth required.
- * Uses Firebase Admin SDK so the client page has zero dependency on the
- * Firebase client SDK (works for anyone with the link).
+ * Uses Firebase Admin SDK when available, falls back to client SDK for local dev.
  */
 
 export async function GET(
@@ -16,25 +45,19 @@ export async function GET(
     return NextResponse.json({ error: 'Missing token' }, { status: 400 });
   }
 
-  const app = getFirebaseAdmin();
-  if (!app) {
-    return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
-  }
-
-  const snap = await adminDb().collection('MandateSigningRequests').doc(token).get();
-  if (!snap.exists) {
+  const result = await getMandateDoc(token);
+  if (!result) {
     return NextResponse.json({ error: 'Signing link not found or expired' }, { status: 404 });
   }
 
-  const data = snap.data()!;
+  const data = result.data;
 
   // Check 48-hour expiry (skip if already fully signed)
-  const TTL_MS = 48 * 60 * 60 * 1000;
   if (data.createdAt && data.status !== 'fully_signed') {
     const elapsed = Date.now() - data.createdAt;
     if (elapsed > TTL_MS) {
       if (data.status !== 'expired') {
-        await adminDb().collection('MandateSigningRequests').doc(token).update({ status: 'expired' });
+        await updateMandateDoc(token, { status: 'expired' }, result);
       }
       return NextResponse.json({ error: 'This signing link has expired. Please ask your agent to generate a new one.' }, { status: 410 });
     }
@@ -52,11 +75,6 @@ export async function PATCH(
     return NextResponse.json({ error: 'Missing token' }, { status: 400 });
   }
 
-  const app = getFirebaseAdmin();
-  if (!app) {
-    return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
-  }
-
   const body = await req.json();
   const { role, signature } = body;
 
@@ -69,13 +87,12 @@ export async function PATCH(
     return NextResponse.json({ error: 'Invalid signature format' }, { status: 400 });
   }
 
-  const docRef = adminDb().collection('MandateSigningRequests').doc(token);
-  const snap = await docRef.get();
-  if (!snap.exists) {
+  const result = await getMandateDoc(token);
+  if (!result) {
     return NextResponse.json({ error: 'Signing link not found' }, { status: 404 });
   }
 
-  const data = snap.data()!;
+  const data = result.data;
   const now = Date.now();
 
   const update: Record<string, unknown> = {};
@@ -89,7 +106,7 @@ export async function PATCH(
     update.status = data.playerSignature ? 'fully_signed' : 'agent_signed';
   }
 
-  await docRef.update(update);
+  await updateMandateDoc(token, update, result);
 
   return NextResponse.json({ success: true, status: update.status });
 }

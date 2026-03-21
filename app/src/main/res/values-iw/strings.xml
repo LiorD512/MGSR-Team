@@ -855,6 +855,8 @@
     <string name="mandate_tap_to_change">לחץ לשינוי</string>
     <string name="mandate_add_country_league">הוסף מדינה / ליגה</string>
     <string name="mandate_no_leagues_hint">לא נוספו ליגות עדיין.\nלחץ על הכפתור למעלה להוספת מדינות או מועדונים.</string>
+    <string name="mandate_worldwide">עולמי</string>
+    <string name="mandate_worldwide_desc">הייפוי כוח תקף לכל המדינות והליגות</string>
     <string name="mandate_hint_select_agent">בחר סוכן כדי להמשיך</string>
     <string name="mandate_hint_date_and_leagues">הגדר תאריך תפוגה והוסף לפחות ליגה אחת</string>
     <string name="mandate_hint_select_date">בחר תאריך תפוגה כדי להמשיך</string>
@@ -1466,6 +1468,7 @@
     <string name="birthdays_turns_male">בן</string>
     <string name="birthdays_turns_female">בת</string>
     <string name="birthdays_send_wishes">שלח ברכה</string>
+    <string name="birthdays_wish_sent">נשלח</string>
     <string name="birthdays_none_today">אין ימי הולדת של שחקנים היום</string>
     <string name="birthdays_upcoming">בקרוב (7 ימים הקרובים)</string>
     <string name="birthdays_players">שחקנים</string>

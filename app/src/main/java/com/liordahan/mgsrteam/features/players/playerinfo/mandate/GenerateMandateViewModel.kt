@@ -73,6 +73,9 @@ class GenerateMandateViewModel : ViewModel() {
     private val _selectedClubs = MutableStateFlow<List<ClubSearchModel>>(emptyList())
     val selectedClubs: StateFlow<List<ClubSearchModel>> = _selectedClubs.asStateFlow()
 
+    private val _isWorldWide = MutableStateFlow(false)
+    val isWorldWide: StateFlow<Boolean> = _isWorldWide.asStateFlow()
+
     private val _showAddLeagueSheet = MutableStateFlow(false)
     val showAddLeagueSheet: StateFlow<Boolean> = _showAddLeagueSheet.asStateFlow()
 
@@ -111,7 +114,8 @@ class GenerateMandateViewModel : ViewModel() {
     // ── Valid leagues (computed) ──
 
     val validLeagues: List<String>
-        get() = MandatePdfGenerator.buildValidLeagues(_countryOnly.value, _selectedClubs.value)
+        get() = if (_isWorldWide.value) listOf("WorldWide")
+                else MandatePdfGenerator.buildValidLeagues(_countryOnly.value, _selectedClubs.value)
 
     // ── Actions ──
 
@@ -121,6 +125,10 @@ class GenerateMandateViewModel : ViewModel() {
 
     fun setShowDatePicker(show: Boolean) {
         _showDatePicker.value = show
+    }
+
+    fun setIsWorldWide(worldWide: Boolean) {
+        _isWorldWide.value = worldWide
     }
 
     fun setShowAddLeagueSheet(show: Boolean) {

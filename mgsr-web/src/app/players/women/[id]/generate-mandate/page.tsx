@@ -61,6 +61,7 @@ export default function GenerateMandateWomenPage() {
   });
   const [countryOnly, setCountryOnly] = useState<string[]>([]);
   const [selectedClubs, setSelectedClubs] = useState<{ clubName: string; clubCountry: string }[]>([]);
+  const [isWorldWide, setIsWorldWide] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -74,7 +75,7 @@ export default function GenerateMandateWomenPage() {
   const [modalPendingClubs, setModalPendingClubs] = useState<ClubSearchResult[]>([]);
 
   const agentsWithFifa = accounts.filter((a) => a.fifaLicenseId?.trim());
-  const validLeagues = buildValidLeagues(countryOnly, selectedClubs);
+  const validLeagues = isWorldWide ? ['WorldWide'] : buildValidLeagues(countryOnly, selectedClubs);
 
   const dir = isRtl ? 'rtl' : 'ltr';
 
@@ -348,6 +349,29 @@ export default function GenerateMandateWomenPage() {
 
             <div>
               <label className="block text-sm font-medium text-mgsr-muted mb-2">{t('mandate_valid_leagues')}</label>
+
+              {/* WorldWide checkbox */}
+              <label
+                className={`flex items-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all mb-3 ${
+                  isWorldWide
+                    ? 'border-[var(--women-rose)] bg-[var(--women-rose)]/10'
+                    : 'border-mgsr-border hover:border-[var(--women-rose)]/40'
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  checked={isWorldWide}
+                  onChange={(e) => setIsWorldWide(e.target.checked)}
+                  className="w-5 h-5 accent-[var(--women-rose)] rounded"
+                />
+                <div>
+                  <p className={`font-semibold text-sm ${isWorldWide ? 'text-[var(--women-rose)]' : 'text-mgsr-text'}`}>{t('mandate_worldwide')}</p>
+                  <p className="text-xs text-mgsr-muted">{t('mandate_worldwide_desc')}</p>
+                </div>
+              </label>
+
+              {!isWorldWide && (
+                <>
               <button
                 type="button"
                 onClick={openModal}
@@ -392,6 +416,8 @@ export default function GenerateMandateWomenPage() {
                     </div>
                   ))}
                 </div>
+              )}
+                </>
               )}
             </div>
           </div>
