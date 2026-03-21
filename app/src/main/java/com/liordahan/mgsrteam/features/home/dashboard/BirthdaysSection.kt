@@ -168,7 +168,7 @@ private fun normalizePhoneForWhatsApp(phone: String): String {
 
 private fun sendBirthdayWishes(context: Context, player: BirthdayPlayer, senderName: String) {
     val firstName = player.fullName.split(" ").firstOrNull() ?: player.fullName
-    val msg = "Happy Birthday $firstName!\nWishing you a wonderful year ahead, full of success on and off the pitch!\n\n- $senderName"
+    val msg = "Happy Birthday $firstName!\nWishing you a wonderful year ahead, full of success on and off the pitch!\n$senderName"
     val normalized = normalizePhoneForWhatsApp(player.phone)
     val uri = Uri.parse("https://wa.me/$normalized?text=${Uri.encode(msg)}")
     try {

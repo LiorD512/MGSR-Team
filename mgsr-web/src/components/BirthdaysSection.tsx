@@ -157,7 +157,7 @@ export default function BirthdaysSection({ menPlayers = [], womenPlayers, youthP
   const firstName = (name: string) => name.split(' ')[0] || name;
 
   const sendWishes = (player: BirthdayPlayer) => {
-    const msg = `Happy Birthday ${firstName(player.fullName)}!\nWishing you a wonderful year ahead, full of success on and off the pitch!\n\n- ${userNameEn}`;
+    const msg = `Happy Birthday ${firstName(player.fullName)}!\nWishing you a wonderful year ahead, full of success on and off the pitch!\n${userNameEn}`;
     openWhatsAppWithMessage(player.phone, msg);
   };
 
