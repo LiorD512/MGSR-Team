@@ -15,12 +15,18 @@ export async function POST(req: NextRequest) {
       validLeagues = [],
       agentName = 'Lior Dahan',
       fifaLicenseId = '22412-9595',
+      originAgentName,
+      originAgentIdLabel,
+      originAgentId,
     } = body as {
       passportDetails: { firstName?: string; lastName?: string; dateOfBirth?: string; passportNumber?: string; nationality?: string };
       expiryDate: number;
       validLeagues: string[];
       agentName?: string;
       fifaLicenseId?: string;
+      originAgentName?: string;
+      originAgentIdLabel?: string;
+      originAgentId?: string;
     };
 
     if (!passportDetails) {
@@ -37,6 +43,9 @@ export async function POST(req: NextRequest) {
       validLeagues,
       agentName,
       fifaLicenseId,
+      originAgentName,
+      originAgentIdLabel,
+      originAgentId,
     });
 
     return new NextResponse(Buffer.from(pdfBytes), {

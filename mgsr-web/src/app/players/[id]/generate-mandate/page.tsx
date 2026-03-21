@@ -68,6 +68,12 @@ export default function GenerateMandatePage() {
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Origin agent state
+  const [withOriginAgent, setWithOriginAgent] = useState(false);
+  const [originAgentName, setOriginAgentName] = useState('');
+  const [originAgentUseLicense, setOriginAgentUseLicense] = useState(true);
+  const [originAgentId, setOriginAgentId] = useState('');
+
   // Add country/league modal state
   const [modalOpen, setModalOpen] = useState(false);
   const [modalCountryQuery, setModalCountryQuery] = useState('');
@@ -147,6 +153,11 @@ export default function GenerateMandatePage() {
           validLeagues,
           agentName: selectedAgent?.name ?? 'Lior Dahan',
           fifaLicenseId: selectedAgent?.fifaLicenseId ?? '22412-9595',
+          ...(withOriginAgent && originAgentName.trim() && originAgentId.trim() ? {
+            originAgentName: originAgentName.trim(),
+            originAgentIdLabel: originAgentUseLicense ? 'FIFA License' : 'passport number',
+            originAgentId: originAgentId.trim(),
+          } : {}),
         }),
       });
       if (!res.ok) {
@@ -191,6 +202,9 @@ export default function GenerateMandatePage() {
         validLeagues,
         agentName: selectedAgent?.name ?? 'Lior Dahan',
         fifaLicenseId: selectedAgent?.fifaLicenseId ?? '22412-9595',
+        originAgentName: withOriginAgent && originAgentName.trim() ? originAgentName.trim() : null,
+        originAgentIdLabel: withOriginAgent && originAgentId.trim() ? (originAgentUseLicense ? 'FIFA License' : 'passport number') : null,
+        originAgentId: withOriginAgent && originAgentId.trim() ? originAgentId.trim() : null,
         agentAccountId: currentUser?.id || null,
         playerId: id || null,
         playerName: [player.passportDetails.firstName, player.passportDetails.lastName].filter(Boolean).join(' ') || null,
@@ -367,6 +381,93 @@ export default function GenerateMandatePage() {
                 ))}
               </div>
             )}
+
+            {/* Origin Agent Section */}
+            <div className="border-t border-mgsr-border pt-5 mt-2">
+              <label
+                className={`flex items-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                  withOriginAgent
+                    ? 'border-mgsr-teal bg-mgsr-teal/10'
+                    : 'border-mgsr-border hover:border-mgsr-teal/40'
+                }`}
+              >
+                <div className="relative inline-flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={withOriginAgent}
+                    onChange={(e) => {
+                      setWithOriginAgent(e.target.checked);
+                      if (!e.target.checked) {
+                        setOriginAgentName('');
+                        setOriginAgentUseLicense(true);
+                        setOriginAgentId('');
+                      }
+                    }}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-mgsr-border rounded-full peer peer-checked:bg-mgsr-teal transition-colors" />
+                  <div className="absolute left-[2px] top-[2px] w-5 h-5 bg-white rounded-full transition-transform peer-checked:translate-x-5" />
+                </div>
+                <div>
+                  <p className={`font-semibold text-sm ${withOriginAgent ? 'text-mgsr-teal' : 'text-mgsr-text'}`}>{t('mandate_with_origin_agent')}</p>
+                  <p className="text-xs text-mgsr-muted">{t('mandate_with_origin_agent_desc')}</p>
+                </div>
+              </label>
+
+              {withOriginAgent && (
+                <div className="mt-4 space-y-4">
+                  {/* Agent name */}
+                  <div>
+                    <label className="block text-sm font-medium text-mgsr-muted mb-2">{t('mandate_origin_agent_name')}</label>
+                    <input
+                      type="text"
+                      value={originAgentName}
+                      onChange={(e) => setOriginAgentName(e.target.value)}
+                      placeholder={t('mandate_origin_agent_name_hint')}
+                      className="w-full px-4 py-3 rounded-xl bg-mgsr-card border-2 border-mgsr-border text-mgsr-text focus:border-mgsr-teal focus:outline-none transition-colors"
+                    />
+                  </div>
+
+                  {/* ID type toggle */}
+                  <div>
+                    <label className="block text-sm font-medium text-mgsr-muted mb-2">{t('mandate_origin_agent_id_type')}</label>
+                    <div className="grid grid-cols-2 gap-3">
+                      {[true, false].map((isLicense) => (
+                        <button
+                          key={isLicense ? 'license' : 'passport'}
+                          type="button"
+                          onClick={() => {
+                            setOriginAgentUseLicense(isLicense);
+                            setOriginAgentId('');
+                          }}
+                          className={`p-3 rounded-xl border-2 text-center text-sm font-semibold transition-all ${
+                            originAgentUseLicense === isLicense
+                              ? 'border-mgsr-teal bg-mgsr-teal/15 text-mgsr-teal'
+                              : 'border-mgsr-border text-mgsr-text hover:border-mgsr-teal/40'
+                          }`}
+                        >
+                          {isLicense ? t('mandate_origin_fifa_license') : t('mandate_origin_passport')}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* ID number */}
+                  <div>
+                    <label className="block text-sm font-medium text-mgsr-muted mb-2">
+                      {originAgentUseLicense ? t('mandate_origin_license_number') : t('mandate_origin_passport_number')}
+                    </label>
+                    <input
+                      type="text"
+                      value={originAgentId}
+                      onChange={(e) => setOriginAgentId(e.target.value)}
+                      placeholder={originAgentUseLicense ? 'XXXXXX-XXXX' : t('mandate_origin_passport_hint')}
+                      className="w-full px-4 py-3 rounded-xl bg-mgsr-card border-2 border-mgsr-border text-mgsr-text focus:border-mgsr-teal focus:outline-none transition-colors font-mono"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
@@ -487,6 +588,15 @@ export default function GenerateMandatePage() {
                   <p className="text-sm text-mgsr-muted mt-0.5">{t('mandate_review_fifa_id')}: {selectedAgent.fifaLicenseId}</p>
                 )}
               </div>
+              {withOriginAgent && originAgentName.trim() && (
+                <div>
+                  <p className="text-xs font-medium text-mgsr-muted uppercase tracking-wider mb-1">{t('mandate_origin_agent_title')}</p>
+                  <p className="text-mgsr-text font-medium">{originAgentName}</p>
+                  <p className="text-sm text-mgsr-muted mt-0.5">
+                    {originAgentUseLicense ? t('mandate_review_fifa_id') : t('mandate_origin_passport')}: {originAgentId}
+                  </p>
+                </div>
+              )}
               <div>
                 <p className="text-xs font-medium text-mgsr-muted uppercase tracking-wider mb-1">{t('mandate_expiry_date')}</p>
                 <p className="text-mgsr-text font-medium">{new Date(expiryDate).toLocaleDateString('en-GB')}</p>
@@ -515,11 +625,13 @@ export default function GenerateMandatePage() {
             <button
               onClick={() => {
                 if (step === 0 && agentsWithFifa.length > 0 && !selectedAgent) return;
+                if (step === 0 && withOriginAgent && (!originAgentName.trim() || !originAgentId.trim())) return;
                 if (step === 1 && !expiryDate) return;
                 setStep(step + 1);
               }}
               disabled={
                 (step === 0 && agentsWithFifa.length > 0 && !selectedAgent) ||
+                (step === 0 && withOriginAgent && (!originAgentName.trim() || !originAgentId.trim())) ||
                 (step === 1 && !expiryDate)
               }
               className="px-6 py-3 rounded-xl bg-mgsr-teal text-mgsr-dark font-semibold hover:bg-mgsr-teal/90 transition disabled:opacity-50 disabled:cursor-not-allowed"
