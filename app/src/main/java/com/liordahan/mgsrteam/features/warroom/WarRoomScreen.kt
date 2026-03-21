@@ -137,7 +137,7 @@ private val WrScoreMedium = Color(0xFFF59E0B)
 private val WrScoreLow = Color(0xFFEF4444)
 
 private const val TM_IMAGE_BASE = "https://img.a.transfermarkt.technology/portrait/medium/"
-private const val TM_DEFAULT_IMAGE = "${TM_IMAGE_BASE}0.jpg"
+private const val TM_DEFAULT_IMAGE = "https://img.a.transfermarkt.technology/portrait/big/default.jpg?lm=1"
 
 private fun translateNationalityDisplay(nationality: String, context: android.content.Context): String {
     if (nationality.isBlank()) return ""
@@ -151,8 +151,7 @@ private fun translateNationalityDisplay(nationality: String, context: android.co
 
 private fun getPlayerImageUrl(profileImage: String?, transfermarktUrl: String): String {
     if (!profileImage.isNullOrBlank()) return profileImage.trim()
-    val id = extractPlayerIdFromUrl(transfermarktUrl)
-    if (id != null) return "${TM_IMAGE_BASE}${id}.jpg"
+    // TM now requires timestamp-suffixed image URLs — plain id.jpg no longer works
     return TM_DEFAULT_IMAGE
 }
 

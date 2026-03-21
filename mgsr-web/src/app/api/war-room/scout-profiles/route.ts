@@ -16,9 +16,9 @@ export type { ScoutProfileResponse };
 
 function getProfileImage(profileImage: string | null | undefined, tmProfileUrl: string): string {
   if (profileImage?.trim()) return profileImage.trim();
-  const id = extractPlayerIdFromUrl(tmProfileUrl);
-  if (id) return `https://img.a.transfermarkt.technology/portrait/medium/${id}.jpg`;
-  return 'https://img.a.transfermarkt.technology/portrait/medium/0.jpg';
+  // TM now requires timestamp-suffixed image URLs — plain ID.jpg no longer works.
+  // Return the official TM default placeholder instead of a broken URL.
+  return 'https://img.a.transfermarkt.technology/portrait/big/default.jpg?lm=1';
 }
 
 export async function GET(request: NextRequest) {

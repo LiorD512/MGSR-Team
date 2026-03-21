@@ -465,6 +465,7 @@ exports.scoutAgentWorker = onMessagePublished(
     timeoutSeconds: 1800,
     memory: "512MiB",
     retry: true,
+    secrets: ["SCOUT_ENRICH_SECRET"],
   },
   async () => {
     console.log("[scoutAgentWorker] Started");

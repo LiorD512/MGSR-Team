@@ -173,7 +173,8 @@ const LEAGUE_TO_AGENT = {
   // German-language league names from Transfermarkt
   "a division cyprus": "cyprus",
   "a division zypern": "cyprus",
-  "prva liga slowenien": "slovenia",
+  "prva liga slowenien": "slovakia",  // ⚠ Recruitment API mislabels Slovak Niké Liga as "Prva Liga Slowenien"
+  "nike liga slowenien": "slovakia",
   "1. hnl": "croatia",
   "parva liga bulgarien": "bulgaria",
   "serie a brasilien": "brazil",
@@ -216,13 +217,13 @@ const LEAGUE_CONTAINS_AGENT = [
   [["france", "french", "ligue", "championnat national"], "france"],
   [["scotland", "scottish", "premiership"], "scotland"],
   [["croatia", "croatian", "hnl", "prva hnl", "kroatien"], "croatia"],
-  [["slovenia", "slovenian", "prvaliga", "slowenien"], "slovenia"],
+  [["slovenia", "slovenian", "prvaliga"], "slovenia"],
   [["bosnia", "bosnian", "bih", "premier liga bih", "hercegovine"], "bosnia"],
   [["macedonia", "macedonian", "prva makedonska", "makedonien", "primera makedonska"], "macedonia"],
   [["montenegro", "crnogorska"], "montenegro"],
   [["kosovo", "kosovar", "kosoves"], "kosovo"],
   [["cyprus", "cypriot", "protathlima", "zypern"], "cyprus"],
-  [["slovakia", "slovak", "slowakei", "niké liga", "nike liga"], "slovakia"],
+  [["slovakia", "slovak", "slowakei", "slowenien", "niké liga", "nike liga"], "slovakia"],
   [["azerbaijan", "azerbaijani", "premyer liqa"], "azerbaijan"],
   [["kazakhstan", "kazakh", "kasachstan"], "kazakhstan"],
   [["morocco", "moroccan", "botola"], "morocco"],
@@ -1614,15 +1615,23 @@ async function runScoutAgent() {
             // Player has no personal photo — use TM default placeholder
             profile.data.profileImage = TM_DEFAULT_IMG;
           }
-        } catch {
-          // Skip — player will show placeholder
+        } catch (err) {
+          // Log first failure to help diagnose TM blocking
+          if (i === 0 && profile === chunk[0]) {
+            console.warn(`[ScoutAgent] TM image fetch failed: ${err.message || err}`);
+          }
+          // Set default placeholder so frontend doesn't try broken timestamp-less URLs
+          if (!profile.data.profileImage) {
+            profile.data.profileImage = TM_DEFAULT_IMG;
+          }
         }
       })
     );
     if (i + ENRICH_CONCURRENCY < profilesToEnrich.length) await sleep(2000);
   }
-  const enrichedCount = profilesToEnrich.filter((p) => p.data.profileImage).length;
-  console.log(`[ScoutAgent] Enriched ${enrichedCount}/${profilesToEnrich.length} profiles with images`);
+  const enrichedReal = profilesToEnrich.filter((p) => p.data.profileImage && !p.data.profileImage.includes("default.jpg")).length;
+  const enrichedDefault = profilesToEnrich.filter((p) => p.data.profileImage && p.data.profileImage.includes("default.jpg")).length;
+  console.log(`[ScoutAgent] Image enrichment: ${enrichedReal} real TM images, ${enrichedDefault} default placeholders, ${profilesToEnrich.length - enrichedReal - enrichedDefault} failed`);
 
   // ═══════════════════════════════════════════════════════════════
   // DELETE all old profiles before writing fresh batch
@@ -1776,6 +1785,27 @@ ONLY valid JSON.`;
   }
 
   const durationMs = Date.now() - startTime;
+
+  // ═══════════════════════════════════════════════════════════════
+  // Trigger Vercel-side image enrichment (Vercel can reach TM, Cloud Functions cannot)
+  // ═══════════════════════════════════════════════════════════════
+  const enrichSecret = process.env.SCOUT_ENRICH_SECRET;
+  const enrichUrl = process.env.SCOUT_ENRICH_URL; // e.g. https://management.mgsrfa.com/api/war-room/enrich-images
+  if (enrichSecret && enrichUrl && approvedProfiles.length > 0) {
+    try {
+      const enrichRes = await fetch(enrichUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ secret: enrichSecret }),
+        signal: AbortSignal.timeout(65000),
+      });
+      const enrichData = await enrichRes.json().catch(() => ({}));
+      console.log(`[ScoutAgent] Vercel image enrichment: ${enrichData.enriched || 0} enriched, ${enrichData.failed || 0} failed`);
+    } catch (err) {
+      console.warn(`[ScoutAgent] Vercel image enrichment failed (non-fatal): ${err.message || err}`);
+    }
+  }
+
   const runDoc = await runsRef.add({
     runAt: startTime,
     status: "success",
