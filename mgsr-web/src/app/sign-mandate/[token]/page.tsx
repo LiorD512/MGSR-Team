@@ -11,6 +11,9 @@ interface MandateDoc {
   validLeagues: string[];
   agentName: string;
   fifaLicenseId: string;
+  originAgentName?: string;
+  originAgentIdLabel?: string;
+  originAgentId?: string;
   status: string;
   playerSignature: string | null;
   playerSignedAt: number | null;
@@ -177,7 +180,9 @@ export default function SignMandatePage() {
     return trimmed.toDataURL('image/png');
   };
 
-  /** Preview the mandate PDF (unsigned) in a new tab */
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
+  /** Preview the mandate PDF (unsigned) — opens inline for iOS compat */
   const handlePreviewPdf = async () => {
     if (!data) return;
     setPreviewing(true);
@@ -192,12 +197,28 @@ export default function SignMandatePage() {
           validLeagues: data.validLeagues,
           agentName: data.agentName,
           fifaLicenseId: data.fifaLicenseId,
+          originAgentName: data.originAgentName ?? null,
+          originAgentIdLabel: data.originAgentIdLabel ?? null,
+          originAgentId: data.originAgentId ?? null,
         }),
       });
       if (!res.ok) return;
       const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      window.open(url, '_blank');
+      const pdfBlob = new Blob([blob], { type: 'application/pdf' });
+      const url = URL.createObjectURL(pdfBlob);
+
+      // iOS Safari blocks window.open after async — use inline preview instead
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+        (navigator.userAgent.includes('Mac') && 'ontouchend' in document);
+      if (isIOS) {
+        setPreviewUrl(url);
+      } else {
+        // Desktop / Android — try new tab, fallback to inline
+        const newWin = window.open(url, '_blank');
+        if (!newWin || newWin.closed) {
+          setPreviewUrl(url);
+        }
+      }
     } catch { /* ignore */ } finally {
       setPreviewing(false);
     }
@@ -247,6 +268,9 @@ export default function SignMandatePage() {
           validLeagues: data.validLeagues,
           agentName: data.agentName,
           fifaLicenseId: data.fifaLicenseId,
+          originAgentName: data.originAgentName ?? null,
+          originAgentIdLabel: data.originAgentIdLabel ?? null,
+          originAgentId: data.originAgentId ?? null,
           playerSignature: data.playerSignature ?? null,
           agentSignature: data.agentSignature ?? null,
           playerSignedAt: data.playerSignedAt ?? null,
@@ -308,6 +332,18 @@ export default function SignMandatePage() {
   const agentSigned = !!data.agentSignature;
   const fullySigned = playerSigned && agentSigned;
 
+  // Origin agent with FIFA license changes who signs:
+  // Licensed origin agent → signatures are origin agent + our agency agent
+  // Unlicensed origin agent (passport) or no origin agent → player + our agency agent
+  const hasLicensedOriginAgent = !!(data.originAgentName && data.originAgentId && data.originAgentIdLabel === 'FIFA License');
+
+  // Signature 1 (stored as "player" role in DB): either player or origin agent
+  const sig1Name = hasLicensedOriginAgent ? data.originAgentName! : playerName;
+  const sig1Label = `${sig1Name} Signature`;
+  // Signature 2 (stored as "agent" role in DB): always our agency agent
+  const sig2Name = data.agentName || '—';
+  const sig2Label = `${sig2Name} Signature`;
+
   // Compute remaining time for signing link
   const expiresAt = data.createdAt ? data.createdAt + SIGNING_LINK_TTL_MS : 0;
   const remainingMs = expiresAt ? Math.max(0, expiresAt - Date.now()) : 0;
@@ -364,6 +400,17 @@ export default function SignMandatePage() {
                 <p className="text-[11px] text-mgsr-muted mt-0.5">FIFA License: {data.fifaLicenseId}</p>
               )}
             </div>
+            {data.originAgentName && data.originAgentId && (
+              <>
+            <div className="col-span-2 border-t border-mgsr-border pt-3">
+              <p className="text-[11px] text-mgsr-muted mb-0.5">Player&apos;s Origin Agent</p>
+              <p className="text-mgsr-text font-medium text-sm">{data.originAgentName}</p>
+              <p className="text-[11px] text-mgsr-muted mt-0.5">
+                {data.originAgentIdLabel === 'FIFA License' ? 'FIFA License' : 'Passport'}: {data.originAgentId}
+              </p>
+            </div>
+              </>
+            )}
             <div>
               <p className="text-[11px] text-mgsr-muted mb-0.5">Effective</p>
               <p className="text-mgsr-text font-medium text-sm">
@@ -421,7 +468,7 @@ export default function SignMandatePage() {
                   {playerSigned ? '✓' : '1'}
                 </div>
                 <div>
-                  <p className="text-mgsr-text text-sm font-medium">Player Signature</p>
+                  <p className="text-mgsr-text text-sm font-medium">{sig1Label}</p>
                   {data.playerSignedAt && (
                     <p className="text-[11px] text-mgsr-muted">
                       Signed {formatDateTime(data.playerSignedAt)}
@@ -451,7 +498,7 @@ export default function SignMandatePage() {
                   {agentSigned ? '✓' : '2'}
                 </div>
                 <div>
-                  <p className="text-mgsr-text text-sm font-medium">Agent Signature</p>
+                  <p className="text-mgsr-text text-sm font-medium">{sig2Label}</p>
                   {data.agentSignedAt && (
                     <p className="text-[11px] text-mgsr-muted">
                       Signed {formatDateTime(data.agentSignedAt)}
@@ -514,11 +561,41 @@ export default function SignMandatePage() {
           </div>
         )}
 
+        {/* Inline PDF Preview (for iOS and popup-blocked browsers) */}
+        {previewUrl && (
+          <div className="mb-4 bg-mgsr-card rounded-2xl border border-mgsr-border overflow-hidden">
+            <div className="flex items-center justify-between p-4 border-b border-mgsr-border">
+              <h2 className="text-mgsr-text font-display font-semibold text-sm">Mandate Preview</h2>
+              <div className="flex items-center gap-2">
+                <a
+                  href={previewUrl}
+                  download="Mandate_Preview.pdf"
+                  className="px-3 py-1.5 rounded-lg bg-mgsr-teal text-mgsr-dark text-xs font-semibold hover:bg-mgsr-teal/90 transition"
+                >
+                  Download PDF
+                </a>
+                <button
+                  onClick={() => { URL.revokeObjectURL(previewUrl); setPreviewUrl(null); }}
+                  className="px-3 py-1.5 rounded-lg border border-mgsr-border text-mgsr-muted text-xs hover:bg-mgsr-border/30 transition"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+            <iframe
+              src={previewUrl}
+              className="w-full border-0"
+              style={{ height: '70vh' }}
+              title="Mandate PDF Preview"
+            />
+          </div>
+        )}
+
         {/* Signature canvas */}
         {activeRole && (
           <div className="bg-mgsr-card rounded-2xl border border-mgsr-border p-6">
             <h2 className="text-mgsr-text font-display font-semibold mb-1">
-              {activeRole === 'player' ? 'Player' : 'Agent'} Signature
+              {activeRole === 'player' ? sig1Label : sig2Label}
             </h2>
             <p className="text-mgsr-muted text-sm mb-4">
               Draw your signature below using your finger or mouse
@@ -570,7 +647,7 @@ export default function SignMandatePage() {
                       Signing…
                     </>
                   ) : (
-                    `Confirm ${activeRole === 'player' ? 'Player' : 'Agent'} Signature`
+                    `Confirm ${activeRole === 'player' ? sig1Name : sig2Name} Signature`
                   )}
                 </button>
               </div>

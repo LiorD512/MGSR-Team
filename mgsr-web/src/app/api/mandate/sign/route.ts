@@ -27,6 +27,9 @@ export async function POST(req: NextRequest) {
       validLeagues = [],
       agentName,
       fifaLicenseId,
+      originAgentName,
+      originAgentIdLabel,
+      originAgentId,
       playerSignature,
       agentSignature,
       playerSignedAt,
@@ -38,6 +41,9 @@ export async function POST(req: NextRequest) {
       validLeagues: string[];
       agentName: string;
       fifaLicenseId: string;
+      originAgentName?: string;
+      originAgentIdLabel?: string;
+      originAgentId?: string;
       playerSignature?: string;
       agentSignature?: string;
       playerSignedAt?: number;
@@ -64,6 +70,9 @@ export async function POST(req: NextRequest) {
       validLeagues,
       agentName,
       fifaLicenseId,
+      originAgentName,
+      originAgentIdLabel,
+      originAgentId,
     });
 
     // Embed signatures into the PDF
@@ -137,11 +146,12 @@ export async function POST(req: NextRequest) {
 
     const playerFullName = [passportDetails.firstName, passportDetails.lastName].filter(Boolean).join('_') || 'Player';
     const safeFileName = `Mandate_${playerFullName.replace(/[^a-zA-Z0-9_-]/g, '_')}_Signed.pdf`;
+    const isPreview = !playerSignature && !agentSignature;
 
     return new NextResponse(Buffer.from(signedPdfBytes), {
       headers: {
         'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="${safeFileName}"`,
+        'Content-Disposition': `${isPreview ? 'inline' : 'attachment'}; filename="${safeFileName}"`,
       },
     });
   } catch (err) {
