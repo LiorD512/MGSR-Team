@@ -29,6 +29,7 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -47,6 +48,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.SetOptions
 import com.liordahan.mgsrteam.R
 import com.liordahan.mgsrteam.features.players.models.Player
 import com.liordahan.mgsrteam.features.players.models.getPlayerPhoneNumber
@@ -190,9 +193,20 @@ fun BirthdaysSection(
 
     val context = LocalContext.current
     var showUpcoming by remember { mutableStateOf(false) }
-    val prefs = remember { context.getSharedPreferences("birthday_wishes", Context.MODE_PRIVATE) }
-    val prefsKey = "sent_${java.util.Calendar.getInstance().get(java.util.Calendar.YEAR)}"
-    val sentWishes = remember { mutableStateOf(prefs.getStringSet(prefsKey, emptySet()) ?: emptySet()) }
+    val year = remember { java.util.Calendar.getInstance().get(java.util.Calendar.YEAR).toString() }
+    val sentWishes = remember { mutableStateOf<Set<String>>(emptySet()) }
+
+    DisposableEffect(year) {
+        val docRef = FirebaseFirestore.getInstance()
+            .collection("BirthdayWishesSent")
+            .document(year)
+        val listener = docRef.addSnapshotListener { snap, _ ->
+            if (snap != null && snap.exists()) {
+                sentWishes.value = snap.data?.keys ?: emptySet()
+            }
+        }
+        onDispose { listener.remove() }
+    }
 
     val accent = platform.accent
     val cardBg = HomeDarkCard
@@ -252,9 +266,13 @@ fun BirthdaysSection(
                     isSent = player.id in sentWishes.value,
                     onSendWishes = {
                         sendBirthdayWishes(context, player, senderName)
-                        val updated = sentWishes.value + player.id
-                        sentWishes.value = updated
-                        prefs.edit().putStringSet(prefsKey, updated.toSet()).apply()
+                        FirebaseFirestore.getInstance()
+                            .collection("BirthdayWishesSent")
+                            .document(year)
+                            .set(
+                                mapOf(player.id to mapOf("sentBy" to senderName, "sentAt" to System.currentTimeMillis())),
+                                SetOptions.merge()
+                            )
                     }
                 )
                 Spacer(Modifier.height(6.dp))

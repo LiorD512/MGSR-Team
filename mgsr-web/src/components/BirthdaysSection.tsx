@@ -1,9 +1,11 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { usePlatform } from '@/contexts/PlatformContext';
 import { openWhatsAppWithMessage } from '@/lib/whatsapp';
+import { db } from '@/lib/firebase';
+import { doc, onSnapshot, setDoc } from 'firebase/firestore';
 import type { WomanPlayer } from '@/lib/playersWomen';
 import type { YouthPlayer } from '@/lib/playersYouth';
 
@@ -74,13 +76,18 @@ export default function BirthdaysSection({ menPlayers = [], womenPlayers, youthP
   const { t, isRtl } = useLanguage();
   const { isWomen, isYouth } = usePlatform();
   const [showUpcoming, setShowUpcoming] = useState(false);
-  const storageKey = `birthday_wishes_sent_${new Date().getFullYear()}`;
-  const [sentWishes, setSentWishes] = useState<Set<string>>(() => {
-    try {
-      const stored = localStorage.getItem(storageKey);
-      return stored ? new Set(JSON.parse(stored) as string[]) : new Set();
-    } catch { return new Set(); }
-  });
+  const [sentWishes, setSentWishes] = useState<Set<string>>(new Set());
+
+  // Subscribe to Firestore for shared sent-wishes tracking
+  useEffect(() => {
+    const year = new Date().getFullYear().toString();
+    const unsub = onSnapshot(doc(db, 'BirthdayWishesSent', year), (snap) => {
+      if (snap.exists()) {
+        setSentWishes(new Set(Object.keys(snap.data() || {})));
+      }
+    });
+    return () => unsub();
+  }, []);
 
   const { todayBirthdays, upcomingBirthdays } = useMemo(() => {
     const all: BirthdayPlayer[] = [];
@@ -166,11 +173,10 @@ export default function BirthdaysSection({ menPlayers = [], womenPlayers, youthP
   const sendWishes = (player: BirthdayPlayer) => {
     const msg = `Happy Birthday ${firstName(player.fullName)}!\nWishing you a wonderful year ahead, full of success on and off the pitch!\n${userNameEn}`;
     openWhatsAppWithMessage(player.phone, msg);
-    setSentWishes(prev => {
-      const next = new Set(prev).add(player.id);
-      try { localStorage.setItem(storageKey, JSON.stringify(Array.from(next))); } catch {}
-      return next;
-    });
+    const year = new Date().getFullYear().toString();
+    setDoc(doc(db, 'BirthdayWishesSent', year), {
+      [player.id]: { sentBy: userNameEn, sentAt: Date.now() },
+    }, { merge: true }).catch(() => {});
   };
 
   const accentColor = isYouth ? 'var(--youth-cyan)' : isWomen ? 'var(--women-rose)' : 'var(--mgsr-accent)';
