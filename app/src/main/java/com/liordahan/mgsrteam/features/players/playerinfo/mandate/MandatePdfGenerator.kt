@@ -61,9 +61,12 @@ object MandatePdfGenerator {
         val passportDetails: PassportDetails,
         val effectiveDate: Date,
         val expiryDate: Date,
-        val validLeagues: List<String>, // "Israel" or "Maccabi Haifa - Israel", sorted by country then club
+        val validLeagues: List<String>,
         val agentName: String = "Lior Dahan",
-        val fifaLicenseId: String = "22412-9595"
+        val fifaLicenseId: String = "22412-9595",
+        val originAgentName: String? = null,
+        val originAgentIdLabel: String? = null,  // "FIFA License" or "passport number"
+        val originAgentId: String? = null
     )
 
     fun generatePdf(data: MandateData, outputFile: File, context: Context): Result<File> = runCatching {
@@ -239,6 +242,21 @@ object MandatePdfGenerator {
             PAGE_WIDTH - 2 * MARGIN
         )
         drawLine(4)
+        // Origin agent paragraph (when mandate is "with agent")
+        if (!data.originAgentName.isNullOrBlank() && !data.originAgentId.isNullOrBlank()) {
+            val idLabel = data.originAgentIdLabel ?: "FIFA License"
+            y = drawMixedText(
+                listOf(
+                    "This mandate valid through the player agent. Name: " to bodyPaint,
+                    data.originAgentName to boldBodyPaint,
+                    ", $idLabel: " to bodyPaint,
+                    data.originAgentId to boldBodyPaint,
+                    "." to bodyPaint
+                ),
+                PAGE_WIDTH - 2 * MARGIN
+            )
+            drawLine(4)
+        }
         y = drawText("The Player and the Football Agent are the \"Parties\" and each a \"Party.\"", bodyPaint)
         drawLine(4)
         if (data.validLeagues.isNotEmpty()) {
@@ -392,11 +410,14 @@ object MandatePdfGenerator {
         drawLine(4)
         y = drawText("A copy of the Agreement has been provided to the Player.", bodyPaint)
         drawLine(8)
-        y = drawText("Signed by the Player: _________________________ Date:", bodyPaint)
+        val hasLicensedOriginAgent = !data.originAgentName.isNullOrBlank() && !data.originAgentId.isNullOrBlank() && data.originAgentIdLabel == "FIFA License"
+        val playerFullName = listOfNotNull(data.passportDetails.firstName, data.passportDetails.lastName).joinToString(" ").ifBlank { "the Player" }
+        val sig1Name = if (hasLicensedOriginAgent) data.originAgentName!! else playerFullName
+        y = drawText("Signed by $sig1Name: _________________________ Date:", bodyPaint)
         drawLine(4)
         y = drawText("Print Name: ______________", bodyPaint)
         drawLine(4)
-        y = drawText("Signed by the Agent: __________________________Date:", bodyPaint)
+        y = drawText("Signed by ${data.agentName}: __________________________Date:", bodyPaint)
         drawLine(4)
         y = drawText("Print Name: ______________\t${data.agentName}", bodyPaint)
 
