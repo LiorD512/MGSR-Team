@@ -2,6 +2,9 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useParams } from 'next/navigation';
+import * as pdfjsLib from 'pdfjs-dist';
+
+pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
 
 interface MandateDoc {
   token: string;
@@ -180,9 +183,10 @@ export default function SignMandatePage() {
     return trimmed.toDataURL('image/png');
   };
 
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewPages, setPreviewPages] = useState<string[]>([]);
+  const [previewBlobUrl, setPreviewBlobUrl] = useState<string | null>(null);
 
-  /** Preview the mandate PDF (unsigned) — opens inline for iOS compat */
+  /** Preview the mandate PDF — renders all pages via PDF.js */
   const handlePreviewPdf = async () => {
     if (!data) return;
     setPreviewing(true);
@@ -204,23 +208,33 @@ export default function SignMandatePage() {
       });
       if (!res.ok) return;
       const blob = await res.blob();
-      const pdfBlob = new Blob([blob], { type: 'application/pdf' });
-      const url = URL.createObjectURL(pdfBlob);
-
-      // iOS Safari blocks window.open after async — use inline preview instead
-      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-        (navigator.userAgent.includes('Mac') && 'ontouchend' in document);
-      if (isIOS) {
-        setPreviewUrl(url);
-      } else {
-        // Desktop / Android — try new tab, fallback to inline
-        const newWin = window.open(url, '_blank');
-        if (!newWin || newWin.closed) {
-          setPreviewUrl(url);
-        }
+      const arrayBuffer = await blob.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      const pages: string[] = [];
+      const scale = 2;
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const pg = await pdf.getPage(i);
+        const viewport = pg.getViewport({ scale });
+        const canvas = document.createElement('canvas');
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        const ctx = canvas.getContext('2d')!;
+        await pg.render({ canvasContext: ctx, viewport }).promise;
+        pages.push(canvas.toDataURL('image/png'));
       }
+      setPreviewPages(pages);
+      const pdfBlob = new Blob([blob], { type: 'application/pdf' });
+      setPreviewBlobUrl(URL.createObjectURL(pdfBlob));
     } catch { /* ignore */ } finally {
       setPreviewing(false);
+    }
+  };
+
+  const closePreview = () => {
+    setPreviewPages([]);
+    if (previewBlobUrl) {
+      URL.revokeObjectURL(previewBlobUrl);
+      setPreviewBlobUrl(null);
     }
   };
 
@@ -561,33 +575,45 @@ export default function SignMandatePage() {
           </div>
         )}
 
-        {/* Inline PDF Preview (for iOS and popup-blocked browsers) */}
-        {previewUrl && (
+        {/* PDF Preview — rendered page-by-page via PDF.js */}
+        {previewPages.length > 0 && (
           <div className="mb-4 bg-mgsr-card rounded-2xl border border-mgsr-border overflow-hidden">
-            <div className="flex items-center justify-between p-4 border-b border-mgsr-border">
-              <h2 className="text-mgsr-text font-display font-semibold text-sm">Mandate Preview</h2>
+            <div className="sticky top-0 z-10 flex items-center justify-between p-4 border-b border-mgsr-border bg-mgsr-card">
+              <h2 className="text-mgsr-text font-display font-semibold text-sm">Mandate Preview ({previewPages.length} {previewPages.length === 1 ? 'page' : 'pages'})</h2>
               <div className="flex items-center gap-2">
-                <a
-                  href={previewUrl}
-                  download="Mandate_Preview.pdf"
-                  className="px-3 py-1.5 rounded-lg bg-mgsr-teal text-mgsr-dark text-xs font-semibold hover:bg-mgsr-teal/90 transition"
-                >
-                  Download PDF
-                </a>
+                {previewBlobUrl && (
+                  <a
+                    href={previewBlobUrl}
+                    download="Mandate_Preview.pdf"
+                    className="px-3 py-1.5 rounded-lg bg-mgsr-teal text-mgsr-dark text-xs font-semibold hover:bg-mgsr-teal/90 transition"
+                  >
+                    Download PDF
+                  </a>
+                )}
                 <button
-                  onClick={() => { URL.revokeObjectURL(previewUrl); setPreviewUrl(null); }}
+                  onClick={closePreview}
                   className="px-3 py-1.5 rounded-lg border border-mgsr-border text-mgsr-muted text-xs hover:bg-mgsr-border/30 transition"
                 >
                   Close
                 </button>
               </div>
             </div>
-            <iframe
-              src={previewUrl}
-              className="w-full border-0"
-              style={{ height: '70vh' }}
-              title="Mandate PDF Preview"
-            />
+            <div className="p-4 space-y-4 max-h-[75vh] overflow-y-auto">
+              {previewPages.map((src, i) => (
+                <div key={i} className="relative">
+                  <img
+                    src={src}
+                    alt={`Page ${i + 1}`}
+                    className="w-full rounded-lg border border-mgsr-border shadow-sm"
+                  />
+                  {previewPages.length > 1 && (
+                    <span className="absolute bottom-2 right-2 px-2 py-0.5 rounded-md bg-black/60 text-white text-[10px] font-medium">
+                      {i + 1} / {previewPages.length}
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
