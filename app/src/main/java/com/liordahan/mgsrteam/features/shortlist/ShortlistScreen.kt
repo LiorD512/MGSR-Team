@@ -140,7 +140,17 @@ private val shortlistPositionCodes = mapOf(
     "GK"  to setOf("GK", "GOALKEEPER"),
     "DEF" to setOf("CB", "RB", "LB", "CENTRE-BACK", "LEFT-BACK", "RIGHT-BACK", "BACK"),
     "MID" to setOf("CM", "DM", "AM", "MIDFIELD", "DEFENSIVE MIDFIELD", "CENTRAL MIDFIELD", "ATTACKING MIDFIELD", "LEFT MIDFIELD", "RIGHT MIDFIELD"),
-    "FWD" to setOf("ST", "CF", "LW", "RW", "SS", "FORWARD", "CENTRE-FORWARD", "LEFT WINGER", "RIGHT WINGER", "SECOND STRIKER", "WINGER", "STRIKER")
+    "FWD" to setOf("ST", "CF", "LW", "RW", "SS", "FORWARD", "CENTRE-FORWARD", "LEFT WINGER", "RIGHT WINGER", "SECOND STRIKER", "WINGER", "STRIKER"),
+    "CB"  to setOf("CB", "CENTRE-BACK"),
+    "RB"  to setOf("RB", "RIGHT-BACK"),
+    "LB"  to setOf("LB", "LEFT-BACK"),
+    "DM"  to setOf("DM", "DEFENSIVE MIDFIELD"),
+    "CM"  to setOf("CM", "CENTRAL MIDFIELD"),
+    "AM"  to setOf("AM", "ATTACKING MIDFIELD"),
+    "LW"  to setOf("LW", "LEFT WINGER"),
+    "RW"  to setOf("RW", "RIGHT WINGER"),
+    "CF"  to setOf("CF", "CENTRE-FORWARD"),
+    "SS"  to setOf("SS", "SECOND STRIKER")
 )
 
 private fun formatShortlistProfileDisplay(entry: ShortlistEntry): String {
@@ -925,7 +935,7 @@ private fun ShortlistPositionFilterChips(
     selectedPosition: String?,
     onChipClick: (String) -> Unit
 ) {
-    val positions = listOf("All", "GK", "DEF", "MID", "FWD")
+    val positions = listOf("All", "GK", "CB", "RB", "LB", "DM", "CM", "AM", "LW", "RW", "CF", "SS")
     val scrollState = rememberScrollState()
 
     Row(
@@ -951,9 +961,16 @@ private fun ShortlistPositionFilterChips(
                 text = when (position) {
                     "All" -> stringResource(R.string.shortlist_filter_position_all)
                     "GK" -> stringResource(R.string.shortlist_filter_position_gk)
-                    "DEF" -> stringResource(R.string.shortlist_filter_position_def)
-                    "MID" -> stringResource(R.string.shortlist_filter_position_mid)
-                    "FWD" -> stringResource(R.string.shortlist_filter_position_fwd)
+                    "CB" -> stringResource(R.string.shortlist_filter_position_cb)
+                    "RB" -> stringResource(R.string.shortlist_filter_position_rb)
+                    "LB" -> stringResource(R.string.shortlist_filter_position_lb)
+                    "DM" -> stringResource(R.string.shortlist_filter_position_dm)
+                    "CM" -> stringResource(R.string.shortlist_filter_position_cm)
+                    "AM" -> stringResource(R.string.shortlist_filter_position_am)
+                    "LW" -> stringResource(R.string.shortlist_filter_position_lw)
+                    "RW" -> stringResource(R.string.shortlist_filter_position_rw)
+                    "CF" -> stringResource(R.string.shortlist_filter_position_cf)
+                    "SS" -> stringResource(R.string.shortlist_filter_position_ss)
                     else -> position
                 },
                 style = boldTextStyle(textColor, 11.sp),

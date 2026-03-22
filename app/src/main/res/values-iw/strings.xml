@@ -38,6 +38,16 @@
     <string name="players_filter_position_def">שחקני הגנה</string>
     <string name="players_filter_position_mid">שחקני קישור</string>
     <string name="players_filter_position_fwd">שחקני התקפה</string>
+    <string name="players_filter_position_cb">בלם</string>
+    <string name="players_filter_position_rb">מגן ימני</string>
+    <string name="players_filter_position_lb">מגן שמאלי</string>
+    <string name="players_filter_position_dm">קשר הגנתי</string>
+    <string name="players_filter_position_cm">קשר מרכזי</string>
+    <string name="players_filter_position_am">קשר התקפי</string>
+    <string name="players_filter_position_lw">כנף שמאל</string>
+    <string name="players_filter_position_rw">כנף ימין</string>
+    <string name="players_filter_position_cf">חלוץ מרכזי</string>
+    <string name="players_filter_position_ss">חלוץ שני</string>
     <string name="women_players_screen_hint">חפש שחקנית לפי שם</string>
     <string name="women_players_age_format">בת %s</string>
     <string name="women_filter_position_gk">שוערות</string>
@@ -153,6 +163,16 @@
     <string name="shortlist_filter_position_def">הגנה</string>
     <string name="shortlist_filter_position_mid">קישור</string>
     <string name="shortlist_filter_position_fwd">התקפה</string>
+    <string name="shortlist_filter_position_cb">בלם</string>
+    <string name="shortlist_filter_position_rb">מגן ימני</string>
+    <string name="shortlist_filter_position_lb">מגן שמאלי</string>
+    <string name="shortlist_filter_position_dm">קשר הגנתי</string>
+    <string name="shortlist_filter_position_cm">קשר מרכזי</string>
+    <string name="shortlist_filter_position_am">קשר התקפי</string>
+    <string name="shortlist_filter_position_lw">כנף שמאל</string>
+    <string name="shortlist_filter_position_rw">כנף ימין</string>
+    <string name="shortlist_filter_position_cf">חלוץ מרכזי</string>
+    <string name="shortlist_filter_position_ss">חלוץ שני</string>
 
     <string name="contacts_screen_search_hint">חפש לפי שם, מועדון או מדינה</string>
     <string name="contacts_filter_all">הכל</string>

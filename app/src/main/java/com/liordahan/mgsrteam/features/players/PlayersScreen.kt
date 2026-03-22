@@ -811,7 +811,7 @@ private fun PositionFilterChips(
     onChipClick: (String) -> Unit,
     platform: Platform = Platform.MEN
 ) {
-    val positions = listOf("All", "GK", "DEF", "MID", "FWD")
+    val positions = listOf("All", "GK", "CB", "RB", "LB", "DM", "CM", "AM", "LW", "RW", "CF", "SS")
     val isAllSelected = selectedPositions.isEmpty()
     val scrollState = rememberScrollState()
 
@@ -841,18 +841,16 @@ private fun PositionFilterChips(
                         if (platform == Platform.WOMEN) R.string.women_filter_position_gk
                         else R.string.players_filter_position_gk
                     )
-                    "DEF" -> stringResource(
-                        if (platform == Platform.WOMEN) R.string.women_filter_position_def
-                        else R.string.players_filter_position_def
-                    )
-                    "MID" -> stringResource(
-                        if (platform == Platform.WOMEN) R.string.women_filter_position_mid
-                        else R.string.players_filter_position_mid
-                    )
-                    "FWD" -> stringResource(
-                        if (platform == Platform.WOMEN) R.string.women_filter_position_fwd
-                        else R.string.players_filter_position_fwd
-                    )
+                    "CB" -> stringResource(R.string.players_filter_position_cb)
+                    "RB" -> stringResource(R.string.players_filter_position_rb)
+                    "LB" -> stringResource(R.string.players_filter_position_lb)
+                    "DM" -> stringResource(R.string.players_filter_position_dm)
+                    "CM" -> stringResource(R.string.players_filter_position_cm)
+                    "AM" -> stringResource(R.string.players_filter_position_am)
+                    "LW" -> stringResource(R.string.players_filter_position_lw)
+                    "RW" -> stringResource(R.string.players_filter_position_rw)
+                    "CF" -> stringResource(R.string.players_filter_position_cf)
+                    "SS" -> stringResource(R.string.players_filter_position_ss)
                     else -> position
                 },
                 style = boldTextStyle(textColor, 11.sp),

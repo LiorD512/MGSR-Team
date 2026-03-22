@@ -38,6 +38,16 @@
     <string name="players_filter_position_def">DEF</string>
     <string name="players_filter_position_mid">MID</string>
     <string name="players_filter_position_fwd">FWD</string>
+    <string name="players_filter_position_cb">CB</string>
+    <string name="players_filter_position_rb">RB</string>
+    <string name="players_filter_position_lb">LB</string>
+    <string name="players_filter_position_dm">DM</string>
+    <string name="players_filter_position_cm">CM</string>
+    <string name="players_filter_position_am">AM</string>
+    <string name="players_filter_position_lw">LW</string>
+    <string name="players_filter_position_rw">RW</string>
+    <string name="players_filter_position_cf">CF</string>
+    <string name="players_filter_position_ss">SS</string>
     <string name="players_sort_options">Sort options</string>
     <string name="players_sort_chip_newest">Newest</string>
     <string name="players_sort_chip_value">Value</string>
@@ -147,6 +157,16 @@
     <string name="shortlist_filter_position_def">DEF</string>
     <string name="shortlist_filter_position_mid">MID</string>
     <string name="shortlist_filter_position_fwd">FWD</string>
+    <string name="shortlist_filter_position_cb">CB</string>
+    <string name="shortlist_filter_position_rb">RB</string>
+    <string name="shortlist_filter_position_lb">LB</string>
+    <string name="shortlist_filter_position_dm">DM</string>
+    <string name="shortlist_filter_position_cm">CM</string>
+    <string name="shortlist_filter_position_am">AM</string>
+    <string name="shortlist_filter_position_lw">LW</string>
+    <string name="shortlist_filter_position_rw">RW</string>
+    <string name="shortlist_filter_position_cf">CF</string>
+    <string name="shortlist_filter_position_ss">SS</string>
 
     <string name="contacts_screen_search_hint">Search by name, club or country</string>
     <string name="contacts_filter_all">All</string>
