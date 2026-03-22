@@ -1800,6 +1800,9 @@ ONLY valid JSON.`;
         signal: AbortSignal.timeout(65000),
       });
       const enrichData = await enrichRes.json().catch(() => ({}));
+      if (!enrichRes.ok) {
+        console.warn(`[ScoutAgent] Vercel image enrichment HTTP ${enrichRes.status}: ${enrichData.error || JSON.stringify(enrichData)}`);
+      }
       console.log(`[ScoutAgent] Vercel image enrichment: ${enrichData.enriched || 0} enriched, ${enrichData.failed || 0} failed`);
     } catch (err) {
       console.warn(`[ScoutAgent] Vercel image enrichment failed (non-fatal): ${err.message || err}`);
