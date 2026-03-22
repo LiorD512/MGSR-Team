@@ -1053,7 +1053,6 @@ export default function PlayersPage() {
             {displayList.map((p, i) => (
               <Link
                 key={p.id}
-                scroll={false}
                 onClick={saveScrollPosition}
                 href={
                   platform === 'youth'
