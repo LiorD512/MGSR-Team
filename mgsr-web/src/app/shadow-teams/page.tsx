@@ -19,6 +19,7 @@ interface ShadowPlayer {
 
 interface PositionSlot {
   starter: ShadowPlayer | null;
+  substitute: ShadowPlayer | null;
 }
 
 interface RosterPlayer {
@@ -74,7 +75,7 @@ function playerMatchesPosition(player: RosterPlayer, positionCode: string): bool
 }
 
 function createEmptySlots(count: number): PositionSlot[] {
-  return Array.from({ length: count }, () => ({ starter: null }));
+  return Array.from({ length: count }, () => ({ starter: null, substitute: null }));
 }
 
 function toLineupPlayer(
@@ -253,8 +254,9 @@ export default function ShadowTeamsPage() {
   const [slots, setSlots] = useState<PositionSlot[]>(() => createEmptySlots(11));
   const [rosterPlayers, setRosterPlayers] = useState<RosterPlayer[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [dialogSlot, setDialogSlot] = useState<{ index: number } | null>(null);
+  const [dialogSlot, setDialogSlot] = useState<{ index: number; role: 'starter' | 'substitute' } | null>(null);
   const [menuOpenIndex, setMenuOpenIndex] = useState<number | null>(null);
+  const [menuOpenRole, setMenuOpenRole] = useState<'starter' | 'substitute'>('starter');
   const [formationMenuOpen, setFormationMenuOpen] = useState(false);
   const [slotsLoading, setSlotsLoading] = useState(false);
   const selectedAccountIdRef = useRef(selectedAccountId);
@@ -314,8 +316,8 @@ export default function ShadowTeamsPage() {
         if (selectedAccountIdRef.current !== loadingForId) return;
         const data = snap.data();
         if (data?.slots && Array.isArray(data.slots)) {
-          const loaded = (data.slots as { starter?: { id: string; fullName: string; profileImage?: string } | null }[]).map(
-            (s) => ({ starter: s.starter ?? null })
+          const loaded = (data.slots as { starter?: { id: string; fullName: string; profileImage?: string } | null; substitute?: { id: string; fullName: string; profileImage?: string } | null }[]).map(
+            (s) => ({ starter: s.starter ?? null, substitute: s.substitute ?? null })
           );
           setSlots(loaded.length >= 11 ? loaded : [...loaded, ...createEmptySlots(11 - loaded.length)]);
         }
@@ -342,7 +344,7 @@ export default function ShadowTeamsPage() {
       const docRef = doc(db, SHADOW_TEAMS_COLLECTION, selectedAccountId);
       setDoc(docRef, {
         formationId: newFormationId,
-        slots: newSlots.map((s) => ({ starter: s.starter })),
+        slots: newSlots.map((s) => ({ starter: s.starter, substitute: s.substitute ?? null })),
         updatedAt: Date.now(),
       });
     },
@@ -365,8 +367,8 @@ export default function ShadowTeamsPage() {
     ensureSlotsLength(formation.positions.length);
   }, [formation.positions.length, ensureSlotsLength]);
 
-  const openSelectDialog = useCallback((index: number) => {
-    setDialogSlot({ index });
+  const openSelectDialog = useCallback((index: number, role: 'starter' | 'substitute' = 'starter') => {
+    setDialogSlot({ index, role });
     setDialogOpen(true);
     setMenuOpenIndex(null);
   }, []);
@@ -374,11 +376,16 @@ export default function ShadowTeamsPage() {
   const handleSelectPlayer = useCallback(
     (player: RosterPlayer) => {
       if (!dialogSlot) return;
-      const { index } = dialogSlot;
+      const { index, role } = dialogSlot;
       setSlots((prev) => {
         const next = [...prev];
-        const slot = next[index] ?? { starter: null };
-        next[index] = { ...slot, starter: { id: player.id, fullName: player.fullName ?? '', profileImage: player.profileImage } };
+        const slot = next[index] ?? { starter: null, substitute: null };
+        const playerData = { id: player.id, fullName: player.fullName ?? '', profileImage: player.profileImage };
+        if (role === 'substitute') {
+          next[index] = { ...slot, substitute: playerData };
+        } else {
+          next[index] = { ...slot, starter: playerData };
+        }
         saveShadowTeam(next, formationId);
         return next;
       });
@@ -389,11 +396,15 @@ export default function ShadowTeamsPage() {
   );
 
   const handleRemovePlayer = useCallback(
-    (index: number) => {
+    (index: number, role: 'starter' | 'substitute' = 'starter') => {
       setSlots((prev) => {
         const next = [...prev];
-        const slot = next[index] ?? { starter: null };
-        next[index] = { ...slot, starter: null };
+        const slot = next[index] ?? { starter: null, substitute: null };
+        if (role === 'substitute') {
+          next[index] = { ...slot, substitute: null };
+        } else {
+          next[index] = { ...slot, starter: null };
+        }
         saveShadowTeam(next, formationId);
         return next;
       });
@@ -414,7 +425,9 @@ export default function ShadowTeamsPage() {
   );
 
   const positionCode = dialogSlot != null ? formation.positions[dialogSlot.index]?.code ?? 'GK' : 'GK';
-  const positionLabel = positionCode;
+  const positionLabel = dialogSlot?.role === 'substitute'
+    ? `${positionCode} (${t('shadow_teams_substitute')})`
+    : positionCode;
 
   const handlePlayerClick = useCallback(
     (id: string) => router.push(`/players/${id}?from=/shadow-teams`),
@@ -529,6 +542,52 @@ export default function ShadowTeamsPage() {
             homeTeam={homeTeam}
           />
           <div className="absolute inset-0 pointer-events-none z-10">
+            {/* Substitute circles — rendered first so they're behind starters (z-0) */}
+            {formation.positions.map((pos, idx) => {
+              const slot = slots[idx];
+              const substitute = slot?.substitute ?? null;
+              const atCenter = !selectedAccountId || slotsLoading;
+              const subY = pos.y - 8;
+              return (
+                <div
+                  key={`sub-${idx}`}
+                  className={`absolute -translate-x-1/2 -translate-y-1/2 flex flex-col items-center z-0 ${slotsLoading ? 'pointer-events-none' : 'pointer-events-auto'}`}
+                  style={{
+                    left: atCenter ? '50%' : `${pos.x}%`,
+                    top: atCenter ? '50%' : `${subY}%`,
+                    transform: atCenter ? 'translate(-50%, -50%) scale(0.4)' : 'translate(-50%, -50%) scale(1)',
+                    opacity: atCenter ? 0 : 1,
+                    transition: 'left 0.8s cubic-bezier(0.34, 1.56, 0.64, 1), top 0.8s cubic-bezier(0.34, 1.56, 0.64, 1), transform 0.8s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.6s ease',
+                    transitionDelay: atCenter ? '0ms' : `${idx * 45 + 100}ms`,
+                  }}
+                >
+                  <SlotCircle
+                    player={substitute}
+                    size="sub"
+                    canEdit={isOwnTeam}
+                    onClick={() => {
+                      if (substitute) {
+                        if (isOwnTeam) {
+                          setMenuOpenIndex((i) => (i === idx && menuOpenRole === 'substitute' ? null : idx));
+                          setMenuOpenRole('substitute');
+                        } else {
+                          router.push(`/players/${substitute.id}?from=/shadow-teams`);
+                        }
+                      } else if (isOwnTeam) {
+                        openSelectDialog(idx, 'substitute');
+                      }
+                    }}
+                    onViewProfile={() => substitute && router.push(`/players/${substitute.id}?from=/shadow-teams`)}
+                    onChangePlayer={() => openSelectDialog(idx, 'substitute')}
+                    onRemove={() => handleRemovePlayer(idx, 'substitute')}
+                    menuOpen={menuOpenIndex === idx && menuOpenRole === 'substitute'}
+                    onCloseMenu={() => setMenuOpenIndex(null)}
+                    t={t}
+                  />
+                </div>
+              );
+            })}
+            {/* Starter circles — rendered second, on top (z-10) */}
             {formation.positions.map((pos, idx) => {
               const slot = slots[idx];
               const starter = slot?.starter ?? null;
@@ -536,7 +595,7 @@ export default function ShadowTeamsPage() {
               return (
                 <div
                   key={`overlay-${idx}`}
-                  className={`absolute -translate-x-1/2 -translate-y-1/2 flex flex-col items-center ${slotsLoading ? 'pointer-events-none' : 'pointer-events-auto'}`}
+                  className={`absolute -translate-x-1/2 -translate-y-1/2 flex flex-col items-center z-10 ${slotsLoading ? 'pointer-events-none' : 'pointer-events-auto'}`}
                   style={{
                     left: atCenter ? '50%' : `${pos.x}%`,
                     top: atCenter ? '50%' : `${pos.y}%`,
@@ -551,16 +610,20 @@ export default function ShadowTeamsPage() {
                     canEdit={isOwnTeam}
                     onClick={() => {
                       if (starter) {
-                        if (isOwnTeam) setMenuOpenIndex((i) => (i === idx ? null : idx));
-                        else router.push(`/players/${starter.id}?from=/shadow-teams`);
+                        if (isOwnTeam) {
+                          setMenuOpenIndex((i) => (i === idx && menuOpenRole === 'starter' ? null : idx));
+                          setMenuOpenRole('starter');
+                        } else {
+                          router.push(`/players/${starter.id}?from=/shadow-teams`);
+                        }
                       } else if (isOwnTeam) {
-                        openSelectDialog(idx);
+                        openSelectDialog(idx, 'starter');
                       }
                     }}
                     onViewProfile={() => starter && router.push(`/players/${starter.id}?from=/shadow-teams`)}
-                    onChangePlayer={() => openSelectDialog(idx)}
-                    onRemove={() => handleRemovePlayer(idx)}
-                    menuOpen={menuOpenIndex === idx}
+                    onChangePlayer={() => openSelectDialog(idx, 'starter')}
+                    onRemove={() => handleRemovePlayer(idx, 'starter')}
+                    menuOpen={menuOpenIndex === idx && menuOpenRole === 'starter'}
                     onCloseMenu={() => setMenuOpenIndex(null)}
                     t={t}
                   />
@@ -593,7 +656,7 @@ export default function ShadowTeamsPage() {
 
 interface SlotCircleProps {
   player: ShadowPlayer | null;
-  size?: 'md' | 'sm';
+  size?: 'md' | 'sm' | 'sub';
   canEdit?: boolean;
   onClick: () => void;
   onViewProfile?: () => void;
@@ -616,8 +679,26 @@ function SlotCircle({
   onCloseMenu,
   t,
 }: SlotCircleProps) {
-  const dim = size === 'sm' ? 'w-10 h-10' : 'w-[38px] h-[38px] sm:w-[44px] sm:h-[44px] md:w-[56px] md:h-[56px]';
-  const plusSize = size === 'sm' ? 'text-base' : 'text-base sm:text-lg md:text-xl';
+  const dim =
+    size === 'sub'
+      ? 'w-[26px] h-[26px] sm:w-[30px] sm:h-[30px] md:w-[38px] md:h-[38px]'
+      : size === 'sm'
+        ? 'w-10 h-10'
+        : 'w-[38px] h-[38px] sm:w-[44px] sm:h-[44px] md:w-[56px] md:h-[56px]';
+  const plusSize =
+    size === 'sub'
+      ? 'text-xs sm:text-sm'
+      : size === 'sm'
+        ? 'text-base'
+        : 'text-base sm:text-lg md:text-xl';
+  const borderStyle =
+    size === 'sub'
+      ? 'border border-mgsr-teal/60 bg-mgsr-teal/10'
+      : 'border-2 border-mgsr-teal bg-mgsr-teal/20';
+  const nameClass =
+    size === 'sub'
+      ? 'text-[7px] sm:text-[8px] md:text-[9px] font-semibold text-mgsr-teal/80 text-center max-w-[50px] sm:max-w-[60px] md:max-w-[70px] block leading-tight'
+      : 'text-[9px] sm:text-[10px] md:text-xs font-semibold text-mgsr-teal text-center max-w-[70px] sm:max-w-[80px] md:max-w-[90px] block leading-tight';
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -634,7 +715,7 @@ function SlotCircle({
       <button
         type="button"
         onClick={onClick}
-        className={`${dim} rounded-full flex items-center justify-center border-2 border-mgsr-teal bg-mgsr-teal/20 hover:scale-110 hover:shadow-[0_0_0_3px_rgba(77,182,172,0.5)] transition-all duration-200 overflow-hidden shrink-0 cursor-pointer`}
+        className={`${dim} rounded-full flex items-center justify-center ${borderStyle} hover:scale-110 hover:shadow-[0_0_0_3px_rgba(77,182,172,0.5)] transition-all duration-200 overflow-hidden shrink-0 cursor-pointer`}
         title={player?.fullName}
       >
         {player ? (
@@ -649,7 +730,7 @@ function SlotCircle({
       </button>
       {player && (
         <span
-          className="text-[9px] sm:text-[10px] md:text-xs font-semibold text-mgsr-teal text-center max-w-[70px] sm:max-w-[80px] md:max-w-[90px] block leading-tight"
+          className={nameClass}
           style={{ textShadow: '0 0 2px rgba(0,0,0,0.9), 0 1px 3px rgba(0,0,0,0.8)' }}
         >
           {player.fullName}
