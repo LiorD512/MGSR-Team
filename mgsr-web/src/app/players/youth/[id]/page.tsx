@@ -774,7 +774,7 @@ export default function YouthPlayerPage() {
 
             {/* Contact cards */}
             {(player.playerPhoneNumber || player.playerEmail || player.parentContact?.parentPhoneNumber) && (
-              <div className={`${glassCard} p-5 space-y-4`}>
+              <div className={`${glassCard} p-4 sm:p-5 space-y-4`}>
                 <h3 className="text-sm font-semibold text-[var(--youth-cyan)]/60 uppercase tracking-wider">{t('youth_detail_contact')}</h3>
 
                 {/* Player contact */}
@@ -903,10 +903,10 @@ export default function YouthPlayerPage() {
           {/* Right column — Tasks + Notes */}
           <div className="lg:col-span-2 space-y-6">
             {/* Tasks */}
-            <div className={`${glassCard} p-5`}>
+            <div className={`${glassCard} p-4 sm:p-5`}>
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-sm font-semibold text-[var(--youth-violet)]/60 uppercase tracking-wider">{t('youth_detail_tasks')}</h3>
-                <button type="button" onClick={() => setShowAddTaskModal(true)} className={`text-sm font-medium ${violetBtn} px-3 py-1.5 rounded-xl transition`}>
+                <button type="button" onClick={() => setShowAddTaskModal(true)} className={`text-sm font-medium ${violetBtn} px-3 py-2 rounded-xl transition`}>
                   {t('youth_detail_add')}
                 </button>
               </div>

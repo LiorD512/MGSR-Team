@@ -429,7 +429,7 @@ export default function NewsPage() {
               <button
                 key={t2}
                 onClick={() => setTab(t2)}
-                className={`px-4 py-1.5 rounded-full text-sm font-medium transition border ${
+                className={`px-4 py-2 rounded-full text-sm font-medium transition border ${
                   tab === t2
                     ? 'bg-mgsr-accent text-mgsr-dark border-mgsr-accent'
                     : 'border-mgsr-border text-mgsr-muted hover:text-mgsr-text hover:border-mgsr-muted'
@@ -462,13 +462,13 @@ export default function NewsPage() {
         </div>
 
         {/* League Chips */}
-        <div className="flex flex-wrap items-center gap-1.5 mb-5">
+        <div className="flex items-center gap-1.5 mb-5 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
           <span className="text-[11px] uppercase tracking-widest text-mgsr-muted mr-1">
             {t('news_stat_leagues')}:
           </span>
           <button
             onClick={() => setLeagueFilter(null)}
-            className={`px-2.5 py-1 rounded-full text-xs border transition flex items-center gap-1 ${
+            className={`shrink-0 px-2.5 py-1.5 rounded-full text-xs border transition flex items-center gap-1 ${
               !leagueFilter
                 ? 'bg-mgsr-accent/15 border-mgsr-accent text-mgsr-accent'
                 : 'border-mgsr-border text-mgsr-muted hover:border-mgsr-accent hover:text-mgsr-text'
@@ -480,7 +480,7 @@ export default function NewsPage() {
             <button
               key={lc.code}
               onClick={() => setLeagueFilter(leagueFilter === lc.code ? null : lc.code)}
-              className={`px-2.5 py-1 rounded-full text-xs border transition flex items-center gap-1 ${
+              className={`shrink-0 px-2.5 py-1.5 rounded-full text-xs border transition flex items-center gap-1 ${
                 leagueFilter === lc.code
                   ? 'bg-mgsr-accent/15 border-mgsr-accent text-mgsr-accent'
                   : 'border-mgsr-border text-mgsr-muted hover:border-mgsr-accent hover:text-mgsr-text'

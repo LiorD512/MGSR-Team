@@ -578,7 +578,7 @@ export default function RequestsPage() {
                   </button>
 
                   {isPosExpanded && (
-                    <div className="border-t border-mgsr-border bg-mgsr-dark/30 p-3 space-y-2">
+                    <div className="border-t border-mgsr-border bg-mgsr-dark/30 p-2 sm:p-3 space-y-2">
                       {Object.entries(countries).map(([country, reqs]) => {
                         const countryKey = `${position}_${country}`;
                         const isCountryExpanded = expandedCountries.has(countryKey);
@@ -590,13 +590,13 @@ export default function RequestsPage() {
                             <button
                               type="button"
                               onClick={() => toggleCountry(countryKey)}
-                              className="w-full flex items-center gap-3 px-4 py-2.5 text-start"
+                              className="w-full flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 text-start"
                             >
                               <FlagImage url={flagUrl} country={country} className="w-6 h-6 rounded-full object-cover shrink-0" />
-                              <span className="font-medium text-mgsr-text">
+                              <span className="font-medium text-mgsr-text text-sm sm:text-base truncate">
                                 {getCountryDisplayName(country, isHebrew)}
                               </span>
-                              <span className="text-mgsr-muted text-sm">
+                              <span className="text-mgsr-muted text-xs sm:text-sm hidden sm:inline">
                                 {(() => {
                                   const uniqueClubs = new Set(reqs.map(r => r.clubName || r.clubTmProfile || r.id)).size;
                                   const clubText = uniqueClubs === 1
@@ -620,7 +620,7 @@ export default function RequestsPage() {
                             </button>
 
                             {isCountryExpanded && (
-                              <div className="border-t border-mgsr-border p-3 space-y-2">
+                              <div className="border-t border-mgsr-border p-2 sm:p-3 space-y-2">
                                 {reqs.map((r) => {
                                   const ageStr = ageRange(r);
                                   const footStr = r.dominateFoot ? footLabel(r.dominateFoot, t) : null;

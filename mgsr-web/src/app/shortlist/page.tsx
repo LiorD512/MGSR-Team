@@ -762,7 +762,7 @@ export default function ShortlistPage() {
 
   return (
     <AppLayout>
-      <div dir={isRtl ? 'rtl' : 'ltr'} className="max-w-6xl mx-auto px-4 sm:px-0">
+      <div dir={isRtl ? 'rtl' : 'ltr'} className="max-w-6xl mx-auto sm:px-0">
         {/* Header — clean, informative */}
         <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
           <div>
@@ -837,7 +837,7 @@ export default function ShortlistPage() {
                   )}
                 </div>
                 {/* Row 1: Sort + Position chips */}
-                <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6">
                   <div className="flex items-center gap-3">
                     <span className="text-xs font-semibold uppercase tracking-wider text-mgsr-muted shrink-0">
                       {isRtl ? 'מיון' : 'Sort'}
@@ -854,7 +854,7 @@ export default function ShortlistPage() {
                       <option value="matches">{t('shortlist_sort_matches')}</option>
                     </select>
                   </div>
-                  <div className="flex items-center gap-2 flex-wrap">
+                  <div className="flex items-center gap-2 overflow-x-auto sm:overflow-visible sm:flex-wrap" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
                     <span className="text-xs font-semibold uppercase tracking-wider text-mgsr-muted shrink-0">
                       {isRtl ? 'עמדה' : 'Position'}
                     </span>
@@ -919,8 +919,8 @@ export default function ShortlistPage() {
                   </div>
                 </div>
                 {/* Row 2: Quick filters */}
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-xs font-semibold uppercase tracking-wider text-mgsr-muted shrink-0 w-full sm:w-auto">
+                <div className="flex items-center gap-2 overflow-x-auto sm:overflow-visible sm:flex-wrap pb-1 sm:pb-0" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
+                  <span className="text-xs font-semibold uppercase tracking-wider text-mgsr-muted shrink-0">
                     {isRtl ? 'סינון' : 'Filter'}
                   </span>
                   {(['all', 'my_players', 'has_matches', 'contract_expiring', 'free_agent'] as const).map((f) => (
@@ -928,7 +928,7 @@ export default function ShortlistPage() {
                       key={f}
                       type="button"
                       onClick={() => { setFilterBy(f); if (f !== 'all') setAgentFilter(null); }}
-                      className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+                      className={`shrink-0 px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-medium transition-all ${
                         filterBy === f && !agentFilter
                           ? 'bg-mgsr-teal text-mgsr-dark shadow-lg shadow-mgsr-teal/20'
                           : 'bg-mgsr-dark/60 border border-mgsr-border text-mgsr-muted hover:text-mgsr-text hover:border-mgsr-teal/40'
@@ -940,7 +940,7 @@ export default function ShortlistPage() {
                   <button
                     type="button"
                     onClick={() => setWithNotesOnly((prev) => !prev)}
-                    className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+                    className={`shrink-0 px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-medium transition-all ${
                       withNotesOnly
                         ? 'bg-mgsr-teal text-mgsr-dark shadow-lg shadow-mgsr-teal/20'
                         : 'bg-mgsr-dark/60 border border-mgsr-border text-mgsr-muted hover:text-mgsr-text hover:border-mgsr-teal/40'
@@ -951,7 +951,7 @@ export default function ShortlistPage() {
                   <select
                     value={agentFilter ?? ''}
                     onChange={(e) => { setAgentFilter(e.target.value || null); if (e.target.value) setFilterBy('all'); }}
-                    className={`px-4 py-2 rounded-xl text-sm font-medium transition-all appearance-none cursor-pointer ${
+                    className={`shrink-0 px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-medium transition-all appearance-none cursor-pointer ${
                       agentFilter
                         ? 'bg-mgsr-teal text-mgsr-dark shadow-lg shadow-mgsr-teal/20'
                         : 'bg-mgsr-dark/60 border border-mgsr-border text-mgsr-muted hover:text-mgsr-text hover:border-mgsr-teal/40'
@@ -1286,23 +1286,23 @@ export default function ShortlistPage() {
                         {expandedPerformanceUrl === entry.tmProfileUrl && (
                           <div className="mt-2 pb-1">
                             {perf ? (
-                              <div className="grid grid-cols-4 gap-1.5">
+                              <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
                                 {[
                                   [t('shortlist_appearances'), perf.appearances],
                                   [t('shortlist_goals'), perf.goals],
                                   [t('shortlist_assists'), perf.assists],
                                   [t('shortlist_minutes'), perf.minutes.toLocaleString()],
                                 ].map(([label, val]) => (
-                                  <div key={String(label)} className="py-2 px-1 rounded-md bg-mgsr-dark/30 text-center">
+                                  <div key={String(label)} className="py-2 px-1.5 rounded-md bg-mgsr-dark/30 text-center">
                                     <p className="text-[10px] uppercase tracking-wider text-mgsr-muted/70">{label}</p>
                                     <p className="text-sm font-bold text-mgsr-text mt-0.5">{val}</p>
                                   </div>
                                 ))}
                               </div>
                             ) : (
-                              <div className="grid grid-cols-4 gap-1.5">
+                              <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
                                 {[1, 2, 3, 4].map((ii) => (
-                                  <div key={ii} className="py-2 px-1 rounded-md bg-mgsr-dark/30 overflow-hidden">
+                                  <div key={ii} className="py-2 px-1.5 rounded-md bg-mgsr-dark/30 overflow-hidden">
                                     <div className="h-2.5 w-10 rounded mb-1.5 bg-mgsr-border/30 skeleton-shimmer" />
                                     <div className="h-4 w-6 rounded mt-1 bg-mgsr-border/30 skeleton-shimmer" style={{ animationDelay: `${ii * 0.15}s` }} />
                                   </div>

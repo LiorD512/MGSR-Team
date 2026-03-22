@@ -630,7 +630,7 @@ export default function WarRoomPage() {
           </div>
 
           {/* War Room Tabs — premium glassmorphic design with SVG icons */}
-          <div className="flex gap-1.5 p-1.5 rounded-2xl bg-mgsr-card/80 backdrop-blur-md border border-mgsr-border/80 mt-5 mb-5 overflow-x-auto" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
+          <div className="flex gap-1 sm:gap-1.5 p-1 sm:p-1.5 rounded-2xl bg-mgsr-card/80 backdrop-blur-md border border-mgsr-border/80 mt-5 mb-5 overflow-x-auto" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
             {[
               {
                 id: 'discovery' as const,

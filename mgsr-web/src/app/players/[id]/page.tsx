@@ -119,9 +119,9 @@ function StatCard({
 }) {
   if (!value) return null;
   return (
-    <div className={`shrink-0 min-w-[120px] lg:min-w-0 px-4 py-3 rounded-xl border ${highlight ? 'bg-mgsr-teal/10 border-mgsr-teal/30' : 'bg-mgsr-card/50 border-mgsr-border'}`}>
-      <p className="text-xs text-mgsr-muted uppercase tracking-wider whitespace-nowrap">{label}</p>
-      <p className={`font-semibold mt-0.5 whitespace-nowrap ${highlight ? 'text-mgsr-teal text-lg' : 'text-mgsr-text'}`}>
+    <div className={`shrink-0 min-w-[110px] lg:min-w-0 px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl border ${highlight ? 'bg-mgsr-teal/10 border-mgsr-teal/30' : 'bg-mgsr-card/50 border-mgsr-border'}`}>
+      <p className="text-[11px] text-mgsr-muted uppercase tracking-wider whitespace-nowrap">{label}</p>
+      <p className={`font-semibold mt-0.5 whitespace-nowrap ${highlight ? 'text-mgsr-teal text-base sm:text-lg' : 'text-mgsr-text text-sm sm:text-base'}`}>
         {value}
       </p>
     </div>
@@ -1553,8 +1553,8 @@ export default function PlayerInfoPage() {
             const primary = merged.nationality;
             if (allNat.length > 1) {
               return (
-                <div className="shrink-0 min-w-[120px] lg:min-w-0 px-4 py-3 rounded-xl border bg-mgsr-card/50 border-mgsr-border">
-                  <p className="text-xs text-mgsr-muted uppercase tracking-wider whitespace-nowrap">{t('player_info_nationality')}</p>
+                <div className="shrink-0 min-w-[110px] lg:min-w-0 px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl border bg-mgsr-card/50 border-mgsr-border">
+                  <p className="text-[11px] text-mgsr-muted uppercase tracking-wider whitespace-nowrap">{t('player_info_nationality')}</p>
                   <div className="mt-1.5 flex items-center gap-3">
                     {/* Overlapping rectangle flags */}
                     <div className="relative w-9 h-7 shrink-0">
@@ -1581,9 +1581,9 @@ export default function PlayerInfoPage() {
           <button
             type="button"
             onClick={() => setShowSalaryFeeModal(true)}
-            className="shrink-0 min-w-[120px] lg:min-w-0 px-4 py-3 rounded-xl border bg-mgsr-card/50 border-mgsr-border hover:border-mgsr-teal/50 transition-colors text-start group cursor-pointer"
+            className="shrink-0 min-w-[110px] lg:min-w-0 px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl border bg-mgsr-card/50 border-mgsr-border hover:border-mgsr-teal/50 transition-colors text-start group cursor-pointer"
           >
-            <p className="text-xs text-mgsr-muted uppercase tracking-wider whitespace-nowrap flex items-center gap-1">
+            <p className="text-[11px] text-mgsr-muted uppercase tracking-wider whitespace-nowrap flex items-center gap-1">
               {t('player_info_salary')}
               <svg className="w-3 h-3 text-mgsr-muted opacity-0 group-hover:opacity-100 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
             </p>
@@ -1594,9 +1594,9 @@ export default function PlayerInfoPage() {
           <button
             type="button"
             onClick={() => setShowSalaryFeeModal(true)}
-            className="shrink-0 min-w-[120px] lg:min-w-0 px-4 py-3 rounded-xl border bg-mgsr-card/50 border-mgsr-border hover:border-mgsr-teal/50 transition-colors text-start group cursor-pointer"
+            className="shrink-0 min-w-[110px] lg:min-w-0 px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl border bg-mgsr-card/50 border-mgsr-border hover:border-mgsr-teal/50 transition-colors text-start group cursor-pointer"
           >
-            <p className="text-xs text-mgsr-muted uppercase tracking-wider whitespace-nowrap flex items-center gap-1">
+            <p className="text-[11px] text-mgsr-muted uppercase tracking-wider whitespace-nowrap flex items-center gap-1">
               {t('player_info_transfer_fee')}
               <svg className="w-3 h-3 text-mgsr-muted opacity-0 group-hover:opacity-100 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
             </p>

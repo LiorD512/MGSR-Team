@@ -952,8 +952,8 @@ export default function DashboardPage() {
             <Link
               key={item.href}
               href={item.href}
-              className={`group relative p-4 sm:p-5 border rounded-2xl transition-all duration-300 animate-slide-up min-h-[80px] flex flex-col justify-center shrink-0 ${
-                !isWomen && !isYouth ? 'min-w-[140px] lg:min-w-0' : ''
+              className={`group relative p-3 sm:p-5 border rounded-2xl transition-all duration-300 animate-slide-up min-h-[72px] sm:min-h-[80px] flex flex-col justify-center shrink-0 ${
+                !isWomen && !isYouth ? 'min-w-[120px] lg:min-w-0' : ''
               } ${
                 isYouth
                   ? 'bg-mgsr-card/40 border-[var(--youth-cyan)]/15 hover:border-[var(--youth-cyan)]/40 hover:bg-mgsr-card/60 shadow-[0_0_30px_rgba(0,212,255,0.06)] backdrop-blur-sm'

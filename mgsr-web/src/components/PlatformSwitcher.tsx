@@ -19,10 +19,15 @@ export function PlatformSwitcher({ variant = 'default' }: { variant?: 'default' 
   const updatePos = useCallback(() => {
     if (!btnRef.current) return;
     const rect = btnRef.current.getBoundingClientRect();
+    const dropdownWidth = 160;
+    // Ensure dropdown doesn't overflow off-screen
+    let left = rect.right - dropdownWidth;
+    if (left < 8) left = 8;
+    if (left + dropdownWidth > window.innerWidth - 8) left = window.innerWidth - dropdownWidth - 8;
     setPos({
       top: rect.bottom + 4,
-      left: rect.right - 160, // align right edge of dropdown to right edge of button
-      width: 160,
+      left,
+      width: dropdownWidth,
     });
   }, []);
 
@@ -56,7 +61,7 @@ export function PlatformSwitcher({ variant = 'default' }: { variant?: 'default' 
   const isCompact = variant === 'compact';
   const isGrouped = variant === 'grouped';
   const buttonClass = isCompact
-    ? 'flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-mgsr-muted hover:text-mgsr-text hover:bg-mgsr-dark/80 transition-colors'
+    ? 'flex items-center gap-1.5 px-2.5 py-2.5 rounded-lg text-sm font-medium text-mgsr-muted hover:text-mgsr-text hover:bg-mgsr-dark/80 transition-colors min-h-[44px]'
     : isGrouped
       ? btnGrouped
       : 'px-4 py-2 rounded-lg border border-mgsr-border bg-mgsr-card text-mgsr-muted hover:text-mgsr-teal hover:border-mgsr-teal/50 transition text-sm font-medium flex items-center justify-center gap-1.5';
@@ -64,7 +69,7 @@ export function PlatformSwitcher({ variant = 'default' }: { variant?: 'default' 
   const dropdown = open && pos ? (
     <div
       ref={dropdownRef}
-      className="fixed py-1 min-w-[160px] rounded-xl bg-mgsr-card border border-mgsr-border shadow-xl"
+      className="fixed py-1.5 min-w-[160px] rounded-xl bg-mgsr-card border border-mgsr-border shadow-xl"
       style={{ top: pos.top, left: pos.left, zIndex: 99999 }}
     >
       <Link
@@ -73,7 +78,7 @@ export function PlatformSwitcher({ variant = 'default' }: { variant?: 'default' 
           setPlatform('men');
           setOpen(false);
         }}
-        className={`block px-4 py-2.5 text-sm transition ${
+        className={`block px-4 py-3 text-sm transition ${
           platform === 'men'
             ? 'text-[var(--mgsr-accent)] font-medium bg-mgsr-accent-dim/30'
             : 'text-mgsr-muted hover:text-mgsr-text hover:bg-mgsr-dark/60'
@@ -87,7 +92,7 @@ export function PlatformSwitcher({ variant = 'default' }: { variant?: 'default' 
           setPlatform('women');
           setOpen(false);
         }}
-        className={`block px-4 py-2.5 text-sm transition ${
+        className={`block px-4 py-3 text-sm transition ${
           platform === 'women'
             ? 'text-[var(--women-rose)] font-medium bg-[var(--women-rose)]/10'
             : 'text-mgsr-muted hover:text-mgsr-text hover:bg-mgsr-dark/60'
@@ -101,7 +106,7 @@ export function PlatformSwitcher({ variant = 'default' }: { variant?: 'default' 
           setPlatform('youth');
           setOpen(false);
         }}
-        className={`block px-4 py-2.5 text-sm transition ${
+        className={`block px-4 py-3 text-sm transition ${
           platform === 'youth'
             ? 'text-[var(--youth-cyan)] font-medium bg-[var(--youth-cyan)]/10'
             : 'text-mgsr-muted hover:text-mgsr-text hover:bg-mgsr-dark/60'

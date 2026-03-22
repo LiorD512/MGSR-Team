@@ -490,14 +490,14 @@ export default function TasksPage() {
                 </span>
                 <span className="text-mgsr-muted text-sm lg:text-base">{t('tasks_filter_pending')}</span>
               </div>
-              <div className="w-px h-6 lg:h-8 bg-mgsr-border" />
+              <div className="hidden sm:block w-px h-6 lg:h-8 bg-mgsr-border" />
               <div className="flex items-center gap-2">
                 <span className="text-lg sm:text-xl lg:text-3xl font-bold text-mgsr-red font-display">
                   {stats.overdue}
                 </span>
                 <span className="text-mgsr-muted text-sm lg:text-base">{t('tasks_overdue_count')}</span>
               </div>
-              <div className="w-px h-6 lg:h-8 bg-mgsr-border" />
+              <div className="hidden sm:block w-px h-6 lg:h-8 bg-mgsr-border" />
               <div className="flex items-center gap-2">
                 <span className="text-lg sm:text-xl lg:text-3xl font-bold text-mgsr-text font-display">
                   {stats.agents}
@@ -625,17 +625,17 @@ export default function TasksPage() {
                       : { background: 'linear-gradient(120deg, #4DB6AC 0%, transparent 40%, #5C6BC0 100%)' }
                   }
                 />
-                <div className="relative p-6 md:p-8">
-                  <div className="flex flex-wrap items-center gap-8 mb-6">
+                <div className="relative p-4 sm:p-6 md:p-8">
+                  <div className="flex flex-wrap items-center gap-4 sm:gap-8 mb-6">
                     <div>
                       <p className="text-sm text-mgsr-muted mb-1">{t('tasks_progress')}</p>
-                      <p className={`text-4xl font-bold font-display ${accentText}`}>
+                      <p className={`text-2xl sm:text-4xl font-bold font-display ${accentText}`}>
                         {myTasksStats.completed}/{myTasksStats.total}
                       </p>
                       <p className="text-sm text-mgsr-muted">{t('tasks_completed_count')}</p>
                     </div>
-                    <div className="h-12 w-px bg-mgsr-border" />
-                    <div className="flex flex-wrap gap-6">
+                    <div className="hidden sm:block h-12 w-px bg-mgsr-border" />
+                    <div className="flex flex-wrap gap-4 sm:gap-6">
                       <div>
                         <p className="text-2xl font-bold text-mgsr-text font-display">
                           {myTasksStats.pending}
@@ -710,7 +710,7 @@ export default function TasksPage() {
                         return (
                           <div
                             key={task.id}
-                            className={`group relative flex items-start gap-4 p-5 rounded-2xl border transition-all duration-200 ${
+                            className={`group relative flex items-start gap-3 sm:gap-4 p-4 sm:p-5 rounded-2xl border transition-all duration-200 ${
                               isDone
                                 ? 'bg-mgsr-card/30 border-mgsr-border/50'
                                 : isYouth
@@ -731,7 +731,7 @@ export default function TasksPage() {
                             />
                             <button
                               onClick={() => toggleComplete(task)}
-                              className={`shrink-0 w-7 h-7 rounded-lg border-2 flex items-center justify-center transition ${
+                              className={`shrink-0 w-8 h-8 sm:w-7 sm:h-7 rounded-lg border-2 flex items-center justify-center transition ${
                                 task.isCompleted
                                   ? `${borderAccent} ${accentBg}`
                                   : `border-mgsr-muted ${hoverBorderAccent}`

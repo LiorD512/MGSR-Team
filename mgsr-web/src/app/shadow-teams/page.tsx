@@ -212,7 +212,7 @@ function PlayerSelectDialog({
                     onSelect(p);
                     onClose();
                   }}
-                  className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-mgsr-teal/10 text-start transition-colors"
+                  className="w-full flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-mgsr-teal/10 text-start transition-colors"
                 >
                   <img
                     src={p.profileImage || 'https://via.placeholder.com/40?text=?'}
@@ -234,7 +234,7 @@ function PlayerSelectDialog({
           <button
             type="button"
             onClick={onClose}
-            className="w-full py-2 text-sm text-mgsr-muted hover:text-mgsr-text transition-colors"
+            className="w-full py-3 text-sm text-mgsr-muted hover:text-mgsr-text transition-colors"
           >
             {t('shadow_teams_cancel')}
           </button>
@@ -737,25 +737,25 @@ function SlotCircle({
         </span>
       )}
       {menuOpen && player && canEdit && (
-        <div className="absolute top-full mt-1 left-1/2 -translate-x-1/2 z-20 min-w-[120px] py-1 bg-mgsr-card border border-mgsr-border rounded-lg shadow-lg">
+        <div className="absolute top-full mt-1 left-1/2 -translate-x-1/2 z-20 min-w-[130px] py-1.5 bg-mgsr-card border border-mgsr-border rounded-lg shadow-lg">
           <button
             type="button"
             onClick={() => { onViewProfile?.(); onCloseMenu?.(); }}
-            className="w-full px-3 py-1.5 text-left text-sm text-mgsr-text hover:bg-mgsr-teal/10"
+            className="w-full px-3 py-2.5 text-left text-sm text-mgsr-text hover:bg-mgsr-teal/10"
           >
             {t('shadow_teams_view_player')}
           </button>
           <button
             type="button"
             onClick={() => { onChangePlayer?.(); }}
-            className="w-full px-3 py-1.5 text-left text-sm text-mgsr-text hover:bg-mgsr-teal/10"
+            className="w-full px-3 py-2.5 text-left text-sm text-mgsr-text hover:bg-mgsr-teal/10"
           >
             {t('shadow_teams_change_player')}
           </button>
           <button
             type="button"
             onClick={() => { onRemove?.(); }}
-            className="w-full px-3 py-1.5 text-left text-sm text-red-400 hover:bg-red-500/10"
+            className="w-full px-3 py-2.5 text-left text-sm text-red-400 hover:bg-red-500/10"
           >
             {t('shadow_teams_remove_player')}
           </button>

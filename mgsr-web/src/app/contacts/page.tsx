@@ -223,7 +223,7 @@ export default function ContactsPage() {
               <button
                 key={f}
                 onClick={() => setFilter(f)}
-                className={`px-4 py-2 rounded-xl text-sm font-medium transition ${
+                className={`px-4 py-2.5 rounded-xl text-sm font-medium transition ${
                   filter === f
                     ? isYouth
                       ? 'bg-[var(--youth-cyan)] text-mgsr-dark'
@@ -291,7 +291,7 @@ export default function ContactsPage() {
                   {group.contacts.map((c, i) => (
                     <div
                       key={c.id}
-                      className={`group flex items-start gap-4 p-4 bg-mgsr-card border border-mgsr-border rounded-xl transition-all duration-300 animate-fade-in ${isYouth ? 'hover:border-[var(--youth-cyan)]/30' : isWomen ? 'hover:border-[var(--women-rose)]/30' : 'hover:border-mgsr-teal/30'}`}
+                      className={`group flex items-start gap-3 sm:gap-4 p-3 sm:p-4 bg-mgsr-card border border-mgsr-border rounded-xl transition-all duration-300 animate-fade-in ${isYouth ? 'hover:border-[var(--youth-cyan)]/30' : isWomen ? 'hover:border-[var(--women-rose)]/30' : 'hover:border-mgsr-teal/30'}`}
                       style={{ animationDelay: `${i * 30}ms` }}
                     >
                       <div className="shrink-0">
@@ -299,10 +299,10 @@ export default function ContactsPage() {
                           <img
                             src={c.clubLogo}
                             alt=""
-                            className="w-14 h-14 rounded-full object-cover bg-mgsr-dark ring-2 ring-mgsr-border"
+                            className="w-11 h-11 sm:w-14 sm:h-14 rounded-full object-cover bg-mgsr-dark ring-2 ring-mgsr-border"
                           />
                         ) : (
-                          <div className={`w-14 h-14 rounded-full flex items-center justify-center ${isYouth ? 'bg-[var(--youth-cyan)]/20' : isWomen ? 'bg-[var(--women-rose)]/20' : 'bg-mgsr-teal/20'}`}>
+                          <div className={`w-11 h-11 sm:w-14 sm:h-14 rounded-full flex items-center justify-center ${isYouth ? 'bg-[var(--youth-cyan)]/20' : isWomen ? 'bg-[var(--women-rose)]/20' : 'bg-mgsr-teal/20'}`}>
                             <span className={`text-xl font-display font-bold ${isYouth ? 'text-[var(--youth-cyan)]' : isWomen ? 'text-[var(--women-rose)]' : 'text-mgsr-teal'}`}>
                               {(c.name || c.clubName || '?')[0]}
                             </span>
@@ -334,7 +334,7 @@ export default function ContactsPage() {
                             href={toWhatsAppUrl(c.phoneNumber) ?? `tel:${c.phoneNumber}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className={`inline-block mt-2 text-sm hover:underline ${isYouth ? 'text-[var(--youth-cyan)]' : isWomen ? 'text-[var(--women-rose)]' : 'text-mgsr-teal'}`}
+                            className={`inline-flex items-center mt-2 py-1.5 text-sm hover:underline ${isYouth ? 'text-[var(--youth-cyan)]' : isWomen ? 'text-[var(--women-rose)]' : 'text-mgsr-teal'}`}
                             dir="ltr"
                           >
                             {c.phoneNumber}
@@ -344,7 +344,7 @@ export default function ContactsPage() {
                           <button
                             type="button"
                             onClick={() => setEditContact(c)}
-                            className={`text-xs font-medium px-2.5 py-1 rounded-lg transition ${
+                            className={`text-xs font-medium px-3 py-2 rounded-lg transition ${
                               isYouth
                                 ? 'text-[var(--youth-cyan)] hover:bg-[var(--youth-cyan)]/20'
                                 : isWomen
@@ -357,7 +357,7 @@ export default function ContactsPage() {
                           <button
                             type="button"
                             onClick={() => setDeleteConfirm(c)}
-                            className="text-xs font-medium px-2.5 py-1 rounded-lg text-mgsr-red hover:bg-mgsr-red/20 transition"
+                            className="text-xs font-medium px-3 py-2 rounded-lg text-mgsr-red hover:bg-mgsr-red/20 transition"
                           >
                             {t('contacts_delete')}
                           </button>

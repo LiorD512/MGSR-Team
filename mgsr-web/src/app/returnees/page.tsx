@@ -503,7 +503,7 @@ export default function ReturneesPage() {
         </div>
 
         {/* Position filter chips */}
-        <div className="flex flex-wrap gap-2 mb-3 overflow-x-auto pb-2">
+        <div className="flex gap-2 mb-3 overflow-x-auto pb-2 sm:flex-wrap" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
           <button
             onClick={() => setPositionFilter(null)}
             className={`px-3 py-1.5 rounded-lg text-sm font-medium shrink-0 transition ${
@@ -536,7 +536,7 @@ export default function ReturneesPage() {
         </div>
 
         {/* Market value filter chips */}
-        <div className="flex flex-wrap gap-2 mb-6 overflow-x-auto pb-2">
+        <div className="flex gap-2 mb-6 overflow-x-auto pb-2 sm:flex-wrap" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
           {MARKET_VALUE_FILTERS.map((v) => {
             const count =
               v.key === 'all'

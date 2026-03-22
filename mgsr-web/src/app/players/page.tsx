@@ -633,7 +633,7 @@ export default function PlayersPage() {
 
         {/* Position filter pills — always visible */}
         <div className="mb-4">
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 sm:flex-wrap" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
             {POSITION_GROUPS.map((pos) => (
               <button
                 key={pos}
@@ -646,7 +646,7 @@ export default function PlayersPage() {
                     setSpecificPositionFilter(null);
                   }
                 }}
-                className={`px-3 py-1.5 text-sm font-medium transition-all duration-200 ${
+                className={`shrink-0 px-3 py-1.5 text-sm font-medium transition-all duration-200 ${
                   isWomen ? 'rounded-xl' : 'rounded-lg'
                 } ${
                   positionFilter === pos
@@ -1029,7 +1029,7 @@ export default function PlayersPage() {
                       ? `/players/women/${p.id}?from=/players`
                       : `/players/${p.id}?from=/players`
                 }
-                className={`group flex items-center gap-4 p-4 border transition-all duration-300 animate-fade-in ${
+                className={`group flex items-center gap-3 sm:gap-4 p-3 sm:p-4 border transition-all duration-300 animate-fade-in ${
                   isYouth
                     ? 'youth-glass-card rounded-2xl hover:border-[var(--youth-cyan)]/40 hover:shadow-[0_0_20px_rgba(0,212,255,0.1)]'
                     : isWomen
@@ -1040,7 +1040,7 @@ export default function PlayersPage() {
               >
                 <div className="relative shrink-0">
                   {isYouth ? (
-                    <div className="relative w-14 h-14">
+                    <div className="relative w-12 h-12 sm:w-14 sm:h-14">
                       {p.profileImage && (
                         <img
                           src={p.profileImage}
@@ -1062,7 +1062,7 @@ export default function PlayersPage() {
                     <img
                       src={p.profileImage || '/placeholder-player.png'}
                       alt=""
-                      className={`w-14 h-14 rounded-full object-cover bg-mgsr-dark ring-2 transition ${isWomen ? 'ring-mgsr-border group-hover:ring-[var(--women-rose)]/40' : 'ring-mgsr-border group-hover:ring-mgsr-teal/40'}`}
+                      className={`w-12 h-12 sm:w-14 sm:h-14 rounded-full object-cover bg-mgsr-dark ring-2 transition ${isWomen ? 'ring-mgsr-border group-hover:ring-[var(--women-rose)]/40' : 'ring-mgsr-border group-hover:ring-mgsr-teal/40'}`}
                       onError={(e) => {
                         (e.target as HTMLImageElement).src =
                           platform === 'women'

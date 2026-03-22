@@ -579,12 +579,12 @@ export default function ReleasesPage() {
             </h1>
             <p className="text-mgsr-muted mt-1 text-sm">{t('releases_value_filter')}</p>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 sm:flex-wrap" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
             {(!loadingList || players.length > 0 || error) && (
               <button
                 onClick={() => loadReleases()}
                 disabled={loadingList}
-                className="px-4 py-2.5 rounded-xl text-sm font-medium bg-mgsr-card border border-mgsr-border text-mgsr-teal hover:bg-mgsr-teal/20 hover:border-mgsr-teal/40 disabled:opacity-50 transition"
+                className="shrink-0 px-4 py-2.5 rounded-xl text-sm font-medium bg-mgsr-card border border-mgsr-border text-mgsr-teal hover:bg-mgsr-teal/20 hover:border-mgsr-teal/40 disabled:opacity-50 transition"
               >
                 {t('releases_reload')}
               </button>
@@ -593,7 +593,7 @@ export default function ReleasesPage() {
               <button
                 key={i}
                 onClick={() => setPreset(i)}
-                className={`px-4 py-2.5 rounded-xl text-sm font-medium transition ${
+                className={`shrink-0 px-4 py-2.5 rounded-xl text-sm font-medium transition ${
                   preset === i
                     ? 'bg-mgsr-teal text-mgsr-dark'
                     : 'bg-mgsr-card border border-mgsr-border text-mgsr-muted hover:text-mgsr-text hover:border-mgsr-teal/30'
@@ -624,7 +624,7 @@ export default function ReleasesPage() {
         ) : (
           <>
             {/* Stats strip */}
-            <div className="flex flex-wrap items-center gap-2 sm:gap-4 mb-4 py-3 px-3 sm:px-4 rounded-xl bg-mgsr-card/50 border border-mgsr-border">
+                        <div className="flex flex-wrap items-center gap-2 sm:gap-4 mb-4 py-3 px-3 sm:px-4 rounded-xl bg-mgsr-card/50 border border-mgsr-border overflow-x-auto" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
               <span className="text-sm text-mgsr-muted">
                 {t('releases_stats_total')}: <strong className="text-mgsr-text">{players.length}</strong>
               </span>
@@ -658,11 +658,11 @@ export default function ReleasesPage() {
                 placeholder={t('releases_search')}
                 className="w-full max-w-md px-4 py-2.5 rounded-xl bg-mgsr-card border border-mgsr-border text-mgsr-text placeholder-mgsr-muted focus:outline-none focus:border-mgsr-teal/60"
               />
-              <div className="flex flex-wrap gap-2">
-                <span className="text-xs text-mgsr-muted self-center">{t('releases_position')}:</span>
+              <div className="flex gap-2 overflow-x-auto pb-1 sm:pb-0 sm:flex-wrap" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
+                <span className="text-xs text-mgsr-muted self-center shrink-0">{t('releases_position')}:</span>
                 <button
                   onClick={() => setPositionFilter(null)}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${
+                  className={`shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium transition ${
                     !positionFilter
                       ? 'bg-mgsr-teal text-mgsr-dark'
                       : 'bg-mgsr-card border border-mgsr-border text-mgsr-muted hover:text-mgsr-text'
@@ -677,7 +677,7 @@ export default function ReleasesPage() {
                     <button
                       key={pos}
                       onClick={() => setPositionFilter(positionFilter === pos ? null : pos)}
-                      className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${
+                      className={`shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium transition ${
                         positionFilter === pos
                           ? 'bg-mgsr-teal text-mgsr-dark'
                           : 'bg-mgsr-card border border-mgsr-border text-mgsr-muted hover:text-mgsr-text'
@@ -688,13 +688,13 @@ export default function ReleasesPage() {
                   );
                 })}
               </div>
-              <div className="flex flex-wrap gap-2">
-                <span className="text-xs text-mgsr-muted self-center">{t('releases_age')}:</span>
+              <div className="flex gap-2 overflow-x-auto pb-1 sm:pb-0 sm:flex-wrap" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
+                <span className="text-xs text-mgsr-muted self-center shrink-0">{t('releases_age')}:</span>
                 {AGE_FILTERS.map(({ value, labelKey }) => (
                   <button
                     key={value}
                     onClick={() => setAgeFilter(ageFilter === value ? 'all' : value)}
-                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${
+                    className={`shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium transition ${
                       ageFilter === value
                         ? 'bg-mgsr-teal text-mgsr-dark'
                         : 'bg-mgsr-card border border-mgsr-border text-mgsr-muted hover:text-mgsr-text'

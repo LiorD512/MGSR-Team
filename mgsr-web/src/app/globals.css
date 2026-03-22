@@ -453,16 +453,48 @@ body {
     -webkit-overflow-scrolling: touch;
   }
 
-  /* Better touch targets globally */
-  button, a, [role="button"] {
-    min-height: 44px;
-  }
-
   /* Cards on mobile get full-width treatment */
   .mobile-card {
     border-radius: 0.75rem;
     padding: 1rem;
   }
+}
+
+/* ── Mobile scroll fade hints ── */
+.mobile-scroll-fade {
+  position: relative;
+}
+.mobile-scroll-fade::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 32px;
+  background: linear-gradient(to right, transparent, var(--mgsr-dark));
+  pointer-events: none;
+  z-index: 1;
+  border-radius: 0 0.75rem 0.75rem 0;
+}
+[dir='rtl'] .mobile-scroll-fade::after {
+  right: auto;
+  left: 0;
+  background: linear-gradient(to left, transparent, var(--mgsr-dark));
+  border-radius: 0.75rem 0 0 0.75rem;
+}
+
+/* Mobile chip strip - horizontal scrollable filter chips */
+.mobile-chip-strip {
+  display: flex;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  gap: 0.5rem;
+  padding-bottom: 2px;
+}
+.mobile-chip-strip::-webkit-scrollbar {
+  display: none;
 }
 
 /* Bottom sheet slide-up animation */

@@ -962,7 +962,7 @@ export default function WomanPlayerPage() {
 
             {/* Contact - agent phone + player phone */}
             {(getPhone() || getAgentPhone()) && (
-              <div className="p-5 rounded-xl bg-mgsr-card border border-mgsr-border shadow-[0_0_30px_rgba(232,160,191,0.08)]">
+              <div className="p-4 sm:p-5 rounded-xl bg-mgsr-card border border-mgsr-border shadow-[0_0_30px_rgba(232,160,191,0.08)]">
                 <h3 className="text-sm font-semibold text-mgsr-muted uppercase tracking-wider mb-3">
                   {t('player_info_contact')}
                 </h3>
@@ -1184,7 +1184,7 @@ export default function WomanPlayerPage() {
                   {playerTasks.map((task) => (
                     <div
                       key={task.id}
-                      className="flex items-center gap-4 p-4 bg-mgsr-card border border-mgsr-border rounded-xl hover:border-[var(--women-rose)]/30 transition group shadow-[0_0_30px_rgba(232,160,191,0.05)]"
+                      className="flex items-center gap-3 sm:gap-4 p-3 sm:p-4 bg-mgsr-card border border-mgsr-border rounded-xl hover:border-[var(--women-rose)]/30 transition group shadow-[0_0_30px_rgba(232,160,191,0.05)]"
                     >
                       <button
                         type="button"
