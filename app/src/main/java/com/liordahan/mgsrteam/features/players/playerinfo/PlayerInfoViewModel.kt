@@ -82,6 +82,7 @@ abstract class IPlayerInfoViewModel : ViewModel() {
     abstract fun updateAgentNumber(number: String)
     abstract fun clearAgency()
     abstract fun updateHaveMandate(hasMandate: Boolean, isManual: Boolean = true)
+    abstract fun updateInterestedInIsrael(interested: Boolean)
     abstract fun updateSalaryRange(salaryRange: String?)
     abstract fun updateTransferFee(transferFee: String?)
     abstract fun updateNotes(notes: NotesModel)
@@ -305,6 +306,15 @@ class PlayerInfoViewModel(
                     updateHaveMandate(validMandateCount > 0, isManual = false)
                 }
                 prevMandateCount = validMandateCount
+
+                // Auto-set interestedInIsrael when any valid mandate has Israel in validLeagues
+                val validMandates = mandateDocs.filter { !it.expired && (it.expiresAt == null || it.expiresAt >= now) }
+                val hasIsraelLeague = validMandates.any { mandate ->
+                    mandate.validLeagues?.any { it.contains("Israel", ignoreCase = true) } == true
+                }
+                if (hasIsraelLeague && player.interestedInIsrael != true) {
+                    updateInterestedInIsrael(true)
+                }
             }
         }
     }
@@ -565,6 +575,15 @@ class PlayerInfoViewModel(
                 )
                 feedRef.add(feedEvent).await()
             }
+        }
+    }
+
+    override fun updateInterestedInIsrael(interested: Boolean) {
+        _playerInfoFlow.update {
+            it?.copy(interestedInIsrael = interested)
+        }
+        viewModelScope.launch {
+            getPlayerDocRef()?.update("interestedInIsrael", interested)?.await()
         }
     }
 

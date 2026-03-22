@@ -29,6 +29,7 @@ interface Player {
   createdAt?: number;
   contractExpired?: string;
   haveMandate?: boolean;
+  interestedInIsrael?: boolean;
   agentInChargeName?: string;
   agentInChargeId?: string;
   isOnLoan?: boolean;
@@ -56,6 +57,7 @@ interface PlayersCache {
   footFilter: 'left' | 'right' | null;
   euNationalOnly: boolean;
   offeredNoFeedback: boolean;
+  interestedInIsrael: boolean;
 }
 
 const POSITION_GROUPS = ['GK', 'DEF', 'MID', 'FWD'] as const;
@@ -162,6 +164,7 @@ export default function PlayersPage() {
   const [footFilter, setFootFilter] = useState<'left' | 'right' | null>(cached?.footFilter ?? null);
   const [euNationalOnly, setEuNationalOnly] = useState(cached?.euNationalOnly ?? false);
   const [offeredNoFeedback, setOfferedNoFeedback] = useState(cached?.offeredNoFeedback ?? false);
+  const [interestedInIsrael, setInterestedInIsrael] = useState(cached?.interestedInIsrael ?? false);
   const [offeredNoFeedbackProfiles, setOfferedNoFeedbackProfiles] = useState<Set<string>>(new Set());
   const [mandateDataByProfile, setMandateDataByProfile] = useState<Map<string, { expiryAt: number; validLeagues: string[] }>>(new Map());
   const [mandateExpanded, setMandateExpanded] = useState(false);
@@ -289,8 +292,9 @@ export default function PlayersPage() {
       footFilter,
       euNationalOnly,
       offeredNoFeedback,
+      interestedInIsrael,
     });
-  }, [players, search, positionFilter, specificPositionFilter, freeAgents, contractExpiring, withMandate, myPlayersOnly, agentFilter, loanPlayersOnly, withoutRegisteredAgent, withNotes, footFilter, euNationalOnly, offeredNoFeedback]);
+  }, [players, search, positionFilter, specificPositionFilter, freeAgents, contractExpiring, withMandate, myPlayersOnly, agentFilter, loanPlayersOnly, withoutRegisteredAgent, withNotes, footFilter, euNationalOnly, offeredNoFeedback, interestedInIsrael]);
 
   const filtered = useMemo(() => {
     if (platform === 'youth') {
@@ -377,6 +381,11 @@ export default function PlayersPage() {
       result = result.filter((p) => p.haveMandate === true);
     }
 
+    // Interested in Israel
+    if (interestedInIsrael) {
+      result = result.filter((p) => p.interestedInIsrael === true);
+    }
+
     // My players only
     if (myPlayersOnly && currentAccountName) {
       result = result.filter(
@@ -453,6 +462,7 @@ export default function PlayersPage() {
     offeredNoFeedbackProfiles,
     euCountries,
     currentAccountName,
+    interestedInIsrael,
   ]);
 
   const hasActiveFilters =
@@ -469,6 +479,7 @@ export default function PlayersPage() {
         withNotes ||
         euNationalOnly ||
         offeredNoFeedback ||
+        interestedInIsrael ||
         !!footFilter));
 
   const clearFilters = useCallback(() => {
@@ -485,6 +496,7 @@ export default function PlayersPage() {
     setFootFilter(null);
     setEuNationalOnly(false);
     setOfferedNoFeedback(false);
+    setInterestedInIsrael(false);
   }, []);
 
   const playersWithMandate = useMemo(() => {
@@ -805,6 +817,16 @@ export default function PlayersPage() {
             >
               {t('players_filter_offered_no_feedback')}
             </button>
+            <button
+              onClick={() => setInterestedInIsrael((v) => !v)}
+              className={`shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 ${
+                interestedInIsrael
+                  ? 'bg-mgsr-teal text-mgsr-dark shadow-sm shadow-mgsr-teal/25'
+                  : 'bg-mgsr-card border border-mgsr-border text-mgsr-muted hover:text-mgsr-text hover:border-mgsr-teal/40'
+              }`}
+            >
+              🇮🇱 {t('players_filter_interested_in_israel')}
+            </button>
             <div className="relative shrink-0">
               <select
                 value={agentFilter ?? ''}
@@ -843,6 +865,7 @@ export default function PlayersPage() {
               { key: 'footRight', active: footFilter === 'right', toggle: () => setFootFilter(v => v === 'right' ? null : 'right'), label: t('players_filter_foot_right') },
               { key: 'euNational', active: euNationalOnly, toggle: () => setEuNationalOnly(v => !v), label: `🇪🇺 ${t('players_filter_eu_national')}` },
               { key: 'offeredNoFeedback', active: offeredNoFeedback, toggle: () => setOfferedNoFeedback(v => !v), label: t('players_filter_offered_no_feedback') },
+              { key: 'interestedInIsrael', active: interestedInIsrael, toggle: () => setInterestedInIsrael(v => !v), label: `🇮🇱 ${t('players_filter_interested_in_israel')}` },
             ].map(f => (
               <button
                 key={f.key}

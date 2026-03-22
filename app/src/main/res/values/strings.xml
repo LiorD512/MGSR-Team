@@ -1429,6 +1429,10 @@
     <!-- Offered No Feedback filter -->
     <string name="players_filter_offered_no_feedback">Offered · No Feedback</string>
 
+    <!-- Interested in Israel -->
+    <string name="players_filter_interested_in_israel">Interested in Israel</string>
+    <string name="player_info_interested_in_israel">Interested in Israel</string>
+
     <!-- Instagram outreach -->
     <string name="shortlist_ig_dm">DM @%1$s on Instagram</string>
     <string name="shortlist_ig_copied">Message copied — paste in DM</string>

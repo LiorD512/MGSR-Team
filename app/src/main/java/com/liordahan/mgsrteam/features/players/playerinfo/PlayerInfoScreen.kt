@@ -642,6 +642,7 @@ fun PlayerInfoScreen(
                     allAccounts = allAccounts,
                     resolvedTransfer = heroResolvedTransfer,
                     onMandateChanged = { viewModel.updateHaveMandate(it) },
+                    onInterestedInIsraelChanged = { viewModel.updateInterestedInIsrael(it) },
                     onSalaryTransferFeeClicked = { showSalaryTransferFeeSheet = true },
                     onClearSalaryAndTransferFee = {
                         viewModel.updateSalaryRange(null)
@@ -1323,6 +1324,7 @@ private fun PlayerInfoHeroCard(
     allAccounts: List<com.liordahan.mgsrteam.features.login.models.Account> = emptyList(),
     resolvedTransfer: com.liordahan.mgsrteam.features.players.playerinfo.agenttransfer.AgentTransferRequest? = null,
     onMandateChanged: (Boolean) -> Unit,
+    onInterestedInIsraelChanged: (Boolean) -> Unit,
     onSalaryTransferFeeClicked: () -> Unit = {},
     onClearSalaryAndTransferFee: () -> Unit = {},
 ) {
@@ -1639,6 +1641,53 @@ private fun PlayerInfoHeroCard(
                     )
                 )
             }
+            Spacer(Modifier.height(8.dp))
+
+            // ── Interested in Israel toggle ──
+            if (currentPlatform == Platform.MEN) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(PlatformColors.palette.background)
+                    .border(1.dp, PlatformColors.palette.cardBorder, RoundedCornerShape(12.dp))
+                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                var isInterestedInIsrael by remember(player.interestedInIsrael) { mutableStateOf(player.interestedInIsrael) }
+                LaunchedEffect(player.interestedInIsrael) { isInterestedInIsrael = player.interestedInIsrael }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = "\uD83C\uDDEE\uD83C\uDDF1",
+                        fontSize = 18.sp,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        text = stringResource(R.string.player_info_interested_in_israel),
+                        style = boldTextStyle(
+                            if (isInterestedInIsrael) PlatformColors.palette.blue else PlatformColors.palette.textSecondary,
+                            16.sp
+                        )
+                    )
+                }
+                Switch(
+                    checked = isInterestedInIsrael,
+                    onCheckedChange = {
+                        isInterestedInIsrael = it
+                        onInterestedInIsraelChanged(it)
+                    },
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = Color.White,
+                        checkedTrackColor = PlatformColors.palette.blue,
+                        uncheckedThumbColor = PlatformColors.palette.textSecondary,
+                        uncheckedTrackColor = PlatformColors.palette.cardBorder
+                    )
+                )
+            }
+            }
+
             Spacer(Modifier.height(8.dp))
             val hasSalaryOrFee = player.salaryRange?.isNotBlank() == true || player.transferFee?.isNotBlank() == true
             var showClearSalaryMenu by remember { mutableStateOf(false) }

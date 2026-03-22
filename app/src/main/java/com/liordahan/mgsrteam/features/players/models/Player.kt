@@ -43,6 +43,7 @@ data class Player(
     val transferFee: String? = null,
     @PropertyName("onLoan") val isOnLoan: Boolean = false,
     @PropertyName("onLoanFromClub") val onLoanFromClub: String? = null,
+    val interestedInIsrael: Boolean = false,
     val passportDetails: PassportDetails? = null,
     val foot: String? = null,
     val agency: String? = null,

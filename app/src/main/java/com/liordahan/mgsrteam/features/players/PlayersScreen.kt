@@ -283,6 +283,7 @@ fun PlayersScreen(
                 withNotesOnlySelected = playersState.isWithNotesChecked,
                 euNationalSelected = playersState.quickFilterEuNational,
                 offeredNoFeedbackSelected = playersState.quickFilterOfferedNoFeedback,
+                interestedInIsraelSelected = playersState.quickFilterInterestedInIsrael,
                 footFilterOption = playersState.footFilterOption,
                 onFreeAgentsClick = { viewModel.toggleQuickFilterFreeAgents() },
                 onContractExpiringClick = { viewModel.toggleQuickFilterContractExpiring() },
@@ -294,6 +295,7 @@ fun PlayersScreen(
                 onWithNotesOnlyClick = { viewModel.toggleQuickFilterWithNotesOnly() },
                 onEuNationalClick = { viewModel.toggleQuickFilterEuNational() },
                 onOfferedNoFeedbackClick = { viewModel.toggleQuickFilterOfferedNoFeedback() },
+                onInterestedInIsraelClick = { viewModel.toggleQuickFilterInterestedInIsrael() },
                 onFootFilterClick = { viewModel.setFootFilterOption(it) }
             )
             }
@@ -883,6 +885,7 @@ private fun QuickFilterChips(
     withNotesOnlySelected: Boolean,
     euNationalSelected: Boolean,
     offeredNoFeedbackSelected: Boolean,
+    interestedInIsraelSelected: Boolean,
     footFilterOption: FootFilterOption,
     onFreeAgentsClick: () -> Unit,
     onContractExpiringClick: () -> Unit,
@@ -894,6 +897,7 @@ private fun QuickFilterChips(
     onWithNotesOnlyClick: () -> Unit,
     onEuNationalClick: () -> Unit,
     onOfferedNoFeedbackClick: () -> Unit,
+    onInterestedInIsraelClick: () -> Unit,
     onFootFilterClick: (FootFilterOption) -> Unit
 ) {
     LazyRow(
@@ -955,6 +959,13 @@ private fun QuickFilterChips(
                 label = stringResource(R.string.players_filter_offered_no_feedback),
                 isSelected = offeredNoFeedbackSelected,
                 onClick = onOfferedNoFeedbackClick
+            )
+        }
+        item(key = "interested_in_israel") {
+            QuickFilterChip(
+                label = "\uD83C\uDDEE\uD83C\uDDF1 " + stringResource(R.string.players_filter_interested_in_israel),
+                isSelected = interestedInIsraelSelected,
+                onClick = onInterestedInIsraelClick
             )
         }
         item(key = "with_notes") {

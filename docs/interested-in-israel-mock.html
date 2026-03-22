@@ -1,0 +1,1003 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MGSR — "Interested in Israel" Feature Mock</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,500;0,9..40,700;1,9..40,400&family=Secular+One&display=swap');
+
+  :root {
+    --bg: #0F1923;
+    --card: #162029;
+    --card-border: #1E2D3A;
+    --teal: #00D4AA;
+    --teal-dim: rgba(0,212,170,.12);
+    --blue: #4A9EFF;
+    --blue-dim: rgba(74,158,255,.10);
+    --israel-blue: #0038B8;
+    --israel-flag-bg: linear-gradient(135deg, #0038B8 0%, #0050D0 100%);
+    --text: #E8EDF2;
+    --text-secondary: #8899A6;
+    --muted: #5A6A78;
+    --green: #22C55E;
+    --orange: #F59E0B;
+    --red: #EF4444;
+    --surface: #1A2733;
+    --radius: 12px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'DM Sans', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ═══ HEADER ═══ */
+  .page-header {
+    background: linear-gradient(135deg, #0F1923 0%, #162636 100%);
+    border-bottom: 1px solid var(--card-border);
+    padding: 20px 32px;
+    display: flex; align-items: center; gap: 16px;
+  }
+  .page-header h1 {
+    font-family: 'Secular One', sans-serif;
+    font-size: 22px;
+    color: var(--teal);
+    letter-spacing: .5px;
+  }
+  .page-header .subtitle { font-size: 13px; color: var(--text-secondary); }
+
+  /* ═══ SECTION TITLES ═══ */
+  .section-title {
+    font-family: 'Secular One', sans-serif;
+    font-size: 15px;
+    color: var(--teal);
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    margin: 40px 0 16px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .section-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, var(--card-border) 0%, transparent 100%);
+  }
+
+  .container { max-width: 1100px; margin: 0 auto; padding: 0 24px 80px; }
+
+  /* ═══ MOCK FRAME ═══ */
+  .mock-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 32px;
+    margin-bottom: 32px;
+  }
+  @media (max-width: 900px) { .mock-row { grid-template-columns: 1fr; } }
+
+  .mock-frame {
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  .mock-frame-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    padding: 12px 16px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--card-border);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .mock-frame-label .platform-tag {
+    font-size: 9px;
+    padding: 2px 7px;
+    border-radius: 4px;
+    background: var(--teal-dim);
+    color: var(--teal);
+    font-weight: 700;
+  }
+  .mock-body { padding: 20px; }
+
+  /* ═══ TOGGLE ROW (Player Info) ═══ */
+  .toggle-card {
+    background: var(--bg);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius);
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    transition: border-color .2s;
+  }
+  .toggle-card.active {
+    border-color: var(--israel-blue);
+    box-shadow: 0 0 0 1px rgba(0,56,184,.25), 0 4px 16px rgba(0,56,184,.08);
+  }
+  .toggle-left { display: flex; align-items: center; gap: 10px; }
+  .toggle-icon {
+    width: 36px; height: 36px;
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    background: var(--surface);
+    transition: background .25s;
+  }
+  .toggle-card.active .toggle-icon {
+    background: var(--israel-flag-bg);
+  }
+  .toggle-label { font-weight: 700; font-size: 14px; }
+  .toggle-sublabel { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
+  .toggle-card.active .toggle-label { color: #7EB4FF; }
+
+  /* Custom Switch */
+  .switch {
+    position: relative;
+    width: 48px; height: 26px;
+    flex-shrink: 0;
+  }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .slider {
+    position: absolute; inset: 0;
+    background: var(--muted);
+    border-radius: 13px;
+    cursor: pointer;
+    transition: background .25s;
+  }
+  .slider::before {
+    content: '';
+    position: absolute;
+    width: 20px; height: 20px;
+    left: 3px; bottom: 3px;
+    background: #fff;
+    border-radius: 50%;
+    transition: transform .25s;
+  }
+  .switch input:checked + .slider {
+    background: var(--israel-blue);
+  }
+  .switch input:checked + .slider::before {
+    transform: translateX(22px);
+  }
+
+  /* ═══ ISRAEL FLAG BADGE ═══ */
+  .il-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .5px;
+    padding: 3px 8px 3px 6px;
+    border-radius: 6px;
+    background: rgba(0,56,184,.15);
+    color: #7EB4FF;
+    white-space: nowrap;
+  }
+  .il-badge .flag-icon {
+    width: 14px; height: 10px;
+    border-radius: 2px;
+    background: #fff;
+    position: relative;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+  .il-badge .flag-icon::before,
+  .il-badge .flag-icon::after {
+    content: '';
+    position: absolute;
+    left: 0; right: 0;
+    height: 2px;
+    background: #0038B8;
+  }
+  .il-badge .flag-icon::before { top: 1px; }
+  .il-badge .flag-icon::after { bottom: 1px; }
+  .il-badge .star {
+    position: absolute;
+    width: 5px; height: 5px;
+    left: 50%; top: 50%;
+    transform: translate(-50%, -50%);
+    color: #0038B8;
+    font-size: 6px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* ═══ FILTER CHIPS ═══ */
+  .filters-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 12px 0;
+  }
+  .filter-chip {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 6px 14px;
+    border-radius: 20px;
+    border: 1px solid var(--card-border);
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all .2s;
+    white-space: nowrap;
+  }
+  .filter-chip:hover {
+    border-color: var(--teal);
+    color: var(--text);
+  }
+  .filter-chip.active {
+    background: var(--teal);
+    border-color: var(--teal);
+    color: var(--bg);
+    box-shadow: 0 2px 8px rgba(0,212,170,.2);
+  }
+  .filter-chip.il-active {
+    background: var(--israel-blue);
+    border-color: var(--israel-blue);
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(0,56,184,.25);
+  }
+
+  /* ═══ PLAYER LIST TABLE ═══ */
+  .player-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0 4px;
+  }
+  .player-table th {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--muted);
+    text-align: left;
+    padding: 8px 12px;
+  }
+  .player-table td {
+    padding: 10px 12px;
+    font-size: 13px;
+    vertical-align: middle;
+  }
+  .player-table tbody tr {
+    background: var(--bg);
+    border-radius: 8px;
+    transition: background .15s;
+  }
+  .player-table tbody tr:hover {
+    background: var(--surface);
+  }
+  .player-table tbody tr td:first-child { border-radius: 8px 0 0 8px; }
+  .player-table tbody tr td:last-child { border-radius: 0 8px 8px 0; }
+
+  .player-name { font-weight: 700; color: var(--text); }
+  .player-club { font-size: 11px; color: var(--text-secondary); }
+  .position-pill {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 4px;
+    background: var(--teal-dim);
+    color: var(--teal);
+  }
+  .contract-badge {
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .contract-badge.expiring { color: var(--orange); }
+  .contract-badge.ok { color: var(--text-secondary); }
+
+  .indicators-cell {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .mandate-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 6px;
+    background: var(--blue-dim);
+    color: var(--blue);
+  }
+  .loan-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 6px;
+    background: rgba(245,158,11,.12);
+    color: var(--orange);
+  }
+
+  /* ═══ ANDROID CARD MOCK ═══ */
+  .android-device {
+    background: var(--bg);
+    border-radius: 24px;
+    border: 2px solid var(--card-border);
+    max-width: 360px;
+    margin: 0 auto;
+    overflow: hidden;
+  }
+  .android-status-bar {
+    background: #0a1018;
+    padding: 6px 16px;
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: var(--text-secondary);
+  }
+  .android-toolbar {
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border-bottom: 1px solid var(--card-border);
+  }
+  .android-toolbar .back-btn {
+    width: 28px; height: 28px;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--text);
+    font-size: 18px;
+  }
+  .android-toolbar .toolbar-title {
+    font-weight: 700;
+    font-size: 16px;
+  }
+  .android-content { padding: 16px; }
+
+  .android-player-header {
+    display: flex;
+    gap: 14px;
+    margin-bottom: 16px;
+  }
+  .android-avatar {
+    width: 56px; height: 56px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #1E2D3A, #2A3F52);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--teal);
+    flex-shrink: 0;
+  }
+  .android-player-name {
+    font-weight: 700;
+    font-size: 17px;
+    margin-bottom: 2px;
+  }
+  .android-player-club {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-bottom: 4px;
+  }
+  .android-badges {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  /* ═══ ANDROID FILTER CHIPS ═══ */
+  .android-chips-scroll {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding: 10px 16px;
+    scrollbar-width: none;
+    border-bottom: 1px solid var(--card-border);
+  }
+  .android-chips-scroll::-webkit-scrollbar { display: none; }
+  .android-chip {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 5px 14px;
+    border-radius: 20px;
+    border: 1px solid var(--card-border);
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all .2s;
+  }
+  .android-chip.active-teal {
+    background: var(--teal);
+    border-color: var(--teal);
+    color: var(--bg);
+  }
+  .android-chip.active-il {
+    background: var(--israel-blue);
+    border-color: var(--israel-blue);
+    color: #fff;
+  }
+
+  /* ═══ PLAYER ROW (Mobile) ═══ */
+  .android-player-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 16px;
+    border-bottom: 1px solid rgba(30,45,58,.5);
+    transition: background .15s;
+  }
+  .android-player-row:hover { background: var(--surface); }
+  .mini-avatar {
+    width: 40px; height: 40px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #1E2D3A, #2A3F52);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--teal);
+    flex-shrink: 0;
+  }
+  .row-info { flex: 1; min-width: 0; }
+  .row-name { font-weight: 700; font-size: 13px; }
+  .row-club { font-size: 11px; color: var(--text-secondary); }
+  .row-badges { display: flex; gap: 4px; margin-top: 4px; flex-wrap: wrap; }
+
+  /* ═══ NOTES / CALLOUT ═══ */
+  .impl-note {
+    background: var(--surface);
+    border: 1px solid var(--card-border);
+    border-left: 3px solid var(--teal);
+    border-radius: 0 var(--radius) var(--radius) 0;
+    padding: 16px 20px;
+    margin: 16px 0;
+  }
+  .impl-note h4 {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--teal);
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+  }
+  .impl-note ul {
+    list-style: none;
+    padding: 0;
+  }
+  .impl-note li {
+    font-size: 12px;
+    color: var(--text-secondary);
+    padding: 3px 0;
+    padding-left: 16px;
+    position: relative;
+  }
+  .impl-note li::before {
+    content: '→';
+    position: absolute;
+    left: 0;
+    color: var(--teal);
+  }
+  .impl-note code {
+    font-size: 11px;
+    background: rgba(0,212,170,.08);
+    padding: 1px 5px;
+    border-radius: 3px;
+    color: var(--teal);
+    font-family: 'SF Mono', 'Fira Code', monospace;
+  }
+
+  /* ═══ INTERACTIVE DEMO ═══ */
+  .demo-controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    background: var(--surface);
+    border-radius: var(--radius);
+    margin-bottom: 16px;
+  }
+  .demo-controls label {
+    font-size: 12px;
+    color: var(--text-secondary);
+    font-weight: 600;
+  }
+
+  /* ═══ WEB TOGGLE AREA ═══ */
+  .web-toggles-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  @media (max-width: 600px) { .web-toggles-grid { grid-template-columns: 1fr; } }
+
+  .fullwidth { grid-column: 1 / -1; }
+
+  /* ═══ COLOR DOT ON LIST ═══ */
+  .il-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--israel-blue);
+    box-shadow: 0 0 6px rgba(0,56,184,.5);
+    display: inline-block;
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="page-header">
+  <div>
+    <h1>🇮🇱 "Interested in Israel" — Feature Mock</h1>
+    <div class="subtitle">Toggle indicator + filter chip — Android & Web</div>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- SECTION 1: PLAYER INFO — TOGGLE SWITCH     -->
+  <!-- ═══════════════════════════════════════════ -->
+  <div class="section-title">1 · Player Info — Toggle Switch</div>
+
+  <div class="mock-row">
+
+    <!-- WEB VERSION -->
+    <div class="mock-frame">
+      <div class="mock-frame-label">
+        <span class="platform-tag">WEB</span>
+        Player Detail — Toggle Section
+      </div>
+      <div class="mock-body">
+        <div class="web-toggles-grid">
+          <!-- Mandate Toggle (existing) -->
+          <div class="toggle-card active">
+            <div class="toggle-left">
+              <div class="toggle-icon" style="background: var(--blue-dim);">🛡️</div>
+              <div>
+                <div class="toggle-label" style="color: var(--blue);">Mandate</div>
+                <div class="toggle-sublabel">Expires 15/08/2026</div>
+              </div>
+            </div>
+            <label class="switch">
+              <input type="checkbox" checked>
+              <span class="slider" style="background: var(--blue);"></span>
+            </label>
+          </div>
+
+          <!-- ★ NEW: Interested in Israel Toggle -->
+          <div class="toggle-card active" id="web-il-toggle">
+            <div class="toggle-left">
+              <div class="toggle-icon">🇮🇱</div>
+              <div>
+                <div class="toggle-label">Interested in Israel</div>
+                <div class="toggle-sublabel" id="web-il-sub">Player expressed interest</div>
+              </div>
+            </div>
+            <label class="switch">
+              <input type="checkbox" checked id="webSwitch" onchange="toggleWebDemo(this)">
+              <span class="slider"></span>
+            </label>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ANDROID VERSION -->
+    <div class="mock-frame">
+      <div class="mock-frame-label">
+        <span class="platform-tag">ANDROID</span>
+        Player Info — Toggle Section
+      </div>
+      <div class="mock-body" style="display: flex; justify-content: center;">
+        <div class="android-device" style="width: 320px;">
+          <div class="android-toolbar">
+            <div class="back-btn">←</div>
+            <div class="toolbar-title">Lucas Peralta</div>
+          </div>
+          <div class="android-content">
+            <div class="android-player-header">
+              <div class="android-avatar">LP</div>
+              <div>
+                <div class="android-player-name">Lucas Peralta</div>
+                <div class="android-player-club">CF Valencia · Spain</div>
+                <div class="android-badges">
+                  <span class="position-pill">CAM</span>
+                  <span class="mandate-badge">🛡️ Mandate</span>
+                  <span class="il-badge" id="android-badge-demo"><span class="flag-icon"><span class="star">✡</span></span> IL</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Mandate toggle -->
+            <div class="toggle-card active" style="margin-bottom: 8px; border-color: var(--blue);">
+              <div class="toggle-left">
+                <div class="toggle-icon" style="background: var(--blue-dim);">🛡️</div>
+                <div>
+                  <div class="toggle-label" style="color: var(--blue);">Mandate</div>
+                  <div class="toggle-sublabel">15/08/2026</div>
+                </div>
+              </div>
+              <label class="switch">
+                <input type="checkbox" checked>
+                <span class="slider" style="background: var(--blue);"></span>
+              </label>
+            </div>
+
+            <!-- ★ NEW: Israel toggle -->
+            <div class="toggle-card active" id="android-il-toggle">
+              <div class="toggle-left">
+                <div class="toggle-icon">🇮🇱</div>
+                <div>
+                  <div class="toggle-label">Interested in Israel</div>
+                  <div class="toggle-sublabel" id="android-il-sub">Player expressed interest</div>
+                </div>
+              </div>
+              <label class="switch">
+                <input type="checkbox" checked id="androidSwitch" onchange="toggleAndroidDemo(this)">
+                <span class="slider"></span>
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="impl-note">
+    <h4>Implementation — Toggle</h4>
+    <ul>
+      <li>New Firestore field: <code>interestedInIsrael: Boolean = false</code></li>
+      <li>Same toggle pattern as <code>haveMandate</code> — Switch + updateDoc</li>
+      <li>Place right below the Mandate toggle row on both platforms</li>
+      <li>Icon: Israeli flag emoji 🇮🇱 (or custom SVG)</li>
+      <li>Active color: <code>#0038B8</code> (Israel blue)</li>
+    </ul>
+  </div>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- SECTION 2: PLAYER LIST — BADGE INDICATOR    -->
+  <!-- ═══════════════════════════════════════════ -->
+  <div class="section-title">2 · Player List — Badge Indicator</div>
+
+  <div class="mock-row">
+
+    <!-- WEB TABLE -->
+    <div class="mock-frame fullwidth" style="grid-column: 1 / -1;">
+      <div class="mock-frame-label">
+        <span class="platform-tag">WEB</span>
+        Player List Table — Indicators Column
+      </div>
+      <div class="mock-body" style="overflow-x: auto;">
+        <table class="player-table">
+          <thead>
+            <tr>
+              <th>Player</th>
+              <th>Position</th>
+              <th>Contract</th>
+              <th>Indicators</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>
+                <div class="player-name">Lucas Peralta</div>
+                <div class="player-club">CF Valencia</div>
+              </td>
+              <td><span class="position-pill">CAM</span></td>
+              <td><span class="contract-badge expiring">06/2026</span></td>
+              <td>
+                <div class="indicators-cell">
+                  <span class="mandate-badge">🛡️ Mandate</span>
+                  <span class="il-badge"><span class="flag-icon"><span class="star">✡</span></span> IL</span>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <div class="player-name">Marco Bianchi</div>
+                <div class="player-club">AC Milan</div>
+              </td>
+              <td><span class="position-pill">CB</span></td>
+              <td><span class="contract-badge ok">06/2028</span></td>
+              <td>
+                <div class="indicators-cell">
+                  <span class="il-badge"><span class="flag-icon"><span class="star">✡</span></span> IL</span>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <div class="player-name">André Silva</div>
+                <div class="player-club">FC Porto</div>
+              </td>
+              <td><span class="position-pill">ST</span></td>
+              <td><span class="contract-badge expiring">12/2026</span></td>
+              <td>
+                <div class="indicators-cell">
+                  <span class="mandate-badge">🛡️ Mandate</span>
+                  <span class="loan-badge">📋 Loan</span>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <div class="player-name">Yuki Tanaka</div>
+                <div class="player-club">Urawa Reds</div>
+              </td>
+              <td><span class="position-pill">LW</span></td>
+              <td><span class="contract-badge ok">06/2027</span></td>
+              <td>
+                <div class="indicators-cell">
+                  <span class="il-badge"><span class="flag-icon"><span class="star">✡</span></span> IL</span>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="impl-note">
+    <h4>Implementation — List Badge</h4>
+    <ul>
+      <li>Badge appears in the same indicators area as Mandate / Loan badges</li>
+      <li>Small 🇮🇱 flag + "IL" text in Israel-blue color</li>
+      <li>Only shown when <code>interestedInIsrael == true</code></li>
+      <li>Android: same chip pattern as existing badges in player row</li>
+    </ul>
+  </div>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- SECTION 3: FILTER CHIP                      -->
+  <!-- ═══════════════════════════════════════════ -->
+  <div class="section-title">3 · Player List — Filter Chip</div>
+
+  <div class="mock-row">
+
+    <!-- WEB FILTER -->
+    <div class="mock-frame">
+      <div class="mock-frame-label">
+        <span class="platform-tag">WEB</span>
+        Desktop Filter Bar
+      </div>
+      <div class="mock-body">
+        <div class="filters-row">
+          <button class="filter-chip">Free Agents</button>
+          <button class="filter-chip active">With Mandate</button>
+          <button class="filter-chip">Contract Expiring</button>
+          <button class="filter-chip">On Loan</button>
+          <button class="filter-chip">My Players</button>
+          <button class="filter-chip">EU National</button>
+          <button class="filter-chip il-active" onclick="this.classList.toggle('il-active')">🇮🇱 Interested in Israel</button>
+          <button class="filter-chip">No Registered Agent</button>
+          <button class="filter-chip">With Notes</button>
+        </div>
+
+        <div class="demo-controls">
+          <label>← Click "Interested in Israel" chip to toggle</label>
+        </div>
+
+        <!-- Mini filtered view -->
+        <table class="player-table" style="font-size: 12px;">
+          <thead>
+            <tr><th>Player</th><th>Club</th><th>Indicators</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="player-name">Lucas Peralta</span></td>
+              <td><span class="player-club">CF Valencia</span></td>
+              <td>
+                <div class="indicators-cell">
+                  <span class="mandate-badge">🛡️</span>
+                  <span class="il-badge"><span class="flag-icon"><span class="star">✡</span></span> IL</span>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td><span class="player-name">Marco Bianchi</span></td>
+              <td><span class="player-club">AC Milan</span></td>
+              <td>
+                <div class="indicators-cell">
+                  <span class="il-badge"><span class="flag-icon"><span class="star">✡</span></span> IL</span>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td><span class="player-name">Yuki Tanaka</span></td>
+              <td><span class="player-club">Urawa Reds</span></td>
+              <td>
+                <div class="indicators-cell">
+                  <span class="il-badge"><span class="flag-icon"><span class="star">✡</span></span> IL</span>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ANDROID FILTER -->
+    <div class="mock-frame">
+      <div class="mock-frame-label">
+        <span class="platform-tag">ANDROID</span>
+        Quick Filter Chips (Horizontal Scroll)
+      </div>
+      <div class="mock-body" style="display: flex; justify-content: center;">
+        <div class="android-device" style="width: 320px;">
+          <div class="android-toolbar">
+            <div class="toolbar-title">Players</div>
+          </div>
+
+          <!-- Filter chips -->
+          <div class="android-chips-scroll">
+            <button class="android-chip">Free Agents</button>
+            <button class="android-chip active-teal">Mandate</button>
+            <button class="android-chip active-il" onclick="this.classList.toggle('active-il')">🇮🇱 Israel</button>
+            <button class="android-chip">Expiring</button>
+            <button class="android-chip">On Loan</button>
+            <button class="android-chip">My Players</button>
+            <button class="android-chip">EU</button>
+          </div>
+
+          <!-- Filtered list -->
+          <div>
+            <div class="android-player-row">
+              <div class="mini-avatar">LP</div>
+              <div class="row-info">
+                <div class="row-name">Lucas Peralta</div>
+                <div class="row-club">CF Valencia · CAM</div>
+                <div class="row-badges">
+                  <span class="mandate-badge" style="font-size: 9px; padding: 2px 6px;">🛡️</span>
+                  <span class="il-badge" style="font-size: 9px; padding: 2px 6px;"><span class="flag-icon" style="width: 12px; height: 8px;"><span class="star" style="font-size: 5px;">✡</span></span> IL</span>
+                </div>
+              </div>
+            </div>
+            <div class="android-player-row">
+              <div class="mini-avatar">MB</div>
+              <div class="row-info">
+                <div class="row-name">Marco Bianchi</div>
+                <div class="row-club">AC Milan · CB</div>
+                <div class="row-badges">
+                  <span class="il-badge" style="font-size: 9px; padding: 2px 6px;"><span class="flag-icon" style="width: 12px; height: 8px;"><span class="star" style="font-size: 5px;">✡</span></span> IL</span>
+                </div>
+              </div>
+            </div>
+            <div class="android-player-row">
+              <div class="mini-avatar">YT</div>
+              <div class="row-info">
+                <div class="row-name">Yuki Tanaka</div>
+                <div class="row-club">Urawa Reds · LW</div>
+                <div class="row-badges">
+                  <span class="il-badge" style="font-size: 9px; padding: 2px 6px;"><span class="flag-icon" style="width: 12px; height: 8px;"><span class="star" style="font-size: 5px;">✡</span></span> IL</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- SECTION 4: IMPLEMENTATION SPEC              -->
+  <!-- ═══════════════════════════════════════════ -->
+  <div class="section-title">4 · Implementation Specification</div>
+
+  <div class="impl-note" style="border-left-color: var(--israel-blue);">
+    <h4 style="color: #7EB4FF;">Firestore</h4>
+    <ul>
+      <li>Add <code>interestedInIsrael: boolean</code> to <code>Players</code> collection (defaults to <code>false</code>)</li>
+      <li>No Firestore rules change needed — existing auth-based read/write covers it</li>
+      <li>Adding to Men platform only (as requested)</li>
+    </ul>
+  </div>
+
+  <div class="impl-note">
+    <h4>Android — Data Model</h4>
+    <ul>
+      <li>Add to <code>Player.kt</code>: <code>val interestedInIsrael: Boolean = false</code></li>
+      <li>Add to <code>PlayersUiState</code>: <code>val quickFilterInterestedInIsrael: Boolean = false</code></li>
+      <li>Add to <code>PlayersViewModel</code>: <code>toggleQuickFilterInterestedInIsrael()</code> function</li>
+      <li>Add filter function: <code>filterPlayersByInterestedInIsrael()</code></li>
+      <li>Add to <code>QuickFilterChips</code> composable: new "🇮🇱 Israel" chip</li>
+      <li>Add to <code>PlayerInfoScreen</code>: toggle switch below mandate (same pattern)</li>
+      <li>Add to <code>PlayerInfoViewModel</code>: <code>updateInterestedInIsrael()</code> function</li>
+    </ul>
+  </div>
+
+  <div class="impl-note">
+    <h4>Android — UI</h4>
+    <ul>
+      <li>Toggle card: Israel flag icon + "Interested in Israel" label + Switch</li>
+      <li>Active color: <code>#0038B8</code> (Israel blue) — same as <code>PlatformColors.palette.blue</code> remapped</li>
+      <li>Badge in player row: Small 🇮🇱 + "IL" chip with Israel-blue tint</li>
+      <li>Filter chip in <code>QuickFilterChips</code>: "🇮🇱 Israel" — same chip component</li>
+    </ul>
+  </div>
+
+  <div class="impl-note">
+    <h4>Web — Data & Logic</h4>
+    <ul>
+      <li>Add to Player interface: <code>interestedInIsrael?: boolean</code></li>
+      <li>Add filter state: <code>const [interestedInIsrael, setInterestedInIsrael] = useState(false)</code></li>
+      <li>Add filtering: <code>if (interestedInIsrael) result = result.filter(p => p.interestedInIsrael === true)</code></li>
+      <li>Add cache key: <code>interestedInIsrael</code> to session cache</li>
+      <li>Toggle handler on detail page: same pattern as <code>handleMandateToggle</code></li>
+    </ul>
+  </div>
+
+  <div class="impl-note">
+    <h4>Web — UI</h4>
+    <ul>
+      <li>Filter button in desktop bar + mobile bottom sheet</li>
+      <li>Active style: <code>bg-[#0038B8]</code> instead of <code>bg-mgsr-teal</code></li>
+      <li>Badge on list rows: same <code>il-badge</code> pattern alongside mandate/loan</li>
+      <li>Toggle on detail page: <code>mgsr-switch</code> class (existing) with Israel-blue track</li>
+    </ul>
+  </div>
+
+  <div class="impl-note" style="border-left-color: var(--orange);">
+    <h4 style="color: var(--orange);">Files to Modify (Summary)</h4>
+    <ul>
+      <li><code>Player.kt</code> — add field</li>
+      <li><code>PlayersViewModel.kt</code> — add filter state + toggle + filter chain</li>
+      <li><code>PlayersScreen.kt</code> — add chip to QuickFilterChips</li>
+      <li><code>PlayerInfoScreen.kt</code> — add toggle card below mandate</li>
+      <li><code>PlayerInfoViewModel.kt</code> — add updateInterestedInIsrael()</li>
+      <li><code>mgsr-web/src/app/players/page.tsx</code> — add filter state + button + logic</li>
+      <li><code>mgsr-web/src/app/players/[id]/page.tsx</code> — add toggle + handler + interface field</li>
+      <li><code>mgsr-web/src/components/mobile/FilterBottomSheet.tsx</code> — add to mobile filters</li>
+      <li><code>strings.xml</code> — add Hebrew + English labels</li>
+    </ul>
+  </div>
+
+</div>
+
+<script>
+  function toggleWebDemo(el) {
+    const card = document.getElementById('web-il-toggle');
+    const sub = document.getElementById('web-il-sub');
+    if (el.checked) {
+      card.classList.add('active');
+      sub.textContent = 'Player expressed interest';
+    } else {
+      card.classList.remove('active');
+      sub.textContent = 'Not currently interested';
+    }
+  }
+
+  function toggleAndroidDemo(el) {
+    const card = document.getElementById('android-il-toggle');
+    const sub = document.getElementById('android-il-sub');
+    const badge = document.getElementById('android-badge-demo');
+    if (el.checked) {
+      card.classList.add('active');
+      sub.textContent = 'Player expressed interest';
+      badge.style.display = '';
+    } else {
+      card.classList.remove('active');
+      sub.textContent = 'Not currently interested';
+      badge.style.display = 'none';
+    }
+  }
+</script>
+
+</body>
+</html>

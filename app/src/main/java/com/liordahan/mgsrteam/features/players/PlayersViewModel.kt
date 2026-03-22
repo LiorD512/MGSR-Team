@@ -80,6 +80,7 @@ data class PlayersUiState(
     val quickFilterOfferedNoFeedback: Boolean = false,
     val offeredNoFeedbackTmProfiles: Set<String> = emptySet(),
     val footFilterOption: FootFilterOption = FootFilterOption.NONE,
+    val quickFilterInterestedInIsrael: Boolean = false,
     val currentUserName: String? = null
 )
 
@@ -98,6 +99,7 @@ abstract class IPlayersViewModel : ViewModel() {
     abstract fun setSelectedAgentFilter(agentName: String?)
     abstract fun toggleQuickFilterEuNational()
     abstract fun toggleQuickFilterOfferedNoFeedback()
+    abstract fun toggleQuickFilterInterestedInIsrael()
     /** Apply "My Players Only" filter only when first landing from dashboard. Never re-apply on back. */
     abstract fun applyInitialMyPlayersOnlyIfNeeded(initialMyPlayersOnly: Boolean)
     abstract fun toggleQuickFilterWithNotesOnly()
@@ -131,6 +133,7 @@ class PlayersViewModel(
     private val _quickFilterEuNational = MutableStateFlow(false)
     private val _quickFilterOfferedNoFeedback = MutableStateFlow(false)
     private val _offeredNoFeedbackTmProfiles = MutableStateFlow<Set<String>>(emptySet())
+    private val _quickFilterInterestedInIsrael = MutableStateFlow(false)
 
     @OptIn(kotlinx.coroutines.FlowPreview::class)
     override val playersFlow: StateFlow<PlayersUiState> = combine(
@@ -138,13 +141,14 @@ class PlayersViewModel(
         _searchQuery.debounce(300L),
         _mandateInfoByPlayer,
         _quickFilterEuNational,
-        combine(_quickFilterOfferedNoFeedback, _offeredNoFeedbackTmProfiles) { a, b -> a to b }
-    ) { state, debouncedQuery, mandateInfoMap, euNational, (offeredNoFb, offeredNoFbProfiles) ->
+        combine(_quickFilterOfferedNoFeedback, _offeredNoFeedbackTmProfiles, _quickFilterInterestedInIsrael) { a, b, c -> Triple(a, b, c) }
+    ) { state, debouncedQuery, mandateInfoMap, euNational, (offeredNoFb, offeredNoFbProfiles, interestedInIsrael) ->
         computeUiState(
             state.copy(
                 quickFilterEuNational = euNational,
                 quickFilterOfferedNoFeedback = offeredNoFb,
-                offeredNoFeedbackTmProfiles = offeredNoFbProfiles
+                offeredNoFeedbackTmProfiles = offeredNoFbProfiles,
+                quickFilterInterestedInIsrael = interestedInIsrael
             ),
             debouncedQuery,
             mandateInfoMap
@@ -219,6 +223,7 @@ class PlayersViewModel(
             ?.filterPlayersByWithoutRegisteredAgent(state.quickFilterWithoutRegisteredAgent)
             ?.filterPlayersByEuNational(state.quickFilterEuNational)
             ?.filterPlayersByOfferedNoFeedback(state.quickFilterOfferedNoFeedback, state.offeredNoFeedbackTmProfiles)
+            ?.filterPlayersByInterestedInIsrael(state.quickFilterInterestedInIsrael)
             ?.filterPlayersByFoot(state.footFilterOption)
             ?.filterByNotes(state.isWithNotesChecked)
             ?.filterPlayersByNameOrByNote(query)
@@ -311,6 +316,7 @@ class PlayersViewModel(
         updateSearchQuery("")
         _quickFilterEuNational.value = false
         _quickFilterOfferedNoFeedback.value = false
+        _quickFilterInterestedInIsrael.value = false
         removeAllFiltersUseCase()
     }
 
@@ -335,6 +341,7 @@ class PlayersViewModel(
     override fun setSelectedAgentFilter(agentName: String?) = quickFilterUseCase.setSelectedAgentFilter(agentName)
     override fun toggleQuickFilterEuNational() { _quickFilterEuNational.value = !_quickFilterEuNational.value }
     override fun toggleQuickFilterOfferedNoFeedback() { _quickFilterOfferedNoFeedback.value = !_quickFilterOfferedNoFeedback.value }
+    override fun toggleQuickFilterInterestedInIsrael() { _quickFilterInterestedInIsrael.value = !_quickFilterInterestedInIsrael.value }
     override fun toggleQuickFilterWithNotesOnly() = quickFilterUseCase.toggleWithNotesOnly()
     override fun setFootFilterOption(option: FootFilterOption) = setFootFilterOptionUseCase(option)
 
@@ -477,6 +484,10 @@ class PlayersViewModel(
     private fun List<Player>?.filterPlayersByEuNational(enabled: Boolean): List<Player>? {
         return if (!enabled) this
         else this?.filter { EuCountries.isEuNational(it.nationalities, it.nationality) }
+    }
+
+    private fun List<Player>?.filterPlayersByInterestedInIsrael(enabled: Boolean): List<Player>? {
+        return if (!enabled) this else this?.filter { it.interestedInIsrael }
     }
 
     private fun List<Player>?.filterPlayersByOfferedNoFeedback(enabled: Boolean, profiles: Set<String>): List<Player>? {

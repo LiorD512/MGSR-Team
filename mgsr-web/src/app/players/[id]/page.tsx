@@ -63,6 +63,7 @@ interface Player {
   originalAgentId?: string;
   agentTransferredAt?: number;
   haveMandate?: boolean;
+  interestedInIsrael?: boolean;
   playerPhoneNumber?: string;
   agentPhoneNumber?: string;
   marketValueHistory?: { value?: string; date?: number }[];
@@ -280,6 +281,7 @@ export default function PlayerInfoPage() {
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [docToDelete, setDocToDelete] = useState<PlayerDocument | null>(null);
   const [mandateToggling, setMandateToggling] = useState(false);
+  const [interestedInIsraelToggling, setInterestedInIsraelToggling] = useState(false);
   const [showAddTaskModal, setShowAddTaskModal] = useState(false);
   const [playerTasks, setPlayerTasks] = useState<{ id: string; title?: string; notes?: string; dueDate?: number; isCompleted?: boolean; agentId?: string; agentName?: string; createdAt?: number; createdByAgentId?: string; createdByAgentName?: string; templateId?: string; linkedAgentContactId?: string; linkedAgentContactName?: string; linkedAgentContactPhone?: string }[]>([]);
   const [sharing, setSharing] = useState(false);
@@ -378,6 +380,19 @@ export default function PlayerInfoPage() {
         }
       }
       prevValidMandateCountRef.current = validCount;
+
+      // Auto-set interestedInIsrael when any valid mandate has Israel in validLeagues
+      const hasIsraelLeague = validMandates.some((m) =>
+        (m.validLeagues ?? []).some((l) => l.toLowerCase().includes('israel'))
+      );
+      if (hasIsraelLeague && !(player as Player | null)?.interestedInIsrael) {
+        try {
+          await updateDoc(doc(db, 'Players', id), { interestedInIsrael: true });
+          setPlayer((p) => (p ? { ...p, interestedInIsrael: true } : null));
+        } catch {
+          // ignore
+        }
+      }
     });
     return () => unsub();
   }, [player?.tmProfile, id]);
@@ -755,6 +770,22 @@ export default function PlayerInfoPage() {
       }
     },
     [player, id, documents, getCurrentUserName]
+  );
+
+  const handleInterestedInIsraelToggle = useCallback(
+    async (interested: boolean) => {
+      if (!player || !id) return;
+      setInterestedInIsraelToggling(true);
+      try {
+        await updateDoc(doc(db, 'Players', id), { interestedInIsrael: interested });
+        setPlayer((p) => (p ? { ...p, interestedInIsrael: interested } : null));
+      } catch {
+        setPlayer((p) => (p ? { ...p, interestedInIsrael: !interested } : null));
+      } finally {
+        setInterestedInIsraelToggling(false);
+      }
+    },
+    [player, id]
   );
 
   const handleDeleteDocument = useCallback(
@@ -1992,6 +2023,26 @@ export default function PlayerInfoPage() {
                     />
                     <span className="mgsr-slider" />
                   </label>
+              </div>
+            </div>
+
+            {/* Interested in Israel switch */}
+            <div className="p-4 sm:p-5 rounded-xl bg-mgsr-card border border-mgsr-border">
+              <div className="flex items-center justify-between gap-4">
+                <div className="min-w-0 flex-1">
+                  <h3 className="text-sm font-semibold text-mgsr-muted uppercase tracking-wider mb-1">
+                    🇮🇱 {t('player_info_interested_in_israel')}
+                  </h3>
+                </div>
+                <label className="mgsr-switch">
+                  <input
+                    type="checkbox"
+                    checked={player.interestedInIsrael ?? false}
+                    disabled={interestedInIsraelToggling}
+                    onChange={() => handleInterestedInIsraelToggle(!(player.interestedInIsrael ?? false))}
+                  />
+                  <span className="mgsr-slider" />
+                </label>
               </div>
             </div>
 
