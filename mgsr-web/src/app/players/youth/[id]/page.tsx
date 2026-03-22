@@ -660,7 +660,7 @@ export default function YouthPlayerPage() {
       <AppLayout>
         <div className="max-w-2xl mx-auto py-12">
           <p className="text-mgsr-muted mb-6">{t('youth_detail_not_found')}</p>
-          <Link href={backHref} className="text-[var(--youth-cyan)] hover:underline">← {backLabel}</Link>
+          <Link href={backHref} scroll={false} className="text-[var(--youth-cyan)] hover:underline">← {backLabel}</Link>
         </div>
       </AppLayout>
     );
@@ -671,7 +671,7 @@ export default function YouthPlayerPage() {
       <div dir={isRtl ? 'rtl' : 'ltr'} className="max-w-5xl mx-auto">
         {/* Top bar */}
         <div className="flex items-center justify-between mb-4 sm:mb-8">
-          <Link href={backHref} className="hidden lg:inline-flex items-center gap-2 text-mgsr-muted hover:text-[var(--youth-cyan)] transition-colors group">
+          <Link href={backHref} scroll={false} className="hidden lg:inline-flex items-center gap-2 text-mgsr-muted hover:text-[var(--youth-cyan)] transition-colors group">
             <span className={`transition-transform group-hover:-translate-x-1 ${isRtl ? 'rotate-180' : ''}`}>←</span>
             <span className="text-sm font-medium">{backLabel}</span>
           </Link>

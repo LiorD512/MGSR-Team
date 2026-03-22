@@ -1414,6 +1414,7 @@ export default function PlayerInfoPage() {
           <p className="text-mgsr-muted text-lg mb-6">{t('player_info_not_found')}</p>
           <Link
             href={backHref}
+            scroll={false}
             className="inline-flex items-center gap-2 text-mgsr-teal hover:underline"
           >
             <span className={isRtl ? 'rotate-180' : ''}>←</span>
@@ -1434,6 +1435,7 @@ export default function PlayerInfoPage() {
         <div className="flex items-center justify-between mb-6">
           <Link
             href={backHref}
+            scroll={false}
             className="hidden lg:inline-flex items-center gap-2 text-mgsr-teal hover:underline"
           >
             <span className={isRtl ? 'rotate-180' : ''}>←</span>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useMemo, useCallback } from 'react';
+import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -165,6 +165,14 @@ export default function PlayersPage() {
   const [euNationalOnly, setEuNationalOnly] = useState(cached?.euNationalOnly ?? false);
   const [offeredNoFeedback, setOfferedNoFeedback] = useState(cached?.offeredNoFeedback ?? false);
   const [interestedInIsrael, setInterestedInIsrael] = useState(cached?.interestedInIsrael ?? false);
+  const scrollRestoredRef = useRef(false);
+
+  // Save scroll position right before navigating away
+  const saveScrollPosition = useCallback(() => {
+    const y = window.scrollY || document.documentElement.scrollTop || 0;
+    try { sessionStorage.setItem('players_scrollY', String(y)); } catch {}
+  }, []);
+
   const [offeredNoFeedbackProfiles, setOfferedNoFeedbackProfiles] = useState<Set<string>>(new Set());
   const [mandateDataByProfile, setMandateDataByProfile] = useState<Map<string, { expiryAt: number; validLeagues: string[] }>>(new Map());
   const [mandateExpanded, setMandateExpanded] = useState(false);
@@ -512,6 +520,29 @@ export default function PlayersPage() {
 
   const displayList = filtered;
   const isLoading = platform === 'youth' ? youthLoading : platform === 'women' ? womenLoading : playersLoading;
+
+  // Restore scroll position after list renders
+  useEffect(() => {
+    if (scrollRestoredRef.current) return;
+    const saved = sessionStorage.getItem('players_scrollY');
+    if (!saved || saved === '0') return;
+    if (isLoading || displayList.length === 0) return;
+    scrollRestoredRef.current = true;
+    const target = parseInt(saved, 10);
+    sessionStorage.removeItem('players_scrollY');
+    let attempts = 0;
+    const maxAttempts = 30;
+    const tryRestore = () => {
+      window.scrollTo(0, target);
+      const actual = window.scrollY || document.documentElement.scrollTop || 0;
+      if (actual < target - 50 && attempts < maxAttempts) {
+        attempts++;
+        setTimeout(tryRestore, 50);
+      }
+    };
+    tryRestore();
+  }, [displayList.length, isLoading]);
+
   const dataSourceLabel =
     platform === 'youth'
       ? 'IFA · football.org.il'
@@ -1022,6 +1053,8 @@ export default function PlayersPage() {
             {displayList.map((p, i) => (
               <Link
                 key={p.id}
+                scroll={false}
+                onClick={saveScrollPosition}
                 href={
                   platform === 'youth'
                     ? `/players/youth/${p.id}?from=/players`

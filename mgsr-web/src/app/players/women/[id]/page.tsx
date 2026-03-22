@@ -841,6 +841,7 @@ export default function WomanPlayerPage() {
           <p className="text-mgsr-muted mb-6">Player not found</p>
           <Link
             href={backHref}
+            scroll={false}
             className="text-[var(--women-rose)] hover:underline"
           >
             ← {t('add_player_back')} {backLabel}
@@ -856,6 +857,7 @@ export default function WomanPlayerPage() {
         <div className="flex items-center justify-between mb-4 sm:mb-8">
           <Link
             href={backHref}
+            scroll={false}
             className="hidden lg:inline-flex items-center gap-2 text-mgsr-muted hover:text-[var(--women-rose)] transition-colors group"
           >
             <span className={`transition-transform group-hover:-translate-x-1 ${isRtl ? 'rotate-180' : ''}`}>←</span>
