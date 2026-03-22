@@ -132,5 +132,9 @@ service cloud.firestore {
     match /AgentTransferRequests/{requestId} {
       allow read, write: if request.auth != null;
     }
+    // BirthdayWishesSent: cross-platform birthday wish tracking
+    match /BirthdayWishesSent/{docId} {
+      allow read, write: if request.auth != null;
+    }
   }
 }
