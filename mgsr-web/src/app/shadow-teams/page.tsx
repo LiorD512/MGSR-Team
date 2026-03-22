@@ -547,7 +547,7 @@ export default function ShadowTeamsPage() {
               const slot = slots[idx];
               const substitute = slot?.substitute ?? null;
               const atCenter = !selectedAccountId || slotsLoading;
-              const subY = pos.y - 8;
+              const subY = pos.code === 'GK' ? pos.y - 5 : pos.y - 6;
               return (
                 <div
                   key={`sub-${idx}`}

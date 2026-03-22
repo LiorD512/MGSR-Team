@@ -22,7 +22,7 @@ export const FORMATIONS: FormationDef[] = [
     id: '4-3-3',
     label: '4-3-3',
     positions: [
-      { code: 'GK', x: 50, y: 6 },
+      { code: 'GK', x: 50, y: 10 },
       { code: 'LB', x: 85, y: 24 },
       { code: 'CB', x: 35, y: 24 },
       { code: 'CB', x: 65, y: 24 },
@@ -39,7 +39,7 @@ export const FORMATIONS: FormationDef[] = [
     id: '4-4-2',
     label: '4-4-2',
     positions: [
-      { code: 'GK', x: 50, y: 6 },
+      { code: 'GK', x: 50, y: 10 },
       { code: 'LB', x: 85, y: 24 },
       { code: 'CB', x: 35, y: 24 },
       { code: 'CB', x: 65, y: 24 },
@@ -56,7 +56,7 @@ export const FORMATIONS: FormationDef[] = [
     id: '4-2-3-1',
     label: '4-2-3-1',
     positions: [
-      { code: 'GK', x: 50, y: 6 },
+      { code: 'GK', x: 50, y: 10 },
       { code: 'LB', x: 85, y: 24 },
       { code: 'CB', x: 35, y: 24 },
       { code: 'CB', x: 65, y: 24 },
@@ -66,14 +66,14 @@ export const FORMATIONS: FormationDef[] = [
       { code: 'LW', x: 75, y: 62 },
       { code: 'AM', x: 50, y: 62 },
       { code: 'RW', x: 25, y: 62 },
-      { code: 'ST', x: 50, y: 74 },
+      { code: 'ST', x: 50, y: 80 },
     ],
   },
   {
     id: '3-5-2',
     label: '3-5-2',
     positions: [
-      { code: 'GK', x: 50, y: 6 },
+      { code: 'GK', x: 50, y: 10 },
       { code: 'CB', x: 25, y: 22 },
       { code: 'CB', x: 50, y: 22 },
       { code: 'CB', x: 75, y: 22 },
