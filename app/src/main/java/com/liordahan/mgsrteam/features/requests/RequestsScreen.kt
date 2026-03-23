@@ -26,6 +26,7 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
@@ -756,6 +757,7 @@ private fun RequestCard(
     onDelete: () -> Unit
 ) {
     var showMenu by remember { mutableStateOf(false) }
+    var notesExpanded by remember { mutableStateOf(false) }
     val viaShort = formatViaShort(
         request.contactName,
         request.createdAt,
@@ -884,10 +886,20 @@ private fun RequestCard(
                             feeLabel?.let { RequestChip(text = it) }
                             footLabel?.let { RequestChip(text = it) }
                             notesText?.let { notes ->
-                                val displayNotes = if (notes.length > 80) "${notes.take(80)}…" else notes
-                                RequestChip(
-                                    text = "${stringResource(R.string.requests_notes_label)}: $displayNotes"
-                                )
+                                val displayNotes = if (notesExpanded || notes.length <= 80) notes else "${notes.take(80)}…"
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(6.dp))
+                                        .background(PlatformColors.palette.background)
+                                        .border(1.dp, PlatformColors.palette.cardBorder, RoundedCornerShape(6.dp))
+                                        .clickable { notesExpanded = !notesExpanded }
+                                        .padding(horizontal = 8.dp, vertical = 2.dp)
+                                ) {
+                                    Text(
+                                        text = "${stringResource(R.string.requests_notes_label)}: $displayNotes",
+                                        style = regularTextStyle(PlatformColors.palette.textSecondary, 10.sp)
+                                    )
+                                }
                             }
                         }
                     }
