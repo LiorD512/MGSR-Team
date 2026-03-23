@@ -10,7 +10,7 @@ import { db } from '@/lib/firebase';
 import { collection, query as firestoreQuery, where, getDocs, addDoc, onSnapshot } from 'firebase/firestore';
 import { getCurrentAccountForShortlist } from '@/lib/accounts';
 import { getPlayerDetails } from '@/lib/api';
-import { SHORTLISTS_COLLECTIONS } from '@/lib/platformCollections';
+import { SHORTLISTS_COLLECTIONS, FEED_EVENTS_COLLECTIONS } from '@/lib/platformCollections';
 import type { DiscoveredPlayer, DiscoveryResult } from '@/lib/jewishPlayerFinder';
 
 function cc(score: number) {
@@ -129,7 +129,7 @@ export default function JewishFinderPage() {
           };
         }
         await addDoc(colRef, entry);
-        await addDoc(collection(db, 'FeedEvents'), {
+        await addDoc(collection(db, FEED_EVENTS_COLLECTIONS[platform] || 'FeedEvents'), {
           type: 'SHORTLIST_ADDED', playerName: entry.playerName ?? null,
           playerImage: entry.playerImage ?? null, playerTmProfile: p.tmUrl,
           timestamp: Date.now(), agentName: account.name ?? null,
