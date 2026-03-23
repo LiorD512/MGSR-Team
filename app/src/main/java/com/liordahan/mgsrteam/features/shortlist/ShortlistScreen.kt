@@ -44,6 +44,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.People
+import androidx.compose.material.icons.filled.Whatsapp
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.Search
@@ -109,6 +110,7 @@ import com.liordahan.mgsrteam.features.add.IAddPlayerViewModel
 import com.liordahan.mgsrteam.features.add.SnakeBarMessage
 import com.liordahan.mgsrteam.features.add.showSnakeBarMessage
 import com.liordahan.mgsrteam.features.players.models.Player
+import com.liordahan.mgsrteam.features.players.models.getPlayerPhoneNumber
 import com.liordahan.mgsrteam.features.players.repository.IPlayersRepository
 import com.liordahan.mgsrteam.features.players.sort.SortOption
 import com.liordahan.mgsrteam.features.releases.RosterTeammateMatch
@@ -1434,6 +1436,7 @@ private fun ShortlistCard(
                             ShortlistRosterTeammateRow(
                                 player = match.player,
                                 matchesPlayedTogether = match.matchesPlayedTogether,
+                                targetPlayerName = entry.playerName.orEmpty(),
                                 onClick = { onRosterTeammateClick(match.player) }
                             )
                         }
@@ -1601,8 +1604,11 @@ private fun ShortlistCard(
 private fun ShortlistRosterTeammateRow(
     player: Player,
     matchesPlayedTogether: Int,
+    targetPlayerName: String = "",
     onClick: () -> Unit
 ) {
+    val context = LocalContext.current
+    val playerPhone = player.getPlayerPhoneNumber()
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -1648,6 +1654,23 @@ private fun ShortlistRosterTeammateRow(
                 style = regularTextStyle(PlatformColors.palette.textSecondary, 11.sp, direction = TextDirection.Ltr),
                 modifier = Modifier.padding(top = 2.dp)
             )
+        }
+        if (playerPhone != null) {
+            val firstName = player.fullName?.split(" ")?.firstOrNull().orEmpty()
+            val message = "Hey $firstName,\nHope everything is well at your side.\nI need your help with something.\nAny chance you have $targetPlayerName contact number?\nThank you!"
+            Icon(
+                Icons.Default.Whatsapp,
+                contentDescription = "WhatsApp $firstName",
+                tint = Color(0xFF25D366),
+                modifier = Modifier
+                    .size(22.dp)
+                    .clickWithNoRipple {
+                        val digits = playerPhone.replace(Regex("[^0-9]"), "")
+                        val uri = "https://wa.me/$digits?text=${Uri.encode(message)}".toUri()
+                        context.startActivity(Intent(Intent.ACTION_VIEW, uri))
+                    }
+            )
+            Spacer(Modifier.width(8.dp))
         }
         Icon(
             Icons.AutoMirrored.Filled.KeyboardArrowRight,
