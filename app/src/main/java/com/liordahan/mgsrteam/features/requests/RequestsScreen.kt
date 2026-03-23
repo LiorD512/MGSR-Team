@@ -192,6 +192,7 @@ fun RequestsScreen(
     var showAddSheet by remember { mutableStateOf(false) }
     var requestToEdit by remember { mutableStateOf<Request?>(null) }
     var requestToDelete by remember { mutableStateOf<Request?>(null) }
+    var showShareDialog by remember { mutableStateOf(false) }
     var onlineExpandedRequestId by remember { mutableStateOf<String?>(null) }
     var expandedRequestIds by remember { mutableStateOf(setOf<String>()) }
     var expandedPositions by remember { mutableStateOf(setOf<String>()) }
@@ -241,18 +242,26 @@ fun RequestsScreen(
                 RequestsHeader(
                     onAddClick = { showAddSheet = true },
                     onBackClick = { navController.popBackStack() },
-                    onShareClick = {
-                        val text = formatRequestsForShare(context, state.requestsByPositionCountry)
-                        val intent = Intent(Intent.ACTION_SEND).apply {
-                            type = "text/plain"
-                            putExtra(Intent.EXTRA_TEXT, text)
-                            putExtra(Intent.EXTRA_SUBJECT, "MGSR Team - Player Requests")
-                        }
-                        context.startActivity(Intent.createChooser(intent, "Share requests"))
-                    },
+                    onShareClick = { showShareDialog = true },
                     canShare = state.requestsByPositionCountry.isNotEmpty(),
                     isWomen = isWomen
                 )
+
+                if (showShareDialog) {
+                    ShareRequestsDialog(
+                        onDismiss = { showShareDialog = false },
+                        onShare = { hideClubNames ->
+                            showShareDialog = false
+                            val text = formatRequestsForShare(context, state.requestsByPositionCountry, hideClubNames)
+                            val intent = Intent(Intent.ACTION_SEND).apply {
+                                type = "text/plain"
+                                putExtra(Intent.EXTRA_TEXT, text)
+                                putExtra(Intent.EXTRA_SUBJECT, "MGSR Team - Player Requests")
+                            }
+                            context.startActivity(Intent.createChooser(intent, "Share requests"))
+                        }
+                    )
+                }
 
                 when {
                     state.isLoading -> {
@@ -1879,44 +1888,109 @@ private fun formatDate(timestamp: Long?): String {
     return SimpleDateFormat("MMM d, yyyy", Locale.getDefault()).format(Date(timestamp))
 }
 
-private fun formatRequestsForShare(context: Context, requestsByPositionCountry: Map<String, Map<String, List<Request>>>): String {
+@Composable
+private fun ShareRequestsDialog(
+    onDismiss: () -> Unit,
+    onShare: (hideClubNames: Boolean) -> Unit
+) {
+    var hideClubNames by remember { mutableStateOf(false) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = PlatformColors.palette.card,
+        title = {
+            Text(
+                "Share Requests",
+                style = boldTextStyle(PlatformColors.palette.textPrimary, 18.sp)
+            )
+        },
+        text = {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(PlatformColors.palette.background)
+                    .clickWithNoRipple { hideClubNames = !hideClubNames }
+                    .padding(horizontal = 12.dp, vertical = 14.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    "Hide club names",
+                    style = regularTextStyle(PlatformColors.palette.textPrimary, 14.sp),
+                    modifier = Modifier.weight(1f)
+                )
+                Checkbox(
+                    checked = hideClubNames,
+                    onCheckedChange = { hideClubNames = it },
+                    colors = CheckboxDefaults.colors(
+                        checkedColor = PlatformColors.palette.accent,
+                        uncheckedColor = PlatformColors.palette.textSecondary
+                    )
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onShare(hideClubNames) }) {
+                Text("Share", style = boldTextStyle(PlatformColors.palette.accent, 14.sp))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.cancel), style = regularTextStyle(PlatformColors.palette.textSecondary, 14.sp))
+            }
+        }
+    )
+}
+
+private fun formatRequestsForShare(
+    context: Context,
+    requestsByPositionCountry: Map<String, Map<String, List<Request>>>,
+    hideClubNames: Boolean = false
+): String {
     if (requestsByPositionCountry.isEmpty()) return "No requests at the moment."
     val sb = StringBuilder()
-    sb.appendLine("MGSR Team – Player Requests")
-    sb.appendLine("─────────────────────────")
-    sb.appendLine()
+    sb.appendLine("⚽ Player Requests")
+    sb.appendLine("━━━━━━━━━━━━━━━━━━")
+
     requestsByPositionCountry.forEach { (position, countries) ->
         val positionDisplay = PositionDisplayNames.getDisplayName(context, position)
-        sb.appendLine("$positionDisplay ($position)")
+        sb.appendLine()
+        sb.appendLine("📌 $positionDisplay ($position)")
+        sb.appendLine()
+
         countries.forEach { (country, requests) ->
             val countryDisplay = CountryNameTranslator.getDisplayName(context, country)
             requests.forEach { req ->
-                sb.appendLine("  • ${req.clubName ?: "Unknown"}${if (!country.isNullOrBlank() && country != "Other") " ($countryDisplay)" else ""}")
-                val ageInfo = when {
-                    req.ageDoesntMatter == true -> "Age: Any"
+                // Main line: club / country
+                val label = if (hideClubNames) {
+                    if (!country.isNullOrBlank() && country != "Other") countryDisplay else "Unknown"
+                } else {
+                    "${req.clubName ?: "Unknown"}${if (!country.isNullOrBlank() && country != "Other") " · $countryDisplay" else ""}"
+                }
+                sb.appendLine("▸ $label")
+
+                // Detail bullets
+                val ageText = when {
+                    req.ageDoesntMatter == true -> "Any age"
                     req.minAge != null && req.maxAge != null && req.minAge > 0 && req.maxAge > 0 ->
-                        "Age: ${req.minAge}-${req.maxAge}"
-                    else -> ""
+                        "Age ${req.minAge}–${req.maxAge}"
+                    else -> null
                 }
-                val salaryInfo = req.salaryRange?.takeIf { it.isNotBlank() }?.let { "Salary: $it" } ?: ""
-                val feeInfo = req.transferFee?.takeIf { it.isNotBlank() }?.let { "Fee: $it" } ?: ""
-                val footInfo = req.dominateFoot?.takeIf { it.isNotBlank() }?.let { foot ->
+                val salaryText = req.salaryRange?.takeIf { it.isNotBlank() }?.let { "Salary: $it" }
+                val feeText = req.transferFee?.takeIf { it.isNotBlank() }?.let { "Fee: $it" }
+                val footText = req.dominateFoot?.takeIf { it.isNotBlank() }?.let { foot ->
                     when (foot.lowercase()) {
-                        "left" -> "Foot: Left"
-                        "right" -> "Foot: Right"
-                        else -> "Foot: $foot"
+                        "left" -> "Left foot"
+                        "right" -> "Right foot"
+                        else -> foot
                     }
-                } ?: ""
-                val details = listOfNotNull(
-                    ageInfo.takeIf { it.isNotBlank() },
-                    salaryInfo,
-                    feeInfo,
-                    footInfo.takeIf { it.isNotBlank() }
-                ).joinToString(" • ")
-                if (details.isNotBlank()) {
-                    sb.appendLine("    $details")
                 }
-                sb.appendLine()
+                val euText = if (req.euOnly == true) "EU only" else null
+
+                val details = listOfNotNull(ageText, salaryText, feeText, footText, euText)
+                if (details.isNotEmpty()) {
+                    sb.appendLine("   ${details.joinToString(" · ")}")
+                }
             }
         }
     }
