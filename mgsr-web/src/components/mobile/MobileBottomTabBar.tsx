@@ -86,6 +86,7 @@ export const menMoreItems = [
   { href: '/returnees', labelKey: 'nav_returnee' },
   { href: '/news', labelKey: 'nav_news' },
   { href: '/war-room', labelKey: 'nav_war_room' },
+  { href: '/jewish-finder', labelKey: 'nav_jewish_finder' },
   { href: '/portfolio', labelKey: 'nav_portfolio' },
   { href: '/contacts', labelKey: 'nav_contacts' },
   { href: '/requests', labelKey: 'nav_requests' },
