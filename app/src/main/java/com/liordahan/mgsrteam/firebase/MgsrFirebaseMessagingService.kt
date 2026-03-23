@@ -192,6 +192,7 @@ class MgsrFirebaseMessagingService : FirebaseMessagingService() {
                 putExtra(KEY_TYPE, type)
                 data[KEY_PLAYER_ID]?.let { putExtra(EXTRA_PLAYER_ID, it) }
                 if (screen.isNotBlank()) putExtra(EXTRA_SCREEN, screen)
+                if (type == TYPE_REQUEST_ADDED) putExtra(EXTRA_SCREEN, "requests")
                 if (playerTmProfile.isNotBlank()) {
                     putExtra(EXTRA_PLAYER_TM_PROFILE, playerTmProfile)
                     if (type == TYPE_NEW_RELEASE_FROM_CLUB) {
@@ -331,11 +332,11 @@ class MgsrFirebaseMessagingService : FirebaseMessagingService() {
         private const val KEY_CREATED_BY_AGENT_NAME = "createdByAgentName"
         private const val KEY_TASK_TITLE = "taskTitle"
         private const val KEY_DAYS_LEFT = "daysLeft"
-        private const val TYPE_CLUB_CHANGE = "CLUB_CHANGE"
+        const val TYPE_CLUB_CHANGE = "CLUB_CHANGE"
         const val TYPE_TASK_ASSIGNED = "TASK_ASSIGNED"
         const val TYPE_TASK_REMINDER = "TASK_REMINDER"
-        private const val TYPE_BECAME_FREE_AGENT = "BECAME_FREE_AGENT"
-        private const val TYPE_MARKET_VALUE_CHANGE = "MARKET_VALUE_CHANGE"
+        const val TYPE_BECAME_FREE_AGENT = "BECAME_FREE_AGENT"
+        const val TYPE_MARKET_VALUE_CHANGE = "MARKET_VALUE_CHANGE"
         const val TYPE_NEW_RELEASE_FROM_CLUB = "NEW_RELEASE_FROM_CLUB"
         const val TYPE_MANDATE_EXPIRED = "MANDATE_EXPIRED"
         const val TYPE_MANDATE_PLAYER_SIGNED = "MANDATE_PLAYER_SIGNED"

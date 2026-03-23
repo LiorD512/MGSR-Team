@@ -77,6 +77,7 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -196,8 +197,8 @@ fun RequestsScreen(
     var showShareDialog by remember { mutableStateOf(false) }
     var onlineExpandedRequestId by remember { mutableStateOf<String?>(null) }
     var expandedRequestIds by remember { mutableStateOf(setOf<String>()) }
-    var expandedPositions by remember { mutableStateOf(setOf<String>()) }
-    var expandedCountryKeys by remember { mutableStateOf(setOf<String>()) }
+    var selectedPosition by remember { mutableStateOf<String?>(null) }
+    var searchQuery by remember { mutableStateOf("") }
 
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
@@ -272,7 +273,8 @@ fun RequestsScreen(
                         RequestsStatsStrip(
                             total = 0,
                             positions = 0,
-                            pending = 0
+                            matched = 0,
+                            unmatched = 0
                         )
                         RequestsEmptyState(onAddClick = { showAddSheet = true })
                     }
@@ -286,153 +288,219 @@ fun RequestsScreen(
                             .collectAsStateWithLifecycle(initialValue = emptySet())
                         val onlineLoading by viewModel.onlinePlayersLoading.collectAsStateWithLifecycle()
                         val onlinePlayers by viewModel.onlinePlayersResult.collectAsStateWithLifecycle()
+                        // Flatten all requests into a single list
+                        val allRequests = remember(state.requestsByPositionCountry) {
+                            state.requestsByPositionCountry.flatMap { (_, countries) ->
+                                countries.flatMap { (_, requests) -> requests }
+                            }
+                        }
+                        val activePositions = remember(allRequests) {
+                            allRequests.mapNotNull { it.position?.let { p -> if (p.trim().uppercase() == "ST") "CF" else p } }.distinct().sorted()
+                        }
+                        val filteredRequests = remember(allRequests, selectedPosition, searchQuery) {
+                            var list = allRequests
+                            if (selectedPosition != null) {
+                                list = list.filter { req ->
+                                    val norm = req.position?.let { p -> if (p.trim().uppercase() == "ST") "CF" else p }
+                                    norm == selectedPosition
+                                }
+                            }
+                            val q = searchQuery.trim().lowercase()
+                            if (q.isNotEmpty()) {
+                                list = list.filter { req ->
+                                    (req.clubName ?: "").lowercase().contains(q) ||
+                                    (req.clubCountry ?: "").lowercase().contains(q) ||
+                                    (req.contactName ?: "").lowercase().contains(q) ||
+                                    (req.notes ?: "").lowercase().contains(q) ||
+                                    (req.position ?: "").lowercase().contains(q) ||
+                                    (req.createdByAgent ?: "").lowercase().contains(q)
+                                }
+                            }
+                            list
+                        }
+                        val matchedCount = remember(allRequests, state.matchingPlayersByRequestId) {
+                            allRequests.count { req ->
+                                val m = state.matchingPlayersByRequestId[req.id ?: ""]
+                                m != null && m.isNotEmpty()
+                            }
+                        }
+
                         RequestsStatsStrip(
                             total = state.totalCount,
                             positions = state.positionsCount,
-                            pending = state.pendingCount
+                            matched = matchedCount,
+                            unmatched = state.totalCount - matchedCount
                         )
+
+                        // Search bar
+                        OutlinedTextField(
+                            value = searchQuery,
+                            onValueChange = { searchQuery = it },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 4.dp)
+                                .height(44.dp),
+                            placeholder = {
+                                Text(
+                                    stringResource(R.string.requests_search_placeholder),
+                                    style = regularTextStyle(PlatformColors.palette.textSecondary, 13.sp)
+                                )
+                            },
+                            leadingIcon = {
+                                Icon(
+                                    Icons.Default.Search,
+                                    contentDescription = null,
+                                    tint = PlatformColors.palette.textSecondary,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            },
+                            trailingIcon = {
+                                if (searchQuery.isNotEmpty()) {
+                                    Icon(
+                                        Icons.Default.Close,
+                                        contentDescription = null,
+                                        tint = PlatformColors.palette.textSecondary,
+                                        modifier = Modifier
+                                            .size(18.dp)
+                                            .clickWithNoRipple { searchQuery = "" }
+                                    )
+                                }
+                            },
+                            singleLine = true,
+                            textStyle = regularTextStyle(PlatformColors.palette.textPrimary, 13.sp),
+                            shape = RoundedCornerShape(14.dp),
+                            colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = PlatformColors.palette.accent,
+                                unfocusedBorderColor = PlatformColors.palette.cardBorder,
+                                cursorColor = PlatformColors.palette.accent,
+                                focusedContainerColor = PlatformColors.palette.card,
+                                unfocusedContainerColor = PlatformColors.palette.card
+                            )
+                        )
+
+                        // Position filter chips
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .horizontalScroll(rememberScrollState())
+                                .padding(horizontal = 16.dp, vertical = 4.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            FilterChipItem(
+                                label = stringResource(R.string.players_stat_total),
+                                selected = selectedPosition == null,
+                                count = allRequests.size,
+                                color = PlatformColors.palette.accent,
+                                onClick = { selectedPosition = null }
+                            )
+                            activePositions.forEach { pos ->
+                                val posCount = allRequests.count { it.position == pos }
+                                val posDisplayName = PositionDisplayNames.getDisplayName(context, pos)
+                                FilterChipItem(
+                                    label = posDisplayName,
+                                    selected = selectedPosition == pos,
+                                    count = posCount,
+                                    color = positionGroupColor(pos),
+                                    onClick = { selectedPosition = if (selectedPosition == pos) null else pos }
+                                )
+                            }
+                        }
+
                         LazyColumn(
                             modifier = Modifier.fillMaxSize(),
                             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 100.dp),
-                            verticalArrangement = Arrangement.spacedBy(0.dp)
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            state.requestsByPositionCountry.forEach { (position, countries) ->
-                                val isPositionExpanded = position in expandedPositions
-                                val positionCount = countries.values.sumOf { it.size }
-                                item(key = "pos_$position") {
-                                    PositionExpandableCard(
-                                        position = position,
-                                        count = positionCount,
-                                        isExpanded = isPositionExpanded,
-                                        onToggleExpand = {
-                                            expandedPositions = if (isPositionExpanded) {
-                                                expandedPositions - position
-                                            } else {
-                                                expandedPositions + position
-                                            }
-                                        },
-                                        context = context
-                                    )
-                                }
-                                if (isPositionExpanded) {
-                                    countries.forEach { (country, requests) ->
-                                        val countryKey = "${position}_$country"
-                                        val isCountryExpanded = countryKey in expandedCountryKeys
-                                        item(key = "country_$countryKey") {
-                                            CountryExpandableRow(
-                                                country = country,
-                                                countryFlag = requests.firstOrNull()?.clubCountryFlag,
-                                                count = requests.size,
-                                                isExpanded = isCountryExpanded,
-                                                onToggleExpand = {
-                                                    expandedCountryKeys = if (isCountryExpanded) {
-                                                        expandedCountryKeys - countryKey
-                                                    } else {
-                                                        expandedCountryKeys + countryKey
+                            items(
+                                filteredRequests,
+                                key = { it.id ?: it.hashCode().toString() }
+                            ) { request ->
+                                val matchingPlayers = state.matchingPlayersByRequestId[request.id ?: ""] ?: emptyList()
+                                val isRequestExpanded = (request.id ?: "") in expandedRequestIds
+                                val requestId = request.id ?: ""
+                                val isOnlineExpanded = onlineExpandedRequestId == requestId
+                                val onlinePlayersForThis = if (isOnlineExpanded) onlinePlayers else emptyList()
+                                RequestCard(
+                                    request = request,
+                                    matchingPlayers = matchingPlayers,
+                                    isExpanded = isRequestExpanded,
+                                    isOnlineExpanded = isOnlineExpanded,
+                                    onlineLoading = isOnlineExpanded && onlineLoading,
+                                    onlinePlayers = onlinePlayersForThis,
+                                    shortlistUrls = shortlistUrls,
+                                    justAddedUrls = justAddedUrls,
+                                    shortlistPendingUrls = shortlistPendingUrls,
+                                    isWomen = isWomen,
+                                    onToggleExpand = {
+                                        val id = request.id ?: return@RequestCard
+                                        expandedRequestIds = if (isRequestExpanded) expandedRequestIds - id else expandedRequestIds + id
+                                    },
+                                    onToggleOnlineExpand = {
+                                        if (onlineExpandedRequestId == requestId) {
+                                            onlineExpandedRequestId = null
+                                            viewModel.clearOnlinePlayersResult()
+                                        } else {
+                                            onlineExpandedRequestId = requestId
+                                            viewModel.findPlayersOnlineForRequest(request, LocaleManager.getSavedLanguage(context))
+                                        }
+                                    },
+                                    onPlayerClick = { player ->
+                                        player.tmProfile?.let { profile ->
+                                            navController.navigate("${Screens.PlayerInfoScreen.route}/${Uri.encode(profile)}")
+                                        }
+                                    },
+                                    onOnlinePlayerClick = { suggestion ->
+                                        suggestion.transfermarktUrl?.let { url ->
+                                            navController.navigate(Screens.addPlayerWithTmProfileRoute(Uri.encode(url)))
+                                        }
+                                    },
+                                    onOpenTransfermarkt = { url ->
+                                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                                    },
+                                    onToggleShortlist = { suggestion ->
+                                        suggestion.transfermarktUrl?.let { url ->
+                                            scope.launch {
+                                                val isInShortlist = url in shortlistUrls || url in justAddedUrls
+                                                if (isInShortlist) {
+                                                    shortlistRepository.removeFromShortlist(url)
+                                                    justAddedUrls = justAddedUrls - url
+                                                    ToastManager.showInfo(context.getString(R.string.shortlist_remove))
+                                                } else {
+                                                    when (shortlistRepository.addToShortlist(
+                                                        LatestTransferModel(
+                                                            playerName = suggestion.name,
+                                                            playerUrl = url,
+                                                            playerPosition = suggestion.position,
+                                                            playerAge = suggestion.age,
+                                                            marketValue = suggestion.marketValue
+                                                        )
+                                                    )) {
+                                                        is com.liordahan.mgsrteam.features.shortlist.ShortlistRepository.AddToShortlistResult.Added -> {
+                                                            justAddedUrls = justAddedUrls + url
+                                                            ToastManager.showSuccess(context.getString(R.string.shortlist_added))
+                                                        }
+                                                        is com.liordahan.mgsrteam.features.shortlist.ShortlistRepository.AddToShortlistResult.AlreadyInShortlist ->
+                                                            ToastManager.showInfo(context.getString(R.string.add_player_already_in_shortlist))
+                                                        is com.liordahan.mgsrteam.features.shortlist.ShortlistRepository.AddToShortlistResult.AlreadyInRoster ->
+                                                            ToastManager.showInfo(context.getString(R.string.add_player_already_in_roster))
+                                                        else -> {}
                                                     }
-                                                },
-                                                context = context
-                                            )
-                                        }
-                                        if (isCountryExpanded) {
-                                            items(
-                                                requests,
-                                                key = { it.id ?: it.hashCode().toString() }
-                                            ) { request ->
-                                                val matchingPlayers = state.matchingPlayersByRequestId[request.id ?: ""] ?: emptyList()
-                                                val isRequestExpanded = (request.id ?: "") in expandedRequestIds
-                                                val requestId = request.id ?: ""
-                                                val isOnlineExpanded = onlineExpandedRequestId == requestId
-                                                val onlinePlayersForThis = if (isOnlineExpanded) onlinePlayers else emptyList()
-                                                RequestCard(
-                                                    request = request,
-                                                    matchingPlayers = matchingPlayers,
-                                                    isExpanded = isRequestExpanded,
-                                                    isOnlineExpanded = isOnlineExpanded,
-                                                    onlineLoading = isOnlineExpanded && onlineLoading,
-                                                    onlinePlayers = onlinePlayersForThis,
-                                                    shortlistUrls = shortlistUrls,
-                                                    justAddedUrls = justAddedUrls,
-                                                    shortlistPendingUrls = shortlistPendingUrls,
-                                                    isWomen = isWomen,
-                                                    modifier = Modifier.padding(start = 12.dp, top = 6.dp),
-                                                    onToggleExpand = {
-                                                        val id = request.id ?: return@RequestCard
-                                                        expandedRequestIds = if (isRequestExpanded) expandedRequestIds - id else expandedRequestIds + id
-                                                    },
-                                                    onToggleOnlineExpand = {
-                                                        if (onlineExpandedRequestId == requestId) {
-                                                            onlineExpandedRequestId = null
-                                                            viewModel.clearOnlinePlayersResult()
-                                                        } else {
-                                                            onlineExpandedRequestId = requestId
-                                                            viewModel.findPlayersOnlineForRequest(request, LocaleManager.getSavedLanguage(context))
-                                                        }
-                                                    },
-                                                    onPlayerClick = { player ->
-                                                        player.tmProfile?.let { profile ->
-                                                            navController.navigate("${Screens.PlayerInfoScreen.route}/${Uri.encode(profile)}")
-                                                        }
-                                                    },
-                                                    onOnlinePlayerClick = { suggestion ->
-                                                        suggestion.transfermarktUrl?.let { url ->
-                                                            navController.navigate(Screens.addPlayerWithTmProfileRoute(Uri.encode(url)))
-                                                        }
-                                                    },
-                                                    onOpenTransfermarkt = { url ->
-                                                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
-                                                    },
-                                                    onToggleShortlist = { suggestion ->
-                                                        suggestion.transfermarktUrl?.let { url ->
-                                                            scope.launch {
-                                                                val isInShortlist = url in shortlistUrls || url in justAddedUrls
-                                                                if (isInShortlist) {
-                                                                    shortlistRepository.removeFromShortlist(url)
-                                                                    justAddedUrls = justAddedUrls - url
-                                                                    ToastManager.showInfo(context.getString(R.string.shortlist_remove))
-                                                                } else {
-                                                                    when (shortlistRepository.addToShortlist(
-                                                                        LatestTransferModel(
-                                                                            playerName = suggestion.name,
-                                                                            playerUrl = url,
-                                                                            playerPosition = suggestion.position,
-                                                                            playerAge = suggestion.age,
-                                                                            marketValue = suggestion.marketValue
-                                                                        )
-                                                                    )) {
-                                                                        is com.liordahan.mgsrteam.features.shortlist.ShortlistRepository.AddToShortlistResult.Added -> {
-                                                                            justAddedUrls = justAddedUrls + url
-                                                                            ToastManager.showSuccess(context.getString(R.string.shortlist_added))
-                                                                        }
-                                                                        is com.liordahan.mgsrteam.features.shortlist.ShortlistRepository.AddToShortlistResult.AlreadyInShortlist ->
-                                                                            ToastManager.showInfo(context.getString(R.string.add_player_already_in_shortlist))
-                                                                        is com.liordahan.mgsrteam.features.shortlist.ShortlistRepository.AddToShortlistResult.AlreadyInRoster ->
-                                                                            ToastManager.showInfo(context.getString(R.string.add_player_already_in_roster))
-                                                                        else -> {}
-                                                                    }
-                                                                }
-                                                            }
-                                                        }
-                                                    },
-                                                    onTryAgainSearch = {
-                                                        viewModel.findPlayersOnlineForRequest(request, LocaleManager.getSavedLanguage(context))
-                                                    },
-                                                    onRefreshSearch = {
-                                                        viewModel.refreshPlayersOnlineForRequest(request, LocaleManager.getSavedLanguage(context))
-                                                    },
-                                                    onEdit = {
-                                                        requestToEdit = request
-                                                        showAddSheet = true
-                                                    },
-                                                    onDelete = { requestToDelete = request }
-                                                )
+                                                }
                                             }
                                         }
-                                    }
-                                    item(key = "spacer_$position") {
-                                        Spacer(Modifier.height(20.dp))
-                                    }
-                                }
+                                    },
+                                    onTryAgainSearch = {
+                                        viewModel.findPlayersOnlineForRequest(request, LocaleManager.getSavedLanguage(context))
+                                    },
+                                    onRefreshSearch = {
+                                        viewModel.refreshPlayersOnlineForRequest(request, LocaleManager.getSavedLanguage(context))
+                                    },
+                                    onEdit = {
+                                        requestToEdit = request
+                                        showAddSheet = true
+                                    },
+                                    onDelete = { requestToDelete = request }
+                                )
                             }
                         }
                     }
@@ -566,7 +634,7 @@ private fun RequestsHeader(
 }
 
 @Composable
-private fun RequestsStatsStrip(total: Int, positions: Int, pending: Int) {
+private fun RequestsStatsStrip(total: Int, positions: Int, matched: Int, unmatched: Int) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -579,6 +647,10 @@ private fun RequestsStatsStrip(total: Int, positions: Int, pending: Int) {
         StatItem(value = total.toString(), label = stringResource(R.string.players_stat_total), accentColor = PlatformColors.palette.accent, modifier = Modifier.weight(1f))
         Box(modifier = Modifier.width(1.dp).height(24.dp).background(PlatformColors.palette.cardBorder))
         StatItem(value = positions.toString(), label = stringResource(R.string.requests_stat_positions), accentColor = PlatformColors.palette.orange, modifier = Modifier.weight(1f))
+        Box(modifier = Modifier.width(1.dp).height(24.dp).background(PlatformColors.palette.cardBorder))
+        StatItem(value = matched.toString(), label = stringResource(R.string.requests_stat_matched), accentColor = PlatformColors.palette.green, modifier = Modifier.weight(1f))
+        Box(modifier = Modifier.width(1.dp).height(24.dp).background(PlatformColors.palette.cardBorder))
+        StatItem(value = unmatched.toString(), label = stringResource(R.string.requests_stat_unmatched), accentColor = PlatformColors.palette.red, modifier = Modifier.weight(1f))
     }
 }
 
@@ -597,6 +669,43 @@ private fun StatItem(value: String, label: String, accentColor: androidx.compose
         Spacer(Modifier.height(4.dp))
         Text(value, style = boldTextStyle(PlatformColors.palette.textPrimary, 18.sp))
         Text(label, style = regularTextStyle(PlatformColors.palette.textSecondary, 9.sp), modifier = Modifier.padding(top = 2.dp))
+    }
+}
+
+private fun positionGroupColor(position: String?): Color {
+    val upper = position?.trim()?.uppercase() ?: return Color(0xFF6B7280)
+    return when (upper) {
+        "GK" -> Color(0xFFD97706)
+        "CB", "RB", "LB", "LWB", "RWB", "DEF" -> Color(0xFF2563EB)
+        "DM", "CM", "AM", "LM", "RM", "CDM", "MID" -> Color(0xFF16A34A)
+        "LW", "RW", "CF", "SS", "FWD" -> Color(0xFFDC2626)
+        else -> Color(0xFF6B7280)
+    }
+}
+
+@Composable
+private fun FilterChipItem(
+    label: String,
+    selected: Boolean,
+    count: Int,
+    color: Color,
+    onClick: () -> Unit
+) {
+    val bg = if (selected) color.copy(alpha = 0.15f) else PlatformColors.palette.card
+    val borderColor = if (selected) color else PlatformColors.palette.cardBorder
+    val textColor = if (selected) color else PlatformColors.palette.textSecondary
+    Row(
+        modifier = Modifier
+            .clip(RoundedCornerShape(20.dp))
+            .background(bg)
+            .border(1.dp, borderColor, RoundedCornerShape(20.dp))
+            .clickWithNoRipple { onClick() }
+            .padding(horizontal = 12.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        Text(label, style = boldTextStyle(textColor, 12.sp))
+        Text("($count)", style = regularTextStyle(textColor, 10.sp))
     }
 }
 
@@ -790,6 +899,10 @@ private fun RequestCard(
         stringResource(R.string.requests_foot_label, displayFoot)
     }
     val notesText = request.notes?.takeIf { it.isNotBlank() }
+    val context = LocalContext.current
+
+    val normalizedPosition = request.position?.let { p -> if (p.trim().uppercase() == "ST") "CF" else p }
+    val posColor = positionGroupColor(normalizedPosition)
 
     Card(
         modifier = modifier
@@ -804,7 +917,7 @@ private fun RequestCard(
                 .fillMaxWidth()
                 .drawBehind {
                     drawRect(
-                        color = PlatformColors.palette.accent,
+                        color = posColor,
                         topLeft = Offset.Zero,
                         size = Size(3.dp.toPx(), size.height)
                     )
@@ -865,12 +978,24 @@ private fun RequestCard(
                             style = regularTextStyle(PlatformColors.palette.textSecondary, 9.sp)
                         )
                     }
-                    if (request.euOnly == true || ageLabel != null || salaryLabel != null || feeLabel != null || footLabel != null || notesText != null) {
-                        FlowRow(
-                            modifier = Modifier.fillMaxWidth(),
+                    if (request.euOnly == true || ageLabel != null || salaryLabel != null || feeLabel != null || footLabel != null) {
+                        Spacer(Modifier.height(4.dp))
+                        // Position badge + EU badge row
+                        Row(
                             horizontalArrangement = Arrangement.spacedBy(6.dp),
-                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
+                            normalizedPosition?.let { pos ->
+                                val displayPos = PositionDisplayNames.getDisplayName(context, pos)
+                                Text(
+                                    text = displayPos,
+                                    style = boldTextStyle(posColor, 10.sp),
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(6.dp))
+                                        .background(posColor.copy(alpha = 0.12f))
+                                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                                )
+                            }
                             if (request.euOnly == true) {
                                 Text(
                                     text = stringResource(R.string.requests_eu_only_badge),
@@ -881,26 +1006,65 @@ private fun RequestCard(
                                         .padding(horizontal = 6.dp, vertical = 3.dp)
                                 )
                             }
-                            ageLabel?.let { RequestChip(text = it) }
-                            salaryLabel?.let { RequestChip(text = it) }
-                            feeLabel?.let { RequestChip(text = it) }
-                            footLabel?.let { RequestChip(text = it) }
-                            notesText?.let { notes ->
-                                val displayNotes = if (notesExpanded || notes.length <= 80) notes else "${notes.take(80)}…"
-                                Box(
-                                    modifier = Modifier
-                                        .clip(RoundedCornerShape(6.dp))
-                                        .background(PlatformColors.palette.background)
-                                        .border(1.dp, PlatformColors.palette.cardBorder, RoundedCornerShape(6.dp))
-                                        .clickable { notesExpanded = !notesExpanded }
-                                        .padding(horizontal = 8.dp, vertical = 2.dp)
-                                ) {
-                                    Text(
-                                        text = "${stringResource(R.string.requests_notes_label)}: $displayNotes",
-                                        style = regularTextStyle(PlatformColors.palette.textSecondary, 10.sp)
+                        }
+                        // KV grid: Salary | Fee | Age/Foot
+                        Spacer(Modifier.height(6.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            salaryLabel?.let {
+                                KvCell(label = stringResource(R.string.requests_salary_label_short), value = request.salaryRange ?: "", modifier = Modifier.weight(1f))
+                            }
+                            feeLabel?.let {
+                                val displayFee = when (request.transferFee) {
+                                    "Free/Free loan" -> stringResource(R.string.requests_transfer_fee_free_loan)
+                                    "<200" -> stringResource(R.string.requests_transfer_fee_lt200)
+                                    else -> request.transferFee ?: ""
+                                }
+                                KvCell(label = stringResource(R.string.requests_fee_label_short), value = displayFee, modifier = Modifier.weight(1f))
+                            }
+                            ageLabel?.let {
+                                val ageDisplay = if (request.minAge != null && request.maxAge != null) "${request.minAge}-${request.maxAge}" else ""
+                                KvCell(label = stringResource(R.string.requests_age_label_short), value = ageDisplay, modifier = Modifier.weight(1f))
+                            }
+                            footLabel?.let {
+                                val footDisplay = when (request.dominateFoot?.lowercase()) {
+                                    "left" -> stringResource(R.string.requests_foot_left)
+                                    "right" -> stringResource(R.string.requests_foot_right)
+                                    else -> request.dominateFoot ?: ""
+                                }
+                                KvCell(label = stringResource(R.string.requests_foot_label_short), value = footDisplay, modifier = Modifier.weight(1f))
+                            }
+                        }
+                    }
+                    // Dedicated notes block
+                    notesText?.let { notes ->
+                        Spacer(Modifier.height(4.dp))
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(PlatformColors.palette.background)
+                                .border(
+                                    width = 1.dp,
+                                    color = Color(0xFF7C3AED).copy(alpha = 0.3f),
+                                    shape = RoundedCornerShape(8.dp)
+                                )
+                                .drawBehind {
+                                    drawRect(
+                                        color = Color(0xFF7C3AED),
+                                        topLeft = Offset.Zero,
+                                        size = Size(3.dp.toPx(), size.height)
                                     )
                                 }
-                            }
+                                .padding(start = 11.dp, end = 8.dp, top = 6.dp, bottom = 6.dp)
+                        ) {
+                            Text(
+                                text = notes,
+                                style = regularTextStyle(PlatformColors.palette.textSecondary, 11.sp),
+                                lineHeight = 16.sp
+                            )
                         }
                     }
                 }
@@ -965,6 +1129,65 @@ private fun RequestCard(
                 }
             }
             Spacer(Modifier.height(8.dp))
+            // Match preview avatars
+            if (matchingPlayers.isNotEmpty()) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 10.dp)
+                        .clickWithNoRipple { onToggleExpand() },
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    val previewPlayers = matchingPlayers.take(4)
+                    previewPlayers.forEachIndexed { index, player ->
+                        Box(
+                            modifier = Modifier
+                                .offset(x = (-(index * 10)).dp)
+                                .size(28.dp)
+                                .clip(CircleShape)
+                                .border(2.dp, PlatformColors.palette.card, CircleShape)
+                        ) {
+                            player.profileImage?.let { url ->
+                                AsyncImage(
+                                    model = url,
+                                    contentDescription = null,
+                                    modifier = Modifier.fillMaxSize().clip(CircleShape),
+                                    contentScale = ContentScale.Crop
+                                )
+                            } ?: Box(
+                                modifier = Modifier.fillMaxSize().background(PlatformColors.palette.cardBorder),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    (player.fullName?.take(1) ?: "?").uppercase(),
+                                    style = boldTextStyle(PlatformColors.palette.textSecondary, 10.sp)
+                                )
+                            }
+                        }
+                    }
+                    val extraCount = matchingPlayers.size - previewPlayers.size
+                    if (extraCount > 0) {
+                        Box(
+                            modifier = Modifier
+                                .offset(x = (-(previewPlayers.size * 10)).dp)
+                                .size(28.dp)
+                                .clip(CircleShape)
+                                .background(PlatformColors.palette.accent.copy(alpha = 0.15f))
+                                .border(2.dp, PlatformColors.palette.card, CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text("+$extraCount", style = boldTextStyle(PlatformColors.palette.accent, 9.sp))
+                        }
+                    }
+                    Spacer(Modifier.weight(1f))
+                    Text(
+                        text = if (matchingPlayers.size == 1) stringResource(R.string.requests_matches_count_one, matchingPlayers.size)
+                               else stringResource(R.string.requests_matches_count, matchingPlayers.size),
+                        style = boldTextStyle(PlatformColors.palette.green, 11.sp)
+                    )
+                }
+                Spacer(Modifier.height(6.dp))
+            }
             // Row 1: From database — matching players (expandable, like releases)
             Row(
                 modifier = Modifier
@@ -1210,6 +1433,21 @@ private fun RequestChip(text: String) {
             text = text,
             style = regularTextStyle(PlatformColors.palette.textSecondary, 10.sp)
         )
+    }
+}
+
+@Composable
+private fun KvCell(label: String, value: String, modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(8.dp))
+            .background(PlatformColors.palette.background)
+            .border(1.dp, PlatformColors.palette.cardBorder, RoundedCornerShape(8.dp))
+            .padding(horizontal = 8.dp, vertical = 6.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(label, style = regularTextStyle(PlatformColors.palette.textSecondary, 9.sp))
+        Text(value, style = boldTextStyle(PlatformColors.palette.textPrimary, 12.sp), modifier = Modifier.padding(top = 2.dp))
     }
 }
 

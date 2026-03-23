@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useMemo, useCallback } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
@@ -62,13 +62,26 @@ const POSITION_DISPLAY: Record<string, { en: string; he: string }> = {
   LW: { en: 'Left Winger', he: 'כנף שמאל' },
   RW: { en: 'Right Winger', he: 'כנף ימין' },
   CF: { en: 'Center Forward', he: 'חלוץ מרכזי' },
-  ST: { en: 'Striker', he: 'חלוץ' },
+  ST: { en: 'Center Forward', he: 'חלוץ מרכזי' },
   SS: { en: 'Second Striker', he: 'חלוץ שני' },
+  CDM: { en: 'Defensive Midfielder', he: 'קשר 50/50' },
+  LWB: { en: 'Left Wing Back', he: 'כנף אחורי שמאלי' },
+  RWB: { en: 'Right Wing Back', he: 'כנף אחורי ימני' },
+  DEF: { en: 'Defender', he: 'מגן' },
+  MID: { en: 'Midfielder', he: 'קשר' },
+  FWD: { en: 'Forward', he: 'חלוץ' },
 };
+
+/** Normalize ST → CF so both map to the same position group */
+function normalizePosition(pos: string | undefined): string {
+  const p = pos?.trim().toUpperCase();
+  if (p === 'ST') return 'CF';
+  return pos?.trim() || '';
+}
 
 function getPositionDisplayName(position: string | undefined, isHebrew: boolean): string {
   if (!position?.trim()) return position || '';
-  const key = position.trim().toUpperCase();
+  const key = normalizePosition(position).toUpperCase();
   const entry = POSITION_DISPLAY[key];
   if (!entry) return position.trim();
   return isHebrew ? entry.he : entry.en;
@@ -165,6 +178,10 @@ export default function RequestsPage() {
   const [loadingList, setLoadingList] = useState(cached === undefined);
   const [expandedPositions, setExpandedPositions] = useState<Set<string>>(new Set());
   const [expandedCountries, setExpandedCountries] = useState<Set<string>>(new Set());
+  const [searchQuery, setSearchQuery] = useState('');
+  const [positionFilter, setPositionFilter] = useState<string>('all');
+  const [matchStatusFilter, setMatchStatusFilter] = useState<'all' | 'matched' | 'unmatched'>('all');
+  const [expandedRowId, setExpandedRowId] = useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<Request | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [showAddSheet, setShowAddSheet] = useState(false);
@@ -264,9 +281,9 @@ export default function RequestsPage() {
   const byPositionCountry = useMemo(() => {
     const pending = requests.filter((r) => (r.status || 'pending') === 'pending');
     const byPos: Record<string, Record<string, Request[]>> = {};
-    const posOrder = ['GK', 'CB', 'LB', 'RB', 'DM', 'CM', 'LM', 'RM', 'LW', 'RW', 'CF', 'ST', 'SS'];
+    const posOrder = ['GK', 'CB', 'LB', 'RB', 'DM', 'CM', 'LM', 'RM', 'LW', 'RW', 'CF', 'SS'];
     for (const r of pending) {
-      const pos = r.position?.trim() || 'Other';
+      const pos = normalizePosition(r.position) || 'Other';
       if (!byPos[pos]) byPos[pos] = {};
       const country = r.clubCountry?.trim() || 'Other';
       if (!byPos[pos][country]) byPos[pos][country] = [];
@@ -302,6 +319,68 @@ export default function RequestsPage() {
     }
     return byId;
   }, [requests, players]);
+
+  /** Flat list of pending requests for table view */
+  const pendingRequests = useMemo(() => {
+    return requests.filter((r) => (r.status || 'pending') === 'pending');
+  }, [requests]);
+
+  /** All unique positions present in pending requests */
+  const activePositions = useMemo(() => {
+    const posOrder = ['GK', 'CB', 'LB', 'RB', 'DM', 'CM', 'AM', 'LM', 'RM', 'LW', 'RW', 'CF', 'SS'];
+    const posSet = new Set(pendingRequests.map((r) => normalizePosition(r.position) || 'Other'));
+    return posOrder.filter((p) => posSet.has(p)).concat(posSet.has('Other') ? ['Other'] : []);
+  }, [pendingRequests]);
+
+  /** Filtered requests based on search, position, and match status */
+  const filteredRequests = useMemo(() => {
+    let list = pendingRequests;
+    if (positionFilter !== 'all') {
+      list = list.filter((r) => (normalizePosition(r.position) || 'Other') === positionFilter);
+    }
+    if (matchStatusFilter === 'matched') {
+      list = list.filter((r) => (matchingPlayersByRequestId[r.id] ?? []).length > 0);
+    } else if (matchStatusFilter === 'unmatched') {
+      list = list.filter((r) => (matchingPlayersByRequestId[r.id] ?? []).length === 0);
+    }
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      list = list.filter((r) =>
+        (r.clubName || '').toLowerCase().includes(q) ||
+        (r.clubCountry || '').toLowerCase().includes(q) ||
+        (r.contactName || '').toLowerCase().includes(q) ||
+        (r.notes || '').toLowerCase().includes(q) ||
+        (r.position || '').toLowerCase().includes(q) ||
+        (r.createdByAgent || '').toLowerCase().includes(q)
+      );
+    }
+    return list;
+  }, [pendingRequests, positionFilter, matchStatusFilter, searchQuery, matchingPlayersByRequestId]);
+
+  /** Stats for summary strip */
+  const matchStats = useMemo(() => {
+    let matched = 0;
+    let unmatched = 0;
+    for (const r of pendingRequests) {
+      if ((matchingPlayersByRequestId[r.id] ?? []).length > 0) matched++;
+      else unmatched++;
+    }
+    const countriesSet = new Set(pendingRequests.map((r) => r.clubCountry?.trim()).filter(Boolean));
+    const oneDayAgo = Date.now() - 86400000;
+    const newToday = pendingRequests.filter((r) => r.createdAt && r.createdAt > oneDayAgo).length;
+    return { matched, unmatched, countries: countriesSet.size, newToday };
+  }, [pendingRequests, matchingPlayersByRequestId]);
+
+  /** Position color class helper */
+  const positionColor = (pos?: string): string => {
+    if (!pos) return 'bg-gray-500/20 text-gray-400';
+    const p = pos.trim().toUpperCase();
+    if (p === 'GK') return 'bg-amber-500/20 text-amber-400';
+    if (['CB', 'LB', 'RB'].includes(p)) return 'bg-blue-500/20 text-blue-400';
+    if (['DM', 'CM', 'AM', 'LM', 'RM', 'LW', 'RW'].includes(p)) return 'bg-emerald-500/20 text-emerald-400';
+    if (['CF', 'SS'].includes(p)) return 'bg-red-500/20 text-red-400';
+    return 'bg-gray-500/20 text-gray-400';
+  };
 
   const toggleMatchingPlayers = (requestId: string) => {
     setExpandedMatchingPlayers((prev) => {
@@ -494,7 +573,7 @@ export default function RequestsPage() {
 
   return (
     <AppLayout>
-      <div dir={isRtl ? 'rtl' : 'ltr'} className="max-w-6xl mx-auto">
+      <div dir={isRtl ? 'rtl' : 'ltr'} className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
           <div>
@@ -518,11 +597,11 @@ export default function RequestsPage() {
           </button>
         </div>
 
-        {/* Stats strip (like app) */}
-        <div className={`flex flex-wrap gap-2 sm:gap-3 lg:gap-4 mb-4 sm:mb-6 p-3 sm:p-4 rounded-2xl bg-mgsr-card border border-mgsr-border ${isYouth ? 'shadow-[0_0_30px_rgba(0,212,255,0.06)]' : isWomen ? 'shadow-[0_0_30px_rgba(232,160,191,0.06)]' : ''}`}>
+        {/* Summary strip with match stats */}
+        <div className={`flex flex-wrap gap-2 sm:gap-3 lg:gap-4 mb-4 sm:mb-5 p-3 sm:p-4 rounded-2xl bg-mgsr-card border border-mgsr-border ${isYouth ? 'shadow-[0_0_30px_rgba(0,212,255,0.06)]' : isWomen ? 'shadow-[0_0_30px_rgba(232,160,191,0.06)]' : ''}`}>
           <div className="flex items-center gap-2">
             <div className={`w-1.5 h-1.5 rounded-full ${isYouth ? 'bg-[var(--youth-cyan)]' : isWomen ? 'bg-[var(--women-rose)]' : 'bg-mgsr-teal'}`} />
-            <span className="text-mgsr-text font-semibold">{totalCount}</span>
+            <span className="text-mgsr-text font-semibold">{pendingRequests.length}</span>
             <span className="text-mgsr-muted text-sm">{t('requests_stat_total')}</span>
           </div>
           <div className="w-px bg-mgsr-border" />
@@ -530,6 +609,107 @@ export default function RequestsPage() {
             <div className="w-1.5 h-1.5 rounded-full bg-amber-500" />
             <span className="text-mgsr-text font-semibold">{positionsCount}</span>
             <span className="text-mgsr-muted text-sm">{t('requests_stat_positions')}</span>
+          </div>
+          <div className="w-px bg-mgsr-border" />
+          <div className="flex items-center gap-2">
+            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+            <span className="text-emerald-400 font-semibold">{matchStats.matched}</span>
+            <span className="text-mgsr-muted text-sm">{isHebrew ? 'עם התאמות' : 'Matched'}</span>
+          </div>
+          <div className="w-px bg-mgsr-border" />
+          <div className="flex items-center gap-2">
+            <div className="w-1.5 h-1.5 rounded-full bg-orange-500" />
+            <span className="text-orange-400 font-semibold">{matchStats.unmatched}</span>
+            <span className="text-mgsr-muted text-sm">{isHebrew ? 'ללא התאמות' : 'Unmatched'}</span>
+          </div>
+          {matchStats.countries > 0 && (
+            <>
+              <div className="w-px bg-mgsr-border hidden sm:block" />
+              <div className="flex items-center gap-2 hidden sm:flex">
+                <span className="text-mgsr-text font-semibold">{matchStats.countries}</span>
+                <span className="text-mgsr-muted text-sm">{isHebrew ? 'מדינות' : 'Countries'}</span>
+              </div>
+            </>
+          )}
+          {matchStats.newToday > 0 && (
+            <>
+              <div className="w-px bg-mgsr-border hidden sm:block" />
+              <div className="flex items-center gap-2 hidden sm:flex">
+                <span className="text-emerald-400 font-semibold">{matchStats.newToday}</span>
+                <span className="text-mgsr-muted text-sm">{isHebrew ? 'חדשות היום' : 'New today'}</span>
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Search + Filter bar */}
+        <div className="flex flex-col sm:flex-row gap-3 mb-4">
+          {/* Search */}
+          <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-mgsr-card border border-mgsr-border flex-1 sm:max-w-sm">
+            <svg className="w-4 h-4 text-mgsr-muted shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder={isHebrew ? 'חיפוש מועדון, מדינה, איש קשר...' : 'Search club, country, contact...'}
+              className="bg-transparent text-mgsr-text text-sm outline-none w-full placeholder:text-mgsr-muted/50"
+            />
+            {searchQuery && (
+              <button type="button" onClick={() => setSearchQuery('')} className="text-mgsr-muted hover:text-mgsr-text">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" d="M6 18L18 6M6 6l12 12"/></svg>
+              </button>
+            )}
+          </div>
+          {/* Position filter pills */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+            <button
+              type="button"
+              onClick={() => setPositionFilter('all')}
+              className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition border ${
+                positionFilter === 'all'
+                  ? 'border-mgsr-teal text-mgsr-teal bg-mgsr-teal/10'
+                  : 'border-mgsr-border text-mgsr-muted hover:text-mgsr-text hover:border-mgsr-border/80'
+              }`}
+            >
+              {isHebrew ? 'הכל' : 'All'}
+            </button>
+            {activePositions.map((pos) => (
+              <button
+                key={pos}
+                type="button"
+                onClick={() => setPositionFilter(positionFilter === pos ? 'all' : pos)}
+                className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition border ${
+                  positionFilter === pos
+                    ? 'border-mgsr-teal text-mgsr-teal bg-mgsr-teal/10'
+                    : 'border-mgsr-border text-mgsr-muted hover:text-mgsr-text hover:border-mgsr-border/80'
+                }`}
+              >
+                {getPositionDisplayName(pos, isHebrew)}
+              </button>
+            ))}
+            <div className="w-px h-5 bg-mgsr-border shrink-0 mx-1" />
+            <button
+              type="button"
+              onClick={() => setMatchStatusFilter(matchStatusFilter === 'matched' ? 'all' : 'matched')}
+              className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition border whitespace-nowrap ${
+                matchStatusFilter === 'matched'
+                  ? 'border-emerald-500 text-emerald-400 bg-emerald-500/10'
+                  : 'border-mgsr-border text-mgsr-muted hover:text-mgsr-text'
+              }`}
+            >
+              {isHebrew ? 'עם התאמות' : 'Has Matches'}
+            </button>
+            <button
+              type="button"
+              onClick={() => setMatchStatusFilter(matchStatusFilter === 'unmatched' ? 'all' : 'unmatched')}
+              className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition border whitespace-nowrap ${
+                matchStatusFilter === 'unmatched'
+                  ? 'border-orange-500 text-orange-400 bg-orange-500/10'
+                  : 'border-mgsr-border text-mgsr-muted hover:text-mgsr-text'
+              }`}
+            >
+              {isHebrew ? 'ללא התאמות' : 'No Matches'}
+            </button>
           </div>
         </div>
 
@@ -540,460 +720,380 @@ export default function RequestsPage() {
               {isYouth ? t('requests_loading_youth') : isWomen ? t('requests_loading_women') : t('requests_loading')}
             </div>
           </div>
-        ) : Object.keys(byPositionCountry).length === 0 ? (
+        ) : pendingRequests.length === 0 ? (
           <div className={`relative overflow-hidden p-16 bg-mgsr-card/50 border border-mgsr-border rounded-2xl text-center ${isYouth ? 'shadow-[0_0_30px_rgba(0,212,255,0.06)]' : isWomen ? 'shadow-[0_0_30px_rgba(232,160,191,0.06)]' : ''}`}>
             <div className={`absolute inset-0 ${isYouth ? 'bg-[radial-gradient(ellipse_at_center,rgba(0,212,255,0.08)_0%,transparent_70%)]' : isWomen ? 'bg-[radial-gradient(ellipse_at_center,rgba(232,160,191,0.08)_0%,transparent_70%)]' : 'bg-[radial-gradient(ellipse_at_center,rgba(77,182,172,0.06)_0%,transparent_70%)]'}`} />
             <p className="text-mgsr-muted text-lg relative">{isYouth ? t('requests_empty_youth') : isWomen ? t('requests_empty_women') : t('requests_empty')}</p>
           </div>
+        ) : filteredRequests.length === 0 ? (
+          <div className="p-12 bg-mgsr-card/50 border border-mgsr-border rounded-2xl text-center">
+            <p className="text-mgsr-muted">{isHebrew ? 'אין תוצאות עם הסינון הנוכחי' : 'No results with current filters'}</p>
+            <button type="button" onClick={() => { setSearchQuery(''); setPositionFilter('all'); setMatchStatusFilter('all'); }} className="text-mgsr-teal text-sm mt-2 hover:underline">
+              {isHebrew ? 'נקה סינונים' : 'Clear filters'}
+            </button>
+          </div>
         ) : (
-          <div className="space-y-2">
-            {Object.entries(byPositionCountry).map(([position, countries]) => {
-              const posCount = Object.values(countries).flat().length;
-              const isPosExpanded = expandedPositions.has(position);
+          /* ── TABLE VIEW ── */
+          <div className="rounded-2xl border border-mgsr-border overflow-hidden bg-mgsr-card">
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr className="bg-mgsr-dark/40">
+                    <th className="text-start px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-mgsr-muted">{isHebrew ? 'מועדון' : 'Club'}</th>
+                    <th className="text-start px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-mgsr-muted">{isHebrew ? 'עמדה' : 'Pos'}</th>
+                    <th className="text-start px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-mgsr-muted hidden sm:table-cell">{isHebrew ? 'שכר' : 'Salary'}</th>
+                    <th className="text-start px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-mgsr-muted hidden sm:table-cell">{isHebrew ? 'דמי העברה' : 'Fee'}</th>
+                    <th className="text-start px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-mgsr-muted hidden sm:table-cell">{isHebrew ? 'גיל' : 'Age'}</th>
+                    <th className="text-start px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-mgsr-muted">{isHebrew ? 'התאמות' : 'Matches'}</th>
+                    <th className="text-start px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-mgsr-muted hidden md:table-cell">{isHebrew ? 'איש קשר' : 'Contact'}</th>
+                    <th className="text-start px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-mgsr-muted hidden lg:table-cell">{isHebrew ? 'הערות' : 'Notes'}</th>
+                    <th className="text-start px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-mgsr-muted hidden sm:table-cell">{isHebrew ? 'תגיות' : 'Tags'}</th>
+                    <th className="px-3 py-2.5 w-20"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredRequests.map((r) => {
+                    const matchingPlayers = (r.id ? matchingPlayersByRequestId[r.id] : []) ?? [];
+                    const matchCount = matchingPlayers.length;
+                    const ageStr = ageRange(r);
+                    const footStr = r.dominateFoot && r.dominateFoot !== 'any' ? footLabel(r.dominateFoot, t) : null;
+                    const isRowExpanded = expandedRowId === r.id;
+                    const isNew = r.createdAt && (Date.now() - r.createdAt < 86400000);
 
-              return (
-                <div key={position} className="rounded-2xl border border-mgsr-border overflow-hidden bg-mgsr-card">
-                  {/* Position header */}
-                  <button
-                    type="button"
-                    onClick={() => togglePosition(position)}
-                    className={`w-full flex items-center gap-3 px-4 py-3 text-start border-s-4 ${isYouth ? 'border-[var(--youth-cyan)]' : isWomen ? 'border-[var(--women-rose)]' : 'border-mgsr-teal'}`}
-                  >
-                    <span className={`px-2.5 py-1 rounded-lg text-xs font-semibold shrink-0 ${isYouth ? 'bg-[var(--youth-cyan)]/20 text-[var(--youth-cyan)]' : isWomen ? 'bg-[var(--women-rose)]/20 text-[var(--women-rose)]' : 'bg-mgsr-teal/20 text-mgsr-teal'}`}>
-                      {position}
-                    </span>
-                    <span className="font-semibold text-mgsr-text">
-                      {getPositionDisplayName(position, isHebrew)}
-                    </span>
-                    <span className="text-mgsr-muted text-sm">({posCount})</span>
-                    <span className="flex-1 min-w-4" aria-hidden />
-                    <span
-                      className={`shrink-0 inline-flex text-mgsr-muted transition-transform duration-200 ${isPosExpanded ? 'rotate-180' : ''}`}
-                      aria-hidden
-                    >
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <polyline points="6 9 12 15 18 9" />
-                      </svg>
-                    </span>
-                  </button>
+                    return (
+                      <React.Fragment key={r.id}>
+                        <tr
+                          className={`border-t border-mgsr-border/50 transition cursor-pointer ${isRowExpanded ? 'bg-mgsr-dark/30' : 'hover:bg-mgsr-dark/20'}`}
+                          onClick={() => setExpandedRowId(isRowExpanded ? null : r.id)}
+                        >
+                          {/* Club */}
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-2.5">
+                              {r.clubLogo && r.clubLogo.startsWith('http') ? (
+                                <img src={r.clubLogo} alt="" className="w-8 h-8 rounded-lg object-contain shrink-0" />
+                              ) : (
+                                <div className="w-8 h-8 rounded-lg bg-mgsr-border flex items-center justify-center shrink-0">
+                                  <span className="text-mgsr-muted text-[10px] font-bold">{(r.clubName || '?').slice(0, 2).toUpperCase()}</span>
+                                </div>
+                              )}
+                              <div className="min-w-0">
+                                <p className="font-medium text-mgsr-text text-sm truncate">
+                                  {r.clubTmProfile ? (
+                                    <a href={r.clubTmProfile} target="_blank" rel="noopener noreferrer" className="hover:text-mgsr-teal transition-colors" onClick={(e) => e.stopPropagation()}>
+                                      {r.clubName || '—'}
+                                    </a>
+                                  ) : (r.clubName || '—')}
+                                </p>
+                                <p className="text-[11px] text-mgsr-muted truncate">
+                                  {r.clubCountryFlag && r.clubCountryFlag.startsWith('http') && (
+                                    <img src={r.clubCountryFlag} alt="" className="w-3.5 h-3.5 rounded-full inline-block mr-1 align-text-bottom" />
+                                  )}
+                                  {getCountryDisplayName(r.clubCountry || '', isHebrew)}
+                                  {r.createdAt && (
+                                    <span className="ml-1.5 text-mgsr-muted/60">
+                                      · {new Date(r.createdAt).toLocaleDateString(isHebrew ? 'he-IL' : 'en-GB', { day: 'numeric', month: 'short' })}
+                                    </span>
+                                  )}
+                                </p>
+                              </div>
+                            </div>
+                          </td>
 
-                  {isPosExpanded && (
-                    <div className="border-t border-mgsr-border bg-mgsr-dark/30 p-2 sm:p-3 space-y-2">
-                      {Object.entries(countries).map(([country, reqs]) => {
-                        const countryKey = `${position}_${country}`;
-                        const isCountryExpanded = expandedCountries.has(countryKey);
-                        const flagUrl = reqs[0]?.clubCountryFlag;
+                          {/* Position */}
+                          <td className="px-3 py-3">
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold ${positionColor(r.position)}`}>
+                              {getPositionDisplayName(r.position, isHebrew) || '—'}
+                            </span>
+                          </td>
 
-                        return (
-                          <div key={countryKey} className="rounded-xl border border-mgsr-border overflow-hidden bg-mgsr-card">
-                            {/* Country row */}
-                            <button
-                              type="button"
-                              onClick={() => toggleCountry(countryKey)}
-                              className="w-full flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 text-start"
-                            >
-                              <FlagImage url={flagUrl} country={country} className="w-6 h-6 rounded-full object-cover shrink-0" />
-                              <span className="font-medium text-mgsr-text text-sm sm:text-base truncate">
-                                {getCountryDisplayName(country, isHebrew)}
+                          {/* Salary */}
+                          <td className="px-3 py-3 hidden sm:table-cell">
+                            {r.salaryRange && r.salaryRange !== 'N/A' ? (
+                              <span className="text-emerald-400 text-xs font-medium">€{r.salaryRange}{isHebrew ? '' : 'K /mo'}</span>
+                            ) : (
+                              <span className="text-mgsr-muted/30 text-xs">—</span>
+                            )}
+                          </td>
+
+                          {/* Fee */}
+                          <td className="px-3 py-3 hidden sm:table-cell">
+                            {r.transferFee && r.transferFee !== 'N/A' ? (
+                              <span className="text-xs text-mgsr-muted">{r.transferFee === 'Free/Free loan' ? (isHebrew ? 'חינם' : 'Free') : r.transferFee}</span>
+                            ) : (
+                              <span className="text-mgsr-muted/30 text-xs">—</span>
+                            )}
+                          </td>
+
+                          {/* Age */}
+                          <td className="px-3 py-3 hidden sm:table-cell">
+                            <span className="text-xs text-mgsr-muted font-mono">{ageStr || '—'}</span>
+                          </td>
+
+                          {/* Matches */}
+                          <td className="px-3 py-3">
+                            <div className="flex items-center gap-1.5">
+                              <span className={`w-2 h-2 rounded-full shrink-0 ${matchCount >= 3 ? 'bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.5)]' : matchCount >= 1 ? 'bg-orange-400' : 'bg-mgsr-muted/40'}`} />
+                              <span className={`text-sm font-semibold ${matchCount > 0 ? 'text-mgsr-text' : 'text-mgsr-muted'}`}>{matchCount}</span>
+                              <span className="text-[11px] text-mgsr-muted hidden sm:inline">{matchCount === 1 ? (isHebrew ? 'התאמה' : 'match') : (isHebrew ? 'התאמות' : 'matches')}</span>
+                            </div>
+                          </td>
+
+                          {/* Contact */}
+                          <td className="px-3 py-3 hidden md:table-cell">
+                            {r.contactName ? (
+                              <div className="flex items-center gap-2">
+                                <div className="w-6 h-6 rounded-full bg-purple-500/15 text-purple-400 text-[10px] font-bold flex items-center justify-center shrink-0">
+                                  {r.contactName.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}
+                                </div>
+                                <span className="text-xs text-mgsr-muted">{r.contactName}</span>
+                                {r.contactPhoneNumber && (
+                                  <a
+                                    href={toWhatsAppUrl(r.contactPhoneNumber) ?? `tel:${r.contactPhoneNumber}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="w-5 h-5 rounded-full bg-green-500/15 flex items-center justify-center shrink-0 hover:bg-green-500/25"
+                                    onClick={(e) => e.stopPropagation()}
+                                    title="WhatsApp"
+                                  >
+                                    <svg className="w-3.5 h-3.5 text-green-400" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+                                  </a>
+                                )}
+                              </div>
+                            ) : (
+                              <span className="text-xs text-mgsr-muted/50">{isHebrew ? 'ישיר' : 'Direct'}</span>
+                            )}
+                          </td>
+
+                          {/* Notes */}
+                          <td className="px-3 py-3 hidden lg:table-cell">
+                            {r.notes ? (
+                              <span className="text-xs text-mgsr-muted block max-w-[280px] whitespace-pre-wrap" dir={isHebrew ? 'rtl' : 'ltr'}>
+                                {r.notes}
                               </span>
-                              <span className="text-mgsr-muted text-xs sm:text-sm hidden sm:inline">
-                                {(() => {
-                                  const uniqueClubs = new Set(reqs.map(r => r.clubName || r.clubTmProfile || r.id)).size;
-                                  const clubText = uniqueClubs === 1
-                                    ? t('requests_country_club_one')
-                                    : t('requests_country_clubs').replace('{count}', String(uniqueClubs));
-                                  const reqText = reqs.length === 1
-                                    ? t('requests_country_request_one')
-                                    : t('requests_country_requests').replace('{count}', String(reqs.length));
-                                  return `${clubText} · ${reqText}`;
-                                })()}
-                              </span>
-                              <span className="flex-1 min-w-4" aria-hidden />
-                              <span
-                                className={`shrink-0 inline-flex text-mgsr-muted transition-transform duration-200 ${isCountryExpanded ? 'rotate-180' : ''}`}
-                                aria-hidden
+                            ) : (
+                              <span className="text-mgsr-muted/30 text-xs">—</span>
+                            )}
+                          </td>
+
+                          {/* Tags */}
+                          <td className="px-3 py-3 hidden sm:table-cell">
+                            <div className="flex flex-wrap gap-1">
+                              {r.euOnly && (
+                                <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-blue-500/15 text-blue-400">🇪🇺 EU</span>
+                              )}
+                              {footStr && (
+                                <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-purple-500/15 text-purple-400">{footStr}</span>
+                              )}
+                              {isNew && (
+                                <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400">{isHebrew ? 'חדש' : 'NEW'}</span>
+                              )}
+                            </div>
+                          </td>
+
+                          {/* Actions */}
+                          <td className="px-3 py-3">
+                            <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition" style={{ opacity: isRowExpanded ? 1 : undefined }}>
+                              <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); setEditingRequest(r); setShowAddSheet(true); }}
+                                className="w-7 h-7 rounded-md border border-mgsr-border flex items-center justify-center text-mgsr-muted hover:text-mgsr-teal hover:border-mgsr-teal/50 transition text-xs"
+                                title={t('requests_edit')}
                               >
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                  <polyline points="6 9 12 15 18 9" />
-                                </svg>
-                              </span>
-                            </button>
+                                ✏️
+                              </button>
+                              <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); setDeleteConfirm(r); }}
+                                className="w-7 h-7 rounded-md border border-mgsr-border flex items-center justify-center text-mgsr-muted hover:text-red-400 hover:border-red-400/50 transition text-xs"
+                                title={t('requests_delete')}
+                              >
+                                🗑
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
 
-                            {isCountryExpanded && (
-                              <div className="border-t border-mgsr-border p-2 sm:p-3 space-y-2">
-                                {reqs.map((r) => {
-                                  const ageStr = ageRange(r);
-                                  const footStr = r.dominateFoot ? footLabel(r.dominateFoot, t) : null;
-                                  const matchingPlayers = (r.id ? matchingPlayersByRequestId[r.id] : []) ?? [];
-                                  const isMatchingExpanded = r.id ? expandedMatchingPlayers.has(r.id) : false;
+                        {/* ── Expanded inline detail panel ── */}
+                        {isRowExpanded && (
+                          <tr className="bg-mgsr-dark/20">
+                            <td colSpan={10} className="p-0">
+                              <div className="p-4 sm:p-5">
+                                {/* Mobile-only: show budget/age/contact/notes that are hidden on small screens */}
+                                <div className="sm:hidden space-y-2 mb-4 p-3 rounded-xl bg-mgsr-card border border-mgsr-border">
+                                  <div className="grid grid-cols-3 gap-3 text-center">
+                                    <div className="bg-mgsr-dark/40 rounded-lg p-2">
+                                      <p className="text-[10px] text-mgsr-muted uppercase">{isHebrew ? 'שכר' : 'Salary'}</p>
+                                      <p className="text-sm font-semibold text-emerald-400">{r.salaryRange && r.salaryRange !== 'N/A' ? `€${r.salaryRange}` : '—'}</p>
+                                    </div>
+                                    <div className="bg-mgsr-dark/40 rounded-lg p-2">
+                                      <p className="text-[10px] text-mgsr-muted uppercase">{isHebrew ? 'דמי העברה' : 'Fee'}</p>
+                                      <p className="text-sm font-semibold text-mgsr-text">{r.transferFee && r.transferFee !== 'N/A' ? (r.transferFee === 'Free/Free loan' ? (isHebrew ? 'חינם' : 'Free') : r.transferFee) : '—'}</p>
+                                    </div>
+                                    <div className="bg-mgsr-dark/40 rounded-lg p-2">
+                                      <p className="text-[10px] text-mgsr-muted uppercase">{isHebrew ? 'גיל' : 'Age'}</p>
+                                      <p className="text-sm font-semibold text-mgsr-text">{ageStr || '—'}</p>
+                                    </div>
+                                  </div>
+                                  {r.notes && (
+                                    <p className="text-xs text-mgsr-muted italic border-s-2 border-purple-500/40 ps-2" dir={isHebrew ? 'rtl' : 'ltr'}>{r.notes}</p>
+                                  )}
+                                  {r.contactName && (
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-xs text-mgsr-muted">{r.contactName}</span>
+                                      {r.contactPhoneNumber && (
+                                        <a href={toWhatsAppUrl(r.contactPhoneNumber) ?? `tel:${r.contactPhoneNumber}`} target="_blank" rel="noopener noreferrer" className="text-green-400 text-xs hover:underline" onClick={(e) => e.stopPropagation()}><svg className="w-3.5 h-3.5 inline-block mr-1 align-text-bottom" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>WhatsApp</a>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
 
-                                  return (
-                                    <div
-                                      key={r.id}
-                                      className="rounded-lg bg-mgsr-dark/40 border border-mgsr-border/50 overflow-hidden"
-                                    >
-                                      <div className="flex items-start gap-3 p-3">
-                                        {r.clubLogo && r.clubLogo.startsWith('http') ? (
-                                          <img
-                                            src={r.clubLogo}
-                                            alt=""
-                                            className="w-10 h-10 rounded-lg object-contain shrink-0"
-                                          />
-                                        ) : (
-                                          <div className="w-10 h-10 rounded-lg bg-mgsr-border flex items-center justify-center shrink-0">
-                                            <span className="text-mgsr-muted text-xs font-bold">
-                                              {(r.clubName || '?').slice(0, 2).toUpperCase()}
-                                            </span>
-                                          </div>
-                                        )}
-                                        <div className="flex-1 min-w-0">
-                                          {r.clubTmProfile ? (
-                                            <a
-                                              href={r.clubTmProfile}
-                                              target="_blank"
-                                              rel="noopener noreferrer"
-                                              className="font-medium text-mgsr-text hover:text-mgsr-teal transition-colors"
-                                              onClick={(e) => e.stopPropagation()}
-                                            >
-                                              {r.clubName || '—'}
-                                            </a>
-                                          ) : (
-                                            <p className="font-medium text-mgsr-text">{r.clubName || '—'}</p>
-                                          )}
-                                          {(r.createdByAgent || r.createdAt) && (
-                                            <p className="text-xs text-mgsr-muted mt-0.5">
-                                              {r.createdByAgent && (
-                                                <span className="font-medium">{isHebrew ? (r.createdByAgentHebrew || agentHebrewMap[r.createdByAgent || ''] || r.createdByAgent) : r.createdByAgent}</span>
-                                              )}
-                                              {r.createdByAgent && r.createdAt && <span> · </span>}
-                                              {r.createdAt && (
-                                                <span>{new Date(r.createdAt).toLocaleDateString(isHebrew ? 'he-IL' : 'en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}{' '}{new Date(r.createdAt).toLocaleTimeString(isHebrew ? 'he-IL' : 'en-GB', { hour: '2-digit', minute: '2-digit' })}</span>
-                                              )}
-                                            </p>
-                                          )}
-                                          {r.contactName && (
-                                            <p className="text-sm text-mgsr-teal">{r.contactName}</p>
-                                          )}
-                                          {r.contactPhoneNumber && (
-                                            <a
-                                              href={toWhatsAppUrl(r.contactPhoneNumber) ?? `tel:${r.contactPhoneNumber}`}
-                                              target="_blank"
-                                              rel="noopener noreferrer"
-                                              className="text-sm text-mgsr-teal hover:underline inline-flex items-center gap-1"
-                                              dir="ltr"
-                                            >
-                                              {r.contactPhoneNumber}
-                                            </a>
-                                          )}
-                                          <div className="flex flex-wrap gap-2 mt-1">
-                                            {!isYouth && r.salaryRange && r.salaryRange !== 'N/A' && (
-                                              <span className="text-xs px-2 py-0.5 rounded bg-mgsr-teal/20 text-mgsr-teal">
-                                                {t('requests_salary')}: {r.salaryRange}
-                                              </span>
-                                            )}
-                                            {!isYouth && r.transferFee && r.transferFee !== 'N/A' && (
-                                              <span className="text-xs px-2 py-0.5 rounded bg-mgsr-teal/20 text-mgsr-teal">
-                                                {t('requests_fee')}: {r.transferFee === 'Free/Free loan' ? t('requests_fee_free_loan') : r.transferFee}
-                                              </span>
-                                            )}
-                                            {!isYouth && ageStr && (
-                                              <span className="text-xs px-2 py-0.5 rounded bg-mgsr-teal/20 text-mgsr-teal">
-                                                {t('requests_age_range')}: {ageStr}
-                                              </span>
-                                            )}
-                                            {footStr && (
-                                              <span className="text-xs px-2 py-0.5 rounded bg-mgsr-teal/20 text-mgsr-teal">
-                                                {t('requests_foot')}: {footStr}
-                                              </span>
-                                            )}
-                                            {r.euOnly && (
-                                              <span className="text-xs px-2 py-0.5 rounded bg-blue-500/20 text-blue-400 font-medium">
-                                                🇪🇺 EU Only
-                                              </span>
-                                            )}
-                                            {r.notes && (
-                                              <span className="text-xs px-2 py-0.5 rounded bg-mgsr-teal/20 text-mgsr-teal line-clamp-1" dir={lang === 'he' ? 'rtl' : 'ltr'}>
-                                                {t('requests_notes_label')}: {r.notes.slice(0, 60)}{r.notes.length > 60 ? '…' : ''}
-                                              </span>
-                                            )}
-                                          </div>
-                                        </div>
-                                        <div className="flex items-center gap-2 shrink-0">
-                                          <button
-                                            type="button"
-                                            onClick={() => { setEditingRequest(r); setShowAddSheet(true); }}
-                                            className="text-mgsr-muted hover:text-mgsr-teal text-sm shrink-0"
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                  {/* Left: Roster Matches */}
+                                  <div className="rounded-xl bg-mgsr-card border border-mgsr-border p-4">
+                                    <h4 className="text-[11px] font-semibold uppercase tracking-wider text-mgsr-muted mb-3 flex items-center gap-1.5">
+                                      👥 {isHebrew ? 'התאמות מהמאגר' : 'Roster Matches'} ({matchCount})
+                                    </h4>
+                                    {matchCount === 0 ? (
+                                      <p className="text-sm text-mgsr-muted py-4 text-center">{t('requests_no_match')}</p>
+                                    ) : (
+                                      <div className="space-y-1.5 max-h-[320px] overflow-y-auto">
+                                        {matchingPlayers.map((player) => (
+                                          <Link
+                                            key={player.id}
+                                            href={`/players/${player.id}?from=/requests`}
+                                            className="flex items-center gap-2.5 p-2 rounded-lg hover:bg-mgsr-teal/10 transition"
+                                            onClick={(e) => e.stopPropagation()}
                                           >
-                                            {t('requests_edit')}
-                                          </button>
-                                          <button
-                                            type="button"
-                                            onClick={() => setDeleteConfirm(r)}
-                                            className="text-mgsr-muted hover:text-red-400 text-sm shrink-0"
-                                          >
-                                            {t('requests_delete')}
-                                          </button>
-                                        </div>
+                                            <img
+                                              src={player.profileImage || 'https://via.placeholder.com/40?text=?'}
+                                              alt=""
+                                              className="w-8 h-8 rounded-full object-cover shrink-0 bg-mgsr-border"
+                                              onError={(e) => { (e.target as HTMLImageElement).src = 'https://via.placeholder.com/40?text=?'; }}
+                                            />
+                                            <div className="flex-1 min-w-0">
+                                              <p className="font-medium text-mgsr-text text-sm truncate">{player.fullName || '—'}</p>
+                                              <p className="text-[11px] text-mgsr-muted truncate">
+                                                {player.positions?.filter(Boolean).join(', ') || '—'} · {player.age || '—'} · {player.marketValue || '—'}
+                                              </p>
+                                            </div>
+                                            {player.currentClub?.clubLogo && (
+                                              <img src={player.currentClub.clubLogo} alt="" className="w-5 h-5 rounded-full object-cover shrink-0" />
+                                            )}
+                                          </Link>
+                                        ))}
                                       </div>
+                                    )}
+                                  </div>
 
-                                      {/* Matching players section */}
-                                      <div className="border-t border-mgsr-border/50">
-                                        <button
-                                          type="button"
-                                          onClick={() => r.id && toggleMatchingPlayers(r.id)}
-                                          className="w-full flex items-center gap-3 px-3 py-2.5 text-start hover:bg-mgsr-dark/30 transition"
-                                        >
-                                          <span className="text-sm text-mgsr-muted">
-                                            {matchingPlayers.length === 0
-                                              ? t(isYouth ? 'requests_no_match_youth' : isWomen ? 'requests_no_match_women' : 'requests_no_match')
-                                              : matchingPlayers.length === 1
-                                                ? t(isYouth ? 'requests_matching_players_one_youth' : isWomen ? 'requests_matching_players_one_women' : 'requests_matching_players_one').replace('{count}', '1')
-                                                : t(isYouth ? 'requests_matching_players_youth' : isWomen ? 'requests_matching_players_women' : 'requests_matching_players').replace('{count}', String(matchingPlayers.length))}
-                                          </span>
-                                          <span
-                                            className={`ml-auto shrink-0 inline-flex text-mgsr-muted transition-transform duration-200 ${isMatchingExpanded ? 'rotate-180' : ''}`}
-                                            aria-hidden
-                                          >
-                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                              <polyline points="6 9 12 15 18 9" />
-                                            </svg>
-                                          </span>
-                                        </button>
-                                        {isMatchingExpanded && matchingPlayers.length > 0 && (
-                                          <div className="border-t border-mgsr-border/50 p-2 space-y-1">
-                                            {matchingPlayers.map((player) => (
-                                              <Link
-                                                key={player.id}
-                                                href={`/players/${player.id}?from=/requests`}
-                                                className="flex items-center gap-3 p-2 rounded-lg hover:bg-mgsr-teal/10 transition"
-                                              >
-                                                <img
-                                                  src={player.profileImage || 'https://via.placeholder.com/40?text=?'}
-                                                  alt=""
-                                                  className="w-10 h-10 rounded-full object-cover shrink-0 bg-mgsr-border"
-                                                  onError={(e) => {
-                                                    (e.target as HTMLImageElement).src = 'https://via.placeholder.com/40?text=?';
-                                                  }}
-                                                />
+                                  {/* Right: AI Scout (men only) */}
+                                  {!isWomen && !isYouth && (
+                                    <div className="rounded-xl bg-mgsr-card border border-mgsr-border p-4">
+                                      <h4 className="text-[11px] font-semibold uppercase tracking-wider text-mgsr-muted mb-3 flex items-center gap-1.5">
+                                        🤖 {isHebrew ? 'שחקנים מ-AI Scout' : 'AI Scout Suggestions'}
+                                      </h4>
+                                      {scoutLoadingRequestId === r.id ? (
+                                        <div className="flex items-center justify-center gap-2 py-6">
+                                          <span className="w-4 h-4 border-2 border-mgsr-teal border-t-transparent rounded-full animate-spin" />
+                                          <span className="text-sm text-mgsr-muted">{isHebrew ? 'מחפש שחקנים...' : 'Finding players...'}</span>
+                                        </div>
+                                      ) : scoutResultsByRequestId[r.id!]?.length ? (
+                                        <div className="space-y-1.5">
+                                          {scoutResultsByRequestId[r.id!]!.filter(s => s.transfermarktUrl).slice(0, 5).map((s) => {
+                                            const url = s.transfermarktUrl!;
+                                            const isInShortlist = shortlistUrls.has(url);
+                                            const isAdding = addingToShortlistUrl === url;
+                                            return (
+                                              <div key={url} className="flex items-center gap-2.5 p-2 rounded-lg hover:bg-mgsr-teal/10 transition">
+                                                <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 text-xs font-bold ${
+                                                  s.matchPercent != null && s.matchPercent >= 75 ? 'bg-emerald-500/15 text-emerald-400 ring-1 ring-emerald-500/30' :
+                                                  s.matchPercent != null && s.matchPercent >= 55 ? 'bg-mgsr-teal/15 text-mgsr-teal ring-1 ring-mgsr-teal/30' :
+                                                  'bg-orange-500/15 text-orange-400 ring-1 ring-orange-500/30'
+                                                }`}>
+                                                  {s.matchPercent ?? '?'}%
+                                                </div>
                                                 <div className="flex-1 min-w-0">
-                                                  <p className="font-medium text-mgsr-text text-sm truncate">{player.fullName || '—'}</p>
-                                                  <p className="text-xs text-mgsr-muted truncate">
-                                                    {player.positions?.filter(Boolean).join(', ') || '—'} • {(player.age ? t('players_age_display').replace('{age}', player.age) : '—')} • {player.marketValue || '—'}
+                                                  <a href={url} target="_blank" rel="noopener noreferrer" className="font-medium text-mgsr-text text-sm truncate block hover:text-mgsr-teal" onClick={(e) => e.stopPropagation()}>
+                                                    {s.name || '—'}
+                                                  </a>
+                                                  <p className="text-[11px] text-mgsr-muted truncate">
+                                                    {shortenScoutPosition(s.position)} · {s.age || '—'} · {s.marketValue || '—'}
+                                                    {s.league && <span> · {s.league}</span>}
                                                   </p>
                                                 </div>
-                                                {player.currentClub?.clubLogo && (
-                                                  <img
-                                                    src={player.currentClub.clubLogo}
-                                                    alt=""
-                                                    className="w-6 h-6 rounded-full object-cover shrink-0"
-                                                  />
+                                                {isInShortlist ? (
+                                                  <span className="text-[10px] text-amber-400 font-semibold px-2 py-0.5 rounded-full bg-amber-500/15 shrink-0">{t('releases_saved')}</span>
+                                                ) : (
+                                                  <button
+                                                    type="button"
+                                                    onClick={(e) => addScoutPlayerToShortlist(s, e)}
+                                                    disabled={!!addingToShortlistUrl}
+                                                    className="text-[10px] font-medium px-2 py-0.5 rounded-full border border-mgsr-border text-mgsr-muted hover:text-emerald-400 hover:border-emerald-500/40 shrink-0 disabled:opacity-50"
+                                                  >
+                                                    {isAdding ? '...' : (isHebrew ? '+ שורטליסט' : '+ Shortlist')}
+                                                  </button>
                                                 )}
-                                              </Link>
-                                            ))}
-                                          </div>
-                                        )}
-                                        {isMatchingExpanded && matchingPlayers.length === 0 && (
-                                          <div className="border-t border-mgsr-border/50 px-3 py-4">
-                                            <p className="text-sm text-mgsr-muted">{t('requests_no_match')}</p>
-                                          </div>
-                                        )}
-                                      </div>
-
-                                      {/* AI Scout section — Transfermarkt-based, men only */}
-                                      {!isWomen && !isYouth && (
-                                      <div className="border-t border-mgsr-border/50">
+                                              </div>
+                                            );
+                                          })}
+                                          {shortlistError && <p className="text-xs text-red-400 mt-1">{shortlistError}</p>}
+                                        </div>
+                                      ) : scoutExpandedRequestId === r.id && scoutErrorByRequestId[r.id!] ? (
+                                        <p className="text-sm text-red-400 py-2">{scoutErrorByRequestId[r.id!]}</p>
+                                      ) : scoutExpandedRequestId === r.id ? (
+                                        <p className="text-sm text-mgsr-muted py-4 text-center">{t('requests_online_players_empty')}</p>
+                                      ) : (
                                         <button
                                           type="button"
-                                          onClick={() => r.id && fetchScoutPlayers(r)}
+                                          onClick={(e) => { e.stopPropagation(); fetchScoutPlayers(r); }}
                                           disabled={!!scoutLoadingRequestId}
-                                          className="w-full flex items-center gap-3 px-3 py-2.5 text-start hover:bg-mgsr-dark/30 transition disabled:opacity-60"
+                                          className="w-full py-4 text-center text-sm text-mgsr-teal hover:bg-mgsr-teal/5 rounded-lg transition disabled:opacity-50"
                                         >
-                                          <span className="text-sm text-mgsr-teal">{t('requests_find_players_online')}</span>
-                                          {scoutLoadingRequestId === r.id && (
-                                            <span className="shrink-0 w-4 h-4 border-2 border-mgsr-teal border-t-transparent rounded-full animate-spin" />
-                                          )}
+                                          {t('requests_find_players_online')} →
                                         </button>
-                                        {scoutExpandedRequestId === r.id && scoutLoadingRequestId !== r.id && (
-                                          <div className="border-t border-mgsr-border/50 p-2 space-y-1" data-no-propagate>
-                                            {shortlistError && (
-                                              <p className="text-sm text-red-400 px-2 py-1">{shortlistError}</p>
-                                            )}
-                                            {scoutErrorByRequestId[r.id!] && (
-                                              <p className="text-sm text-red-400 px-2 py-1" title={scoutErrorByRequestId[r.id!]}>
-                                                {lang === 'he' ? 'שגיאת סקאוט:' : 'Scout error:'} {scoutErrorByRequestId[r.id!]}
-                                              </p>
-                                            )}
-                                            {scoutResultsByRequestId[r.id!]?.length === 0 && !scoutErrorByRequestId[r.id!] ? (
-                                              <p className="text-sm text-mgsr-muted px-2 py-3">{t('requests_online_players_empty')}</p>
-                                            ) : scoutResultsByRequestId[r.id!]?.length === 0 ? null : (
-                                              (scoutResultsByRequestId[r.id!] ?? [])
-                                                .filter((s) => s.transfermarktUrl)
-                                                .map((s) => {
-                                                const url = s.transfermarktUrl!;
-                                                const isAdding = addingToShortlistUrl === url;
-                                                const isInShortlist = shortlistUrls.has(url);
-                                                const hasAnalysis = s.scoutAnalysis || s.scoreBreakdown;
-                                                return (
-                                                  <div
-                                                    key={url}
-                                                    className="flex flex-col gap-1 p-2 rounded-lg hover:bg-mgsr-teal/10 transition"
-                                                  >
-                                                    <div className="flex items-center gap-3">
-                                                      <a
-                                                        href={url}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                        className="flex-1 min-w-0 hover:underline"
-                                                        onClick={(e) => e.stopPropagation()}
-                                                      >
-                                                        <p className="font-medium text-mgsr-text text-sm truncate">{s.name || '—'}</p>
-                                                        <p className="text-xs text-mgsr-muted truncate">
-                                                          {(s.age ? t('players_age_display').replace('{age}', s.age) : '—')}
-                                                          <span className="mx-1.5">·</span>
-                                                          {shortenScoutPosition(s.position)}
-                                                          <span className="mx-1.5">·</span>
-                                                          {s.marketValue || '—'}
-                                                          {s.matchPercent != null && (
-                                                            <>
-                                                              <span className="mx-1.5">·</span>
-                                                              {t('requests_online_match_score').replace('{pct}', String(s.matchPercent))}
-                                                            </>
-                                                          )}
-                                                          {s.fmCa != null && s.fmCa > 0 && (
-                                                            <>
-                                                              <span className="mx-1.5">·</span>
-                                                              <span className="text-indigo-400 font-medium">FM {s.fmCa}{s.fmPa != null && s.fmPa > s.fmCa ? `→${s.fmPa}` : ''}</span>
-                                                            </>
-                                                          )}
-                                                        </p>
-                                                      </a>
-                                                    {isInShortlist ? (
-                                                      <div className="flex items-center gap-2 px-2.5 py-1 rounded-full bg-amber-500/15 border border-amber-500/30 shrink-0">
-                                                        <svg className="w-4 h-4 text-amber-400 shrink-0" fill="currentColor" viewBox="0 0 24 24">
-                                                          <path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z" />
-                                                        </svg>
-                                                        <span className="text-xs font-semibold text-amber-400 uppercase tracking-wide">
-                                                          {t('releases_saved')}
-                                                        </span>
-                                                        <Link
-                                                          href="/shortlist"
-                                                          className="text-xs font-medium text-amber-400/90 hover:text-amber-300 underline underline-offset-2 decoration-amber-400/50 hover:decoration-amber-300 transition-colors"
-                                                        >
-                                                          {t('releases_view_shortlist')} {isRtl ? '←' : '→'}
-                                                        </Link>
-                                                      </div>
-                                                    ) : (
-                                                      <button
-                                                        type="button"
-                                                        onClick={(e) => addScoutPlayerToShortlist(s, e)}
-                                                        disabled={!!addingToShortlistUrl}
-                                                        className="flex items-center gap-2 px-2.5 py-1 rounded-full border border-mgsr-border/80 bg-mgsr-dark/40 text-mgsr-muted hover:border-amber-500/40 hover:text-amber-400/90 hover:bg-amber-500/5 disabled:opacity-60 transition-all duration-200 shrink-0"
-                                                      >
-                                                        {isAdding ? (
-                                                          <span className="w-4 h-4 border-2 border-amber-400/40 border-t-amber-400 rounded-full animate-spin shrink-0" />
-                                                        ) : (
-                                                          <svg className="w-4 h-4 shrink-0 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
-                                                          </svg>
-                                                        )}
-                                                        <span className="text-xs font-medium">
-                                                          {isAdding ? t('shortlist_adding') : t('shortlist_add')}
-                                                        </span>
-                                                      </button>
-                                                    )}
-                                                    </div>
-                                                    {hasAnalysis && (
-                                                      <details className="group/details mt-1">
-                                                        <summary className="text-xs text-mgsr-muted cursor-pointer hover:text-mgsr-teal/80 list-none flex items-center gap-1">
-                                                          <span className="group-open/details:rotate-90 transition-transform inline-block">▶</span>
-                                                          {lang === 'he' ? 'למה התאמה?' : 'Why this match?'}
-                                                        </summary>
-                                                        <div className="mt-2 pl-4 space-y-2 text-xs text-mgsr-muted border-l border-mgsr-border/50">
-                                                          {s.scoreBreakdown && (s.scoreBreakdown.clubFit != null || s.scoreBreakdown.realism != null || s.scoreBreakdown.noteFit != null) && (
-                                                            <div className="flex flex-wrap gap-x-4 gap-y-0.5">
-                                                              {s.scoreBreakdown.clubFit != null && (
-                                                                <span>{lang === 'he' ? 'התאמה מועדונית' : 'Club fit'}: {s.scoreBreakdown.clubFit}%</span>
-                                                              )}
-                                                              {s.scoreBreakdown.realism != null && (
-                                                                <span>{lang === 'he' ? 'ריאליזם תקציבי' : 'Budget realism'}: {s.scoreBreakdown.realism}%</span>
-                                                              )}
-                                                              {s.scoreBreakdown.noteFit != null && (
-                                                                <span>{lang === 'he' ? 'התאמה להערות' : 'Note fit'}: {s.scoreBreakdown.noteFit}%</span>
-                                                              )}
-                                                            </div>
-                                                          )}
-                                                          {s.scoutAnalysis && (() => {
-                                                            const bullets = parseScoutAnalysisBullets(s.scoutAnalysis);
-                                                            return bullets.length > 0 ? (
-                                                              <ul className="list-disc list-outside ps-4 space-y-1.5 leading-relaxed">
-                                                                {bullets.map((b, i) => (
-                                                                  <li key={i}>{b}</li>
-                                                                ))}
-                                                              </ul>
-                                                            ) : (
-                                                              <p className="leading-relaxed">{s.scoutAnalysis}</p>
-                                                            );
-                                                          })()}
-                                                        </div>
-                                                      </details>
-                                                    )}
-                                                  </div>
-                                                );
-                                              })
-                                            )}
-                                          </div>
-                                        )}
-                                      </div>
                                       )}
+                                    </div>
+                                  )}
+                                </div>
 
-                                      {/* Club Intelligence — men only, needs clubTmProfile */}
-                                      {!isWomen && !isYouth && r.clubTmProfile && (() => {
-                                        const clubUrl = r.clubTmProfile!;
-                                        const reqId = r.id!;
-                                        const isLoading = clubIntelLoading === reqId;
-                                        const isExpanded = clubIntelExpandedRequestId === reqId;
-                                        const intel = clubIntelByClub[clubUrl];
-                                        const error = clubIntelError[clubUrl];
-                                        return (
-                                          <div className="border-t border-mgsr-border/50">
-                                            <button
-                                              type="button"
-                                              onClick={() => fetchClubIntel(clubUrl, reqId)}
-                                              disabled={!!clubIntelLoading}
-                                              className="w-full flex items-center gap-3 px-3 py-2.5 text-start hover:bg-mgsr-dark/30 transition disabled:opacity-60"
-                                            >
-                                              <span className="text-sm text-purple-400">{isHebrew ? 'מודיעין על המועדון' : 'Club Intelligence'}</span>
-                                              {isLoading && (
-                                                <span className="shrink-0 w-4 h-4 border-2 border-purple-400 border-t-transparent rounded-full animate-spin" />
-                                              )}
-                                              {intel && !isLoading && (
-                                                <span className="text-xs text-mgsr-muted">{isExpanded ? '▲' : '▼'}</span>
-                                              )}
-                                            </button>
-                                            {isExpanded && !isLoading && (
-                                              <div className="border-t border-mgsr-border/50">
-                                                {error && (
-                                                  <p className="text-sm text-red-400 px-3 py-2">{error}</p>
-                                                )}
-                                                {intel && <ClubIntelPanel data={intel} isHebrew={isHebrew} />}
-                                              </div>
-                                            )}
-                                          </div>
-                                        );
-                                      })()}
+                                {/* Club Intelligence — men only, needs clubTmProfile */}
+                                {!isWomen && !isYouth && r.clubTmProfile && (() => {
+                                  const clubUrl = r.clubTmProfile!;
+                                  const reqId = r.id!;
+                                  const isLoading = clubIntelLoading === reqId;
+                                  const isExpanded = clubIntelExpandedRequestId === reqId;
+                                  const intel = clubIntelByClub[clubUrl];
+                                  const error = clubIntelError[clubUrl];
+                                  return (
+                                    <div className="mt-4 rounded-xl border border-mgsr-border overflow-hidden">
+                                      <button
+                                        type="button"
+                                        onClick={(e) => { e.stopPropagation(); fetchClubIntel(clubUrl, reqId); }}
+                                        disabled={!!clubIntelLoading}
+                                        className="w-full flex items-center gap-3 px-4 py-2.5 text-start hover:bg-mgsr-dark/30 transition disabled:opacity-60"
+                                      >
+                                        <span className="text-sm text-purple-400">{isHebrew ? 'מודיעין על המועדון' : 'Club Intelligence'}</span>
+                                        {isLoading && <span className="shrink-0 w-4 h-4 border-2 border-purple-400 border-t-transparent rounded-full animate-spin" />}
+                                        {intel && !isLoading && <span className="text-xs text-mgsr-muted">{isExpanded ? '▲' : '▼'}</span>}
+                                      </button>
+                                      {isExpanded && !isLoading && (
+                                        <div className="border-t border-mgsr-border">
+                                          {error && <p className="text-sm text-red-400 px-3 py-2">{error}</p>}
+                                          {intel && <ClubIntelPanel data={intel} isHebrew={isHebrew} />}
+                                        </div>
+                                      )}
                                     </div>
                                   );
-                                })}
+                                })()}
                               </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
 

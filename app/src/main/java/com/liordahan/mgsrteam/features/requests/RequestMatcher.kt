@@ -38,7 +38,9 @@ object RequestMatcher {
         "CENTERFORWARD" to "CF",
         "SECOND STRIKER" to "SS",
         "LEFT MIDFIELD" to "LM",
-        "RIGHT MIDFIELD" to "RM"
+        "RIGHT MIDFIELD" to "RM",
+        "STRIKER" to "CF",
+        "ST" to "CF"
     )
 
     private fun normalizePosition(pos: String): String {

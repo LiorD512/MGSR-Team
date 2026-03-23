@@ -693,6 +693,10 @@
     <string name="requests_add">Add request</string>
     <string name="requests_share">Share requests</string>
     <string name="requests_stat_positions">Positions</string>
+    <string name="requests_stat_matched">Matched</string>
+    <string name="requests_stat_unmatched">Unmatched</string>
+    <string name="requests_matches_count">%d matches</string>
+    <string name="requests_matches_count_one">%d match</string>
     <string name="requests_country_club_one">1 club</string>
     <string name="requests_country_clubs">%d clubs</string>
     <string name="requests_matching_players_one">%d matching player</string>
@@ -720,6 +724,7 @@
     <string name="requests_add_subtitle">Search club on Transfermarkt, then select position</string>
     <string name="requests_label_club">CLUB</string>
     <string name="requests_search_club">Search club…</string>
+    <string name="requests_search_placeholder">Search club, country, contact…</string>
     <string name="requests_label_position">POSITION</string>
     <string name="requests_label_contact">CONTACT</string>
     <string name="requests_label_age">AGE</string>
@@ -753,6 +758,10 @@
     <string name="requests_foot_right">Right</string>
     <string name="requests_foot_any">Doesn\'t matter</string>
     <string name="requests_foot_label">Foot: %s</string>
+    <string name="requests_salary_label_short">Salary</string>
+    <string name="requests_fee_label_short">Fee</string>
+    <string name="requests_age_label_short">Age</string>
+    <string name="requests_foot_label_short">Foot</string>
 
     <!-- Add Request voice recording -->
     <string name="requests_record_request">Record request</string>

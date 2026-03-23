@@ -144,6 +144,11 @@ class MainActivity : AppCompatActivity() {
                 intent.removeExtra(com.liordahan.mgsrteam.firebase.MgsrFirebaseMessagingService.EXTRA_SCREEN)
                 return
             }
+            "requests" -> {
+                viewModel.setPendingOpenRequestsScreen(true)
+                intent.removeExtra(com.liordahan.mgsrteam.firebase.MgsrFirebaseMessagingService.EXTRA_SCREEN)
+                return
+            }
             "mandate_signing" -> {
                 val token = intent.getStringExtra("token").orEmpty()
                 if (token.isNotBlank()) {
@@ -169,6 +174,10 @@ class MainActivity : AppCompatActivity() {
                     finish()
                 }
                 dataType == com.liordahan.mgsrteam.firebase.MgsrFirebaseMessagingService.TYPE_MANDATE_EXPIRED ->
+                    viewModel.setPendingDeepLinkPlayerId(url)
+                dataType == com.liordahan.mgsrteam.firebase.MgsrFirebaseMessagingService.TYPE_CLUB_CHANGE ||
+                dataType == com.liordahan.mgsrteam.firebase.MgsrFirebaseMessagingService.TYPE_BECAME_FREE_AGENT ||
+                dataType == com.liordahan.mgsrteam.firebase.MgsrFirebaseMessagingService.TYPE_MARKET_VALUE_CHANGE ->
                     viewModel.setPendingDeepLinkPlayerId(url)
                 else -> {
                     viewModel.setPendingAddPlayerTmUrl(url)

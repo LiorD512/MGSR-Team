@@ -149,6 +149,15 @@ fun HomeScreen(
     }
 
     LaunchedEffect(Unit) {
+        mainViewModel.pendingOpenRequestsScreen.collectLatest { shouldOpen ->
+            if (shouldOpen) {
+                navController.navigate(Screens.RequestsScreen.route)
+                mainViewModel.setPendingOpenRequestsScreen(false)
+            }
+        }
+    }
+
+    LaunchedEffect(Unit) {
         mainViewModel.pendingShortlistAddTmUrl.collectLatest { tmUrl ->
             if (!tmUrl.isNullOrBlank()) {
                 navController.navigate(Screens.ShortlistScreen.route)

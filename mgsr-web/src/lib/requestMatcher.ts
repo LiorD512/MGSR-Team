@@ -35,12 +35,16 @@ export interface ClubRequest {
 }
 
 function matchesPosition(player: RosterPlayer, requestPosition: string): boolean {
+  const normalize = (p: string) => {
+    const u = p.trim().toUpperCase();
+    return u === 'ST' ? 'CF' : u;
+  };
   const playerPositions =
     player.positions
-      ?.map((p) => p?.trim().toUpperCase())
+      ?.map((p) => p ? normalize(p) : null)
       .filter((p): p is string => !!p) ?? [];
   if (playerPositions.length === 0) return false;
-  const reqPos = requestPosition?.trim().toUpperCase();
+  const reqPos = requestPosition ? normalize(requestPosition) : null;
   if (!reqPos) return false;
   return playerPositions.some((p) => p === reqPos);
 }

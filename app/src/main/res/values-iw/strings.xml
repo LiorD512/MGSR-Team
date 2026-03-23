@@ -622,10 +622,14 @@
     <string name="requests_add">הוסף בקשה</string>
     <string name="requests_share">שתף בקשות</string>
     <string name="requests_stat_positions">עמדות</string>
+    <string name="requests_stat_matched">עם התאמות</string>
+    <string name="requests_stat_unmatched">ללא התאמות</string>
+    <string name="requests_matches_count">%d התאמות</string>
+    <string name="requests_matches_count_one">התאמה %d</string>
     <string name="requests_country_club_one">מועדון 1</string>
     <string name="requests_country_clubs">%d מועדונים</string>
-    <string name="requests_matching_players_one">%d שחקן תואם</string>
-    <string name="requests_matching_players">%d שחקנים תואמים במאגר</string>
+    <string name="requests_matching_players_one">%d התאמה מהמאגר</string>
+    <string name="requests_matching_players">%d התאמות מהמאגר</string>
     <string name="requests_find_players">מצא שחקנים</string>
     <string name="requests_find_players_sheet_title">שחקנים לבקשה זו</string>
     <string name="requests_find_players_online">מצא שחקנים בעזרת AI סקאוט</string>
@@ -649,6 +653,7 @@
     <string name="requests_add_subtitle">חפש מועדון ב-Transfermarkt, ואז בחר עמדה</string>
     <string name="requests_label_club">מועדון</string>
     <string name="requests_search_club">חפש מועדון…</string>
+    <string name="requests_search_placeholder">חיפוש מועדון, מדינה, איש קשר…</string>
     <string name="requests_label_position">עמדה</string>
     <string name="requests_label_contact">איש קשר</string>
     <string name="requests_label_age">גיל</string>
@@ -682,6 +687,10 @@
     <string name="requests_foot_right">ימין</string>
     <string name="requests_foot_any">לא משנה</string>
     <string name="requests_foot_label">רגל: %s</string>
+    <string name="requests_salary_label_short">שכר</string>
+    <string name="requests_fee_label_short">דמי העברה</string>
+    <string name="requests_age_label_short">גיל</string>
+    <string name="requests_foot_label_short">רגל</string>
 
     <!-- Add Request voice recording -->
     <string name="requests_record_request">הקלט בקשה</string>

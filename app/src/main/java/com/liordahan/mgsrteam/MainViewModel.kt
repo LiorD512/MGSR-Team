@@ -29,6 +29,9 @@ abstract class IMainViewModel : ViewModel() {
     /** When set, navigate to Add Player screen. */
     abstract val pendingOpenAddPlayerScreen: StateFlow<Boolean>
     abstract fun setPendingOpenAddPlayerScreen(value: Boolean)
+    /** When set, navigate to Requests screen. */
+    abstract val pendingOpenRequestsScreen: StateFlow<Boolean>
+    abstract fun setPendingOpenRequestsScreen(value: Boolean)
     abstract fun signOut()
 }
 
@@ -94,6 +97,13 @@ class MainViewModel(
 
     override fun setPendingOpenAddPlayerScreen(value: Boolean) {
         _pendingOpenAddPlayerScreen.value = value
+    }
+
+    private val _pendingOpenRequestsScreen = MutableStateFlow(false)
+    override val pendingOpenRequestsScreen: StateFlow<Boolean> = _pendingOpenRequestsScreen
+
+    override fun setPendingOpenRequestsScreen(value: Boolean) {
+        _pendingOpenRequestsScreen.value = value
     }
 
     init {
