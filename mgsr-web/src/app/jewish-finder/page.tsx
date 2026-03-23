@@ -194,17 +194,17 @@ export default function JewishFinderPage() {
 
   return (
     <AppLayout>
-      <div className={`max-w-5xl mx-auto px-4 py-6 ${isRtl ? 'text-right' : 'text-left'}`} dir={isRtl ? 'rtl' : 'ltr'}>
+      <div className={`max-w-5xl mx-auto px-2 sm:px-4 py-4 sm:py-6 ${isRtl ? 'text-right' : 'text-left'}`} dir={isRtl ? 'rtl' : 'ltr'}>
 
         {/* Header */}
-        <div className="mb-6">
-          <div className="flex items-center gap-3 mb-1">
-            <span className="text-3xl">✡️</span>
-            <h1 className="text-2xl font-bold text-[var(--mgsr-text)]">
+        <div className="mb-4 sm:mb-6">
+          <div className="flex items-center gap-2 sm:gap-3 mb-1">
+            <span className="text-2xl sm:text-3xl">✡️</span>
+            <h1 className="text-xl sm:text-2xl font-bold text-[var(--mgsr-text)]">
               {isRtl ? 'הסקאוט הכשר' : 'Kosher Scout'}
             </h1>
           </div>
-          <p className="text-sm text-[var(--mgsr-text)]/50 max-w-2xl">
+          <p className="text-xs sm:text-sm text-[var(--mgsr-text)]/50 max-w-2xl">
             {isRtl
               ? 'סריקה אוטומטית של ליגות בעולם — התאמת שמות משפחה יהודיים, אימות מויקיפדיה, וסיווג AI. כל ריענון סורק ליגות ושחקנים שונים.'
               : 'Auto-scans world leagues — matches Jewish surnames, verifies via Wikipedia, classifies with AI. Each refresh scans different leagues & players.'}
@@ -212,10 +212,10 @@ export default function JewishFinderPage() {
         </div>
 
         {/* Action Bar */}
-        <div className="flex items-center gap-3 mb-6 flex-wrap">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4 sm:mb-6">
           <button
             onClick={running ? stop : runDiscovery}
-            className={`px-6 py-3 rounded-xl text-sm font-bold transition-all ${running
+            className={`w-full sm:w-auto px-6 py-3 rounded-xl text-sm font-bold transition-all ${running
               ? 'bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30'
               : 'bg-[var(--mgsr-accent)] text-[var(--mgsr-dark)] hover:brightness-110'}`}
           >
@@ -228,7 +228,7 @@ export default function JewishFinderPage() {
 
           {/* Stats */}
           {(totalScanned > 0 || surnameStats) && (
-            <div className="flex gap-4 text-xs text-[var(--mgsr-text)]/40">
+            <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-[var(--mgsr-text)]/40">
               {surnameStats && <span>📚 {surnameStats.totalSurnames} {isRtl ? 'שמות משפחה במאגר' : 'surnames in DB'}</span>}
               {totalScanned > 0 && <span>🔍 {totalScanned} {isRtl ? 'שחקנים נסרקו' : 'players scanned'}</span>}
               {highConf > 0 && <span className="text-emerald-400">⭐ {highConf} {isRtl ? 'סבירות בינונית+' : 'medium+ confidence'}</span>}
@@ -239,14 +239,14 @@ export default function JewishFinderPage() {
 
         {/* Running State */}
         {running && (
-          <div className="mb-6 p-4 rounded-xl bg-[var(--mgsr-card)] border border-[var(--mgsr-accent)]/20 animate-pulse">
-            <div className="flex items-center gap-3">
-              <div className="w-5 h-5 border-2 border-[var(--mgsr-accent)] border-t-transparent rounded-full animate-spin" />
-              <span className="text-sm text-[var(--mgsr-text)]">
+          <div className="mb-4 sm:mb-6 p-3 sm:p-4 rounded-xl bg-[var(--mgsr-card)] border border-[var(--mgsr-accent)]/20 animate-pulse">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="w-5 h-5 border-2 border-[var(--mgsr-accent)] border-t-transparent rounded-full animate-spin shrink-0" />
+              <span className="text-xs sm:text-sm text-[var(--mgsr-text)]">
                 {isRtl ? 'סורק ליגות, מתאים שמות משפחה, מעשיר מויקיפדיה, מסווג עם AI...' : 'Scanning leagues, matching surnames, enriching from Wikipedia, classifying with AI...'}
               </span>
             </div>
-            <div className="mt-2 text-xs text-[var(--mgsr-text)]/30">
+            <div className="mt-2 text-[10px] sm:text-xs text-[var(--mgsr-text)]/30">
               {isRtl ? 'זה יכול לקחת 1-3 דקות. 2 ליגות × 5 קבוצות × סריקת שמות → Wikipedia → Gemini' : 'This may take 1-3 minutes. 2 leagues × 5 clubs × surname matching → Wikipedia → Gemini'}
             </div>
           </div>
@@ -289,42 +289,43 @@ export default function JewishFinderPage() {
             {allPlayers.map((p, idx) => {
               const colors = cc(p.confidenceScore);
               return (
-                <div key={`${p.name}-${idx}`} className="p-4 rounded-xl bg-[var(--mgsr-card)] border border-white/5 hover:border-white/10 transition-colors">
-                  <div className="flex items-start gap-3">
+                <div key={`${p.name}-${idx}`} className="p-3 sm:p-4 rounded-xl bg-[var(--mgsr-card)] border border-white/5 hover:border-white/10 transition-colors">
+                  {/* Mobile: vertical stack. Desktop: horizontal with rank + content + actions */}
+                  <div className="flex items-start gap-2 sm:gap-3">
                     {/* Rank */}
-                    <div className="w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center text-[11px] font-bold text-[var(--mgsr-text)]/25 shrink-0">
+                    <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-white/5 flex items-center justify-center text-[10px] sm:text-[11px] font-bold text-[var(--mgsr-text)]/25 shrink-0 mt-0.5">
                       {idx + 1}
                     </div>
 
                     <div className="flex-1 min-w-0">
                       {/* Name + Confidence */}
-                      <div className="flex items-center gap-2 flex-wrap mb-1">
-                        <span className="text-[15px] font-bold text-[var(--mgsr-text)]">{p.name}</span>
-                        <span className={`px-2 py-0.5 rounded-md text-xs font-bold ${colors.bg} ${colors.text} border ${colors.border}`}>
+                      <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap mb-1">
+                        <span className="text-sm sm:text-[15px] font-bold text-[var(--mgsr-text)]">{p.name}</span>
+                        <span className={`px-1.5 sm:px-2 py-0.5 rounded-md text-[10px] sm:text-xs font-bold ${colors.bg} ${colors.text} border ${colors.border}`}>
                           {p.confidenceScore}%
                         </span>
-                        <span className={`text-[10px] font-medium ${colors.text}`}>{isRtl ? (LABEL_HE[p.confidenceLabel] || p.confidenceLabel) : p.confidenceLabel}</span>
+                        <span className={`text-[9px] sm:text-[10px] font-medium ${colors.text}`}>{isRtl ? (LABEL_HE[p.confidenceLabel] || p.confidenceLabel) : p.confidenceLabel}</span>
                       </div>
 
-                      {/* Player Meta */}
-                      <div className="flex items-center gap-2 text-xs text-[var(--mgsr-text)]/40 mb-2 flex-wrap">
-                        {p.position && <span className="bg-white/5 px-1.5 py-0.5 rounded">{p.position}</span>}
-                        <span>{p.club}</span>
-                        <span className="text-[var(--mgsr-text)]/20">·</span>
-                        <span>{p.league}</span>
-                        <span className="text-[var(--mgsr-text)]/20">·</span>
+                      {/* Player Meta — wraps naturally on mobile */}
+                      <div className="flex items-center gap-1.5 sm:gap-2 text-[10px] sm:text-xs text-[var(--mgsr-text)]/40 mb-2 flex-wrap">
+                        {p.position && <span className="bg-white/5 px-1 sm:px-1.5 py-0.5 rounded">{p.position}</span>}
+                        <span className="truncate max-w-[120px] sm:max-w-none">{p.club}</span>
+                        <span className="text-[var(--mgsr-text)]/20 hidden sm:inline">·</span>
+                        <span className="truncate max-w-[100px] sm:max-w-none">{p.league}</span>
+                        <span className="text-[var(--mgsr-text)]/20 hidden sm:inline">·</span>
                         <span>🏳️ {p.nationality}</span>
                         {p.age && <span>{p.age}y</span>}
                         {p.marketValue && <span>💰 {p.marketValue}</span>}
                       </div>
 
                       {/* Confidence Bar */}
-                      <div className="h-1 rounded-full bg-white/5 overflow-hidden mb-2 max-w-xs">
+                      <div className="h-1 rounded-full bg-white/5 overflow-hidden mb-2 max-w-[200px] sm:max-w-xs">
                         <div className={`h-full rounded-full ${colors.bar} transition-all duration-700`} style={{ width: `${p.confidenceScore}%` }} />
                       </div>
 
                       {/* Surname Match */}
-                      <div className="flex items-center gap-2 mb-2 text-xs">
+                      <div className="flex items-center gap-1.5 sm:gap-2 mb-2 text-[10px] sm:text-xs flex-wrap">
                         <Badge cls={p.surnameMatch.confidence === 'common' ? 'bg-violet-500/20 text-violet-400' : 'bg-zinc-500/20 text-zinc-400'}>
                           {isRtl ? (CONFIDENCE_TAG_HE[p.surnameMatch.confidence] || p.surnameMatch.confidence) : p.surnameMatch.confidence}
                         </Badge>
@@ -336,15 +337,15 @@ export default function JewishFinderPage() {
                       </div>
 
                       {/* AI Reasoning */}
-                      <p className="text-xs text-[var(--mgsr-text)]/60 leading-relaxed mb-2">{p.geminiReasoning}</p>
+                      <p className="text-[10px] sm:text-xs text-[var(--mgsr-text)]/60 leading-relaxed mb-2">{p.geminiReasoning}</p>
 
                       {/* Signals */}
                       {p.signals.length > 1 && (
-                        <div className="flex flex-wrap gap-1.5 mb-2">
+                        <div className="flex flex-wrap gap-1 sm:gap-1.5 mb-2">
                           {p.signals.slice(0, 4).map((s, si) => (
-                            <div key={si} className="flex items-center gap-1 text-[11px]">
+                            <div key={si} className="flex items-center gap-1 text-[10px] sm:text-[11px]">
                               <Badge cls={s.weight === 'high' ? 'bg-emerald-500/20 text-emerald-400' : s.weight === 'medium' ? 'bg-amber-500/20 text-amber-400' : 'bg-zinc-500/20 text-zinc-400'}>{isRtl ? (WEIGHT_HE[s.weight] || s.weight) : s.weight}</Badge>
-                              <span className="text-[var(--mgsr-text)]/40">{s.signal}</span>
+                              <span className="text-[var(--mgsr-text)]/40 truncate max-w-[140px] sm:max-w-none">{s.signal}</span>
                             </div>
                           ))}
                           {p.signals.length > 4 && <span className="text-[10px] text-[var(--mgsr-text)]/20">+{p.signals.length - 4}</span>}
@@ -353,12 +354,46 @@ export default function JewishFinderPage() {
 
                       {/* Wiki Summary */}
                       {p.wikipediaSummary && (
-                        <p className="text-[11px] text-[var(--mgsr-text)]/25 leading-relaxed line-clamp-2">{p.wikipediaSummary}</p>
+                        <p className="text-[10px] sm:text-[11px] text-[var(--mgsr-text)]/25 leading-relaxed line-clamp-2">{p.wikipediaSummary}</p>
                       )}
+
+                      {/* Actions — below content on mobile, side on desktop */}
+                      <div className="flex items-center gap-2 mt-2 sm:hidden">
+                        {p.tmUrl && (
+                          <a href={p.tmUrl} target="_blank" rel="noopener noreferrer" className="text-[11px] text-[var(--mgsr-accent)] hover:underline">
+                            TM ↗
+                          </a>
+                        )}
+                        {p.tmUrl && (() => {
+                          const inSl = shortlistUrls.has(p.tmUrl);
+                          const isAdding = addingToShortlistUrl === p.tmUrl;
+                          return (
+                            <button
+                              type="button"
+                              onClick={(e) => !inSl && addToShortlist(p, e)}
+                              disabled={!!addingToShortlistUrl}
+                              className={`group/sl flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[11px] font-medium transition-all ${
+                                inSl
+                                  ? 'border-emerald-500/40 bg-emerald-500/15 text-emerald-400 cursor-default'
+                                  : 'border-white/10 bg-white/[0.03] text-[var(--mgsr-text)]/50 hover:border-amber-500/40 hover:text-amber-400 hover:bg-amber-500/5 disabled:opacity-50'
+                              }`}
+                            >
+                              {isAdding ? (
+                                <span className="w-3.5 h-3.5 border-2 border-amber-400/40 border-t-amber-400 rounded-full animate-spin" />
+                              ) : inSl ? (
+                                <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+                              ) : (
+                                <svg className="w-3.5 h-3.5 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" /></svg>
+                              )}
+                              {isAdding ? (isRtl ? 'מוסיף...' : 'Adding...') : inSl ? (isRtl ? 'בשורטליסט' : 'In Shortlist') : (isRtl ? 'שורטליסט' : 'Shortlist')}
+                            </button>
+                          );
+                        })()}
+                      </div>
                     </div>
 
-                    {/* TM Link + Shortlist */}
-                    <div className="flex flex-col items-end gap-2 shrink-0">
+                    {/* TM Link + Shortlist — desktop only (hidden on mobile, shown inline above) */}
+                    <div className="hidden sm:flex flex-col items-end gap-2 shrink-0">
                       {p.tmUrl && (
                         <a href={p.tmUrl} target="_blank" rel="noopener noreferrer" className="text-[11px] text-[var(--mgsr-accent)] hover:underline">
                           TM ↗
@@ -396,12 +431,12 @@ export default function JewishFinderPage() {
             })}
           </div>
         ) : !running && (
-          <div className="text-center py-16">
-            <div className="text-6xl mb-4">🕵️‍♂️</div>
-            <h3 className="text-lg font-semibold text-[var(--mgsr-text)]/50 mb-2">
+          <div className="text-center py-10 sm:py-16">
+            <div className="text-5xl sm:text-6xl mb-4">🕵️‍♂️</div>
+            <h3 className="text-base sm:text-lg font-semibold text-[var(--mgsr-text)]/50 mb-2">
               {isRtl ? 'לחץ "התחל גילוי" כדי לסרוק' : 'Press "Start Discovery" to scan'}
             </h3>
-            <p className="text-sm text-[var(--mgsr-text)]/30 max-w-lg mx-auto mb-4">
+            <p className="text-xs sm:text-sm text-[var(--mgsr-text)]/30 max-w-lg mx-auto mb-4 px-2">
               {isRtl
                 ? 'המערכת תבחר 2 ליגות (עדיפות ל-MLS), תסרוק 5 קבוצות, תתאים שמות משפחה יהודיים מהמאגר, תבדוק ויקיפדיה, ותסווג עם Gemini AI'
                 : 'The system will pick 2 leagues (MLS prioritized), scrape 5 clubs, match Jewish surnames from the database, verify via Wikipedia, and classify with Gemini AI'}
