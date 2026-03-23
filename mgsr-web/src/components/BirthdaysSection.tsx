@@ -92,78 +92,84 @@ export default function BirthdaysSection({ menPlayers = [], womenPlayers, youthP
   const { todayBirthdays, upcomingBirthdays } = useMemo(() => {
     const all: BirthdayPlayer[] = [];
 
-
+    // Only process players for the current platform
     // Men players
-    for (const p of menPlayers) {
-      if (!p.playerPhoneNumber) continue;
-      const dob = p.dateOfBirth || p.passportDetails?.dateOfBirth;
-      const parsed = parseDob(dob);
-      if (!parsed) continue;
-      const days = daysUntilBirthday(parsed);
-      all.push({
-        id: p.id,
-        fullName: p.fullName || 'Unknown',
-        profileImage: p.profileImage,
-        club: p.currentClub?.clubName,
-        phone: p.playerPhoneNumber,
-        turnsAge: computeAge(parsed.year),
-        agentInChargeName: p.agentInChargeName,
-        daysUntil: days === 0 ? 0 : days,
-        dateLabel: new Date(new Date().getFullYear(), parsed.month, parsed.day)
-          .toLocaleDateString(isRtl ? 'he-IL' : 'en-US', { month: 'short', day: 'numeric' }),
-        platform: 'men',
-      });
+    if (!isWomen && !isYouth) {
+      for (const p of menPlayers) {
+        if (!p.playerPhoneNumber) continue;
+        const dob = p.dateOfBirth || p.passportDetails?.dateOfBirth;
+        const parsed = parseDob(dob);
+        if (!parsed) continue;
+        const days = daysUntilBirthday(parsed);
+        all.push({
+          id: p.id,
+          fullName: p.fullName || 'Unknown',
+          profileImage: p.profileImage,
+          club: p.currentClub?.clubName,
+          phone: p.playerPhoneNumber,
+          turnsAge: computeAge(parsed.year),
+          agentInChargeName: p.agentInChargeName,
+          daysUntil: days === 0 ? 0 : days,
+          dateLabel: new Date(new Date().getFullYear(), parsed.month, parsed.day)
+            .toLocaleDateString(isRtl ? 'he-IL' : 'en-US', { month: 'short', day: 'numeric' }),
+          platform: 'men',
+        });
+      }
     }
 
     // Women players
-    for (const p of womenPlayers) {
-      if (!p.playerPhoneNumber) continue;
-      const dob = (p as unknown as { dateOfBirth?: string }).dateOfBirth || p.passportDetails?.dateOfBirth;
-      const parsed = parseDob(dob);
-      if (!parsed) continue;
-      const days = daysUntilBirthday(parsed);
-      all.push({
-        id: p.id,
-        fullName: p.fullName,
-        profileImage: p.profileImage,
-        club: p.currentClub?.clubName,
-        phone: p.playerPhoneNumber,
-        turnsAge: computeAge(parsed.year),
-        agentInChargeName: p.agentInChargeName,
-        daysUntil: days === 0 ? 0 : days,
-        dateLabel: new Date(new Date().getFullYear(), parsed.month, parsed.day)
-          .toLocaleDateString(isRtl ? 'he-IL' : 'en-US', { month: 'short', day: 'numeric' }),
-        platform: 'women',
-      });
+    if (isWomen) {
+      for (const p of womenPlayers) {
+        if (!p.playerPhoneNumber) continue;
+        const dob = (p as unknown as { dateOfBirth?: string }).dateOfBirth || p.passportDetails?.dateOfBirth;
+        const parsed = parseDob(dob);
+        if (!parsed) continue;
+        const days = daysUntilBirthday(parsed);
+        all.push({
+          id: p.id,
+          fullName: p.fullName,
+          profileImage: p.profileImage,
+          club: p.currentClub?.clubName,
+          phone: p.playerPhoneNumber,
+          turnsAge: computeAge(parsed.year),
+          agentInChargeName: p.agentInChargeName,
+          daysUntil: days === 0 ? 0 : days,
+          dateLabel: new Date(new Date().getFullYear(), parsed.month, parsed.day)
+            .toLocaleDateString(isRtl ? 'he-IL' : 'en-US', { month: 'short', day: 'numeric' }),
+          platform: 'women',
+        });
+      }
     }
 
     // Youth players
-    for (const p of youthPlayers) {
-      if (!p.playerPhoneNumber) continue;
-      const dob = p.dateOfBirth || (p.passportDetails as { dateOfBirth?: string } | undefined)?.dateOfBirth;
-      const parsed = parseDob(dob);
-      if (!parsed) continue;
-      const days = daysUntilBirthday(parsed);
-      all.push({
-        id: p.id,
-        fullName: p.fullName,
-        profileImage: p.profileImage,
-        club: p.currentClub?.clubName,
-        phone: p.playerPhoneNumber,
-        turnsAge: computeAge(parsed.year),
-        ageGroup: p.ageGroup,
-        agentInChargeName: p.agentInChargeName,
-        daysUntil: days === 0 ? 0 : days,
-        dateLabel: new Date(new Date().getFullYear(), parsed.month, parsed.day)
-          .toLocaleDateString(isRtl ? 'he-IL' : 'en-US', { month: 'short', day: 'numeric' }),
-        platform: 'youth',
-      });
+    if (isYouth) {
+      for (const p of youthPlayers) {
+        if (!p.playerPhoneNumber) continue;
+        const dob = p.dateOfBirth || (p.passportDetails as { dateOfBirth?: string } | undefined)?.dateOfBirth;
+        const parsed = parseDob(dob);
+        if (!parsed) continue;
+        const days = daysUntilBirthday(parsed);
+        all.push({
+          id: p.id,
+          fullName: p.fullName,
+          profileImage: p.profileImage,
+          club: p.currentClub?.clubName,
+          phone: p.playerPhoneNumber,
+          turnsAge: computeAge(parsed.year),
+          ageGroup: p.ageGroup,
+          agentInChargeName: p.agentInChargeName,
+          daysUntil: days === 0 ? 0 : days,
+          dateLabel: new Date(new Date().getFullYear(), parsed.month, parsed.day)
+            .toLocaleDateString(isRtl ? 'he-IL' : 'en-US', { month: 'short', day: 'numeric' }),
+          platform: 'youth',
+        });
+      }
     }
 
     const today = all.filter((p) => p.daysUntil === 0);
     const upcoming = all.filter((p) => p.daysUntil > 0 && p.daysUntil <= 7).sort((a, b) => a.daysUntil - b.daysUntil);
     return { todayBirthdays: today, upcomingBirthdays: upcoming };
-  }, [menPlayers, womenPlayers, youthPlayers, isRtl]);
+  }, [menPlayers, womenPlayers, youthPlayers, isRtl, isWomen, isYouth]);
 
   // Hide entire section when nothing to show
   if (todayBirthdays.length === 0 && upcomingBirthdays.length === 0) return null;

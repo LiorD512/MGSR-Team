@@ -94,6 +94,7 @@ export const menMoreItems = [
 
 export const womenMoreItems = [
   { href: '/shortlist', labelKey: 'nav_shortlist' },
+  { href: '/jewish-finder', labelKey: 'nav_jewish_finder' },
   { href: '/contacts', labelKey: 'nav_contacts' },
   { href: '/requests', labelKey: 'nav_requests' },
   { href: '/portfolio', labelKey: 'nav_portfolio' },

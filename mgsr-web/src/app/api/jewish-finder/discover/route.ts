@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { runDiscovery, getSurnameStats } from '@/lib/jewishPlayerFinder';
+import { runDiscovery, runWomenDiscovery, getSurnameStats } from '@/lib/jewishPlayerFinder';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
@@ -8,12 +8,13 @@ export const maxDuration = 300;
  * SSE streaming discovery endpoint.
  * Each call uses a rotating seed so different players/leagues are scanned.
  *
- * GET /api/jewish-finder/discover?seed=123
+ * GET /api/jewish-finder/discover?seed=123&platform=men|women
  */
 export async function GET(request: NextRequest) {
   const seedParam = request.nextUrl.searchParams.get('seed');
   const seed = seedParam ? parseInt(seedParam, 10) : Date.now();
   const lang = request.nextUrl.searchParams.get('lang') || 'en';
+  const platform = request.nextUrl.searchParams.get('platform') || 'men';
 
   const apiKey = process.env.GEMINI_API_KEY;
   const serperKey = process.env.SERPER_API_KEY || '';
@@ -34,9 +35,13 @@ export async function GET(request: NextRequest) {
       try {
         // Send surname stats first
         send('stats', getSurnameStats());
-        send('progress', { phase: 'starting', message: 'Selecting leagues and clubs to scan...' });
+        send('progress', { phase: 'starting', message: platform === 'women'
+          ? 'Selecting women\'s leagues and clubs to scan (SoccerDonna)...'
+          : 'Selecting leagues and clubs to scan...' });
 
-        const result = await runDiscovery(seed, apiKey, 20, lang, serperKey);
+        const result = platform === 'women'
+          ? await runWomenDiscovery(seed, apiKey, 20, lang, serperKey)
+          : await runDiscovery(seed, apiKey, 20, lang, serperKey);
         send('result', result);
         send('done', { ok: true });
       } catch (err) {

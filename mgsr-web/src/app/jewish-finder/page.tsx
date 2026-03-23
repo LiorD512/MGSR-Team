@@ -10,6 +10,7 @@ import { db } from '@/lib/firebase';
 import { collection, query as firestoreQuery, where, getDocs, addDoc, onSnapshot } from 'firebase/firestore';
 import { getCurrentAccountForShortlist } from '@/lib/accounts';
 import { getPlayerDetails } from '@/lib/api';
+import { SHORTLISTS_COLLECTIONS } from '@/lib/platformCollections';
 import type { DiscoveredPlayer, DiscoveryResult } from '@/lib/jewishPlayerFinder';
 
 function cc(score: number) {
@@ -39,32 +40,52 @@ const ORIGIN_HE: Record<string, string> = {
 const CONFIDENCE_TAG_HE: Record<string, string> = { 'common': 'נפוץ', 'notable': 'בולט' };
 const WEIGHT_HE: Record<string, string> = { 'high': 'גבוה', 'medium': 'בינוני', 'low': 'נמוך' };
 
+// Module-level cache so results survive navigation (cleared on full page refresh)
+let cachedResults: Record<string, DiscoveryResult[]> = {};
+let cachedStats: { totalSurnames: number; byOrigin: Record<string, number> } | null = null;
+
 export default function JewishFinderPage() {
   const { user, loading: authLoading } = useAuth();
   const { isRtl } = useLanguage();
+  const { platform } = usePlatform();
   const router = useRouter();
 
   const [running, setRunning] = useState(false);
-  const [results, setResults] = useState<DiscoveryResult[]>([]);
-  const [surnameStats, setSurnameStats] = useState<{ totalSurnames: number; byOrigin: Record<string, number> } | null>(null);
+  const [results, setResults] = useState<DiscoveryResult[]>(() => cachedResults[platform] ?? []);
+  const [surnameStats, setSurnameStats] = useState<{ totalSurnames: number; byOrigin: Record<string, number> } | null>(() => cachedStats);
   const [error, setError] = useState<string | null>(null);
   const [seed, setSeed] = useState(() => Date.now());
   const abortRef = useRef<AbortController | null>(null);
   const [shortlistUrls, setShortlistUrls] = useState<Set<string>>(new Set());
   const [addingToShortlistUrl, setAddingToShortlistUrl] = useState<string | null>(null);
 
+  // Sync cache when results change
+  useEffect(() => {
+    cachedResults[platform] = results;
+  }, [results, platform]);
+
+  useEffect(() => {
+    cachedStats = surnameStats;
+  }, [surnameStats]);
+
+  // Restore cached results when switching platforms
+  useEffect(() => {
+    setResults(cachedResults[platform] ?? []);
+  }, [platform]);
+
   useEffect(() => {
     if (!authLoading && !user) router.replace('/login');
   }, [user, authLoading, router]);
 
-  // Real-time shortlist listener
+  // Real-time shortlist listener (platform-specific)
+  const shortlistCol = SHORTLISTS_COLLECTIONS[platform] || 'Shortlists';
   useEffect(() => {
     if (!user) return;
-    const unsub = onSnapshot(collection(db, 'Shortlists'), (snap) => {
+    const unsub = onSnapshot(collection(db, shortlistCol), (snap) => {
       setShortlistUrls(new Set(snap.docs.map((d) => d.data().tmProfileUrl as string).filter((u): u is string => !!u)));
     });
     return () => unsub();
-  }, [user]);
+  }, [user, shortlistCol]);
 
   const addToShortlist = useCallback(async (p: DiscoveredPlayer, e: React.MouseEvent) => {
     e.preventDefault();
@@ -73,7 +94,7 @@ export default function JewishFinderPage() {
     setAddingToShortlistUrl(p.tmUrl);
     try {
       const account = await getCurrentAccountForShortlist(user);
-      const colRef = collection(db, 'Shortlists');
+      const colRef = collection(db, shortlistCol);
       const q = firestoreQuery(colRef, where('tmProfileUrl', '==', p.tmUrl));
       const existsSnap = await getDocs(q);
       if (existsSnap.empty) {
@@ -117,6 +138,7 @@ export default function JewishFinderPage() {
     } catch { /* silent */ } finally {
       setAddingToShortlistUrl(null);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   const runDiscovery = useCallback(async () => {
@@ -129,7 +151,7 @@ export default function JewishFinderPage() {
     abortRef.current = new AbortController();
 
     try {
-      const res = await fetch(`/api/jewish-finder/discover?seed=${currentSeed}&lang=${isRtl ? 'he' : 'en'}`, {
+      const res = await fetch(`/api/jewish-finder/discover?seed=${currentSeed}&lang=${isRtl ? 'he' : 'en'}&platform=${platform}`, {
         signal: abortRef.current.signal,
       });
 
@@ -361,7 +383,7 @@ export default function JewishFinderPage() {
                       <div className="flex items-center gap-2 mt-2 sm:hidden">
                         {p.tmUrl && (
                           <a href={p.tmUrl} target="_blank" rel="noopener noreferrer" className="text-[11px] text-[var(--mgsr-accent)] hover:underline">
-                            TM ↗
+                            {platform === 'women' ? 'SD ↗' : 'TM ↗'}
                           </a>
                         )}
                         {p.tmUrl && (() => {
@@ -392,11 +414,11 @@ export default function JewishFinderPage() {
                       </div>
                     </div>
 
-                    {/* TM Link + Shortlist — desktop only (hidden on mobile, shown inline above) */}
+                    {/* Profile Link + Shortlist — desktop only (hidden on mobile, shown inline above) */}
                     <div className="hidden sm:flex flex-col items-end gap-2 shrink-0">
                       {p.tmUrl && (
                         <a href={p.tmUrl} target="_blank" rel="noopener noreferrer" className="text-[11px] text-[var(--mgsr-accent)] hover:underline">
-                          TM ↗
+                          {platform === 'women' ? 'SoccerDonna ↗' : 'TM ↗'}
                         </a>
                       )}
                       {p.tmUrl && (() => {
@@ -437,9 +459,13 @@ export default function JewishFinderPage() {
               {isRtl ? 'לחץ "התחל גילוי" כדי לסרוק' : 'Press "Start Discovery" to scan'}
             </h3>
             <p className="text-xs sm:text-sm text-[var(--mgsr-text)]/30 max-w-lg mx-auto mb-4 px-2">
-              {isRtl
-                ? 'המערכת תבחר 2 ליגות (עדיפות ל-MLS), תסרוק 5 קבוצות, תתאים שמות משפחה יהודיים מהמאגר, תבדוק ויקיפדיה, ותסווג עם Gemini AI'
-                : 'The system will pick 2 leagues (MLS prioritized), scrape 5 clubs, match Jewish surnames from the database, verify via Wikipedia, and classify with Gemini AI'}
+              {platform === 'women'
+                ? (isRtl
+                    ? 'המערכת תבחר 2 ליגות נשים (עדיפות ל-NWSL), תסרוק 5 קבוצות מ-SoccerDonna, תתאים שמות משפחה יהודיים, תבדוק ויקיפדיה, ותסווג עם Gemini AI'
+                    : 'The system will pick 2 women\'s leagues (NWSL prioritized), scrape 5 clubs from SoccerDonna, match Jewish surnames, verify via Wikipedia, and classify with Gemini AI')
+                : (isRtl
+                    ? 'המערכת תבחר 2 ליגות (עדיפות ל-MLS), תסרוק 5 קבוצות, תתאים שמות משפחה יהודיים מהמאגר, תבדוק ויקיפדיה, ותסווג עם Gemini AI'
+                    : 'The system will pick 2 leagues (MLS prioritized), scrape 5 clubs, match Jewish surnames from the database, verify via Wikipedia, and classify with Gemini AI')}
             </p>
             <div className="text-xs text-[var(--mgsr-text)]/20 max-w-md mx-auto">
               {isRtl

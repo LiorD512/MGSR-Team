@@ -1193,3 +1193,269 @@ export function getSurnameStats() {
   }
   return { totalSurnames: Object.keys(JEWISH_SURNAMES).length, byOrigin: origins };
 }
+
+
+// ═══════════════════════════════════════════════════════════════
+// Women's Discovery Pipeline (SoccerDonna-based)
+// ═══════════════════════════════════════════════════════════════
+
+interface WomenLeaguePool {
+  id: string;
+  name: string;
+  soccerDonnaUrl: string;
+  region: string;
+  priority?: boolean;
+}
+
+const WOMEN_LEAGUE_POOL: WomenLeaguePool[] = [
+  // Top women's leagues
+  { id: 'nwsl', name: 'NWSL', soccerDonnaUrl: 'https://www.soccerdonna.de/en/nwsl/startseite/wettbewerb_NWSL.html', region: 'USA', priority: true },
+  { id: 'wsl', name: 'WSL', soccerDonnaUrl: 'https://www.soccerdonna.de/en/wsl/startseite/wettbewerb_WSL.html', region: 'England' },
+  { id: 'frauen_bl', name: 'Frauen-Bundesliga', soccerDonnaUrl: 'https://www.soccerdonna.de/en/frauen-bundesliga/startseite/wettbewerb_FBL.html', region: 'Germany' },
+  { id: 'd1_arkema', name: 'D1 Arkema', soccerDonnaUrl: 'https://www.soccerdonna.de/en/d1-arkema/startseite/wettbewerb_FR1.html', region: 'France' },
+  { id: 'liga_f', name: 'Liga F', soccerDonnaUrl: 'https://www.soccerdonna.de/en/liga-f/startseite/wettbewerb_ES1.html', region: 'Spain' },
+  { id: 'serie_a_f', name: 'Serie A Femminile', soccerDonnaUrl: 'https://www.soccerdonna.de/en/serie-a-femminile/startseite/wettbewerb_IT1.html', region: 'Italy' },
+  // Nordic
+  { id: 'damall', name: 'Damallsvenskan', soccerDonnaUrl: 'https://www.soccerdonna.de/en/damallsvenskan/startseite/wettbewerb_SE1.html', region: 'Sweden' },
+  { id: 'topps', name: 'Toppserien', soccerDonnaUrl: 'https://www.soccerdonna.de/en/toppserien/startseite/wettbewerb_NO1.html', region: 'Norway' },
+  // Other Europe
+  { id: 'ere_vrouwen', name: 'Eredivisie Vrouwen', soccerDonnaUrl: 'https://www.soccerdonna.de/en/eredivisie-vrouwen/startseite/wettbewerb_NL1.html', region: 'Netherlands' },
+  { id: 'super_league_w', name: 'Super League (CH)', soccerDonnaUrl: 'https://www.soccerdonna.de/en/credit-suisse-super-league/startseite/wettbewerb_C1.html', region: 'Switzerland' },
+  { id: 'a_bundesliga_w', name: 'ÖFB Frauen BL', soccerDonnaUrl: 'https://www.soccerdonna.de/en/oefb-frauen-bundesliga/startseite/wettbewerb_A1.html', region: 'Austria' },
+  // Americas
+  { id: 'brasileirao_f', name: 'Brasileirão Feminino', soccerDonnaUrl: 'https://www.soccerdonna.de/en/brasileirao-feminino-serie-a1/startseite/wettbewerb_BRFA.html', region: 'Brazil' },
+  // Oceania
+  { id: 'a_league_w', name: 'A-League Women', soccerDonnaUrl: 'https://www.soccerdonna.de/en/a-league-women/startseite/wettbewerb_AULW.html', region: 'Australia' },
+];
+
+const SOCCERDONNA_BASE = 'https://www.soccerdonna.de';
+
+/** Scrape club URLs from a SoccerDonna league page */
+async function scrapeDonnaLeagueClubs(leagueUrl: string): Promise<string[]> {
+  const html = await fetchHtmlWithRetry(leagueUrl);
+  const $ = cheerio.load(html);
+  const clubUrls: string[] = [];
+  const seenIds = new Set<string>();
+
+  $('a[href*="/verein_"]').each((_, el) => {
+    let href = $(el).attr('href') || '';
+    const idMatch = href.match(/verein_(\d+)/);
+    if (!idMatch) return;
+    if (seenIds.has(idMatch[1])) return;
+    seenIds.add(idMatch[1]);
+    // Convert startseite URL to kader URL
+    href = href.replace('/startseite/', '/kader/');
+    if (!href.startsWith('http')) href = SOCCERDONNA_BASE + href;
+    clubUrls.push(href);
+  });
+
+  return clubUrls;
+}
+
+interface DonnaPlayer {
+  name: string;
+  donnaUrl: string;
+  age: number | null;
+  position: string;
+}
+
+/** Scrape player squad from a SoccerDonna club kader page */
+async function scrapeDonnaClubSquad(kaderUrl: string): Promise<DonnaPlayer[]> {
+  const html = await fetchHtmlWithRetry(kaderUrl);
+  const $ = cheerio.load(html);
+  const players: DonnaPlayer[] = [];
+
+  $('table.tabelle_grafik tr.dunkel, table.tabelle_grafik tr.hell').each((_, row) => {
+    const tds = $(row).find('> td');
+    const nameCell = tds.eq(1);
+    const nameLink = nameCell.find("a[href*='/profil/spieler']").first();
+    const name = nameLink.text().trim();
+    let href = nameLink.attr('href') || '';
+    if (!name || !href) return;
+    if (!href.startsWith('http')) href = SOCCERDONNA_BASE + href;
+    const position = nameCell.find('table td').last().text().trim();
+    const ageStr = tds.eq(3).text().trim();
+    const age = ageStr ? parseInt(ageStr, 10) || null : null;
+    players.push({ name, donnaUrl: href, age, position });
+  });
+
+  return players;
+}
+
+/**
+ * Women's discovery scan using SoccerDonna as data source.
+ * Same pipeline as men's: surname match → Wikipedia → Serper → Gemini.
+ */
+export async function runWomenDiscovery(
+  seed: number,
+  geminiApiKey: string,
+  limit = 20,
+  lang: string = 'en',
+  serperKey: string = '',
+): Promise<DiscoveryResult> {
+  const start = Date.now();
+
+  // Pick 2 leagues — priority leagues get a boost
+  const shuffled = [...WOMEN_LEAGUE_POOL].sort((a, b) => {
+    const ha = hashStr(a.id, seed) + (a.priority ? -500000000 : 0);
+    const hb = hashStr(b.id, seed) + (b.priority ? -500000000 : 0);
+    return ha - hb;
+  });
+  const selectedLeagues = shuffled.slice(0, 2);
+  const leagueNames = selectedLeagues.map(l => l.name);
+
+  // Scrape club URLs — 5 clubs total across both leagues
+  const allClubUrls: Array<{ url: string; league: string }> = [];
+  const clubsPerLeague = selectedLeagues.length === 2 ? [3, 2] : [5];
+  for (let li = 0; li < selectedLeagues.length; li++) {
+    const league = selectedLeagues[li];
+    try {
+      const urls = await scrapeDonnaLeagueClubs(league.soccerDonnaUrl);
+      const clubSeed = seed ^ (li * 7919);
+      const clubShuffle = urls.sort((a, b) => hashStr(a, clubSeed) - hashStr(b, clubSeed));
+      for (const u of clubShuffle.slice(0, clubsPerLeague[li])) {
+        allClubUrls.push({ url: u, league: league.name });
+      }
+    } catch (err) {
+      console.warn(`[WomenDiscovery] League scrape failed: ${league.name}`, err instanceof Error ? err.message : '');
+    }
+    await sleep(1500);
+  }
+
+  // Scrape squads
+  interface ScrapedP { name: string; donnaUrl: string; age: number | null; position: string; club: string; league: string }
+  const allPlayers: ScrapedP[] = [];
+
+  for (const { url, league } of allClubUrls) {
+    try {
+      const squad = await scrapeDonnaClubSquad(url);
+      // Extract club name from URL: /en/club-name/kader/verein_123.html
+      const slug = url.split('/en/')[1]?.split('/')[0]?.replace(/-/g, ' ') || '';
+      const clubName = slug.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+      for (const p of squad) {
+        allPlayers.push({
+          name: p.name, donnaUrl: p.donnaUrl, age: p.age, position: p.position,
+          club: clubName, league,
+        });
+      }
+    } catch { /* skip */ }
+    await sleep(1200);
+  }
+
+  // Surname matching — skip if surname is extremely common in a known country
+  // (Women's SoccerDonna doesn't provide nationality in squad table, so we skip nationality filter)
+  const surnameMatches: Array<ScrapedP & { surnameMatch: NonNullable<ReturnType<typeof matchSurname>> }> = [];
+  for (const p of allPlayers) {
+    const m = matchSurname(p.name);
+    if (m) surnameMatches.push({ ...p, surnameMatch: m });
+  }
+
+  const shuffledMatches = surnameMatches.sort((a, b) => hashStr(a.name, seed) - hashStr(b.name, seed));
+  const toEnrich = shuffledMatches.slice(0, limit * 2);
+
+  // Wikipedia enrichment (parallel 5)
+  const enriched: Array<(typeof toEnrich)[0] & { wiki: WikiResult }> = [];
+  for (let i = 0; i < toEnrich.length; i += 5) {
+    const batch = toEnrich.slice(i, i + 5);
+    const results = await Promise.allSettled(batch.map(p => enrichWikipedia(p.name)));
+    for (let j = 0; j < batch.length; j++) {
+      const r = results[j];
+      const wiki: WikiResult = r.status === 'fulfilled' ? r.value : { summary: null, fullText: null, signals: [] };
+      enriched.push({ ...batch[j], wiki });
+    }
+    if (i + 5 < toEnrich.length) await sleep(400);
+  }
+
+  // Add surname signals
+  for (const e of enriched) {
+    e.wiki.signals.unshift({
+      source: 'surname',
+      signal: `Surname "${e.surnameMatch.surname}" (${e.surnameMatch.origin})`,
+      weight: e.surnameMatch.confidence === 'common' ? 'medium' : 'low',
+      detail: `${e.surnameMatch.confidence} Jewish surname of ${e.surnameMatch.origin} origin`,
+    });
+  }
+
+  // Web + News search enrichment via Serper.dev (parallel 3)
+  const webSnippetsMap = new Map<string, string[]>();
+  if (serperKey) {
+    for (let i = 0; i < enriched.length; i += 3) {
+      const batch = enriched.slice(i, i + 3);
+      const webResults = await Promise.allSettled(
+        batch.map(e => enrichWebSearch(e.name, serperKey)),
+      );
+      for (let j = 0; j < batch.length; j++) {
+        const r = webResults[j];
+        if (r.status === 'fulfilled') {
+          batch[j].wiki.signals.push(...r.value.signals);
+          if (r.value.snippets.length) webSnippetsMap.set(batch[j].name, r.value.snippets);
+        }
+      }
+      if (i + 3 < enriched.length) await sleep(500);
+    }
+  }
+
+  // Gemini classification (batch of 5)
+  const classifications: GeminiResult[] = [];
+  for (let i = 0; i < enriched.length; i += 5) {
+    const batch = enriched.slice(i, i + 5);
+    const cls = await classifyBatch(
+      batch.map(e => ({
+        name: e.name, nationality: 'Unknown', club: e.club,
+        surnameOrigin: `${e.surnameMatch.surname} (${e.surnameMatch.origin}, ${e.surnameMatch.confidence})`,
+        signals: e.wiki.signals, wikiText: e.wiki.fullText,
+        webSnippets: webSnippetsMap.get(e.name) || [],
+      })),
+      geminiApiKey,
+      lang,
+    );
+    classifications.push(...cls);
+    if (i + 5 < enriched.length) await sleep(2000);
+  }
+
+  // Build results with smart scoring
+  const players: DiscoveredPlayer[] = enriched.map((e, i) => {
+    const cls = classifications[i] || { confidence: 15, reasoning: 'Classification pending' };
+    const nonSurnameSignals = e.wiki.signals.filter(s => s.source !== 'surname');
+    const hasWikiEvidence = nonSurnameSignals.some(s => s.source === 'wikipedia');
+    const hasWebEvidence = nonSurnameSignals.some(s => s.source === 'web-search');
+    const hasHighSignal = nonSurnameSignals.some(s => s.weight === 'high');
+    const geminiWorked = cls.reasoning !== 'AI classification failed — surname match only.';
+
+    let finalConfidence = cls.confidence;
+    let finalReasoning = cls.reasoning;
+    if (!geminiWorked) {
+      if (hasHighSignal) {
+        finalConfidence = 55;
+        finalReasoning = lang === 'he' ? 'סיווג AI נכשל — אך נמצאו עדויות חזקות בוויקיפדיה/אינטרנט' : 'AI classification failed — but strong evidence found in Wikipedia/web search.';
+      } else if (hasWikiEvidence || hasWebEvidence) {
+        finalConfidence = 35;
+        finalReasoning = lang === 'he' ? 'סיווג AI נכשל — נמצאו רמזים בינוניים בוויקיפדיה/אינטרנט' : 'AI classification failed — moderate evidence found in Wikipedia/web.';
+      } else {
+        finalConfidence = 10;
+        finalReasoning = lang === 'he' ? 'סיווג AI נכשל — התאמת שם משפחה בלבד' : 'AI classification failed — surname match only, no corroborating evidence.';
+      }
+    }
+
+    return {
+      name: e.name, tmUrl: e.donnaUrl, age: e.age, position: e.position,
+      club: e.club, league: e.league, nationality: 'Unknown', marketValue: '',
+      surnameMatch: { surname: e.surnameMatch.surname, origin: e.surnameMatch.origin, confidence: e.surnameMatch.confidence },
+      signals: e.wiki.signals, confidenceScore: finalConfidence,
+      confidenceLabel: getLabel(finalConfidence), geminiReasoning: finalReasoning,
+      wikipediaSummary: cls.wikiSummaryHe || e.wiki.summary, discoveredAt: Date.now(),
+    };
+  });
+
+  // Filter out surname-only at <=10%
+  const filtered = players.filter(p => p.confidenceScore > 10);
+  filtered.sort((a, b) => b.confidenceScore - a.confidenceScore);
+
+  return {
+    players: filtered.slice(0, limit),
+    totalScanned: allPlayers.length,
+    leaguesScanned: leagueNames,
+    duration: Date.now() - start,
+    timestamp: Date.now(),
+  };
+}

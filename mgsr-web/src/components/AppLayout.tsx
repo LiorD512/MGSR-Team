@@ -35,6 +35,7 @@ const womenNavItems = [
   { href: '/tasks', labelKey: 'nav_tasks' },
   { href: '/players', labelKey: 'nav_players_women' },
   { href: '/shortlist', labelKey: 'nav_shortlist' },
+  { href: '/jewish-finder', labelKey: 'nav_jewish_finder' },
   { href: '/contacts', labelKey: 'nav_contacts' },
   { href: '/requests', labelKey: 'nav_requests' },
   { href: '/portfolio', labelKey: 'nav_portfolio' },
@@ -131,13 +132,14 @@ function NavContent({
   );
 }
 
-const WOMEN_ALLOWED_PATHS = ['/dashboard', '/tasks', '/players', '/players/add', '/portfolio', '/shortlist', '/contacts', '/requests'];
+const WOMEN_ALLOWED_PATHS = ['/dashboard', '/tasks', '/players', '/players/add', '/portfolio', '/shortlist', '/contacts', '/requests', '/jewish-finder'];
 function isWomenAllowedPath(pathname: string | null): boolean {
   if (!pathname) return false;
   if (pathname === '/dashboard' || pathname === '/tasks') return true;
   if (pathname === '/players' || pathname === '/players/add') return true;
   if (pathname === '/portfolio') return true;
   if (pathname === '/shortlist' || pathname === '/contacts' || pathname === '/requests') return true;
+  if (pathname === '/jewish-finder') return true;
   if (pathname.startsWith('/players/women/')) return true;
   return false;
 }
