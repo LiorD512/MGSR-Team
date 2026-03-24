@@ -621,6 +621,10 @@
     <string name="requests_subtitle">בקשות שחקנים ממועדונים לפי עמדה</string>
     <string name="requests_add">הוסף בקשה</string>
     <string name="requests_share">שתף בקשות</string>
+    <string name="requests_share_dialog_title">שתף בקשות</string>
+    <string name="requests_share_hide_clubs">הסתר שמות מועדונים</string>
+    <string name="requests_share_action">שתף</string>
+    <string name="requests_share_translating">מתרגם הערות…</string>
     <string name="requests_stat_positions">עמדות</string>
     <string name="requests_stat_matched">עם התאמות</string>
     <string name="requests_stat_unmatched">ללא התאמות</string>

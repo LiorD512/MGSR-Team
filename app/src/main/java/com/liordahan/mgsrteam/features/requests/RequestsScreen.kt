@@ -173,6 +173,10 @@ import android.view.HapticFeedbackConstants
 import androidx.compose.foundation.layout.offset
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import com.google.firebase.ai.FirebaseAI
+import com.google.firebase.ai.type.GenerativeBackend
+import com.google.firebase.ai.type.generationConfig
+import org.json.JSONObject
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.koinInject
@@ -195,6 +199,7 @@ fun RequestsScreen(
     var requestToEdit by remember { mutableStateOf<Request?>(null) }
     var requestToDelete by remember { mutableStateOf<Request?>(null) }
     var showShareDialog by remember { mutableStateOf(false) }
+    var isSharing by remember { mutableStateOf(false) }
     var onlineExpandedRequestId by remember { mutableStateOf<String?>(null) }
     var expandedRequestIds by remember { mutableStateOf(setOf<String>()) }
     var selectedPosition by remember { mutableStateOf<String?>(null) }
@@ -202,6 +207,7 @@ fun RequestsScreen(
 
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
+    val shareScope = rememberCoroutineScope()
 
     LaunchedEffect(state.addRequestMessage) {
         state.addRequestMessage?.let { msg ->
@@ -252,15 +258,21 @@ fun RequestsScreen(
                 if (showShareDialog) {
                     ShareRequestsDialog(
                         onDismiss = { showShareDialog = false },
+                        isSharing = isSharing,
                         onShare = { hideClubNames ->
-                            showShareDialog = false
-                            val text = formatRequestsForShare(context, state.requestsByPositionCountry, hideClubNames)
-                            val intent = Intent(Intent.ACTION_SEND).apply {
-                                type = "text/plain"
-                                putExtra(Intent.EXTRA_TEXT, text)
-                                putExtra(Intent.EXTRA_SUBJECT, "MGSR Team - Player Requests")
+                            isSharing = true
+                            shareScope.launch {
+                                val translatedNotes = translateNotesToEnglish(state.requestsByPositionCountry)
+                                val text = formatRequestsForShare(state.requestsByPositionCountry, hideClubNames, translatedNotes)
+                                isSharing = false
+                                showShareDialog = false
+                                val intent = Intent(Intent.ACTION_SEND).apply {
+                                    type = "text/plain"
+                                    putExtra(Intent.EXTRA_TEXT, text)
+                                    putExtra(Intent.EXTRA_SUBJECT, "MGSR Team - Player Requests")
+                                }
+                                context.startActivity(Intent.createChooser(intent, "Share requests"))
                             }
-                            context.startActivity(Intent.createChooser(intent, "Share requests"))
                         }
                     )
                 }
@@ -2141,51 +2153,81 @@ private fun formatDate(timestamp: Long?): String {
 @Composable
 private fun ShareRequestsDialog(
     onDismiss: () -> Unit,
+    isSharing: Boolean = false,
     onShare: (hideClubNames: Boolean) -> Unit
 ) {
     var hideClubNames by remember { mutableStateOf(false) }
 
     AlertDialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = { if (!isSharing) onDismiss() },
         containerColor = PlatformColors.palette.card,
         title = {
             Text(
-                "Share Requests",
+                stringResource(R.string.requests_share_dialog_title),
                 style = boldTextStyle(PlatformColors.palette.textPrimary, 18.sp)
             )
         },
         text = {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(PlatformColors.palette.background)
-                    .clickWithNoRipple { hideClubNames = !hideClubNames }
-                    .padding(horizontal = 12.dp, vertical = 14.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    "Hide club names",
-                    style = regularTextStyle(PlatformColors.palette.textPrimary, 14.sp),
-                    modifier = Modifier.weight(1f)
-                )
-                Checkbox(
-                    checked = hideClubNames,
-                    onCheckedChange = { hideClubNames = it },
-                    colors = CheckboxDefaults.colors(
-                        checkedColor = PlatformColors.palette.accent,
-                        uncheckedColor = PlatformColors.palette.textSecondary
+            Column {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(PlatformColors.palette.background)
+                        .clickWithNoRipple { hideClubNames = !hideClubNames }
+                        .padding(horizontal = 12.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        stringResource(R.string.requests_share_hide_clubs),
+                        style = regularTextStyle(PlatformColors.palette.textPrimary, 14.sp),
+                        modifier = Modifier.weight(1f)
                     )
-                )
+                    Checkbox(
+                        checked = hideClubNames,
+                        onCheckedChange = { hideClubNames = it },
+                        colors = CheckboxDefaults.colors(
+                            checkedColor = PlatformColors.palette.accent,
+                            uncheckedColor = PlatformColors.palette.textSecondary
+                        )
+                    )
+                }
+                if (isSharing) {
+                    Spacer(Modifier.height(12.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(16.dp),
+                            strokeWidth = 2.dp,
+                            color = PlatformColors.palette.accent
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            stringResource(R.string.requests_share_translating),
+                            style = regularTextStyle(PlatformColors.palette.textSecondary, 12.sp)
+                        )
+                    }
+                }
             }
         },
         confirmButton = {
-            TextButton(onClick = { onShare(hideClubNames) }) {
-                Text("Share", style = boldTextStyle(PlatformColors.palette.accent, 14.sp))
+            TextButton(
+                onClick = { onShare(hideClubNames) },
+                enabled = !isSharing
+            ) {
+                Text(stringResource(R.string.requests_share_action), style = boldTextStyle(
+                    if (isSharing) PlatformColors.palette.textSecondary else PlatformColors.palette.accent, 14.sp
+                ))
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            TextButton(
+                onClick = onDismiss,
+                enabled = !isSharing
+            ) {
                 Text(stringResource(R.string.cancel), style = regularTextStyle(PlatformColors.palette.textSecondary, 14.sp))
             }
         }
@@ -2193,58 +2235,142 @@ private fun ShareRequestsDialog(
 }
 
 private fun formatRequestsForShare(
-    context: Context,
     requestsByPositionCountry: Map<String, Map<String, List<Request>>>,
-    hideClubNames: Boolean = false
+    hideClubNames: Boolean = false,
+    translatedNotes: Map<String, String> = emptyMap()
 ): String {
     if (requestsByPositionCountry.isEmpty()) return "No requests at the moment."
+
+    // Merge ST into CF
+    val merged = mutableMapOf<String, MutableMap<String, MutableList<Request>>>()
+    requestsByPositionCountry.forEach { (position, countries) ->
+        val key = if (position.uppercase() == "ST") "CF" else position
+        val posMap = merged.getOrPut(key) { mutableMapOf() }
+        countries.forEach { (country, requests) ->
+            posMap.getOrPut(country) { mutableListOf() }.addAll(requests)
+        }
+    }
+
     val sb = StringBuilder()
     sb.appendLine("⚽ Player Requests")
     sb.appendLine("━━━━━━━━━━━━━━━━━━")
 
-    requestsByPositionCountry.forEach { (position, countries) ->
-        val positionDisplay = PositionDisplayNames.getDisplayName(context, position)
+    merged.forEach { (position, countries) ->
+        val positionLong = PositionDisplayNames.toLongName(position)
         sb.appendLine()
-        sb.appendLine("📌 $positionDisplay ($position)")
-        sb.appendLine()
+        sb.appendLine("📌 $positionLong")
 
         countries.forEach { (country, requests) ->
-            val countryDisplay = CountryNameTranslator.getDisplayName(context, country)
-            requests.forEach { req ->
-                // Main line: club / country
-                val label = if (hideClubNames) {
-                    if (!country.isNullOrBlank() && country != "Other") countryDisplay else "Unknown"
-                } else {
-                    "${req.clubName ?: "Unknown"}${if (!country.isNullOrBlank() && country != "Other") " · $countryDisplay" else ""}"
-                }
-                sb.appendLine("▸ $label")
+            val countryName = country.takeIf { !it.isNullOrBlank() && it != "Other" } ?: ""
+            if (countryName.isNotBlank()) {
+                sb.appendLine()
+                sb.appendLine("🌍 $countryName")
+            }
 
-                // Detail bullets
+            requests.forEach { req ->
+                sb.appendLine()
+                // Club name line
+                if (!hideClubNames) {
+                    val club = req.clubName ?: "Unknown"
+                    sb.appendLine("▸ $club")
+                }
+
+                // Build detail lines
                 val ageText = when {
                     req.ageDoesntMatter == true -> "Any age"
                     req.minAge != null && req.maxAge != null && req.minAge > 0 && req.maxAge > 0 ->
-                        "Age ${req.minAge}–${req.maxAge}"
+                        "Age: ${req.minAge}–${req.maxAge}"
                     else -> null
                 }
                 val salaryText = req.salaryRange?.takeIf { it.isNotBlank() }?.let { "Salary: $it" }
                 val feeText = req.transferFee?.takeIf { it.isNotBlank() }?.let { "Fee: $it" }
                 val footText = req.dominateFoot?.takeIf { it.isNotBlank() }?.let { foot ->
                     when (foot.lowercase()) {
-                        "left" -> "Left foot"
-                        "right" -> "Right foot"
-                        else -> foot
+                        "left" -> "Foot: Left"
+                        "right" -> "Foot: Right"
+                        else -> "Foot: $foot"
                     }
                 }
                 val euText = if (req.euOnly == true) "EU only" else null
 
                 val details = listOfNotNull(ageText, salaryText, feeText, footText, euText)
                 if (details.isNotEmpty()) {
-                    sb.appendLine("   ${details.joinToString(" · ")}")
+                    sb.appendLine(details.joinToString(" | "))
+                }
+
+                // Translated notes
+                val noteKey = req.id ?: ""
+                val translatedNote = translatedNotes[noteKey]
+                if (!translatedNote.isNullOrBlank()) {
+                    sb.appendLine("📝 $translatedNote")
                 }
             }
         }
     }
     return sb.toString().trimEnd()
+}
+
+/**
+ * Translates all non-empty request notes to English using Gemini.
+ * Returns a map of requestId -> translated note.
+ * If translation fails, returns the original notes as-is.
+ */
+private suspend fun translateNotesToEnglish(
+    requestsByPositionCountry: Map<String, Map<String, List<Request>>>
+): Map<String, String> {
+    // Collect all notes that need translation
+    val notesById = mutableMapOf<String, String>()
+    requestsByPositionCountry.values.forEach { countries ->
+        countries.values.forEach { requests ->
+            requests.forEach { req ->
+                val note = req.notes?.takeIf { it.isNotBlank() }
+                val id = req.id
+                if (note != null && id != null) {
+                    notesById[id] = note
+                }
+            }
+        }
+    }
+    if (notesById.isEmpty()) return emptyMap()
+
+    // Check if all notes are already English (simple heuristic: no Hebrew chars)
+    val hasHebrew = notesById.values.any { text -> text.any { it in '\u0590'..'\u05FF' } }
+    if (!hasHebrew) return notesById
+
+    return try {
+        val model = FirebaseAI.getInstance(backend = GenerativeBackend.googleAI()).generativeModel(
+            modelName = "gemini-2.5-flash",
+            generationConfig = generationConfig {
+                temperature = 0.1f
+                responseMimeType = "application/json"
+            }
+        )
+
+        val numbered = notesById.entries.mapIndexed { i, (id, note) -> Triple(i + 1, id, note) }
+        val prompt = buildString {
+            appendLine("Translate the following football/soccer recruitment notes to English.")
+            appendLine("Keep it concise and professional. Football terminology should be accurate.")
+            appendLine("Return a JSON object where keys are the numbers and values are the English translations.")
+            appendLine()
+            numbered.forEach { (num, _, note) ->
+                appendLine("$num: $note")
+            }
+        }
+
+        val response = model.generateContent(prompt)
+        val json = response.text?.trim() ?: return notesById
+        val jsonObj = JSONObject(json)
+
+        val result = mutableMapOf<String, String>()
+        numbered.forEach { (num, id, original) ->
+            val translated = jsonObj.optString(num.toString(), "").takeIf { it.isNotBlank() } ?: original
+            result[id] = translated
+        }
+        result
+    } catch (e: Exception) {
+        // Fallback: return original notes
+        notesById
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

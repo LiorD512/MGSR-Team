@@ -692,6 +692,10 @@
     <string name="requests_subtitle">Player requests from clubs by position</string>
     <string name="requests_add">Add request</string>
     <string name="requests_share">Share requests</string>
+    <string name="requests_share_dialog_title">Share Requests</string>
+    <string name="requests_share_hide_clubs">Hide club names</string>
+    <string name="requests_share_action">Share</string>
+    <string name="requests_share_translating">Translating notes…</string>
     <string name="requests_stat_positions">Positions</string>
     <string name="requests_stat_matched">Matched</string>
     <string name="requests_stat_unmatched">Unmatched</string>
