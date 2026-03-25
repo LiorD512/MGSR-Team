@@ -74,15 +74,39 @@ async function loadLogoPng(): Promise<Uint8Array | null> {
   }
 }
 
+// Cache font bytes so we only load once per cold start
+let _fontCache: { regular: Buffer; bold: Buffer } | null = null;
+
+async function loadFontBytes(): Promise<{ regular: Buffer; bold: Buffer }> {
+  if (_fontCache) return _fontCache;
+
+  // Try filesystem first (works locally and in most deployments)
+  try {
+    const fontDir = path.join(process.cwd(), 'public', 'fonts');
+    const regular = fs.readFileSync(path.join(fontDir, 'Roboto-Regular.ttf'));
+    const bold = fs.readFileSync(path.join(fontDir, 'Roboto-Bold.ttf'));
+    _fontCache = { regular, bold };
+    return _fontCache;
+  } catch { /* fs not available, fall back to CDN */ }
+
+  // Fallback: fetch from Google Fonts CDN
+  const [regularRes, boldRes] = await Promise.all([
+    fetch('https://fonts.gstatic.com/s/roboto/v51/KFOMCnqEu92Fr1ME7kSn66aGLdTylUAMQXC89YmC2DPNWubEbWmT.ttf'),
+    fetch('https://fonts.gstatic.com/s/roboto/v51/KFOMCnqEu92Fr1ME7kSn66aGLdTylUAMQXC89YmC2DPNWuYjammT.ttf'),
+  ]);
+  const regular = Buffer.from(await regularRes.arrayBuffer());
+  const bold = Buffer.from(await boldRes.arrayBuffer());
+  _fontCache = { regular, bold };
+  return _fontCache;
+}
+
 export async function generateMandatePdf(data: MandateData): Promise<Uint8Array> {
   const doc = await PDFDocument.create();
   doc.registerFontkit(fontkit);
 
-  const fontDir = path.join(process.cwd(), 'public', 'fonts');
-  const regularBytes = fs.readFileSync(path.join(fontDir, 'Roboto-Regular.ttf'));
-  const boldBytes = fs.readFileSync(path.join(fontDir, 'Roboto-Bold.ttf'));
-  const font = await doc.embedFont(regularBytes, { subset: true });
-  const fontBold = await doc.embedFont(boldBytes, { subset: true });
+  const fontBytes = await loadFontBytes();
+  const font = await doc.embedFont(fontBytes.regular, { subset: true });
+  const fontBold = await doc.embedFont(fontBytes.bold, { subset: true });
   const black = rgb(0, 0, 0);
 
   let page = doc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
