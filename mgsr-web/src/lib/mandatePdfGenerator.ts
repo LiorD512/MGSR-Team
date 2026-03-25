@@ -77,7 +77,7 @@ async function loadLogoPng(): Promise<Uint8Array | null> {
 // Cache font bytes so we only load once per cold start
 let _fontCache: { regular: Buffer; bold: Buffer } | null = null;
 
-async function loadFontBytes(): Promise<{ regular: Buffer; bold: Buffer }> {
+export async function loadFontBytes(): Promise<{ regular: Buffer; bold: Buffer }> {
   if (_fontCache) return _fontCache;
 
   // Try filesystem first (works locally and in most deployments)

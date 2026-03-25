@@ -4,7 +4,7 @@
  * No Firestore access needed — all data comes in the request body.
  */
 import { NextRequest, NextResponse } from 'next/server';
-import { generateMandatePdf } from '@/lib/mandatePdfGenerator';
+import { generateMandatePdf, loadFontBytes } from '@/lib/mandatePdfGenerator';
 import { PDFDocument } from 'pdf-lib';
 import fontkit from '@pdf-lib/fontkit';
 
@@ -79,6 +79,9 @@ export async function POST(req: NextRequest) {
     // Embed signatures into the PDF
     const pdfDoc = await PDFDocument.load(pdfBytes);
     pdfDoc.registerFontkit(fontkit);
+    // Embed custom font so setText/flatten can handle Unicode chars (e.g. Đ)
+    const fontBytes = await loadFontBytes();
+    const customFont = await pdfDoc.embedFont(fontBytes.regular, { subset: true });
     const pages = pdfDoc.getPages();
     const lastPage = pages[pages.length - 1];
     const form = pdfDoc.getForm();
@@ -105,12 +108,14 @@ export async function POST(req: NextRequest) {
       try {
         const playerDateField = form.getTextField('player_date');
         playerDateField.setText(formatDateDDMMYYYY(playerSignedAt));
+        playerDateField.updateAppearances(customFont);
       } catch { /* ignore */ }
 
       try {
         const playerPrintField = form.getTextField('player_print_name');
         const pName = [passportDetails.firstName, passportDetails.lastName].filter(Boolean).join(' ');
         playerPrintField.setText(pName);
+        playerPrintField.updateAppearances(customFont);
       } catch { /* ignore */ }
     }
 
@@ -136,10 +141,16 @@ export async function POST(req: NextRequest) {
       try {
         const agentDateField = form.getTextField('agent_date');
         agentDateField.setText(formatDateDDMMYYYY(agentSignedAt));
+        agentDateField.updateAppearances(customFont);
+      } catch { /* ignore */ }
+
+      try {
+        const agentPrintField = form.getTextField('agent_print_name');
+        agentPrintField.updateAppearances(customFont);
       } catch { /* ignore */ }
     }
 
-    // Flatten form fields if both signed
+    // Update all remaining form fields with custom font before flatten
     if (playerSignature && agentSignature) {
       try { form.flatten(); } catch { /* ignore */ }
     }
