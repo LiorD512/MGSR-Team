@@ -14,7 +14,9 @@
   },
   "dependencies": {
     "@distube/ytsr": "^2.0.4",
+    "@fontsource/roboto": "^5.2.10",
     "@google/generative-ai": "^0.24.1",
+    "@pdf-lib/fontkit": "^1.1.1",
     "cheerio": "^0.22.0",
     "firebase": "^10.7.0",
     "firebase-admin": "^13.6.1",
@@ -26,6 +28,7 @@
     "react-markdown": "^10.1.0",
     "react-soccer-lineup": "^1.0.0-beta.10",
     "recharts": "^3.7.0",
+    "roboto-fontface": "^0.10.0",
     "sharp": "^0.34.5",
     "youtube-sr": "^4.3.12"
   },

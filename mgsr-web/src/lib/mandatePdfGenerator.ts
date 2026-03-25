@@ -1,7 +1,8 @@
 /**
  * Generates Football Agent Mandate PDF - matches Android MandatePdfGenerator structure.
  */
-import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
+import { PDFDocument, rgb } from 'pdf-lib';
+import fontkit from '@pdf-lib/fontkit';
 import path from 'path';
 import fs from 'fs';
 import sharp from 'sharp';
@@ -75,8 +76,13 @@ async function loadLogoPng(): Promise<Uint8Array | null> {
 
 export async function generateMandatePdf(data: MandateData): Promise<Uint8Array> {
   const doc = await PDFDocument.create();
-  const font = await doc.embedFont(StandardFonts.Helvetica);
-  const fontBold = await doc.embedFont(StandardFonts.HelveticaBold);
+  doc.registerFontkit(fontkit);
+
+  const fontDir = path.join(process.cwd(), 'public', 'fonts');
+  const regularBytes = fs.readFileSync(path.join(fontDir, 'Roboto-Regular.ttf'));
+  const boldBytes = fs.readFileSync(path.join(fontDir, 'Roboto-Bold.ttf'));
+  const font = await doc.embedFont(regularBytes, { subset: true });
+  const fontBold = await doc.embedFont(boldBytes, { subset: true });
   const black = rgb(0, 0, 0);
 
   let page = doc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);

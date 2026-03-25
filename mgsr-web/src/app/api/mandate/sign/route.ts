@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { generateMandatePdf } from '@/lib/mandatePdfGenerator';
 import { PDFDocument } from 'pdf-lib';
+import fontkit from '@pdf-lib/fontkit';
 
 function formatDateDDMMYYYY(ts: number | undefined): string {
   const d = ts ? new Date(ts) : new Date();
@@ -77,6 +78,7 @@ export async function POST(req: NextRequest) {
 
     // Embed signatures into the PDF
     const pdfDoc = await PDFDocument.load(pdfBytes);
+    pdfDoc.registerFontkit(fontkit);
     const pages = pdfDoc.getPages();
     const lastPage = pages[pages.length - 1];
     const form = pdfDoc.getForm();
