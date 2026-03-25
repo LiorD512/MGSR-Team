@@ -1586,7 +1586,10 @@ private fun PlayerInfoHeroCard(
             ) {
                 var isMandateOn by remember(player.haveMandate) { mutableStateOf(player.haveMandate) }
                 LaunchedEffect(player.haveMandate) { isMandateOn = player.haveMandate }
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f)
+                ) {
                     Icon(
                         imageVector = Icons.Default.VerifiedUser,
                         contentDescription = null,

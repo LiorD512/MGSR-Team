@@ -158,11 +158,29 @@ class MainActivity : AppCompatActivity() {
                 intent.removeExtra(com.liordahan.mgsrteam.firebase.MgsrFirebaseMessagingService.EXTRA_SCREEN)
                 return
             }
+            "player" -> {
+                val playerId = intent.getStringExtra(com.liordahan.mgsrteam.firebase.MgsrFirebaseMessagingService.EXTRA_PLAYER_ID)
+                    ?: intent.getStringExtra("playerId")
+                if (!playerId.isNullOrBlank()) {
+                    viewModel.setPendingDeepLinkPlayerId(playerId)
+                }
+                intent.removeExtra(com.liordahan.mgsrteam.firebase.MgsrFirebaseMessagingService.EXTRA_SCREEN)
+                return
+            }
         }
 
         // Handle notification tap — action or type determines destination
         val notificationAction = intent.getStringExtra(com.liordahan.mgsrteam.firebase.MgsrFirebaseMessagingService.EXTRA_NOTIFICATION_ACTION)
         val dataType = intent.getStringExtra("type")
+
+        // REQUEST_ADDED must always route to Requests — even when playerTmProfile is present.
+        // Background notifications deliver raw FCM data (no "screen" extra), so the screen
+        // check above may miss it. Handle it here before playerTmProfile processing.
+        if (dataType == com.liordahan.mgsrteam.firebase.MgsrFirebaseMessagingService.TYPE_REQUEST_ADDED) {
+            viewModel.setPendingOpenRequestsScreen(true)
+            return
+        }
+
         val notificationPlayerId = intent.getStringExtra(com.liordahan.mgsrteam.firebase.MgsrFirebaseMessagingService.EXTRA_PLAYER_ID)
         val playerTmProfile = intent.getStringExtra(com.liordahan.mgsrteam.firebase.MgsrFirebaseMessagingService.EXTRA_PLAYER_TM_PROFILE)?.takeIf { it.isNotBlank() }
         playerTmProfile?.let { url ->
