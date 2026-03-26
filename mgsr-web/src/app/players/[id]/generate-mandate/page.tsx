@@ -8,7 +8,7 @@ import { doc, collection, onSnapshot, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import AppLayout from '@/components/AppLayout';
 import Link from 'next/link';
-import { COUNTRIES } from '@/lib/countries';
+import { COUNTRIES, matchCountry } from '@/lib/countries';
 import { searchClubs, ClubSearchResult } from '@/lib/api';
 
 interface Player {
@@ -129,7 +129,7 @@ export default function GenerateMandatePage() {
       setModalSearchingClubs(true);
       try {
         const clubs = await searchClubs(modalClubQuery.trim());
-        setModalClubResults(clubs.filter((c) => c.clubCountry === modalSelectedCountry));
+        setModalClubResults(clubs.filter((c) => matchCountry(c.clubCountry, modalSelectedCountry)));
       } catch {
         setModalClubResults([]);
       } finally {

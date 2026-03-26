@@ -1508,6 +1508,16 @@ private fun ReviewRow(label: String, value: String) {
     }
 }
 
+/** Normalizes country names that have multiple spellings (e.g. Turkey / Türkiye). */
+private fun normalizeCountryName(name: String?): String {
+    if (name.isNullOrBlank()) return ""
+    val lower = name.trim().lowercase()
+    return when (lower) {
+        "türkiye", "turkiye" -> "turkey"
+        else -> lower
+    }
+}
+
 // ─── Add League Bottom Sheet ─────────────────────────────────────────────────
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -1543,7 +1553,10 @@ private fun AddLeagueBottomSheet(
 
     val filteredClubResults = remember(clubSearchResults, sheetSelectedCountry) {
         if (sheetSelectedCountry.isNullOrBlank()) clubSearchResults
-        else clubSearchResults.filter { it.clubCountry.equals(sheetSelectedCountry, ignoreCase = true) }
+        else clubSearchResults.filter {
+            it.clubCountry.equals(sheetSelectedCountry, ignoreCase = true) ||
+                normalizeCountryName(it.clubCountry).equals(normalizeCountryName(sheetSelectedCountry), ignoreCase = true)
+        }
     }
 
     val filteredCountries = remember(sheetCountryQuery) {

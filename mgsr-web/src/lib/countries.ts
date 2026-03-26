@@ -18,6 +18,20 @@ export const COUNTRIES = [
   'Portugal', 'Qatar', 'Romania', 'Russia', 'Rwanda', 'Saudi Arabia', 'Scotland',
   'Senegal', 'Serbia', 'Singapore', 'Slovakia', 'Slovenia', 'South Africa', 'South Korea',
   'Spain', 'Sudan', 'Sweden', 'Switzerland', 'Syria', 'Tanzania', 'Thailand', 'Togo',
-  'Tunisia', 'Turkey', 'Uganda', 'Ukraine', 'United Arab Emirates', 'United States',
+  'Tunisia', 'Turkey', 'Türkiye', 'Uganda', 'Ukraine', 'United Arab Emirates', 'United States',
   'Uruguay', 'Uzbekistan', 'Venezuela', 'Vietnam', 'Wales', 'Zambia', 'Zimbabwe',
 ].sort();
+
+/** Normalize country names that have multiple spellings (e.g. Turkey / Türkiye). */
+function normalizeCountry(name: string | null | undefined): string {
+  const lower = (name ?? '').trim().toLowerCase();
+  if (lower === 'türkiye' || lower === 'turkiye') return 'turkey';
+  return lower;
+}
+
+/** Compare two country names, handling aliases like Turkey / Türkiye. */
+export function matchCountry(a: string | null | undefined, b: string | null | undefined): boolean {
+  if (!a || !b) return false;
+  if (a === b) return true;
+  return normalizeCountry(a) === normalizeCountry(b);
+}

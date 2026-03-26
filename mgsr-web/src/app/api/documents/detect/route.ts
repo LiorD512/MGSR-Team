@@ -25,20 +25,34 @@ export interface DocumentDetectionResult {
   validLeagues?: string[];
 }
 
-const PASSPORT_PROMPT = `You are a world-class ICAO 9303 passport document analyst. Extract identity fields from passport images of ANY country.
+const PASSPORT_PROMPT = `Analyze this document image. Determine if it is a PASSPORT or a FOOTBALL AGENT MANDATE or OTHER document.
 
-STEP 1: IS THIS A PASSPORT?
-Passport indicators: words PASSPORT, PASSEPORT, REISEPASS, MRZ (2 lines ~44 chars), photo + labeled fields, national emblem.
-If NOT a passport → return {"isPassport": false}
+PASSPORT DETECTION (broadly):
+A passport is ANY government-issued travel document from ANY country. Look for:
+- The word PASSPORT, PASSEPORT, REISEPASS, PUTOVNICA, PASAPORTE, PASSAPORTO, ПАСПОРТ, or ANY translation
+- A Machine Readable Zone (MRZ): 2 lines of uppercase letters, digits, and < characters at the bottom
+- A photo of a person with labeled identity fields (name, date of birth, nationality, etc.)
+- A national coat of arms or emblem
+- Country name at the top (e.g. "REPUBLIC OF CROATIA", "UNITED STATES OF AMERICA", etc.)
+If ANY of these indicators are present, this IS a passport. Set isPassport: true.
 
-STEP 2: Extract these fields (from MRZ and/or visual zone):
-- firstName: GIVEN NAMES only
-- lastName: SURNAME only  
-- dateOfBirth: YYYY-MM-DD format
-- passportNumber: full document number
-- nationality: English demonym (e.g. Liberian, French)
+If it IS a passport, extract:
+- firstName: GIVEN NAMES only (not the surname)
+- lastName: SURNAME / family name only
+- dateOfBirth: in YYYY-MM-DD format
+- passportNumber: the document number
+- nationality: English demonym (e.g. Croatian, French, Liberian)
 
-RULES: Never swap first/last. Never return labels as values. Use null for unreadable fields. Return ONLY valid JSON.`;
+MANDATE DETECTION:
+If the document contains "FOOTBALL AGENT MANDATE" or similar agent mandate text, set isMandate: true and extract:
+- mandateExpiresAt: from "ends on DD/MM/YYYY" pattern, as DD/MM/YYYY string
+- validLeagues: array of league/country names from "Valid Leagues" section
+
+RULES:
+- Never swap firstName and lastName
+- Never return field labels as values
+- Use null for fields you cannot read
+- If the document is neither passport nor mandate, set both isPassport and isMandate to false`;
 
 /** Safety settings that allow processing identity documents without triggering content filters. */
 const SAFETY_SETTINGS = [
@@ -56,15 +70,32 @@ function sanitizeFileName(s: string): string {
  * Extract only non-thought text from the Gemini response.
  * Gemini 2.5 Flash uses thinking by default — thinking parts have `thought: true`
  * and would otherwise be concatenated into `response.text()`, corrupting JSON output.
+ * Also handles the response object as raw JSON (in case the SDK structure differs).
  */
-function extractNonThoughtText(response: { candidates?: Array<{ content?: { parts?: Array<{ text?: string; thought?: boolean }> } }> }): string {
-  const parts = response.candidates?.[0]?.content?.parts;
-  if (!parts) return '';
-  return parts
-    .filter((p) => p.text && !p.thought)
-    .map((p) => p.text!)
-    .join('')
-    .trim();
+function extractNonThoughtText(response: unknown): string {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const r = response as any;
+    const candidates = r?.candidates;
+    if (!Array.isArray(candidates) || candidates.length === 0) return '';
+    const parts = candidates[0]?.content?.parts;
+    if (!Array.isArray(parts)) return '';
+    // Filter out thinking parts and join remaining text
+    const nonThought = parts
+      .filter((p: { text?: string; thought?: boolean }) => typeof p.text === 'string' && !p.thought)
+      .map((p: { text: string }) => p.text)
+      .join('')
+      .trim();
+    if (nonThought) return nonThought;
+    // If all parts were thought parts (shouldn't happen), try all text parts
+    return parts
+      .filter((p: { text?: string }) => typeof p.text === 'string')
+      .map((p: { text: string }) => p.text)
+      .join('')
+      .trim();
+  } catch {
+    return '';
+  }
 }
 
 async function detectWithGemini(
@@ -78,13 +109,25 @@ async function detectWithGemini(
   const model = genAI.getGenerativeModel({
     model: GEMINI_MODEL,
     safetySettings: SAFETY_SETTINGS,
+    generationConfig: {
+      responseMimeType: 'application/json',
+    },
   });
 
   const prompt = `${PASSPORT_PROMPT}
 
-Also detect: Is this a FOOTBALL AGENT MANDATE document? If yes, set isMandate: true and extract mandateExpiresAt (Unix ms) from "ends on DD/MM/YYYY" in the text. Also extract validLeagues: look for a section titled "Valid Leagues for this mandate:" followed by a list of country/league names (bullet points). Return the list of league names as an array of strings.
-
-Return JSON with: isPassport, isMandate, firstName, lastName, dateOfBirth, passportNumber, nationality, mandateExpiresAt, validLeagues.`;
+Return a JSON object with these fields:
+{
+  "isPassport": boolean,
+  "isMandate": boolean,
+  "firstName": string or null,
+  "lastName": string or null,
+  "dateOfBirth": string or null (YYYY-MM-DD),
+  "passportNumber": string or null,
+  "nationality": string or null,
+  "mandateExpiresAt": string or null (DD/MM/YYYY),
+  "validLeagues": string[] or []
+}`;
 
   const part: { inlineData: { mimeType: string; data: string } } | { text: string } = {
     inlineData: {
@@ -95,19 +138,56 @@ Return JSON with: isPassport, isMandate, firstName, lastName, dateOfBirth, passp
 
   const result = await model.generateContent([part, { text: prompt }]);
   const response = result.response;
-  // Use manual part extraction to avoid thinking text from Gemini 2.5 Flash
+  // Try multiple strategies to extract clean JSON from Gemini 2.5 Flash response
+  // Strategy 1: Filter out thinking parts (thought: true) from raw candidates
   const extracted = extractNonThoughtText(response);
-  const text = extracted || ((typeof response.text === 'function' ? response.text() : '') ?? '').trim();
+  // Strategy 2: Use SDK's text() as fallback
+  let rawText = '';
+  try {
+    rawText = (typeof response.text === 'function' ? response.text() : '') ?? '';
+  } catch {
+    // text() can throw if response is blocked
+  }
+  const text = extracted || rawText.trim();
+
+  console.log('[documents/detect] Raw response length:', rawText.length, 'Extracted length:', extracted.length, 'First 200 chars:', text.slice(0, 200));
 
   let jsonStr = text;
   const jsonMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/);
   if (jsonMatch) jsonStr = jsonMatch[1].trim();
   if (!jsonStr.startsWith('{')) {
     const start = jsonStr.indexOf('{');
-    if (start >= 0) jsonStr = jsonStr.slice(start);
+    if (start >= 0) {
+      // Find the matching closing brace
+      let depth = 0;
+      let end = start;
+      for (let i = start; i < jsonStr.length; i++) {
+        if (jsonStr[i] === '{') depth++;
+        else if (jsonStr[i] === '}') { depth--; if (depth === 0) { end = i; break; } }
+      }
+      jsonStr = jsonStr.slice(start, end + 1);
+    }
   }
 
-  const obj = JSON.parse(jsonStr) as Record<string, unknown>;
+  let obj: Record<string, unknown>;
+  try {
+    obj = JSON.parse(jsonStr) as Record<string, unknown>;
+  } catch (parseErr) {
+    console.error('[documents/detect] JSON parse failed. jsonStr:', jsonStr.slice(0, 500));
+    // Last resort: try to find any JSON object in the full raw text
+    const rawJsonMatch = rawText.match(/\{[\s\S]*"isPassport"[\s\S]*\}/);
+    if (rawJsonMatch) {
+      try {
+        obj = JSON.parse(rawJsonMatch[0]) as Record<string, unknown>;
+      } catch {
+        throw parseErr;
+      }
+    } else {
+      throw parseErr;
+    }
+  }
+
+  console.log('[documents/detect] Parsed result:', JSON.stringify(obj));
 
   if (obj.isMandate === true) {
     let expiresAt: number | undefined;
