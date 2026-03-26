@@ -3,10 +3,11 @@
  * Matches Android DocumentDetectionService behavior.
  */
 import { NextRequest, NextResponse } from 'next/server';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from '@google/generative-ai';
 import { extractNameFromMandateFilename } from '@/lib/documentDetection';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 30;
 
 const GEMINI_MODEL = 'gemini-2.5-flash';
 
@@ -39,8 +40,31 @@ STEP 2: Extract these fields (from MRZ and/or visual zone):
 
 RULES: Never swap first/last. Never return labels as values. Use null for unreadable fields. Return ONLY valid JSON.`;
 
+/** Safety settings that allow processing identity documents without triggering content filters. */
+const SAFETY_SETTINGS = [
+  { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE },
+  { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_NONE },
+  { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_NONE },
+  { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_NONE },
+];
+
 function sanitizeFileName(s: string): string {
   return s.replace(/[<>:"/\\|?*]/g, '_').replace(/\s+/g, '_').slice(0, 80);
+}
+
+/**
+ * Extract only non-thought text from the Gemini response.
+ * Gemini 2.5 Flash uses thinking by default — thinking parts have `thought: true`
+ * and would otherwise be concatenated into `response.text()`, corrupting JSON output.
+ */
+function extractNonThoughtText(response: { candidates?: Array<{ content?: { parts?: Array<{ text?: string; thought?: boolean }> } }> }): string {
+  const parts = response.candidates?.[0]?.content?.parts;
+  if (!parts) return '';
+  return parts
+    .filter((p) => p.text && !p.thought)
+    .map((p) => p.text!)
+    .join('')
+    .trim();
 }
 
 async function detectWithGemini(
@@ -51,7 +75,10 @@ async function detectWithGemini(
   playerName?: string
 ): Promise<DocumentDetectionResult> {
   const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({ model: GEMINI_MODEL });
+  const model = genAI.getGenerativeModel({
+    model: GEMINI_MODEL,
+    safetySettings: SAFETY_SETTINGS,
+  });
 
   const prompt = `${PASSPORT_PROMPT}
 
@@ -68,7 +95,9 @@ Return JSON with: isPassport, isMandate, firstName, lastName, dateOfBirth, passp
 
   const result = await model.generateContent([part, { text: prompt }]);
   const response = result.response;
-  const text = (typeof response.text === 'function' ? response.text() : '')?.trim?.() ?? '';
+  // Use manual part extraction to avoid thinking text from Gemini 2.5 Flash
+  const extracted = extractNonThoughtText(response);
+  const text = extracted || ((typeof response.text === 'function' ? response.text() : '') ?? '').trim();
 
   let jsonStr = text;
   const jsonMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/);
