@@ -1533,6 +1533,42 @@ app.get('/api/transfermarkt/transfer-windows', async (req, res) => {
   }
 });
 
+// ─── PlaymakerStats HTML proxy (bypasses Cloudflare via Playwright) ─────────
+app.get('/api/playmakerstats/html', async (req, res) => {
+  let page;
+  try {
+    const url = (req.query.url || '').trim();
+    if (!url || !/^https:\/\/www\.playmakerstats\.com\//.test(url)) {
+      return res.status(400).json({ error: 'Invalid PlaymakerStats URL' });
+    }
+    if (_activePwPages >= MAX_PW_PAGES) {
+      res.set('Retry-After', '5');
+      return res.status(503).json({ error: 'Too many concurrent browser requests, please retry' });
+    }
+
+    const browser = await getBrowser();
+    _activePwPages++;
+    page = await browser.newPage({
+      userAgent: getRandomUserAgent(),
+      extraHTTPHeaders: { 'Accept-Language': 'en-US,en;q=0.9' },
+    });
+    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 20000 });
+    // Wait a moment for any JS-rendered content
+    await page.waitForTimeout(1500);
+    const html = await page.content();
+    await page.close();
+    page = null;
+    _activePwPages--;
+
+    res.set('Content-Type', 'text/html; charset=utf-8');
+    res.send(html);
+  } catch (err) {
+    if (page) { await page.close().catch(() => {}); _activePwPages--; }
+    console.error('[PlaymakerStats proxy]', err.message);
+    res.status(500).json({ error: err.message || 'Failed to fetch PlaymakerStats page' });
+  }
+});
+
 // ─── Health ──────────────────────────────────────────────────────────────────
 app.get('/health', (_, res) => {
   res.json({ status: 'ok' });
