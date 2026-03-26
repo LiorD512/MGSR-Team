@@ -634,6 +634,9 @@
     <string name="requests_country_clubs">%d מועדונים</string>
     <string name="requests_matching_players_one">%d התאמה מהמאגר</string>
     <string name="requests_matching_players">%d התאמות מהמאגר</string>
+    <string name="requests_mandate_players_one">שחקן %d עם מנדט</string>
+    <string name="requests_mandate_players">%d שחקנים עם מנדט</string>
+    <string name="requests_mandate_no_match">אין שחקנים עם מנדט תואם</string>
     <string name="requests_find_players">מצא שחקנים</string>
     <string name="requests_find_players_sheet_title">שחקנים לבקשה זו</string>
     <string name="requests_find_players_online">מצא שחקנים בעזרת AI סקאוט</string>

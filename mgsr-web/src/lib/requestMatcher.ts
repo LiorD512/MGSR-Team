@@ -20,6 +20,8 @@ export interface RosterPlayer {
   marketValue?: string;
   currentClub?: { clubName?: string; clubLogo?: string };
   tmProfile?: string;
+  nationality?: string;
+  nationalities?: string[];
 }
 
 export interface ClubRequest {
@@ -32,6 +34,7 @@ export interface ClubRequest {
   salaryRange?: string;
   transferFee?: string;
   clubTmProfile?: string;
+  euOnly?: boolean;
 }
 
 function matchesPosition(player: RosterPlayer, requestPosition: string): boolean {
@@ -124,7 +127,7 @@ function matchesMarketValueVsTransferFee(player: RosterPlayer, request: ClubRequ
   return true;
 }
 
-export function matchRequestToPlayers(request: ClubRequest, players: RosterPlayer[]): RosterPlayer[] {
+export function matchRequestToPlayers(request: ClubRequest, players: RosterPlayer[], euCountries?: Set<string>): RosterPlayer[] {
   const position = request.position?.trim();
   if (!position) return [];
   return players.filter((player) => {
@@ -134,8 +137,17 @@ export function matchRequestToPlayers(request: ClubRequest, players: RosterPlaye
     if (!matchesSalaryRange(player, request)) return false;
     if (!matchesTransferFee(player, request)) return false;
     if (!matchesMarketValueVsTransferFee(player, request)) return false;
+    if (!matchesEu(player, request, euCountries)) return false;
     return true;
   });
+}
+
+function matchesEu(player: RosterPlayer, request: ClubRequest, euCountries?: Set<string>): boolean {
+  if (!request.euOnly) return true;
+  if (!euCountries || euCountries.size === 0) return true;
+  const nats = player.nationalities?.length ? player.nationalities : player.nationality ? [player.nationality] : [];
+  if (nats.length === 0) return true; // don't exclude players with no nationality data
+  return nats.some((n) => euCountries.has(n.trim().toLowerCase()));
 }
 
 /**
@@ -144,7 +156,8 @@ export function matchRequestToPlayers(request: ClubRequest, players: RosterPlaye
  */
 export function matchingRequestsForPlayer(
   player: RosterPlayer,
-  requests: ClubRequest[]
+  requests: ClubRequest[],
+  euCountries?: Set<string>
 ): ClubRequest[] {
-  return requests.filter((req) => matchRequestToPlayers(req, [player]).length > 0);
+  return requests.filter((req) => matchRequestToPlayers(req, [player], euCountries).length > 0);
 }

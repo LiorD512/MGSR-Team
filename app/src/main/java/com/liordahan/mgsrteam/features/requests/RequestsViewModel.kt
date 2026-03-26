@@ -5,16 +5,20 @@ import androidx.lifecycle.viewModelScope
 import com.liordahan.mgsrteam.features.players.models.Player
 import com.liordahan.mgsrteam.features.players.models.Position
 import com.liordahan.mgsrteam.features.players.playerinfo.ai.AiHelperService
+import com.liordahan.mgsrteam.features.players.playerinfo.documents.PlayerDocument
 import com.liordahan.mgsrteam.features.players.repository.IPlayersRepository
 import com.liordahan.mgsrteam.features.requests.models.Request
 import com.liordahan.mgsrteam.features.requests.repository.IRequestsRepository
 import com.liordahan.mgsrteam.firebase.FirebaseHandler
 import com.liordahan.mgsrteam.transfermarket.ClubSearch
 import com.liordahan.mgsrteam.transfermarket.ClubSearchModel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
@@ -28,6 +32,7 @@ data class RequestsUiState(
     val requests: List<Request> = emptyList(),
     val requestsByPositionCountry: Map<String, Map<String, List<Request>>> = emptyMap(),
     val matchingPlayersByRequestId: Map<String, List<Player>> = emptyMap(),
+    val mandatePlayersByRequestId: Map<String, List<Player>> = emptyMap(),
     val totalCount: Int = 0,
     val positionsCount: Int = 0,
     val pendingCount: Int = 0,
@@ -100,15 +105,22 @@ class RequestsViewModel(
     private val _addRequestMessage = MutableStateFlow<String?>(null)
     private val _addRequestError = MutableStateFlow<String?>(null)
 
+    /** playerTmProfile → aggregated validLeagues from all active (non-expired) mandate documents */
+    private val _mandateLeaguesByPlayer = MutableStateFlow<Map<String, List<String>>>(emptyMap())
+
     private val defaultPositionOrder = listOf("GK", "CB", "LB", "RB", "DM", "CM", "LM", "RM", "LW", "RW", "CF", "ST")
+
+    /** Merge message+error into a single flow so we keep the typed 5-param combine. */
+    private val _addRequestFeedback = combine(_addRequestMessage, _addRequestError) { msg, err -> msg to err }
 
     override val requestsState: StateFlow<RequestsUiState> = combine(
         requestsRepository.requestsFlow(),
         playersRepository.playersFlow(),
+        _addRequestFeedback,
         _positions,
-        _addRequestMessage,
-        _addRequestError
-    ) { requests, players, posList, msg, err ->
+        _mandateLeaguesByPlayer
+    ) { requests, players, feedback, posList, mandateData ->
+        val (msg, err) = feedback
         val pendingCount = requests.count { (it.status ?: "pending") == "pending" }
         val order = posList.map { it.name ?: "" }.filter { it.isNotBlank() }
             .ifEmpty { defaultPositionOrder }
@@ -124,10 +136,14 @@ class RequestsViewModel(
         val matchingPlayersByRequestId = requests.associate { req ->
             (req.id ?: "") to RequestMatcher.match(req, players)
         }.filterKeys { it.isNotBlank() }
+
+        val mandatePlayersByRequestId = computeMandatePlayers(requests, players, mandateData)
+
         RequestsUiState(
             requests = requests,
             requestsByPositionCountry = byPositionCountry,
             matchingPlayersByRequestId = matchingPlayersByRequestId,
+            mandatePlayersByRequestId = mandatePlayersByRequestId,
             totalCount = requests.size,
             positionsCount = byPosition.size,
             pendingCount = pendingCount,
@@ -143,6 +159,7 @@ class RequestsViewModel(
 
     init {
         loadPositions()
+        loadMandateDocuments()
     }
 
     private fun loadPositions() {
@@ -151,6 +168,101 @@ class RequestsViewModel(
                 val posList = it.toObjects(Position::class.java)
                 _positions.value = posList.sortedByDescending { it.sort }
             }
+    }
+
+    private fun loadMandateDocuments() {
+        firebaseHandler.firebaseStore.collection(firebaseHandler.playerDocumentsTable)
+            .whereEqualTo("type", "MANDATE")
+            .addSnapshotListener { snapshot, _ ->
+                if (snapshot == null) return@addSnapshotListener
+                val docs = snapshot.toObjects(PlayerDocument::class.java)
+                viewModelScope.launch(Dispatchers.Default) {
+                    val now = System.currentTimeMillis()
+                    val map = docs
+                        .filter { it.playerTmProfile != null && it.expiresAt != null && !it.expired }
+                        .filter { it.expiresAt!! >= now }
+                        .groupBy { it.playerTmProfile!! }
+                        .mapValues { (_, list) ->
+                            list.flatMap { it.validLeagues ?: emptyList() }.distinct()
+                        }
+                    _mandateLeaguesByPlayer.value = map
+                }
+            }
+    }
+
+    /**
+     * For each request, find players from the roster who:
+     * 1. Have a valid mandate (appear in mandateData)
+     * 2. Their mandate validLeagues match the request's club:
+     *    - Country-wide mandate: validLeagues contains the club's country (e.g. "Israel")
+     *    - Specific club mandate: validLeagues contains "ClubName - Country" matching the request
+     *    - Worldwide mandate: validLeagues contains "WorldWide"
+     * 3. Player's position matches the request position
+     */
+    private fun computeMandatePlayers(
+        requests: List<Request>,
+        players: List<Player>,
+        mandateData: Map<String, List<String>>
+    ): Map<String, List<Player>> {
+        if (mandateData.isEmpty()) return emptyMap()
+        // Build a set of player profiles that have active mandates
+        val playersWithMandate = players.filter { player ->
+            val profile = player.tmProfile?.takeIf { it.isNotBlank() } ?: return@filter false
+            mandateData.containsKey(profile)
+        }
+        if (playersWithMandate.isEmpty()) return emptyMap()
+
+        return requests.mapNotNull { req ->
+            val reqId = req.id?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
+            val reqPosition = req.position?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
+            val clubName = req.clubName?.takeIf { it.isNotBlank() }
+            val clubCountry = req.clubCountry?.takeIf { it.isNotBlank() }
+
+            val matched = playersWithMandate.filter { player ->
+                // 1. Position must match
+                if (!RequestMatcher.matchesPositionPublic(player, reqPosition)) return@filter false
+                // 2. Mandate must cover this club
+                val profile = player.tmProfile ?: return@filter false
+                val leagues = mandateData[profile] ?: return@filter false
+                mandateMatchesClub(leagues, clubName, clubCountry)
+            }
+            if (matched.isNotEmpty()) reqId to matched else null
+        }.toMap()
+    }
+
+    /** Normalize text for fuzzy club name matching: strip diacritics, punctuation, collapse whitespace */
+    private fun normalizeClub(s: String): String =
+        java.text.Normalizer.normalize(s, java.text.Normalizer.Form.NFD)
+            .replace("\\p{M}".toRegex(), "")
+            .replace("[.,'\\-]".toRegex(), " ")
+            .replace("\\s+".toRegex(), " ")
+            .trim().lowercase()
+
+    /** Check if two club names match (exact or one contains the other) */
+    private fun clubNamesMatch(a: String, b: String): Boolean =
+        a == b || a.contains(b) || b.contains(a)
+
+    /** Check if mandate validLeagues covers the given club */
+    private fun mandateMatchesClub(validLeagues: List<String>, clubName: String?, clubCountry: String?): Boolean {
+        val leaguesNorm = validLeagues.map { normalizeClub(it) }
+        if (leaguesNorm.any { it == "worldwide" }) return true
+        val clubCountryNorm = clubCountry?.let { normalizeClub(it) }
+        val clubNameNorm = clubName?.let { normalizeClub(it) }
+        // Country-wide mandate: validLeagues contains just the country name
+        if (clubCountryNorm != null && leaguesNorm.any { it == clubCountryNorm }) return true
+        // Specific club mandate: "ClubName - Country"
+        if (clubNameNorm != null && clubCountryNorm != null) {
+            val clubEntry = "$clubNameNorm - $clubCountryNorm"
+            if (leaguesNorm.any { it == clubEntry }) return true
+        }
+        // Fuzzy club-name match: covers partial names, abbreviations, spelling differences
+        if (clubNameNorm != null) {
+            for (l in leaguesNorm) {
+                val clubPart = if (" - " in l) l.substringBefore(" - ") else l
+                if (clubNamesMatch(clubNameNorm, clubPart)) return true
+            }
+        }
+        return false
     }
 
     override fun addRequest(

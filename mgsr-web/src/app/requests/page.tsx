@@ -16,8 +16,9 @@ import { getPlayerDetails } from '@/lib/api';
 import { getCurrentAccountForShortlist, getAllAccounts } from '@/lib/accounts';
 import { getScreenCache, setScreenCache } from '@/lib/screenCache';
 import { toWhatsAppUrl } from '@/lib/whatsapp';
-import { CLUB_REQUESTS_COLLECTIONS, PLAYERS_COLLECTIONS, SHORTLISTS_COLLECTIONS, FEED_EVENTS_COLLECTIONS } from '@/lib/platformCollections';
+import { CLUB_REQUESTS_COLLECTIONS, PLAYERS_COLLECTIONS, SHORTLISTS_COLLECTIONS, FEED_EVENTS_COLLECTIONS, PLAYER_DOCUMENTS_COLLECTIONS } from '@/lib/platformCollections';
 import { subscribePlayersWomen, type WomanPlayer } from '@/lib/playersWomen';
+import { useEuCountries } from '@/hooks/useEuCountries';
 import ClubIntelPanel from '@/components/ClubIntelPanel';
 import { type ClubIntelligence } from '@/lib/clubIntel';
 import AddRequestSheet from './AddRequestSheet';
@@ -169,6 +170,7 @@ export default function RequestsPage() {
   const { t, isRtl, lang } = useLanguage();
   const { platform } = usePlatform();
   const router = useRouter();
+  const euCountries = useEuCountries();
   const clubRequestsCollection = CLUB_REQUESTS_COLLECTIONS[platform];
   const playersCollection = PLAYERS_COLLECTIONS[platform];
   const shortlistsCollection = SHORTLISTS_COLLECTIONS[platform];
@@ -203,10 +205,14 @@ export default function RequestsPage() {
   const [clubIntelError, setClubIntelError] = useState<Record<string, string>>({});
   const [agentHebrewMap, setAgentHebrewMap] = useState<Record<string, string>>({});
 
+  /** playerTmProfile → aggregated validLeagues from all active mandate docs */
+  const [mandateLeaguesByPlayer, setMandateLeaguesByPlayer] = useState<Record<string, string[]>>({});
+
   const isHebrew = lang === 'he';
   const isWomen = platform === 'women';
   const isYouth = platform === 'youth';
   const feedEventsCollection = FEED_EVENTS_COLLECTIONS[platform];
+  const playerDocumentsCollection = PLAYER_DOCUMENTS_COLLECTIONS[platform];
 
   useEffect(() => {
     if (!loading && !user) router.replace('/login');
@@ -268,6 +274,39 @@ export default function RequestsPage() {
     return () => unsub();
   }, [platform, playersCollection]);
 
+  // Load all active mandate documents to match players with mandates to clubs
+  useEffect(() => {
+    if (!user) return;
+    const q = query(
+      collection(db, playerDocumentsCollection),
+      where('type', '==', 'MANDATE')
+    );
+    const unsub = onSnapshot(q, (snap) => {
+      const now = Date.now();
+      const byPlayer: Record<string, string[]> = {};
+      for (const d of snap.docs) {
+        const data = d.data();
+        const profile = data.playerTmProfile as string | undefined;
+        if (!profile) continue;
+        if (data.expired === true) continue;
+        const expiresAt = data.expiresAt as number | undefined;
+        if (!expiresAt || expiresAt < now) continue;
+        const leagues = (data.validLeagues as string[] | undefined) ?? [];
+        if (!byPlayer[profile]) byPlayer[profile] = [];
+        byPlayer[profile].push(...leagues);
+      }
+      // Deduplicate leagues per player
+      for (const key of Object.keys(byPlayer)) {
+        byPlayer[key] = [...new Set(byPlayer[key])];
+      }
+      console.log('[Mandate] Loaded', Object.keys(byPlayer).length, 'players with active mandates');
+      setMandateLeaguesByPlayer(byPlayer);
+    }, (err) => {
+      console.error('[Mandate] Error loading mandate documents:', err);
+    });
+    return () => unsub();
+  }, [user, playerDocumentsCollection]);
+
   useEffect(() => {
     if (requestsCacheKey) {
       setScreenCache<RequestsCache>(requestsCacheKey, {
@@ -315,10 +354,67 @@ export default function RequestsPage() {
     const byId: Record<string, RosterPlayer[]> = {};
     for (const r of requests) {
       if (!r.id) continue;
-      byId[r.id] = matchRequestToPlayers(r, players);
+      byId[r.id] = matchRequestToPlayers(r, players, euCountries);
     }
     return byId;
-  }, [requests, players]);
+  }, [requests, players, euCountries]);
+
+  /** Normalize text for fuzzy club name matching: strip diacritics, punctuation, collapse whitespace */
+  const normalizeClub = (s: string) =>
+    s.normalize('NFD').replace(/[\u0300-\u036f]/g, '') // strip diacritics
+      .replace(/[.,'\-]/g, ' ')                         // punctuation → space
+      .replace(/\s+/g, ' ')                              // collapse whitespace
+      .trim().toLowerCase();
+
+  /** Check if two club names match (exact or one contains the other) */
+  const clubNamesMatch = (a: string, b: string) =>
+    a === b || a.includes(b) || b.includes(a);
+
+  /** Players with active mandates matching each request's club */
+  const mandatePlayersByRequestId = useMemo(() => {
+    const byId: Record<string, RosterPlayer[]> = {};
+    if (Object.keys(mandateLeaguesByPlayer).length === 0) return byId;
+    const playersWithMandate = players.filter((p) => {
+      const profile = p.tmProfile || p.id;
+      return profile && mandateLeaguesByPlayer[profile];
+    });
+    if (playersWithMandate.length === 0) return byId;
+    for (const r of requests) {
+      if (!r.id || !r.position) continue;
+      const clubName = r.clubName?.trim();
+      const clubCountry = r.clubCountry?.trim();
+      const clubNameNorm = clubName ? normalizeClub(clubName) : undefined;
+      const clubCountryNorm = clubCountry ? normalizeClub(clubCountry) : undefined;
+      const reqPos = normalizePosition(r.position).toUpperCase();
+      const matched = playersWithMandate.filter((p) => {
+        // Position check
+        const playerPositions = (p.positions ?? [])
+          .filter((pos): pos is string => !!pos)
+          .map((pos) => normalizePosition(pos).toUpperCase());
+        if (!playerPositions.includes(reqPos)) return false;
+        // Mandate check
+        const profile = p.tmProfile || p.id;
+        const leagues = mandateLeaguesByPlayer[profile] ?? [];
+        const leaguesNorm = leagues.map(normalizeClub);
+        if (leaguesNorm.some((l) => l === 'worldwide')) return true;
+        if (clubCountryNorm && leaguesNorm.some((l) => l === clubCountryNorm)) return true;
+        if (clubNameNorm && clubCountryNorm) {
+          const clubEntry = `${clubNameNorm} - ${clubCountryNorm}`;
+          if (leaguesNorm.some((l) => l === clubEntry)) return true;
+        }
+        // Fuzzy club-name match: covers partial names, abbreviations, spelling differences
+        if (clubNameNorm) {
+          for (const l of leaguesNorm) {
+            const clubPart = l.includes(' - ') ? l.split(' - ')[0] : l;
+            if (clubNamesMatch(clubNameNorm, clubPart)) return true;
+          }
+        }
+        return false;
+      });
+      if (matched.length > 0) byId[r.id] = matched;
+    }
+    return byId;
+  }, [requests, players, mandateLeaguesByPlayer]);
 
   /** Flat list of pending requests for table view */
   const pendingRequests = useMemo(() => {
@@ -745,6 +841,7 @@ export default function RequestsPage() {
                     <th className="text-start px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-mgsr-muted hidden sm:table-cell">{isHebrew ? 'דמי העברה' : 'Fee'}</th>
                     <th className="text-start px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-mgsr-muted hidden sm:table-cell">{isHebrew ? 'גיל' : 'Age'}</th>
                     <th className="text-start px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-mgsr-muted">{isHebrew ? 'התאמות' : 'Matches'}</th>
+                    <th className="text-start px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-mgsr-muted">{isHebrew ? 'מנדט' : 'Mandate'}</th>
                     <th className="text-start px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-mgsr-muted hidden md:table-cell">{isHebrew ? 'איש קשר' : 'Contact'}</th>
                     <th className="text-start px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-mgsr-muted hidden lg:table-cell">{isHebrew ? 'הערות' : 'Notes'}</th>
                     <th className="text-start px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-mgsr-muted hidden sm:table-cell">{isHebrew ? 'תגיות' : 'Tags'}</th>
@@ -754,7 +851,9 @@ export default function RequestsPage() {
                 <tbody>
                   {filteredRequests.map((r) => {
                     const matchingPlayers = (r.id ? matchingPlayersByRequestId[r.id] : []) ?? [];
+                    const mandatePlayers = (r.id ? mandatePlayersByRequestId[r.id] : []) ?? [];
                     const matchCount = matchingPlayers.length;
+                    const mandateCount = mandatePlayers.length;
                     const ageStr = ageRange(r);
                     const footStr = r.dominateFoot && r.dominateFoot !== 'any' ? footLabel(r.dominateFoot, t) : null;
                     const isRowExpanded = expandedRowId === r.id;
@@ -838,6 +937,20 @@ export default function RequestsPage() {
                             </div>
                           </td>
 
+                          {/* Mandate */}
+                          <td className="px-3 py-3">
+                            <div className="flex items-center gap-1.5">
+                              {mandateCount > 0 ? (
+                                <>
+                                  <span className="text-sm">✍️</span>
+                                  <span className="text-sm font-semibold text-emerald-400">{mandateCount}</span>
+                                </>
+                              ) : (
+                                <span className="text-mgsr-muted/40 text-xs">—</span>
+                              )}
+                            </div>
+                          </td>
+
                           {/* Contact */}
                           <td className="px-3 py-3 hidden md:table-cell">
                             {r.contactName ? (
@@ -916,7 +1029,7 @@ export default function RequestsPage() {
                         {/* ── Expanded inline detail panel ── */}
                         {isRowExpanded && (
                           <tr className="bg-mgsr-dark/20">
-                            <td colSpan={10} className="p-0">
+                            <td colSpan={11} className="p-0">
                               <div className="p-4 sm:p-5">
                                 {/* Mobile-only: show budget/age/contact/notes that are hidden on small screens */}
                                 <div className="sm:hidden space-y-2 mb-4 p-3 rounded-xl bg-mgsr-card border border-mgsr-border">
@@ -947,7 +1060,7 @@ export default function RequestsPage() {
                                   )}
                                 </div>
 
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className={`grid grid-cols-1 ${mandateCount > 0 && !isWomen && !isYouth ? 'md:grid-cols-3' : 'md:grid-cols-2'} gap-4`}>
                                   {/* Left: Roster Matches */}
                                   <div className="rounded-xl bg-mgsr-card border border-mgsr-border p-4">
                                     <h4 className="text-[11px] font-semibold uppercase tracking-wider text-mgsr-muted mb-3 flex items-center gap-1.5">
@@ -962,6 +1075,43 @@ export default function RequestsPage() {
                                             key={player.id}
                                             href={`/players/${player.id}?from=/requests`}
                                             className="flex items-center gap-2.5 p-2 rounded-lg hover:bg-mgsr-teal/10 transition"
+                                            onClick={(e) => e.stopPropagation()}
+                                          >
+                                            <img
+                                              src={player.profileImage || 'https://via.placeholder.com/40?text=?'}
+                                              alt=""
+                                              className="w-8 h-8 rounded-full object-cover shrink-0 bg-mgsr-border"
+                                              onError={(e) => { (e.target as HTMLImageElement).src = 'https://via.placeholder.com/40?text=?'; }}
+                                            />
+                                            <div className="flex-1 min-w-0">
+                                              <p className="font-medium text-mgsr-text text-sm truncate">{player.fullName || '—'}</p>
+                                              <p className="text-[11px] text-mgsr-muted truncate">
+                                                {player.positions?.filter(Boolean).join(', ') || '—'} · {player.age || '—'} · {player.marketValue || '—'}
+                                              </p>
+                                            </div>
+                                            {player.currentClub?.clubLogo && (
+                                              <img src={player.currentClub.clubLogo} alt="" className="w-5 h-5 rounded-full object-cover shrink-0" />
+                                            )}
+                                          </Link>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  {/* Mandate Players */}
+                                  <div className="rounded-xl bg-mgsr-card border border-mgsr-border p-4">
+                                    <h4 className="text-[11px] font-semibold uppercase tracking-wider text-mgsr-muted mb-3 flex items-center gap-1.5">
+                                      ✍️ {isHebrew ? 'שחקנים עם מנדט' : 'Players with Mandate'} ({mandateCount})
+                                    </h4>
+                                    {mandateCount === 0 ? (
+                                      <p className="text-sm text-mgsr-muted py-4 text-center">{isHebrew ? 'אין שחקנים עם מנדט תואם' : 'No players with a matching mandate'}</p>
+                                    ) : (
+                                      <div className="space-y-1.5 max-h-[320px] overflow-y-auto">
+                                        {mandatePlayers.map((player) => (
+                                          <Link
+                                            key={player.id}
+                                            href={`/players/${player.id}?from=/requests`}
+                                            className="flex items-center gap-2.5 p-2 rounded-lg hover:bg-emerald-500/10 transition"
                                             onClick={(e) => e.stopPropagation()}
                                           >
                                             <img

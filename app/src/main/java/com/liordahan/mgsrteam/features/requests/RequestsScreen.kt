@@ -202,6 +202,7 @@ fun RequestsScreen(
     var isSharing by remember { mutableStateOf(false) }
     var onlineExpandedRequestId by remember { mutableStateOf<String?>(null) }
     var expandedRequestIds by remember { mutableStateOf(setOf<String>()) }
+    var mandateExpandedRequestIds by remember { mutableStateOf(setOf<String>()) }
     var selectedPosition by remember { mutableStateOf<String?>(null) }
     var searchQuery by remember { mutableStateOf("") }
 
@@ -428,14 +429,18 @@ fun RequestsScreen(
                                 key = { it.id ?: it.hashCode().toString() }
                             ) { request ->
                                 val matchingPlayers = state.matchingPlayersByRequestId[request.id ?: ""] ?: emptyList()
+                                val mandatePlayers = state.mandatePlayersByRequestId[request.id ?: ""] ?: emptyList()
                                 val isRequestExpanded = (request.id ?: "") in expandedRequestIds
+                                val isMandateExpanded = (request.id ?: "") in mandateExpandedRequestIds
                                 val requestId = request.id ?: ""
                                 val isOnlineExpanded = onlineExpandedRequestId == requestId
                                 val onlinePlayersForThis = if (isOnlineExpanded) onlinePlayers else emptyList()
                                 RequestCard(
                                     request = request,
                                     matchingPlayers = matchingPlayers,
+                                    mandatePlayers = mandatePlayers,
                                     isExpanded = isRequestExpanded,
+                                    isMandateExpanded = isMandateExpanded,
                                     isOnlineExpanded = isOnlineExpanded,
                                     onlineLoading = isOnlineExpanded && onlineLoading,
                                     onlinePlayers = onlinePlayersForThis,
@@ -446,6 +451,10 @@ fun RequestsScreen(
                                     onToggleExpand = {
                                         val id = request.id ?: return@RequestCard
                                         expandedRequestIds = if (isRequestExpanded) expandedRequestIds - id else expandedRequestIds + id
+                                    },
+                                    onToggleMandateExpand = {
+                                        val id = request.id ?: return@RequestCard
+                                        mandateExpandedRequestIds = if (isMandateExpanded) mandateExpandedRequestIds - id else mandateExpandedRequestIds + id
                                     },
                                     onToggleOnlineExpand = {
                                         if (onlineExpandedRequestId == requestId) {
@@ -857,7 +866,9 @@ private fun CountryExpandableRow(
 private fun RequestCard(
     request: Request,
     matchingPlayers: List<Player>,
+    mandatePlayers: List<Player>,
     isExpanded: Boolean,
+    isMandateExpanded: Boolean,
     isOnlineExpanded: Boolean,
     onlineLoading: Boolean,
     onlinePlayers: List<AiHelperService.SimilarPlayerSuggestion>,
@@ -867,6 +878,7 @@ private fun RequestCard(
     isWomen: Boolean = false,
     modifier: Modifier = Modifier,
     onToggleExpand: () -> Unit,
+    onToggleMandateExpand: () -> Unit,
     onToggleOnlineExpand: () -> Unit,
     onPlayerClick: (Player) -> Unit,
     onOnlinePlayerClick: (AiHelperService.SimilarPlayerSuggestion) -> Unit,
@@ -1291,7 +1303,62 @@ private fun RequestCard(
                     }
                 }
             }
-            // Row 2: Find players from TM (expandable, loader + list inside) — hidden for Women
+            // Row 2: Players with mandate to this club (expandable)
+            if (mandatePlayers.isNotEmpty()) {
+                Spacer(Modifier.height(6.dp))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 10.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(PlatformColors.palette.background)
+                        .border(1.dp, PlatformColors.palette.cardBorder, RoundedCornerShape(12.dp))
+                        .clickWithNoRipple { onToggleMandateExpand() }
+                        .padding(8.dp, 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        Icons.Default.Edit,
+                        contentDescription = null,
+                        tint = PlatformColors.palette.green,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        text = if (mandatePlayers.size == 1) {
+                            stringResource(R.string.requests_mandate_players_one, mandatePlayers.size)
+                        } else {
+                            stringResource(R.string.requests_mandate_players, mandatePlayers.size)
+                        },
+                        style = regularTextStyle(PlatformColors.palette.textPrimary, 13.sp)
+                    )
+                    Spacer(Modifier.weight(1f))
+                    Icon(
+                        Icons.Default.ExpandMore,
+                        contentDescription = if (isMandateExpanded) "Collapse" else "Expand",
+                        tint = PlatformColors.palette.textSecondary,
+                        modifier = Modifier
+                            .size(20.dp)
+                            .graphicsLayer { rotationZ = if (isMandateExpanded) 180f else 0f }
+                    )
+                }
+                if (isMandateExpanded) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(start = 10.dp, end = 10.dp, bottom = 8.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        mandatePlayers.forEach { player ->
+                            MatchingPlayerRow(
+                                player = player,
+                                onClick = { onPlayerClick(player) }
+                            )
+                        }
+                    }
+                }
+            }
+            // Row 3: Find players from TM (expandable, loader + list inside) — hidden for Women
             if (!isWomen) {
             Spacer(Modifier.height(6.dp))
             Row(

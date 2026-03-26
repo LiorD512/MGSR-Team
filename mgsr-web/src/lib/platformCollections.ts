@@ -46,3 +46,9 @@ export const PORTFOLIO_COLLECTIONS: Record<Platform, string> = {
   women: 'PortfolioWomen',
   youth: 'PortfolioYouth',
 };
+
+export const PLAYER_DOCUMENTS_COLLECTIONS: Record<Platform, string> = {
+  men: 'PlayerDocuments',
+  women: 'PlayerDocumentsWomen',
+  youth: 'PlayerDocumentsYouth',
+};

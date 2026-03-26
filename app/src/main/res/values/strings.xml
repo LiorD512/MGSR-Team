@@ -705,6 +705,9 @@
     <string name="requests_country_clubs">%d clubs</string>
     <string name="requests_matching_players_one">%d matching player</string>
     <string name="requests_matching_players">%d matching players</string>
+    <string name="requests_mandate_players_one">%d player with mandate</string>
+    <string name="requests_mandate_players">%d players with mandate</string>
+    <string name="requests_mandate_no_match">No players with a matching mandate</string>
     <string name="requests_find_players">Find players</string>
     <string name="requests_find_players_sheet_title">Players for this request</string>
     <string name="requests_find_players_online">Find players using AI Scout</string>

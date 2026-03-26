@@ -4,6 +4,7 @@ import com.liordahan.mgsrteam.features.players.models.Player
 import com.liordahan.mgsrteam.features.requests.models.DominateFootOptions
 import com.liordahan.mgsrteam.features.requests.models.Request
 import com.liordahan.mgsrteam.features.requests.models.SalaryRangeOptions
+import com.liordahan.mgsrteam.utils.EuCountries
 
 /**
  * Matches roster players to a request based on position, age, dominate foot, salary range, and transfer fee.
@@ -62,13 +63,27 @@ object RequestMatcher {
         return players.filter { player -> matchesRequest(player, request, position) }
     }
 
+    /** Public position check for use outside the matcher (e.g. mandate filtering). */
+    fun matchesPositionPublic(player: Player, requestPosition: String): Boolean {
+        return matchesPosition(player, requestPosition)
+    }
+
     private fun matchesRequest(player: Player, request: Request, position: String): Boolean {
         if (!matchesPosition(player, position)) return false
         if (!matchesAge(player, request)) return false
         if (!matchesDominateFoot(player, request)) return false
         if (!matchesSalaryRange(player, request)) return false
         if (!matchesTransferFee(player, request)) return false
+        if (!matchesEu(player, request)) return false
         return true
+    }
+
+    private fun matchesEu(player: Player, request: Request): Boolean {
+        if (request.euOnly != true) return true
+        // Don't exclude players with no nationality data
+        val nats = player.nationalities?.takeIf { it.isNotEmpty() } ?: listOfNotNull(player.nationality)
+        if (nats.isEmpty()) return true
+        return EuCountries.isEuNational(nats)
     }
 
     private fun matchesDominateFoot(player: Player, request: Request): Boolean {
