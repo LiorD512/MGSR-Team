@@ -297,7 +297,7 @@ export default function RequestsPage() {
       }
       // Deduplicate leagues per player
       for (const key of Object.keys(byPlayer)) {
-        byPlayer[key] = [...new Set(byPlayer[key])];
+        byPlayer[key] = Array.from(new Set(byPlayer[key]));
       }
       console.log('[Mandate] Loaded', Object.keys(byPlayer).length, 'players with active mandates');
       setMandateLeaguesByPlayer(byPlayer);
