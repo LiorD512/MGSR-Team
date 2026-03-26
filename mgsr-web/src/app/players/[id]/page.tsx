@@ -20,8 +20,6 @@ import { flattenPdf } from '@/lib/pdfFlatten';
 import FmIntelligencePanel from '@/components/FmIntelligencePanel';
 import SimilarPlayersPanel from '@/components/SimilarPlayersPanel';
 import PlayerHighlightsPanel from '@/components/PlayerHighlightsPanel';
-import PlaymakerStatsPanel from '@/components/PlaymakerStatsPanel';
-import type { PmMarketValueEntry } from '@/lib/playmakerstats';
 import MatchingRequestsSection from '@/components/MatchingRequestsSection';
 import ProposalHistorySection, { type ProposalOffer } from '@/components/ProposalHistorySection';
 import { matchingRequestsForPlayer, type RosterPlayer, type ClubRequest } from '@/lib/requestMatcher';
@@ -309,7 +307,6 @@ export default function PlayerInfoPage() {
   const [pendingTransfer, setPendingTransfer] = useState<AgentTransferRequest | null>(null);
   const [resolvedTransfer, setResolvedTransfer] = useState<AgentTransferRequest | null>(null);
   const [resolvedDismissed, setResolvedDismissed] = useState(false);
-  const [pmMarketValueHistory, setPmMarketValueHistory] = useState<PmMarketValueEntry[]>([]);
 
   // Reset transfer state when player changes
   useEffect(() => {
@@ -1360,26 +1357,6 @@ export default function PlayerInfoPage() {
       }))
       .sort((a, b) => a.date - b.date);
 
-    // Merge PlaymakerStats market value entries (fill gaps in TM data)
-    if (pmMarketValueHistory.length > 0) {
-      const existingDates = new Set(points.map((p) => p.date));
-      const threshold = 30 * 24 * 60 * 60 * 1000; // 30 days
-      for (const pm of pmMarketValueHistory) {
-        const ts = new Date(pm.date).getTime();
-        if (isNaN(ts)) continue;
-        const tooClose = Array.from(existingDates).some((d) => Math.abs(d - ts) < threshold);
-        if (!tooClose) {
-          points.push({
-            date: ts,
-            dateLabel: new Date(ts).toLocaleDateString(locale, { month: 'short', year: '2-digit', day: 'numeric' }),
-            value: pm.value,
-            valueNum: parseMarketValue(pm.value),
-          });
-        }
-      }
-      points.sort((a, b) => a.date - b.date);
-    }
-
     const currentValue = merged.marketValue || player?.marketValue;
     if (currentValue && points.length > 0) {
       const lastPoint = points[points.length - 1];
@@ -1400,7 +1377,7 @@ export default function PlayerInfoPage() {
       }];
     }
     return points;
-  }, [player?.marketValueHistory, player?.marketValue, merged.marketValue, isRtl, pmMarketValueHistory]);
+  }, [player?.marketValueHistory, player?.marketValue, merged.marketValue, isRtl]);
 
   const valueChartStats = useMemo(() => {
     if (valueChartData.length === 0) return null;
@@ -2266,17 +2243,6 @@ export default function PlayerInfoPage() {
                 fullNameHe={merged.fullNameHe || player?.fullNameHe}
                 clubCountry={merged.currentClub?.clubCountry || player?.currentClub?.clubCountry}
                 isRtl={isRtl}
-              />
-            )}
-
-            {/* PlaymakerStats Panel */}
-            {(merged.fullName || player?.fullName) && (
-              <PlaymakerStatsPanel
-                playerName={merged.fullName || player?.fullName || ''}
-                age={String(merged.age || player?.age || '')}
-                club={merged.currentClub?.clubName || player?.currentClub?.clubName || ''}
-                isRtl={isRtl}
-                onMarketValueHistory={setPmMarketValueHistory}
               />
             )}
 

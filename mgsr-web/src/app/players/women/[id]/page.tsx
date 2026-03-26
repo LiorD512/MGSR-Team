@@ -31,7 +31,6 @@ import type { HighlightVideo } from '@/lib/highlightsApi';
 import PlayerHighlightsPanel from '@/components/PlayerHighlightsPanel';
 import AddPlayerTaskModal from '@/components/AddPlayerTaskModal';
 import FmInsideWomenPanel from '@/components/FmInsideWomenPanel';
-import PlaymakerStatsWomenPanel from '@/components/PlaymakerStatsWomenPanel';
 import AppLayout from '@/components/AppLayout';
 import MatchingRequestsSection from '@/components/MatchingRequestsSection';
 import { matchingRequestsForPlayer, type RosterPlayer, type ClubRequest } from '@/lib/requestMatcher';
@@ -1139,16 +1138,6 @@ export default function WomanPlayerPage() {
                       }
                     : undefined
                 }
-                isRtl={isRtl}
-              />
-            )}
-
-            {/* PlaymakerStats Women Panel */}
-            {player.fullName && (
-              <PlaymakerStatsWomenPanel
-                playerName={player.fullName}
-                age={player.age}
-                club={player.currentClub?.clubName}
                 isRtl={isRtl}
               />
             )}
