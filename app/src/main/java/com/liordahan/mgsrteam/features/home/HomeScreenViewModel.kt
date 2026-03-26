@@ -378,14 +378,16 @@ class HomeScreenViewModel(
             // Query mandate documents; fall back to empty set so haveMandate still counts
             val now = System.currentTimeMillis()
             val profilesWithMandateDoc: Set<String> = try {
+                // Query all mandate docs and filter client-side.
+                // Firestore whereEqualTo("expired", false) skips docs where 'expired' field
+                // is missing, causing count mismatches vs the player list.
                 val docsSnap = firebaseHandler.firebaseStore
                     .collection(firebaseHandler.playerDocumentsTable)
                     .whereEqualTo("type", DocumentType.MANDATE.name)
-                    .whereEqualTo("expired", false)
-                    .whereGreaterThanOrEqualTo("expiresAt", now)
                     .get().await()
                 val docs = docsSnap.toObjects(PlayerDocument::class.java)
-                docs.filter { it.playerTmProfile != null }
+                docs.filter { !it.expired && (it.expiresAt == null || it.expiresAt >= now) }
+                    .filter { it.playerTmProfile != null }
                     .mapNotNull { it.playerTmProfile }.toSet()
             } catch (_: Exception) { emptySet() }
 
