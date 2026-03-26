@@ -5,11 +5,15 @@
  * No database - direct fetch each time.
  */
 import { NextRequest, NextResponse } from 'next/server';
+import { getFirebaseAdmin } from '@/lib/firebaseAdmin';
+import { getFirestore } from 'firebase-admin/firestore';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
 
 const FMINSIDE_BASE = 'https://fminside.net';
+const FM_CACHE_COLLECTION = 'FmIntelligenceCache';
+const FM_CACHE_MAX_AGE_MS = 90 * 24 * 60 * 60 * 1000; // 90 days
 
 function normalize(s: string): string {
   return s
@@ -622,6 +626,74 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Name required (min 2 chars)' }, { status: 400 });
     }
 
+    // ─── Check Firestore cache first (populated by local crawl script) ───
+    try {
+      const admin = getFirebaseAdmin();
+      if (admin) {
+        const db = getFirestore(admin);
+        const cacheKey = normalize(name).replace(/\s+/g, '_');
+        const cacheDoc = await db.collection(FM_CACHE_COLLECTION).doc(cacheKey).get();
+        if (cacheDoc.exists) {
+          const cached = cacheDoc.data()!;
+          const age_ms = Date.now() - (cached.cached_at || 0);
+          if (age_ms < FM_CACHE_MAX_AGE_MS && cached.ca > 0) {
+            console.log(`[FMInside women] Cache HIT for "${name}"`);
+            return NextResponse.json({
+              found: true,
+              player_name: cached.player_name ?? name,
+              ca: cached.ca,
+              pa: cached.pa,
+              potential_gap: cached.potential_gap ?? Math.max(0, (cached.pa || 0) - (cached.ca || 0)),
+              tier: cached.tier,
+              dimension_scores: cached.dimension_scores ?? {},
+              top_attributes: cached.top_attributes ?? [],
+              weak_attributes: cached.weak_attributes ?? [],
+              all_attributes: cached.all_attributes ?? {},
+              position_fit: cached.position_fit ?? {},
+              best_position: cached.best_position ?? { position: '—', fit: 80 },
+              foot: cached.foot ?? { left: 50, right: 50 },
+              height_cm: cached.height_cm ?? 0,
+              fminside_url: cached.fminside_url ?? '',
+              similar_players: [],
+            }, { headers: { 'Cache-Control': 'public, max-age=3600' } });
+          }
+        }
+        const altSnap = await db.collection(FM_CACHE_COLLECTION)
+          .where('original_query_name', '==', name)
+          .limit(1)
+          .get();
+        if (!altSnap.empty) {
+          const cached = altSnap.docs[0].data();
+          const age_ms = Date.now() - (cached.cached_at || 0);
+          if (age_ms < FM_CACHE_MAX_AGE_MS && cached.ca > 0) {
+            console.log(`[FMInside women] Cache HIT (alt) for "${name}"`);
+            return NextResponse.json({
+              found: true,
+              player_name: cached.player_name ?? name,
+              ca: cached.ca,
+              pa: cached.pa,
+              potential_gap: cached.potential_gap ?? Math.max(0, (cached.pa || 0) - (cached.ca || 0)),
+              tier: cached.tier,
+              dimension_scores: cached.dimension_scores ?? {},
+              top_attributes: cached.top_attributes ?? [],
+              weak_attributes: cached.weak_attributes ?? [],
+              all_attributes: cached.all_attributes ?? {},
+              position_fit: cached.position_fit ?? {},
+              best_position: cached.best_position ?? { position: '—', fit: 80 },
+              foot: cached.foot ?? { left: 50, right: 50 },
+              height_cm: cached.height_cm ?? 0,
+              fminside_url: cached.fminside_url ?? '',
+              similar_players: [],
+            }, { headers: { 'Cache-Control': 'public, max-age=3600' } });
+          }
+        }
+        console.log(`[FMInside women] Cache MISS for "${name}"`);
+      }
+    } catch (cacheErr) {
+      console.warn('[FMInside women] Cache lookup failed:', cacheErr);
+    }
+
+    // ─── Fallback: live scrape (may fail from cloud IPs) ───
     let hit: SearchHit | null = null;
 
     // Direct lookup if we have full FMInside URL (e.g. https://fminside.net/players/7-fm-26/2000351404-diana-bieliakova)
