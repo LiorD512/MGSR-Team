@@ -638,3 +638,308 @@ body {
 [data-platform="youth"] .mgsr-switch input:checked + .mgsr-slider {
   background-color: var(--youth-cyan);
 }
+
+/* ═══════════════════════════════════════════════════════
+   PORTFOLIO PAGE — Premium Animations & Effects
+   ═══════════════════════════════════════════════════════ */
+
+/* Scroll-triggered section entrance */
+@keyframes portfolio-reveal {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.portfolio-section {
+  animation: portfolio-reveal 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.portfolio-section:nth-child(2) { animation-delay: 0.08s; }
+.portfolio-section:nth-child(3) { animation-delay: 0.16s; }
+.portfolio-section:nth-child(4) { animation-delay: 0.24s; }
+.portfolio-section:nth-child(5) { animation-delay: 0.32s; }
+
+/* Live badge pulse */
+@keyframes live-dot-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(1.8); }
+}
+.live-dot {
+  animation: live-dot-pulse 1.5s ease-in-out infinite;
+}
+
+/* Transfer ticker scroll */
+@keyframes ticker-scroll {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+.ticker-track {
+  animation: ticker-scroll 25s linear infinite;
+}
+.ticker-track:hover {
+  animation-play-state: paused;
+}
+
+/* Number count-up effect via CSS counter (JS controlled) */
+@keyframes count-up-fill {
+  from { width: 0%; }
+  to { width: var(--fill-pct); }
+}
+.stat-fill-bar {
+  animation: count-up-fill 1.2s cubic-bezier(0.16, 1, 0.3, 1) 0.3s both;
+}
+
+/* Golden shimmer on selling point cards */
+@keyframes golden-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.selling-point-shimmer {
+  background-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 215, 0, 0.06) 40%,
+    rgba(255, 215, 0, 0.12) 50%,
+    rgba(255, 215, 0, 0.06) 60%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: golden-shimmer 4s ease-in-out infinite;
+}
+
+/* Value meter fill */
+@keyframes meter-fill {
+  from { width: 0; }
+  to { width: var(--meter-pct); }
+}
+.value-meter-fill {
+  animation: meter-fill 1.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.5s both;
+}
+
+/* Hero parallax float */
+@keyframes hero-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+.hero-image-float {
+  animation: hero-float 4s ease-in-out infinite;
+}
+
+/* Pitch lines background pattern */
+/* ── Portfolio cinematic background ── */
+.pitch-lines-bg {
+  position: relative;
+  background-color: #0A1018;
+  background-image:
+    linear-gradient(rgba(77,182,172,0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(77,182,172,0.035) 1px, transparent 1px);
+  background-size: 60px 60px;
+}
+[data-platform="women"] .pitch-lines-bg {
+  background-image:
+    linear-gradient(rgba(232,160,191,0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(232,160,191,0.035) 1px, transparent 1px);
+}
+
+/* Grid pulse — breathing grid like the landing page */
+@keyframes gridPulse {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 0.8; }
+}
+.portfolio-grid-overlay {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background-image:
+    linear-gradient(rgba(77,182,172,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(77,182,172,0.04) 1px, transparent 1px);
+  background-size: 60px 60px;
+  animation: gridPulse 8s ease-in-out infinite;
+}
+[data-platform="women"] .portfolio-grid-overlay {
+  background-image:
+    linear-gradient(rgba(232,160,191,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(232,160,191,0.04) 1px, transparent 1px);
+}
+
+/* Floating orbs — blurred ambient lights */
+@keyframes orbFloat {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(30px, -40px) scale(1.1); }
+  66% { transform: translate(-20px, 20px) scale(0.9); }
+}
+.portfolio-orb {
+  position: fixed;
+  border-radius: 50%;
+  filter: blur(80px);
+  pointer-events: none;
+  z-index: 0;
+  animation: orbFloat 14s ease-in-out infinite;
+}
+.portfolio-orb-1 {
+  width: 420px; height: 420px;
+  background: radial-gradient(circle, rgba(77,182,172,0.15), transparent 70%);
+  top: -8%; right: -8%;
+}
+.portfolio-orb-2 {
+  width: 350px; height: 350px;
+  background: radial-gradient(circle, rgba(178,75,243,0.08), transparent 70%);
+  bottom: 15%; left: -6%;
+  animation-delay: -5s;
+}
+.portfolio-orb-3 {
+  width: 280px; height: 280px;
+  background: radial-gradient(circle, rgba(0,212,255,0.07), transparent 70%);
+  top: 40%; left: 55%;
+  animation-delay: -9s;
+}
+[data-platform="women"] .portfolio-orb-1 {
+  background: radial-gradient(circle, rgba(232,160,191,0.15), transparent 70%);
+}
+[data-platform="women"] .portfolio-orb-2 {
+  background: radial-gradient(circle, rgba(200,140,255,0.08), transparent 70%);
+}
+[data-platform="women"] .portfolio-orb-3 {
+  background: radial-gradient(circle, rgba(255,180,220,0.07), transparent 70%);
+}
+
+/* Diagonal sweep lines — like landing hero */
+@keyframes lineSweep {
+  0%, 100% { opacity: 0.25; transform: rotate(-15deg) translateX(0); }
+  50% { opacity: 0.7; transform: rotate(-15deg) translateX(80px); }
+}
+.portfolio-sweep-lines {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.08;
+}
+.portfolio-sweep-lines::before,
+.portfolio-sweep-lines::after {
+  content: '';
+  position: absolute;
+  width: 200%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #4DB6AC, transparent);
+}
+.portfolio-sweep-lines::before {
+  top: 30%; left: -50%;
+  transform: rotate(-15deg);
+  animation: lineSweep 7s ease-in-out infinite;
+}
+.portfolio-sweep-lines::after {
+  top: 70%; left: -50%;
+  transform: rotate(-15deg);
+  animation: lineSweep 7s ease-in-out infinite reverse;
+}
+[data-platform="women"] .portfolio-sweep-lines::before,
+[data-platform="women"] .portfolio-sweep-lines::after {
+  background: linear-gradient(90deg, transparent, #E8A0BF, transparent);
+}
+
+/* Vignette — dark edges for depth */
+.portfolio-vignette {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background: radial-gradient(ellipse at 50% 30%, transparent 40%, rgba(10,16,24,0.6) 100%);
+}
+
+/* AI ring glow */
+@keyframes ring-glow {
+  0%, 100% { filter: drop-shadow(0 0 4px var(--ring-color)); }
+  50% { filter: drop-shadow(0 0 16px var(--ring-color)); }
+}
+.ai-ring-glow {
+  animation: ring-glow 3s ease-in-out infinite;
+}
+
+/* Radar scan sweep */
+@keyframes radar-sweep {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.radar-sweep-line {
+  animation: radar-sweep 4s linear infinite;
+  transform-origin: center;
+}
+
+/* Print styles — hide interactive elements */
+@media print {
+  .portfolio-section { animation: none !important; }
+  .ticker-track { animation: none !important; }
+  .live-dot { animation: none !important; }
+  .hero-holo { animation: none !important; }
+  .scout-stamp-in { animation: none !important; }
+  .portfolio-grid-overlay,
+  .portfolio-sweep-lines,
+  .portfolio-orb,
+  .portfolio-vignette { display: none !important; }
+  .pitch-lines-bg { background-image: none !important; background-color: #fff !important; }
+}
+
+/* ── Holographic hero card shimmer ── */
+@keyframes holo-shift {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+.hero-holo {
+  position: relative;
+}
+.hero-holo::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1.5px;
+  background: linear-gradient(
+    135deg,
+    transparent 20%,
+    rgba(77,182,172,0.4) 30%,
+    rgba(100,200,255,0.3) 40%,
+    rgba(170,120,255,0.25) 50%,
+    rgba(77,182,172,0.4) 60%,
+    transparent 80%
+  );
+  background-size: 300% 300%;
+  animation: holo-shift 6s ease-in-out infinite;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+[data-platform="women"] .hero-holo::before {
+  background: linear-gradient(
+    135deg,
+    transparent 20%,
+    rgba(232,160,191,0.4) 30%,
+    rgba(255,180,220,0.3) 40%,
+    rgba(200,140,255,0.25) 50%,
+    rgba(232,160,191,0.4) 60%,
+    transparent 80%
+  );
+  background-size: 300% 300%;
+  animation: holo-shift 6s ease-in-out infinite;
+}
+
+/* ── Scout verdict stamp ── */
+@keyframes stamp-slam {
+  0%   { opacity: 0; transform: scale(2.5) rotate(-15deg); }
+  50%  { opacity: 1; transform: scale(0.9) rotate(2deg); }
+  70%  { transform: scale(1.05) rotate(-1deg); }
+  100% { opacity: 1; transform: scale(1) rotate(0deg); }
+}
+.scout-stamp-in {
+  animation: stamp-slam 0.6s cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+}
+
+/* ── MGSR footer logo reveal ── */
+@keyframes footerLogoReveal {
+  from { opacity: 0; transform: scale(0.8); filter: blur(8px); }
+  to   { opacity: 1; transform: scale(1); filter: blur(0); }
+}
+.mgsr-footer-logo {
+  animation: footerLogoReveal 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}

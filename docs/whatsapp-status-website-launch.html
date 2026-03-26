@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MGSR WhatsApp Status</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  width: 540px;
+  height: 960px;
+  overflow: hidden;
+  font-family: 'Outfit', sans-serif;
+  background: #0A1018;
+  color: #E8EAED;
+  position: relative;
+  margin: 0 auto;
+}
+
+/* Background layers */
+.bg-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(77,182,172,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(77,182,172,0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+  opacity: 0.6;
+}
+
+.bg-orb-1 {
+  position: absolute;
+  width: 350px; height: 350px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(77,182,172,0.18), transparent 70%);
+  top: -15%; right: -20%;
+  filter: blur(60px);
+}
+
+.bg-orb-2 {
+  position: absolute;
+  width: 250px; height: 250px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(57,209,100,0.12), transparent 70%);
+  bottom: 10%; left: -15%;
+  filter: blur(80px);
+}
+
+.bg-orb-3 {
+  position: absolute;
+  width: 200px; height: 200px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(0,212,255,0.08), transparent 70%);
+  top: 40%; left: 30%;
+  filter: blur(90px);
+}
+
+/* Diagonal accent line */
+.accent-line {
+  position: absolute;
+  top: 0; left: 0;
+  width: 200%;
+  height: 1.5px;
+  background: linear-gradient(90deg, transparent 0%, rgba(77,182,172,0.5) 30%, rgba(57,209,100,0.4) 60%, transparent 100%);
+  transform: rotate(25deg);
+  transform-origin: top left;
+  top: 260px;
+  left: -100px;
+}
+
+.accent-line-2 {
+  position: absolute;
+  width: 200%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent 0%, rgba(77,182,172,0.2) 40%, transparent 100%);
+  transform: rotate(25deg);
+  transform-origin: top left;
+  top: 280px;
+  left: -100px;
+}
+
+/* Content */
+.content {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 50px 40px;
+  text-align: center;
+}
+
+/* Top badge */
+.top-badge {
+  font-family: 'Syne', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.35em;
+  text-transform: uppercase;
+  color: #4DB6AC;
+  margin-bottom: 30px;
+  position: relative;
+}
+.top-badge::before,
+.top-badge::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: 30px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #4DB6AC);
+}
+.top-badge::before { right: calc(100% + 12px); }
+.top-badge::after { left: calc(100% + 12px); background: linear-gradient(90deg, #4DB6AC, transparent); }
+
+/* Logo */
+.logo-wrap {
+  margin-bottom: 35px;
+}
+.logo-wrap svg {
+  width: 160px;
+  height: 160px;
+  filter: drop-shadow(0 0 40px rgba(77,182,172,0.2)) drop-shadow(0 0 80px rgba(57,209,100,0.1));
+}
+
+/* Main headline */
+.headline {
+  font-family: 'Syne', sans-serif;
+  font-size: 44px;
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+  margin-bottom: 16px;
+}
+.headline .glow {
+  background: linear-gradient(135deg, #4DB6AC, #39D164, #00D4FF);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Subtitle */
+.subtitle {
+  font-size: 18px;
+  font-weight: 300;
+  color: #B0B8C1;
+  max-width: 350px;
+  line-height: 1.5;
+  margin-bottom: 40px;
+}
+
+/* URL card */
+.url-card {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(26,39,54,0.8);
+  border: 1.5px solid rgba(77,182,172,0.3);
+  border-radius: 100px;
+  padding: 14px 28px;
+  margin-bottom: 28px;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.3), 0 0 30px rgba(77,182,172,0.08);
+}
+.url-card .globe-icon {
+  width: 18px;
+  height: 18px;
+  stroke: #4DB6AC;
+  stroke-width: 1.8;
+  fill: none;
+}
+.url-card .url-text {
+  font-family: 'Syne', sans-serif;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  background: linear-gradient(135deg, #4DB6AC, #39D164);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Arrow / CTA */
+.cta-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+.cta-text {
+  font-size: 14px;
+  font-weight: 400;
+  color: #6B7B8D;
+  letter-spacing: 0.08em;
+}
+.cta-arrow {
+  width: 24px;
+  height: 24px;
+  stroke: #4DB6AC;
+  stroke-width: 2;
+  fill: none;
+  opacity: 0.6;
+}
+
+/* Bottom services strip */
+.services-strip {
+  position: absolute;
+  bottom: 50px;
+  left: 0; right: 0;
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding: 0 30px;
+}
+.service-tag {
+  padding: 6px 14px;
+  background: rgba(77,182,172,0.06);
+  border: 1px solid rgba(77,182,172,0.12);
+  border-radius: 100px;
+  font-size: 11px;
+  font-weight: 500;
+  color: rgba(176,184,193,0.7);
+  white-space: nowrap;
+}
+
+/* Decorative corner marks */
+.corner-mark {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  border-color: rgba(77,182,172,0.15);
+  border-style: solid;
+}
+.corner-mark.tl { top: 25px; left: 25px; border-width: 2px 0 0 2px; }
+.corner-mark.tr { top: 25px; right: 25px; border-width: 2px 2px 0 0; }
+.corner-mark.bl { bottom: 25px; left: 25px; border-width: 0 0 2px 2px; }
+.corner-mark.br { bottom: 25px; right: 25px; border-width: 0 2px 2px 0; }
+</style>
+</head>
+<body>
+
+<div class="bg-grid"></div>
+<div class="bg-orb-1"></div>
+<div class="bg-orb-2"></div>
+<div class="bg-orb-3"></div>
+<div class="accent-line"></div>
+<div class="accent-line-2"></div>
+
+<div class="corner-mark tl"></div>
+<div class="corner-mark tr"></div>
+<div class="corner-mark bl"></div>
+<div class="corner-mark br"></div>
+
+<div class="content">
+  <div class="top-badge">FIFA Licensed Agency</div>
+
+  <div class="logo-wrap">
+    <svg viewBox="0 0 1765 1765" width="320" height="320">
+      <path fill="#0F1923" d="M882.5,0A882.5,882.5 0,0 1,1765 882.5A882.5,882.5 0,0 1,882.5 1765A882.5,882.5 0,0 1,0 882.5A882.5,882.5 0,0 1,882.5 0z"/>
+      <path fill="#39D164" d="M1362.6,1115.7C1358.3,1115.7 1355.6,1110.9 1357.8,1107.2L1391.6,1050.9C1394.5,1046.1 1401.9,1048.2 1401.9,1053.8V1110.1C1401.9,1113.2 1399.4,1115.7 1396.4,1115.7H1362.6Z"/>
+      <path fill="#39D164" d="M1420.1,1115.7C1416.6,1115.7 1414.5,1111.8 1416.4,1108.8L1483.6,1005.3C1486,1001.6 1491.8,1003.3 1491.8,1007.8V1111.2C1491.8,1113.7 1489.8,1115.7 1487.3,1115.7H1420.1Z"/>
+      <path fill="#39D164" d="M1509.6,1115.7C1506.2,1115.7 1504,1111.9 1505.8,1108.9L1604.8,945C1607.1,941.1 1613,942.8 1613,947.3V1111.2C1613,1113.7 1611,1115.7 1608.6,1115.7H1509.6Z"/>
+      <path fill="#ffffff" d="M172.7,957.9C168.7,957.9 165.4,954.6 165.4,950.6V639.9C165.4,635.9 168.7,632.6 172.7,632.6H225C227.5,632.6 229.9,634 231.2,636.1L340.6,814.2C343.6,819.1 340.1,825.4 334.3,825.3L318.7,825.1C313,825.1 309.6,818.8 312.6,814L423.4,636.1C424.8,633.9 427.1,632.6 429.6,632.6H479.2C483.2,632.6 486.4,635.9 486.4,639.9V950.6C486.4,954.6 483.2,957.9 479.2,957.9H425.4C421.4,957.9 418.2,954.6 418.2,950.6V846.4C418.2,818.5 418.8,793.4 420,771.1C421.1,755.7 422.6,740.3 424.6,725.1C425.3,719.5 432.8,718.7 434.8,723.9C435.4,725.5 435.2,727.4 434.3,728.8L342.7,870.9C341.4,873 339.1,874.2 336.6,874.2H313.9C311.4,874.2 309.1,873 307.8,870.9L217.9,729.6C217,728.2 216.8,726.5 217.4,724.9C219.2,719.6 226.8,720.3 227.5,725.9C229.3,739.9 230.6,754.2 231.4,768.8C232.9,790.5 233.7,816.3 233.7,846.4V950.6C233.7,954.6 230.4,957.9 226.4,957.9H172.7Z"/>
+      <path fill="#ffffff" d="M720.2,962.5C695.1,962.5 672,958.3 650.9,950C630.2,941.3 612.2,929.4 597,914.2C581.9,899 570.1,881.2 561.7,860.8C553.7,840.3 549.7,818.2 549.7,794.3C549.7,770.5 553.8,748.5 562.2,728.4C570.9,707.9 583,690.3 598.4,675.4C614.2,660.2 632.7,648.4 653.7,640.1C674.8,631.7 697.9,627.5 723,627.5C740.3,627.5 756.9,629.9 772.7,634.5C788.5,639.2 802.9,645.5 815.9,653.6C826.8,660.3 836.3,668 844.2,676.6C846.7,679.3 846.5,683.4 844,686.1L810.2,721.6C807.5,724.6 802.8,724.7 799.8,722C793.4,716.4 786.9,711.6 780.1,707.5C771.4,701.9 762.1,697.7 752.2,694.9C742.6,691.8 732.7,690.3 722.5,690.3C707.9,690.3 694.5,692.9 682.1,698.2C670,703.4 659.3,710.7 650,720C640.7,729.3 633.4,740.3 628.2,753C623.2,765.7 620.7,779.5 620.7,794.3C620.7,808.9 623.4,822.7 628.6,835.7C634.2,848.4 641.6,859.5 650.9,869.1C660.5,878.4 671.7,885.9 684.4,891.4C697.1,896.7 710.7,899.3 725.3,899.3C735.8,899.3 745.6,897.8 754.5,894.7C763.8,891.6 771.9,887.3 778.7,881.7C785.8,875.8 791.3,869 795,861.2C799,853.5 801,845.3 801,836.6V835.3C801,832.2 804.9,831 806.7,833.5C808.2,835.6 806.7,838.5 804.2,838.5H724.7C720.6,838.5 717.4,835.2 717.4,831.2V787.7C717.4,783.7 720.6,780.4 724.7,780.4H861.3C865,780.4 868.2,783.3 868.4,787C868.6,788.9 868.7,790.8 868.8,792.9C869.5,797.9 869.8,802.8 869.8,807.8C870.1,812.5 870.2,816.2 870.2,819C870.2,840 866.4,859.4 858.6,877C851.2,894.7 840.7,909.9 827,922.6C813.7,935.3 797.9,945.2 779.6,952.3C761.4,959.1 741.5,962.5 720.2,962.5Z"/>
+      <path fill="#ffffff" d="M1037.7,962.5C1017.5,962.5 999.1,960 982.4,955.1C966,950.1 951.2,942.9 938.2,933.3C927,924.8 916.8,914.7 907.5,903.1C905.3,900.4 905.5,896.5 907.8,894L941.5,855.6C944.6,852 950.1,852.3 953,856C966.3,873.1 979.5,885.1 992.6,891.9C1007.8,899.3 1024.2,903.1 1041.8,903.1C1051.4,903.1 1060,901.7 1067.4,898.9C1075.1,896.1 1081.2,892.4 1085.5,887.7C1089.8,882.8 1092,876.9 1092,870.1C1092,865.1 1090.9,860.6 1088.8,856.6C1086.6,852.3 1083.5,848.5 1079.5,845.4C1075.4,842 1070.6,839.1 1065.1,836.6C1059.5,833.8 1053.3,831.5 1046.5,829.6C1039.7,827.5 1032.2,825.8 1024.2,824.5C1006.8,820.5 991.7,815.7 978.6,810.1C965.6,804.2 954.8,797.1 946.1,788.8C937.5,780.1 931,770.3 926.6,759.5C922.6,748.6 920.6,736.4 920.6,722.8C920.6,708.8 923.7,696 929.9,684.2C936.1,672.1 944.6,661.8 955.4,653.1C966.6,644.4 979.3,637.8 993.5,633.1C1008.1,628.5 1023.4,626.1 1039.5,626.1C1059.3,626.1 1076.7,628.3 1091.6,632.7C1106.4,637 1119.3,643.5 1130.1,652.2C1139.7,659.4 1147.9,668 1154.8,677.9C1156.7,680.7 1156.2,684.5 1153.8,686.9L1119.8,719.8C1116.6,722.9 1111.5,722.5 1108.7,719.1C1103.6,713.2 1098.2,708.1 1092.5,703.7C1085,697.8 1076.8,693.5 1067.8,690.7C1059.2,687.6 1050.2,686.1 1040.9,686.1C1030.7,686.1 1021.9,687.5 1014.4,690.3C1007,692.7 1001.1,696.6 996.8,701.9C992.7,706.8 990.7,712.7 990.7,719.5C990.7,725.1 992.1,730.1 994.9,734.4C997.7,738.7 1001.7,742.6 1007,746C1012.3,749.1 1018.6,751.9 1026,754.4C1033.5,756.9 1041.7,759 1050.7,760.9C1067.7,764.3 1083,768.8 1096.7,774.4C1110.3,779.9 1121.9,786.7 1131.5,794.8C1141.4,802.5 1149,811.8 1154.3,822.7C1159.5,833.2 1162.2,845.1 1162.2,858.4C1162.2,880.4 1156.9,899.2 1146.4,914.7C1135.8,930.2 1121.3,942.1 1102.7,950.4C1084.1,958.5 1062.4,962.5 1037.7,962.5Z"/>
+      <path fill="#ffffff" d="M1232.6,957.9C1228.6,957.9 1225.3,954.6 1225.3,950.6V639.9C1225.3,635.9 1228.6,632.6 1232.6,632.6H1369.3C1389.4,632.6 1407.7,637.3 1424.1,646.6C1440.6,655.6 1453.4,667.8 1462.7,683.3C1472.3,698.8 1477.1,716.4 1477.1,736.3C1477.1,755.8 1472.3,773.6 1462.7,789.7C1453.4,805.5 1440.6,818 1424.1,827.3C1407.7,836.6 1389.4,841.3 1369.3,841.3H1299.9C1295.9,841.3 1292.7,844.5 1292.7,848.5V950.6C1292.7,954.6 1289.4,957.9 1285.4,957.9H1232.6ZM1414,957.9C1411.3,957.9 1408.9,956.5 1407.7,954.2L1332.2,820.1C1329.7,815.7 1332.3,810.2 1337.3,809.4L1393.6,800.2C1396.6,799.8 1399.6,801.2 1401.1,803.8L1484.2,947.3C1487,952.2 1483.5,958.3 1477.9,958.3L1414,957.9ZM1292.7,777.3C1292.7,781.3 1295.9,784.6 1299.9,784.6H1366.1C1374.4,784.6 1381.7,782.7 1387.9,779C1394.4,775 1399.4,769.6 1402.8,762.7C1406.2,755.6 1407.9,747.7 1407.9,739C1407.9,729.8 1405.9,721.7 1401.8,714.9C1397.8,708.1 1391.9,702.8 1384.2,699.1C1376.4,695.1 1367.5,693 1357.2,693H1299.9C1295.9,693 1292.7,696.3 1292.7,700.3V777.3Z"/>
+    </svg>
+  </div>
+
+  <h1 class="headline">
+    Contact Us Today<br>For Your <span class="glow">Tomorrow</span>
+  </h1>
+
+  <p class="subtitle">
+    Player representation across<br>20+ countries worldwide
+  </p>
+
+  <div class="url-card">
+    <svg class="globe-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/><line x1="2" y1="12" x2="22" y2="12"/></svg>
+    <span class="url-text">mgsrfa.com</span>
+  </div>
+
+  <div class="cta-area">
+    <span class="cta-text">Visit us now &rarr;</span>
+  </div>
+</div>
+
+<div class="services-strip">
+  <span class="service-tag">Men's Football</span>
+  <span class="service-tag">Women's Football</span>
+  <span class="service-tag">Youth Development</span>
+  <span class="service-tag">Transfers</span>
+  <span class="service-tag">Scouting</span>
+</div>
+
+</body>
+</html>

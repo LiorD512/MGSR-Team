@@ -459,13 +459,7 @@ private fun OverviewTab(data: FmIntelligenceData) {
                 InfoRow(label = stringResource(R.string.fm_height), value = "${data.heightCm} cm")
             }
 
-            // Best position
-            data.bestPosition?.let { bp ->
-                InfoRow(
-                    label = stringResource(R.string.fm_best_fit),
-                    value = "${posLabel(bp.position)} (${bp.fit}%)"
-                )
-            }
+
         }
 
         Spacer(Modifier.height(16.dp))

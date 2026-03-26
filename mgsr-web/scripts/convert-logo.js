@@ -27,6 +27,11 @@ function convertVector(xmlPath, outPath) {
 const forAppLogo = path.join(__dirname, '../../app/src/main/res/drawable/for_app_logo.xml');
 const logoBlack = path.join(__dirname, '../../app/src/main/res/drawable/logo_black.xml');
 
+if (!fs.existsSync(forAppLogo)) {
+  console.log('Skipping logo conversion (Android source not available in this environment)');
+  process.exit(0);
+}
+
 convertVector(forAppLogo, path.join(__dirname, '../public/logo.svg'));
 convertVector(forAppLogo, path.join(__dirname, '../src/app/icon.svg'));
 if (fs.existsSync(logoBlack)) {

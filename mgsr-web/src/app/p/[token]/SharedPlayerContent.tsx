@@ -7,7 +7,24 @@ import { toWhatsAppUrl } from '@/lib/whatsapp';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import ReactMarkdown from 'react-markdown';
-import type { ShareData } from './types';
+import type { ShareData, PortfolioEnrichment } from './types';
+import {
+  UrgencyBadgesStrip,
+  SeasonPerformance,
+  AIScoutScoreSection,
+  PlayerRadarChart,
+  WhyThisPlayerPitch,
+  HighlightsGrid,
+  InterestHeaderCTA,
+  StickyBottomBar,
+  EnrichmentSkeleton,
+  TransferTicker,
+  AvailabilityBadge,
+  DealValueMeter,
+  MiniPitchPosition,
+  ContractCountdown,
+  ScoutVerdictStamp,
+} from './PortfolioEnrichments';
 
 /** Scout report markdown styling — teal/rose section headers */
 function getScoutReportComponents(isWomen: boolean) {
@@ -44,6 +61,11 @@ function stripBold(text: string): string {
   return text.replace(/\*{1,3}([^*]+)\*{1,3}/g, '$1');
 }
 
+/** Remove "Comparable Players" / "שחקנים דומים" section from stored scout reports */
+function stripComparablePlayers(text: string): string {
+  return text.replace(/## (?:Comparable Players|שחקנים דומים)\s*\n[\s\S]*?(?=\n## |$)/gi, '').replace(/\n{3,}/g, '\n\n').trim();
+}
+
 function StatCard({ label, value, isWomen }: { label: string; value?: string; isWomen?: boolean }) {
   if (!value) return null;
   return (
@@ -75,10 +97,14 @@ export default function SharedPlayerContent({
   const [regenerating, setRegenerating] = useState(false);
   const [sharing, setSharing] = useState(false);
 
+  // Portfolio enrichment state
+  const [enrichment, setEnrichment] = useState<PortfolioEnrichment | null>(initialData?.enrichment ?? null);
+  const [enrichmentLoading, setEnrichmentLoading] = useState(false);
+
   // Initialize edited report when data loads
   useEffect(() => {
     if (fromPortfolio && data?.scoutReport && editedReport === null) {
-      setEditedReport(data.scoutReport);
+      setEditedReport(stripComparablePlayers(data.scoutReport));
     }
   }, [fromPortfolio, data, editedReport]);
 
@@ -116,7 +142,7 @@ export default function SharedPlayerContent({
       });
       if (res.ok) {
         const { scoutReport } = await res.json();
-        if (scoutReport) setEditedReport(scoutReport);
+        if (scoutReport) setEditedReport(stripComparablePlayers(scoutReport));
       }
     } catch (e) {
       console.error('Regenerate failed:', e);
@@ -184,6 +210,55 @@ export default function SharedPlayerContent({
       .finally(() => setLoading(false));
   }, [token, initialData]);
 
+  // Fetch enrichment data if missing
+  useEffect(() => {
+    if (!data || enrichment || enrichmentLoading) return;
+    setEnrichmentLoading(true);
+    fetch('/api/share/enrich-portfolio', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        player: data.player,
+        scoutReport: data.scoutReport,
+        platform: data.platform,
+        lang: data.lang,
+      }),
+    })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((json) => {
+        if (json?.enrichment) setEnrichment(json.enrichment);
+      })
+      .catch(() => { /* enrichment is optional */ })
+      .finally(() => setEnrichmentLoading(false));
+  }, [data, enrichment, enrichmentLoading]);
+
+  // "I'm Interested" handler — opens WhatsApp to the sharer
+  const handleInterested = useCallback(() => {
+    if (!data) return;
+    const useHeb = data.lang === 'he';
+    const name = useHeb
+      ? (data.player.fullNameHe || data.player.fullName || '')
+      : (data.player.fullName || data.player.fullNameHe || '');
+    const isWom = data.platform === 'women';
+    const brand = isWom ? 'MGSR Women' : 'MGSR';
+    if (data.sharerPhone) {
+      const msg = useHeb
+        ? `היי, ראיתי את הפרופיל של ${name} דרך ${brand} ואני מעוניין לשמוע עוד.`
+        : `Hi, I saw the profile of ${name} via ${brand} and I'm interested in learning more.`;
+      import('@/lib/whatsapp').then(({ openWhatsAppWithMessage }) => {
+        openWhatsAppWithMessage(data.sharerPhone!, msg);
+      });
+    } else if (typeof window !== 'undefined') {
+      navigator.clipboard.writeText(window.location.href);
+      alert(useHeb ? 'הלינק הועתק!' : 'Link copied!');
+    }
+  }, [data]);
+
+  // Print / PDF download
+  const handleDownloadPDF = useCallback(() => {
+    if (typeof window !== 'undefined') window.print();
+  }, []);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-mgsr-dark flex items-center justify-center">
@@ -241,6 +316,8 @@ export default function SharedPlayerContent({
         sharedVia: isWomen ? 'שותף דרך MGSR Women' : 'שותף דרך MGSR Team',
         viewMandate: 'צפה במנדט',
         marketValue: 'שווי שוק',
+        interested: 'מעוניין',
+        poweredBy: 'מופעל על ידי בינה מלאכותית',
       }
     : {
         mandate: 'Mandate',
@@ -259,6 +336,8 @@ export default function SharedPlayerContent({
         sharedVia: isWomen ? 'Shared via MGSR Women' : 'Shared via MGSR Team',
         viewMandate: 'View mandate',
         marketValue: 'Market value',
+        interested: "I'm Interested",
+        poweredBy: 'Powered by AI scouting intelligence',
       };
 
   const playerPhone = player.playerPhoneNumber;
@@ -332,8 +411,8 @@ export default function SharedPlayerContent({
   const scoutComponents = getScoutReportComponents(isWomen);
 
   return (
-    <div className="min-h-screen bg-mgsr-dark" dir={useHebrew ? 'rtl' : 'ltr'}>
-      <header className={`border-b px-4 py-3 flex items-center justify-between gap-4 ${isWomen ? 'border-[var(--women-rose)]/20 bg-mgsr-card/50' : 'border-mgsr-border bg-mgsr-card/50'}`}>
+    <div className="min-h-screen bg-mgsr-dark pitch-lines-bg" dir={useHebrew ? 'rtl' : 'ltr'}>
+      <header className={`relative z-20 border-b px-4 py-3 flex items-center justify-between gap-4 backdrop-blur-md ${isWomen ? 'border-[var(--women-rose)]/20 bg-mgsr-card/70' : 'border-mgsr-border bg-mgsr-card/70'}`}>
         {fromPortfolio ? (
           <Link
             href={isWomen ? '/portfolio?platform=women' : '/portfolio'}
@@ -360,18 +439,41 @@ export default function SharedPlayerContent({
             </span>
           </div>
         )}
+        {/* Interest CTA for external scouts (non-portfolio view) */}
+        {!fromPortfolio && (
+          <InterestHeaderCTA
+            isWomen={isWomen}
+            useHebrew={useHebrew}
+            onInterested={handleInterested}
+          />
+        )}
       </header>
 
-      <main className="max-w-2xl mx-auto p-6">
-        <div className={`relative overflow-hidden rounded-2xl mb-8 ${isWomen ? 'shadow-[0_0_40px_rgba(232,160,191,0.12)]' : ''}`}>
+      {/* Cinematic background layers */}
+      <div className="portfolio-grid-overlay" />
+      <div className="portfolio-sweep-lines" />
+      <div className="portfolio-orb portfolio-orb-1" />
+      <div className="portfolio-orb portfolio-orb-2" />
+      <div className="portfolio-orb portfolio-orb-3" />
+      <div className="portfolio-vignette" />
+
+      <main className="relative z-10 max-w-2xl mx-auto p-6">
+        <div className={`relative overflow-hidden rounded-2xl mb-8 hero-holo ${isWomen ? 'shadow-[0_0_40px_rgba(232,160,191,0.12)]' : ''}`}>
           <div className={`absolute inset-0 ${isWomen ? 'bg-gradient-to-br from-[var(--women-rose)]/15 via-mgsr-card to-mgsr-dark' : 'bg-gradient-to-br from-mgsr-card via-mgsr-card to-mgsr-dark'}`} />
           <div className={`absolute inset-0 ${isWomen ? 'bg-[radial-gradient(ellipse_at_30%_20%,rgba(232,160,191,0.25)_0%,transparent_50%)]' : 'bg-[radial-gradient(ellipse_at_30%_20%,rgba(77,182,172,0.15)_0%,transparent_50%)]'}`} />
+          {/* MGSR watermark */}
+          <img
+            src="/mgsr-white.png"
+            alt=""
+            className="absolute -right-8 -bottom-6 w-[280px] sm:w-[340px] opacity-[0.03] pointer-events-none select-none"
+            draggable={false}
+          />
           <div className="relative flex flex-col sm:flex-row items-center sm:items-end gap-8 p-8 sm:p-10">
             <div className="relative shrink-0">
               <img
                 src={player.profileImage || 'https://via.placeholder.com/160'}
                 alt=""
-                className={`w-32 h-32 sm:w-40 sm:h-40 rounded-2xl object-cover bg-mgsr-dark ring-4 shadow-2xl ${isWomen ? 'ring-[var(--women-rose)]/30' : 'ring-mgsr-border'}`}
+                className={`w-32 h-32 sm:w-40 sm:h-40 rounded-2xl object-cover bg-mgsr-dark ring-4 shadow-2xl hero-image-float ${isWomen ? 'ring-[var(--women-rose)]/30' : 'ring-mgsr-border'}`}
               />
             </div>
             <div className="flex-1 text-center sm:text-left min-w-0">
@@ -403,6 +505,19 @@ export default function SharedPlayerContent({
           </div>
         </div>
 
+        {/* Transfer ticker — sports broadcast style */}
+        <TransferTicker data={data} enrichment={enrichment} isWomen={isWomen} useHebrew={useHebrew} />
+
+        {/* Urgency badges */}
+        <UrgencyBadgesStrip data={data} useHebrew={useHebrew} />
+
+        {/* Availability badge */}
+        {data.mandateInfo?.hasMandate && (
+          <div className="mb-4">
+            <AvailabilityBadge isWomen={isWomen} useHebrew={useHebrew} />
+          </div>
+        )}
+
         {data.mandateInfo?.hasMandate && (
           <div className={`p-5 rounded-xl bg-mgsr-card border mb-6 ${isWomen ? 'border-[var(--women-rose)]/30 shadow-[0_0_30px_rgba(232,160,191,0.05)]' : 'border-mgsr-teal/30'}`}>
             <div className="flex items-center justify-between gap-4">
@@ -418,12 +533,44 @@ export default function SharedPlayerContent({
           </div>
         )}
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
           <StatCard label={labels.age} value={player.age} isWomen={isWomen} />
           <StatCard label={labels.height} value={player.height} isWomen={isWomen} />
           <StatCard label={labels.nationality} value={player.nationality} isWomen={isWomen} />
           <StatCard label={labels.contract} value={player.contractExpired} isWomen={isWomen} />
         </div>
+
+        {/* Contract countdown — live ticking urgency */}
+        {player.contractExpired && (
+          <ContractCountdown contractExpiry={player.contractExpired} isWomen={isWomen} useHebrew={useHebrew} />
+        )}
+
+        {/* Mini pitch position map */}
+        {player.positions && player.positions.length > 0 && (
+          <MiniPitchPosition positions={player.positions} isWomen={isWomen} useHebrew={useHebrew} />
+        )}
+
+        {/* Enrichment sections: season stats, AI score, radar chart */}
+        {enrichmentLoading && <EnrichmentSkeleton isWomen={isWomen} />}
+        {enrichment?.seasonStats && (
+          <SeasonPerformance stats={enrichment.seasonStats} isWomen={isWomen} useHebrew={useHebrew} />
+        )}
+        {enrichment?.aiScore && (
+          <AIScoutScoreSection score={enrichment.aiScore} isWomen={isWomen} useHebrew={useHebrew} />
+        )}
+        {enrichment?.radarAttributes && (
+          <PlayerRadarChart attributes={enrichment.radarAttributes} isWomen={isWomen} useHebrew={useHebrew} />
+        )}
+
+        {/* Deal value meter */}
+        {enrichment?.aiScore && (
+          <DealValueMeter score={enrichment.aiScore} isWomen={isWomen} useHebrew={useHebrew} />
+        )}
+
+        {/* Scout verdict stamp */}
+        {enrichment?.aiScore && (
+          <ScoutVerdictStamp score={enrichment.aiScore} isWomen={isWomen} useHebrew={useHebrew} />
+        )}
 
         {data.scoutReport && (
           <div className={`p-5 rounded-xl bg-mgsr-card border mb-8 ${isWomen ? 'border-[var(--women-rose)]/20 shadow-[0_0_30px_rgba(232,160,191,0.05)]' : 'border-mgsr-border'}`}>
@@ -520,45 +667,21 @@ export default function SharedPlayerContent({
             ) : (
               <div className="scout-report-content text-mgsr-text">
                 <ReactMarkdown components={scoutComponents}>
-                  {stripBold(data.scoutReport)}
+                  {stripBold(stripComparablePlayers(data.scoutReport))}
                 </ReactMarkdown>
               </div>
             )}
           </div>
         )}
 
+        {/* Selling points + comparison (after scout report) */}
+        {enrichment?.sellingPoints && (
+          <WhyThisPlayerPitch points={enrichment.sellingPoints} isWomen={isWomen} useHebrew={useHebrew} />
+        )}
+
+        {/* Highlights — thumbnail grid with lazy iframe */}
         {data.highlights && data.highlights.length > 0 && (
-          <div className={`p-5 rounded-xl bg-mgsr-card border mb-8 ${isWomen ? 'border-[var(--women-rose)]/20 shadow-[0_0_30px_rgba(232,160,191,0.05)]' : 'border-mgsr-border'}`}>
-            <h3 className="text-sm font-semibold text-mgsr-muted uppercase tracking-wider mb-4">
-              {labels.highlights}
-            </h3>
-            <div className="space-y-4">
-              {data.highlights.map((v) => (
-                <div key={v.id} className="rounded-xl overflow-hidden border border-mgsr-border">
-                  <div className="aspect-video bg-mgsr-dark">
-                    <iframe
-                      src={v.embedUrl}
-                      title={v.title}
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                      allowFullScreen
-                      className="w-full h-full"
-                    />
-                  </div>
-                  <div className="p-3 bg-mgsr-card/50">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className={`text-[10px] font-medium uppercase tracking-wider ${isWomen ? 'text-[var(--women-rose)]' : 'text-mgsr-teal'}`}>
-                        {v.source === 'scorebat' ? (useHebrew ? 'משחק' : 'Match') : (useHebrew ? 'יוטיוב' : 'YouTube')}
-                      </span>
-                      {v.channelName && (
-                        <span className="text-xs text-mgsr-muted truncate">{v.channelName}</span>
-                      )}
-                    </div>
-                    <p className="text-sm font-medium text-mgsr-text line-clamp-2">{v.title}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
+          <HighlightsGrid highlights={data.highlights} isWomen={isWomen} useHebrew={useHebrew} />
         )}
 
         {!isWomen && player.tmProfile && (
@@ -612,10 +735,40 @@ export default function SharedPlayerContent({
           </div>
         )}
 
-        <p className="text-center text-mgsr-muted text-sm mt-12 mb-24">
-          {labels.sharedVia}
-        </p>
+        {/* Premium MGSR branded footer */}
+        <div className="relative mt-16 mb-28 py-10 flex flex-col items-center">
+          {/* Divider line with glow */}
+          <div className={`w-24 h-[2px] mb-8 rounded-full ${isWomen ? 'bg-[var(--women-rose)]/40 shadow-[0_0_12px_rgba(232,160,191,0.3)]' : 'bg-mgsr-teal/40 shadow-[0_0_12px_rgba(77,182,172,0.3)]'}`} />
+          {/* MGSR logo with landing-page style glow */}
+          <img
+            src="/mgsr-white.png"
+            alt="MGSR"
+            className="w-48 sm:w-56 mb-5 mgsr-footer-logo"
+            style={{
+              filter: isWomen
+                ? 'drop-shadow(0 0 24px rgba(232,160,191,0.25)) drop-shadow(0 0 48px rgba(232,160,191,0.1))'
+                : 'drop-shadow(0 0 24px rgba(77,182,172,0.25)) drop-shadow(0 0 48px rgba(57,209,100,0.1))'
+            }}
+          />
+          <p className={`text-sm font-medium tracking-wide ${isWomen ? 'text-[var(--women-rose)]/60' : 'text-mgsr-teal/60'}`}>
+            {labels.sharedVia}
+          </p>
+          <p className="text-mgsr-muted/40 text-[11px] mt-2 tracking-wider uppercase">
+            {labels.poweredBy}
+          </p>
+        </div>
       </main>
+
+      {/* Sticky bottom bar for external scout view */}
+      {!fromPortfolio && (
+        <StickyBottomBar
+          player={player}
+          isWomen={isWomen}
+          useHebrew={useHebrew}
+          onInterested={handleInterested}
+          onDownloadPDF={handleDownloadPDF}
+        />
+      )}
 
       {/* Floating share bar when editing from portfolio */}
       {fromPortfolio && editedReport !== null && (

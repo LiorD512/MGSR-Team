@@ -219,7 +219,6 @@ export default function FmIntelligencePanel({ playerName, club, age }: FmIntelli
   const [data, setData] = useState<FmIntelligenceData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeView, setActiveView] = useState<'overview' | 'positions'>('overview');
 
   useEffect(() => {
     if (!playerName) return;
@@ -249,10 +248,7 @@ export default function FmIntelligencePanel({ playerName, club, age }: FmIntelli
       }));
   }, [data, t]);
 
-  const positionEntries = useMemo(() => {
-    if (!data?.position_fit) return [];
-    return Object.entries(data.position_fit).sort(([, a], [, b]) => b - a);
-  }, [data]);
+
 
   if (loading) {
     return (
@@ -298,33 +294,9 @@ export default function FmIntelligencePanel({ playerName, club, age }: FmIntelli
         <span className="text-sm font-semibold text-mgsr-text">{t('fm_section_title')}</span>
       </div>
 
-      {/* Toggle: Overview / Position Fit */}
-      <div className="flex border-b border-mgsr-border">
-        <button
-          onClick={() => setActiveView('overview')}
-          className={`flex-1 py-3 text-center text-sm font-medium transition-colors border-b-2 ${
-            activeView === 'overview'
-              ? 'text-mgsr-teal border-mgsr-teal bg-mgsr-teal/5'
-              : 'text-mgsr-muted border-transparent hover:text-mgsr-text'
-          }`}
-        >
-          {t('fm_tab_intelligence')}
-        </button>
-        <button
-          onClick={() => setActiveView('positions')}
-          className={`flex-1 py-3 text-center text-sm font-medium transition-colors border-b-2 ${
-            activeView === 'positions'
-              ? 'text-mgsr-teal border-mgsr-teal bg-mgsr-teal/5'
-              : 'text-mgsr-muted border-transparent hover:text-mgsr-text'
-          }`}
-        >
-          {t('fm_tab_position_fit')}
-        </button>
-      </div>
+
 
       <div className="p-5">
-        {activeView === 'overview' ? (
-          /* ============ OVERVIEW TAB ============ */
           <div className="space-y-6">
             {/* Hero: CA ring + PA + Tier */}
             <div className="flex items-start gap-5">
@@ -373,15 +345,7 @@ export default function FmIntelligencePanel({ playerName, club, age }: FmIntelli
                     </>
                   )}
                 </div>
-                {data.best_position && (
-                  <div className="text-xs text-mgsr-muted">
-                    {t('fm_best_fit')}{' '}
-                    <span className="font-semibold text-mgsr-text">
-                      {t(`fm_pos_${data.best_position.position}`)}
-                    </span>
-                    <span className="text-mgsr-muted"> ({data.best_position.fit}%)</span>
-                  </div>
-                )}
+
               </div>
             </div>
 
@@ -434,96 +398,6 @@ export default function FmIntelligencePanel({ playerName, club, age }: FmIntelli
               </div>
             </div>
           </div>
-        ) : (
-          /* ============ POSITION FIT TAB ============ */
-          <div className="space-y-5">
-            {/* Pitch — always LTR so positions stay correct */}
-            <div className="relative mx-auto rounded-xl overflow-hidden border-2 border-white/10"
-              dir="ltr"
-              style={{
-                width: '100%',
-                maxWidth: '340px',
-                aspectRatio: '340 / 480',
-                background: 'linear-gradient(180deg, #1a3a2a 0%, #1a3a2a 100%)',
-              }}
-            >
-              {/* Pitch lines */}
-              <div className="absolute inset-0 opacity-[0.15]">
-                <div className="absolute top-1/2 left-[10%] right-[10%] h-px bg-white" />
-                <div className="absolute top-1/2 left-1/2 w-20 h-20 border border-white rounded-full -translate-x-1/2 -translate-y-1/2" />
-                <div className="absolute top-0 left-1/4 right-1/4 h-[18%] border border-white border-t-0" />
-                <div className="absolute bottom-0 left-1/4 right-1/4 h-[18%] border border-white border-b-0" />
-              </div>
-
-              {/* Position dots */}
-              {positionEntries.map(([pos, fit]) => (
-                <PositionDot
-                  key={pos}
-                  pos={pos}
-                  fit={fit}
-                  isBest={data.best_position?.position === pos}
-                  posLabel={t(`fm_pos_${pos}`)}
-                  fitWord={t('fm_fit')}
-                />
-              ))}
-            </div>
-
-            {/* Legend */}
-            <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 text-[0.65rem] text-mgsr-muted">
-              <span className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-yellow-400/90" /> {t('fm_legend_perfect')}
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-green-500/85" /> {t('fm_legend_great')}
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-blue-500/70" /> {t('fm_legend_decent')}
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-gray-500/40" /> {t('fm_legend_possible')}
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-red-500/30" /> {t('fm_legend_poor')} (&lt;40%)
-              </span>
-            </div>
-
-            {/* Position list — bars always LTR */}
-            <div className="space-y-1">
-              <h4 className="text-[0.6rem] uppercase tracking-widest text-mgsr-muted font-semibold mb-2">
-                {t('fm_position_rankings')}
-              </h4>
-              {positionEntries.map(([pos, fit]) => (
-                <div key={pos} className="flex items-center gap-2 text-xs" dir="ltr">
-                  <span className="w-7 font-bold text-mgsr-muted uppercase">{pos}</span>
-                  <div className="flex-1 h-2 bg-mgsr-dark rounded-full overflow-hidden">
-                    <div
-                      className={`h-full rounded-full transition-all duration-500 ${
-                        fit >= 85
-                          ? 'bg-gradient-to-r from-yellow-400 to-amber-500'
-                          : fit >= 72
-                            ? 'bg-gradient-to-r from-green-400 to-green-500'
-                            : fit >= 58
-                              ? 'bg-gradient-to-r from-blue-400 to-blue-500'
-                              : fit >= 40
-                                ? 'bg-gray-500'
-                                : 'bg-red-500/60'
-                      }`}
-                      style={{ width: `${fit}%` }}
-                    />
-                  </div>
-                  <span className={`w-8 text-right font-bold ${
-                    fit >= 85 ? 'text-yellow-400' : fit >= 72 ? 'text-green-400' : fit >= 58 ? 'text-blue-400' : 'text-mgsr-muted'
-                  }`}>
-                    {fit}%
-                  </span>
-                  {data.best_position?.position === pos && (
-                    <span className="text-yellow-400 text-[0.7rem]">★</span>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Footer */}
