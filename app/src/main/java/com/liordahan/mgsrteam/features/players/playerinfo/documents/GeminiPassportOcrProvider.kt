@@ -281,8 +281,78 @@ Return ONLY valid JSON. No markdown, no explanation."""
      */
     data class MandateExtractionResult(
         val mandateExpiresAt: Long? = null,
-        val validLeagues: List<String> = emptyList()
+        val validLeagues: List<String> = emptyList(),
+        val isMandate: Boolean = false
     )
+
+    /**
+     * FULL document classification via Gemini: asks "is this a mandate/authorization?"
+     * Use as a fallback when heuristic text matching fails.
+     * Returns isMandate=true with extracted data if Gemini identifies a mandate/authorization.
+     */
+    suspend fun classifyAndExtractMandateFromBytes(bytes: ByteArray, mimeType: String?): MandateExtractionResult =
+        withContext(Dispatchers.IO) {
+            try {
+                val effectiveMime = mimeType?.lowercase()?.takeIf { it.isNotBlank() } ?: "application/octet-stream"
+
+                val classifyPrompt = """Analyze this document. Is it a FOOTBALL AGENT MANDATE or an AUTHORIZATION document (where an agent or agency authorizes another agent to represent a player)?
+
+Look for: "FOOTBALL AGENT MANDATE", "AUTHORIZATION", "authorize", "representation rights", "exclusive authorization", "valid from...until", "starts on...ends on", agent license numbers, player names, club names.
+
+If YES (mandate or authorization), extract:
+1. mandateExpiresAt: the end/expiry date in DD/MM/YYYY format
+2. validLeagues: array of league/country names, OR specific club names if club-specific
+3. isMandate: true
+
+If NOT a mandate/authorization:
+Return isMandate: false
+
+Return ONLY valid JSON: {"isMandate": boolean, "mandateExpiresAt": "DD/MM/YYYY" or null, "validLeagues": ["string"]}"""
+
+                val content = Content.Builder()
+                    .inlineData(bytes, effectiveMime)
+                    .text(classifyPrompt)
+                    .build()
+
+                val jsonSchema = Schema.obj(
+                    mapOf(
+                        "isMandate" to Schema.boolean(),
+                        "mandateExpiresAt" to Schema.string(),
+                        "validLeagues" to Schema.array(Schema.string())
+                    ),
+                    optionalProperties = listOf("mandateExpiresAt")
+                )
+
+                val model = FirebaseAI.getInstance(backend = GenerativeBackend.googleAI()).generativeModel(
+                    modelName = MODEL_NAME,
+                    generationConfig = generationConfig {
+                        responseMimeType = "application/json"
+                        responseSchema = jsonSchema
+                    }
+                )
+
+                val response = model.generateContent(listOf(content))
+                val text = response.text ?: return@withContext MandateExtractionResult()
+                val json = extractJsonFromResponse(text) ?: return@withContext MandateExtractionResult()
+                val obj = JSONObject(json)
+
+                val isMandate = obj.optBoolean("isMandate", false)
+                if (!isMandate) return@withContext MandateExtractionResult(isMandate = false)
+
+                val expiryRaw = obj.optString("mandateExpiresAt", "").trim()
+                val expiresAt = parseMandateExpiryDate(expiryRaw)
+                val arr = obj.optJSONArray("validLeagues")
+                val leagues = if (arr != null) {
+                    (0 until arr.length()).mapNotNull { arr.optString(it)?.trim()?.takeIf { s -> s.isNotBlank() } }
+                } else emptyList()
+
+                Log.i(TAG, "Gemini classify+extract: isMandate=$isMandate, expiry=$expiresAt, leagues=$leagues")
+                MandateExtractionResult(mandateExpiresAt = expiresAt, validLeagues = leagues, isMandate = true)
+            } catch (e: Exception) {
+                Log.w(TAG, "Gemini classify+extract failed", e)
+                MandateExtractionResult()
+            }
+        }
 
     /**
      * PRIMARY mandate extraction: sends raw file bytes (PDF or image) directly to Gemini.

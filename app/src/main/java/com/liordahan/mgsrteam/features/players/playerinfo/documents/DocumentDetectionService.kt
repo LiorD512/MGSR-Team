@@ -186,6 +186,31 @@ class DocumentDetectionService(
             }
 
             // ──────────────────────────────────────────────────────
+            // PHASE 2.5: Gemini fallback for mandate CLASSIFICATION
+            // Heuristics missed it? Ask Gemini directly.
+            // Catches authorization docs, foreign-language mandates,
+            // and any other mandate format the heuristics don't cover.
+            // ──────────────────────────────────────────────────────
+            if (geminiPassportOcr != null && !likelyMandate) {
+                try {
+                    val classifyResult = geminiPassportOcr.classifyAndExtractMandateFromBytes(bytes, mimeType)
+                    if (classifyResult.isMandate) {
+                        Log.i(TAG, "Gemini classified as mandate (heuristics missed). Expiry=${classifyResult.mandateExpiresAt}, leagues=${classifyResult.validLeagues}")
+                        val suggestedName = "Mandate_${sanitizeFileName(playerName ?: extractNameFromMandateFilename(originalFileName) ?: "player")}"
+                        return@withContext DetectionResult(
+                            documentType = DocumentType.MANDATE,
+                            suggestedName = suggestedName,
+                            passportInfo = null,
+                            mandateExpiresAt = classifyResult.mandateExpiresAt,
+                            validLeagues = classifyResult.validLeagues
+                        )
+                    }
+                } catch (e: Exception) {
+                    Log.w(TAG, "Gemini mandate classification fallback failed", e)
+                }
+            }
+
+            // ──────────────────────────────────────────────────────
             // PHASE 3: GEMINI-FIRST passport extraction
             // Gemini Vision sees the actual image layout, not fragile OCR text.
             // It is the PRIMARY extractor for ALL passport images.
