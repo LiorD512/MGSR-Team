@@ -564,7 +564,7 @@ export default function SharedPlayerContent({
 
         {/* Deal value meter */}
         {enrichment?.aiScore && (
-          <DealValueMeter score={enrichment.aiScore} isWomen={isWomen} useHebrew={useHebrew} />
+          <DealValueMeter player={player} enrichment={enrichment} isWomen={isWomen} useHebrew={useHebrew} />
         )}
 
         {/* Scout verdict stamp */}
