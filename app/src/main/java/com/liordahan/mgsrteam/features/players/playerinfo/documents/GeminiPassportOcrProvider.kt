@@ -41,12 +41,14 @@ Extract TWO things:
    Look for patterns like:
    - "starts on DD/MM/YYYY and ends on DD/MM/YYYY" — extract the END date
    - "valid from DD/MM/YYYY until DD/MM/YYYY" — extract the UNTIL date
+   - "valid as from DD.MM.YYYY until DD.MM.YYYY" — extract the UNTIL date
    - "ends on DD/MM/YYYY"
    - "Term" section with two dates — the second/later date is the expiry
    Return it as "mandateExpiresAt" in DD/MM/YYYY format.
 
 2. VALID LEAGUES: Find the section titled "Valid Leagues for this mandate:" followed by a list of country/league names (bullet points or line items).
-   Return the list of league names as "validLeagues" array of strings.
+   If no "Valid Leagues" section exists but the document is an AUTHORIZATION for specific club(s), return those club names.
+   Return the list as "validLeagues" array of strings.
 
 Return ONLY a JSON object like:
 {"mandateExpiresAt": "15/06/2026", "validLeagues": ["Israel", "Portugal"]}

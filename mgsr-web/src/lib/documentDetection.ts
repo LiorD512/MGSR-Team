@@ -56,7 +56,8 @@ export function isMandateByContent(text: string, fileName: string): boolean {
   const isMandateFilename = fileNameLower.startsWith('mandate_') || fileNameLower.startsWith('mandate ');
   const hasMandateContent =
     /FOOTBALL AGENT MANDATE/i.test(text) ||
-    (/Mandate/i.test(text) && /ends on/i.test(text));
+    (/Mandate/i.test(text) && /ends on/i.test(text)) ||
+    (/AUTHORIZATION/i.test(text) && /represent.*player/i.test(text));
   return isMandateFilename || hasMandateContent;
 }
 

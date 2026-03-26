@@ -44,9 +44,9 @@ If it IS a passport, extract:
 - nationality: English demonym (e.g. Croatian, French, Liberian)
 
 MANDATE DETECTION:
-If the document contains "FOOTBALL AGENT MANDATE" or similar agent mandate text, set isMandate: true and extract:
-- mandateExpiresAt: from "ends on DD/MM/YYYY" pattern, as DD/MM/YYYY string
-- validLeagues: array of league/country names from "Valid Leagues" section
+If the document contains "FOOTBALL AGENT MANDATE" or similar agent mandate text, OR if it is an "AUTHORIZATION" document that authorizes an agent to represent a player before a specific club, set isMandate: true and extract:
+- mandateExpiresAt: Look for expiry/end date in patterns like "ends on DD/MM/YYYY", "until DD.MM.YYYY", "valid as from ... until DD.MM.YYYY". Return as DD/MM/YYYY string.
+- validLeagues: array of league/country names from "Valid Leagues" section. If the document is club-specific (authorization for a single club), return the club name(s) instead (e.g. ["RAAL La Louvière"]).
 
 RULES:
 - Never swap firstName and lastName
