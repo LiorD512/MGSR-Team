@@ -14,50 +14,34 @@ const USER_AGENTS = [
 
 const FETCH_TIMEOUT_MS = 30_000;
 
-/** Render backend with Playwright — bypasses Cloudflare JS challenges */
-const SCOUT_SERVER_URL =
-  (process.env.SCOUT_SERVER_URL || 'https://football-scout-server-l38w.onrender.com').trim();
-
 function getRandomUA(): string {
   return USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
 }
 
-/** Direct fetch — works from local dev, blocked by Cloudflare on Vercel */
 async function fetchPmHtml(url: string): Promise<string> {
   const res = await fetch(url, {
     headers: {
       'User-Agent': getRandomUA(),
-      Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
       'Accept-Language': 'en-US,en;q=0.9',
+      'Sec-Fetch-Dest': 'document',
+      'Sec-Fetch-Mode': 'navigate',
+      'Sec-Fetch-Site': 'none',
+      'Sec-Fetch-User': '?1',
+      'Upgrade-Insecure-Requests': '1',
     },
     signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const text = await res.text();
-  // Detect Cloudflare challenge page
   if (text.includes('Just a moment') && text.includes('cf_chl')) {
     throw new Error('Cloudflare challenge detected');
   }
   return text;
 }
 
-/** Fetch via Render backend Playwright proxy — bypasses Cloudflare */
-async function fetchViaBackendProxy(url: string): Promise<string> {
-  const proxyUrl = `${SCOUT_SERVER_URL}/api/playmakerstats/html?url=${encodeURIComponent(url)}`;
-  const res = await fetch(proxyUrl, {
-    signal: AbortSignal.timeout(45_000), // Playwright needs more time
-  });
-  if (!res.ok) throw new Error(`Backend proxy HTTP ${res.status}`);
-  const text = await res.text();
-  if (text.includes('Just a moment') && text.includes('cf_chl')) {
-    throw new Error('Cloudflare challenge on proxy');
-  }
-  return text;
-}
-
 async function fetchWithRetry(url: string, maxRetries = 2): Promise<string> {
   let lastErr: Error | undefined;
-  // Try direct fetch first (fast, works locally)
   for (let i = 0; i < maxRetries; i++) {
     try {
       return await fetchPmHtml(url);
@@ -65,12 +49,6 @@ async function fetchWithRetry(url: string, maxRetries = 2): Promise<string> {
       lastErr = err instanceof Error ? err : new Error(String(err));
       if (i < maxRetries - 1) await new Promise((r) => setTimeout(r, 2000));
     }
-  }
-  // Fallback: Render backend Playwright proxy (bypasses Cloudflare)
-  try {
-    return await fetchViaBackendProxy(url);
-  } catch {
-    /* proxy also failed — throw original error */
   }
   throw lastErr;
 }
