@@ -31,6 +31,15 @@ async function fetchPmHtml(url: string): Promise<string> {
   return res.text();
 }
 
+async function fetchViaProxy(url: string): Promise<string> {
+  const proxyRes = await fetch(
+    `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+    { cache: 'no-store', signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) }
+  );
+  if (!proxyRes.ok) throw new Error(`Proxy HTTP ${proxyRes.status}`);
+  return proxyRes.text();
+}
+
 async function fetchWithRetry(url: string, maxRetries = 2): Promise<string> {
   let lastErr: Error | undefined;
   for (let i = 0; i < maxRetries; i++) {
@@ -40,6 +49,12 @@ async function fetchWithRetry(url: string, maxRetries = 2): Promise<string> {
       lastErr = err instanceof Error ? err : new Error(String(err));
       if (i < maxRetries - 1) await new Promise((r) => setTimeout(r, 2000));
     }
+  }
+  // AllOrigins proxy fallback — uses different IPs, may bypass block
+  try {
+    return await fetchViaProxy(url);
+  } catch {
+    /* proxy also failed — throw original error */
   }
   throw lastErr;
 }
