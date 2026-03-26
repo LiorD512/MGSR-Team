@@ -1099,7 +1099,9 @@ class PlayerInfoViewModel(
             val currentAccount = getCurrentUserAccount()
             val sharerPhone = currentAccount?.phone?.takeIf { it.isNotBlank() }
                 ?: player.getAgentPhoneNumber()
-            val sharerName = currentAccount?.getDisplayName(appContext)?.takeIf { it.isNotBlank() }
+            val sharerName = currentAccount?.let { acc ->
+                if (lang == "he") (acc.hebrewName ?: acc.name) else (acc.name ?: acc.hebrewName)
+            }?.takeIf { it.isNotBlank() }
 
             val playerMap = hashMapOf<String, Any?>(
                     "fullName" to player.fullName,
