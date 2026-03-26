@@ -309,6 +309,7 @@ export default function DashboardPage() {
   const [expandedWindowCountries, setExpandedWindowCountries] = useState<Set<string>>(new Set());
   const [womenPlayers, setWomenPlayers] = useState<WomanPlayer[]>([]);
   const [youthPlayers, setYouthPlayers] = useState<YouthPlayer[]>([]);
+  const [mandateProfiles, setMandateProfiles] = useState<Set<string>>(new Set());
   const searchParams = useSearchParams();
 
   // When returning from player page with scrollTo, scroll to that feed item
@@ -403,6 +404,29 @@ export default function DashboardPage() {
       const list = snap.docs.map((d) => ({ id: d.id, ...d.data() } as RosteredPlayer));
       setPlayers(list.map((p) => ({ id: p.id })));
       setRosterPlayers(list);
+    });
+    return () => unsub();
+  }, [platform]);
+
+  useEffect(() => {
+    if (platform === 'women' || platform === 'youth') return;
+    const mandateQuery = query(
+      collection(db, 'PlayerDocuments'),
+      where('type', '==', 'MANDATE')
+    );
+    const unsub = onSnapshot(mandateQuery, (snap) => {
+      const now = Date.now();
+      const profiles = new Set<string>();
+      snap.docs.forEach((doc) => {
+        const d = doc.data();
+        const profile = d.playerTmProfile as string | undefined;
+        const expiresAt = d.expiresAt as number | undefined;
+        const expired = d.expired as boolean | undefined;
+        if (profile && expiresAt && !expired && expiresAt >= now) {
+          profiles.add(profile);
+        }
+      });
+      setMandateProfiles(profiles);
     });
     return () => unsub();
   }, [platform]);
@@ -817,13 +841,15 @@ export default function DashboardPage() {
   }, [rosterPlayers, isRtl]);
 
   const mandateData = useMemo(() => {
-    const withM = rosterPlayers.filter((p) => p.haveMandate === true).length;
+    const withM = rosterPlayers.filter(
+      (p) => p.haveMandate === true || (p.tmProfile && mandateProfiles.has(p.tmProfile))
+    ).length;
     const without = rosterPlayers.length - withM;
     return [
       { name: t('roster_analytics_with_mandate'), value: withM, color: '#66BB6A' },
       { name: t('roster_analytics_without_mandate'), value: without, color: '#8D6E63' },
     ].filter((d) => d.value > 0);
-  }, [rosterPlayers, t]);
+  }, [rosterPlayers, mandateProfiles, t]);
 
   const isWomen = platform === 'women';
   const isYouth = platform === 'youth';
