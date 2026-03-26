@@ -1,61 +1,47 @@
 {
   "windows": [
     {
-      "countryName": "Sweden",
-      "countryCode": "se",
-      "flagUrl": "https://tmssl.akamaized.net/images/flagge/originals/147.png",
-      "confederation": "UEFA",
-      "daysLeft": 0
-    },
-    {
-      "countryName": "United States",
-      "countryCode": "us",
-      "flagUrl": "https://tmssl.akamaized.net/images/flagge/originals/184.png",
-      "confederation": "CONCACAF",
-      "daysLeft": 0
-    },
-    {
       "countryName": "Korea, South",
       "countryCode": "kr",
       "flagUrl": "https://tmssl.akamaized.net/images/flagge/originals/87.png",
       "confederation": "AFC",
-      "daysLeft": 2
+      "daysLeft": 0
     },
     {
       "countryName": "Ecuador",
       "countryCode": "ec",
       "flagUrl": "https://tmssl.akamaized.net/images/flagge/originals/44.png",
       "confederation": "CONMEBOL",
-      "daysLeft": 4
+      "daysLeft": 3
     },
     {
       "countryName": "Norway",
       "countryCode": "no",
       "flagUrl": "https://tmssl.akamaized.net/images/flagge/originals/125.png",
       "confederation": "UEFA",
-      "daysLeft": 7
+      "daysLeft": 6
     },
     {
       "countryName": "Kazakhstan",
       "countryCode": "kz",
       "flagUrl": "https://tmssl.akamaized.net/images/flagge/originals/81.png",
       "confederation": "UEFA",
-      "daysLeft": 10
+      "daysLeft": 9
     },
     {
       "countryName": "Japan",
       "countryCode": "jp",
       "flagUrl": "https://tmssl.akamaized.net/images/flagge/originals/77.png",
       "confederation": "AFC",
-      "daysLeft": 15
+      "daysLeft": 14
     },
     {
       "countryName": "Canada",
       "countryCode": "ca",
       "flagUrl": "https://tmssl.akamaized.net/images/flagge/originals/80.png",
       "confederation": "CONCACAF",
-      "daysLeft": 23
+      "daysLeft": 22
     }
   ],
-  "updatedAt": "2026-03-25T08:39:03.095Z"
+  "updatedAt": "2026-03-26T08:44:03.068Z"
 }
