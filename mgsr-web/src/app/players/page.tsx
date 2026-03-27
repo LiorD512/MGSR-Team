@@ -15,6 +15,8 @@ import AppLayout from '@/components/AppLayout';
 import FilterBottomSheet from '@/components/mobile/FilterBottomSheet';
 import { useIsMobileOrTablet } from '@/hooks/useMediaQuery';
 import { useEuCountries, isEuNational } from '@/hooks/useEuCountries';
+import { matchingRequestsForPlayer, type ClubRequest, type RosterPlayer } from '@/lib/requestMatcher';
+import { CLUB_REQUESTS_COLLECTIONS } from '@/lib/platformCollections';
 import Link from 'next/link';
 
 interface Player {
@@ -36,6 +38,9 @@ interface Player {
   onLoanFromClub?: string;
   foot?: string;
   nationality?: string;
+  nationalities?: string[];
+  salaryRange?: string;
+  transferFee?: string;
   notes?: string;
   noteList?: { notes?: string; createBy?: string; createdAt?: number }[];
   agency?: string;
@@ -179,6 +184,8 @@ export default function PlayersPage() {
   const [currentAccountName, setCurrentAccountName] = useState<string | null>(null);
   const [allAccounts, setAllAccounts] = useState<AccountForShortlist[]>([]);
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
+  const [clubRequests, setClubRequests] = useState<(ClubRequest & { clubName?: string; clubLogo?: string; clubCountry?: string; clubCountryFlag?: string; notes?: string; contactName?: string; minAge?: number; maxAge?: number; ageDoesntMatter?: boolean; dominateFoot?: string; euOnly?: boolean; salaryRange?: string; transferFee?: string })[]>([]);
+  const [expandedMatchingPlayerId, setExpandedMatchingPlayerId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!loading && !user) router.replace('/login');
@@ -282,6 +289,18 @@ export default function PlayersPage() {
     });
     return () => unsub();
   }, []);
+
+  // Load ClubRequests for matching (men only)
+  useEffect(() => {
+    if (platform !== 'men') return;
+    const reqCol = CLUB_REQUESTS_COLLECTIONS[platform];
+    const q2 = query(collection(db, reqCol), orderBy('createdAt', 'desc'));
+    const unsub = onSnapshot(q2, (snap) => {
+      const reqs = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as typeof clubRequests[number]);
+      setClubRequests(reqs.filter((r) => (r as { status?: string }).status !== 'closed'));
+    });
+    return () => unsub();
+  }, [platform]);
 
   useEffect(() => {
     setScreenCache<PlayersCache>('players', {
@@ -517,6 +536,29 @@ export default function PlayersPage() {
       })
       .sort((a, b) => (a.expiryAt ?? Infinity) - (b.expiryAt ?? Infinity));
   }, [players, mandateDataByProfile, platform]);
+
+  // Compute matching requests per player (men only)
+  const matchingRequestsByPlayerId = useMemo(() => {
+    if (platform !== 'men' || clubRequests.length === 0) return new Map<string, typeof clubRequests>();
+    const map = new Map<string, typeof clubRequests>();
+    for (const p of players) {
+      const rosterPlayer: RosterPlayer = {
+        id: p.id,
+        fullName: p.fullName,
+        age: p.age,
+        positions: p.positions ?? [],
+        foot: p.foot,
+        salaryRange: p.salaryRange,
+        transferFee: p.transferFee,
+        marketValue: p.marketValue,
+        nationality: p.nationality,
+        nationalities: p.nationalities,
+      };
+      const matching = matchingRequestsForPlayer(rosterPlayer, clubRequests, euCountries);
+      if (matching.length > 0) map.set(p.id, matching);
+    }
+    return map;
+  }, [platform, players, clubRequests, euCountries]);
 
   const displayList = filtered;
   const isLoading = platform === 'youth' ? youthLoading : platform === 'women' ? womenLoading : playersLoading;
@@ -1050,9 +1092,22 @@ export default function PlayersPage() {
           </div>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {displayList.map((p, i) => (
-              <Link
+            {displayList.map((p, i) => {
+              const playerMatchingReqs = platform === 'men' ? matchingRequestsByPlayerId.get(p.id) : undefined;
+              const matchCount = playerMatchingReqs?.length ?? 0;
+              return (
+              <div
                 key={p.id}
+                className={`border transition-all duration-300 animate-fade-in overflow-visible ${
+                  isYouth
+                    ? 'youth-glass-card rounded-2xl hover:border-[var(--youth-cyan)]/40 hover:shadow-[0_0_20px_rgba(0,212,255,0.1)]'
+                    : isWomen
+                      ? 'bg-mgsr-card border-mgsr-border hover:bg-mgsr-card/80 rounded-2xl hover:border-[var(--women-rose)]/40 hover:shadow-[0_0_30px_rgba(232,160,191,0.12)]'
+                      : `bg-mgsr-card border-mgsr-border hover:bg-mgsr-card/80 rounded-xl ${matchCount > 0 ? 'border-mgsr-teal/15 hover:border-mgsr-teal/30' : 'hover:border-[var(--mgsr-accent)]/40'}`
+                }`}
+                style={{ animationDelay: `${i * 30}ms` }}
+              >
+              <Link
                 onClick={saveScrollPosition}
                 href={
                   platform === 'youth'
@@ -1061,14 +1116,7 @@ export default function PlayersPage() {
                       ? `/players/women/${p.id}?from=/players`
                       : `/players/${p.id}?from=/players`
                 }
-                className={`group flex items-center gap-3 sm:gap-4 p-3 sm:p-4 border transition-all duration-300 animate-fade-in ${
-                  isYouth
-                    ? 'youth-glass-card rounded-2xl hover:border-[var(--youth-cyan)]/40 hover:shadow-[0_0_20px_rgba(0,212,255,0.1)]'
-                    : isWomen
-                      ? 'bg-mgsr-card border-mgsr-border hover:bg-mgsr-card/80 rounded-2xl hover:border-[var(--women-rose)]/40 hover:shadow-[0_0_30px_rgba(232,160,191,0.12)]'
-                      : 'bg-mgsr-card border-mgsr-border hover:bg-mgsr-card/80 rounded-xl hover:border-[var(--mgsr-accent)]/40'
-                }`}
-                style={{ animationDelay: `${i * 30}ms` }}
+                className="group flex items-center gap-3 sm:gap-4 p-3 sm:p-4"
               >
                 <div className="relative shrink-0">
                   {isYouth ? (
@@ -1147,7 +1195,203 @@ export default function PlayersPage() {
                   )}
                 </div>
               </Link>
-            ))}
+
+              {/* ── Status Badges Row — men only ── */}
+              {platform === 'men' && (() => {
+                const mp = p as Player;
+                const clubName = mp.currentClub?.clubName;
+                const isFree = clubName?.toLowerCase() === 'without club' || clubName?.toLowerCase() === 'vereinslos';
+                const isExpiring = isContractExpiringWithin6Months(mp.contractExpired);
+                const noteCount = (mp.noteList?.length ?? 0) || (mp.notes ? 1 : 0);
+                const matchedAccount = mp.agentInChargeName && mp.agentInChargeName.toLowerCase() !== 'unknown'
+                  ? allAccounts.find(a => a.name?.toLowerCase() === mp.agentInChargeName?.toLowerCase())
+                  : null;
+                const agentName = matchedAccount
+                  ? (lang === 'he' && matchedAccount.hebrewName ? matchedAccount.hebrewName : matchedAccount.name) ?? mp.agentInChargeName
+                  : (mp.agentInChargeName && mp.agentInChargeName.toLowerCase() !== 'unknown' ? mp.agentInChargeName : null);
+                const hasBadges = mp.isOnLoan || mp.haveMandate || isExpiring || isFree || mp.contractExpired || noteCount > 0 || agentName;
+                if (!hasBadges) return null;
+                return (
+                  <div className="px-3 sm:px-4 pb-2.5 pt-0.5 flex flex-wrap gap-1.5 items-center">
+                    {mp.isOnLoan && (
+                      <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-[10px] font-semibold tracking-wide bg-purple-500/15 text-purple-300">
+                        <span className="w-1.5 h-1.5 rounded-full bg-purple-400" />
+                        {isRtl ? 'השאלה' : 'LOAN'}
+                      </span>
+                    )}
+                    {mp.haveMandate && (() => {
+                      const mandateInfo = mp.tmProfile ? mandateDataByProfile.get(mp.tmProfile) : undefined;
+                      const leagues = mandateInfo?.validLeagues?.filter(Boolean) ?? [];
+                      const expiryDate = mandateInfo?.expiryAt ? new Date(mandateInfo.expiryAt).toLocaleDateString(isRtl ? 'he-IL' : 'en-US', { day: 'numeric', month: 'short', year: 'numeric' }) : null;
+                      return (
+                        <span className="relative group/mandate inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-[10px] font-semibold tracking-wide bg-blue-500/15 text-blue-400 cursor-default">
+                          <span className="w-1.5 h-1.5 rounded-full bg-blue-400 shadow-[0_0_6px_rgba(59,130,246,0.5)]" />
+                          {isRtl ? 'מנדט' : 'MANDATE'}
+                          {(leagues.length > 0 || expiryDate) && (
+                            <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover/mandate:block z-50 animate-fade-in">
+                              <span className="block rounded-xl bg-gradient-to-b from-mgsr-card to-mgsr-dark border border-blue-500/20 shadow-[0_8px_30px_rgba(0,0,0,0.5)] px-4 py-3 min-w-[240px] max-w-[360px] w-max" dir={isRtl ? 'rtl' : 'ltr'}>
+                                <span className="block text-[12px] font-semibold text-blue-400 mb-2 pb-1.5 border-b border-mgsr-border/30">
+                                  {isRtl ? 'פרטי מנדט' : 'Mandate Details'}
+                                </span>
+                                {leagues.length > 0 && (
+                                  <span className="block mb-1.5">
+                                    <span className="block text-[10px] text-mgsr-muted/60 uppercase tracking-wider mb-1">{isRtl ? 'ליגות / מדינות' : 'Leagues / Countries'}</span>
+                                    <span className="flex flex-wrap gap-1">
+                                      {leagues.map((league, li) => (
+                                        <span key={li} className="inline-block px-2 py-0.5 rounded-full text-[11px] font-medium bg-blue-500/10 text-blue-300/90">
+                                          {league.toLowerCase() === 'worldwide' ? (isRtl ? '🌍 עולמי' : '🌍 Worldwide') : league}
+                                        </span>
+                                      ))}
+                                    </span>
+                                  </span>
+                                )}
+                                {expiryDate && (
+                                  <span className="flex items-center gap-1.5 text-[11px] text-mgsr-muted/70 mt-1">
+                                    <span>📅</span>
+                                    <span>{isRtl ? 'תוקף עד' : 'Expires'}: <span className="text-mgsr-text/80 font-medium">{expiryDate}</span></span>
+                                  </span>
+                                )}
+                              </span>
+                              <span className="block w-2.5 h-2.5 mx-auto bg-mgsr-dark border-b border-r border-blue-500/20 rotate-45 -mt-[6px]" />
+                            </span>
+                          )}
+                        </span>
+                      );
+                    })()}
+                    {isExpiring && !isFree && (
+                      <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-[10px] font-semibold tracking-wide bg-amber-500/15 text-amber-400">
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                        {isRtl ? 'מסתיים' : 'EXPIRING'}
+                      </span>
+                    )}
+                    {isFree && (
+                      <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-[10px] font-bold tracking-wide bg-red-500/15 text-red-400">
+                        <span className="w-1.5 h-1.5 rounded-full bg-red-400" />
+                        {isRtl ? 'חופשי' : 'FREE'}
+                      </span>
+                    )}
+                    {mp.contractExpired && mp.contractExpired !== '-' && !mp.contractExpired.toLowerCase().includes('unknown') && (
+                      <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-medium text-mgsr-muted/70 bg-white/[0.04]">
+                        📅 {mp.contractExpired}
+                      </span>
+                    )}
+                    {noteCount > 0 && (() => {
+                      const noteTexts = mp.noteList?.length
+                        ? mp.noteList.filter(n => n.notes).map(n => {
+                            const rawBy = n.createBy;
+                            const byDisplay = rawBy && lang === 'he'
+                              ? (allAccounts.find(a => a.name?.toLowerCase() === rawBy.toLowerCase())?.hebrewName || rawBy)
+                              : rawBy;
+                            return { text: n.notes!, by: byDisplay, at: n.createdAt };
+                          })
+                        : mp.notes ? [{ text: mp.notes, by: undefined as string | undefined, at: undefined as number | undefined }] : [];
+                      return (
+                        <span className="relative group/note inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-semibold bg-violet-500/12 text-violet-400 cursor-default">
+                          📝 {noteCount}
+                          {noteTexts.length > 0 && (
+                            <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover/note:block z-50 animate-fade-in">
+                              <span className="block rounded-xl bg-gradient-to-b from-mgsr-card to-mgsr-dark border border-violet-500/20 shadow-[0_8px_30px_rgba(0,0,0,0.5)] px-4 py-3 min-w-[200px] max-w-[300px]" dir={isRtl ? 'rtl' : 'ltr'}>
+                                <span className="block text-[12px] font-semibold text-violet-400 mb-2 pb-1.5 border-b border-mgsr-border/30">
+                                  {isRtl ? 'הערות' : 'Notes'} ({noteCount})
+                                </span>
+                                <span className="flex flex-col gap-2.5 max-h-[180px] overflow-y-auto">
+                                  {noteTexts.map((n, ni) => (
+                                    <span key={ni} className="block" style={{ fontFamily: isRtl ? "'Heebo', 'Segoe UI', sans-serif" : "inherit" }}>
+                                      <span className="block text-[13px] leading-[1.6] text-mgsr-text/90 font-normal">{n.text.length > 120 ? n.text.slice(0, 117) + '…' : n.text}</span>
+                                      {(n.by || n.at) && (
+                                        <span className="block text-[10px] text-mgsr-muted/50 mt-0.5">
+                                          {n.by && <span>{n.by}</span>}
+                                          {n.by && n.at && <span> · </span>}
+                                          {n.at && <span>{new Date(n.at).toLocaleDateString(isRtl ? 'he-IL' : 'en-US', { day: 'numeric', month: 'short' })}</span>}
+                                        </span>
+                                      )}
+                                    </span>
+                                  ))}
+                                </span>
+                              </span>
+                              <span className="block w-2.5 h-2.5 mx-auto bg-mgsr-dark border-b border-r border-violet-500/20 rotate-45 -mt-[6px]" />
+                            </span>
+                          )}
+                        </span>
+                      );
+                    })()}
+                    {agentName && (
+                      <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-[10px] font-medium bg-mgsr-teal/10 text-mgsr-teal/80 max-w-[130px]">
+                        <span className="w-3.5 h-3.5 rounded-full bg-mgsr-teal/20 flex items-center justify-center text-[7px] font-bold text-mgsr-teal leading-none shrink-0">{agentName.charAt(0).toUpperCase()}</span>
+                        <span className="truncate">{agentName}</span>
+                      </span>
+                    )}
+                  </div>
+                );
+              })()}
+
+              {/* Matching Requests — expandable accordion, men only */}
+              {matchCount > 0 && (
+                <div className="border-t border-mgsr-border/20 px-3 sm:px-4 py-2">
+                  <button
+                    type="button"
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); setExpandedMatchingPlayerId(expandedMatchingPlayerId === p.id ? null : p.id); }}
+                    className="w-full flex items-center justify-between text-left rtl:text-right py-0.5 group/acc"
+                  >
+                    <span className="flex items-center gap-2">
+                      <span className="flex items-center justify-center w-5 h-5 rounded-full bg-mgsr-teal/15 text-mgsr-teal text-[10px] font-bold ring-1 ring-mgsr-teal/20">{matchCount}</span>
+                      <span className="text-[11px] font-semibold uppercase tracking-wider text-mgsr-teal/60 group-hover/acc:text-mgsr-teal/80 transition">
+                        {isRtl ? 'בקשות תואמות' : 'Matching Requests'}
+                      </span>
+                    </span>
+                    <svg className={`w-3.5 h-3.5 text-mgsr-muted/40 transition-transform ${expandedMatchingPlayerId === p.id ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                  {expandedMatchingPlayerId === p.id && (
+                    <div className="mt-2 pb-1 flex flex-wrap gap-2">
+                      {playerMatchingReqs!.map((req) => {
+                        const r = req as ClubRequest & { clubName?: string; clubLogo?: string; clubCountry?: string; clubCountryFlag?: string; minAge?: number; maxAge?: number; ageDoesntMatter?: boolean; dominateFoot?: string; euOnly?: boolean; salaryRange?: string; transferFee?: string; notes?: string; contactName?: string };
+                        const rows: { icon: string; img?: string; label: string }[] = [];
+                        if (r.clubCountry) rows.push({ icon: '🌍', img: r.clubCountryFlag?.startsWith('http') ? r.clubCountryFlag : undefined, label: r.clubCountry });
+                        if (r.ageDoesntMatter) rows.push({ icon: '📅', label: isRtl ? 'גיל: לא משנה' : 'Age: Any' });
+                        else if (r.minAge || r.maxAge) rows.push({ icon: '📅', label: `${isRtl ? 'גיל' : 'Age'}: ${r.minAge ?? '—'}–${r.maxAge ?? '—'}` });
+                        if (r.dominateFoot && r.dominateFoot !== 'any') rows.push({ icon: '🦶', label: `${isRtl ? 'רגל' : 'Foot'}: ${r.dominateFoot === 'left' ? (isRtl ? 'שמאל' : 'Left') : (isRtl ? 'ימין' : 'Right')}` });
+                        if (r.euOnly) rows.push({ icon: '🇪🇺', label: isRtl ? 'EU בלבד' : 'EU Only' });
+                        if (r.salaryRange) rows.push({ icon: '💰', label: `${isRtl ? 'שכר' : 'Salary'}: ${r.salaryRange}k` });
+                        if (r.transferFee) rows.push({ icon: '🏷️', label: `${isRtl ? 'עלות' : 'Fee'}: ${r.transferFee}` });
+                        if (r.contactName) rows.push({ icon: '👤', label: r.contactName });
+                        if (r.notes) rows.push({ icon: '📝', label: r.notes.length > 60 ? r.notes.slice(0, 57) + '…' : r.notes });
+                        return (
+                          <span key={req.id} className="relative group/tip inline-flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-gradient-to-r from-mgsr-dark/60 to-mgsr-dark/30 text-[12px] text-mgsr-text cursor-default hover:from-mgsr-teal/10 hover:to-mgsr-teal/5 border border-mgsr-border/30 hover:border-mgsr-teal/30 transition-all shadow-sm">
+                            {req.clubLogo && <img src={req.clubLogo} alt="" className="w-4.5 h-4.5 rounded-full object-cover ring-1 ring-mgsr-border/30" style={{ width: '18px', height: '18px' }} />}
+                            <span className="font-medium text-mgsr-text/90 truncate max-w-[90px]">{req.clubName ?? '—'}</span>
+                            <span className="px-1.5 py-0.5 rounded bg-mgsr-teal/15 text-mgsr-teal text-[10px] font-bold leading-none">{req.position}</span>
+                            {rows.length > 0 && (
+                              <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2.5 hidden group-hover/tip:block z-50 animate-fade-in">
+                                <span className="block rounded-xl bg-gradient-to-b from-mgsr-card to-mgsr-dark border border-mgsr-teal/20 shadow-[0_8px_30px_rgba(0,0,0,0.5)] px-4 py-3 min-w-[180px] max-w-[260px]">
+                                  <span className="flex items-center gap-2 mb-2 pb-2 border-b border-mgsr-border/30">
+                                    {req.clubLogo && <img src={req.clubLogo} alt="" className="w-5 h-5 rounded object-cover" />}
+                                    <span className="font-semibold text-[13px] text-mgsr-text">{req.clubName ?? '—'}</span>
+                                    <span className="ml-auto text-mgsr-teal font-bold text-[13px]">{req.position}</span>
+                                  </span>
+                                  <span className="flex flex-col gap-1.5">
+                                    {rows.map((row, ri) => (
+                                      <span key={ri} className="flex items-start gap-2 text-[11px] text-mgsr-muted leading-tight">
+                                        <span className="shrink-0 w-4 text-center">{row.img ? <img src={row.img} alt="" className="w-4 h-3 object-cover inline-block rounded-sm" /> : row.icon}</span>
+                                        <span className="text-mgsr-text/80">{row.label}</span>
+                                      </span>
+                                    ))}
+                                  </span>
+                                </span>
+                                <span className="block w-2.5 h-2.5 mx-auto bg-mgsr-dark border-b border-r border-mgsr-teal/20 rotate-45 -mt-[6px]" />
+                              </span>
+                            )}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+              </div>
+              );
+            })}
           </div>
         )}
       </div>
