@@ -1061,7 +1061,7 @@ export default function ShortlistPage() {
               <div
                 key={entry.tmProfileUrl}
                 id={`shortlist-entry-${i}`}
-                className={`group overflow-hidden transition-all duration-300 animate-fade-in ${
+                className={`group overflow-visible transition-all duration-300 animate-fade-in ${
                   isHighlighted ? 'shortlist-entry-highlight' : ''
                 } ${
                   isYouth
@@ -1252,12 +1252,45 @@ export default function ShortlistPage() {
                         </button>
                         {expandedMatchingUrl === entry.tmProfileUrl && (
                           <div className="mt-2 pb-1 flex flex-wrap gap-1.5">
-                            {matchingReqs.slice(0, 4).map((req) => (
-                              <span key={req.id} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-mgsr-dark/30 text-[12px] text-mgsr-text">
-                                {req.clubLogo && <img src={req.clubLogo} alt="" className="w-4 h-4 rounded object-cover" />}
-                                {req.clubName ?? '—'} · {req.position}
-                              </span>
-                            ))}
+                            {matchingReqs.map((req) => {
+                              const r = req as ClubRequest & { clubName?: string; clubLogo?: string; clubCountry?: string; clubCountryFlag?: string; minAge?: number; maxAge?: number; ageDoesntMatter?: boolean; dominateFoot?: string; euOnly?: boolean; salaryRange?: string; transferFee?: string; notes?: string; contactName?: string };
+                              const rows: { icon: string; img?: string; label: string }[] = [];
+                              if (r.clubCountry) rows.push({ icon: '🌍', img: r.clubCountryFlag?.startsWith('http') ? r.clubCountryFlag : undefined, label: r.clubCountry });
+                              if (r.ageDoesntMatter) rows.push({ icon: '📅', label: lang === 'he' ? 'גיל: לא משנה' : 'Age: Any' });
+                              else if (r.minAge || r.maxAge) rows.push({ icon: '📅', label: `${lang === 'he' ? 'גיל' : 'Age'}: ${r.minAge ?? '—'}–${r.maxAge ?? '—'}` });
+                              if (r.dominateFoot && r.dominateFoot !== 'any') rows.push({ icon: r.dominateFoot === 'left' ? '🦶' : '🦶', label: `${lang === 'he' ? 'רגל' : 'Foot'}: ${r.dominateFoot === 'left' ? (lang === 'he' ? 'שמאל' : 'Left') : (lang === 'he' ? 'ימין' : 'Right')}` });
+                              if (r.euOnly) rows.push({ icon: '🇪🇺', label: lang === 'he' ? 'EU בלבד' : 'EU Only' });
+                              if (r.salaryRange) rows.push({ icon: '💰', label: `${lang === 'he' ? 'שכר' : 'Salary'}: ${r.salaryRange}k` });
+                              if (r.transferFee) rows.push({ icon: '🏷️', label: `${lang === 'he' ? 'עלות' : 'Fee'}: ${r.transferFee}` });
+                              if (r.contactName) rows.push({ icon: '👤', label: r.contactName });
+                              if (r.notes) rows.push({ icon: '📝', label: r.notes.length > 60 ? r.notes.slice(0, 57) + '…' : r.notes });
+                              return (
+                                <span key={req.id} className="relative group/tip inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-mgsr-dark/30 text-[12px] text-mgsr-text cursor-default hover:bg-mgsr-teal/20 transition">
+                                  {req.clubLogo && <img src={req.clubLogo} alt="" className="w-4 h-4 rounded object-cover" />}
+                                  {req.clubName ?? '—'} · {req.position}
+                                  {rows.length > 0 && (
+                                    <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2.5 hidden group-hover/tip:block z-50 animate-fade-in">
+                                      <span className="block rounded-xl bg-gradient-to-b from-mgsr-card to-mgsr-dark border border-mgsr-teal/20 shadow-[0_8px_30px_rgba(0,0,0,0.5)] px-4 py-3 min-w-[180px] max-w-[260px]">
+                                        <span className="flex items-center gap-2 mb-2 pb-2 border-b border-mgsr-border/30">
+                                          {req.clubLogo && <img src={req.clubLogo} alt="" className="w-5 h-5 rounded object-cover" />}
+                                          <span className="font-semibold text-[13px] text-mgsr-text">{req.clubName ?? '—'}</span>
+                                          <span className="ml-auto text-mgsr-teal font-bold text-[13px]">{req.position}</span>
+                                        </span>
+                                        <span className="flex flex-col gap-1.5">
+                                          {rows.map((row, i) => (
+                                            <span key={i} className="flex items-start gap-2 text-[11px] text-mgsr-muted leading-tight">
+                                              <span className="shrink-0 w-4 text-center">{row.img ? <img src={row.img} alt="" className="w-4 h-3 object-cover inline-block rounded-sm" /> : row.icon}</span>
+                                              <span className="text-mgsr-text/80">{row.label}</span>
+                                            </span>
+                                          ))}
+                                        </span>
+                                      </span>
+                                      <span className="block w-2.5 h-2.5 mx-auto bg-mgsr-dark border-b border-r border-mgsr-teal/20 rotate-45 -mt-[6px]" />
+                                    </span>
+                                  )}
+                                </span>
+                              );
+                            })}
                           </div>
                         )}
                       </div>
