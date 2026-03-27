@@ -136,7 +136,6 @@ export function matchRequestToPlayers(request: ClubRequest, players: RosterPlaye
     if (!matchesDominateFoot(player, request)) return false;
     if (!matchesSalaryRange(player, request)) return false;
     if (!matchesTransferFee(player, request)) return false;
-    if (!matchesMarketValueVsTransferFee(player, request)) return false;
     if (!matchesEu(player, request, euCountries)) return false;
     return true;
   });

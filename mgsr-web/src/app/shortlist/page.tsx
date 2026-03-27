@@ -628,12 +628,14 @@ export default function ShortlistPage() {
         salaryRange: entry.salaryRange,
         transferFee: entry.transferFee,
         marketValue: entry.marketValue,
+        nationality: entry.playerNationality,
+        nationalities: entry.playerNationalities,
       };
-      const matching = matchingRequestsForPlayer(playerForMatch, clubRequests);
+      const matching = matchingRequestsForPlayer(playerForMatch, clubRequests, euCountries);
       map.set(entry.tmProfileUrl, { matchCount: matching.length, matchingRequests: matching });
     }
     return map;
-  }, [platform, entries, clubRequests, performanceCache]);
+  }, [platform, entries, clubRequests, performanceCache, euCountries]);
 
   const formatRefreshedAgo = useCallback(
     (ts?: number) => {
