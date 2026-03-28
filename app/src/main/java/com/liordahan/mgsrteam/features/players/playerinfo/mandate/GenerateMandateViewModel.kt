@@ -153,7 +153,19 @@ class GenerateMandateViewModel : ViewModel() {
 
     val validLeagues: List<String>
         get() = if (_isWorldWide.value) listOf("WorldWide")
-                else MandatePdfGenerator.buildValidLeagues(_countryOnly.value, _selectedClubs.value)
+                else buildValidLeagues(_countryOnly.value, _selectedClubs.value)
+
+    private fun buildValidLeagues(
+        countryOnly: List<String>,
+        clubs: List<ClubSearchModel>
+    ): List<String> {
+        val countryEntries = countryOnly.distinct().sorted()
+        val clubEntries = clubs
+            .filter { it.clubName != null && it.clubCountry != null }
+            .sortedWith(compareBy({ it.clubCountry }, { it.clubName }))
+            .map { "${it.clubName} - ${it.clubCountry}" }
+        return (countryEntries + clubEntries).distinct()
+    }
 
     // ── Actions ──
 

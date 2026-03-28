@@ -122,6 +122,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import org.koin.androidx.compose.koinViewModel
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.RequestBody.Companion.toRequestBody
 import org.koin.compose.koinInject
 import java.io.File
 import java.text.SimpleDateFormat
@@ -375,27 +377,53 @@ fun GenerateMandateScreen(
                                 mandateViewModel.setIsGenerating(true)
                                 scope.launch {
                                     val result = withContext(Dispatchers.IO) {
-                                        val cacheDir = File(context.cacheDir, "mandate_pdfs").apply { mkdirs() }
-                                        val playerName = listOfNotNull(passportDetails.firstName, passportDetails.lastName)
-                                            .joinToString("_").replace(Regex("[^a-zA-Z0-9_-]"), "")
-                                        val fileName = "Mandate_${playerName.ifBlank { "player" }}.pdf"
-                                        val file = File(cacheDir, fileName)
-                                        val agentName = selectedAgent?.name ?: "Lior Dahan"
-                                        val fifaLicenseId = selectedAgent?.fifaLicenseId ?: "22412-9595"
-                                        val data = MandatePdfGenerator.MandateData(
-                                            passportDetails = passportDetails,
-                                            effectiveDate = Date(),
-                                            expiryDate = expiryDate!!,
-                                            validLeagues = validLeagues,
-                                            agentName = agentName,
-                                            fifaLicenseId = fifaLicenseId,
-                                            originAgentName = if (withOriginAgent) originAgentName.ifBlank { null } else null,
-                                            originAgentIdLabel = if (withOriginAgent) {
-                                                if (originAgentUseLicense) "FIFA License" else "passport number"
-                                            } else null,
-                                            originAgentId = if (withOriginAgent) originAgentId.ifBlank { null } else null
-                                        )
-                                        MandatePdfGenerator.generatePdf(data, file, context)
+                                        runCatching {
+                                            val cacheDir = File(context.cacheDir, "mandate_pdfs").apply { mkdirs() }
+                                            val playerNameSafe = listOfNotNull(passportDetails.firstName, passportDetails.lastName)
+                                                .joinToString("_").replace(Regex("[^a-zA-Z0-9_-]"), "")
+                                            val fileName = "Mandate_${playerNameSafe.ifBlank { "player" }}.pdf"
+                                            val file = File(cacheDir, fileName)
+                                            val agentName = selectedAgent?.name ?: "Lior Dahan"
+                                            val fifaLicenseId = selectedAgent?.fifaLicenseId ?: "22412-9595"
+
+                                            val json = org.json.JSONObject().apply {
+                                                put("passportDetails", org.json.JSONObject().apply {
+                                                    put("firstName", passportDetails.firstName ?: "")
+                                                    put("lastName", passportDetails.lastName ?: "")
+                                                    put("dateOfBirth", passportDetails.dateOfBirth ?: "")
+                                                    put("passportNumber", passportDetails.passportNumber ?: "")
+                                                    put("nationality", passportDetails.nationality ?: "")
+                                                })
+                                                put("expiryDate", expiryDate!!.time)
+                                                put("validLeagues", org.json.JSONArray(validLeagues))
+                                                put("agentName", agentName)
+                                                put("fifaLicenseId", fifaLicenseId)
+                                                if (withOriginAgent && originAgentName.isNotBlank()) {
+                                                    put("originAgentName", originAgentName)
+                                                    put("originAgentIdLabel", if (originAgentUseLicense) "FIFA License" else "passport number")
+                                                    put("originAgentId", originAgentId.ifBlank { "" })
+                                                }
+                                            }
+
+                                            val client = okhttp3.OkHttpClient.Builder()
+                                                .connectTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+                                                .readTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+                                                .build()
+                                            val mediaType = "application/json; charset=utf-8".toMediaTypeOrNull()
+                                            val body = json.toString().toRequestBody(mediaType)
+                                            val request = okhttp3.Request.Builder()
+                                                .url("https://management.mgsrfa.com/api/mandate/generate")
+                                                .post(body)
+                                                .build()
+                                            val response = client.newCall(request).execute()
+                                            if (!response.isSuccessful) {
+                                                throw Exception("Server error: ${response.code} ${response.message}")
+                                            }
+                                            response.body?.byteStream()?.use { input ->
+                                                file.outputStream().use { output -> input.copyTo(output) }
+                                            } ?: throw Exception("Empty response body")
+                                            file
+                                        }
                                     }
                                     mandateViewModel.setIsGenerating(false)
                                     result.fold(
